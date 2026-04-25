@@ -80,7 +80,8 @@ async function loadDigestPreference() {
 async function toggleDigest() {
   digestLoading.value = true
   const res = await api.patch<{ weekly_digest_enabled: boolean }>(
-    `/api/v1/crm/digest-preference?enabled=${!digestEnabled.value}`,
+    '/api/v1/crm/digest-preference',
+    { enabled: !digestEnabled.value },
   )
   digestLoading.value = false
   if (res.ok && res.data) {
@@ -558,7 +559,7 @@ async function deleteWorkspace() {
         </div>
         <button
           :disabled="digestLoading"
-          :class="digestEnabled ? 'bg-red-600' : 'bg-gray-200'"
+          :class="digestEnabled ? 'bg-green-600' : 'bg-gray-200'"
           class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
           role="switch"
           :aria-checked="digestEnabled"

@@ -1139,8 +1139,6 @@ def pipeline_velocity(request):
     if cached is not None:
         return 200, cached
 
-    from crm.models import LeadStatusHistory
-
     rows = list(
         LeadStatusHistory.objects.filter(lead__firm=request.firm)
         .values("to_status")
@@ -1202,7 +1200,7 @@ class WonLostRow(Schema):
 @router.get(
     "/reports/won-lost-by-source",
     auth=django_auth,
-    response={200: List[WonLostRow], 403: ErrorOut},
+    response={200: List[WonLostRow], 400: ErrorOut, 403: ErrorOut},
 )
 def won_lost_by_source(
     request,
@@ -1226,15 +1224,21 @@ def won_lost_by_source(
 
     qs = Lead.objects.filter(firm=request.firm, status__in=[LeadStatus.WON, LeadStatus.LOST])
     if date_from:
-        try:
-            qs = qs.filter(updated_at__gte=parse_datetime(date_from) or dt.datetime.fromisoformat(date_from))
-        except (ValueError, TypeError):
-            pass
+        parsed = parse_datetime(date_from)
+        if parsed is None:
+            try:
+                parsed = dt.datetime.fromisoformat(date_from)
+            except ValueError:
+                return 400, {"detail": f"Invalid date_from format: '{date_from}'. Use ISO-8601."}
+        qs = qs.filter(updated_at__gte=parsed)
     if date_to:
-        try:
-            qs = qs.filter(updated_at__lte=parse_datetime(date_to) or dt.datetime.fromisoformat(date_to))
-        except (ValueError, TypeError):
-            pass
+        parsed = parse_datetime(date_to)
+        if parsed is None:
+            try:
+                parsed = dt.datetime.fromisoformat(date_to)
+            except ValueError:
+                return 400, {"detail": f"Invalid date_to format: '{date_to}'. Use ISO-8601."}
+        qs = qs.filter(updated_at__lte=parsed)
 
     data = qs.values("source", "status").annotate(n=Count("id"))
 
@@ -1396,6 +1400,10 @@ class DigestPreferenceOut(Schema):
     weekly_digest_enabled: bool
 
 
+class DigestPreferenceIn(Schema):
+    enabled: bool
+
+
 @router.get(
     "/digest-preference",
     auth=django_auth,
@@ -1416,13 +1424,13 @@ def get_digest_preference(request):
     auth=django_auth,
     response={200: DigestPreferenceOut, 403: ErrorOut},
 )
-def update_digest_preference(request, enabled: bool):
+def update_digest_preference(request, payload: DigestPreferenceIn):
     """Toggle the weekly email digest for the current user in the active firm."""
     try:
         m = require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    m.weekly_digest_enabled = enabled
+    m.weekly_digest_enabled = payload.enabled
     m.save(update_fields=["weekly_digest_enabled"])
     return 200, {"weekly_digest_enabled": m.weekly_digest_enabled}

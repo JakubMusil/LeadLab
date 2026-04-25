@@ -204,17 +204,17 @@ def send_weekly_digest(self):
                 LeadStatus.PROPOSAL, LeadStatus.NEGOTIATION,
             ],
         ).count()
-        overdue_tasks = Task.objects.filter(firm=firm, is_completed=False).count()
+        open_tasks = Task.objects.filter(firm=firm, is_completed=False).count()
 
         subject = f"[LeadLab] Weekly Pipeline Digest — {firm.name}"
         body = (
             f"Hi,\n\n"
             f"Here is your weekly pipeline summary for {firm.name}:\n\n"
-            f"  Total leads:   {total_leads}\n"
-            f"  Active:        {active}\n"
-            f"  Won this week: {won}\n"
-            f"  Lost:          {lost}\n"
-            f"  Open tasks:    {overdue_tasks}\n\n"
+            f"  Total leads: {total_leads}\n"
+            f"  Active:      {active}\n"
+            f"  Won:         {won}\n"
+            f"  Lost:        {lost}\n"
+            f"  Open tasks:  {open_tasks}\n\n"
             f"Log in to LeadLab to see more details.\n\n"
             f"To unsubscribe from this digest, go to Settings → Notifications "
             f"and disable the weekly email.\n"
