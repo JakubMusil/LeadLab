@@ -1,0 +1,22 @@
+# Core
+Django>=5.0,<7.0
+django-ninja>=1.0,<2.0
+psycopg2-binary>=2.9
+
+# Async / Queue
+celery>=5.3
+redis>=5.0
+
+# Storage
+django-storages>=1.14
+boto3>=1.34
+
+# Payments
+stripe>=8.0
+
+# Image processing
+Pillow>=10.0
+
+# Utilities
+python-slugify>=8.0
+django-extensions>=3.2

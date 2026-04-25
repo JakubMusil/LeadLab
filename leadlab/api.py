@@ -1,0 +1,23 @@
+"""
+Central Django Ninja API instance for LeadLab.
+
+All routers are registered here and mounted at /api/v1/.
+"""
+from ninja import NinjaAPI
+from ninja.security import django_auth
+
+from crm.api import router as crm_router
+from firms.api import router as firms_router
+from users.api import router as users_router
+
+api = NinjaAPI(
+    title="LeadLab API",
+    version="1.0.0",
+    description="Multi-tenant SaaS CRM — REST API",
+    auth=django_auth,
+    urls_namespace="api",
+)
+
+api.add_router("/users/", users_router)
+api.add_router("/firms/", firms_router)
+api.add_router("/crm/", crm_router)
