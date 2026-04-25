@@ -17,6 +17,11 @@ async function apiFetch(path, options = {}) {
     ...options.headers,
   };
 
+  // Don't set Content-Type for FormData (browser sets multipart boundary)
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
+
   const firmId = localStorage.getItem('firmId');
   if (firmId) headers['X-Firm-ID'] = firmId;
 
@@ -29,6 +34,14 @@ async function apiFetch(path, options = {}) {
   if (res.status === 401) {
     window.location.href = '/login/';
     return null;
+  }
+
+  // Handle 403 that may be due to a stale/deleted firm
+  if (res.status === 403) {
+    const isAuthPath = path.includes('/users/');
+    if (!isAuthPath && firmId) {
+      window.dispatchEvent(new CustomEvent('firmStale', { detail: { firmId } }));
+    }
   }
 
   const text = await res.text();
@@ -68,6 +81,30 @@ const Auth = {
   async me() {
     return apiFetch('/users/me');
   },
+
+  async updateProfile(data) {
+    return apiFetch('/users/me', { method: 'PATCH', body: JSON.stringify(data) });
+  },
+
+  async uploadAvatar(file) {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    return apiFetch('/users/me/avatar', { method: 'POST', body: fd });
+  },
+
+  async requestPasswordReset(email) {
+    return apiFetch('/users/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async confirmPasswordReset(uid, token, newPassword) {
+    return apiFetch('/users/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ uid, token, new_password: newPassword }),
+    });
+  },
 };
 
 // ------------------------------------------------------------------
@@ -97,8 +134,35 @@ const Firms = {
     });
   },
 
+  async sendInvitation(firmId, email, role = 'worker') {
+    return apiFetch(`/firms/${firmId}/invitations/`, {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    });
+  },
+
   async removeMember(firmId, membershipId) {
     return apiFetch(`/firms/${firmId}/members/${membershipId}`, { method: 'DELETE' });
+  },
+
+  async getBillingCheckout(firmId) {
+    return apiFetch(`/firms/${firmId}/billing/checkout`, { method: 'POST' });
+  },
+};
+
+// ------------------------------------------------------------------
+// Invitations
+// ------------------------------------------------------------------
+const Invitations = {
+  async preview(token) {
+    return apiFetch(`/invitations/${token}`);
+  },
+
+  async accept(token, data) {
+    return apiFetch(`/invitations/${token}/accept`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 };
 
@@ -130,14 +194,30 @@ const Leads = {
   async activities(leadId, page = 1) {
     return apiFetch(`/crm/leads/${leadId}/activities?page=${page}&page_size=20`);
   },
+
+  async listAttachments(leadId) {
+    return apiFetch(`/crm/leads/${leadId}/attachments`);
+  },
+
+  async uploadAttachment(leadId, file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return apiFetch(`/crm/leads/${leadId}/attachments`, { method: 'POST', body: fd });
+  },
+
+  async deleteAttachment(leadId, attachmentId) {
+    return apiFetch(`/crm/leads/${leadId}/attachments/${attachmentId}`, { method: 'DELETE' });
+  },
 };
 
 // ------------------------------------------------------------------
 // CRM – Customers
 // ------------------------------------------------------------------
 const Customers = {
-  async list(search = '') {
-    return apiFetch(`/crm/customers${search ? '?search=' + encodeURIComponent(search) : ''}`);
+  async list(search = '', page = 1, pageSize = 20) {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (search) params.set('search', search);
+    return apiFetch(`/crm/customers?${params.toString()}`);
   },
 
   async get(id) {
@@ -196,6 +276,14 @@ const Stats = {
 // ------------------------------------------------------------------
 // Utility helpers
 // ------------------------------------------------------------------
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function fmtCurrency(value, currency = 'CZK') {
   if (value == null) return '—';
   return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency }).format(value);
@@ -267,10 +355,41 @@ async function bootDashboard() {
     if (firmRes.ok && firmRes.data.length > 0) {
       localStorage.setItem('firmId', firmRes.data[0].id);
     } else {
-      // Redirect to a firm creation prompt (handled in dashboard page itself)
       return { user, firm: null };
     }
   }
 
+  const firmId = localStorage.getItem('firmId');
+  window._firmReady = true;
+  window.dispatchEvent(new CustomEvent('firmReady', { detail: { firmId } }));
+
   return { user };
 }
+
+// Handle stale firm: refresh firm list and pick a new one
+window.addEventListener('firmStale', async function(e) {
+  const firmRes = await Firms.list();
+  if (firmRes && firmRes.ok && firmRes.data.length > 0) {
+    const newFirm = firmRes.data[0];
+    localStorage.setItem('firmId', newFirm.id);
+    showToast('Workspace updated', 'info');
+    window.location.reload();
+  } else {
+    localStorage.removeItem('firmId');
+    showToast('Workspace no longer available', 'error');
+  }
+});
+
+// ------------------------------------------------------------------
+// Global error boundary
+// ------------------------------------------------------------------
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('Unhandled promise rejection:', event.reason);
+  if (typeof showToast === 'function') {
+    showToast('An unexpected error occurred', 'error');
+  }
+});
+
+window.onerror = function(msg, src, line) {
+  console.error('JS error:', msg, src, line);
+};
