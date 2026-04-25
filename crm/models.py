@@ -378,3 +378,74 @@ class Notification(models.Model):
     def __str__(self):
         read = '✓' if self.is_read else '○'
         return f'{read} [{self.event}] → {self.user}'
+
+
+# ---------------------------------------------------------------------------
+# Import Job (CSV bulk import)
+# ---------------------------------------------------------------------------
+
+def _import_upload_to(instance, filename):
+    """Store imported CSV files under media/imports/<firm_id>/<filename>."""
+    return f"imports/{instance.firm_id}/{filename}"
+
+
+class ImportJobType(models.TextChoices):
+    LEADS = "leads", "Leads"
+    CUSTOMERS = "customers", "Customers"
+
+
+class ImportJobStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    DONE = "done", "Done"
+    FAILED = "failed", "Failed"
+
+
+class ImportJob(TenantModel):
+    """
+    Tracks the progress of a background CSV import for leads or customers.
+
+    The Celery task ``process_import_job`` reads ``file``, creates records,
+    and updates ``processed``, ``failed_count``, ``errors_json``, and
+    ``status`` in place.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="import_jobs",
+    )
+    type = models.CharField(
+        max_length=20,
+        choices=ImportJobType.choices,
+        default=ImportJobType.LEADS,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ImportJobStatus.choices,
+        default=ImportJobStatus.PENDING,
+        db_index=True,
+    )
+    file = models.FileField(upload_to=_import_upload_to)
+    original_filename = models.CharField(max_length=255, blank=True)
+    total = models.PositiveIntegerField(default=0, help_text="Total rows in CSV (excluding header).")
+    processed = models.PositiveIntegerField(default=0, help_text="Rows successfully imported so far.")
+    failed_count = models.PositiveIntegerField(default=0, help_text="Rows that could not be imported.")
+    errors_json = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of {row, error} dicts for rows that failed.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "import job"
+        verbose_name_plural = "import jobs"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"ImportJob({self.type}, {self.status}) — {self.firm}"

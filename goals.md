@@ -180,12 +180,12 @@ Raise the quality bar to match commercial SaaS standards.
 
 Open LeadLab to the ecosystem.
 
-- [ ] **JWT API tokens** — add a `APIToken` model; provide UI in Settings to generate/revoke tokens; accept `Authorization: Bearer <token>` in Django Ninja auth (in addition to session auth)
-- [ ] **Outbound webhooks** — `WebhookEndpoint` model (URL, secret, event types); Celery task delivers signed `X-LeadLab-Signature` POST requests on lead and activity events; UI in Settings to manage endpoints and view delivery log
-- [ ] **iCal feed** — a per-user signed URL that exports tasks as an iCalendar file; importable into Google Calendar / Apple Calendar
-- [ ] **CSV import** — upload a CSV of leads or customers; background Celery job parses, validates, and creates records; progress shown in a status panel
-- [ ] **CSV/PDF export** — download the current filtered lead or customer list as CSV; generate a pipeline summary PDF via `weasyprint`
-- [ ] Expose a machine-readable OpenAPI schema at `/api/v1/openapi.json` and auto-generate a Python SDK with `openapi-python-client`
+- [x] **JWT API tokens** — add a `APIToken` model; provide UI in Settings to generate/revoke tokens; accept `Authorization: Bearer <token>` in Django Ninja auth (in addition to session auth)
+- [x] **Outbound webhooks** — `WebhookEndpoint` model (URL, secret, event types); Celery task delivers signed `X-LeadLab-Signature` POST requests on lead and activity events; UI in Settings to manage endpoints and view delivery log
+- [x] **iCal feed** — a per-user signed URL that exports tasks as an iCalendar file; importable into Google Calendar / Apple Calendar
+- [x] **CSV import** — upload a CSV of leads or customers; background Celery job parses, validates, and creates records; progress shown in a status panel
+- [x] **CSV/PDF export** — download the current filtered lead or customer list as CSV; generate a pipeline summary PDF via `weasyprint`
+- [x] Expose a machine-readable OpenAPI schema at `/api/v1/openapi.json` and auto-generate a Python SDK with `openapi-python-client`
 
 ### v1.8 — Advanced Analytics & Reporting
 

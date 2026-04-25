@@ -28,3 +28,8 @@ django-extensions>=3.2
 
 # Error tracking
 sentry-sdk[django]>=2.0
+
+# Integrations (v1.7)
+icalendar>=5.0
+weasyprint>=60.0
+requests>=2.31

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from crm.models import Activity, Customer, Lead, LeadAttachment, Notification, Task
+from crm.models import Activity, Customer, ImportJob, Lead, LeadAttachment, Notification, Task
 
 
 class ActivityInline(admin.TabularInline):
@@ -78,3 +78,11 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ("firm", "is_read", "event")
     search_fields = ("event", "user__email")
     readonly_fields = ("created_at",)
+
+
+@admin.register(ImportJob)
+class ImportJobAdmin(admin.ModelAdmin):
+    list_display = ("type", "status", "firm", "user", "total", "processed", "failed_count", "created_at", "finished_at")
+    list_filter = ("firm", "type", "status")
+    search_fields = ("firm__name", "user__email", "original_filename")
+    readonly_fields = ("created_at", "finished_at")

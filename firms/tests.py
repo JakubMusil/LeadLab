@@ -906,3 +906,164 @@ class TierLimitCreateInvitationAPITest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 202)
+
+
+# ===========================================================================
+# v1.7 — API Tokens
+# ===========================================================================
+
+class APITokenModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="token@example.com", password="pass")
+        self.firm = Firm.objects.create(name="Token Firm")
+        Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.OWNER)
+
+    def test_create_for_user_returns_plain_text(self):
+        from firms.models import APIToken
+        token_obj, plain = APIToken.create_for_user(
+            firm=self.firm, user=self.user, name="CI Token"
+        )
+        self.assertIsNotNone(plain)
+        self.assertTrue(len(plain) > 8)
+        self.assertEqual(token_obj.name, "CI Token")
+        self.assertTrue(token_obj.is_active)
+
+    def test_authenticate_valid_token(self):
+        from firms.models import APIToken
+        token_obj, plain = APIToken.create_for_user(
+            firm=self.firm, user=self.user, name="Auth Test"
+        )
+        found = APIToken.authenticate(plain)
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, token_obj.id)
+
+    def test_authenticate_wrong_token(self):
+        from firms.models import APIToken
+        result = APIToken.authenticate("totallyinvalidtoken")
+        self.assertIsNone(result)
+
+    def test_revoked_token_is_inactive(self):
+        from firms.models import APIToken
+        from django.utils import timezone
+        token_obj, plain = APIToken.create_for_user(
+            firm=self.firm, user=self.user, name="Rev Test"
+        )
+        token_obj.revoked_at = timezone.now()
+        token_obj.save(update_fields=["revoked_at"])
+        self.assertFalse(token_obj.is_active)
+        result = APIToken.authenticate(plain)
+        self.assertIsNone(result)
+
+
+class APITokenEndpointTest(TestCase):
+    """Integration tests for the /api/v1/firms/{id}/tokens endpoints."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="token_owner@example.com", password="pass")
+        self.firm = Firm.objects.create(name="Token Endpoint Firm")
+        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_create_token(self):
+        resp = self.client.post(
+            f"/api/v1/firms/{self.firm.id}/tokens",
+            data=json.dumps({"name": "My Token"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertIn("token", data)
+        self.assertIn("prefix", data)
+        self.assertTrue(data["is_active"])
+
+    def test_list_tokens(self):
+        from firms.models import APIToken
+        APIToken.create_for_user(firm=self.firm, user=self.owner, name="T1")
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}/tokens")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreaterEqual(len(resp.json()), 1)
+
+    def test_revoke_token(self):
+        from firms.models import APIToken
+        token_obj, _ = APIToken.create_for_user(
+            firm=self.firm, user=self.owner, name="Rev Token"
+        )
+        resp = self.client.delete(f"/api/v1/firms/{self.firm.id}/tokens/{token_obj.id}")
+        self.assertEqual(resp.status_code, 204)
+        token_obj.refresh_from_db()
+        self.assertIsNotNone(token_obj.revoked_at)
+
+
+# ===========================================================================
+# v1.7 — Webhooks
+# ===========================================================================
+
+class WebhookEndpointModelTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Webhook Firm")
+
+    def test_subscribes_to_empty_events_means_all(self):
+        from firms.models import WebhookEndpoint
+        ep = WebhookEndpoint(firm=self.firm, url="https://example.com", events=[])
+        self.assertTrue(ep.subscribes_to("lead.created"))
+        self.assertTrue(ep.subscribes_to("activity.created"))
+
+    def test_subscribes_to_specific_event(self):
+        from firms.models import WebhookEndpoint
+        ep = WebhookEndpoint(firm=self.firm, url="https://example.com", events=["lead.created"])
+        self.assertTrue(ep.subscribes_to("lead.created"))
+        self.assertFalse(ep.subscribes_to("activity.created"))
+
+
+class WebhookAPITest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(email="wh_owner@example.com", password="pass")
+        self.firm = Firm.objects.create(name="Webhook API Firm")
+        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_create_webhook(self):
+        resp = self.client.post(
+            f"/api/v1/firms/{self.firm.id}/webhooks",
+            data=json.dumps({"url": "https://example.com/hook", "events": ["lead.created"]}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["url"], "https://example.com/hook")
+        self.assertEqual(data["events"], ["lead.created"])
+        self.assertTrue(data["is_active"])
+
+    def test_list_webhooks(self):
+        from firms.models import WebhookEndpoint
+        WebhookEndpoint.objects.create(firm=self.firm, url="https://example.com/hook")
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}/webhooks")
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreaterEqual(len(resp.json()), 1)
+
+    def test_delete_webhook(self):
+        from firms.models import WebhookEndpoint
+        ep = WebhookEndpoint.objects.create(firm=self.firm, url="https://example.com/hook")
+        resp = self.client.delete(f"/api/v1/firms/{self.firm.id}/webhooks/{ep.id}")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(WebhookEndpoint.objects.filter(id=ep.id).exists())
+
+    def test_update_webhook(self):
+        from firms.models import WebhookEndpoint
+        ep = WebhookEndpoint.objects.create(firm=self.firm, url="https://example.com/hook")
+        resp = self.client.patch(
+            f"/api/v1/firms/{self.firm.id}/webhooks/{ep.id}",
+            data=json.dumps({"is_active": False}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()["is_active"])
+
+    def test_worker_cannot_manage_webhooks(self):
+        worker = User.objects.create_user(email="wh_worker@example.com", password="pass")
+        Membership.objects.create(user=worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.client.force_login(worker)
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}/webhooks")
+        self.assertEqual(resp.status_code, 403)

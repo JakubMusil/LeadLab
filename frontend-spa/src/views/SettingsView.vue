@@ -35,6 +35,36 @@ const confirmDeleteWorkspace = ref(false)
 const dangerLoading = ref(false)
 const confirmDeleteText = ref('')
 
+// API Tokens
+interface APIToken {
+  id: string
+  name: string
+  prefix: string
+  created_at: string
+  last_used_at: string | null
+  revoked_at: string | null
+  is_active: boolean
+}
+const tokens = ref<APIToken[]>([])
+const tokensLoading = ref(false)
+const newTokenName = ref('')
+const newTokenCreating = ref(false)
+const createdTokenValue = ref<string | null>(null)
+
+// Webhooks
+interface WebhookEndpoint {
+  id: string
+  url: string
+  events: string[]
+  is_active: boolean
+  created_at: string
+}
+const webhooks = ref<WebhookEndpoint[]>([])
+const webhooksLoading = ref(false)
+const newWebhookUrl = ref('')
+const newWebhookEvents = ref('')
+const newWebhookCreating = ref(false)
+
 onMounted(() => {
   if (authStore.user) {
     profileFirstName.value = authStore.user.first_name
@@ -43,8 +73,120 @@ onMounted(() => {
   }
   if (firmStore.activeFirm) {
     workspaceName.value = firmStore.activeFirm.name
+    loadTokens()
+    loadWebhooks()
   }
 })
+
+// ---- API Tokens ----
+async function loadTokens() {
+  if (!firmStore.activeFirm) return
+  tokensLoading.value = true
+  const res = await api.get<APIToken[]>(`/api/v1/firms/${firmStore.activeFirm.id}/tokens`)
+  tokensLoading.value = false
+  if (res.ok && Array.isArray(res.data)) {
+    tokens.value = res.data
+  }
+}
+
+async function createToken() {
+  if (!firmStore.activeFirm || !newTokenName.value.trim()) return
+  newTokenCreating.value = true
+  const res = await api.post<APIToken & { token: string }>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/tokens`,
+    { name: newTokenName.value.trim() }
+  )
+  newTokenCreating.value = false
+  if (res.ok && res.data) {
+    createdTokenValue.value = res.data.token
+    newTokenName.value = ''
+    tokens.value.unshift(res.data)
+    toast.success('API token created. Copy it now — it will not be shown again.')
+  } else {
+    toast.error('Failed to create token.')
+  }
+}
+
+async function revokeToken(token: APIToken) {
+  if (!firmStore.activeFirm) return
+  if (!confirm(`Revoke token "${token.name}"? This cannot be undone.`)) return
+  const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/tokens/${token.id}`)
+  if (res.ok || res.status === 204) {
+    tokens.value = tokens.value.map((t) =>
+      t.id === token.id ? { ...t, is_active: false, revoked_at: new Date().toISOString() } : t
+    )
+    toast.success('Token revoked.')
+  } else {
+    toast.error('Failed to revoke token.')
+  }
+}
+
+function copyToken() {
+  if (!createdTokenValue.value) return
+  navigator.clipboard.writeText(createdTokenValue.value).then(() => {
+    toast.success('Token copied to clipboard.')
+  })
+}
+
+// ---- Webhooks ----
+async function loadWebhooks() {
+  if (!firmStore.activeFirm) return
+  webhooksLoading.value = true
+  const res = await api.get<WebhookEndpoint[]>(`/api/v1/firms/${firmStore.activeFirm.id}/webhooks`)
+  webhooksLoading.value = false
+  if (res.ok && Array.isArray(res.data)) {
+    webhooks.value = res.data
+  }
+}
+
+async function createWebhook() {
+  if (!firmStore.activeFirm || !newWebhookUrl.value.trim()) return
+  newWebhookCreating.value = true
+  const events = newWebhookEvents.value
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean)
+  const res = await api.post<WebhookEndpoint>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/webhooks`,
+    { url: newWebhookUrl.value.trim(), events }
+  )
+  newWebhookCreating.value = false
+  if (res.ok && res.data) {
+    webhooks.value.unshift(res.data)
+    newWebhookUrl.value = ''
+    newWebhookEvents.value = ''
+    toast.success('Webhook endpoint created.')
+  } else {
+    toast.error('Failed to create webhook.')
+  }
+}
+
+async function toggleWebhook(wh: WebhookEndpoint) {
+  if (!firmStore.activeFirm) return
+  const res = await api.patch<WebhookEndpoint>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/webhooks/${wh.id}`,
+    { is_active: !wh.is_active }
+  )
+  if (res.ok && res.data) {
+    const idx = webhooks.value.findIndex((w) => w.id === wh.id)
+    if (idx !== -1) webhooks.value.splice(idx, 1, res.data)
+    toast.success(res.data.is_active ? 'Webhook enabled.' : 'Webhook disabled.')
+  } else {
+    toast.error('Failed to update webhook.')
+  }
+}
+
+async function deleteWebhook(wh: WebhookEndpoint) {
+  if (!firmStore.activeFirm) return
+  if (!confirm(`Delete webhook for "${wh.url}"?`)) return
+  const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/webhooks/${wh.id}`)
+  if (res.ok || res.status === 204) {
+    webhooks.value = webhooks.value.filter((w) => w.id !== wh.id)
+    toast.success('Webhook deleted.')
+  } else {
+    toast.error('Failed to delete webhook.')
+  }
+}
 
 async function saveProfile() {
   profileLoading.value = true
@@ -251,6 +393,127 @@ async function deleteWorkspace() {
           >{{ dangerLoading ? 'Deleting…' : 'Delete Workspace' }}</button>
         </div>
       </div>
+    </div>
+
+    <!-- API Tokens -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">API Tokens</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Generate bearer tokens to authenticate API requests without a browser session.
+        Use <code class="font-mono bg-gray-100 px-1 rounded">Authorization: Bearer &lt;token&gt;</code> in your HTTP client.
+      </p>
+
+      <!-- Created token banner -->
+      <div v-if="createdTokenValue" class="mb-4 rounded-xl bg-green-50 border border-green-200 p-4">
+        <p class="text-xs font-semibold text-green-800 mb-2">Token created — copy it now. It will not be shown again.</p>
+        <div class="flex items-center gap-2">
+          <code class="flex-1 text-xs font-mono bg-white border border-green-200 rounded-lg px-3 py-2 break-all select-all">{{ createdTokenValue }}</code>
+          <button
+            class="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 flex-shrink-0"
+            @click="copyToken"
+          >Copy</button>
+        </div>
+        <button class="mt-2 text-xs text-green-700 underline" @click="createdTokenValue = null">Dismiss</button>
+      </div>
+
+      <!-- Create form -->
+      <form class="flex gap-2 mb-4" @submit.prevent="createToken">
+        <input
+          v-model="newTokenName"
+          type="text"
+          placeholder="Token name (e.g. CI/CD pipeline)"
+          class="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+        />
+        <button
+          type="submit"
+          :disabled="newTokenCreating || !newTokenName.trim()"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+        >{{ newTokenCreating ? 'Creating…' : 'Create' }}</button>
+      </form>
+
+      <!-- Token list -->
+      <div v-if="tokensLoading" class="text-sm text-gray-400">Loading…</div>
+      <div v-else-if="tokens.length === 0" class="text-sm text-gray-400">No API tokens yet.</div>
+      <ul v-else class="divide-y divide-gray-100">
+        <li v-for="token in tokens" :key="token.id" class="flex items-center justify-between py-3 gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-800">{{ token.name }}</span>
+              <span
+                :class="token.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                class="text-xs px-2 py-0.5 rounded-full"
+              >{{ token.is_active ? 'Active' : 'Revoked' }}</span>
+            </div>
+            <p class="text-xs text-gray-400 font-mono mt-0.5">{{ token.prefix }}…</p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Created {{ new Date(token.created_at).toLocaleDateString() }}
+              <template v-if="token.last_used_at"> · Last used {{ new Date(token.last_used_at).toLocaleDateString() }}</template>
+            </p>
+          </div>
+          <button
+            v-if="token.is_active"
+            class="flex-shrink-0 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50"
+            @click="revokeToken(token)"
+          >Revoke</button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Outbound Webhooks -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">Outbound Webhooks</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Receive signed POST requests when CRM events occur.
+        Leave the events field empty to subscribe to all events.
+      </p>
+
+      <!-- Create form -->
+      <form class="space-y-2 mb-4" @submit.prevent="createWebhook">
+        <input
+          v-model="newWebhookUrl"
+          type="url"
+          placeholder="https://your-server.com/webhook"
+          class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+        />
+        <input
+          v-model="newWebhookEvents"
+          type="text"
+          placeholder="Events (comma-separated, e.g. lead.created,activity.created)"
+          class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+        />
+        <button
+          type="submit"
+          :disabled="newWebhookCreating || !newWebhookUrl.trim()"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+        >{{ newWebhookCreating ? 'Adding…' : 'Add Endpoint' }}</button>
+      </form>
+
+      <!-- Webhook list -->
+      <div v-if="webhooksLoading" class="text-sm text-gray-400">Loading…</div>
+      <div v-else-if="webhooks.length === 0" class="text-sm text-gray-400">No webhook endpoints configured.</div>
+      <ul v-else class="divide-y divide-gray-100">
+        <li v-for="wh in webhooks" :key="wh.id" class="py-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-mono text-gray-800 break-all">{{ wh.url }}</p>
+              <p class="text-xs text-gray-400 mt-0.5">
+                Events: <span class="font-medium">{{ wh.events.length ? wh.events.join(', ') : 'all' }}</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button
+                :class="wh.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                class="text-xs px-2 py-1 rounded-lg"
+                @click="toggleWebhook(wh)"
+              >{{ wh.is_active ? 'Active' : 'Disabled' }}</button>
+              <button
+                class="text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50"
+                @click="deleteWebhook(wh)"
+              >Delete</button>
+            </div>
+          </div>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
