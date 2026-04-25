@@ -43,9 +43,18 @@ class FirmIn(Schema):
     name: str
 
 
+class FirmUpdateIn(Schema):
+    name: Optional[str] = None
+
+
+class MemberRoleUpdateIn(Schema):
+    role: str
+
+
 class MembershipOut(Schema):
     id: str
     user_email: str
+    user_full_name: str
     role: str
     firm_id: str
 
@@ -156,9 +165,37 @@ def delete_firm(request, firm_id: str):
     return 204, None
 
 
-# ---------------------------------------------------------------------------
-# Team / Membership management
-# ---------------------------------------------------------------------------
+@router.patch("/{firm_id}", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
+def update_firm(request, firm_id: str, payload: FirmUpdateIn):
+    """Rename a Firm (Admin or Owner only)."""
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can rename a Firm."}
+
+    if payload.name is not None:
+        firm.name = payload.name
+        firm.save(update_fields=["name"])
+
+    return 200, {
+        "id": str(firm.id),
+        "name": firm.name,
+        "slug": firm.slug,
+        "subscription_tier": firm.subscription_tier,
+        "subscription_active": firm.subscription_active,
+        "is_active": firm.is_active,
+    }
+
+
+
 
 @router.get("/{firm_id}/members", auth=django_auth, response={200: List[MembershipOut], 403: ErrorOut})
 def list_members(request, firm_id: str):
@@ -176,6 +213,7 @@ def list_members(request, firm_id: str):
         {
             "id": str(m.id),
             "user_email": m.user.email,
+            "user_full_name": m.user.full_name,
             "role": m.role,
             "firm_id": str(m.firm_id),
         }
@@ -225,6 +263,7 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
     return 201, {
         "id": str(membership.id),
         "user_email": invitee.email,
+        "user_full_name": invitee.full_name,
         "role": membership.role,
         "firm_id": str(firm.id),
     }
@@ -258,9 +297,78 @@ def remove_member(request, firm_id: str, membership_id: str):
     return 204, None
 
 
+@router.patch(
+    "/{firm_id}/members/{membership_id}",
+    auth=django_auth,
+    response={200: MembershipOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_member_role(request, firm_id: str, membership_id: str, payload: MemberRoleUpdateIn):
+    """Update a member's role (Admin/Owner only; cannot change Owner's role)."""
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        caller_membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not caller_membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can change member roles."}
+
+    try:
+        target = Membership.objects.get(id=membership_id, firm=firm)
+    except Membership.DoesNotExist:
+        return 404, {"detail": "Membership not found."}
+
+    if target.is_owner:
+        return 403, {"detail": "The Owner's role cannot be changed."}
+
+    if payload.role == MembershipRole.OWNER:
+        return 403, {"detail": "Cannot assign the Owner role."}
+
+    target.role = payload.role
+    target.save(update_fields=["role"])
+    return 200, {
+        "id": str(target.id),
+        "user_email": target.user.email,
+        "user_full_name": target.user.full_name,
+        "role": target.role,
+        "firm_id": str(target.firm_id),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Email-based invitations (Admin/Owner only)
 # ---------------------------------------------------------------------------
+
+@router.get(
+    "/{firm_id}/invitations/",
+    auth=django_auth,
+    response={200: List[InvitationOut], 403: ErrorOut},
+    tags=["invitations"],
+)
+def list_invitations(request, firm_id: str):
+    """List all pending and recent invitations for a Firm (Admin/Owner only)."""
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 403, {"detail": "Firm not found or inactive."}
+
+    try:
+        caller_membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not caller_membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can view invitations."}
+
+    invitations = Invitation.objects.filter(firm=firm).select_related("firm", "invited_by").order_by("-id")
+    return 200, [_invitation_out(inv) for inv in invitations]
+
+
+
 
 @router.post(
     "/{firm_id}/invitations/",
