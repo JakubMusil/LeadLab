@@ -1,0 +1,179 @@
+{% extends "frontend/dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Calendar – LeadLab{% endblock %}
+{% block page_title %}Task Calendar{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-6">
+
+  <!-- Calendar -->
+  <div class="flex-1 bg-white rounded-2xl border border-gray-100 p-6 min-w-0">
+    <div id="calendar"></div>
+  </div>
+
+  <!-- Task panel -->
+  <div class="w-full lg:w-80 space-y-4">
+
+    <!-- New task form -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h3 class="font-bold text-gray-900 mb-4">New Task</h3>
+      <div id="task-error" class="hidden bg-red-50 text-red-700 text-sm px-3 py-2 rounded-lg mb-3 border border-red-100"></div>
+      <form id="task-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Lead ID</label>
+          <input id="t-lead" type="text" placeholder="Paste lead UUID" required
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm input-red focus:outline-none">
+          <div class="text-xs text-gray-400 mt-1">Find lead IDs in the Leads page</div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Task title *</label>
+          <input id="t-title" type="text" placeholder="Call back client" required
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm input-red focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Due date</label>
+          <input id="t-due" type="datetime-local"
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm input-red focus:outline-none">
+        </div>
+        <button type="submit" class="w-full btn-primary font-semibold py-2.5 rounded-xl text-sm">
+          Create Task
+        </button>
+      </form>
+    </div>
+
+    <!-- Overdue tasks -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-gray-900 text-sm">Overdue</h3>
+        <span id="overdue-count" class="badge bg-red-100 text-red-700">0</span>
+      </div>
+      <div id="overdue-list" class="space-y-2 max-h-48 overflow-y-auto">
+        <div class="text-xs text-gray-400 text-center py-3">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Upcoming tasks -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-gray-900 text-sm">Upcoming</h3>
+        <span id="upcoming-count" class="badge bg-blue-100 text-blue-700">0</span>
+      </div>
+      <div id="upcoming-list" class="space-y-2 max-h-48 overflow-y-auto">
+        <div class="text-xs text-gray-400 text-center py-3">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script>
+let calendarInstance = null;
+let allTasks = [];
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadTasks() {
+  const res = await Tasks.list(false);
+  if (!res || !res.ok) return;
+  allTasks = res.data;
+  renderTaskLists();
+  renderCalendar();
+}
+
+function renderTaskLists() {
+  const now = new Date();
+  const overdue = allTasks.filter(t => t.due_date && new Date(t.due_date) < now);
+  const upcoming = allTasks.filter(t => !t.due_date || new Date(t.due_date) >= now);
+
+  document.getElementById('overdue-count').textContent = overdue.length;
+  document.getElementById('upcoming-count').textContent = upcoming.length;
+
+  document.getElementById('overdue-list').innerHTML = overdue.length
+    ? overdue.map(t => renderTaskItem(t, true)).join('')
+    : '<div class="text-xs text-gray-400 text-center py-3">No overdue tasks 🎉</div>';
+
+  document.getElementById('upcoming-list').innerHTML = upcoming.length
+    ? upcoming.slice(0, 10).map(t => renderTaskItem(t, false)).join('')
+    : '<div class="text-xs text-gray-400 text-center py-3">No upcoming tasks</div>';
+}
+
+function renderTaskItem(t, isOverdue) {
+  return `<div class="flex items-start gap-2.5 p-2.5 rounded-lg ${isOverdue ? 'bg-red-50' : 'bg-gray-50'}">
+    <button onclick="completeTask('${t.id}')" title="Mark complete"
+            class="mt-0.5 w-4 h-4 rounded border-2 ${isOverdue ? 'border-red-400 hover:bg-red-100' : 'border-gray-300 hover:bg-gray-200'} flex-shrink-0 transition-colors">
+    </button>
+    <div class="min-w-0">
+      <div class="text-xs font-medium text-gray-800 truncate">${escHtml(t.title)}</div>
+      ${t.due_date ? `<div class="text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'} mt-0.5">${isOverdue ? '⚠ ' : ''}${fmtDateTime(t.due_date)}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+async function completeTask(id) {
+  const res = await Tasks.complete(id);
+  if (res && res.ok) { showToast('Task completed! 🎉'); loadTasks(); }
+  else showToast('Failed to complete task', 'error');
+}
+
+function renderCalendar() {
+  const el = document.getElementById('calendar');
+  if (calendarInstance) calendarInstance.destroy();
+
+  const events = allTasks
+    .filter(t => t.due_date)
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      start: t.due_date,
+      allDay: false,
+      extendedProps: { task: t },
+    }));
+
+  calendarInstance = new FullCalendar.Calendar(el, {
+    initialView: 'dayGridMonth',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+    events,
+    eventClick: function(info) {
+      const t = info.event.extendedProps.task;
+      if (confirm(`Mark "${t.title}" as completed?`)) completeTask(t.id);
+    },
+    eventDidMount: function(info) {
+      const t = info.event.extendedProps.task;
+      const isOverdue = t.due_date && new Date(t.due_date) < new Date();
+      if (isOverdue) info.el.style.backgroundColor = '#EF4444';
+    },
+    height: 'auto',
+  });
+  calendarInstance.render();
+}
+
+document.getElementById('task-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('task-error');
+  errEl.classList.add('hidden');
+  const data = {
+    lead_id: document.getElementById('t-lead').value.trim(),
+    title: document.getElementById('t-title').value.trim(),
+    due_date: document.getElementById('t-due').value ? new Date(document.getElementById('t-due').value).toISOString() : null,
+  };
+  const res = await Tasks.create(data);
+  if (res && res.ok) {
+    document.getElementById('task-form').reset();
+    showToast('Task created');
+    loadTasks();
+  } else {
+    errEl.textContent = (res && res.data && res.data.detail) || 'Failed to create task. Check the lead ID.';
+    errEl.classList.remove('hidden');
+  }
+});
+
+setTimeout(loadTasks, 400);
+</script>
+{% endblock %}

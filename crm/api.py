@@ -10,6 +10,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
+from django.db.models import Count, Q, Sum
+
 from django.db import transaction
 from django.utils import timezone as tz
 from ninja import Router, Schema
@@ -575,3 +577,73 @@ def complete_task(request, task_id: str):
         )
 
     return 200, _task_out(task)
+
+
+# ===========================================================================
+# STATS
+# ===========================================================================
+
+class StatsOut(Schema):
+    total_leads: int
+    leads_by_status: Dict[str, int]
+    total_customers: int
+    total_tasks_pending: int
+    total_tasks_overdue: int
+    pipeline_value: float
+    won_value: float
+    conversion_rate: float
+    recent_activities: List[ActivityOut]
+
+
+@router.get("/stats", auth=django_auth, response={200: StatsOut, 403: ErrorOut})
+def get_stats(request):
+    """Return aggregated stats for the current Firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    now = tz.now()
+
+    leads_qs = Lead.objects.filter(firm=request.firm)
+    status_counts = {s.value: 0 for s in LeadStatus}
+    for row in leads_qs.values("status").annotate(n=Count("id")):
+        status_counts[row["status"]] = row["n"]
+
+    pipeline_value = float(
+        leads_qs.exclude(status__in=[LeadStatus.WON, LeadStatus.LOST, LeadStatus.CANCELED])
+        .aggregate(total=Sum("value"))["total"]
+        or 0
+    )
+    won_value = float(
+        leads_qs.filter(status=LeadStatus.WON).aggregate(total=Sum("value"))["total"] or 0
+    )
+
+    total_leads = leads_qs.count()
+    won_leads = status_counts.get(LeadStatus.WON, 0)
+    conversion_rate = round(won_leads / total_leads, 4) if total_leads else 0.0
+
+    tasks_qs = Task.objects.filter(firm=request.firm, is_completed=False)
+    total_tasks_pending = tasks_qs.count()
+    total_tasks_overdue = tasks_qs.filter(due_date__lt=now).count()
+
+    total_customers = Customer.objects.filter(firm=request.firm).count()
+
+    recent_activities = (
+        Activity.objects.filter(lead__firm=request.firm)
+        .select_related("lead", "user")
+        .order_by("-created_at")[:10]
+    )
+
+    return 200, {
+        "total_leads": total_leads,
+        "leads_by_status": status_counts,
+        "total_customers": total_customers,
+        "total_tasks_pending": total_tasks_pending,
+        "total_tasks_overdue": total_tasks_overdue,
+        "pipeline_value": pipeline_value,
+        "won_value": won_value,
+        "conversion_rate": conversion_rate,
+        "recent_activities": [_activity_out(a) for a in recent_activities],
+    }
+

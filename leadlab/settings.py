@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'users',
     'firms',
     'crm',
+    'frontend',
     'django.contrib.postgres',
 ]
 
