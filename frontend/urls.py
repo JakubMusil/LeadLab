@@ -18,4 +18,7 @@ urlpatterns = [
     path("dashboard/calendar/", views.dashboard_calendar, name="dashboard-calendar"),
     path("dashboard/team/", views.dashboard_team, name="dashboard-team"),
     path("dashboard/settings/", views.dashboard_settings, name="dashboard-settings"),
+    # Vue 3 SPA shell — handles all /app/* routes; old /dashboard/* routes remain intact.
+    path("app/", views.spa_shell, name="spa-shell"),
+    path("app/<path:path>", views.spa_shell, name="spa-shell-path"),
 ]
