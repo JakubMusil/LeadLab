@@ -1,0 +1,514 @@
+{% extends "frontend/dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Lead Detail – LeadLab{% endblock %}
+{% block page_title %}Lead Detail{% endblock %}
+
+{% block content %}
+
+<!-- Back link + action bar -->
+<div class="flex items-center justify-between mb-5">
+  <a href="/dashboard/leads/"
+     class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Back to Leads
+  </a>
+  <div class="flex items-center gap-2">
+    <button onclick="openEditModal()"
+            class="flex items-center gap-1.5 text-sm border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+      </svg>
+      Edit
+    </button>
+    <button onclick="deleteLead()"
+            class="flex items-center gap-1.5 text-sm border border-red-200 text-red-600 px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      </svg>
+      Delete
+    </button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading-state" class="text-center py-16 text-gray-400 text-sm">Loading…</div>
+
+<!-- Main content -->
+<div id="lead-content" class="hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left: Lead info -->
+    <div class="lg:col-span-1 space-y-4">
+
+      <!-- Header card -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <h1 class="text-xl font-bold text-gray-900 mb-2" id="lead-title">—</h1>
+        <div class="flex items-center gap-2 mb-4">
+          <span id="lead-status-badge" class="badge">—</span>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Source</span>
+            <span id="lead-source" class="font-medium text-gray-700 capitalize">—</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Value</span>
+            <span id="lead-value" class="font-medium text-gray-700">—</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Created</span>
+            <span id="lead-created" class="font-medium text-gray-700">—</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Updated</span>
+            <span id="lead-updated" class="font-medium text-gray-700">—</span>
+          </div>
+        </div>
+        <div id="lead-desc" class="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600 leading-relaxed"></div>
+      </div>
+
+      <!-- Status update -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <h3 class="font-bold text-gray-900 text-sm mb-3">Update Status</h3>
+        <div class="flex gap-2">
+          <select id="status-select"
+                  class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-red-500">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="canceled">Canceled</option>
+          </select>
+          <button onclick="updateStatus()"
+                  class="btn-primary text-sm font-medium px-4 py-2 rounded-xl">Update</button>
+        </div>
+      </div>
+
+      <!-- Tasks -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-gray-900 text-sm">Tasks</h3>
+          <button onclick="openTaskModal()"
+                  class="text-xs text-red-600 font-medium hover:underline">+ Add task</button>
+        </div>
+        <div id="tasks-list" class="space-y-2">
+          <div class="text-xs text-gray-400 text-center py-2">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-gray-900 text-sm">Attachments</h3>
+          <label class="text-xs text-red-600 font-medium hover:underline cursor-pointer">
+            + Upload
+            <input type="file" id="file-upload" class="hidden" onchange="uploadFile(this)">
+          </label>
+        </div>
+        <div id="attachments-list">
+          <div class="text-xs text-gray-400 text-center py-2">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Activity timeline -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <h2 class="font-bold text-gray-900 mb-5">Activity Timeline</h2>
+
+        <!-- Log activity -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-5">
+          <div class="flex gap-2">
+            <select id="activity-type"
+                    class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none flex-shrink-0">
+              <option value="comment">Comment</option>
+              <option value="call">Call</option>
+              <option value="meeting">Meeting</option>
+              <option value="email_out">Email Out</option>
+            </select>
+            <input id="activity-text" type="text" placeholder="Add a note…"
+                   class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+            <button onclick="logActivity()"
+                    class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">Log</button>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div id="activity-list" class="space-y-0">
+          <div class="text-sm text-gray-400 text-center py-6">Loading…</div>
+        </div>
+        <div id="load-more-wrap" class="hidden text-center mt-4">
+          <button onclick="loadMoreActivities()"
+                  class="text-sm text-red-600 font-medium hover:underline">Load more</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div id="edit-modal" class="modal-overlay hidden">
+  <div class="modal-box w-full max-w-lg">
+    <button onclick="closeEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <h2 class="text-lg font-bold text-gray-900 mb-5">Edit Lead</h2>
+    <div id="edit-error" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+    <form id="edit-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Title *</label>
+        <input id="edit-title" type="text" required
+               class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+        <textarea id="edit-desc" rows="3"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+          <select id="edit-status"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none bg-white">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Source</label>
+          <select id="edit-source"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none bg-white">
+            <option value="web">Web</option>
+            <option value="email">Email</option>
+            <option value="referral">Referral</option>
+            <option value="cold_call">Cold Call</option>
+            <option value="social">Social</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Value</label>
+          <input id="edit-value" type="number" min="0" step="0.01" placeholder="0.00"
+                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
+          <input id="edit-currency" type="text" maxlength="3"
+                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+        </div>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeEditModal()"
+                class="flex-1 border border-gray-200 text-gray-700 font-medium py-2.5 rounded-xl text-sm hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" class="flex-1 btn-primary font-semibold py-2.5 rounded-xl text-sm">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Task modal -->
+<div id="task-modal" class="modal-overlay hidden">
+  <div class="modal-box w-full max-w-md">
+    <button onclick="closeTaskModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <h2 class="text-lg font-bold text-gray-900 mb-5">New Task</h2>
+    <div id="task-error" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+    <form id="task-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Task title *</label>
+        <input id="task-title" type="text" required placeholder="Call back client"
+               class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Due date</label>
+        <input id="task-due" type="datetime-local"
+               class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeTaskModal()"
+                class="flex-1 border border-gray-200 text-gray-700 font-medium py-2.5 rounded-xl text-sm hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" class="flex-1 btn-primary font-semibold py-2.5 rounded-xl text-sm">
+          Create Task
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const LEAD_ID = '{{ lead_id }}';
+let leadData = null;
+let activityPage = 1;
+let hasMoreActivities = false;
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function loadLead() {
+  const res = await Leads.get(LEAD_ID);
+  document.getElementById('loading-state').classList.add('hidden');
+  if (!res || !res.ok) {
+    document.getElementById('loading-state').textContent = 'Failed to load lead.';
+    document.getElementById('loading-state').classList.remove('hidden');
+    return;
+  }
+  leadData = res.data;
+  renderLeadInfo(leadData);
+  document.getElementById('lead-content').classList.remove('hidden');
+  await Promise.all([loadActivities(true), loadTasks(), loadAttachments()]);
+}
+
+function renderLeadInfo(lead) {
+  document.title = `${lead.title} – LeadLab`;
+  document.getElementById('lead-title').textContent = lead.title;
+  document.getElementById('lead-status-badge').className = `badge ${statusBadge(lead.status)}`;
+  document.getElementById('lead-status-badge').textContent = lead.status;
+  document.getElementById('lead-source').textContent = lead.source.replace('_', ' ');
+  document.getElementById('lead-value').textContent = lead.value ? fmtCurrency(lead.value, lead.currency) : '—';
+  document.getElementById('lead-created').textContent = fmtDate(lead.created_at);
+  document.getElementById('lead-updated').textContent = fmtDate(lead.updated_at);
+  document.getElementById('lead-desc').textContent = lead.description || 'No description.';
+  document.getElementById('status-select').value = lead.status;
+}
+
+async function updateStatus() {
+  const newStatus = document.getElementById('status-select').value;
+  const res = await Leads.update(LEAD_ID, { status: newStatus });
+  if (res && res.ok) {
+    leadData = res.data;
+    renderLeadInfo(leadData);
+    showToast('Status updated');
+    loadActivities(true);
+  } else {
+    showToast('Failed to update status', 'error');
+  }
+}
+
+const activityIcons = {
+  comment: '💬', email_out: '📤', email_in: '📥', call: '📞',
+  meeting: '📅', status_change: '🔄', file_upload: '📎',
+  task_assigned: '✅', task_completed: '🏁',
+};
+
+async function loadActivities(reset = false) {
+  if (reset) activityPage = 1;
+  const res = await Leads.activities(LEAD_ID, activityPage);
+  if (!res || !res.ok) return;
+
+  const acts = Array.isArray(res.data) ? res.data : (res.data.items || res.data);
+  const container = document.getElementById('activity-list');
+
+  if (reset) container.innerHTML = '';
+
+  if (!acts.length && reset) {
+    container.innerHTML = '<div class="text-sm text-gray-400 text-center py-6">No activities yet. Log your first note above.</div>';
+    return;
+  }
+
+  const html = acts.map(a => `
+    <div class="activity-item">
+      <span class="text-base flex-shrink-0">${activityIcons[a.type] || '•'}</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-medium text-gray-700 capitalize">${a.type.replace(/_/g,' ')}</span>
+          <span class="text-xs text-gray-400 flex-shrink-0">${fmtDateTime(a.created_at)}</span>
+        </div>
+        ${a.content_text ? `<div class="text-sm text-gray-500 mt-0.5">${escHtml(a.content_text)}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  container.insertAdjacentHTML('beforeend', html);
+
+  hasMoreActivities = acts.length >= 20;
+  const moreWrap = document.getElementById('load-more-wrap');
+  if (hasMoreActivities) moreWrap.classList.remove('hidden');
+  else moreWrap.classList.add('hidden');
+}
+
+async function loadMoreActivities() {
+  activityPage++;
+  await loadActivities(false);
+}
+
+async function logActivity() {
+  const type = document.getElementById('activity-type').value;
+  const text = document.getElementById('activity-text').value.trim();
+  const res = await Activities.create({ lead_id: LEAD_ID, type, content_text: text });
+  if (res && res.ok) {
+    document.getElementById('activity-text').value = '';
+    showToast('Activity logged');
+    loadActivities(true);
+  } else {
+    showToast('Failed to log activity', 'error');
+  }
+}
+
+async function loadTasks() {
+  const res = await Tasks.list(false);
+  const list = document.getElementById('tasks-list');
+  if (!res || !res.ok) { list.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">Failed to load tasks</div>'; return; }
+  const leadTasks = res.data.filter(t => t.lead_id === LEAD_ID);
+  if (!leadTasks.length) { list.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">No tasks yet</div>'; return; }
+  const now = new Date();
+  list.innerHTML = leadTasks.map(t => {
+    const isOverdue = t.due_date && new Date(t.due_date) < now;
+    return `<div class="flex items-start gap-2 p-2 rounded-lg ${isOverdue ? 'bg-red-50' : 'bg-gray-50'}">
+      <button onclick="completeTask('${t.id}')" title="Mark complete"
+              class="mt-0.5 w-4 h-4 rounded border-2 ${isOverdue ? 'border-red-400' : 'border-gray-300'} flex-shrink-0 hover:bg-gray-100 transition-colors">
+      </button>
+      <div class="min-w-0">
+        <div class="text-xs font-medium text-gray-800 truncate">${escHtml(t.title)}</div>
+        ${t.due_date ? `<div class="text-[10px] ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'} mt-0.5">${isOverdue ? '⚠ ' : ''}${fmtDateTime(t.due_date)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function completeTask(id) {
+  const res = await Tasks.complete(id);
+  if (res && res.ok) { showToast('Task completed! 🎉'); loadTasks(); loadActivities(true); }
+  else showToast('Failed to complete task', 'error');
+}
+
+async function loadAttachments() {
+  const res = await Leads.listAttachments(LEAD_ID);
+  const list = document.getElementById('attachments-list');
+  if (!res || !res.ok) { list.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">Failed to load attachments</div>'; return; }
+  const attachments = res.data;
+  if (!attachments.length) { list.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">No attachments yet</div>'; return; }
+  list.innerHTML = attachments.map(a => `
+    <div class="attachment-item">
+      <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+      </svg>
+      <span class="flex-1 truncate text-gray-700">${escHtml(a.file_name || a.filename || 'File')}</span>
+      <button onclick="deleteAttachment('${a.id}')" class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+async function uploadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const res = await Leads.uploadAttachment(LEAD_ID, file);
+  input.value = '';
+  if (res && res.ok) { showToast('File uploaded'); loadAttachments(); loadActivities(true); }
+  else showToast('Failed to upload file', 'error');
+}
+
+async function deleteAttachment(id) {
+  if (!confirm('Delete this attachment?')) return;
+  const res = await Leads.deleteAttachment(LEAD_ID, id);
+  if (res && res.status === 204) { showToast('Attachment deleted'); loadAttachments(); }
+  else showToast('Failed to delete attachment', 'error');
+}
+
+function openEditModal() {
+  if (!leadData) return;
+  document.getElementById('edit-title').value = leadData.title;
+  document.getElementById('edit-desc').value = leadData.description || '';
+  document.getElementById('edit-status').value = leadData.status;
+  document.getElementById('edit-source').value = leadData.source;
+  document.getElementById('edit-value').value = leadData.value || '';
+  document.getElementById('edit-currency').value = leadData.currency || 'CZK';
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+
+document.getElementById('edit-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('edit-error');
+  errEl.classList.add('hidden');
+  const data = {
+    title: document.getElementById('edit-title').value.trim(),
+    description: document.getElementById('edit-desc').value.trim(),
+    status: document.getElementById('edit-status').value,
+    source: document.getElementById('edit-source').value,
+    value: document.getElementById('edit-value').value ? parseFloat(document.getElementById('edit-value').value) : null,
+    currency: document.getElementById('edit-currency').value.trim() || 'CZK',
+  };
+  const res = await Leads.update(LEAD_ID, data);
+  if (res && res.ok) {
+    leadData = res.data;
+    renderLeadInfo(leadData);
+    closeEditModal();
+    showToast('Lead updated');
+  } else {
+    errEl.textContent = (res && res.data && res.data.detail) || 'Failed to save changes';
+    errEl.classList.remove('hidden');
+  }
+});
+
+function openTaskModal() {
+  document.getElementById('task-form').reset();
+  document.getElementById('task-error').classList.add('hidden');
+  document.getElementById('task-modal').classList.remove('hidden');
+}
+function closeTaskModal() { document.getElementById('task-modal').classList.add('hidden'); }
+
+document.getElementById('task-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('task-error');
+  errEl.classList.add('hidden');
+  const data = {
+    lead_id: LEAD_ID,
+    title: document.getElementById('task-title').value.trim(),
+    due_date: document.getElementById('task-due').value ? new Date(document.getElementById('task-due').value).toISOString() : null,
+  };
+  const res = await Tasks.create(data);
+  if (res && res.ok) {
+    closeTaskModal();
+    showToast('Task created');
+    loadTasks();
+    loadActivities(true);
+  } else {
+    errEl.textContent = (res && res.data && res.data.detail) || 'Failed to create task';
+    errEl.classList.remove('hidden');
+  }
+});
+
+async function deleteLead() {
+  if (!confirm('Delete this lead? This cannot be undone.')) return;
+  const res = await Leads.remove(LEAD_ID);
+  if (res && res.status === 204) {
+    showToast('Lead deleted');
+    setTimeout(() => { window.location.href = '/dashboard/leads/'; }, 1000);
+  } else {
+    showToast('Failed to delete lead', 'error');
+  }
+}
+
+setTimeout(loadLead, 400);
+</script>
+{% endblock %}
