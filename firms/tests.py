@@ -1,4 +1,4 @@
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 
 from firms.auth import (
     AuthenticationRequired,
@@ -196,7 +196,7 @@ class FirmsAPIFixtureMixin:
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@api.com", password="pass")
         self.worker = User.objects.create_user(email="worker@api.com", password="pass")
-        self.firm = Firm.objects.create(name="API Firm")
+        self.firm = Firm.objects.create(name="API Firm", subscription_tier="pro")
         self.owner_membership = Membership.objects.create(
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER
         )
@@ -579,3 +579,335 @@ class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         resp = self._accept(uuid.uuid4(), {"password": "pass"})
         self.assertEqual(resp.status_code, 404)
 
+
+# ---------------------------------------------------------------------------
+# Billing API tests
+# ---------------------------------------------------------------------------
+
+import json
+from unittest.mock import MagicMock, patch
+
+_STRIPE_SETTINGS = {
+    "STRIPE_SECRET_KEY": "sk_test_fake",
+    "STRIPE_PRICE_ID": "price_fake",
+    "STRIPE_WEBHOOK_SECRET": "",
+}
+
+
+class BillingCheckoutAPITest(FirmsAPIFixtureMixin, TestCase):
+    """Tests for POST /api/v1/firms/{firm_id}/billing/checkout"""
+
+    URL_TPL = "/api/v1/firms/{firm_id}/billing/checkout"
+
+    def _url(self):
+        return self.URL_TPL.format(firm_id=self.firm.id)
+
+    @override_settings(**_STRIPE_SETTINGS)
+    @patch("stripe.checkout.Session.create")
+    def test_owner_creates_checkout_session(self, mock_create):
+        """Owner can create a Checkout session and gets back a URL."""
+        mock_session = MagicMock()
+        mock_session.url = "https://checkout.stripe.com/session_abc"
+        mock_create.return_value = mock_session
+
+        # Downgrade to free so we can test upgrading.
+        self.firm.subscription_tier = "free"
+        self.firm.save()
+
+        resp = self._post(self._url(), {})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["checkout_url"], "https://checkout.stripe.com/session_abc")
+        mock_create.assert_called_once()
+
+    @override_settings(**_STRIPE_SETTINGS)
+    def test_worker_cannot_access_billing(self):
+        """Only Owners can manage billing."""
+        self.client.login(username="worker@api.com", password="pass")
+        resp = self._post(self._url(), {})
+        self.assertEqual(resp.status_code, 403)
+
+    @override_settings(**_STRIPE_SETTINGS)
+    def test_already_pro_returns_400(self):
+        """Returns 400 when Firm already has an active Pro subscription."""
+        # The FirmsAPIFixtureMixin already sets subscription_tier="pro".
+        resp = self._post(self._url(), {})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("already has an active Pro", resp.json()["detail"])
+
+    def test_stripe_not_configured_returns_400(self):
+        """Returns 400 gracefully when Stripe env vars are missing."""
+        self.firm.subscription_tier = "free"
+        self.firm.save()
+        with override_settings(STRIPE_SECRET_KEY="", STRIPE_PRICE_ID=""):
+            resp = self._post(self._url(), {})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("not configured", resp.json()["detail"])
+
+    def test_unauthenticated_returns_error(self):
+        self.client.logout()
+        resp = self._post(self._url(), {})
+        self.assertIn(resp.status_code, [401, 403])
+
+    @override_settings(**_STRIPE_SETTINGS)
+    def test_nonexistent_firm_returns_404(self):
+        import uuid
+        resp = self._post(self.URL_TPL.format(firm_id=uuid.uuid4()), {})
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# Stripe webhook tests
+# ---------------------------------------------------------------------------
+
+WEBHOOK_URL = "/api/v1/stripe/webhook"
+
+
+def _post_webhook(client, payload):
+    """POST a JSON payload to the webhook endpoint (no signature verification)."""
+    return client.post(
+        WEBHOOK_URL,
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+
+class StripeWebhookCheckoutCompletedTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Webhook Firm", subscription_tier="free")
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_checkout_completed_upgrades_firm_to_pro(self):
+        event = {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_abc",
+                    "customer": "cus_123",
+                    "subscription": "sub_456",
+                    "metadata": {"firm_id": str(self.firm.id)},
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+        self.firm.refresh_from_db()
+        self.assertEqual(self.firm.subscription_tier, "pro")
+        self.assertTrue(self.firm.subscription_active)
+        self.assertEqual(self.firm.stripe_customer_id, "cus_123")
+        self.assertEqual(self.firm.stripe_subscription_id, "sub_456")
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_checkout_completed_missing_firm_id_does_not_crash(self):
+        event = {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_abc",
+                    "customer": "cus_123",
+                    "subscription": "sub_456",
+                    "metadata": {},
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+
+
+class StripeWebhookSubscriptionUpdatedTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(
+            name="Sub Firm",
+            subscription_tier="pro",
+            subscription_active=True,
+            stripe_subscription_id="sub_789",
+        )
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_subscription_updated_past_due_deactivates(self):
+        event = {
+            "type": "customer.subscription.updated",
+            "data": {
+                "object": {
+                    "id": "sub_789",
+                    "status": "past_due",
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+        self.firm.refresh_from_db()
+        self.assertFalse(self.firm.subscription_active)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_subscription_updated_active_reactivates(self):
+        self.firm.subscription_active = False
+        self.firm.save()
+        event = {
+            "type": "customer.subscription.updated",
+            "data": {
+                "object": {
+                    "id": "sub_789",
+                    "status": "active",
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+        self.firm.refresh_from_db()
+        self.assertTrue(self.firm.subscription_active)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_subscription_updated_unknown_id_does_not_crash(self):
+        event = {
+            "type": "customer.subscription.updated",
+            "data": {
+                "object": {
+                    "id": "sub_nonexistent",
+                    "status": "active",
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+
+
+class StripeWebhookSubscriptionDeletedTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(
+            name="Deleted Sub Firm",
+            subscription_tier="pro",
+            subscription_active=True,
+            stripe_subscription_id="sub_del_123",
+        )
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_subscription_deleted_downgrades_to_free(self):
+        event = {
+            "type": "customer.subscription.deleted",
+            "data": {
+                "object": {
+                    "id": "sub_del_123",
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+        self.firm.refresh_from_db()
+        self.assertEqual(self.firm.subscription_tier, "free")
+        self.assertTrue(self.firm.subscription_active)
+        self.assertEqual(self.firm.stripe_subscription_id, "")
+
+
+class StripeWebhookPaymentFailedTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(
+            name="Payment Failed Firm",
+            subscription_tier="pro",
+            subscription_active=True,
+            stripe_customer_id="cus_fail_456",
+        )
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="")
+    def test_payment_failed_marks_subscription_inactive(self):
+        event = {
+            "type": "invoice.payment_failed",
+            "data": {
+                "object": {
+                    "id": "in_test_abc",
+                    "customer": "cus_fail_456",
+                }
+            },
+        }
+        resp = _post_webhook(self.client, event)
+        self.assertEqual(resp.status_code, 200)
+        self.firm.refresh_from_db()
+        self.assertFalse(self.firm.subscription_active)
+
+
+class StripeWebhookSignatureTest(TestCase):
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake", STRIPE_WEBHOOK_SECRET="whsec_test")
+    def test_invalid_signature_returns_400(self):
+        """Requests without a valid Stripe-Signature must be rejected."""
+        event = {
+            "type": "checkout.session.completed",
+            "data": {"object": {}},
+        }
+        resp = self.client.post(
+            WEBHOOK_URL,
+            data=json.dumps(event),
+            content_type="application/json",
+            HTTP_STRIPE_SIGNATURE="t=0,v1=invalidsig",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_stripe_not_configured_returns_400(self):
+        """Webhook returns 400 when STRIPE_SECRET_KEY is missing."""
+        with override_settings(STRIPE_SECRET_KEY="", STRIPE_WEBHOOK_SECRET=""):
+            resp = _post_webhook(self.client, {"type": "ping", "data": {"object": {}}})
+        self.assertEqual(resp.status_code, 400)
+
+
+# ---------------------------------------------------------------------------
+# Tier limit enforcement through API endpoints
+# ---------------------------------------------------------------------------
+
+class TierLimitInviteMemberAPITest(TestCase):
+    """invite_member enforces the Free-tier 2-member limit."""
+
+    URL_TPL = "/api/v1/firms/{firm_id}/members"
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="owner@tier.com", password="pass")
+        self.worker = User.objects.create_user(email="worker@tier.com", password="pass")
+        # Free-tier firm with 2 members — at the limit.
+        self.firm = Firm.objects.create(name="Free Tier Firm", subscription_tier="free")
+        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.client.login(username="owner@tier.com", password="pass")
+
+    def test_invite_third_member_blocked_on_free(self):
+        new_user = User.objects.create_user(email="third@tier.com", password="pass")
+        resp = self.client.post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            data=json.dumps({"email": "third@tier.com", "role": "worker"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 402)
+        self.assertIn("2 team members", resp.json()["detail"])
+
+
+class TierLimitCreateInvitationAPITest(TestCase):
+    """create_invitation enforces the Free-tier 2-member limit."""
+
+    URL_TPL = "/api/v1/firms/{firm_id}/invitations/"
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="owner@inv_tier.com", password="pass")
+        self.worker = User.objects.create_user(email="worker@inv_tier.com", password="pass")
+        self.firm = Firm.objects.create(name="Free Inv Firm", subscription_tier="free")
+        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.client.login(username="owner@inv_tier.com", password="pass")
+
+    def test_invite_third_member_blocked_on_free(self):
+        resp = self.client.post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            data=json.dumps({"email": "newperson@example.com", "role": "worker"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 402)
+        self.assertIn("2 team members", resp.json()["detail"])
+
+    def test_resend_existing_invitation_not_blocked(self):
+        """Re-sending an existing invitation should not trigger the member limit."""
+        Invitation.objects.create(
+            email="pending@example.com",
+            firm=self.firm,
+            invited_by=self.owner,
+        )
+        resp = self.client.post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            data=json.dumps({"email": "pending@example.com", "role": "worker"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 202)

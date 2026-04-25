@@ -53,9 +53,9 @@ The following core features are implemented and tested:
 - [x] User profile update endpoint (name, timezone, avatar upload)
 
 ### v0.4 — Stripe Integration
-- [ ] Stripe Checkout session creation for upgrading to Pro
-- [ ] Stripe webhook handler for subscription lifecycle events (activated, cancelled, payment failed)
-- [ ] Usage limits per subscription tier (e.g. max leads on Free plan)
+- [x] Stripe Checkout session creation for upgrading to Pro
+- [x] Stripe webhook handler for subscription lifecycle events (activated, cancelled, payment failed)
+- [x] Usage limits per subscription tier (e.g. max leads on Free plan)
 
 ### v0.5 — Files & Attachments
 - [ ] File attachment list and delete endpoints scoped to a Lead

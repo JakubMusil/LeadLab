@@ -17,6 +17,8 @@ from firms.auth import (
     FirmNotFound,
     MembershipRole,
     PermissionDenied,
+    SubscriptionRequired,
+    check_tier_limits,
     require_membership,
 )
 from firms.models import Firm, Invitation, Membership
@@ -181,7 +183,7 @@ def list_members(request, firm_id: str):
     ]
 
 
-@router.post("/{firm_id}/members", auth=django_auth, response={201: MembershipOut, 400: ErrorOut, 403: ErrorOut})
+@router.post("/{firm_id}/members", auth=django_auth, response={201: MembershipOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
 def invite_member(request, firm_id: str, payload: MemberInviteIn):
     """Invite a user to a Firm (Admin or Owner only)."""
     from users.models import User
@@ -201,6 +203,11 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
 
     if payload.role == MembershipRole.OWNER:
         return 400, {"detail": "Cannot assign the Owner role via invite."}
+
+    try:
+        check_tier_limits(firm)
+    except SubscriptionRequired as exc:
+        return 402, {"detail": str(exc)}
 
     try:
         invitee = User.objects.get(email=payload.email)
@@ -258,7 +265,7 @@ def remove_member(request, firm_id: str, membership_id: str):
 @router.post(
     "/{firm_id}/invitations/",
     auth=django_auth,
-    response={202: InvitationOut, 400: ErrorOut, 403: ErrorOut},
+    response={202: InvitationOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut},
     tags=["invitations"],
 )
 def create_invitation(request, firm_id: str, payload: MemberInviteIn):
@@ -292,18 +299,28 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
     if existing_user and Membership.objects.filter(user=existing_user, firm=firm).exists():
         return 400, {"detail": "That user is already a member of this Firm."}
 
+    # Enforce Free-tier member limit before issuing a new invitation.
+    # Re-sending an existing (unaccepted) invitation does not consume a new
+    # slot, so we only check when no prior invitation exists.
+    existing_invitation = Invitation.objects.filter(email=payload.email, firm=firm).first()
+    if existing_invitation is None:
+        try:
+            check_tier_limits(firm)
+        except SubscriptionRequired as exc:
+            return 402, {"detail": str(exc)}
+
     # Upsert the Invitation (re-send if one already exists but was not accepted).
-    try:
-        invitation = Invitation.objects.get(email=payload.email, firm=firm)
-        if invitation.is_accepted:
+    if existing_invitation:
+        if existing_invitation.is_accepted:
             return 400, {"detail": "An accepted invitation already exists for that email."}
         # Refresh the expiry so the recipient gets a fresh link.
         from firms.models import _default_expiry
-        invitation.expires_at = _default_expiry()
-        invitation.role = payload.role
-        invitation.invited_by = request.user
-        invitation.save(update_fields=["expires_at", "role", "invited_by"])
-    except Invitation.DoesNotExist:
+        existing_invitation.expires_at = _default_expiry()
+        existing_invitation.role = payload.role
+        existing_invitation.invited_by = request.user
+        existing_invitation.save(update_fields=["expires_at", "role", "invited_by"])
+        invitation = existing_invitation
+    else:
         invitation = Invitation.objects.create(
             email=payload.email,
             firm=firm,

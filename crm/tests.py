@@ -12,7 +12,7 @@ class CRMFixtureMixin:
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@crm.com", password="pass")
         self.worker = User.objects.create_user(email="worker@crm.com", password="pass")
-        self.firm = Firm.objects.create(name="CRM Firm")
+        self.firm = Firm.objects.create(name="CRM Firm", subscription_tier="pro")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
         Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
 
@@ -163,7 +163,7 @@ class CRMAPIFixtureMixin:
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@crm-api.com", password="pass")
         self.worker = User.objects.create_user(email="worker@crm-api.com", password="pass")
-        self.firm = Firm.objects.create(name="CRM API Firm")
+        self.firm = Firm.objects.create(name="CRM API Firm", subscription_tier="pro")
         self.owner_membership = Membership.objects.create(
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER
         )
@@ -646,3 +646,51 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._post(f"/api/v1/crm/tasks/{uuid.uuid4()}/complete", {})
         self.assertEqual(resp.status_code, 404)
 
+
+# ---------------------------------------------------------------------------
+# Tier limit enforcement for lead creation
+# ---------------------------------------------------------------------------
+
+import json as _json
+
+
+class TierLimitLeadCreateAPITest(TestCase):
+    """create_lead enforces the Free-tier 50-lead limit."""
+
+    URL = "/api/v1/crm/leads"
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="owner@lead_tier.com", password="pass")
+        # Free-tier firm with only 1 member to avoid hitting the member limit.
+        self.firm = Firm.objects.create(name="Free Lead Firm", subscription_tier="free")
+        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.client.login(username="owner@lead_tier.com", password="pass")
+
+    def _firm_headers(self):
+        return {"HTTP_X_FIRM_ID": str(self.firm.id)}
+
+    def test_create_lead_blocked_when_50_leads_exist(self):
+        # Pre-fill 50 leads directly in the DB.
+        Lead.objects.bulk_create([
+            Lead(firm=self.firm, title=f"Lead {i}") for i in range(50)
+        ])
+        resp = self.client.post(
+            self.URL,
+            data=_json.dumps({"title": "Over limit"}),
+            content_type="application/json",
+            **self._firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 402)
+        self.assertIn("50 leads", resp.json()["detail"])
+
+    def test_create_lead_allowed_at_49_leads(self):
+        Lead.objects.bulk_create([
+            Lead(firm=self.firm, title=f"Lead {i}") for i in range(49)
+        ])
+        resp = self.client.post(
+            self.URL,
+            data=_json.dumps({"title": "Just within limit"}),
+            content_type="application/json",
+            **self._firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 201)
