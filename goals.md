@@ -114,13 +114,13 @@ The backend (Django Ninja REST API) does not change structurally. Only a small n
 
 Lay the foundation for the reactive frontend without breaking the existing Django template frontend.
 
-- [ ] Add a `frontend-spa/` directory at the repo root with a Vite + Vue 3 + TypeScript project (`npm create vue@latest`)
-- [ ] Configure Tailwind CSS 3 with the JIT engine and a proper `tailwind.config.ts` (replaces the CDN `<script>` tag)
-- [ ] Set up ESLint + Prettier + `vue-tsc` for type checking in CI
-- [ ] Configure `vite.config.ts` to output built assets into `frontend/static/frontend/spa/` so Django's `collectstatic` picks them up
-- [ ] Add a Django view + template that serves `index.html` (the SPA shell) for all `/app/*` URLs; the old `/dashboard/*` routes remain untouched
-- [ ] Add `npm run build` as a step in the CI pipeline before the Docker image is built
-- [ ] Add `npm run test:unit` (Vitest) to CI
+- [x] Add a `frontend-spa/` directory at the repo root with a Vite + Vue 3 + TypeScript project (`npm create vue@latest`)
+- [x] Configure Tailwind CSS 3 with the JIT engine and a proper `tailwind.config.ts` (replaces the CDN `<script>` tag)
+- [x] Set up ESLint + Prettier + `vue-tsc` for type checking in CI
+- [x] Configure `vite.config.ts` to output built assets into `frontend/static/frontend/spa/` so Django's `collectstatic` picks them up
+- [x] Add a Django view + template that serves `index.html` (the SPA shell) for all `/app/*` URLs; the old `/dashboard/*` routes remain untouched
+- [x] Add `npm run build` as a step in the CI pipeline before the Docker image is built
+- [x] Add `npm run test:unit` (Vitest) to CI
 
 ### v1.3 — Vue SPA: Auth & Shell
 

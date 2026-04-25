@@ -1,3 +1,11 @@
+FROM node:20-slim AS spa-builder
+
+WORKDIR /build/frontend-spa
+COPY frontend-spa/package*.json ./
+RUN npm ci
+COPY frontend-spa/ ./
+RUN npm run build-only
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -13,6 +21,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+# Copy the built SPA assets from the builder stage
+COPY --from=spa-builder /build/frontend/static/frontend/spa ./frontend/static/frontend/spa
 
 RUN python manage.py collectstatic --noinput
 

@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
@@ -75,3 +78,31 @@ def lead_detail(request, lead_id):
 @login_required(login_url="/login/")
 def customer_detail(request, customer_id):
     return render(request, "frontend/dashboard/customer_detail.html", {"customer_id": customer_id})
+
+
+def _load_spa_assets():
+    """Read the Vite manifest and return (js_url, css_urls) for the SPA entry point."""
+    from django.templatetags.static import static
+
+    manifest_path = (
+        Path(settings.BASE_DIR) / 'frontend' / 'static' / 'frontend' / 'spa' / '.vite' / 'manifest.json'
+    )
+    try:
+        manifest = json.loads(manifest_path.read_text())
+        entry = manifest.get('index.html', {})
+        js_file = entry.get('file', '')
+        css_files = entry.get('css', [])
+        js_url = static(f'frontend/spa/{js_file}') if js_file else None
+        css_urls = [static(f'frontend/spa/{f}') for f in css_files]
+        return js_url, css_urls
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None, []
+
+
+@login_required(login_url='/login/')
+def spa_shell(request, path=''):
+    js_url, css_urls = _load_spa_assets()
+    return render(request, 'frontend/spa_shell.html', {
+        'spa_js_url': js_url,
+        'spa_css_urls': css_urls,
+    })
