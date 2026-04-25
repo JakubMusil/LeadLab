@@ -651,8 +651,6 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
 # Tier limit enforcement for lead creation
 # ---------------------------------------------------------------------------
 
-import json as _json
-
 
 class TierLimitLeadCreateAPITest(TestCase):
     """create_lead enforces the Free-tier 50-lead limit."""
@@ -676,7 +674,7 @@ class TierLimitLeadCreateAPITest(TestCase):
         ])
         resp = self.client.post(
             self.URL,
-            data=_json.dumps({"title": "Over limit"}),
+            data=json.dumps({"title": "Over limit"}),
             content_type="application/json",
             **self._firm_headers(),
         )
@@ -689,7 +687,7 @@ class TierLimitLeadCreateAPITest(TestCase):
         ])
         resp = self.client.post(
             self.URL,
-            data=_json.dumps({"title": "Just within limit"}),
+            data=json.dumps({"title": "Just within limit"}),
             content_type="application/json",
             **self._firm_headers(),
         )

@@ -1,3 +1,7 @@
+import json
+import uuid
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase, RequestFactory, override_settings
 
 from firms.auth import (
@@ -187,8 +191,6 @@ class FirmAuthTest(TestCase):
 # Firms API integration tests
 # ---------------------------------------------------------------------------
 
-import json
-
 
 class FirmsAPIFixtureMixin:
     """Sets up an owner user, a firm, and logs in via the test client."""
@@ -263,7 +265,6 @@ class GetFirmAPITest(FirmsAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 403)
 
     def test_get_nonexistent_firm_returns_404(self):
-        import uuid
         resp = self.client.get(f"/api/v1/firms/{uuid.uuid4()}")
         self.assertEqual(resp.status_code, 404)
 
@@ -485,7 +486,6 @@ class PreviewInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         self.assertFalse(data["is_accepted"])
 
     def test_preview_nonexistent_token_returns_404(self):
-        import uuid
         self.client.logout()
         resp = self.client.get(self.PREVIEW_URL_TPL.format(token=uuid.uuid4()))
         self.assertEqual(resp.status_code, 404)
@@ -574,7 +574,6 @@ class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 410)
 
     def test_accept_nonexistent_token_returns_404(self):
-        import uuid
         self.client.logout()
         resp = self._accept(uuid.uuid4(), {"password": "pass"})
         self.assertEqual(resp.status_code, 404)
@@ -583,9 +582,6 @@ class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
 # ---------------------------------------------------------------------------
 # Billing API tests
 # ---------------------------------------------------------------------------
-
-import json
-from unittest.mock import MagicMock, patch
 
 _STRIPE_SETTINGS = {
     "STRIPE_SECRET_KEY": "sk_test_fake",
@@ -650,7 +646,6 @@ class BillingCheckoutAPITest(FirmsAPIFixtureMixin, TestCase):
 
     @override_settings(**_STRIPE_SETTINGS)
     def test_nonexistent_firm_returns_404(self):
-        import uuid
         resp = self._post(self.URL_TPL.format(firm_id=uuid.uuid4()), {})
         self.assertEqual(resp.status_code, 404)
 
