@@ -108,6 +108,17 @@ REDIS_URL = _REDIS_URL_OVERRIDE or 'redis://localhost:6379/0'
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
+# Celery Beat — periodic tasks
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'weekly-pipeline-digest': {
+        'task': 'crm.tasks.send_weekly_digest',
+        # Every Monday at 08:00 UTC
+        'schedule': crontab(hour=8, minute=0, day_of_week=1),
+    },
+}
+
 # Stripe
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')

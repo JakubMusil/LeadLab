@@ -191,13 +191,13 @@ Open LeadLab to the ecosystem.
 
 Give sales managers actionable data.
 
-- [ ] **Pipeline velocity** — average time a lead spends in each status; displayed as a funnel chart
-- [ ] **Won / Lost breakdown by source** — stacked bar chart; filterable by date range
-- [ ] **Team performance** — table of members with leads owned, tasks completed, activities logged; sortable columns
-- [ ] **Trend charts** — leads created vs. closed per week for the last 12 weeks; rolling 30-day conversion rate
-- [ ] **Custom date range picker** — replace hardcoded "last 30 days" with a calendar range picker component
-- [ ] **Scheduled reports** — weekly email digest (Celery beat task) with pipeline summary; user can opt out in Settings
-- [ ] All chart data backed by dedicated `/api/v1/crm/reports/*` endpoints with caching via Redis (`django-cache-machine` or manual `cache.set`)
+- [x] **Pipeline velocity** — average time a lead spends in each status; displayed as a funnel chart
+- [x] **Won / Lost breakdown by source** — stacked bar chart; filterable by date range
+- [x] **Team performance** — table of members with leads owned, tasks completed, activities logged; sortable columns
+- [x] **Trend charts** — leads created vs. closed per week for the last 12 weeks; rolling 30-day conversion rate
+- [x] **Custom date range picker** — replace hardcoded "last 30 days" with a calendar range picker component
+- [x] **Scheduled reports** — weekly email digest (Celery beat task) with pipeline summary; user can opt out in Settings
+- [x] All chart data backed by dedicated `/api/v1/crm/reports/*` endpoints with caching via Redis (`django-cache-machine` or manual `cache.set`)
 
 ### v1.9 — Mobile PWA & End-to-End Testing
 

@@ -6,18 +6,21 @@ Every endpoint requires:
   2. A valid Firm supplied via the ``X-Firm-ID`` header (resolved by TenantMiddleware).
   3. The authenticated user to be a member of that Firm.
 """
+import datetime as dt
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from django.db.models import Count, Q, Sum
+from django.core.cache import cache
+from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Q, Sum
+from django.utils.dateparse import parse_datetime
 
 from django.db import transaction
 from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, Notification, Task
+from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, LeadStatusHistory, Notification, Task
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
@@ -347,6 +350,13 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
                     "new_status": new_status,
                 },
             )
+            LeadStatusHistory.objects.create(
+                lead=lead,
+                from_status=old_status,
+                to_status=new_status,
+                changed_at=tz.now(),
+                changed_by=request.user,
+            )
         else:
             lead.save()
 
@@ -466,6 +476,13 @@ def create_activity(request, payload: ActivityIn):
                 lead.save(update_fields=["status", "updated_at"])
                 activity.metadata = {**activity.metadata, "old_status": old_status}
                 activity.save(update_fields=["metadata"])
+                LeadStatusHistory.objects.create(
+                    lead=lead,
+                    from_status=old_status,
+                    to_status=new_status,
+                    changed_at=activity.created_at,
+                    changed_by=request.user,
+                )
 
         elif payload.type == ActivityType.EMAIL_OUT:
             # Trigger async Celery task (gracefully degrade if Celery not available)
@@ -1083,3 +1100,329 @@ def notifications_unread_count(request):
 
     count = Notification.objects.filter(firm=request.firm, user=request.user, is_read=False).count()
     return 200, {"count": count}
+
+
+# ===========================================================================
+# ADVANCED ANALYTICS (v1.8)
+# ===========================================================================
+
+_ANALYTICS_CACHE_SECONDS = 300  # 5-minute cache TTL
+
+
+# ---------------------------------------------------------------------------
+# Pipeline velocity
+# ---------------------------------------------------------------------------
+
+class VelocityRow(Schema):
+    status: str
+    avg_hours: float
+    sample_count: int
+
+
+@router.get(
+    "/reports/pipeline-velocity",
+    auth=django_auth,
+    response={200: List[VelocityRow], 403: ErrorOut},
+)
+def pipeline_velocity(request):
+    """
+    Average time (in hours) a lead spends in each status, computed from
+    ``LeadStatusHistory``.  Results are cached for 5 minutes.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    cache_key = f"analytics:pipeline_velocity:{request.firm.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    from crm.models import LeadStatusHistory
+
+    rows = list(
+        LeadStatusHistory.objects.filter(lead__firm=request.firm)
+        .values("to_status")
+        .annotate(sample_count=Count("id"))
+        .order_by("to_status")
+    )
+
+    # For each status, compute average dwell time:
+    # dwell = time from entering a status until next transition (or now if current)
+    status_hours: Dict[str, list] = {s.value: [] for s in LeadStatus}
+
+    history_qs = (
+        LeadStatusHistory.objects.filter(lead__firm=request.firm)
+        .values("lead_id", "to_status", "changed_at")
+        .order_by("lead_id", "changed_at")
+    )
+
+    # Group by lead
+    lead_history: Dict[str, list] = {}
+    for entry in history_qs:
+        lead_history.setdefault(str(entry["lead_id"]), []).append(entry)
+
+    now = tz.now()
+    for lead_id, entries in lead_history.items():
+        for i, entry in enumerate(entries):
+            status = entry["to_status"]
+            entered_at = entry["changed_at"]
+            if i + 1 < len(entries):
+                left_at = entries[i + 1]["changed_at"]
+            else:
+                left_at = now
+            hours = (left_at - entered_at).total_seconds() / 3600.0
+            if status in status_hours:
+                status_hours[status].append(hours)
+
+    result = [
+        {
+            "status": s.value,
+            "avg_hours": (sum(status_hours[s.value]) / len(status_hours[s.value])) if status_hours[s.value] else 0.0,
+            "sample_count": len(status_hours[s.value]),
+        }
+        for s in LeadStatus
+    ]
+
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Won / Lost breakdown by source
+# ---------------------------------------------------------------------------
+
+class WonLostRow(Schema):
+    source: str
+    won: int
+    lost: int
+
+
+@router.get(
+    "/reports/won-lost-by-source",
+    auth=django_auth,
+    response={200: List[WonLostRow], 403: ErrorOut},
+)
+def won_lost_by_source(
+    request,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    """
+    Count of Won and Lost leads grouped by source, optionally filtered by a
+    date range (``date_from`` / ``date_to`` in ISO-8601 format).
+    Results are cached for 5 minutes per unique query.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    cache_key = f"analytics:won_lost:{request.firm.id}:{date_from}:{date_to}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    qs = Lead.objects.filter(firm=request.firm, status__in=[LeadStatus.WON, LeadStatus.LOST])
+    if date_from:
+        try:
+            qs = qs.filter(updated_at__gte=parse_datetime(date_from) or dt.datetime.fromisoformat(date_from))
+        except (ValueError, TypeError):
+            pass
+    if date_to:
+        try:
+            qs = qs.filter(updated_at__lte=parse_datetime(date_to) or dt.datetime.fromisoformat(date_to))
+        except (ValueError, TypeError):
+            pass
+
+    data = qs.values("source", "status").annotate(n=Count("id"))
+
+    result_map: Dict[str, Dict[str, int]] = {s.value: {"won": 0, "lost": 0} for s in LeadSource}
+    for row in data:
+        source = row["source"]
+        if source not in result_map:
+            result_map[source] = {"won": 0, "lost": 0}
+        if row["status"] == LeadStatus.WON:
+            result_map[source]["won"] = row["n"]
+        elif row["status"] == LeadStatus.LOST:
+            result_map[source]["lost"] = row["n"]
+
+    result = [
+        {"source": src, "won": counts["won"], "lost": counts["lost"]}
+        for src, counts in result_map.items()
+    ]
+
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Team performance
+# ---------------------------------------------------------------------------
+
+class TeamPerformanceRow(Schema):
+    user_id: str
+    email: str
+    full_name: str
+    leads_owned: int
+    tasks_completed: int
+    activities_logged: int
+
+
+@router.get(
+    "/reports/team-performance",
+    auth=django_auth,
+    response={200: List[TeamPerformanceRow], 403: ErrorOut},
+)
+def team_performance(request):
+    """
+    Per-member stats: leads owned, tasks completed, activities logged.
+    Results are cached for 5 minutes.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    cache_key = f"analytics:team_performance:{request.firm.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    from firms.models import Membership
+    from users.models import User
+
+    memberships = (
+        Membership.objects.filter(firm=request.firm)
+        .select_related("user")
+    )
+
+    result = []
+    for m in memberships:
+        user = m.user
+        leads_owned = Lead.objects.filter(firm=request.firm, assigned_to=user).count()
+        tasks_completed = Task.objects.filter(firm=request.firm, assigned_to=user, is_completed=True).count()
+        activities_logged = Activity.objects.filter(lead__firm=request.firm, user=user).count()
+        result.append({
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "leads_owned": leads_owned,
+            "tasks_completed": tasks_completed,
+            "activities_logged": activities_logged,
+        })
+
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Trend charts
+# ---------------------------------------------------------------------------
+
+class WeeklyTrendRow(Schema):
+    week_start: str
+    created: int
+    closed: int
+
+
+class TrendsOut(Schema):
+    weekly: List[WeeklyTrendRow]
+    conversion_rate_30d: float
+
+
+@router.get(
+    "/reports/trends",
+    auth=django_auth,
+    response={200: TrendsOut, 403: ErrorOut},
+)
+def trends(request):
+    """
+    Leads created vs. closed (Won + Lost) per week for the last 12 weeks,
+    plus a rolling 30-day conversion rate.  Results are cached for 5 minutes.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    cache_key = f"analytics:trends:{request.firm.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    now = tz.now()
+    twelve_weeks_ago = now - dt.timedelta(weeks=12)
+    thirty_days_ago = now - dt.timedelta(days=30)
+
+    leads_qs = Lead.objects.filter(firm=request.firm)
+
+    weekly_rows = []
+    for week in range(12):
+        week_start = twelve_weeks_ago + dt.timedelta(weeks=week)
+        week_end = week_start + dt.timedelta(weeks=1)
+        created = leads_qs.filter(created_at__gte=week_start, created_at__lt=week_end).count()
+        closed = leads_qs.filter(
+            status__in=[LeadStatus.WON, LeadStatus.LOST],
+            updated_at__gte=week_start,
+            updated_at__lt=week_end,
+        ).count()
+        weekly_rows.append({
+            "week_start": week_start.date().isoformat(),
+            "created": created,
+            "closed": closed,
+        })
+
+    # Rolling 30-day conversion rate: won / (won + lost) in last 30 days
+    closed_30d = leads_qs.filter(
+        status__in=[LeadStatus.WON, LeadStatus.LOST],
+        updated_at__gte=thirty_days_ago,
+    )
+    won_30d = closed_30d.filter(status=LeadStatus.WON).count()
+    total_closed_30d = closed_30d.count()
+    conversion_rate = (won_30d / total_closed_30d * 100.0) if total_closed_30d > 0 else 0.0
+
+    result = {"weekly": weekly_rows, "conversion_rate_30d": round(conversion_rate, 2)}
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Digest preference (opt-out)
+# ---------------------------------------------------------------------------
+
+class DigestPreferenceOut(Schema):
+    weekly_digest_enabled: bool
+
+
+@router.get(
+    "/digest-preference",
+    auth=django_auth,
+    response={200: DigestPreferenceOut, 403: ErrorOut},
+)
+def get_digest_preference(request):
+    """Return the weekly digest preference for the current user in the active firm."""
+    try:
+        m = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    return 200, {"weekly_digest_enabled": m.weekly_digest_enabled}
+
+
+@router.patch(
+    "/digest-preference",
+    auth=django_auth,
+    response={200: DigestPreferenceOut, 403: ErrorOut},
+)
+def update_digest_preference(request, enabled: bool):
+    """Toggle the weekly email digest for the current user in the active firm."""
+    try:
+        m = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    m.weekly_digest_enabled = enabled
+    m.save(update_fields=["weekly_digest_enabled"])
+    return 200, {"weekly_digest_enabled": m.weekly_digest_enabled}
