@@ -816,3 +816,178 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
     attachment.file.delete(save=False)
     attachment.delete()
     return 204, None
+
+
+# ===========================================================================
+# REPORTS (v0.6)
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Pipeline summary
+# ---------------------------------------------------------------------------
+
+class PipelineStatusRow(Schema):
+    status: str
+    count: int
+    total_value: float
+
+
+class PipelineSummaryOut(Schema):
+    statuses: List[PipelineStatusRow]
+    total_value: float
+
+
+@router.get(
+    "/reports/pipeline",
+    auth=django_auth,
+    response={200: PipelineSummaryOut, 403: ErrorOut},
+)
+def pipeline_summary(request):
+    """
+    Lead pipeline summary: count and total estimated value per status.
+
+    All lead statuses are always present in the response, even when the
+    count is zero, so clients can render a consistent pipeline view.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    leads_qs = Lead.objects.filter(firm=request.firm)
+
+    # Build a base dict with every status initialised to zero so that
+    # statuses with no leads are still present in the response.
+    counts: Dict[str, int] = {s.value: 0 for s in LeadStatus}
+    values: Dict[str, float] = {s.value: 0.0 for s in LeadStatus}
+
+    for row in leads_qs.values("status").annotate(
+        n=Count("id"), v=Sum("value")
+    ):
+        counts[row["status"]] = row["n"]
+        values[row["status"]] = float(row["v"] or 0)
+
+    statuses = [
+        {"status": s, "count": counts[s], "total_value": values[s]}
+        for s in counts
+    ]
+    total_value = sum(values.values())
+
+    return 200, {"statuses": statuses, "total_value": total_value}
+
+
+# ---------------------------------------------------------------------------
+# Firm-wide activity feed
+# ---------------------------------------------------------------------------
+
+class ActivityFeedItemOut(Schema):
+    id: str
+    lead_id: str
+    lead_title: str
+    user_id: Optional[str]
+    type: str
+    content_text: str
+    metadata: Dict[str, Any]
+    created_at: datetime
+
+
+def _activity_feed_item_out(a: Activity) -> dict:
+    return {
+        "id": str(a.id),
+        "lead_id": str(a.lead_id),
+        "lead_title": a.lead.title,
+        "user_id": str(a.user_id) if a.user_id else None,
+        "type": a.type,
+        "content_text": a.content_text,
+        "metadata": a.metadata,
+        "created_at": a.created_at,
+    }
+
+
+@router.get(
+    "/reports/activities",
+    auth=django_auth,
+    response={200: List[ActivityFeedItemOut], 403: ErrorOut},
+)
+def activity_feed(
+    request,
+    type: str = "",
+    page: int = 1,
+    page_size: int = 20,
+):
+    """
+    Firm-wide activity feed across all leads, newest first (paginated).
+
+    Optionally filter by ``type`` (e.g. ``comment``, ``call``).
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = (
+        Activity.objects.filter(lead__firm=request.firm)
+        .select_related("lead")
+        .order_by("-created_at")
+    )
+    if type:
+        qs = qs.filter(type=type)
+
+    offset = (page - 1) * page_size
+    return 200, [_activity_feed_item_out(a) for a in qs[offset:offset + page_size]]
+
+
+# ---------------------------------------------------------------------------
+# Overdue task report
+# ---------------------------------------------------------------------------
+
+class OverdueTaskOut(Schema):
+    id: str
+    firm_id: str
+    lead_id: str
+    lead_title: str
+    assigned_to_id: Optional[str]
+    title: str
+    due_date: Optional[datetime]
+    created_at: datetime
+
+
+def _overdue_task_out(t: Task) -> dict:
+    return {
+        "id": str(t.id),
+        "firm_id": str(t.firm_id),
+        "lead_id": str(t.lead_id),
+        "lead_title": t.lead.title,
+        "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
+        "title": t.title,
+        "due_date": t.due_date,
+        "created_at": t.created_at,
+    }
+
+
+@router.get(
+    "/reports/tasks/overdue",
+    auth=django_auth,
+    response={200: List[OverdueTaskOut], 403: ErrorOut},
+)
+def overdue_tasks(request, page: int = 1, page_size: int = 20):
+    """
+    List all incomplete tasks whose due date is in the past, oldest first.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    now = tz.now()
+    qs = (
+        Task.objects.filter(
+            firm=request.firm,
+            is_completed=False,
+            due_date__lt=now,
+        )
+        .select_related("lead")
+        .order_by("due_date")
+    )
+    offset = (page - 1) * page_size
+    return 200, [_overdue_task_out(t) for t in qs[offset:offset + page_size]]
