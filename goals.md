@@ -126,15 +126,15 @@ Lay the foundation for the reactive frontend without breaking the existing Djang
 
 Port the auth flow and application shell into Vue so the SPA is self-contained.
 
-- [ ] Implement Vue Router with lazy-loaded route modules for every major section
-- [ ] Implement a `useAuth` Pinia store (login, register, me, logout) backed by the existing `/api/v1/users/*` endpoints
-- [ ] Implement a `useFirm` Pinia store (firm selection, multi-workspace switching) — replaces `localStorage` ad-hoc reads
-- [ ] Build the authenticated shell component: collapsible sidebar, top bar, mobile bottom nav, workspace switcher
-- [ ] Port Login, Register, Forgot Password, Reset Password, and Accept Invite pages as Vue SPA routes
-- [ ] Port the Onboarding flow (workspace creation) to Vue with a multi-step wizard component
-- [ ] Add route guards (`beforeEach`) that redirect unauthenticated users and users without a firm
-- [ ] Add a global toast / snackbar system as a Vue composable (`useToast`)
-- [ ] Add loading skeletons (pulse animations) for all data-fetching states
+- [x] Implement Vue Router with lazy-loaded route modules for every major section
+- [x] Implement a `useAuth` Pinia store (login, register, me, logout) backed by the existing `/api/v1/users/*` endpoints
+- [x] Implement a `useFirm` Pinia store (firm selection, multi-workspace switching) — replaces `localStorage` ad-hoc reads
+- [x] Build the authenticated shell component: collapsible sidebar, top bar, mobile bottom nav, workspace switcher
+- [x] Port Login, Register, Forgot Password, Reset Password, and Accept Invite pages as Vue SPA routes
+- [x] Port the Onboarding flow (workspace creation) to Vue with a multi-step wizard component
+- [x] Add route guards (`beforeEach`) that redirect unauthenticated users and users without a firm
+- [x] Add a global toast / snackbar system as a Vue composable (`useToast`)
+- [x] Add loading skeletons (pulse animations) for all data-fetching states
 
 ### v1.4 — Vue SPA: CRM Core Views
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api'
+import { extractErrorMessage } from '@/api/errors'
 import router from '@/router'
 
 export interface UserOut {
@@ -40,15 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = res.data
         return { ok: true }
       }
-      const errData = res.data as unknown as Record<string, unknown>
-      const firstKey = Object.keys(errData ?? {}).at(0)
-      const firstVal = firstKey !== undefined ? errData[firstKey] : undefined
-      const msg = firstKey !== undefined
-        ? Array.isArray(firstVal)
-          ? `${firstKey}: ${firstVal[0]}`
-          : `${firstKey}: ${String(firstVal)}`
-        : 'Invalid credentials. Please try again.'
-      return { ok: false, error: msg }
+      return { ok: false, error: extractErrorMessage(res.data, 'Invalid credentials. Please try again.') }
     } finally {
       loading.value = false
     }
@@ -77,15 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         return { ok: true }
       }
-      const errData = res.data as unknown as Record<string, unknown>
-      const firstKey = Object.keys(errData ?? {}).at(0)
-      const firstVal = firstKey !== undefined ? errData[firstKey] : undefined
-      const msg = firstKey !== undefined
-        ? Array.isArray(firstVal)
-          ? `${firstKey}: ${firstVal[0]}`
-          : `${firstKey}: ${String(firstVal)}`
-        : 'Registration failed. Please try again.'
-      return { ok: false, error: msg }
+      return { ok: false, error: extractErrorMessage(res.data, 'Registration failed. Please try again.') }
     } finally {
       loading.value = false
     }

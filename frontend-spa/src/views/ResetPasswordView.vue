@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
+import { extractErrorMessage } from '@/api/errors'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,12 +37,7 @@ async function handleSubmit() {
     successMsg.value = 'Password reset successfully! Redirecting to login…'
     setTimeout(() => router.push('/app/login'), 2000)
   } else {
-    const errData = res.data as unknown as Record<string, unknown>
-    const tokenField = errData?.token
-    errorMsg.value =
-      (errData?.detail as string) ??
-      (Array.isArray(tokenField) ? tokenField.join(' ') : typeof tokenField === 'string' ? tokenField : undefined) ??
-      'Reset failed. The link may have expired.'
+    errorMsg.value = extractErrorMessage(res.data, 'Reset failed. The link may have expired.')
   }
 }
 </script>
