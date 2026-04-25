@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --max-line-length=120 --extend-ignore=E501 \
+            --exclude=migrations,__pycache__,.venv,staticfiles
+
+      - name: Run tests with coverage
+        env:
+          DJANGO_SETTINGS_MODULE: leadlab.settings
+          DJANGO_SECRET_KEY: ci-secret-key-not-for-production
+          DJANGO_DEBUG: "True"
+          DB_ENGINE: django.db.backends.sqlite3
+          DB_NAME: ":memory:"
+          RATELIMIT_ENABLE: "False"
+        run: |
+          coverage run --source=. manage.py test --verbosity=2
+          coverage report --fail-under=70
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml

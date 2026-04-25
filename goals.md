@@ -66,11 +66,11 @@ The following core features are implemented and tested:
 - [x] Task overdue report
 
 ### v1.0 — Production Hardening
-- [ ] Docker Compose setup for local development (Postgres, Redis, app, worker)
-- [ ] Rate limiting on authentication endpoints
-- [ ] Comprehensive logging and error tracking integration (Sentry)
-- [ ] Health check endpoint for load balancer probes
-- [ ] CI/CD pipeline with linting, tests, and coverage reporting
+- [x] Docker Compose setup for local development (Postgres, Redis, app, worker)
+- [x] Rate limiting on authentication endpoints
+- [x] Comprehensive logging and error tracking integration (Sentry)
+- [x] Health check endpoint for load balancer probes
+- [x] CI/CD pipeline with linting, tests, and coverage reporting
 
 ---
 

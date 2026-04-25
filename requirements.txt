@@ -20,3 +20,6 @@ Pillow>=10.0
 # Utilities
 python-slugify>=8.0
 django-extensions>=3.2
+
+# Error tracking
+sentry-sdk[django]>=2.0

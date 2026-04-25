@@ -10,6 +10,7 @@ from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
 from users.models import User
+from users.throttle import rate_limit
 
 router = Router(tags=["users"])
 
@@ -65,6 +66,7 @@ class ErrorOut(Schema):
 # ---------------------------------------------------------------------------
 
 @router.post("/register", auth=None, response={201: UserOut, 400: ErrorOut})
+@rate_limit("register", limit=10, window=60)
 def register(request, payload: RegisterIn):
     """Create a new user account."""
     if User.objects.filter(email=payload.email).exists():
@@ -81,6 +83,7 @@ def register(request, payload: RegisterIn):
 
 
 @router.post("/login", auth=None, response={200: UserOut, 401: ErrorOut})
+@rate_limit("login", limit=5, window=60)
 def login_view(request, payload: LoginIn):
     """Authenticate and start a session."""
     user = authenticate(request, username=payload.email, password=payload.password)
@@ -141,6 +144,7 @@ def upload_avatar(request, avatar: UploadedFile = File(...)):
     auth=None,
     response={200: dict},
 )
+@rate_limit("password_reset", limit=5, window=60)
 def password_reset_request(request, payload: PasswordResetRequestIn):
     """
     Request a password-reset email.
