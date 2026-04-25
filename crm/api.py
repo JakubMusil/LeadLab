@@ -14,10 +14,10 @@ from django.db.models import Count, Q, Sum
 
 from django.db import transaction
 from django.utils import timezone as tz
-from ninja import Router, Schema
+from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Activity, ActivityType, Customer, Lead, LeadSource, LeadStatus, Task
+from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, Task
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
@@ -672,3 +672,147 @@ def get_stats(request):
         "recent_activities": [_activity_out(a) for a in recent_activities],
     }
 
+
+# ===========================================================================
+# LEAD ATTACHMENTS
+# ===========================================================================
+
+# Maximum allowed file size (20 MB)
+_MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
+
+
+class AttachmentOut(Schema):
+    id: str
+    lead_id: str
+    firm_id: str
+    uploaded_by_id: Optional[str]
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
+
+
+def _attachment_out(a: LeadAttachment) -> dict:
+    return {
+        "id": str(a.id),
+        "lead_id": str(a.lead_id),
+        "firm_id": str(a.firm_id),
+        "uploaded_by_id": str(a.uploaded_by_id) if a.uploaded_by_id else None,
+        "original_filename": a.original_filename,
+        "content_type": a.content_type,
+        "size_bytes": a.size_bytes,
+        "url": a.file.url if a.file.name else "",
+        "created_at": a.created_at,
+    }
+
+
+@router.get(
+    "/leads/{lead_id}/attachments",
+    auth=django_auth,
+    response={200: List[AttachmentOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
+    """List all file attachments for a Lead, newest first (paginated)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = Lead.objects.get(id=lead_id, firm=request.firm)
+    except Lead.DoesNotExist:
+        return 404, {"detail": "Lead not found."}
+
+    offset = (page - 1) * page_size
+    attachments = LeadAttachment.objects.filter(lead=lead).order_by("-created_at")[
+        offset: offset + page_size
+    ]
+    return 200, [_attachment_out(a) for a in attachments]
+
+
+@router.post(
+    "/leads/{lead_id}/attachments",
+    auth=django_auth,
+    response={201: AttachmentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
+    """
+    Upload a file and attach it to a Lead.
+
+    The file is stored via Django's configured storage backend
+    (local filesystem in development, S3 in production).
+    A ``FILE_UPLOAD`` Activity is created atomically.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = Lead.objects.get(id=lead_id, firm=request.firm)
+    except Lead.DoesNotExist:
+        return 404, {"detail": "Lead not found."}
+
+    if file.size > _MAX_ATTACHMENT_BYTES:
+        return 400, {"detail": f"File exceeds the maximum allowed size of {_MAX_ATTACHMENT_BYTES // (1024 * 1024)} MB."}
+
+    with transaction.atomic():
+        attachment = LeadAttachment(
+            lead=lead,
+            firm=request.firm,
+            uploaded_by=request.user,
+            original_filename=file.name,
+            content_type=file.content_type or "application/octet-stream",
+            size_bytes=file.size,
+        )
+        # save=True persists the model record after writing the file to storage.
+        attachment.file.save(file.name, file, save=True)
+
+        Activity.objects.create(
+            lead=lead,
+            user=request.user,
+            type=ActivityType.FILE_UPLOAD,
+            metadata={
+                "attachment_id": str(attachment.id),
+                "filename": attachment.original_filename,
+                "url": attachment.file.url,
+                "size_bytes": attachment.size_bytes,
+            },
+        )
+
+    return 201, _attachment_out(attachment)
+
+
+@router.delete(
+    "/leads/{lead_id}/attachments/{attachment_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_attachment(request, lead_id: str, attachment_id: str):
+    """
+    Delete a file attachment from a Lead.
+
+    Removes both the database record and the physical file from storage.
+    Requires at least Admin role.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = Lead.objects.get(id=lead_id, firm=request.firm)
+    except Lead.DoesNotExist:
+        return 404, {"detail": "Lead not found."}
+
+    try:
+        attachment = LeadAttachment.objects.get(id=attachment_id, lead=lead)
+    except LeadAttachment.DoesNotExist:
+        return 404, {"detail": "Attachment not found."}
+
+    # Delete the physical file from storage before removing the record.
+    attachment.file.delete(save=False)
+    attachment.delete()
+    return 204, None

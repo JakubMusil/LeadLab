@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from crm.models import Activity, Customer, Lead, Task
+from crm.models import Activity, Customer, Lead, LeadAttachment, Task
 
 
 class ActivityInline(admin.TabularInline):
@@ -16,6 +16,13 @@ class TaskInline(admin.TabularInline):
     extra = 0
     fields = ("title", "assigned_to", "due_date", "is_completed", "completed_at")
     readonly_fields = ("completed_at",)
+
+
+class AttachmentInline(admin.TabularInline):
+    model = LeadAttachment
+    extra = 0
+    fields = ("original_filename", "content_type", "size_bytes", "uploaded_by", "created_at")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(Customer)
@@ -38,7 +45,15 @@ class LeadAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     autocomplete_fields = ["customer", "assigned_to"]
     readonly_fields = ("created_at", "updated_at")
-    inlines = [ActivityInline, TaskInline]
+    inlines = [ActivityInline, TaskInline, AttachmentInline]
+
+
+@admin.register(LeadAttachment)
+class LeadAttachmentAdmin(admin.ModelAdmin):
+    list_display = ("original_filename", "lead", "uploaded_by", "size_bytes", "content_type", "created_at")
+    list_filter = ("firm",)
+    search_fields = ("original_filename", "lead__title")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(Activity)

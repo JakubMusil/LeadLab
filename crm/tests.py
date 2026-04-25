@@ -692,3 +692,170 @@ class TierLimitLeadCreateAPITest(TestCase):
             **self._firm_headers(),
         )
         self.assertEqual(resp.status_code, 201)
+
+
+# ---------------------------------------------------------------------------
+# Lead Attachments API tests
+# ---------------------------------------------------------------------------
+
+import io
+import uuid as uuid_module
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+from crm.models import LeadAttachment
+
+
+class AttachmentAPIFixtureMixin(CRMAPIFixtureMixin):
+    """Extends CRMAPIFixtureMixin with a pre-built SimpleUploadedFile helper."""
+
+    def _make_file(self, name="test.txt", content=b"hello world", content_type="text/plain"):
+        return SimpleUploadedFile(name, content, content_type=content_type)
+
+    def _upload(self, lead_id, name="test.txt", content=b"hello world"):
+        f = self._make_file(name=name, content=content)
+        return self.client.post(
+            f"/api/v1/crm/leads/{lead_id}/attachments",
+            data={"file": f},
+            **self.firm_headers(),
+        )
+
+
+class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
+    def test_list_attachments_empty(self):
+        resp = self._get(f"/api/v1/crm/leads/{self.lead.id}/attachments")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_list_attachments_nonexistent_lead_returns_404(self):
+        resp = self._get(f"/api/v1/crm/leads/{uuid_module.uuid4()}/attachments")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_list_attachments_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Other Firm Attach")
+        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        # Upload directly to DB for other firm's lead — should not appear in our list.
+        LeadAttachment.objects.create(
+            firm=other_firm,
+            lead=other_lead,
+            original_filename="secret.pdf",
+            content_type="application/pdf",
+            size_bytes=100,
+        )
+        resp = self._get(f"/api/v1/crm/leads/{self.lead.id}/attachments")
+        self.assertEqual(resp.json(), [])
+
+    def test_list_attachments_pagination(self):
+        for i in range(5):
+            LeadAttachment.objects.create(
+                firm=self.firm,
+                lead=self.lead,
+                original_filename=f"file{i}.txt",
+                content_type="text/plain",
+                size_bytes=i,
+            )
+        resp = self._get(
+            f"/api/v1/crm/leads/{self.lead.id}/attachments",
+            {"page": 1, "page_size": 3},
+        )
+        self.assertEqual(len(resp.json()), 3)
+
+
+class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
+    def tearDown(self):
+        # Clean up any files written to MEDIA_ROOT during tests.
+        for attachment in LeadAttachment.objects.filter(lead=self.lead):
+            attachment.file.delete(save=False)
+        super().tearDown()
+
+    def test_upload_returns_201(self):
+        resp = self._upload(self.lead.id)
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["original_filename"], "test.txt")
+        self.assertEqual(data["lead_id"], str(self.lead.id))
+        self.assertIn("url", data)
+
+    def test_upload_creates_db_record(self):
+        self._upload(self.lead.id)
+        self.assertEqual(LeadAttachment.objects.filter(lead=self.lead).count(), 1)
+
+    def test_upload_logs_file_upload_activity(self):
+        self._upload(self.lead.id)
+        self.assertTrue(
+            Activity.objects.filter(
+                lead=self.lead, type=ActivityType.FILE_UPLOAD
+            ).exists()
+        )
+
+    def test_upload_activity_metadata_contains_filename(self):
+        self._upload(self.lead.id, name="report.pdf", content=b"PDF")
+        activity = Activity.objects.get(lead=self.lead, type=ActivityType.FILE_UPLOAD)
+        self.assertEqual(activity.metadata["filename"], "report.pdf")
+
+    def test_upload_worker_allowed(self):
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._upload(self.lead.id)
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_nonexistent_lead_returns_404(self):
+        resp = self._upload(uuid_module.uuid4())
+        self.assertEqual(resp.status_code, 404)
+
+    def test_upload_requires_authentication(self):
+        self.client.logout()
+        resp = self._upload(self.lead.id)
+        self.assertIn(resp.status_code, [401, 403])
+
+    def test_upload_file_too_large_returns_400(self):
+        large_content = b"x" * (20 * 1024 * 1024 + 1)
+        resp = self._upload(self.lead.id, content=large_content)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("20 MB", resp.json()["detail"])
+
+
+class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        # Create an attachment record without a physical file for delete tests.
+        self.attachment = LeadAttachment.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            original_filename="deleteme.txt",
+            content_type="text/plain",
+            size_bytes=5,
+        )
+
+    def test_delete_attachment_admin_succeeds(self):
+        resp = self._delete(
+            f"/api/v1/crm/leads/{self.lead.id}/attachments/{self.attachment.id}"
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(LeadAttachment.objects.filter(id=self.attachment.id).exists())
+
+    def test_delete_attachment_worker_returns_403(self):
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._delete(
+            f"/api/v1/crm/leads/{self.lead.id}/attachments/{self.attachment.id}"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_nonexistent_attachment_returns_404(self):
+        resp = self._delete(
+            f"/api/v1/crm/leads/{self.lead.id}/attachments/{uuid_module.uuid4()}"
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    def test_delete_attachment_wrong_lead_returns_404(self):
+        other_lead = Lead.objects.create(firm=self.firm, title="Other Lead")
+        resp = self._delete(
+            f"/api/v1/crm/leads/{other_lead.id}/attachments/{self.attachment.id}"
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    def test_delete_attachment_nonexistent_lead_returns_404(self):
+        resp = self._delete(
+            f"/api/v1/crm/leads/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
+        )
+        self.assertEqual(resp.status_code, 404)
+

@@ -239,6 +239,59 @@ class Activity(models.Model):
 # Task
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Lead Attachment
+# ---------------------------------------------------------------------------
+
+def _attachment_upload_to(instance, filename):
+    """Store attachments under media/attachments/<lead_id>/<filename>."""
+    return f"attachments/{instance.lead_id}/{filename}"
+
+
+class LeadAttachment(TenantModel):
+    """
+    A file attached to a Lead, served via Django's file server.
+
+    The physical file is stored in MEDIA_ROOT/attachments/<lead_id>/.
+    The ``file`` field's ``.url`` property resolves to the correct URL
+    regardless of the active storage backend (local or S3).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="uploaded_attachments",
+    )
+    file = models.FileField(upload_to=_attachment_upload_to)
+    original_filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "lead attachment"
+        verbose_name_plural = "lead attachments"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["lead", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return self.original_filename
+
+
+# ---------------------------------------------------------------------------
+# Task
+# ---------------------------------------------------------------------------
+
 class Task(TenantModel):
     """
     A to-do item scoped to a Lead. Completion is tracked explicitly so that

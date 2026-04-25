@@ -58,7 +58,7 @@ The following core features are implemented and tested:
 - [x] Usage limits per subscription tier (e.g. max leads on Free plan)
 
 ### v0.5 — Files & Attachments
-- [ ] File attachment list and delete endpoints scoped to a Lead
+- [x] File attachment list and delete endpoints scoped to a Lead
 
 ### v0.6 — Reporting
 - [ ] Lead pipeline summary endpoint (counts per status, total value)
