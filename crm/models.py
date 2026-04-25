@@ -1,0 +1,278 @@
+import uuid
+from decimal import Decimal
+
+from django.conf import settings
+from django.db import models
+
+from firms.models import Firm
+
+
+# ---------------------------------------------------------------------------
+# Base tenant-scoped model
+# ---------------------------------------------------------------------------
+
+class TenantModel(models.Model):
+    """
+    Abstract base that every tenant-scoped model should inherit from.
+    Provides the ``firm`` FK and a custom manager that accepts an optional
+    ``firm`` argument to return pre-filtered querysets.
+    """
+
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="+",
+        db_index=True,
+    )
+
+    class Meta:
+        abstract = True
+
+
+# ---------------------------------------------------------------------------
+# Enumerations
+# ---------------------------------------------------------------------------
+
+class LeadStatus(models.TextChoices):
+    NEW = "new", "New"
+    CONTACTED = "contacted", "Contacted"
+    PROPOSAL = "proposal", "Proposal"
+    NEGOTIATION = "negotiation", "Negotiation"
+    WON = "won", "Won"
+    LOST = "lost", "Lost"
+    CANCELED = "canceled", "Canceled"
+
+
+class LeadSource(models.TextChoices):
+    WEB = "web", "Web"
+    EMAIL = "email", "Email"
+    REFERRAL = "referral", "Referral"
+    COLD_CALL = "cold_call", "Cold Call"
+    SOCIAL = "social", "Social"
+    OTHER = "other", "Other"
+
+
+class ActivityType(models.TextChoices):
+    COMMENT = "comment", "Comment"
+    EMAIL_OUT = "email_out", "Email (Outbound)"
+    EMAIL_IN = "email_in", "Email (Inbound)"
+    CALL = "call", "Call"
+    MEETING = "meeting", "Meeting"
+    STATUS_CHANGE = "status_change", "Status Change"
+    FILE_UPLOAD = "file_upload", "File Upload"
+    TASK_ASSIGNED = "task_assigned", "Task Assigned"
+    TASK_COMPLETED = "task_completed", "Task Completed"
+
+
+# ---------------------------------------------------------------------------
+# Customer (Address Book)
+# ---------------------------------------------------------------------------
+
+class Customer(TenantModel):
+    """
+    A contact in the address book. A single Customer can be linked to many
+    Leads inside the same Firm.
+
+    ``tags`` is stored as a JSONField (list of strings) for maximum database
+    compatibility while still supporting PostgreSQL's native array operators
+    when accessed via the Django ORM.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150, blank=True)
+    email = models.EmailField(blank=True, db_index=True)
+    phone = models.CharField(max_length=50, blank=True)
+    company_name = models.CharField(max_length=255, blank=True)
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of free-form string tags for quick filtering.",
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Arbitrary key-value pairs for custom fields.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "customer"
+        verbose_name_plural = "customers"
+        ordering = ["last_name", "first_name"]
+        indexes = [
+            models.Index(fields=["firm", "email"]),
+        ]
+
+    def __str__(self):
+        name = f"{self.first_name} {self.last_name}".strip()
+        return f"{name} ({self.firm})" if name else self.email
+
+
+# ---------------------------------------------------------------------------
+# Lead
+# ---------------------------------------------------------------------------
+
+class Lead(TenantModel):
+    """
+    The central entity of the CRM — an inbound or outbound opportunity.
+
+    ``customer`` is nullable to allow 'quick entry' leads where the
+    full contact record is filled in later.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="leads",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=LeadStatus.choices,
+        default=LeadStatus.NEW,
+        db_index=True,
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=LeadSource.choices,
+        default=LeadSource.WEB,
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_leads",
+    )
+    value = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Estimated deal value.",
+    )
+    currency = models.CharField(max_length=3, default="CZK")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "lead"
+        verbose_name_plural = "leads"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "status"]),
+            models.Index(fields=["firm", "assigned_to"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} [{self.get_status_display()}]"
+
+
+# ---------------------------------------------------------------------------
+# Activity (Polymorphic timeline log)
+# ---------------------------------------------------------------------------
+
+class Activity(models.Model):
+    """
+    An immutable event on the lead's timeline.
+
+    The ``metadata`` JSONField carries type-specific payload:
+
+    * EMAIL_OUT / EMAIL_IN → {"subject": "...", "to": "...", "message_id": "..."}
+    * STATUS_CHANGE        → {"old_status": "...", "new_status": "..."}
+    * TASK_ASSIGNED /
+      TASK_COMPLETED       → {"task_id": "...", "due_date": "...", "priority": "..."}
+    * FILE_UPLOAD          → {"filename": "...", "url": "...", "size_bytes": 0}
+    * CALL / MEETING       → {"duration_minutes": 0, "notes": "..."}
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="activities",
+        help_text="The user who performed / logged this action.",
+    )
+    type = models.CharField(
+        max_length=30,
+        choices=ActivityType.choices,
+        db_index=True,
+    )
+    content_text = models.TextField(blank=True)
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Type-specific structured data (see model docstring).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "activity"
+        verbose_name_plural = "activities"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["lead", "-created_at"]),
+            models.Index(fields=["lead", "type"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.get_type_display()} on Lead#{self.lead_id} "
+            f"at {self.created_at:%Y-%m-%d %H:%M}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Task
+# ---------------------------------------------------------------------------
+
+class Task(TenantModel):
+    """
+    A to-do item scoped to a Lead. Completion is tracked explicitly so that
+    we can log a TASK_COMPLETED Activity automatically.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+    )
+    title = models.CharField(max_length=255)
+    due_date = models.DateTimeField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "task"
+        verbose_name_plural = "tasks"
+        ordering = ["due_date", "created_at"]
+        indexes = [
+            models.Index(fields=["firm", "is_completed"]),
+            models.Index(fields=["lead", "is_completed"]),
+        ]
+
+    def __str__(self):
+        done = "✓" if self.is_completed else "○"
+        return f"{done} {self.title}"
