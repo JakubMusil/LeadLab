@@ -4,7 +4,9 @@ Django Ninja API router – Users & Authentication
 from typing import Optional
 
 from django.contrib.auth import authenticate, login, logout
-from ninja import Router, Schema
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
 from users.models import User
@@ -38,6 +40,22 @@ class LoginIn(Schema):
     password: str
 
 
+class ProfileUpdateIn(Schema):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    timezone: Optional[str] = None
+
+
+class PasswordResetRequestIn(Schema):
+    email: str
+
+
+class PasswordResetConfirmIn(Schema):
+    uid: str
+    token: str
+    new_password: str
+
+
 class ErrorOut(Schema):
     detail: str
 
@@ -59,14 +77,7 @@ def register(request, payload: RegisterIn):
         last_name=payload.last_name,
         timezone=payload.timezone,
     )
-    return 201, {
-        "id": str(user.id),
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "timezone": user.timezone,
-        "full_name": user.full_name,
-    }
+    return 201, _user_out(user)
 
 
 @router.post("/login", auth=None, response={200: UserOut, 401: ErrorOut})
@@ -76,14 +87,7 @@ def login_view(request, payload: LoginIn):
     if user is None:
         return 401, {"detail": "Invalid credentials."}
     login(request, user)
-    return 200, {
-        "id": str(user.id),
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "timezone": user.timezone,
-        "full_name": user.full_name,
-    }
+    return 200, _user_out(user)
 
 
 @router.post("/logout", auth=django_auth, response={200: dict})
@@ -96,12 +100,119 @@ def logout_view(request):
 @router.get("/me", auth=django_auth, response={200: UserOut, 401: ErrorOut})
 def me(request):
     """Return the currently authenticated user."""
-    u = request.user
-    return 200, {
-        "id": str(u.id),
-        "email": u.email,
-        "first_name": u.first_name,
-        "last_name": u.last_name,
-        "timezone": u.timezone,
-        "full_name": u.full_name,
+    return 200, _user_out(request.user)
+
+
+@router.patch("/me", auth=django_auth, response={200: UserOut, 400: ErrorOut})
+def update_profile(request, payload: ProfileUpdateIn):
+    """Update the current user's profile (first_name, last_name, timezone)."""
+    user = request.user
+    updated = False
+    if payload.first_name is not None:
+        user.first_name = payload.first_name
+        updated = True
+    if payload.last_name is not None:
+        user.last_name = payload.last_name
+        updated = True
+    if payload.timezone is not None:
+        user.timezone = payload.timezone
+        updated = True
+    if updated:
+        user.save()
+    return 200, _user_out(user)
+
+
+@router.post("/me/avatar", auth=django_auth, response={200: UserOut, 400: ErrorOut})
+def upload_avatar(request, avatar: UploadedFile = File(...)):
+    """Upload or replace the current user's profile picture."""
+    allowed_types = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    if avatar.content_type not in allowed_types:
+        return 400, {"detail": "Unsupported file type. Allowed: jpeg, png, gif, webp."}
+    user = request.user
+    # Delete the old file if one exists to avoid orphans on disk.
+    if user.profile_picture:
+        user.profile_picture.delete(save=False)
+    user.profile_picture.save(avatar.name, avatar, save=True)
+    return 200, _user_out(user)
+
+
+@router.post(
+    "/password-reset/request",
+    auth=None,
+    response={200: dict},
+)
+def password_reset_request(request, payload: PasswordResetRequestIn):
+    """
+    Request a password-reset email.
+
+    Always returns 200 to avoid revealing whether the email address is
+    registered.  The email is dispatched asynchronously via Celery.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    from users.tasks import send_password_reset_email
+
+    user = User.objects.filter(email=payload.email).first()
+    if user is not None:
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        try:
+            send_password_reset_email.delay(str(user.id), token, uid)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "password_reset_request: Could not enqueue send_password_reset_email "
+                "for user %s (Celery may not be running).",
+                user.id,
+            )
+
+    return 200, {"detail": "If that email is registered, a reset link has been sent."}
+
+
+@router.post(
+    "/password-reset/confirm",
+    auth=None,
+    response={200: dict, 400: ErrorOut},
+)
+def password_reset_confirm(request, payload: PasswordResetConfirmIn):
+    """
+    Set a new password using the uid and token from the reset email.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import force_str
+    from django.utils.http import urlsafe_base64_decode
+
+    try:
+        uid = force_str(urlsafe_base64_decode(payload.uid))
+        user = User.objects.get(pk=uid)
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        return 400, {"detail": "Invalid or expired password-reset link."}
+
+    if not default_token_generator.check_token(user, payload.token):
+        return 400, {"detail": "Invalid or expired password-reset link."}
+
+    try:
+        validate_password(payload.new_password, user)
+    except ValidationError as exc:
+        return 400, {"detail": " ".join(exc.messages)}
+
+    user.set_password(payload.new_password)
+    user.save()
+    return 200, {"detail": "Password has been reset successfully."}
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _user_out(user: User) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "timezone": user.timezone,
+        "full_name": user.full_name,
     }

@@ -48,9 +48,9 @@ The following core features are implemented and tested:
 - [x] Improve search across customers (company name, phone)
 
 ### v0.3 — Invitations & Onboarding
-- [ ] Email-based invitation flow (send invite link, accept, create account)
-- [ ] Password reset via email
-- [ ] User profile update endpoint (name, timezone, avatar upload)
+- [x] Email-based invitation flow (send invite link, accept, create account)
+- [x] Password reset via email
+- [x] User profile update endpoint (name, timezone, avatar upload)
 
 ### v0.4 — Stripe Integration
 - [ ] Stripe Checkout session creation for upgrading to Pro

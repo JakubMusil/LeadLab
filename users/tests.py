@@ -117,3 +117,126 @@ class UserAPITest(TestCase):
         self.assertEqual(user.last_name, "Smith")
         self.assertEqual(user.timezone, "Europe/Prague")
 
+
+# ---------------------------------------------------------------------------
+# Profile update API tests
+# ---------------------------------------------------------------------------
+
+class ProfileUpdateAPITest(TestCase):
+    ME_URL = "/api/v1/users/me"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="profile@example.com",
+            password="pass",
+            first_name="Old",
+            last_name="Name",
+            timezone="UTC",
+        )
+        self.client.login(username="profile@example.com", password="pass")
+
+    def _patch(self, data):
+        import json
+        return self.client.patch(
+            self.ME_URL, data=json.dumps(data), content_type="application/json"
+        )
+
+    def test_update_first_name(self):
+        resp = self._patch({"first_name": "New"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["first_name"], "New")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "New")
+
+    def test_update_last_name(self):
+        resp = self._patch({"last_name": "Updated"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["last_name"], "Updated")
+
+    def test_update_timezone(self):
+        resp = self._patch({"timezone": "Europe/Prague"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["timezone"], "Europe/Prague")
+
+    def test_partial_update_preserves_other_fields(self):
+        resp = self._patch({"first_name": "Changed"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # Other fields should not change
+        self.assertEqual(data["last_name"], "Name")
+        self.assertEqual(data["timezone"], "UTC")
+
+    def test_empty_patch_is_ok(self):
+        resp = self._patch({})
+        self.assertEqual(resp.status_code, 200)
+
+    def test_update_profile_requires_authentication(self):
+        self.client.logout()
+        resp = self._patch({"first_name": "Anon"})
+        self.assertIn(resp.status_code, [401, 403])
+
+
+# ---------------------------------------------------------------------------
+# Password reset API tests
+# ---------------------------------------------------------------------------
+
+class PasswordResetAPITest(TestCase):
+    REQUEST_URL = "/api/v1/users/password-reset/request"
+    CONFIRM_URL = "/api/v1/users/password-reset/confirm"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="resetme@example.com", password="oldpassword123"
+        )
+
+    def _post(self, url, data):
+        import json
+        return self.client.post(url, data=json.dumps(data), content_type="application/json")
+
+    def test_request_for_existing_email_returns_200(self):
+        resp = self._post(self.REQUEST_URL, {"email": "resetme@example.com"})
+        self.assertEqual(resp.status_code, 200)
+
+    def test_request_for_nonexistent_email_still_returns_200(self):
+        resp = self._post(self.REQUEST_URL, {"email": "nobody@example.com"})
+        self.assertEqual(resp.status_code, 200)
+
+    def test_confirm_with_valid_token_resets_password(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        resp = self._post(self.CONFIRM_URL, {
+            "uid": uid,
+            "token": token,
+            "new_password": "brand-new-password-456",
+        })
+        self.assertEqual(resp.status_code, 200)
+        # Old password should no longer work
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.check_password("oldpassword123"))
+        self.assertTrue(self.user.check_password("brand-new-password-456"))
+
+    def test_confirm_with_invalid_token_returns_400(self):
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        resp = self._post(self.CONFIRM_URL, {
+            "uid": uid,
+            "token": "invalid-token",
+            "new_password": "newpassword456",
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_confirm_with_invalid_uid_returns_400(self):
+        resp = self._post(self.CONFIRM_URL, {
+            "uid": "not-a-valid-uid",
+            "token": "sometoken",
+            "new_password": "newpassword456",
+        })
+        self.assertEqual(resp.status_code, 400)
+

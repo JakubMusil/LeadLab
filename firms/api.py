@@ -19,7 +19,7 @@ from firms.auth import (
     PermissionDenied,
     require_membership,
 )
-from firms.models import Firm, Membership
+from firms.models import Firm, Invitation, Membership
 
 router = Router(tags=["firms"])
 
@@ -48,9 +48,22 @@ class MembershipOut(Schema):
     firm_id: str
 
 
-class InviteIn(Schema):
+class MemberInviteIn(Schema):
     email: str
     role: str = MembershipRole.WORKER
+
+
+class InvitationOut(Schema):
+    id: str
+    token: str
+    email: str
+    role: str
+    firm_id: str
+    firm_name: str
+    invited_by_email: Optional[str]
+    expires_at: str
+    is_expired: bool
+    is_accepted: bool
 
 
 class ErrorOut(Schema):
@@ -169,7 +182,7 @@ def list_members(request, firm_id: str):
 
 
 @router.post("/{firm_id}/members", auth=django_auth, response={201: MembershipOut, 400: ErrorOut, 403: ErrorOut})
-def invite_member(request, firm_id: str, payload: InviteIn):
+def invite_member(request, firm_id: str, payload: MemberInviteIn):
     """Invite a user to a Firm (Admin or Owner only)."""
     from users.models import User
 
@@ -236,3 +249,94 @@ def remove_member(request, firm_id: str, membership_id: str):
 
     target.delete()
     return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Email-based invitations (Admin/Owner only)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{firm_id}/invitations/",
+    auth=django_auth,
+    response={202: InvitationOut, 400: ErrorOut, 403: ErrorOut},
+    tags=["invitations"],
+)
+def create_invitation(request, firm_id: str, payload: MemberInviteIn):
+    """
+    Create an email invitation for a given address (Admin/Owner only).
+
+    The invited person does not need an existing account — they can create
+    one when accepting the invitation.  An email is dispatched asynchronously.
+    """
+    from users.tasks import send_invitation_email
+
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 403, {"detail": "Firm not found or inactive."}
+
+    try:
+        caller_membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not caller_membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can send invitations."}
+
+    if payload.role == MembershipRole.OWNER:
+        return 400, {"detail": "Cannot assign the Owner role via invitation."}
+
+    # Prevent re-inviting someone who is already a member.
+    from users.models import User
+    existing_user = User.objects.filter(email=payload.email).first()
+    if existing_user and Membership.objects.filter(user=existing_user, firm=firm).exists():
+        return 400, {"detail": "That user is already a member of this Firm."}
+
+    # Upsert the Invitation (re-send if one already exists but was not accepted).
+    try:
+        invitation = Invitation.objects.get(email=payload.email, firm=firm)
+        if invitation.is_accepted:
+            return 400, {"detail": "An accepted invitation already exists for that email."}
+        # Refresh the expiry so the recipient gets a fresh link.
+        from firms.models import _default_expiry
+        invitation.expires_at = _default_expiry()
+        invitation.role = payload.role
+        invitation.invited_by = request.user
+        invitation.save(update_fields=["expires_at", "role", "invited_by"])
+    except Invitation.DoesNotExist:
+        invitation = Invitation.objects.create(
+            email=payload.email,
+            firm=firm,
+            role=payload.role,
+            invited_by=request.user,
+        )
+
+    # Dispatch the email asynchronously (gracefully degrades if Celery is not running).
+    try:
+        send_invitation_email.delay(str(invitation.id))
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "create_invitation: Could not enqueue send_invitation_email for %s "
+            "(Celery may not be running).",
+            invitation.id,
+        )
+
+    return 202, _invitation_out(invitation)
+
+
+def _invitation_out(invitation: Invitation) -> dict:
+    return {
+        "id": str(invitation.id),
+        "token": str(invitation.token),
+        "email": invitation.email,
+        "role": invitation.role,
+        "firm_id": str(invitation.firm_id),
+        "firm_name": invitation.firm.name,
+        "invited_by_email": (
+            invitation.invited_by.email if invitation.invited_by else None
+        ),
+        "expires_at": invitation.expires_at.isoformat(),
+        "is_expired": invitation.is_expired,
+        "is_accepted": invitation.is_accepted,
+    }
