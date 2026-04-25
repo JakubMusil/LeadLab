@@ -1,0 +1,323 @@
+{% extends "frontend/dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Leads – LeadLab{% endblock %}
+{% block page_title %}Leads{% endblock %}
+
+{% block content %}
+
+<!-- Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+  <div class="flex items-center gap-3">
+    <select id="filter-status" onchange="loadLeads()"
+            class="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-red-500 bg-white">
+      <option value="">All statuses</option>
+      <option value="new">New</option>
+      <option value="contacted">Contacted</option>
+      <option value="proposal">Proposal</option>
+      <option value="negotiation">Negotiation</option>
+      <option value="won">Won</option>
+      <option value="lost">Lost</option>
+      <option value="canceled">Canceled</option>
+    </select>
+  </div>
+  <button onclick="openModal()"
+          class="btn-primary text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+    New Lead
+  </button>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-gray-100 bg-gray-50">
+        <th class="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lead</th>
+        <th class="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+        <th class="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Source</th>
+        <th class="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Value</th>
+        <th class="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Created</th>
+        <th class="px-5 py-3.5"></th>
+      </tr>
+    </thead>
+    <tbody id="leads-table" class="divide-y divide-gray-50">
+      <tr><td colspan="6" class="text-center py-10 text-gray-400">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Lead Modal -->
+<div id="lead-modal" class="modal-overlay hidden">
+  <div class="modal-box w-full max-w-lg">
+    <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h2 class="text-lg font-bold text-gray-900 mb-5" id="modal-title">New Lead</h2>
+    <div id="modal-error" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+    <form id="lead-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Title *</label>
+        <input id="lead-title" type="text" required placeholder="e.g. Acme Corp – Enterprise Plan"
+               class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+        <textarea id="lead-desc" rows="3" placeholder="Notes about this lead…"
+                  class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+          <select id="lead-status" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none bg-white">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Source</label>
+          <select id="lead-source" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none bg-white">
+            <option value="web">Web</option>
+            <option value="email">Email</option>
+            <option value="referral">Referral</option>
+            <option value="cold_call">Cold Call</option>
+            <option value="social">Social</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Value</label>
+          <input id="lead-value" type="number" min="0" step="0.01" placeholder="0.00"
+                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
+          <input id="lead-currency" type="text" value="CZK" maxlength="3"
+                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm input-red focus:outline-none">
+        </div>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal()"
+                class="flex-1 border border-gray-200 text-gray-700 font-medium py-2.5 rounded-xl text-sm hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit"
+                class="flex-1 btn-primary font-semibold py-2.5 rounded-xl text-sm">
+          Save Lead
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="modal-overlay hidden">
+  <div class="modal-box w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <button onclick="closeDetail()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <h2 class="text-lg font-bold text-gray-900 mb-1" id="detail-title">Lead Detail</h2>
+    <div class="flex items-center gap-2 mb-5" id="detail-status-badge"></div>
+
+    <div class="grid grid-cols-2 gap-4 mb-5 text-sm">
+      <div><span class="text-gray-400">Source:</span> <span id="detail-source" class="font-medium text-gray-700 capitalize ml-1">—</span></div>
+      <div><span class="text-gray-400">Value:</span> <span id="detail-value" class="font-medium text-gray-700 ml-1">—</span></div>
+      <div><span class="text-gray-400">Created:</span> <span id="detail-created" class="font-medium text-gray-700 ml-1">—</span></div>
+      <div><span class="text-gray-400">Updated:</span> <span id="detail-updated" class="font-medium text-gray-700 ml-1">—</span></div>
+    </div>
+    <div class="mb-5 text-sm text-gray-600" id="detail-desc"></div>
+
+    <!-- Status change -->
+    <div class="flex items-center gap-3 mb-5">
+      <select id="detail-new-status" class="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-red-500">
+        <option value="new">New</option>
+        <option value="contacted">Contacted</option>
+        <option value="proposal">Proposal</option>
+        <option value="negotiation">Negotiation</option>
+        <option value="won">Won</option>
+        <option value="lost">Lost</option>
+        <option value="canceled">Canceled</option>
+      </select>
+      <button onclick="changeStatus()" class="btn-primary text-sm font-medium px-4 py-2 rounded-xl">Update Status</button>
+    </div>
+
+    <!-- Activity timeline -->
+    <h3 class="font-bold text-gray-900 text-sm mb-3 border-t border-gray-100 pt-4">Activity Timeline</h3>
+    <div id="detail-activities" class="space-y-3 mb-4">
+      <div class="text-sm text-gray-400">Loading…</div>
+    </div>
+
+    <!-- Log activity -->
+    <div class="bg-gray-50 rounded-xl p-4">
+      <h4 class="text-sm font-semibold text-gray-700 mb-3">Log Activity</h4>
+      <div class="flex gap-2">
+        <select id="activity-type" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none flex-shrink-0">
+          <option value="comment">Comment</option>
+          <option value="call">Call</option>
+          <option value="meeting">Meeting</option>
+          <option value="email_out">Email Out</option>
+        </select>
+        <input id="activity-text" type="text" placeholder="Add a note…"
+               class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+        <button onclick="logActivity()" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">Log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let leads = [];
+let currentLeadId = null;
+let editingLeadId = null;
+
+async function loadLeads() {
+  const status = document.getElementById('filter-status').value;
+  const params = {};
+  if (status) params.status = status;
+  const res = await Leads.list(params);
+  const tbody = document.getElementById('leads-table');
+  if (!res || !res.ok) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-gray-400">${res && res.status === 403 ? 'Select a workspace first' : 'Failed to load leads'}</td></tr>`;
+    return;
+  }
+  leads = res.data;
+  if (!leads.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-400">No leads found. Create your first lead!</td></tr>';
+    return;
+  }
+  tbody.innerHTML = leads.map(l => `
+    <tr class="table-row-hover cursor-pointer" onclick="openDetail('${l.id}')">
+      <td class="px-5 py-4">
+        <div class="font-medium text-gray-900">${escHtml(l.title)}</div>
+        <div class="text-xs text-gray-400 mt-0.5">${fmtDate(l.created_at)}</div>
+      </td>
+      <td class="px-5 py-4">
+        <span class="badge ${statusBadge(l.status)}">${l.status}</span>
+      </td>
+      <td class="px-5 py-4 hidden md:table-cell text-gray-500 capitalize">${l.source.replace('_',' ')}</td>
+      <td class="px-5 py-4 hidden lg:table-cell text-gray-700 font-medium">${l.value ? fmtCurrency(l.value, l.currency) : '—'}</td>
+      <td class="px-5 py-4 hidden lg:table-cell text-gray-400 text-xs">${fmtDate(l.created_at)}</td>
+      <td class="px-5 py-4 text-right">
+        <button onclick="event.stopPropagation(); deleteLead('${l.id}')"
+                class="text-gray-300 hover:text-red-500 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openModal(id = null) {
+  editingLeadId = id;
+  document.getElementById('modal-title').textContent = id ? 'Edit Lead' : 'New Lead';
+  document.getElementById('modal-error').classList.add('hidden');
+  if (!id) {
+    document.getElementById('lead-form').reset();
+    document.getElementById('lead-currency').value = 'CZK';
+  }
+  document.getElementById('lead-modal').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('lead-modal').classList.add('hidden'); }
+
+document.getElementById('lead-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('modal-error');
+  errEl.classList.add('hidden');
+  const data = {
+    title: document.getElementById('lead-title').value.trim(),
+    description: document.getElementById('lead-desc').value.trim(),
+    status: document.getElementById('lead-status').value,
+    source: document.getElementById('lead-source').value,
+    value: document.getElementById('lead-value').value ? parseFloat(document.getElementById('lead-value').value) : null,
+    currency: document.getElementById('lead-currency').value.trim() || 'CZK',
+  };
+  const res = editingLeadId ? await Leads.update(editingLeadId, data) : await Leads.create(data);
+  if (res && res.ok) {
+    closeModal();
+    loadLeads();
+    showToast(editingLeadId ? 'Lead updated' : 'Lead created');
+  } else {
+    errEl.textContent = (res && res.data && res.data.detail) || 'Failed to save lead';
+    errEl.classList.remove('hidden');
+  }
+});
+
+async function deleteLead(id) {
+  if (!confirm('Delete this lead? This cannot be undone.')) return;
+  const res = await Leads.remove(id);
+  if (res && res.status === 204) { loadLeads(); showToast('Lead deleted'); }
+  else showToast('Failed to delete', 'error');
+}
+
+async function openDetail(id) {
+  currentLeadId = id;
+  const lead = leads.find(l => l.id === id);
+  if (!lead) return;
+  document.getElementById('detail-title').textContent = lead.title;
+  document.getElementById('detail-status-badge').innerHTML = `<span class="badge ${statusBadge(lead.status)}">${lead.status}</span>`;
+  document.getElementById('detail-new-status').value = lead.status;
+  document.getElementById('detail-source').textContent = lead.source.replace('_',' ');
+  document.getElementById('detail-value').textContent = lead.value ? fmtCurrency(lead.value, lead.currency) : '—';
+  document.getElementById('detail-created').textContent = fmtDateTime(lead.created_at);
+  document.getElementById('detail-updated').textContent = fmtDateTime(lead.updated_at);
+  document.getElementById('detail-desc').textContent = lead.description || 'No description.';
+  document.getElementById('detail-modal').classList.remove('hidden');
+  await loadActivities(id);
+}
+function closeDetail() { document.getElementById('detail-modal').classList.add('hidden'); }
+
+async function loadActivities(id) {
+  const res = await Leads.activities(id);
+  const el = document.getElementById('detail-activities');
+  if (!res || !res.ok) { el.innerHTML = '<div class="text-sm text-gray-400">No activities yet.</div>'; return; }
+  const acts = res.data;
+  if (!acts.length) { el.innerHTML = '<div class="text-sm text-gray-400">No activities yet.</div>'; return; }
+  const icons = { comment:'💬',email_out:'📤',email_in:'📥',call:'📞',meeting:'📅',status_change:'🔄',file_upload:'📎',task_assigned:'✅',task_completed:'🏁' };
+  el.innerHTML = acts.map(a => `
+    <div class="flex items-start gap-3 text-sm">
+      <span class="mt-0.5 text-base">${icons[a.type]||'•'}</span>
+      <div>
+        <span class="font-medium text-gray-700 capitalize">${a.type.replace(/_/g,' ')}</span>
+        ${a.content_text ? `<span class="text-gray-500"> – ${escHtml(a.content_text)}</span>` : ''}
+        <div class="text-xs text-gray-400 mt-0.5">${fmtDateTime(a.created_at)}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function changeStatus() {
+  const newStatus = document.getElementById('detail-new-status').value;
+  const res = await Leads.update(currentLeadId, { status: newStatus });
+  if (res && res.ok) {
+    showToast('Status updated');
+    closeDetail();
+    loadLeads();
+  } else showToast('Failed to update status', 'error');
+}
+
+async function logActivity() {
+  const type = document.getElementById('activity-type').value;
+  const text = document.getElementById('activity-text').value.trim();
+  const res = await Activities.create({ lead_id: currentLeadId, type, content_text: text });
+  if (res && res.ok) {
+    document.getElementById('activity-text').value = '';
+    await loadActivities(currentLeadId);
+    showToast('Activity logged');
+  } else showToast('Failed to log activity', 'error');
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+setTimeout(loadLeads, 400);
+</script>
+{% endblock %}
