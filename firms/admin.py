@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from firms.models import Firm, Invitation, Membership
+from firms.models import APIToken, Firm, Invitation, Membership, WebhookDelivery, WebhookEndpoint
 
 
 class MembershipInline(admin.TabularInline):
@@ -36,3 +36,37 @@ class InvitationAdmin(admin.ModelAdmin):
     list_filter = ("role", "firm")
     search_fields = ("email", "firm__name")
     readonly_fields = ("token", "created_at", "accepted_at")
+
+
+@admin.register(APIToken)
+class APITokenAdmin(admin.ModelAdmin):
+    list_display = ("name", "prefix", "firm", "user", "is_active", "created_at", "last_used_at", "revoked_at")
+    list_filter = ("firm",)
+    search_fields = ("name", "prefix", "user__email", "firm__name")
+    readonly_fields = ("token_hash", "prefix", "created_at", "last_used_at")
+
+
+class WebhookDeliveryInline(admin.TabularInline):
+    model = WebhookDelivery
+    extra = 0
+    fields = ("event", "status_code", "success", "delivered_at", "duration_ms")
+    readonly_fields = ("event", "status_code", "success", "delivered_at", "duration_ms")
+    ordering = ("-delivered_at",)
+    max_num = 20
+
+
+@admin.register(WebhookEndpoint)
+class WebhookEndpointAdmin(admin.ModelAdmin):
+    list_display = ("url", "firm", "is_active", "created_at")
+    list_filter = ("firm", "is_active")
+    search_fields = ("url", "firm__name")
+    readonly_fields = ("secret", "created_at", "updated_at")
+    inlines = [WebhookDeliveryInline]
+
+
+@admin.register(WebhookDelivery)
+class WebhookDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("event", "endpoint", "status_code", "success", "delivered_at", "duration_ms")
+    list_filter = ("success", "event")
+    search_fields = ("event", "endpoint__url")
+    readonly_fields = ("delivered_at",)

@@ -57,6 +57,7 @@ def broadcast_event(firm, event: str, payload: Dict[str, Any]) -> None:
     """
     Broadcast *event* to all WebSocket connections in *firm*'s channel group
     and persist a Notification for every active firm member.
+    Also dispatches outbound webhooks for any subscribed endpoints.
 
     Called from synchronous Django views / Ninja endpoints.
     Safe to call even when Channels / Redis are not configured.
@@ -70,6 +71,9 @@ def broadcast_event(firm, event: str, payload: Dict[str, Any]) -> None:
     # Send the channel-layer message after the DB transaction commits so that
     # connected clients can immediately query the API for the newly persisted data.
     transaction.on_commit(lambda: _send_channel_message(firm_id=str(firm.pk), event=event, payload=safe_payload))
+
+    # Dispatch outbound webhooks after the transaction commits.
+    transaction.on_commit(lambda: _dispatch_webhooks(firm=firm, event=event, payload=safe_payload))
 
 
 def _create_notifications(firm, event: str, payload: Dict[str, Any]) -> None:
@@ -108,3 +112,24 @@ def _send_channel_message(firm_id: str, event: str, payload: Dict[str, Any]) -> 
         )
     except Exception:
         logger.exception('Failed to broadcast WS event %s to firm %s', event, firm_id)
+
+
+def _dispatch_webhooks(firm, event: str, payload: Dict[str, Any]) -> None:
+    """Dispatch webhook deliveries to all active subscribed endpoints (best-effort)."""
+    try:
+        from firms.models import WebhookEndpoint
+        from firms.tasks import deliver_webhook
+
+        endpoints = WebhookEndpoint.objects.filter(firm=firm, is_active=True)
+        for ep in endpoints:
+            if ep.subscribes_to(event):
+                try:
+                    deliver_webhook.delay(str(ep.id), event, payload)
+                except Exception:
+                    logger.exception(
+                        'Failed to enqueue webhook delivery for endpoint %s event %s',
+                        ep.id,
+                        event,
+                    )
+    except Exception:
+        logger.exception('Failed to dispatch webhooks for event %s', event)

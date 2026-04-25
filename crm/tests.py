@@ -1059,3 +1059,98 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._get(self.URL)
         self.assertIn(resp.status_code, [401, 403])
 
+
+
+# ===========================================================================
+# v1.7 — ImportJob model
+# ===========================================================================
+
+class ImportJobModelTest(CRMFixtureMixin, TestCase):
+    def test_importjob_str(self):
+        from crm.models import ImportJob, ImportJobType, ImportJobStatus
+        import tempfile, os
+        from django.core.files.base import ContentFile
+        job = ImportJob(
+            firm=self.firm,
+            user=self.owner,
+            type=ImportJobType.LEADS,
+            status=ImportJobStatus.PENDING,
+        )
+        self.assertIn("ImportJob", str(job))
+
+    def test_importjob_defaults(self):
+        from crm.models import ImportJob, ImportJobType, ImportJobStatus
+        from django.core.files.base import ContentFile
+        job = ImportJob.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            type=ImportJobType.CUSTOMERS,
+            file=ContentFile(b"first_name\nAlice", name="test.csv"),
+            original_filename="test.csv",
+        )
+        self.assertEqual(job.status, ImportJobStatus.PENDING)
+        self.assertEqual(job.total, 0)
+        self.assertEqual(job.processed, 0)
+        self.assertEqual(job.failed_count, 0)
+        self.assertEqual(job.errors_json, [])
+
+
+# ===========================================================================
+# v1.7 — iCal endpoint
+# ===========================================================================
+
+class ICalEndpointTest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_get_ical_token(self):
+        resp = self.client.get("/api/v1/integrations/ical/token")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("token", data)
+        self.assertIn("url", data)
+
+    def test_ical_feed_valid_token(self):
+        resp = self.client.get("/api/v1/integrations/ical/token")
+        data = resp.json()
+        url = data["url"]
+        # Hit the feed URL without authentication (it's a public signed URL)
+        self.client.logout()
+        resp2 = self.client.get(url)
+        self.assertEqual(resp2.status_code, 200)
+        self.assertIn(b"BEGIN:VCALENDAR", resp2.content)
+
+    def test_ical_feed_invalid_token(self):
+        resp = self.client.get(
+            f"/api/v1/integrations/ical/tasks",
+            data={"user_id": str(self.owner.id), "firm_id": str(self.firm.id), "token": "bad"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+
+# ===========================================================================
+# v1.7 — CSV Export endpoints
+# ===========================================================================
+
+class CSVExportTest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_export_leads_csv(self):
+        resp = self.client.get("/api/v1/integrations/export/leads.csv")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv")
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("title", content)
+
+    def test_export_customers_csv(self):
+        resp = self.client.get("/api/v1/integrations/export/customers.csv")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv")
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("first_name", content)
+        self.assertIn("Jane", content)
