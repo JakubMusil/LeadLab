@@ -20,11 +20,10 @@ Event names:
     task.completed — a task was marked as completed
 """
 
-import json
 import logging
 
 from channels.exceptions import DenyConnection
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ def firm_group_name(firm_id: str) -> str:
     return f"firm_{firm_id}"
 
 
-class FirmConsumer(AsyncWebsocketConsumer):
+class FirmConsumer(AsyncJsonWebsocketConsumer):
     """
     WebSocket consumer that puts each connection into a firm-scoped channel group.
 
@@ -61,7 +60,7 @@ class FirmConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
         logger.debug('WS disconnect: code=%s', close_code)
 
-    async def receive(self, text_data=None, bytes_data=None):
+    async def receive_json(self, content, **kwargs):
         # Clients do not send messages to the server (read-only channel).
         pass
 
@@ -71,11 +70,9 @@ class FirmConsumer(AsyncWebsocketConsumer):
 
     async def crm_event(self, event):
         """Forward a ``crm.event`` channel message to the WebSocket client."""
-        await self.send(
-            text_data=json.dumps(
-                {
-                    'event': event['event'],
-                    'payload': event['payload'],
-                }
-            )
+        await self.send_json(
+            {
+                'event': event['event'],
+                'payload': event['payload'],
+            }
         )

@@ -261,10 +261,9 @@ function onWsActivityCreated(payload: Record<string, unknown>) {
   activities.value.unshift(act)
 }
 
-function onWsLeadUpdated(payload: Record<string, unknown>) {
-  // Let the leads store handle the update; the currentLead ref is shared
-  // so the UI will re-render automatically.
-  void payload
+function onWsLeadUpdated(_payload: Record<string, unknown>) {
+  // The leads store is already updated by AppShell's WS handler; currentLead
+  // is a shared Pinia ref so the UI re-renders automatically.
 }
 
 async function switchTab(tab: Tab) {

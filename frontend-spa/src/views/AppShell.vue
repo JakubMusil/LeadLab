@@ -139,13 +139,13 @@ function eventIcon(event: string): string {
 
 function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
   if (n.event === 'lead.created' || n.event === 'lead.updated') {
-    return (n.payload.title as string) ?? eventLabel(n.event)
+    return (n.payload.title as string) || eventLabel(n.event)
   }
   if (n.event === 'activity.created') {
     return (n.payload.content_text as string) || (n.payload.type as string) || 'Activity'
   }
   if (n.event === 'task.completed') {
-    return (n.payload.title as string) ?? 'Task completed'
+    return (n.payload.title as string) || 'Task completed'
   }
   if (n.event === 'lead.deleted') {
     return `Lead ${n.payload.id as string} deleted`

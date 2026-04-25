@@ -214,8 +214,8 @@ if _SENTRY_DSN:
 # Django Channels — channel layer (Redis when REDIS_URL is set, in-memory otherwise)
 # ---------------------------------------------------------------------------
 
-CHANNEL_LAYERS = (
-    {
+if _REDIS_URL_OVERRIDE:
+    CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
@@ -223,10 +223,9 @@ CHANNEL_LAYERS = (
             },
         }
     }
-    if _REDIS_URL_OVERRIDE
-    else {
+else:
+    CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         }
     }
-)
