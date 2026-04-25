@@ -22,6 +22,7 @@ from firms.auth import (
     MembershipRole,
     PermissionDenied,
     SubscriptionRequired,
+    check_tier_limits,
     require_active_subscription,
     require_membership,
 )
@@ -253,12 +254,15 @@ def list_leads(
     return 200, [_lead_out(lead) for lead in qs[offset:offset + page_size]]
 
 
-@router.post("/leads", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 403: ErrorOut})
+@router.post("/leads", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
 def create_lead(request, payload: LeadIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
         require_active_subscription(request.firm)
-    except (PermissionDenied, SubscriptionRequired) as exc:
+        check_tier_limits(request.firm)
+    except SubscriptionRequired as exc:
+        return 402, {"detail": str(exc)}
+    except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
     customer = None
