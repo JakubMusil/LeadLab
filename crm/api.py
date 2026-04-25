@@ -17,7 +17,7 @@ from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, Task
+from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, Notification, Task
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
@@ -27,6 +27,8 @@ from firms.auth import (
     require_membership,
 )
 from firms.models import Membership
+
+from crm.events import broadcast_event
 
 router = Router(tags=["crm"])
 
@@ -293,6 +295,7 @@ def create_lead(request, payload: LeadIn):
         value=payload.value,
         currency=payload.currency,
     )
+    broadcast_event(firm=request.firm, event='lead.created', payload=_lead_out(lead))
     return 201, _lead_out(lead)
 
 
@@ -347,6 +350,7 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
         else:
             lead.save()
 
+    broadcast_event(firm=request.firm, event='lead.updated', payload=_lead_out(lead))
     return 200, _lead_out(lead)
 
 
@@ -363,6 +367,7 @@ def delete_lead(request, lead_id: str):
         return 404, {"detail": "Lead not found."}
 
     lead.delete()
+    broadcast_event(firm=request.firm, event='lead.deleted', payload={'id': lead_id})
     return 204, None
 
 
@@ -466,6 +471,11 @@ def create_activity(request, payload: ActivityIn):
             # Trigger async Celery task (gracefully degrade if Celery not available)
             _trigger_email_task(activity, lead)
 
+    broadcast_event(
+        firm=request.firm,
+        event='activity.created',
+        payload=_activity_out(activity),
+    )
     return 201, _activity_out(activity)
 
 
@@ -601,6 +611,7 @@ def complete_task(request, task_id: str):
             metadata={"task_id": str(task.id), "title": task.title},
         )
 
+    broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task))
     return 200, _task_out(task)
 
 
@@ -991,3 +1002,84 @@ def overdue_tasks(request, page: int = 1, page_size: int = 20):
     )
     offset = (page - 1) * page_size
     return 200, [_overdue_task_out(t) for t in qs[offset:offset + page_size]]
+
+
+# ===========================================================================
+# NOTIFICATIONS (v1.5)
+# ===========================================================================
+
+class NotificationOut(Schema):
+    id: str
+    event: str
+    payload: Dict[str, Any]
+    is_read: bool
+    created_at: datetime
+
+
+def _notification_out(n: Notification) -> dict:
+    return {
+        "id": str(n.id),
+        "event": n.event,
+        "payload": n.payload,
+        "is_read": n.is_read,
+        "created_at": n.created_at,
+    }
+
+
+@router.get(
+    "/notifications",
+    auth=django_auth,
+    response={200: List[NotificationOut], 403: ErrorOut},
+)
+def list_notifications(request, unread_only: bool = False, page: int = 1, page_size: int = 30):
+    """List in-app notifications for the current user within the active firm, newest first."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = Notification.objects.filter(firm=request.firm, user=request.user).order_by("-created_at")
+    if unread_only:
+        qs = qs.filter(is_read=False)
+    offset = (page - 1) * page_size
+    return 200, [_notification_out(n) for n in qs[offset:offset + page_size]]
+
+
+@router.post(
+    "/notifications/mark-read",
+    auth=django_auth,
+    response={200: Dict[str, int], 403: ErrorOut},
+)
+def mark_notifications_read(request, ids: Optional[List[str]] = None):
+    """
+    Mark notifications as read.
+
+    If ``ids`` is provided, only those notifications are marked.
+    If ``ids`` is omitted or empty, all unread notifications for the user are marked.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = Notification.objects.filter(firm=request.firm, user=request.user, is_read=False)
+    if ids:
+        qs = qs.filter(id__in=ids)
+    updated = qs.update(is_read=True)
+    return 200, {"updated": updated}
+
+
+@router.get(
+    "/notifications/unread-count",
+    auth=django_auth,
+    response={200: Dict[str, int], 403: ErrorOut},
+)
+def notifications_unread_count(request):
+    """Return the number of unread notifications for the current user in the active firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    count = Notification.objects.filter(firm=request.firm, user=request.user, is_read=False).count()
+    return 200, {"count": count}

@@ -329,3 +329,52 @@ class Task(TenantModel):
     def __str__(self):
         done = "✓" if self.is_completed else "○"
         return f"{done} {self.title}"
+
+
+# ---------------------------------------------------------------------------
+# Notification
+# ---------------------------------------------------------------------------
+
+class Notification(models.Model):
+    """
+    A persistent in-app notification for a specific Firm member.
+
+    Created whenever a significant CRM event is broadcast over WebSocket so
+    that users who are offline at the time can still catch up via the bell panel.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        db_index=True,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    event = models.CharField(
+        max_length=50,
+        help_text="Event name, e.g. 'lead.created', 'activity.created', 'task.completed'.",
+    )
+    payload = models.JSONField(
+        default=dict,
+        help_text="Event-specific structured payload (mirrors the WebSocket message).",
+    )
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'notification'
+        verbose_name_plural = 'notifications'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['firm', 'user', 'is_read']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        read = '✓' if self.is_read else '○'
+        return f'{read} [{self.event}] → {self.user}'

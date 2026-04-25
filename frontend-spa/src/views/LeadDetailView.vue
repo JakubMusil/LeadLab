@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
+import { useWebSocket } from '@/composables/useWebSocket'
 import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
 const toast = useToast()
+const { on, off } = useWebSocket()
 
 const leadId = computed(() => route.params.id as string)
 type Tab = 'overview' | 'activities' | 'tasks' | 'files'
 const activeTab = ref<Tab>('overview')
 
 // Activities
-interface Activity { id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
+interface Activity { id: string; lead_id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
 const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
@@ -241,7 +243,29 @@ onMounted(async () => {
   if (activeTab.value === 'activities') await loadActivities()
   else if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
+
+  on('activity.created', onWsActivityCreated)
+  on('lead.updated', onWsLeadUpdated)
 })
+
+onUnmounted(() => {
+  off('activity.created', onWsActivityCreated)
+  off('lead.updated', onWsLeadUpdated)
+})
+
+function onWsActivityCreated(payload: Record<string, unknown>) {
+  const act = payload as unknown as Activity
+  // Only react if this activity belongs to the lead currently open
+  if (act.lead_id !== leadId.value) return
+  if (activities.value.find((a) => a.id === act.id)) return
+  activities.value.unshift(act)
+}
+
+function onWsLeadUpdated(payload: Record<string, unknown>) {
+  // Let the leads store handle the update; the currentLead ref is shared
+  // so the UI will re-render automatically.
+  void payload
+}
 
 async function switchTab(tab: Tab) {
   activeTab.value = tab

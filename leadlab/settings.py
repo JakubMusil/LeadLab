@@ -37,6 +37,7 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
     'crm',
     'frontend',
     'django.contrib.postgres',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'leadlab.wsgi.application'
+ASGI_APPLICATION = 'leadlab.asgi.application'
 
 
 # Database
@@ -206,3 +209,24 @@ if _SENTRY_DSN:
         dsn=_SENTRY_DSN,
         send_default_pii=False,
     )
+
+# ---------------------------------------------------------------------------
+# Django Channels — channel layer (Redis when REDIS_URL is set, in-memory otherwise)
+# ---------------------------------------------------------------------------
+
+CHANNEL_LAYERS = (
+    {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        }
+    }
+    if _REDIS_URL_OVERRIDE
+    else {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
+)
