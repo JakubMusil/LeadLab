@@ -37,9 +37,10 @@ async function handleSubmit() {
     setTimeout(() => router.push('/app/login'), 2000)
   } else {
     const errData = res.data as unknown as Record<string, unknown>
+    const tokenField = errData?.token
     errorMsg.value =
       (errData?.detail as string) ??
-      (errData?.token as string[])?.join(' ') ??
+      (Array.isArray(tokenField) ? tokenField.join(' ') : typeof tokenField === 'string' ? tokenField : undefined) ??
       'Reset failed. The link may have expired.'
   }
 }

@@ -40,9 +40,14 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = res.data
         return { ok: true }
       }
-      const msg =
-        (res.data as unknown as Record<string, string>)?.detail ??
-        'Invalid credentials. Please try again.'
+      const errData = res.data as unknown as Record<string, unknown>
+      const firstKey = Object.keys(errData ?? {}).at(0)
+      const firstVal = firstKey !== undefined ? errData[firstKey] : undefined
+      const msg = firstKey !== undefined
+        ? Array.isArray(firstVal)
+          ? `${firstKey}: ${firstVal[0]}`
+          : `${firstKey}: ${String(firstVal)}`
+        : 'Invalid credentials. Please try again.'
       return { ok: false, error: msg }
     } finally {
       loading.value = false
@@ -65,7 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
       if (res.ok) {
-        // Auto-login after register
+        // Login explicitly after successful registration
         const loginRes = await api.post<UserOut>('/api/v1/users/login', { email, password })
         if (loginRes.ok) {
           user.value = loginRes.data
@@ -73,9 +78,12 @@ export const useAuthStore = defineStore('auth', () => {
         return { ok: true }
       }
       const errData = res.data as unknown as Record<string, unknown>
-      const firstKey = Object.keys(errData ?? {})[0]
-      const msg = firstKey
-        ? `${firstKey}: ${(errData[firstKey] as string[])[0]}`
+      const firstKey = Object.keys(errData ?? {}).at(0)
+      const firstVal = firstKey !== undefined ? errData[firstKey] : undefined
+      const msg = firstKey !== undefined
+        ? Array.isArray(firstVal)
+          ? `${firstKey}: ${firstVal[0]}`
+          : `${firstKey}: ${String(firstVal)}`
         : 'Registration failed. Please try again.'
       return { ok: false, error: msg }
     } finally {

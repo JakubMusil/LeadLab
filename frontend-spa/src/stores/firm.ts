@@ -63,10 +63,14 @@ export const useFirmStore = defineStore('firm', () => {
         return { ok: true }
       }
       const errData = res.data as unknown as Record<string, unknown>
-      const firstKey = Object.keys(errData ?? {})[0]
-      const msg = firstKey
-        ? `${firstKey}: ${(errData[firstKey] as string[])[0]}`
-        : 'Failed to create workspace.'
+      const firstKey = Object.keys(errData ?? {}).at(0)
+      const firstVal = firstKey !== undefined ? errData[firstKey] : undefined
+      const msg =
+        firstKey !== undefined
+          ? Array.isArray(firstVal)
+            ? `${firstKey}: ${firstVal[0]}`
+            : `${firstKey}: ${String(firstVal)}`
+          : 'Failed to create workspace.'
       return { ok: false, error: msg }
     } finally {
       loading.value = false
