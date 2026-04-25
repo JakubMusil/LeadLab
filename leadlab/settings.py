@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
+import sentry_sdk
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -98,7 +100,8 @@ DATABASES = {
 AUTH_USER_MODEL = 'users.User'
 
 # Redis / Celery
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+_REDIS_URL_OVERRIDE = os.environ.get('REDIS_URL', '')
+REDIS_URL = _REDIS_URL_OVERRIDE or 'redis://localhost:6379/0'
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
@@ -164,3 +167,42 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ---------------------------------------------------------------------------
+# Cache (Redis when REDIS_URL env var is explicitly set; LocMemCache otherwise)
+# ---------------------------------------------------------------------------
+
+CACHES = {
+    'default': (
+        {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+        if _REDIS_URL_OVERRIDE
+        else {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    )
+}
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+# Set to False to disable rate limiting globally (e.g. in tests).
+RATELIMIT_ENABLE = os.environ.get('RATELIMIT_ENABLE', 'True') == 'True'
+
+# ---------------------------------------------------------------------------
+# Sentry — error tracking (optional; only initialised when SENTRY_DSN is set)
+# ---------------------------------------------------------------------------
+
+_SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        send_default_pii=False,
+    )
