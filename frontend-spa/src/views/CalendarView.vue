@@ -1,0 +1,185 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import listPlugin from '@fullcalendar/list'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { CalendarOptions, EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
+import { useTasksStore } from '@/stores/tasks'
+import { useLeadsStore } from '@/stores/leads'
+import { api } from '@/api'
+import { useToast } from '@/composables/useToast'
+
+const tasksStore = useTasksStore()
+const leadsStore = useLeadsStore()
+const toast = useToast()
+
+// New task form (triggered by clicking a date)
+const showNewTaskModal = ref(false)
+const newTaskTitle = ref('')
+const newTaskDueDate = ref('')
+const newTaskLeadId = ref('')
+const taskFormLoading = ref(false)
+const taskFormError = ref('')
+
+interface LeadOption { id: string; title: string }
+const leadOptions = ref<LeadOption[]>([])
+
+const events = computed<EventInput[]>(() => {
+  return tasksStore.tasks
+    .filter((t) => t.due_date)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      start: t.due_date!,
+      allDay: true,
+      backgroundColor: t.is_completed ? '#22c55e' : (new Date(t.due_date!) < new Date() ? '#ef4444' : '#3b82f6'),
+      borderColor: 'transparent',
+      textColor: '#fff',
+      extendedProps: { task: t },
+    }))
+})
+
+const calendarOptions = computed<CalendarOptions>(() => ({
+  plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+  initialView: 'dayGridMonth',
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,listWeek',
+  },
+  events: events.value,
+  selectable: true,
+  select: handleDateSelect,
+  eventClick: handleEventClick,
+  height: 'auto',
+}))
+
+function handleDateSelect(info: DateSelectArg) {
+  newTaskDueDate.value = info.startStr
+  newTaskTitle.value = ''
+  newTaskLeadId.value = ''
+  taskFormError.value = ''
+  showNewTaskModal.value = true
+}
+
+function handleEventClick(info: EventClickArg) {
+  const task = info.event.extendedProps['task'] as { is_completed: boolean } | undefined
+  if (task && !task.is_completed) {
+    tasksStore.completeTask(info.event.id).then((r) => {
+      if (!r.ok) toast.error(r.error ?? 'Failed to complete task.')
+      else toast.success('Task marked complete!')
+    })
+  }
+}
+
+async function submitNewTask() {
+  if (!newTaskTitle.value.trim()) { taskFormError.value = 'Title is required.'; return }
+  if (!newTaskLeadId.value) { taskFormError.value = 'Please select a lead.'; return }
+  taskFormLoading.value = true
+  taskFormError.value = ''
+  const result = await tasksStore.createTask({
+    lead_id: newTaskLeadId.value,
+    title: newTaskTitle.value.trim(),
+    due_date: newTaskDueDate.value ? new Date(newTaskDueDate.value).toISOString() : null,
+  })
+  taskFormLoading.value = false
+  if (result.ok) {
+    showNewTaskModal.value = false
+    toast.success('Task created.')
+  } else {
+    taskFormError.value = result.error ?? 'Failed to create task.'
+  }
+}
+
+const overdueCount = computed(() => tasksStore.tasks.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) < new Date()).length)
+const upcomingTasks = computed(() => {
+  const now = new Date()
+  const next7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  return tasksStore.tasks.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) >= now && new Date(t.due_date) <= next7)
+})
+
+onMounted(async () => {
+  await tasksStore.fetchTasks({ completed: false })
+  // Load leads for the task creation form
+  const res = await api.get<LeadOption[]>('/api/v1/crm/leads?page_size=100')
+  if (res.ok) leadOptions.value = res.data
+})
+</script>
+
+<template>
+  <div class="p-6 max-w-7xl mx-auto">
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <div class="text-xs text-gray-500 mb-1">Overdue Tasks</div>
+        <div class="text-2xl font-bold" :class="overdueCount > 0 ? 'text-red-600' : 'text-gray-400'">{{ overdueCount }}</div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <div class="text-xs text-gray-500 mb-1">Due This Week</div>
+        <div class="text-2xl font-bold text-gray-900">{{ upcomingTasks.length }}</div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-4 col-span-2 lg:col-span-1">
+        <div class="text-xs text-gray-500 mb-1">Total Open</div>
+        <div class="text-2xl font-bold text-gray-900">{{ tasksStore.tasks.filter(t => !t.is_completed).length }}</div>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <div v-if="tasksStore.loading" class="animate-pulse h-64 bg-gray-100 rounded-xl" />
+      <FullCalendar v-else :options="calendarOptions" />
+    </div>
+
+    <!-- Upcoming tasks panel -->
+    <div v-if="upcomingTasks.length > 0" class="mt-4 bg-white rounded-2xl border border-gray-100 p-4">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">Upcoming (next 7 days)</h3>
+      <div class="space-y-2">
+        <div v-for="task in upcomingTasks" :key="task.id" class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
+          <button
+            class="w-5 h-5 rounded border border-gray-300 hover:border-green-400 flex-shrink-0 flex items-center justify-center"
+            @click="tasksStore.completeTask(task.id)"
+          >
+            <span class="text-xs text-transparent hover:text-green-500">✓</span>
+          </button>
+          <span class="text-sm text-gray-800 flex-1">{{ task.title }}</span>
+          <span class="text-xs text-gray-400">{{ task.due_date ? new Date(task.due_date).toLocaleDateString() : '' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Task Modal -->
+  <Teleport to="body">
+    <div v-if="showNewTaskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showNewTaskModal = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">New Task</h3>
+        <div v-if="taskFormError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ taskFormError }}</div>
+        <form class="space-y-3" @submit.prevent="submitNewTask">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+            <input v-model="newTaskTitle" type="text" required autofocus class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Lead *</label>
+            <select v-model="newTaskLeadId" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
+              <option value="">Select a lead…</option>
+              <option v-for="l in leadOptions" :key="l.id" :value="l.id">{{ l.title }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Due Date</label>
+            <input v-model="newTaskDueDate" type="date" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 py-2 text-sm text-gray-600" @click="showNewTaskModal = false">Cancel</button>
+            <button type="submit" :disabled="taskFormLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+              {{ taskFormLoading ? 'Creating…' : 'Create' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </Teleport>
+</template>

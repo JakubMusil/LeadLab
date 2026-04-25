@@ -153,7 +153,7 @@ function switchFirm(id: string) {
 
         <!-- Page title -->
         <h1 class="text-base font-semibold text-gray-900 flex-shrink-0">
-          {{ (route.meta?.title as string) ?? 'Dashboard' }}
+          {{ (route.meta?.title as string) ?? 'LeadLab' }}
         </h1>
 
         <div class="flex-1" />

@@ -42,6 +42,42 @@ const router = createRouter({
         {
           path: 'dashboard',
           component: () => import('@/views/DashboardView.vue'),
+          meta: { title: 'Dashboard' },
+        },
+        {
+          path: 'leads',
+          component: () => import('@/views/LeadsView.vue'),
+          meta: { title: 'Leads' },
+        },
+        {
+          path: 'leads/:id',
+          component: () => import('@/views/LeadDetailView.vue'),
+          meta: { title: 'Lead Detail' },
+        },
+        {
+          path: 'customers',
+          component: () => import('@/views/CustomersView.vue'),
+          meta: { title: 'Customers' },
+        },
+        {
+          path: 'customers/:id',
+          component: () => import('@/views/CustomerDetailView.vue'),
+          meta: { title: 'Customer Detail' },
+        },
+        {
+          path: 'calendar',
+          component: () => import('@/views/CalendarView.vue'),
+          meta: { title: 'Calendar' },
+        },
+        {
+          path: 'team',
+          component: () => import('@/views/TeamView.vue'),
+          meta: { title: 'Team' },
+        },
+        {
+          path: 'settings',
+          component: () => import('@/views/SettingsView.vue'),
+          meta: { title: 'Settings' },
         },
       ],
     },
