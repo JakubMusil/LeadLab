@@ -58,9 +58,7 @@ The following core features are implemented and tested:
 - [ ] Usage limits per subscription tier (e.g. max leads on Free plan)
 
 ### v0.5 — Files & Attachments
-- [ ] Pre-signed S3 upload URL endpoint for file attachments
 - [ ] File attachment list and delete endpoints scoped to a Lead
-- [ ] Virus scanning hook (ClamAV or cloud service)
 
 ### v0.6 — Reporting
 - [ ] Lead pipeline summary endpoint (counts per status, total value)
