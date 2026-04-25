@@ -107,13 +107,14 @@ function fullName(c: CustomerOut) {
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900">Customers</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Customers</h2>
       <!-- Search -->
-      <div class="flex items-center flex-1 min-w-48 max-w-sm bg-gray-100 rounded-xl px-3 py-2 gap-2">
-        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center flex-1 min-w-48 max-w-sm bg-gray-100 dark:bg-gray-700 rounded-xl px-3 py-2 gap-2" role="search">
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <input v-model="searchInput" type="text" placeholder="Search customers…" class="bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none flex-1" />
+        <label for="customer-search" class="sr-only">Search customers</label>
+        <input id="customer-search" v-model="searchInput" type="search" placeholder="Search customers…" class="bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none flex-1" />
       </div>
       <button
         class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
@@ -123,25 +124,40 @@ function fullName(c: CustomerOut) {
 
     <!-- Skeleton -->
     <div v-if="store.loading && store.customers.length === 0" class="animate-pulse space-y-2">
-      <div v-for="i in 6" :key="i" class="h-14 bg-gray-100 rounded-xl" />
+      <div v-for="i in 6" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="store.customers.length === 0" class="text-center py-16 text-gray-400">
-      <div class="text-4xl mb-3">👥</div>
-      <p v-if="searchInput">No customers match your search.</p>
-      <p v-else>No customers yet. <button class="text-red-600 font-medium hover:underline" @click="openCreate">Add your first customer.</button></p>
+    <div v-else-if="store.customers.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+        <template v-if="searchInput">No customers match your search</template>
+        <template v-else>No customers yet</template>
+      </h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
+        <template v-if="searchInput">Try a different search term or clear the filter.</template>
+        <template v-else>Add your first customer to start managing your contacts.</template>
+      </p>
+      <button
+        v-if="!searchInput"
+        class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
+        @click="openCreate"
+      >Add first customer</button>
     </div>
 
     <!-- Table -->
-    <div v-else class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b border-gray-100 text-left">
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Name</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Company</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Email</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden lg:table-cell">Tags</th>
+          <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Name</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">Company</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Email</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Tags</th>
             <th class="px-4 py-3" />
           </tr>
         </thead>
@@ -149,26 +165,26 @@ function fullName(c: CustomerOut) {
           <tr
             v-for="c in store.customers"
             :key="c.id"
-            class="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+            class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
             @click.self="goToDetail(c.id)"
           >
             <td class="px-4 py-3" @click="goToDetail(c.id)">
-              <div class="font-medium text-gray-900">{{ fullName(c) }}</div>
-              <div v-if="c.phone" class="text-xs text-gray-400">{{ c.phone }}</div>
+              <div class="font-medium text-gray-900 dark:text-gray-100">{{ fullName(c) }}</div>
+              <div v-if="c.phone" class="text-xs text-gray-400 dark:text-gray-500">{{ c.phone }}</div>
             </td>
-            <td class="px-4 py-3 text-gray-500 hidden sm:table-cell" @click="goToDetail(c.id)">{{ c.company_name || '—' }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell" @click="goToDetail(c.id)">{{ c.company_name || '—' }}</td>
             <td class="px-4 py-3 hidden md:table-cell" @click="goToDetail(c.id)">
               <a v-if="c.email" :href="`mailto:${c.email}`" class="text-blue-600 hover:underline text-xs" @click.stop>{{ c.email }}</a>
-              <span v-else class="text-gray-400">—</span>
+              <span v-else class="text-gray-400 dark:text-gray-500">—</span>
             </td>
             <td class="px-4 py-3 hidden lg:table-cell" @click="goToDetail(c.id)">
-              <span v-for="tag in c.tags.slice(0, 3)" :key="tag" class="inline-block px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs mr-1">{{ tag }}</span>
-              <span v-if="c.tags.length > 3" class="text-xs text-gray-400">+{{ c.tags.length - 3 }}</span>
+              <span v-for="tag in c.tags.slice(0, 3)" :key="tag" class="inline-block px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs mr-1">{{ tag }}</span>
+              <span v-if="c.tags.length > 3" class="text-xs text-gray-400 dark:text-gray-500">+{{ c.tags.length - 3 }}</span>
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" @click.stop="openEdit(c)">✎</button>
-                <button class="p-1.5 rounded-lg hover:bg-red-50 text-red-500" @click.stop="confirmDeleteId = c.id">🗑</button>
+                <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" aria-label="Edit customer" @click.stop="openEdit(c)">✎</button>
+                <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" aria-label="Delete customer" @click.stop="confirmDeleteId = c.id">🗑</button>
               </div>
             </td>
           </tr>
@@ -176,17 +192,17 @@ function fullName(c: CustomerOut) {
       </table>
 
       <!-- Pagination -->
-      <div class="flex justify-between items-center px-4 py-3 border-t border-gray-100">
-        <span class="text-xs text-gray-400">Page {{ store.page }}</span>
+      <div class="flex justify-between items-center px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+        <span class="text-xs text-gray-400 dark:text-gray-500">Page {{ store.page }}</span>
         <div class="flex gap-2">
           <button
             v-if="store.page > 1"
-            class="px-3 py-1 text-xs rounded-lg border border-gray-200 hover:bg-gray-50"
+            class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             @click="store.fetchCustomers({ page: store.page - 1 })"
           >← Prev</button>
           <button
             v-if="store.hasMore"
-            class="px-3 py-1 text-xs rounded-lg border border-gray-200 hover:bg-gray-50"
+            class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             @click="store.fetchCustomers({ page: store.page + 1 })"
           >Next →</button>
         </div>
@@ -197,38 +213,38 @@ function fullName(c: CustomerOut) {
   <!-- Modal -->
   <Teleport to="body">
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showModal = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ editingCustomer ? 'Edit Customer' : 'New Customer' }}</h3>
-        <div v-if="formError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ formError }}</div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingCustomer ? 'Edit Customer' : 'New Customer'">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingCustomer ? 'Edit Customer' : 'New Customer' }}</h3>
+        <div v-if="formError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ formError }}</div>
         <form class="space-y-3" @submit.prevent="submitForm">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">First Name *</label>
-              <input v-model="formFirstName" type="text" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
+              <input v-model="formFirstName" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
-              <input v-model="formLastName" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+              <input v-model="formLastName" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
-            <input v-model="formEmail" type="email" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input v-model="formEmail" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-            <input v-model="formPhone" type="tel" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+            <input v-model="formPhone" type="tel" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Company</label>
-            <input v-model="formCompany" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Company</label>
+            <input v-model="formCompany" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
-            <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="vip, enterprise, priority" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (comma-separated)</label>
+            <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="vip, enterprise, priority" />
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50" @click="showModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">Cancel</button>
             <button type="submit" :disabled="formLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
               {{ formLoading ? 'Saving…' : (editingCustomer ? 'Save' : 'Create') }}
             </button>
@@ -241,12 +257,12 @@ function fullName(c: CustomerOut) {
   <!-- Delete confirm -->
   <Teleport to="body">
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
-        <div class="text-3xl mb-3">🗑</div>
-        <h3 class="text-base font-semibold text-gray-900 mb-2">Delete this customer?</h3>
-        <p class="text-sm text-gray-500 mb-4">This action cannot be undone.</p>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete customer confirmation">
+        <div class="text-3xl mb-3" aria-hidden="true">🗑</div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete this customer?</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">This action cannot be undone.</p>
         <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="confirmDeleteId = null">Cancel</button>
+          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">Cancel</button>
           <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">Delete</button>
         </div>
       </div>

@@ -11,10 +11,12 @@ const { toasts } = useToast()
         :key="toast.id"
         class="flex items-start gap-3 rounded-xl px-4 py-3 shadow-lg text-sm font-medium"
         :class="{
-          'bg-green-600 text-white': toast.type === 'success',
-          'bg-red-600 text-white': toast.type === 'error',
-          'bg-gray-800 text-white': toast.type === 'info',
+          'bg-green-600 dark:bg-green-700 text-white': toast.type === 'success',
+          'bg-red-600 dark:bg-red-700 text-white': toast.type === 'error',
+          'bg-gray-800 dark:bg-gray-700 text-white': toast.type === 'info',
         }"
+        role="alert"
+        aria-live="assertive"
       >
         <span v-if="toast.type === 'success'">✓</span>
         <span v-else-if="toast.type === 'error'">✕</span>

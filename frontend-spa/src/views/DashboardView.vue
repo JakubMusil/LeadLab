@@ -114,38 +114,38 @@ onUnmounted(() => {
     <!-- Skeleton -->
     <div v-if="loading && !stats" class="animate-pulse space-y-4">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div v-for="i in 4" :key="i" class="h-24 bg-gray-200 rounded-2xl" />
+        <div v-for="i in 4" :key="i" class="h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl" />
       </div>
       <div class="grid lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-2 h-64 bg-gray-200 rounded-2xl" />
-        <div class="h-64 bg-gray-200 rounded-2xl" />
+        <div class="lg:col-span-2 h-64 bg-gray-200 dark:bg-gray-700 rounded-2xl" />
+        <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-2xl" />
       </div>
     </div>
 
     <template v-else-if="stats">
       <!-- Stat cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Leads</div>
-          <div class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total_leads }}</div>
-          <div class="text-xs text-gray-400 mt-1">{{ (stats.conversion_rate * 100).toFixed(1) }}% conversion</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Leads</div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_leads }}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ (stats.conversion_rate * 100).toFixed(1) }}% conversion</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Customers</div>
-          <div class="text-3xl font-bold text-gray-900 mt-1">{{ stats.total_customers }}</div>
-          <div class="text-xs text-gray-400 mt-1">in address book</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Customers</div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_customers }}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">in address book</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pipeline</div>
-          <div class="text-2xl font-bold text-gray-900 mt-1">{{ fmtCurrency(stats.pipeline_value) }}</div>
-          <div class="text-xs text-gray-400 mt-1">Won: {{ fmtCurrency(stats.won_value) }}</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pipeline</div>
+          <div class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ fmtCurrency(stats.pipeline_value) }}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Won: {{ fmtCurrency(stats.won_value) }}</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Open Tasks</div>
-          <div class="text-3xl font-bold mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-600' : 'text-gray-900'">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Open Tasks</div>
+          <div class="text-3xl font-bold mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'">
             {{ stats.total_tasks_pending }}
           </div>
-          <div class="text-xs mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-500' : 'text-gray-400'">
+          <div class="text-xs mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'">
             {{ stats.total_tasks_overdue }} overdue
           </div>
         </div>
@@ -154,28 +154,28 @@ onUnmounted(() => {
       <!-- Chart + Recent activity -->
       <div class="grid lg:grid-cols-3 gap-4">
         <!-- Pipeline bar chart -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4">Pipeline by Status</h3>
+        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Status</h3>
           <VChart :option="chartOption" style="height: 220px" autoresize />
         </div>
 
         <!-- Recent activities -->
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4">Recent Activity</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
           <div v-if="stats.recent_activities.length === 0" class="text-sm text-gray-400 text-center py-8">
             No recent activity
           </div>
           <ul class="space-y-3 overflow-y-auto max-h-56">
             <li v-for="act in stats.recent_activities" :key="act.id" class="flex items-start gap-2.5">
-              <span class="text-base mt-0.5 flex-shrink-0">{{ activityIcon(act.type) }}</span>
+              <span class="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{{ activityIcon(act.type) }}</span>
               <div class="min-w-0">
-                <p class="text-xs text-gray-700 truncate">
+                <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
                   <RouterLink v-if="act.lead_id" :to="`/app/leads/${act.lead_id}`" class="font-medium hover:text-red-600">
                     {{ (act as ActivityItem & { lead_title?: string }).lead_title ?? 'Lead' }}
                   </RouterLink>
                   <span v-if="act.content_text"> — {{ act.content_text }}</span>
                 </p>
-                <p class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatTime(act.created_at) }}</p>
               </div>
             </li>
           </ul>
@@ -183,18 +183,18 @@ onUnmounted(() => {
       </div>
 
       <!-- Status breakdown -->
-      <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Status Breakdown</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Status Breakdown</h3>
         <div class="flex flex-wrap gap-3">
           <RouterLink
             v-for="[status, count] in Object.entries(stats.leads_by_status)"
             :key="status"
             :to="`/app/leads?status=${status}`"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
           >
             <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: STATUS_COLORS[status] ?? '#6b7280' }" />
-            <span class="text-sm text-gray-700">{{ STATUS_LABELS[status] ?? status }}</span>
-            <span class="text-sm font-semibold text-gray-900">{{ count }}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ STATUS_LABELS[status] ?? status }}</span>
+            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ count }}</span>
           </RouterLink>
         </div>
       </div>

@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "overview": "Přehled",
+    "leads": "Leady",
+    "customers": "Zákazníci",
+    "calendar": "Kalendář",
+    "team": "Tým",
+    "settings": "Nastavení"
+  },
+  "auth": {
+    "welcomeBack": "Vítejte zpět",
+    "signInSubtitle": "Přihlaste se ke svému účtu",
+    "email": "E-mail",
+    "password": "Heslo",
+    "forgotPassword": "Zapomenuté heslo?",
+    "signIn": "Přihlásit se",
+    "signingIn": "Přihlašování…",
+    "noAccount": "Nemáte účet?",
+    "signUp": "Zaregistrovat se"
+  },
+  "dashboard": {
+    "totalLeads": "Celkem leadů",
+    "customers": "Zákazníci",
+    "pipeline": "Pipeline",
+    "openTasks": "Otevřené úkoly",
+    "pipelineByStatus": "Pipeline podle stavu",
+    "recentActivity": "Nedávná aktivita",
+    "statusBreakdown": "Přehled stavů",
+    "noRecentActivity": "Žádná nedávná aktivita",
+    "conversion": "{rate}% konverze",
+    "inAddressBook": "v adresáři",
+    "overdue": "{count} po termínu",
+    "won": "Vyhráno: {value}"
+  },
+  "leads": {
+    "title": "Leady",
+    "newLead": "+ Nový lead",
+    "table": "Tabulka",
+    "kanban": "Kanban",
+    "allStatuses": "Všechny stavy",
+    "allSources": "Všechny zdroje",
+    "noLeadsTitle": "Zatím žádné leady",
+    "noLeadsSubtitle": "Začněte vytvořením prvního leadu pro sledování obchodních příležitostí.",
+    "createFirstLead": "Vytvořit první lead",
+    "dropHere": "Přetáhněte sem"
+  }
+}
