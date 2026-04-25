@@ -83,7 +83,7 @@ def _customer_out(c: Customer) -> dict:
 
 
 @router.get("/customers", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut})
-def list_customers(request, search: str = ""):
+def list_customers(request, search: str = "", page: int = 1, page_size: int = 20):
     try:
         require_membership(request)
     except Exception as exc:
@@ -92,13 +92,14 @@ def list_customers(request, search: str = ""):
     qs = Customer.objects.filter(firm=request.firm)
     if search:
         qs = qs.filter(
-            **{"first_name__icontains": search}
-        ) | Customer.objects.filter(
-            firm=request.firm, last_name__icontains=search
-        ) | Customer.objects.filter(
-            firm=request.firm, email__icontains=search
+            Q(first_name__icontains=search)
+            | Q(last_name__icontains=search)
+            | Q(email__icontains=search)
+            | Q(company_name__icontains=search)
+            | Q(phone__icontains=search)
         )
-    return 200, [_customer_out(c) for c in qs]
+    offset = (page - 1) * page_size
+    return 200, [_customer_out(c) for c in qs[offset:offset + page_size]]
 
 
 @router.post("/customers", auth=django_auth, response={201: CustomerOut, 403: ErrorOut})
@@ -219,7 +220,17 @@ def _lead_out(lead: Lead) -> dict:
 
 
 @router.get("/leads", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
-def list_leads(request, status: str = "", assigned_to: str = ""):
+def list_leads(
+    request,
+    status: str = "",
+    assigned_to: str = "",
+    source: str = "",
+    tag: str = "",
+    created_after: Optional[datetime] = None,
+    created_before: Optional[datetime] = None,
+    page: int = 1,
+    page_size: int = 20,
+):
     try:
         require_membership(request)
     except Exception as exc:
@@ -230,7 +241,16 @@ def list_leads(request, status: str = "", assigned_to: str = ""):
         qs = qs.filter(status=status)
     if assigned_to:
         qs = qs.filter(assigned_to_id=assigned_to)
-    return 200, [_lead_out(lead) for lead in qs]
+    if source:
+        qs = qs.filter(source=source)
+    if tag:
+        qs = qs.filter(customer__tags__icontains=tag)
+    if created_after:
+        qs = qs.filter(created_at__gte=created_after)
+    if created_before:
+        qs = qs.filter(created_at__lte=created_before)
+    offset = (page - 1) * page_size
+    return 200, [_lead_out(lead) for lead in qs[offset:offset + page_size]]
 
 
 @router.post("/leads", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 403: ErrorOut})
@@ -389,7 +409,7 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 404, {"detail": "Lead not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(lead=lead).order_by("-created_at")[offset: offset + page_size]
+    activities = Activity.objects.filter(lead=lead).order_by("-created_at")[offset:offset + page_size]
     return 200, [_activity_out(a) for a in activities]
 
 
@@ -493,7 +513,7 @@ def _task_out(t: Task) -> dict:
 
 
 @router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
-def list_tasks(request, completed: Optional[bool] = None):
+def list_tasks(request, completed: Optional[bool] = None, page: int = 1, page_size: int = 20):
     try:
         require_membership(request)
     except Exception as exc:
@@ -502,7 +522,8 @@ def list_tasks(request, completed: Optional[bool] = None):
     qs = Task.objects.filter(firm=request.firm)
     if completed is not None:
         qs = qs.filter(is_completed=completed)
-    return 200, [_task_out(t) for t in qs]
+    offset = (page - 1) * page_size
+    return 200, [_task_out(t) for t in qs[offset:offset + page_size]]
 
 
 @router.post("/tasks", auth=django_auth, response={201: TaskOut, 400: ErrorOut, 403: ErrorOut})

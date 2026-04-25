@@ -46,7 +46,7 @@ class ErrorOut(Schema):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response={201: UserOut, 400: ErrorOut})
+@router.post("/register", auth=None, response={201: UserOut, 400: ErrorOut})
 def register(request, payload: RegisterIn):
     """Create a new user account."""
     if User.objects.filter(email=payload.email).exists():
@@ -69,7 +69,7 @@ def register(request, payload: RegisterIn):
     }
 
 
-@router.post("/login", response={200: UserOut, 401: ErrorOut})
+@router.post("/login", auth=None, response={200: UserOut, 401: ErrorOut})
 def login_view(request, payload: LoginIn):
     """Authenticate and start a session."""
     user = authenticate(request, username=payload.email, password=payload.password)
