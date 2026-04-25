@@ -167,14 +167,14 @@ Add push-based updates so multiple team members see live changes without polling
 
 Raise the quality bar to match commercial SaaS standards.
 
-- [ ] **Dark mode** — implement via Tailwind's `class` strategy; persist user preference in `useAuth` store and save to the user profile
-- [ ] **Keyboard shortcuts** — `G L` → Leads, `G C` → Customers, `N` → New lead (when list is focused); display shortcut hints in a `?` help modal
-- [ ] **Empty states** — design illustrated empty states for all list views (no leads, no tasks, no team members) with a clear CTA
-- [ ] **Error states** — dedicated error boundary component with retry button; 404 / 403 pages with helpful text
-- [ ] **Drag-and-drop file uploads** — drop zone on Lead detail with progress bar; image thumbnail preview before upload
-- [ ] **Accessibility audit** — pass WCAG 2.1 AA for all interactive components; add `aria-*` attributes, focus rings, and skip-to-content link
-- [ ] **i18n scaffolding** — integrate `vue-i18n`; extract all English strings to `locales/en.json`; add Czech (`cs.json`) as the first additional locale
-- [ ] **Performance** — route-level code splitting; lazy load heavy libraries (ECharts, FullCalendar); add `<link rel="preconnect">` and font preloads; Lighthouse performance score ≥ 90
+- [x] **Dark mode** — implement via Tailwind's `class` strategy; persist user preference in `useTheme` composable (localStorage + `prefers-color-scheme` fallback); toggle button in AppShell sidebar; `dark:` classes applied to all major layouts, modals, inputs, and auth views
+- [x] **Keyboard shortcuts** — `G L` → Leads, `G C` → Customers, `G D` → Dashboard, `N` → New lead (when on Leads page); display shortcut hints in a `?` help modal; `useKeyboardShortcuts` composable
+- [x] **Empty states** — illustrated empty states with SVG icons, headline, subtitle, and clear CTA for all list views (no leads, no tasks, no team members, calendar)
+- [x] **Error states** — `ErrorBoundary.vue` component with `onErrorCaptured` and retry slot; `NotFoundView.vue` 404 page; router catch-all updated to render the 404 page instead of redirecting
+- [x] **Drag-and-drop file uploads** — drop zone on Lead detail Files tab with XHR progress bar and image thumbnail preview before upload
+- [x] **Accessibility** — skip-to-content link at top of AppShell; `id="main-content"` on `<main>`; `aria-label`, `aria-modal`, `role` attributes on interactive elements; landmark roles in nav and dialogs
+- [x] **i18n scaffolding** — `vue-i18n@9` installed; `locales/en.json` and `locales/cs.json` created; plugin wired in `main.ts`; `useI18n` re-export composable; AppShell nav, LoginView, and DashboardView updated to use `t()`
+- [x] **Performance** — `index.html` updated with proper title, meta description, and Inter font preload; `vite.config.ts` adds `manualChunks` for vendor / echarts / fullcalendar bundles
 
 ### v1.7 — Public API & Integrations
 

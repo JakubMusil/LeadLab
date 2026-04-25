@@ -84,6 +84,9 @@ def _create_notifications(firm, event: str, payload: Dict[str, Any]) -> None:
             for m in memberships
         ]
         if notifications:
+            # ignore_conflicts=True silently skips if a race condition causes two
+            # concurrent requests to insert the same notification (UUID primary key
+            # makes true conflicts very unlikely, but it guards against test flakiness).
             Notification.objects.bulk_create(notifications, ignore_conflicts=True)
     except Exception:
         logger.exception('Failed to persist notifications for event %s', event)
