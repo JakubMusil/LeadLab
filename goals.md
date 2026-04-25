@@ -42,10 +42,10 @@ The following core features are implemented and tested:
 ## Planned Milestones
 
 ### v0.2 — Polish & Coverage
-- [ ] Add comprehensive unit and integration tests for all API endpoints
-- [ ] Add pagination support to list endpoints (customers, leads, tasks)
-- [ ] Implement lead filtering by date range, source, and tag
-- [ ] Improve search across customers (company name, phone)
+- [x] Add comprehensive unit and integration tests for all API endpoints
+- [x] Add pagination support to list endpoints (customers, leads, tasks)
+- [x] Implement lead filtering by date range, source, and tag
+- [x] Improve search across customers (company name, phone)
 
 ### v0.3 — Invitations & Onboarding
 - [ ] Email-based invitation flow (send invite link, accept, create account)

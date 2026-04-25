@@ -181,3 +181,161 @@ class FirmAuthTest(TestCase):
         for i in range(100):
             Lead.objects.create(firm=self.firm, title=f"Lead {i}")
         check_tier_limits(self.firm)  # no exception
+
+
+# ---------------------------------------------------------------------------
+# Firms API integration tests
+# ---------------------------------------------------------------------------
+
+import json
+
+
+class FirmsAPIFixtureMixin:
+    """Sets up an owner user, a firm, and logs in via the test client."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="owner@api.com", password="pass")
+        self.worker = User.objects.create_user(email="worker@api.com", password="pass")
+        self.firm = Firm.objects.create(name="API Firm")
+        self.owner_membership = Membership.objects.create(
+            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+        )
+        self.worker_membership = Membership.objects.create(
+            user=self.worker, firm=self.firm, role=MembershipRole.WORKER
+        )
+        self.client.login(username="owner@api.com", password="pass")
+
+    def firm_headers(self):
+        return {"HTTP_X_FIRM_ID": str(self.firm.id)}
+
+    def _post(self, url, data, **kwargs):
+        return self.client.post(
+            url, data=json.dumps(data), content_type="application/json", **kwargs
+        )
+
+    def _delete(self, url, **kwargs):
+        return self.client.delete(url, content_type="application/json", **kwargs)
+
+
+class ListFirmsAPITest(FirmsAPIFixtureMixin, TestCase):
+    URL = "/api/v1/firms/"
+
+    def test_list_firms_returns_own_firms(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        ids = [f["id"] for f in resp.json()]
+        self.assertIn(str(self.firm.id), ids)
+
+    def test_list_firms_unauthenticated_returns_error(self):
+        self.client.logout()
+        resp = self.client.get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
+
+
+class CreateFirmAPITest(FirmsAPIFixtureMixin, TestCase):
+    URL = "/api/v1/firms/"
+
+    def test_create_firm_returns_201(self):
+        resp = self._post(self.URL, {"name": "Brand New Firm"})
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["name"], "Brand New Firm")
+        self.assertTrue(Firm.objects.filter(name="Brand New Firm").exists())
+
+    def test_create_firm_makes_creator_owner(self):
+        resp = self._post(self.URL, {"name": "Owned Firm"})
+        self.assertEqual(resp.status_code, 201)
+        firm = Firm.objects.get(name="Owned Firm")
+        self.assertTrue(
+            Membership.objects.filter(user=self.owner, firm=firm, role=MembershipRole.OWNER).exists()
+        )
+
+
+class GetFirmAPITest(FirmsAPIFixtureMixin, TestCase):
+    def test_get_firm_returns_details(self):
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["name"], "API Firm")
+
+    def test_get_firm_non_member_returns_403(self):
+        outsider = User.objects.create_user(email="outsider@api.com", password="pass")
+        self.client.login(username="outsider@api.com", password="pass")
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_get_nonexistent_firm_returns_404(self):
+        import uuid
+        resp = self.client.get(f"/api/v1/firms/{uuid.uuid4()}")
+        self.assertEqual(resp.status_code, 404)
+
+
+class DeleteFirmAPITest(FirmsAPIFixtureMixin, TestCase):
+    def test_delete_firm_owner_succeeds(self):
+        resp = self._delete(f"/api/v1/firms/{self.firm.id}")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Firm.objects.filter(id=self.firm.id).exists())
+
+    def test_delete_firm_worker_returns_403(self):
+        self.client.login(username="worker@api.com", password="pass")
+        resp = self._delete(f"/api/v1/firms/{self.firm.id}")
+        self.assertEqual(resp.status_code, 403)
+
+
+class ListMembersAPITest(FirmsAPIFixtureMixin, TestCase):
+    def test_list_members_returns_all_members(self):
+        resp = self.client.get(f"/api/v1/firms/{self.firm.id}/members")
+        self.assertEqual(resp.status_code, 200)
+        emails = [m["user_email"] for m in resp.json()]
+        self.assertIn("owner@api.com", emails)
+        self.assertIn("worker@api.com", emails)
+
+
+class InviteMemberAPITest(FirmsAPIFixtureMixin, TestCase):
+    URL_TPL = "/api/v1/firms/{firm_id}/members"
+
+    def test_invite_existing_user_as_worker(self):
+        new_user = User.objects.create_user(email="invite@api.com", password="pass")
+        resp = self._post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            {"email": "invite@api.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(Membership.objects.filter(user=new_user, firm=self.firm).exists())
+
+    def test_invite_already_member_returns_400(self):
+        resp = self._post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            {"email": "worker@api.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_invite_nonexistent_user_returns_400(self):
+        resp = self._post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            {"email": "nobody@api.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_invite_worker_cannot_invite(self):
+        new_user = User.objects.create_user(email="x@api.com", password="pass")
+        self.client.login(username="worker@api.com", password="pass")
+        resp = self._post(
+            self.URL_TPL.format(firm_id=self.firm.id),
+            {"email": "x@api.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+
+class RemoveMemberAPITest(FirmsAPIFixtureMixin, TestCase):
+    def test_remove_worker_succeeds(self):
+        resp = self._delete(
+            f"/api/v1/firms/{self.firm.id}/members/{self.worker_membership.id}"
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Membership.objects.filter(id=self.worker_membership.id).exists())
+
+    def test_remove_owner_returns_403(self):
+        resp = self._delete(
+            f"/api/v1/firms/{self.firm.id}/members/{self.owner_membership.id}"
+        )
+        self.assertEqual(resp.status_code, 403)
+
