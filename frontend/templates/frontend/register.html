@@ -139,7 +139,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
     // Auto-login after registration
     const loginRes = await Auth.login(email, password);
     if (loginRes && loginRes.ok) {
-      window.location.href = '/dashboard/';
+      window.location.href = '/onboarding/';
     } else {
       window.location.href = '/login/';
     }

@@ -16,7 +16,7 @@ LeadLab aims to be a lightweight, developer-first multi-tenant CRM backend that 
 2. **Explicit over implicit** — Permission checks (`require_membership`, `require_active_subscription`) are called at the top of every endpoint; middleware only resolves the current Firm, it never silently allows or denies requests.
 3. **Thin models, fat API** — Business logic lives in the API layer (transactions, side-effects such as activity logging, Celery dispatch) rather than in model `save()` overrides, making the flow easy to trace.
 4. **Graceful degradation** — Optional services (Celery, Redis, S3, Stripe) should never cause hard failures when not configured; the application should log and continue.
-5. **API-first** — The project exposes a documented REST API (Django Ninja / OpenAPI) as its primary interface; there is no coupled frontend.
+5. **API-first** — The project exposes a documented REST API (Django Ninja / OpenAPI) as its primary interface. A lightweight Django-rendered frontend is provided as a convenience layer on top of this API.
 
 ---
 
@@ -72,10 +72,27 @@ The following core features are implemented and tested:
 - [x] Health check endpoint for load balancer probes
 - [x] CI/CD pipeline with linting, tests, and coverage reporting
 
+### v1.1 — Built-in Frontend
+- [x] Landing page with branding and call-to-action
+- [x] Registration and login pages with client-side validation
+- [x] Forgot password and password reset pages
+- [x] Email-based invitation acceptance page (supports new and existing users)
+- [x] Post-registration onboarding flow with workspace creation
+- [x] Dashboard overview with live stats (leads, customers, tasks, pipeline value) and Chart.js bar chart
+- [x] Leads list page with status filter, create/edit modal, delete, and inline activity timeline
+- [x] Standalone lead detail page with edit, status update, tasks, file attachments, and paginated activity timeline
+- [x] Customers list page with live search, create/edit modal, and delete
+- [x] Standalone customer detail page with contact info, tags, metadata, and mailto/tel quick actions
+- [x] Task calendar page (FullCalendar) with overdue/upcoming task panels and task creation form
+- [x] Team page with member list, role badges, member removal, and invite form
+- [x] Settings page with profile display, workspace info, new workspace creation, and sign-out
+- [x] Responsive sidebar layout with active nav highlighting, global lead search, and notification dropdown
+- [x] Multi-workspace selector with automatic firmId persistence via localStorage
+- [x] Toast notifications and global JS error boundary
+
 ---
 
 ## Out of Scope (for now)
 
-- A bundled frontend / SPA — LeadLab is intentionally backend-only; consumers build their own UI.
 - Complex workflow automation (sequences, drip campaigns) — may be added as an optional plugin in a future major version.
 - LDAP / SSO — session-based auth is sufficient for the target audience; OAuth2 is a potential future addition.

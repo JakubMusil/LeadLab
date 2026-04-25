@@ -1,0 +1,181 @@
+{% extends "frontend/base.html" %}
+{% load static %}
+
+{% block title %}Accept invitation – LeadLab{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex">
+  <!-- Left branding panel -->
+  <div class="hidden lg:flex flex-col justify-between w-1/2 hero-gradient text-white p-12">
+    <a href="/" class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <span class="font-bold text-xl">LeadLab</span>
+    </a>
+    <div>
+      <h2 class="text-4xl font-extrabold leading-snug mb-4">You've been<br>invited to<br><span class="text-red-400">join a team.</span></h2>
+      <p class="text-gray-300 text-lg">Accept to start collaborating right away.</p>
+    </div>
+    <div class="text-gray-500 text-sm">&copy; 2026 LeadLab</div>
+  </div>
+
+  <!-- Right form -->
+  <div class="flex-1 flex items-center justify-center bg-white px-6 py-12">
+    <div class="w-full max-w-sm">
+      <div class="lg:hidden flex items-center gap-2 mb-8">
+        <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="font-bold text-xl text-gray-900">LeadLab</span>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading-state" class="text-center py-10">
+        <svg class="animate-spin w-8 h-8 text-red-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <p class="text-gray-400 text-sm">Loading invitation…</p>
+      </div>
+
+      <!-- Error state -->
+      <div id="error-state" class="hidden text-center py-10">
+        <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Invitation unavailable</h2>
+        <p id="error-detail" class="text-gray-500 text-sm mb-6">This invitation is invalid, expired, or already used.</p>
+        <a href="/register/" class="btn-primary font-semibold px-6 py-2.5 rounded-xl text-sm inline-block">Create free account</a>
+      </div>
+
+      <!-- Accept form -->
+      <div id="accept-state" class="hidden">
+        <!-- Invite info banner -->
+        <div class="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-6">
+          <div class="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">You're invited to join</div>
+          <div class="font-bold text-gray-900 text-lg" id="invite-firm-name">—</div>
+          <div class="text-sm text-gray-500 mt-0.5">as <span id="invite-role" class="font-semibold capitalize text-gray-700">—</span></div>
+          <div class="text-xs text-gray-400 mt-1">Sent to: <span id="invite-email">—</span></div>
+        </div>
+
+        <h1 class="text-xl font-extrabold text-gray-900 mb-1">Accept invitation</h1>
+        <p id="invite-subtitle" class="text-gray-500 text-sm mb-6">Enter your password to join the workspace.</p>
+
+        <div id="form-error" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+
+        <form id="accept-form" class="space-y-4">
+          {% csrf_token %}
+
+          <!-- Name fields shown only for new users -->
+          <div id="name-fields" class="hidden grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">First name</label>
+              <input id="first-name" type="text" autocomplete="given-name" placeholder="Jane"
+                     class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm input-red focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Last name</label>
+              <input id="last-name" type="text" autocomplete="family-name" placeholder="Smith"
+                     class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm input-red focus:outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" id="password-label">Password</label>
+            <input id="password" type="password" required autocomplete="current-password"
+                   placeholder="Your password"
+                   class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm input-red focus:outline-none">
+          </div>
+
+          <button type="submit" id="submit-btn"
+                  class="w-full btn-primary font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+            <span id="btn-text">Accept &amp; join</span>
+            <svg id="btn-spinner" class="hidden animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- Success state -->
+      <div id="success-state" class="hidden text-center py-10">
+        <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">You're in!</h2>
+        <p class="text-gray-500 text-sm mb-6">You've joined <strong id="success-firm">—</strong> as <span id="success-role" class="capitalize font-medium">—</span>. Redirecting…</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const INVITE_TOKEN = '{{ token }}';
+let inviteData = null;
+
+async function loadInvite() {
+  const res = await Invitations.preview(INVITE_TOKEN);
+  document.getElementById('loading-state').classList.add('hidden');
+
+  if (!res || !res.ok) {
+    const detail = (res && res.data && res.data.detail) ? res.data.detail : 'This invitation is invalid or has expired.';
+    document.getElementById('error-detail').textContent = detail;
+    document.getElementById('error-state').classList.remove('hidden');
+    return;
+  }
+
+  inviteData = res.data;
+  document.getElementById('invite-firm-name').textContent = inviteData.firm_name;
+  document.getElementById('invite-role').textContent = inviteData.role;
+  document.getElementById('invite-email').textContent = inviteData.email;
+  document.getElementById('accept-state').classList.remove('hidden');
+}
+
+document.getElementById('accept-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const spinner = document.getElementById('btn-spinner');
+  const errEl = document.getElementById('form-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  spinner.classList.remove('hidden');
+
+  const data = {
+    password: document.getElementById('password').value,
+    first_name: document.getElementById('first-name').value.trim(),
+    last_name: document.getElementById('last-name').value.trim(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  };
+
+  const res = await Invitations.accept(INVITE_TOKEN, data);
+  btn.disabled = false;
+  spinner.classList.add('hidden');
+
+  if (res && res.ok) {
+    document.getElementById('success-firm').textContent = res.data.firm_name;
+    document.getElementById('success-role').textContent = res.data.role;
+    document.getElementById('accept-state').classList.add('hidden');
+    document.getElementById('success-state').classList.remove('hidden');
+    setTimeout(() => { window.location.href = '/login/'; }, 2500);
+  } else {
+    const msg = (res && res.data && res.data.detail) ? res.data.detail : 'Failed to accept invitation. Please try again.';
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+  }
+});
+
+loadInvite();
+</script>
+{% endblock %}
