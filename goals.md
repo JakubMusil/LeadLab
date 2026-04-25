@@ -61,9 +61,9 @@ The following core features are implemented and tested:
 - [x] File attachment list and delete endpoints scoped to a Lead
 
 ### v0.6 — Reporting
-- [ ] Lead pipeline summary endpoint (counts per status, total value)
-- [ ] Activity feed endpoint across all leads for a Firm
-- [ ] Task overdue report
+- [x] Lead pipeline summary endpoint (counts per status, total value)
+- [x] Activity feed endpoint across all leads for a Firm
+- [x] Task overdue report
 
 ### v1.0 — Production Hardening
 - [ ] Docker Compose setup for local development (Postgres, Redis, app, worker)

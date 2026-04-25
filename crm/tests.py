@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.utils import timezone
+import datetime as dt
 
 from crm.models import Activity, ActivityType, Customer, Lead, LeadSource, LeadStatus, Task
 from firms.models import Firm, Membership, MembershipRole
@@ -858,4 +859,203 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
             f"/api/v1/crm/leads/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# v0.6 Reporting API tests
+# ---------------------------------------------------------------------------
+
+
+class PipelineSummaryAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/reports/pipeline"
+
+    def test_returns_200(self):
+        resp = self._get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_all_statuses_present(self):
+        resp = self._get(self.URL)
+        data = resp.json()
+        returned_statuses = {row["status"] for row in data["statuses"]}
+        from crm.models import LeadStatus
+        expected = {s.value for s in LeadStatus}
+        self.assertEqual(returned_statuses, expected)
+
+    def test_counts_reflect_leads(self):
+        # setUp creates one NEW lead; add a WON lead with a value
+        Lead.objects.create(firm=self.firm, title="Won Deal", status=LeadStatus.WON, value="5000.00")
+        resp = self._get(self.URL)
+        data = resp.json()
+        rows_by_status = {row["status"]: row for row in data["statuses"]}
+        self.assertEqual(rows_by_status["new"]["count"], 1)
+        self.assertEqual(rows_by_status["won"]["count"], 1)
+        self.assertEqual(rows_by_status["lost"]["count"], 0)
+
+    def test_total_value_sums_all_statuses(self):
+        Lead.objects.create(firm=self.firm, title="L1", status=LeadStatus.NEW, value="1000.00")
+        Lead.objects.create(firm=self.firm, title="L2", status=LeadStatus.WON, value="2000.00")
+        resp = self._get(self.URL)
+        data = resp.json()
+        self.assertAlmostEqual(data["total_value"], 3000.0, places=2)
+
+    def test_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Report Other Firm")
+        Lead.objects.create(firm=other_firm, title="Foreign Lead", status=LeadStatus.WON)
+        resp = self._get(self.URL)
+        data = resp.json()
+        rows_by_status = {row["status"]: row for row in data["statuses"]}
+        # Our firm only has one NEW lead from setUp
+        self.assertEqual(rows_by_status["won"]["count"], 0)
+
+    def test_requires_authentication(self):
+        self.client.logout()
+        resp = self._get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
+
+    def test_requires_firm_header(self):
+        resp = self.client.get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
+
+
+class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/reports/activities"
+
+    def setUp(self):
+        super().setUp()
+        # Create a second lead so we can verify cross-lead aggregation
+        self.lead2 = Lead.objects.create(firm=self.firm, title="Second Lead")
+        self.a1 = Activity.objects.create(
+            lead=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="First"
+        )
+        self.a2 = Activity.objects.create(
+            lead=self.lead2, user=self.worker, type=ActivityType.CALL, content_text="Call"
+        )
+
+    def test_returns_200(self):
+        resp = self._get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_returns_activities_across_all_leads(self):
+        resp = self._get(self.URL)
+        data = resp.json()
+        self.assertEqual(len(data), 2)
+
+    def test_includes_lead_title(self):
+        resp = self._get(self.URL)
+        titles = {item["lead_title"] for item in resp.json()}
+        self.assertIn("Test Lead", titles)
+        self.assertIn("Second Lead", titles)
+
+    def test_ordered_newest_first(self):
+        resp = self._get(self.URL)
+        data = resp.json()
+        self.assertEqual(data[0]["id"], str(self.a2.id))
+        self.assertEqual(data[1]["id"], str(self.a1.id))
+
+    def test_filter_by_type(self):
+        resp = self._get(self.URL, {"type": "call"})
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["type"], "call")
+
+    def test_filter_by_type_no_match_returns_empty(self):
+        resp = self._get(self.URL, {"type": "meeting"})
+        self.assertEqual(resp.json(), [])
+
+    def test_pagination(self):
+        for i in range(5):
+            Activity.objects.create(lead=self.lead, type=ActivityType.COMMENT, content_text=f"m{i}")
+        resp = self._get(self.URL, {"page": 1, "page_size": 3})
+        self.assertEqual(len(resp.json()), 3)
+
+    def test_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Feed Other Firm")
+        other_lead = Lead.objects.create(firm=other_firm, title="Spy Lead")
+        Activity.objects.create(lead=other_lead, type=ActivityType.COMMENT, content_text="spy")
+        resp = self._get(self.URL)
+        lead_ids = {item["lead_id"] for item in resp.json()}
+        self.assertNotIn(str(other_lead.id), lead_ids)
+
+    def test_requires_authentication(self):
+        self.client.logout()
+        resp = self._get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
+
+
+class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/reports/tasks/overdue"
+
+    def setUp(self):
+        super().setUp()
+        now = timezone.now()
+        self.overdue_task = Task.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Overdue",
+            due_date=now - dt.timedelta(days=2),
+        )
+        self.future_task = Task.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Future",
+            due_date=now + dt.timedelta(days=2),
+        )
+        self.completed_overdue = Task.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Done (was overdue)",
+            due_date=now - dt.timedelta(days=1),
+            is_completed=True,
+        )
+
+    def test_returns_200(self):
+        resp = self._get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_only_returns_overdue_incomplete_tasks(self):
+        resp = self._get(self.URL)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], str(self.overdue_task.id))
+
+    def test_includes_lead_title(self):
+        resp = self._get(self.URL)
+        self.assertEqual(resp.json()[0]["lead_title"], "Test Lead")
+
+    def test_no_due_date_tasks_excluded(self):
+        Task.objects.create(firm=self.firm, lead=self.lead, title="No Due Date")
+        resp = self._get(self.URL)
+        ids = {item["id"] for item in resp.json()}
+        self.assertIn(str(self.overdue_task.id), ids)
+        # Only the one actually overdue task
+        self.assertEqual(len(ids), 1)
+
+    def test_pagination(self):
+        now = timezone.now()
+        for i in range(5):
+            Task.objects.create(
+                firm=self.firm,
+                lead=self.lead,
+                title=f"Old task {i}",
+                due_date=now - dt.timedelta(days=i + 3),
+            )
+        resp = self._get(self.URL, {"page": 1, "page_size": 3})
+        self.assertEqual(len(resp.json()), 3)
+
+    def test_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Overdue Other Firm")
+        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        Task.objects.create(
+            firm=other_firm,
+            lead=other_lead,
+            title="Other Overdue",
+            due_date=timezone.now() - dt.timedelta(days=1),
+        )
+        resp = self._get(self.URL)
+        self.assertEqual(len(resp.json()), 1)  # only ours
+
+    def test_requires_authentication(self):
+        self.client.logout()
+        resp = self._get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
 
