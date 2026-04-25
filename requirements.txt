@@ -7,6 +7,11 @@ psycopg2-binary>=2.9
 celery>=5.3
 redis>=5.0
 
+# WebSockets / Django Channels
+channels>=4.0
+channels-redis>=4.2
+daphne>=4.0
+
 # Storage
 django-storages>=1.14
 boto3>=1.34

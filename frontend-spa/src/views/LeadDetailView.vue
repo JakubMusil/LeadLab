@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
+import { useWebSocket } from '@/composables/useWebSocket'
 import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
 const toast = useToast()
+const { on, off } = useWebSocket()
 
 const leadId = computed(() => route.params.id as string)
 type Tab = 'overview' | 'activities' | 'tasks' | 'files'
 const activeTab = ref<Tab>('overview')
 
 // Activities
-interface Activity { id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
+interface Activity { id: string; lead_id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
 const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
@@ -38,6 +40,8 @@ const files = ref<FileItem[]>([])
 const filesLoading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadingFile = ref(false)
+const uploadProgress = ref(0)
+const isDraggingOver = ref(false)
 
 // Edit form
 const showEditModal = ref(false)
@@ -160,20 +164,55 @@ async function completeTask(id: string) {
 async function uploadFile(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-  const file = input.files[0]
+  await doUpload(input.files[0]!)
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+async function onFileDrop(e: DragEvent) {
+  isDraggingOver.value = false
+  const file = e.dataTransfer?.files?.[0]
   if (!file) return
+  await doUpload(file)
+}
+
+async function doUpload(file: File) {
   uploadingFile.value = true
+  uploadProgress.value = 0
   const fd = new FormData()
   fd.append('file', file)
-  const res = await api.postForm<FileItem>(`/api/v1/crm/leads/${leadId.value}/attachments`, fd)
-  uploadingFile.value = false
-  if (res.ok) {
-    files.value.unshift(res.data)
-    toast.success('File uploaded.')
-  } else {
-    toast.error('Failed to upload file.')
-  }
-  if (fileInput.value) fileInput.value.value = ''
+
+  await new Promise<void>((resolve) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `/api/v1/crm/leads/${leadId.value}/attachments`)
+    // Forward cookies / CSRF via credentials
+    xhr.withCredentials = true
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) uploadProgress.value = Math.round((ev.loaded / ev.total) * 100)
+    }
+    xhr.onload = () => {
+      uploadingFile.value = false
+      uploadProgress.value = 0
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const item = JSON.parse(xhr.responseText) as FileItem
+          files.value.unshift(item)
+          toast.success('File uploaded.')
+        } catch {
+          toast.error('Upload response parse error.')
+        }
+      } else {
+        toast.error('Failed to upload file.')
+      }
+      resolve()
+    }
+    xhr.onerror = () => {
+      uploadingFile.value = false
+      uploadProgress.value = 0
+      toast.error('Failed to upload file.')
+      resolve()
+    }
+    xhr.send(fd)
+  })
 }
 
 async function deleteFile(id: string) {
@@ -241,7 +280,28 @@ onMounted(async () => {
   if (activeTab.value === 'activities') await loadActivities()
   else if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
+
+  on('activity.created', onWsActivityCreated)
+  on('lead.updated', onWsLeadUpdated)
 })
+
+onUnmounted(() => {
+  off('activity.created', onWsActivityCreated)
+  off('lead.updated', onWsLeadUpdated)
+})
+
+function onWsActivityCreated(payload: Record<string, unknown>) {
+  const act = payload as unknown as Activity
+  // Only react if this activity belongs to the lead currently open
+  if (act.lead_id !== leadId.value) return
+  if (activities.value.find((a) => a.id === act.id)) return
+  activities.value.unshift(act)
+}
+
+function onWsLeadUpdated(_payload: Record<string, unknown>) {
+  // The leads store is already updated by AppShell's WS handler; currentLead
+  // is a shared Pinia ref so the UI re-renders automatically.
+}
 
 async function switchTab(tab: Tab) {
   activeTab.value = tab
@@ -426,28 +486,83 @@ async function switchTab(tab: Tab) {
       <!-- FILES TAB -->
       <div v-else-if="activeTab === 'files'" class="space-y-4">
         <!-- Upload zone -->
-        <div class="bg-white rounded-2xl border border-gray-100 p-4">
-          <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl py-8 cursor-pointer hover:border-red-300 transition-colors">
-            <span class="text-2xl mb-2">📎</span>
-            <span class="text-sm text-gray-500">Click to upload a file</span>
-            <span class="text-xs text-gray-400 mt-1">Max 20 MB</span>
-            <input ref="fileInput" type="file" class="hidden" @change="uploadFile" />
-          </label>
-          <div v-if="uploadingFile" class="mt-3 text-center text-sm text-gray-500 animate-pulse">Uploading…</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+          <div
+            class="flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-8 cursor-pointer transition-colors"
+            :class="isDraggingOver
+              ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
+              : 'border-gray-200 dark:border-gray-600 hover:border-red-300 dark:hover:border-red-500'"
+            role="button"
+            aria-label="File upload drop zone. Click or drag and drop files here."
+            tabindex="0"
+            @click="fileInput?.click()"
+            @keydown.enter="fileInput?.click()"
+            @dragover.prevent="isDraggingOver = true"
+            @dragleave.prevent="isDraggingOver = false"
+            @drop.prevent="onFileDrop"
+          >
+            <svg class="w-10 h-10 mb-3" :class="isDraggingOver ? 'text-red-400' : 'text-gray-300 dark:text-gray-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span class="text-sm font-medium" :class="isDraggingOver ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+              {{ isDraggingOver ? 'Drop to upload' : 'Click or drag & drop a file' }}
+            </span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1">Max 20 MB</span>
+            <input ref="fileInput" type="file" class="hidden" aria-hidden="true" @change="uploadFile" />
+          </div>
+
+          <!-- Progress bar -->
+          <div v-if="uploadingFile" class="mt-3">
+            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>Uploading…</span>
+              <span>{{ uploadProgress }}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-red-500 rounded-full transition-all duration-200"
+                :style="{ width: `${uploadProgress}%` }"
+                role="progressbar"
+                :aria-valuenow="uploadProgress"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              />
+            </div>
+          </div>
         </div>
 
         <div v-if="filesLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
+          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
         </div>
-        <div v-else-if="files.length === 0" class="text-center py-10 text-gray-400 text-sm">No files attached yet.</div>
-        <div v-else class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+        <div v-else-if="files.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No files attached</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">Upload files to keep them with this lead.</p>
+        </div>
+        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
           <div v-for="file in files" :key="file.id" class="flex items-center gap-3 p-4 group">
-            <span class="text-xl flex-shrink-0">📄</span>
-            <div class="flex-1 min-w-0">
-              <a :href="file.url" target="_blank" class="text-sm font-medium text-gray-900 hover:text-red-600 truncate block">{{ file.original_filename }}</a>
-              <p class="text-xs text-gray-400">{{ fmtBytes(file.size_bytes) }} · {{ new Date(file.created_at).toLocaleDateString() }}</p>
+            <!-- Image preview or file icon -->
+            <div class="w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <img
+                v-if="file.content_type.startsWith('image/')"
+                :src="file.url"
+                :alt="file.original_filename"
+                class="w-full h-full object-cover"
+              />
+              <span v-else class="text-xl" aria-hidden="true">📄</span>
             </div>
-            <button class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-opacity" @click="deleteFile(file.id)">🗑</button>
+            <div class="flex-1 min-w-0">
+              <a :href="file.url" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">{{ file.original_filename }}</a>
+              <p class="text-xs text-gray-400 dark:text-gray-500">{{ fmtBytes(file.size_bytes) }} · {{ new Date(file.created_at).toLocaleDateString() }}</p>
+            </div>
+            <button
+              class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 transition-opacity"
+              :aria-label="`Delete ${file.original_filename}`"
+              @click="deleteFile(file.id)"
+            >🗑</button>
           </div>
         </div>
       </div>
@@ -459,28 +574,28 @@ async function switchTab(tab: Tab) {
   <!-- Edit Modal -->
   <Teleport to="body">
     <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Edit Lead</h3>
-        <div v-if="editError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ editError }}</div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-lead-title">
+        <h3 id="edit-lead-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit Lead</h3>
+        <div v-if="editError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ editError }}</div>
         <form class="space-y-3" @submit.prevent="submitEdit">
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Title *</label>
-            <input v-model="editTitle" type="text" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+            <input v-model="editTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
-            <textarea v-model="editDescription" rows="2" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <textarea v-model="editDescription" rows="2" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
-              <select v-model="editStatus" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <select v-model="editStatus" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
                 <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Source</label>
-              <select v-model="editSource" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Source</label>
+              <select v-model="editSource" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
                 <option value="web">Web</option>
                 <option value="email">Email</option>
                 <option value="referral">Referral</option>
@@ -492,16 +607,16 @@ async function switchTab(tab: Tab) {
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Value</label>
-              <input v-model="editValue" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
+              <input v-model="editValue" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Currency</label>
-              <input v-model="editCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
+              <input v-model="editCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50" @click="showEditModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showEditModal = false">Cancel</button>
             <button type="submit" :disabled="editLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
               {{ editLoading ? 'Saving…' : 'Save' }}
             </button>

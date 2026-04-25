@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "leads": "Leads",
+    "customers": "Customers",
+    "calendar": "Calendar",
+    "team": "Team",
+    "settings": "Settings"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "signInSubtitle": "Sign in to your account",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign up"
+  },
+  "dashboard": {
+    "totalLeads": "Total Leads",
+    "customers": "Customers",
+    "pipeline": "Pipeline",
+    "openTasks": "Open Tasks",
+    "pipelineByStatus": "Pipeline by Status",
+    "recentActivity": "Recent Activity",
+    "statusBreakdown": "Status Breakdown",
+    "noRecentActivity": "No recent activity",
+    "conversion": "{rate}% conversion",
+    "inAddressBook": "in address book",
+    "overdue": "{count} overdue",
+    "won": "Won: {value}"
+  },
+  "leads": {
+    "title": "Leads",
+    "newLead": "+ New Lead",
+    "table": "Table",
+    "kanban": "Kanban",
+    "allStatuses": "All Statuses",
+    "allSources": "All Sources",
+    "noLeadsTitle": "No leads yet",
+    "noLeadsSubtitle": "Start by creating your first lead to track sales opportunities.",
+    "createFirstLead": "Create your first lead",
+    "dropHere": "Drop here"
+  }
+}

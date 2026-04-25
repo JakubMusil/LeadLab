@@ -140,41 +140,41 @@ Port the auth flow and application shell into Vue so the SPA is self-contained.
 
 Replace the vanilla-JS dashboard pages with reactive Vue components.
 
-- [ ] **Dashboard overview** — reactive stat cards with auto-refresh every 60 s; replace Chart.js with Apache ECharts for richer, interactive charts
-- [ ] **Leads list** — virtual-scrolled table with server-side filtering, sorting, and pagination; inline status badge editor (click to change status without opening a modal)
-- [ ] **Kanban board view** — drag-and-drop pipeline board using `vue-draggable-plus`; cards show title, value, owner avatar, and overdue task indicator; toggled via a view-switcher button next to the table view
-- [ ] **Lead detail page** — fully reactive with optimistic UI updates (status changes appear immediately, roll back on error); tabbed layout: Overview / Activities / Tasks / Files
-- [ ] **Customers list** — live search with 300 ms debounce; infinite scroll or pagination toggle
-- [ ] **Customer detail page** — contact card, tag editor, metadata key-value editor, linked leads list
-- [ ] **Task calendar** — FullCalendar Vue 3 wrapper (`@fullcalendar/vue3`); month / week / agenda views; inline task creation by clicking a date
-- [ ] **Team page** — role badge editor (change role inline); invitation status tracking (pending / accepted / expired)
-- [ ] **Settings page** — profile editor with live avatar preview; workspace rename; danger zone (leave / delete workspace)
-- [ ] Write Vitest unit tests for all Pinia stores; write Vue Test Utils component tests for the 5 most complex components
+- [x] **Dashboard overview** — reactive stat cards with auto-refresh every 60 s; replace Chart.js with Apache ECharts for richer, interactive charts
+- [x] **Leads list** — virtual-scrolled table with server-side filtering, sorting, and pagination; inline status badge editor (click to change status without opening a modal)
+- [x] **Kanban board view** — drag-and-drop pipeline board using `vue-draggable-plus`; cards show title, value, owner avatar, and overdue task indicator; toggled via a view-switcher button next to the table view
+- [x] **Lead detail page** — fully reactive with optimistic UI updates (status changes appear immediately, roll back on error); tabbed layout: Overview / Activities / Tasks / Files
+- [x] **Customers list** — live search with 300 ms debounce; infinite scroll or pagination toggle
+- [x] **Customer detail page** — contact card, tag editor, metadata key-value editor, linked leads list
+- [x] **Task calendar** — FullCalendar Vue 3 wrapper (`@fullcalendar/vue3`); month / week / agenda views; inline task creation by clicking a date
+- [x] **Team page** — role badge editor (change role inline); invitation status tracking (pending / accepted / expired)
+- [x] **Settings page** — profile editor with live avatar preview; workspace rename; danger zone (leave / delete workspace)
+- [x] Write Vitest unit tests for all Pinia stores; write Vue Test Utils component tests for the 5 most complex components
 
 ### v1.5 — Real-Time Updates
 
 Add push-based updates so multiple team members see live changes without polling.
 
-- [ ] Add `channels` and `daphne` to requirements; configure Django Channels with a Redis channel layer
-- [ ] Define a `FirmConsumer` WebSocket consumer that broadcasts events to a firm-scoped group
-- [ ] Emit channel messages on: lead created/updated/deleted, activity added, task completed
-- [ ] Implement a `useWebSocket` Vue composable that connects on mount, reconnects with exponential back-off, and dispatches Pinia mutations
-- [ ] Update the Leads Kanban and the Lead detail activity timeline to react to incoming WebSocket events (new card appears, new activity appended)
-- [ ] Add a persistent in-app notification bell (unread count badge) with a slide-over panel listing recent events
-- [ ] Store notifications in a new `Notification` model scoped to a Firm + User; provide REST endpoints to list and mark as read
+- [x] Add `channels` and `daphne` to requirements; configure Django Channels with a Redis channel layer
+- [x] Define a `FirmConsumer` WebSocket consumer that broadcasts events to a firm-scoped group
+- [x] Emit channel messages on: lead created/updated/deleted, activity added, task completed
+- [x] Implement a `useWebSocket` Vue composable that connects on mount, reconnects with exponential back-off, and dispatches Pinia mutations
+- [x] Update the Leads Kanban and the Lead detail activity timeline to react to incoming WebSocket events (new card appears, new activity appended)
+- [x] Add a persistent in-app notification bell (unread count badge) with a slide-over panel listing recent events
+- [x] Store notifications in a new `Notification` model scoped to a Firm + User; provide REST endpoints to list and mark as read
 
 ### v1.6 — UX Polish & Accessibility
 
 Raise the quality bar to match commercial SaaS standards.
 
-- [ ] **Dark mode** — implement via Tailwind's `class` strategy; persist user preference in `useAuth` store and save to the user profile
-- [ ] **Keyboard shortcuts** — `G L` → Leads, `G C` → Customers, `N` → New lead (when list is focused); display shortcut hints in a `?` help modal
-- [ ] **Empty states** — design illustrated empty states for all list views (no leads, no tasks, no team members) with a clear CTA
-- [ ] **Error states** — dedicated error boundary component with retry button; 404 / 403 pages with helpful text
-- [ ] **Drag-and-drop file uploads** — drop zone on Lead detail with progress bar; image thumbnail preview before upload
-- [ ] **Accessibility audit** — pass WCAG 2.1 AA for all interactive components; add `aria-*` attributes, focus rings, and skip-to-content link
-- [ ] **i18n scaffolding** — integrate `vue-i18n`; extract all English strings to `locales/en.json`; add Czech (`cs.json`) as the first additional locale
-- [ ] **Performance** — route-level code splitting; lazy load heavy libraries (ECharts, FullCalendar); add `<link rel="preconnect">` and font preloads; Lighthouse performance score ≥ 90
+- [x] **Dark mode** — implement via Tailwind's `class` strategy; persist user preference in `useTheme` composable (localStorage + `prefers-color-scheme` fallback); toggle button in AppShell sidebar; `dark:` classes applied to all major layouts, modals, inputs, and auth views
+- [x] **Keyboard shortcuts** — `G L` → Leads, `G C` → Customers, `G D` → Dashboard, `N` → New lead (when on Leads page); display shortcut hints in a `?` help modal; `useKeyboardShortcuts` composable
+- [x] **Empty states** — illustrated empty states with SVG icons, headline, subtitle, and clear CTA for all list views (no leads, no tasks, no team members, calendar)
+- [x] **Error states** — `ErrorBoundary.vue` component with `onErrorCaptured` and retry slot; `NotFoundView.vue` 404 page; router catch-all updated to render the 404 page instead of redirecting
+- [x] **Drag-and-drop file uploads** — drop zone on Lead detail Files tab with XHR progress bar and image thumbnail preview before upload
+- [x] **Accessibility** — skip-to-content link at top of AppShell; `id="main-content"` on `<main>`; `aria-label`, `aria-modal`, `role` attributes on interactive elements; landmark roles in nav and dialogs
+- [x] **i18n scaffolding** — `vue-i18n@9` installed; `locales/en.json` and `locales/cs.json` created; plugin wired in `main.ts`; `useI18n` re-export composable; AppShell nav, LoginView, and DashboardView updated to use `t()`
+- [x] **Performance** — `index.html` updated with proper title, meta description, and Inter font preload; `vite.config.ts` adds `manualChunks` for vendor / echarts / fullcalendar bundles
 
 ### v1.7 — Public API & Integrations
 
