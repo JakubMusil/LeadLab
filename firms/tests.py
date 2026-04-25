@@ -339,3 +339,243 @@ class RemoveMemberAPITest(FirmsAPIFixtureMixin, TestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+
+# ---------------------------------------------------------------------------
+# Invitation model tests
+# ---------------------------------------------------------------------------
+
+from firms.models import Invitation
+
+
+class InvitationModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="owner@inv.com", password="pass")
+        self.firm = Firm.objects.create(name="Inv Firm")
+
+    def test_create_invitation(self):
+        inv = Invitation.objects.create(
+            email="invitee@example.com",
+            firm=self.firm,
+            role=MembershipRole.WORKER,
+            invited_by=self.user,
+        )
+        self.assertIsNotNone(inv.token)
+        self.assertFalse(inv.is_accepted)
+        self.assertFalse(inv.is_expired)
+
+    def test_str(self):
+        inv = Invitation.objects.create(
+            email="invitee@example.com",
+            firm=self.firm,
+        )
+        self.assertIn("invitee@example.com", str(inv))
+        self.assertIn("Inv Firm", str(inv))
+
+    def test_is_accepted_property(self):
+        from django.utils import timezone as tz
+        inv = Invitation.objects.create(email="a@b.com", firm=self.firm)
+        self.assertFalse(inv.is_accepted)
+        inv.accepted_at = tz.now()
+        inv.save()
+        self.assertTrue(inv.is_accepted)
+
+    def test_unique_together_email_firm(self):
+        from django.db import IntegrityError
+        Invitation.objects.create(email="dup@example.com", firm=self.firm)
+        with self.assertRaises(IntegrityError):
+            Invitation.objects.create(email="dup@example.com", firm=self.firm)
+
+    def test_different_firms_same_email_allowed(self):
+        firm2 = Firm.objects.create(name="Other Firm")
+        Invitation.objects.create(email="shared@example.com", firm=self.firm)
+        inv2 = Invitation.objects.create(email="shared@example.com", firm=firm2)
+        self.assertIsNotNone(inv2.id)
+
+
+# ---------------------------------------------------------------------------
+# Invitation API tests
+# ---------------------------------------------------------------------------
+
+class InvitationAPIFixtureMixin(FirmsAPIFixtureMixin):
+    INVITE_URL_TPL = "/api/v1/firms/{firm_id}/invitations/"
+    PREVIEW_URL_TPL = "/api/v1/invitations/{token}"
+    ACCEPT_URL_TPL = "/api/v1/invitations/{token}/accept"
+
+
+class CreateInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
+    def test_owner_can_create_invitation(self):
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "newperson@example.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 202)
+        data = resp.json()
+        self.assertEqual(data["email"], "newperson@example.com")
+        self.assertEqual(data["role"], "worker")
+        self.assertIn("token", data)
+        self.assertTrue(Invitation.objects.filter(email="newperson@example.com", firm=self.firm).exists())
+
+    def test_worker_cannot_create_invitation(self):
+        self.client.login(username="worker@api.com", password="pass")
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "x@example.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_cannot_invite_owner_role(self):
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "x@example.com", "role": "owner"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_cannot_invite_existing_member(self):
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "worker@api.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_resend_refreshes_expiry(self):
+        from datetime import timedelta
+        from django.utils import timezone as tz
+        # Create an expired invitation manually
+        inv = Invitation.objects.create(
+            email="expired@example.com",
+            firm=self.firm,
+            invited_by=self.owner,
+            expires_at=tz.now() - timedelta(days=1),
+        )
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "expired@example.com", "role": "worker"},
+        )
+        self.assertEqual(resp.status_code, 202)
+        inv.refresh_from_db()
+        self.assertFalse(inv.is_expired)
+
+    def test_unauthenticated_returns_error(self):
+        self.client.logout()
+        resp = self._post(
+            self.INVITE_URL_TPL.format(firm_id=self.firm.id),
+            {"email": "x@example.com", "role": "worker"},
+        )
+        self.assertIn(resp.status_code, [401, 403])
+
+
+class PreviewInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.invitation = Invitation.objects.create(
+            email="preview@example.com",
+            firm=self.firm,
+            role=MembershipRole.WORKER,
+            invited_by=self.owner,
+        )
+
+    def test_preview_valid_token(self):
+        self.client.logout()
+        resp = self.client.get(self.PREVIEW_URL_TPL.format(token=self.invitation.token))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["email"], "preview@example.com")
+        self.assertEqual(data["firm_name"], "API Firm")
+        self.assertFalse(data["is_expired"])
+        self.assertFalse(data["is_accepted"])
+
+    def test_preview_nonexistent_token_returns_404(self):
+        import uuid
+        self.client.logout()
+        resp = self.client.get(self.PREVIEW_URL_TPL.format(token=uuid.uuid4()))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_preview_expired_token_returns_410(self):
+        from datetime import timedelta
+        from django.utils import timezone as tz
+        self.invitation.expires_at = tz.now() - timedelta(days=1)
+        self.invitation.save()
+        self.client.logout()
+        resp = self.client.get(self.PREVIEW_URL_TPL.format(token=self.invitation.token))
+        self.assertEqual(resp.status_code, 410)
+
+    def test_preview_accepted_token_returns_410(self):
+        from django.utils import timezone as tz
+        self.invitation.accepted_at = tz.now()
+        self.invitation.save()
+        self.client.logout()
+        resp = self.client.get(self.PREVIEW_URL_TPL.format(token=self.invitation.token))
+        self.assertEqual(resp.status_code, 410)
+
+
+class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.invitation = Invitation.objects.create(
+            email="acceptme@example.com",
+            firm=self.firm,
+            role=MembershipRole.WORKER,
+            invited_by=self.owner,
+        )
+
+    def _accept(self, token, data):
+        return self._post(self.ACCEPT_URL_TPL.format(token=token), data)
+
+    def test_new_user_can_accept_and_gets_account(self):
+        self.client.logout()
+        resp = self._accept(
+            self.invitation.token,
+            {"password": "strongpassword123", "first_name": "New", "last_name": "User"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["user_email"], "acceptme@example.com")
+        self.assertEqual(data["role"], "worker")
+        # Account created
+        self.assertTrue(User.objects.filter(email="acceptme@example.com").exists())
+        # Membership created
+        new_user = User.objects.get(email="acceptme@example.com")
+        self.assertTrue(Membership.objects.filter(user=new_user, firm=self.firm).exists())
+        # Invitation stamped
+        self.invitation.refresh_from_db()
+        self.assertIsNotNone(self.invitation.accepted_at)
+
+    def test_existing_user_can_accept(self):
+        existing = User.objects.create_user(email="acceptme@example.com", password="mypassword")
+        self.client.logout()
+        resp = self._accept(
+            self.invitation.token,
+            {"password": "mypassword"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(Membership.objects.filter(user=existing, firm=self.firm).exists())
+
+    def test_wrong_password_for_existing_user_returns_400(self):
+        User.objects.create_user(email="acceptme@example.com", password="correctpassword")
+        self.client.logout()
+        resp = self._accept(self.invitation.token, {"password": "wrongpassword"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_accept_expired_invitation_returns_410(self):
+        from datetime import timedelta
+        from django.utils import timezone as tz
+        self.invitation.expires_at = tz.now() - timedelta(days=1)
+        self.invitation.save()
+        self.client.logout()
+        resp = self._accept(self.invitation.token, {"password": "pass"})
+        self.assertEqual(resp.status_code, 410)
+
+    def test_accept_already_accepted_returns_410(self):
+        from django.utils import timezone as tz
+        self.invitation.accepted_at = tz.now()
+        self.invitation.save()
+        self.client.logout()
+        resp = self._accept(self.invitation.token, {"password": "pass"})
+        self.assertEqual(resp.status_code, 410)
+
+    def test_accept_nonexistent_token_returns_404(self):
+        import uuid
+        self.client.logout()
+        resp = self._accept(uuid.uuid4(), {"password": "pass"})
+        self.assertEqual(resp.status_code, 404)
+

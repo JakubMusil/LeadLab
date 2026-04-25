@@ -1,7 +1,9 @@
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone as django_timezone
 from django.utils.text import slugify
 
 
@@ -102,3 +104,64 @@ class Membership(models.Model):
     @property
     def is_admin_or_above(self):
         return self.role in (MembershipRole.OWNER, MembershipRole.ADMIN)
+
+
+_INVITATION_EXPIRY_DAYS = 7
+
+
+def _default_expiry():
+    return django_timezone.now() + timedelta(days=_INVITATION_EXPIRY_DAYS)
+
+
+class Invitation(models.Model):
+    """
+    A pending invitation for a user (who may not yet have an account) to join a Firm.
+
+    Lifecycle:
+        1. An Admin/Owner calls ``POST /firms/{id}/invitations`` — creates this record.
+        2. An email is dispatched (async) containing ``/invitations/{token}/accept``.
+        3. The recipient opens the link:
+           - If they already have an account they authenticate and are added as a Member.
+           - If they do not have an account they provide a password to register, then join.
+        4. ``accepted_at`` is set and the Membership is created atomically.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    email = models.EmailField()
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=MembershipRole.choices,
+        default=MembershipRole.WORKER,
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_invitations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=_default_expiry)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "invitation"
+        verbose_name_plural = "invitations"
+        unique_together = [("email", "firm")]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Invitation({self.email} → {self.firm})"
+
+    @property
+    def is_expired(self):
+        return django_timezone.now() > self.expires_at
+
+    @property
+    def is_accepted(self):
+        return self.accepted_at is not None

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from firms.models import Firm, Membership
+from firms.models import Firm, Invitation, Membership
 
 
 class MembershipInline(admin.TabularInline):
@@ -28,3 +28,11 @@ class MembershipAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "firm__name")
     autocomplete_fields = ["user", "firm"]
     readonly_fields = ("created_at",)
+
+
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ("email", "firm", "role", "invited_by", "created_at", "expires_at", "accepted_at")
+    list_filter = ("role", "firm")
+    search_fields = ("email", "firm__name")
+    readonly_fields = ("token", "created_at", "accepted_at")
