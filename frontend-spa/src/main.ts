@@ -9,6 +9,12 @@ import cs from './locales/cs.json'
 import { detectLocale } from './composables/useI18n'
 import { pluginRegistry } from './plugins'
 
+// Load first-party plugins (side-effect imports register them via registerPlugin())
+import './plugins/slackNotifications'
+import './plugins/linkedinEnrichment'
+import './plugins/voip'
+import './plugins/emailSequences'
+
 const i18n = createI18n({
   legacy: false,
   locale: detectLocale(),

@@ -9,6 +9,8 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { setLocale, useI18n } from '@/composables/useI18n'
 import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
+import { pluginRegistry } from '@/plugins'
+import type { ConfigSchemaProperty } from '@/plugins'
 
 const leadScoringStore = useLeadScoringStore()
 
@@ -212,6 +214,7 @@ onMounted(() => {
     loadDigestPreference()
     leadScoringStore.fetchRules()
     loadPropTemplates()
+    loadPluginConfigs()
   }
 })
 
@@ -525,6 +528,98 @@ async function deleteTmplItem(template: ProposalTemplate, itemId: string) {
     toast.error('Failed to delete item.')
   }
 }
+
+// ---------------------------------------------------------------------------
+// Plugins (v2.4)
+// ---------------------------------------------------------------------------
+
+interface PluginConfigEntry {
+  plugin_name: string
+  enabled: boolean
+  config: Record<string, unknown>
+  plugin: {
+    name: string
+    version: string
+    description: string
+    icon_url: string
+    permissions: string[]
+    config_schema: {
+      type: string
+      properties?: Record<string, ConfigSchemaProperty>
+      required?: string[]
+    }
+  } | null
+}
+
+const pluginConfigs = ref<PluginConfigEntry[]>([])
+const pluginsLoading = ref(false)
+const expandedPlugin = ref<string | null>(null)
+const pluginSaving = ref<Record<string, boolean>>({})
+const pluginDraftConfigs = ref<Record<string, Record<string, unknown>>>({})
+
+async function loadPluginConfigs() {
+  if (!firmStore.activeFirm) return
+  pluginsLoading.value = true
+  const res = await api.get<PluginConfigEntry[]>(
+    `/api/v1/plugins/${firmStore.activeFirm.id}/plugin-configs/`,
+  )
+  pluginsLoading.value = false
+  if (res.ok && Array.isArray(res.data)) {
+    pluginConfigs.value = res.data
+    // Seed draft configs with current values
+    for (const pc of res.data) {
+      pluginDraftConfigs.value[pc.plugin_name] = { ...pc.config }
+    }
+  }
+}
+
+async function togglePlugin(pc: PluginConfigEntry) {
+  if (!firmStore.activeFirm) return
+  const res = await api.patch<PluginConfigEntry>(
+    `/api/v1/plugins/${firmStore.activeFirm.id}/plugin-configs/${pc.plugin_name}/`,
+    { enabled: !pc.enabled },
+  )
+  if (res.ok && res.data) {
+    const idx = pluginConfigs.value.findIndex((p) => p.plugin_name === pc.plugin_name)
+    if (idx !== -1) pluginConfigs.value.splice(idx, 1, res.data)
+    toast.success(res.data.enabled ? `${pc.plugin_name} enabled.` : `${pc.plugin_name} disabled.`)
+  } else {
+    toast.error('Failed to update plugin.')
+  }
+}
+
+async function savePluginConfig(pc: PluginConfigEntry) {
+  if (!firmStore.activeFirm) return
+  pluginSaving.value[pc.plugin_name] = true
+  const config = pluginDraftConfigs.value[pc.plugin_name] ?? {}
+  const res = await api.patch<PluginConfigEntry>(
+    `/api/v1/plugins/${firmStore.activeFirm.id}/plugin-configs/${pc.plugin_name}/`,
+    { config },
+  )
+  pluginSaving.value[pc.plugin_name] = false
+  if (res.ok && res.data) {
+    const idx = pluginConfigs.value.findIndex((p) => p.plugin_name === pc.plugin_name)
+    if (idx !== -1) pluginConfigs.value.splice(idx, 1, res.data)
+    toast.success('Plugin settings saved.')
+    expandedPlugin.value = null
+  } else {
+    toast.error('Failed to save plugin settings.')
+  }
+}
+
+function getDraftValue(pluginName: string, key: string): unknown {
+  return pluginDraftConfigs.value[pluginName]?.[key] ?? ''
+}
+
+function setDraftValue(pluginName: string, key: string, value: unknown) {
+  if (!pluginDraftConfigs.value[pluginName]) {
+    pluginDraftConfigs.value[pluginName] = {}
+  }
+  pluginDraftConfigs.value[pluginName][key] = value
+}
+
+// Expose installed plugin count from local registry for quick reference
+const localPluginCount = computed(() => pluginRegistry.length)
 </script>
 
 <template>
@@ -1026,6 +1121,179 @@ async function deleteTmplItem(template: ProposalTemplate, itemId: string) {
           class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="createPropTemplate"
         >{{ newTemplateCreating ? 'Creating…' : '+ Create Template' }}</button>
+      </div>
+    </div>
+
+    <!-- ===== PLUGINS (v2.4) ===== -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Plugins</h2>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ localPluginCount }} installed</span>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+        Manage first-party and third-party plugins. Toggle plugins on/off or configure their settings.
+        <a href="/docs/plugins/" target="_blank" class="text-red-600 hover:underline">Authoring guide →</a>
+      </p>
+
+      <!-- Loading state -->
+      <div v-if="pluginsLoading" class="animate-pulse space-y-3">
+        <div v-for="i in 3" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      </div>
+
+      <!-- Plugin list -->
+      <div v-else-if="pluginConfigs.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">
+        No plugins installed.
+        <a href="https://github.com/JakubMusil/LeadLab/tree/main/docs/plugin-registry.json" target="_blank" class="block mt-1 text-red-600 hover:underline text-xs">Browse the plugin registry →</a>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div
+          v-for="pc in pluginConfigs"
+          :key="pc.plugin_name"
+          class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden"
+        >
+          <!-- Plugin header row -->
+          <div class="flex items-center gap-3 px-4 py-3">
+            <!-- Icon -->
+            <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img
+                v-if="pc.plugin?.icon_url"
+                :src="pc.plugin.icon_url"
+                :alt="pc.plugin_name"
+                class="w-full h-full object-cover"
+                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+              />
+              <span v-else class="text-lg">🧩</span>
+            </div>
+
+            <!-- Name + version + description -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ pc.plugin_name }}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500">v{{ pc.plugin?.version ?? '?' }}</span>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ pc.plugin?.description ?? '' }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <!-- Configure button (shown when plugin has config schema) -->
+              <button
+                v-if="pc.plugin && Object.keys(pc.plugin.config_schema?.properties ?? {}).length > 0"
+                class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1"
+                @click="expandedPlugin = expandedPlugin === pc.plugin_name ? null : pc.plugin_name"
+              >
+                {{ expandedPlugin === pc.plugin_name ? 'Close' : 'Configure' }}
+              </button>
+
+              <!-- Enable / Disable toggle -->
+              <button
+                :class="pc.enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0"
+                role="switch"
+                :aria-checked="pc.enabled"
+                :aria-label="`Toggle ${pc.plugin_name}`"
+                @click="togglePlugin(pc)"
+              >
+                <span
+                  :class="pc.enabled ? 'translate-x-6' : 'translate-x-1'"
+                  class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                />
+              </button>
+            </div>
+          </div>
+
+          <!-- Permissions chips -->
+          <div
+            v-if="pc.plugin?.permissions?.length"
+            class="px-4 pb-2 flex flex-wrap gap-1"
+          >
+            <span
+              v-for="perm in pc.plugin.permissions"
+              :key="perm"
+              class="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5"
+            >{{ perm }}</span>
+          </div>
+
+          <!-- Config form (expanded) -->
+          <div
+            v-if="expandedPlugin === pc.plugin_name && pc.plugin"
+            class="border-t border-gray-100 dark:border-gray-700 px-4 pb-4 pt-3 space-y-3"
+          >
+            <template
+              v-for="(prop, key) in (pc.plugin.config_schema?.properties ?? {})"
+              :key="key"
+            >
+              <!-- Boolean field -->
+              <div v-if="prop.type === 'boolean'" class="flex items-center justify-between">
+                <div>
+                  <label class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ prop.title ?? key }}</label>
+                  <p v-if="prop.description" class="text-xs text-gray-400 dark:text-gray-500">{{ prop.description }}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  :checked="Boolean(getDraftValue(pc.plugin_name, key) ?? prop.default ?? false)"
+                  class="rounded"
+                  @change="setDraftValue(pc.plugin_name, key, ($event.target as HTMLInputElement).checked)"
+                />
+              </div>
+
+              <!-- Number field -->
+              <div v-else-if="prop.type === 'number'">
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ prop.title ?? key }}</label>
+                <p v-if="prop.description" class="text-xs text-gray-400 dark:text-gray-500 mb-1">{{ prop.description }}</p>
+                <input
+                  type="number"
+                  :value="getDraftValue(pc.plugin_name, key) ?? prop.default ?? ''"
+                  class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  @input="setDraftValue(pc.plugin_name, key, Number(($event.target as HTMLInputElement).value))"
+                />
+              </div>
+
+              <!-- Secret / password field -->
+              <div v-else-if="prop.secret">
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ prop.title ?? key }}</label>
+                <p v-if="prop.description" class="text-xs text-gray-400 dark:text-gray-500 mb-1">{{ prop.description }}</p>
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  :value="getDraftValue(pc.plugin_name, key) ?? ''"
+                  class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  placeholder="••••••••"
+                  @input="setDraftValue(pc.plugin_name, key, ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+
+              <!-- String field (default) -->
+              <div v-else>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ prop.title ?? key }}</label>
+                <p v-if="prop.description" class="text-xs text-gray-400 dark:text-gray-500 mb-1">{{ prop.description }}</p>
+                <input
+                  type="text"
+                  :value="getDraftValue(pc.plugin_name, key) ?? prop.default ?? ''"
+                  class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  @input="setDraftValue(pc.plugin_name, key, ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+            </template>
+
+            <button
+              :disabled="pluginSaving[pc.plugin_name]"
+              class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              @click="savePluginConfig(pc)"
+            >{{ pluginSaving[pc.plugin_name] ? 'Saving…' : 'Save settings' }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registry link -->
+      <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+        <a
+          href="https://github.com/JakubMusil/LeadLab/blob/main/public/plugin-registry.json"
+          target="_blank"
+          rel="noopener"
+          class="text-xs text-red-600 hover:underline"
+        >Browse the public plugin registry →</a>
       </div>
     </div>
   </div>

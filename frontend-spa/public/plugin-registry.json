@@ -1,0 +1,51 @@
+{
+  "$schema": "https://leadlab.io/schemas/plugin-registry.json",
+  "version": "1.0.0",
+  "updated_at": "2026-04-26",
+  "plugins": [
+    {
+      "name": "slack-notifications",
+      "version": "1.0.0",
+      "author": "LeadLab",
+      "description": "Send Slack messages to a configurable channel when key CRM events occur: new lead, lead won/lost, task overdue, proposal accepted.",
+      "icon_url": "https://cdn.leadlab.io/plugins/slack-notifications/icon.png",
+      "repository": "https://github.com/JakubMusil/LeadLab",
+      "tags": ["notifications", "slack", "first-party"],
+      "install": "Built-in — enabled by default in LeadLab v2.4+.",
+      "permissions": ["notifications:send", "leads:read"]
+    },
+    {
+      "name": "linkedin-enrichment",
+      "version": "1.0.0",
+      "author": "LeadLab",
+      "description": "Given a LinkedIn profile URL on a customer record, fetches public profile data (name, title, company, avatar) via a proxy API and updates the customer fields.",
+      "icon_url": "https://cdn.leadlab.io/plugins/linkedin-enrichment/icon.png",
+      "repository": "https://github.com/JakubMusil/LeadLab",
+      "tags": ["enrichment", "linkedin", "first-party"],
+      "install": "Built-in — enabled by default in LeadLab v2.4+.",
+      "permissions": ["customers:read", "customers:write", "activities:write"]
+    },
+    {
+      "name": "voip-click-to-call",
+      "version": "1.0.0",
+      "author": "LeadLab",
+      "description": "Integrates with Twilio to place calls directly from a lead detail page. Call duration and recording URL are logged as a CALL activity.",
+      "icon_url": "https://cdn.leadlab.io/plugins/voip/icon.png",
+      "repository": "https://github.com/JakubMusil/LeadLab",
+      "tags": ["voip", "twilio", "calls", "first-party"],
+      "install": "Built-in — enabled by default in LeadLab v2.4+.",
+      "permissions": ["leads:read", "activities:write"]
+    },
+    {
+      "name": "email-sequences",
+      "version": "1.0.0",
+      "author": "LeadLab",
+      "description": "Multi-step drip campaign plugin. Define timed email sequences triggered by lead status transitions. Celery beat schedules individual sends.",
+      "icon_url": "https://cdn.leadlab.io/plugins/email-sequences/icon.png",
+      "repository": "https://github.com/JakubMusil/LeadLab",
+      "tags": ["email", "sequences", "drip", "first-party"],
+      "install": "Built-in — enabled by default in LeadLab v2.4+.",
+      "permissions": ["leads:read", "activities:write", "notifications:send"]
+    }
+  ]
+}

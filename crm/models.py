@@ -862,3 +862,128 @@ class ProposalItem(models.Model):
     @property
     def total(self) -> Decimal:
         return self.after_discount + self.tax
+
+
+# ---------------------------------------------------------------------------
+# Email Sequence (v2.4 — Email Sequences plugin)
+# ---------------------------------------------------------------------------
+
+class EmailSequence(TenantModel):
+    """
+    A named drip campaign that is triggered when a lead transitions to a
+    specific status.
+
+    Steps are evaluated in ``step_order`` order, with each step sent
+    ``delay_days`` after the previous one (or after enrollment for step 1).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    trigger_status = models.CharField(
+        max_length=20,
+        choices=LeadStatus.choices,
+        db_index=True,
+        help_text="Lead status that triggers enrollment into this sequence.",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "email sequence"
+        verbose_name_plural = "email sequences"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["firm", "trigger_status", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} (trigger: {self.trigger_status})"
+
+
+class EmailSequenceStep(models.Model):
+    """
+    A single email in an EmailSequence.
+
+    ``delay_days`` is relative to the previous step (or to enrollment for
+    the first step).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sequence = models.ForeignKey(
+        EmailSequence,
+        on_delete=models.CASCADE,
+        related_name="steps",
+    )
+    step_order = models.PositiveSmallIntegerField(default=0)
+    delay_days = models.PositiveIntegerField(
+        default=0,
+        help_text="Days after the previous step (or after enrollment for step 1) before this email is sent.",
+    )
+    subject = models.CharField(max_length=255)
+    body_template = models.TextField(
+        help_text="Plain-text email body. Supports {{lead_title}}, {{customer_name}} placeholders.",
+    )
+
+    class Meta:
+        verbose_name = "email sequence step"
+        verbose_name_plural = "email sequence steps"
+        ordering = ["sequence", "step_order"]
+        unique_together = [("sequence", "step_order")]
+
+    def __str__(self):
+        return f"Step {self.step_order}: {self.subject[:50]}"
+
+
+class SequenceEnrollmentStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class SequenceEnrollment(TenantModel):
+    """
+    Records that a specific Lead is enrolled in a specific EmailSequence.
+
+    ``next_step`` points to the next EmailSequenceStep to be sent.
+    ``next_send_at`` is the datetime when that step should be dispatched.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sequence = models.ForeignKey(
+        EmailSequence,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="sequence_enrollments",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=SequenceEnrollmentStatus.choices,
+        default=SequenceEnrollmentStatus.ACTIVE,
+        db_index=True,
+    )
+    current_step = models.PositiveSmallIntegerField(default=0)
+    next_send_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When the next sequence email should be dispatched.",
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "sequence enrollment"
+        verbose_name_plural = "sequence enrollments"
+        ordering = ["-enrolled_at"]
+        indexes = [
+            models.Index(fields=["status", "next_send_at"]),
+        ]
+
+    def __str__(self):
+        return f"Enrollment: {self.lead} → {self.sequence} (step {self.current_step})"

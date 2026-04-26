@@ -2,6 +2,7 @@
 Celery tasks for CRM (async email sending, statistics, etc.)
 """
 import csv
+import datetime
 import io
 import logging
 
@@ -305,3 +306,130 @@ def send_push_notification(self, user_id: str, title: str, body: str, url: str =
                 sub.id,
                 exc,
             )
+
+
+# ---------------------------------------------------------------------------
+# Email Sequences dispatch (v2.4)
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, max_retries=0)
+def dispatch_sequence_emails(self):
+    """
+    Process all active SequenceEnrollments whose next_send_at is in the past.
+
+    For each due enrollment:
+    1. Look up the next EmailSequenceStep.
+    2. Send the email (via Django's email backend).
+    3. Log a SEQUENCE_EMAIL_SENT activity on the lead.
+    4. Advance the enrollment to the next step (or mark it completed).
+
+    Runs every 15 minutes via Celery beat.
+    """
+    from django.core.mail import send_mail
+    from django.utils import timezone as tz
+    from django.conf import settings as django_settings
+
+    from crm.models import (
+        Activity,
+        EmailSequenceStep,
+        SequenceEnrollment,
+        SequenceEnrollmentStatus,
+    )
+
+    now = tz.now()
+    due = SequenceEnrollment.objects.filter(
+        status=SequenceEnrollmentStatus.ACTIVE,
+        next_send_at__lte=now,
+    ).select_related("sequence", "lead", "lead__customer")
+
+    for enrollment in due:
+        sequence = enrollment.sequence
+        lead = enrollment.lead
+
+        try:
+            step = sequence.steps.get(step_order=enrollment.current_step)
+        except EmailSequenceStep.DoesNotExist:
+            # No more steps — mark enrollment complete
+            enrollment.status = SequenceEnrollmentStatus.COMPLETED
+            enrollment.completed_at = now
+            enrollment.save(update_fields=["status", "completed_at"])
+            continue
+
+        # Resolve recipient email from lead's customer
+        to_email = ""
+        if lead.customer:
+            to_email = lead.customer.email
+        if not to_email:
+            logger.warning(
+                "dispatch_sequence_emails: Lead %s has no customer email — skipping step %d.",
+                lead.id,
+                step.step_order,
+            )
+        else:
+            # Render simple placeholders
+            customer_name = ""
+            if lead.customer:
+                customer_name = f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+            body = step.body_template.replace(
+                "{{lead_title}}", lead.title
+            ).replace(
+                "{{customer_name}}", customer_name or lead.title
+            )
+
+            from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.io")
+
+            # Check plugin config for custom from_email
+            try:
+                from firms.models import PluginConfig
+                pc = PluginConfig.objects.filter(
+                    firm_id=lead.firm_id,
+                    plugin_name="email-sequences",
+                    enabled=True,
+                ).first()
+                if pc and pc.config.get("from_email"):
+                    from_email = pc.config["from_email"]
+            except Exception:
+                pass
+
+            try:
+                send_mail(
+                    subject=step.subject,
+                    message=body,
+                    from_email=from_email,
+                    recipient_list=[to_email],
+                    fail_silently=False,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "dispatch_sequence_emails: Failed to send step %d of enrollment %s: %s",
+                    step.step_order,
+                    enrollment.id,
+                    exc,
+                )
+                continue
+
+            # Log activity
+            Activity.objects.create(
+                lead=lead,
+                type="sequence_email_sent",
+                content_text=f"Sequence email sent: {step.subject}",
+                metadata={
+                    "sequence_id": str(sequence.id),
+                    "sequence_name": sequence.name,
+                    "step_order": step.step_order,
+                    "subject": step.subject,
+                    "to": to_email,
+                },
+            )
+
+        # Advance to next step
+        next_step_order = enrollment.current_step + 1
+        try:
+            next_step = sequence.steps.get(step_order=next_step_order)
+            enrollment.current_step = next_step_order
+            enrollment.next_send_at = now + datetime.timedelta(days=next_step.delay_days)
+            enrollment.save(update_fields=["current_step", "next_send_at"])
+        except EmailSequenceStep.DoesNotExist:
+            enrollment.status = SequenceEnrollmentStatus.COMPLETED
+            enrollment.completed_at = now
+            enrollment.save(update_fields=["status", "completed_at"])
