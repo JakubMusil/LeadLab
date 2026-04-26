@@ -1093,10 +1093,10 @@ function actionSummary(action: AutomationAction): string {
 
       <!-- Pro features list for free tier -->
       <ul v-if="!isPro" class="space-y-1 mb-5 text-xs text-gray-500">
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Custom branding (logo + colour)</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Custom branding (logo + color)</li>
         <li class="flex items-center gap-2"><span class="text-green-500">✓</span> White-label client portal</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Unlimited proposals &amp; templates</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Advanced automations &amp; plugins</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Unlimited proposals & templates</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Advanced automations & plugins</li>
         <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Priority support</li>
       </ul>
 
