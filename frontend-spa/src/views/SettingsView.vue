@@ -211,6 +211,7 @@ onMounted(() => {
     loadWebhooks()
     loadDigestPreference()
     leadScoringStore.fetchRules()
+    loadPropTemplates()
   }
 })
 
@@ -418,6 +419,110 @@ async function deleteWorkspace() {
     }
   } else {
     toast.error(((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Failed to delete workspace.')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Proposal Templates
+// ---------------------------------------------------------------------------
+
+interface TemplItem {
+  id?: string
+  description: string
+  quantity: number
+  unit_price: number
+  discount: number
+  vat_rate: number
+  position: number
+}
+
+interface ProposalTemplate {
+  id: string
+  name: string
+  intro_text: string
+  closing_text: string
+  items: TemplItem[]
+}
+
+const propTemplates = ref<ProposalTemplate[]>([])
+const propTemplatesLoading = ref(false)
+const newTemplateName = ref('')
+const newTemplateIntro = ref('')
+const newTemplateClosing = ref('')
+const newTemplateCreating = ref(false)
+const expandedTemplate = ref<string | null>(null)
+const newTmplItemDesc = ref('')
+const newTmplItemQty = ref(1)
+const newTmplItemPrice = ref(0)
+const addingTmplItem = ref(false)
+
+async function loadPropTemplates() {
+  propTemplatesLoading.value = true
+  const res = await api.get<ProposalTemplate[]>('/api/v1/crm/proposal-templates')
+  propTemplatesLoading.value = false
+  if (res.ok && Array.isArray(res.data)) propTemplates.value = res.data
+}
+
+async function createPropTemplate() {
+  if (!newTemplateName.value.trim()) return
+  newTemplateCreating.value = true
+  const res = await api.post<ProposalTemplate>('/api/v1/crm/proposal-templates', {
+    name: newTemplateName.value.trim(),
+    intro_text: newTemplateIntro.value,
+    closing_text: newTemplateClosing.value,
+  })
+  newTemplateCreating.value = false
+  if (res.ok && res.data) {
+    propTemplates.value.unshift(res.data)
+    newTemplateName.value = ''
+    newTemplateIntro.value = ''
+    newTemplateClosing.value = ''
+    toast.success('Template created.')
+  } else {
+    toast.error('Failed to create template.')
+  }
+}
+
+async function deletePropTemplate(id: string) {
+  if (!confirm('Delete this template?')) return
+  const res = await api.delete(`/api/v1/crm/proposal-templates/${id}`)
+  if (res.ok || res.status === 204) {
+    propTemplates.value = propTemplates.value.filter((t) => t.id !== id)
+    if (expandedTemplate.value === id) expandedTemplate.value = null
+    toast.success('Template deleted.')
+  } else {
+    toast.error('Failed to delete template.')
+  }
+}
+
+async function addTmplItem(template: ProposalTemplate) {
+  if (!newTmplItemDesc.value.trim()) return
+  addingTmplItem.value = true
+  const res = await api.post<TemplItem>(`/api/v1/crm/proposal-templates/${template.id}/items`, {
+    description: newTmplItemDesc.value.trim(),
+    quantity: newTmplItemQty.value,
+    unit_price: newTmplItemPrice.value,
+    discount: 0,
+    vat_rate: 0,
+    position: template.items.length,
+  })
+  addingTmplItem.value = false
+  if (res.ok) {
+    template.items.push(res.data)
+    newTmplItemDesc.value = ''
+    newTmplItemQty.value = 1
+    newTmplItemPrice.value = 0
+  } else {
+    toast.error('Failed to add item.')
+  }
+}
+
+async function deleteTmplItem(template: ProposalTemplate, itemId: string) {
+  const res = await api.delete(`/api/v1/crm/proposal-templates/${template.id}/items/${itemId}`)
+  if (res.ok || res.status === 204) {
+    template.items = template.items.filter((i) => i.id !== itemId)
+  } else {
+    toast.error('Failed to delete item.')
   }
 }
 </script>
@@ -841,6 +946,86 @@ async function deleteWorkspace() {
             {{ ruleLoading ? 'Adding…' : '+ Add rule' }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Proposal Templates -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">Proposal Templates</h2>
+
+      <!-- Existing templates -->
+      <div v-if="propTemplatesLoading" class="animate-pulse space-y-2 mb-4">
+        <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 rounded-xl" />
+      </div>
+      <div v-else-if="propTemplates.length === 0" class="text-sm text-gray-400 mb-4">
+        No proposal templates yet.
+      </div>
+      <div v-else class="mb-4 space-y-2">
+        <div v-for="tmpl in propTemplates" :key="tmpl.id" class="border border-gray-100 rounded-xl overflow-hidden">
+          <div class="flex items-center gap-2 px-4 py-3">
+            <button
+              class="flex-1 text-left text-sm font-medium text-gray-800 hover:text-red-600 transition-colors"
+              @click="expandedTemplate = expandedTemplate === tmpl.id ? null : tmpl.id"
+            >
+              {{ tmpl.name }}
+              <span class="text-xs text-gray-400 ml-2">({{ tmpl.items.length }} items)</span>
+              <span class="text-xs text-gray-400 ml-1">{{ expandedTemplate === tmpl.id ? '▲' : '▼' }}</span>
+            </button>
+            <button
+              class="text-xs text-red-400 hover:text-red-600 px-2"
+              @click="deletePropTemplate(tmpl.id)"
+            >Delete</button>
+          </div>
+
+          <!-- Expanded template items -->
+          <div v-if="expandedTemplate === tmpl.id" class="border-t border-gray-100 px-4 pb-3">
+            <div v-if="tmpl.items.length === 0" class="text-xs text-gray-400 py-2">No items.</div>
+            <table v-else class="w-full text-xs mb-2 mt-2">
+              <thead>
+                <tr class="border-b border-gray-100 text-gray-500">
+                  <th class="text-left pb-1.5">Description</th>
+                  <th class="text-right pb-1.5 w-12">Qty</th>
+                  <th class="text-right pb-1.5 w-20">Price</th>
+                  <th class="w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in tmpl.items" :key="item.id" class="border-b border-gray-50">
+                  <td class="py-1.5 text-gray-700">{{ item.description }}</td>
+                  <td class="py-1.5 text-right text-gray-500">{{ item.quantity }}</td>
+                  <td class="py-1.5 text-right text-gray-500">{{ Number(item.unit_price).toFixed(2) }}</td>
+                  <td class="py-1.5 text-right">
+                    <button class="text-gray-300 hover:text-red-400 transition-colors" @click="deleteTmplItem(tmpl, item.id!)">✕</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <!-- Add item to template -->
+            <div class="flex gap-2 mt-1">
+              <input v-model="newTmplItemDesc" type="text" placeholder="Item description" class="flex-1 rounded-lg border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:border-red-400" />
+              <input v-model.number="newTmplItemQty" type="number" min="1" step="1" placeholder="Qty" class="w-14 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400" />
+              <input v-model.number="newTmplItemPrice" type="number" min="0" step="0.01" placeholder="Price" class="w-20 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400" />
+              <button
+                :disabled="addingTmplItem || !newTmplItemDesc.trim()"
+                class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                @click="addTmplItem(tmpl)"
+              >Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create new template -->
+      <div class="border border-dashed border-gray-200 rounded-xl p-4 space-y-2">
+        <p class="text-xs font-medium text-gray-500">New Template</p>
+        <input v-model="newTemplateName" type="text" placeholder="Template name *" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+        <textarea v-model="newTemplateIntro" rows="2" placeholder="Intro text (optional)…" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
+        <textarea v-model="newTemplateClosing" rows="2" placeholder="Closing text (optional)…" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
+        <button
+          :disabled="newTemplateCreating || !newTemplateName.trim()"
+          class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+          @click="createPropTemplate"
+        >{{ newTemplateCreating ? 'Creating…' : '+ Create Template' }}</button>
       </div>
     </div>
   </div>

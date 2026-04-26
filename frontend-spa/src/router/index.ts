@@ -56,6 +56,11 @@ const router = createRouter({
           meta: { title: 'Lead Detail' },
         },
         {
+          path: 'leads/:id/proposals/:pid?',
+          component: () => import('@/views/ProposalBuilderView.vue'),
+          meta: { title: 'Proposal Builder' },
+        },
+        {
           path: 'customers',
           component: () => import('@/views/CustomersView.vue'),
           meta: { title: 'Customers' },
@@ -93,6 +98,10 @@ const router = createRouter({
       ],
     },
     { path: '/:pathMatch(.*)*', component: () => import('@/views/NotFoundView.vue') },
+    {
+      path: '/proposals/public/:token',
+      component: () => import('@/views/PublicProposalView.vue'),
+    },
   ],
 })
 
