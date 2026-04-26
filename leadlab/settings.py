@@ -297,7 +297,7 @@ VAPID_ADMIN_EMAIL = os.environ.get('VAPID_ADMIN_EMAIL', 'admin@leadlab.io')
 CSP_DEFAULT_SRC = os.environ.get("CSP_DEFAULT_SRC", "'self'")
 CSP_SCRIPT_SRC = os.environ.get(
     "CSP_SCRIPT_SRC",
-    "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
+    "'self' 'unsafe-inline' https://cdn.jsdelivr.net",
 )
 CSP_STYLE_SRC = os.environ.get(
     "CSP_STYLE_SRC",

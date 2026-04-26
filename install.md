@@ -175,7 +175,7 @@ python -c "from py_vapid import Vapid; v = Vapid(); v.generate_keys(); print('Pr
 | Variable | Default | Description |
 |---|---|---|
 | `CSP_DEFAULT_SRC` | `'self'` | CSP `default-src` directive |
-| `CSP_SCRIPT_SRC` | `'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net` | CSP `script-src` directive |
+| `CSP_SCRIPT_SRC` | `'self' 'unsafe-inline' https://cdn.jsdelivr.net` | CSP `script-src` directive |
 | `CSP_STYLE_SRC` | `'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net` | CSP `style-src` directive |
 | `CSP_FONT_SRC` | `'self' https://fonts.gstatic.com` | CSP `font-src` directive |
 | `CSP_IMG_SRC` | `'self' data: blob:` | CSP `img-src` directive |
