@@ -95,11 +95,32 @@ async function loadTrends() {
   if (res.ok && res.data) trends.value = res.data
 }
 
+// -- Proposal Analytics --
+interface ProposalAnalytics {
+  total: number
+  draft: number
+  sent: number
+  viewed: number
+  accepted: number
+  rejected: number
+  expired: number
+  acceptance_rate: number
+  rejection_rate: number
+  avg_time_to_open_hours: number | null
+  template_stats: Array<{ template_id: string; name: string }>
+}
+const proposalAnalytics = ref<ProposalAnalytics | null>(null)
+
+async function loadProposalAnalytics() {
+  const res = await api.get<ProposalAnalytics>('/api/v1/crm/reports/proposal-analytics')
+  if (res.ok && res.data) proposalAnalytics.value = res.data
+}
+
 async function loadAll() {
   if (!firmStore.activeFirm) return
   loading.value = true
   try {
-    await Promise.all([loadVelocity(), loadWonLost(), loadTeam(), loadTrends()])
+    await Promise.all([loadVelocity(), loadWonLost(), loadTeam(), loadTrends(), loadProposalAnalytics()])
   } finally {
     loading.value = false
   }
@@ -402,6 +423,37 @@ const trendsChartOption = computed<EChartsOption>(() => {
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Row 4: Proposal Analytics -->
+      <div v-if="proposalAnalytics" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Proposal Analytics</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+          <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
+            <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ proposalAnalytics.total }}</div>
+            <div class="text-xs text-gray-500 mt-1">Total</div>
+          </div>
+          <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+            <div class="text-2xl font-bold text-green-700 dark:text-green-400">{{ proposalAnalytics.accepted }}</div>
+            <div class="text-xs text-gray-500 mt-1">Accepted ({{ proposalAnalytics.acceptance_rate }}%)</div>
+          </div>
+          <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
+            <div class="text-2xl font-bold text-red-700 dark:text-red-400">{{ proposalAnalytics.rejected }}</div>
+            <div class="text-xs text-gray-500 mt-1">Rejected ({{ proposalAnalytics.rejection_rate }}%)</div>
+          </div>
+          <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+            <div class="text-2xl font-bold text-blue-700 dark:text-blue-400">
+              {{ proposalAnalytics.avg_time_to_open_hours != null ? proposalAnalytics.avg_time_to_open_hours.toFixed(1) + 'h' : '—' }}
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Avg. Time to Open</div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Draft: {{ proposalAnalytics.draft }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Sent: {{ proposalAnalytics.sent }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">Viewed: {{ proposalAnalytics.viewed }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">Expired: {{ proposalAnalytics.expired }}</span>
         </div>
       </div>
     </template>

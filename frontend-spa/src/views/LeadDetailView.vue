@@ -25,7 +25,7 @@ const firmStore = useFirmStore()
 const { on, off } = useWebSocket()
 
 const leadId = computed(() => route.params.id as string)
-type Tab = 'overview' | 'activities' | 'tasks' | 'files'
+type Tab = 'overview' | 'activities' | 'tasks' | 'files' | 'proposals'
 const activeTab = ref<Tab>('overview')
 
 // Team members (for @mention in activity composer)
@@ -341,6 +341,7 @@ async function switchTab(tab: Tab) {
   if (tab === 'activities' && activities.value.length === 0) await loadActivities()
   else if (tab === 'tasks' && tasks.value.length === 0) await loadTasks()
   else if (tab === 'files' && files.value.length === 0) await loadFiles()
+  else if (tab === 'proposals') router.push(`/app/leads/${leadId.value}/proposals`)
 }
 </script>
 
@@ -408,7 +409,7 @@ async function switchTab(tab: Tab) {
       <!-- Tabs -->
       <div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
         <button
-          v-for="tab in (['overview', 'activities', 'tasks', 'files'] as Tab[])"
+          v-for="tab in (['overview', 'activities', 'tasks', 'files', 'proposals'] as Tab[])"
           :key="tab"
           class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize"
           :class="activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"

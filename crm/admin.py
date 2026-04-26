@@ -10,6 +10,10 @@ from crm.models import (
     LeadScoringRule,
     LeadStatusHistory,
     Notification,
+    Proposal,
+    ProposalItem,
+    ProposalTemplate,
+    ProposalTemplateItem,
     PushSubscription,
     SavedView,
     Task,
@@ -138,3 +142,46 @@ class SavedViewAdmin(admin.ModelAdmin):
     list_filter = ("firm", "entity")
     search_fields = ("name", "user__email")
     readonly_fields = ("created_at",)
+
+
+# ---------------------------------------------------------------------------
+# Proposals & Quote Builder (v2.3)
+# ---------------------------------------------------------------------------
+
+class ProposalItemInline(admin.TabularInline):
+    model = ProposalItem
+    extra = 0
+    fields = ("description", "quantity", "unit_price", "discount", "vat_rate", "position")
+    ordering = ("position",)
+
+
+@admin.register(Proposal)
+class ProposalAdmin(admin.ModelAdmin):
+    list_display = ("title", "status", "lead", "currency", "view_count", "firm", "created_at")
+    list_filter = ("firm", "status")
+    search_fields = ("title", "lead__title")
+    readonly_fields = ("public_token", "view_count", "first_viewed_at", "sent_at", "responded_at", "created_at", "updated_at")
+    inlines = [ProposalItemInline]
+
+
+@admin.register(ProposalItem)
+class ProposalItemAdmin(admin.ModelAdmin):
+    list_display = ("description", "quantity", "unit_price", "discount", "vat_rate", "proposal")
+    list_filter = ("proposal__firm",)
+    search_fields = ("description", "proposal__title")
+
+
+class ProposalTemplateItemInline(admin.TabularInline):
+    model = ProposalTemplateItem
+    extra = 0
+    fields = ("description", "quantity", "unit_price", "discount", "vat_rate", "position")
+    ordering = ("position",)
+
+
+@admin.register(ProposalTemplate)
+class ProposalTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "firm", "created_at")
+    list_filter = ("firm",)
+    search_fields = ("name",)
+    readonly_fields = ("created_at", "updated_at")
+    inlines = [ProposalTemplateItemInline]
