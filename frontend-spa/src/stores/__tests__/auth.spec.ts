@@ -103,7 +103,7 @@ describe('useAuthStore', () => {
     vi.mocked(api.post).mockResolvedValueOnce({ ok: true, status: 200, data: { detail: 'Logged out successfully.' } })
 
     const store = useAuthStore()
-    store.user = { id: 1, email: 'x@y.com', first_name: '', last_name: '', timezone: 'UTC', full_name: '' }
+    store.user = { id: 1, email: 'x@y.com', first_name: '', last_name: '', timezone: 'UTC', full_name: '', is_staff: false }
     await store.logout()
 
     expect(store.user).toBeNull()

@@ -11,6 +11,11 @@ vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }))
 
+vi.mock('@/composables/useI18n', () => ({
+  useI18n: () => ({ locale: { value: 'en' } }),
+  setLocale: vi.fn(),
+}))
+
 vi.mock('@/composables/usePushNotifications', () => ({
   usePushNotifications: () => ({
     isSupported: false,

@@ -181,8 +181,10 @@ const velocityChartOption = computed<EChartsOption>(() => {
   return {
     tooltip: {
       trigger: 'item',
-      formatter: (p: Record<string, unknown>) =>
-        `${STATUS_LABELS[p['name'] as string] ?? p['name']}: ${Number(p['value']).toFixed(1)} h avg (${sorted.find((r) => r.status === p['name'])?.sample_count ?? 0} transitions)`,
+      formatter: (p: unknown) => {
+        const { name, value } = p as { name: string; value: number }
+        return `${STATUS_LABELS[name] ?? name}: ${Number(value).toFixed(1)} h avg (${sorted.find((r) => r.status === name)?.sample_count ?? 0} transitions)`
+      },
     },
     series: [
       {
@@ -197,8 +199,10 @@ const velocityChartOption = computed<EChartsOption>(() => {
         gap: 4,
         label: {
           show: true,
-          formatter: (p: Record<string, unknown>) =>
-            `${STATUS_LABELS[p['name'] as string] ?? p['name']}: ${Number(p['value']).toFixed(1)} h`,
+          formatter: (p: unknown) => {
+            const { name, value } = p as { name: string; value: number }
+            return `${STATUS_LABELS[name] ?? name}: ${Number(value).toFixed(1)} h`
+          },
         },
         data: sorted.map((r) => ({
           name: r.status,
