@@ -248,12 +248,12 @@ Establish a consistent, polished design language across the entire SPA before ad
 
 Make the UI feel smart and personal.
 
-- [ ] **Command palette** — `Cmd/Ctrl + K` opens a global fuzzy-search command palette (`vue-command-palette` or custom); supports navigating to any lead, customer, or settings page; shows recent items and keyboard shortcut hints
-- [ ] **Adaptive dashboard** — drag-and-drop widget layout (using `vue-grid-layout`); users pin the stat cards and charts they care about most; layout persisted per user in the backend
-- [ ] **Contextual quick actions** — right-click (or long-press on touch) context menu on lead and customer rows for instant access to: edit, change status, assign, delete, add activity
-- [ ] **Smart lead scoring** — display a configurable score (0–100) beside each lead based on weighted rules (last activity age, value, source); rules editable in Settings; colour-coded badge in list and Kanban views
-- [ ] **Saved views** — users save named filter + sort combinations (e.g. "My open leads", "High-value Q3") on Leads and Customers lists; saved views appear in the sidebar under the respective section
-- [ ] **Activity composer improvements** — rich-text editor (Tiptap) for comments and emails; @mention team members to tag them in activities (creates a notification); emoji picker
+- [x] **Command palette** — `Cmd/Ctrl + K` opens a global fuzzy-search command palette (`vue-command-palette` or custom); supports navigating to any lead, customer, or settings page; shows recent items and keyboard shortcut hints
+- [x] **Adaptive dashboard** — drag-and-drop widget layout (using `vue-grid-layout`); users pin the stat cards and charts they care about most; layout persisted per user in the backend
+- [x] **Contextual quick actions** — right-click (or long-press on touch) context menu on lead and customer rows for instant access to: edit, change status, assign, delete, add activity
+- [x] **Smart lead scoring** — display a configurable score (0–100) beside each lead based on weighted rules (last activity age, value, source); rules editable in Settings; colour-coded badge in list and Kanban views
+- [x] **Saved views** — users save named filter + sort combinations (e.g. "My open leads", "High-value Q3") on Leads and Customers lists; saved views appear in the sidebar under the respective section
+- [x] **Activity composer improvements** — rich-text editor (Tiptap) for comments and emails; @mention team members to tag them in activities (creates a notification); emoji picker
 
 ### v2.3 — Business Proposals & Quote Builder
 

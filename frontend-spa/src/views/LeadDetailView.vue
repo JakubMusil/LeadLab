@@ -4,8 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
-import RichTextEditor from '@/components/RichTextEditor.vue'
+import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import DOMPurify from 'dompurify'
 
 function sanitizeHtml(html: string): string {
@@ -20,11 +21,27 @@ const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
 const toast = useToast()
+const firmStore = useFirmStore()
 const { on, off } = useWebSocket()
 
 const leadId = computed(() => route.params.id as string)
 type Tab = 'overview' | 'activities' | 'tasks' | 'files'
 const activeTab = ref<Tab>('overview')
+
+// Team members (for @mention in activity composer)
+const teamMembers = ref<MentionUser[]>([])
+const richTextEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+
+async function loadTeamMembers() {
+  const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
+  if (!firmId) return
+  const res = await api.get<{ id: string; user_id: string; user_full_name: string }[]>(
+    `/api/v1/firms/${firmId}/members`,
+  )
+  if (res.ok) {
+    teamMembers.value = res.data.map((m) => ({ id: m.user_id, label: m.user_full_name || m.user_id }))
+  }
+}
 
 // Activities
 interface Activity { id: string; lead_id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
@@ -128,10 +145,15 @@ async function loadFiles() {
 async function addActivity() {
   if (!hasPlainText(newActivityText.value) && newActivityType.value === 'comment') return
   activitySubmitting.value = true
+  const mentionedIds = newActivityType.value === 'comment'
+    ? (richTextEditorRef.value?.getMentionedIds() ?? [])
+    : []
+  const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
   const res = await api.post<Activity>('/api/v1/crm/activities', {
     lead_id: leadId.value,
     type: newActivityType.value,
     content_text: newActivityText.value,
+    metadata,
   })
   activitySubmitting.value = false
   if (res.ok) {
@@ -287,6 +309,7 @@ async function deleteLead() {
 
 onMounted(async () => {
   await store.fetchLead(leadId.value)
+  loadTeamMembers()
   if (activeTab.value === 'activities') await loadActivities()
   else if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
@@ -416,9 +439,11 @@ async function switchTab(tab: Tab) {
           </div>
           <div class="flex flex-col gap-2">
             <RichTextEditor
+              ref="richTextEditorRef"
               v-model="newActivityText"
-              :placeholder="newActivityType === 'comment' ? 'Write a comment…' : 'Add a note, call log, or email…'"
+              :placeholder="newActivityType === 'comment' ? 'Write a comment… (type @ to mention a team member)' : 'Add a note, call log, or email…'"
               :disabled="activitySubmitting"
+              :members="newActivityType === 'comment' ? teamMembers : []"
             />
             <div class="flex justify-end">
               <button
