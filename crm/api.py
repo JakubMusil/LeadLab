@@ -49,6 +49,8 @@ from crm.events import broadcast_event
 
 router = Router(tags=["crm"])
 
+_MENTION_PREVIEW_LENGTH = 120
+
 
 # ---------------------------------------------------------------------------
 # Shared error schema
@@ -548,6 +550,32 @@ def create_activity(request, payload: ActivityIn):
         elif payload.type == ActivityType.EMAIL_OUT:
             # Trigger async Celery task (gracefully degrade if Celery not available)
             _trigger_email_task(activity, lead)
+
+        # -- @mention notifications (COMMENT activities only) --
+        if payload.type == ActivityType.COMMENT:
+            mention_ids = payload.metadata.get('mentions', [])
+            if mention_ids:
+                from django.contrib.auth import get_user_model
+                _User = get_user_model()
+                mentioned_users = (
+                    _User.objects.filter(id__in=[str(uid) for uid in mention_ids])
+                    .filter(membership__firm=request.firm)
+                    .exclude(id=request.user.id)
+                    .distinct()
+                )
+                for mentioned_user in mentioned_users:
+                    Notification.objects.create(
+                        firm=request.firm,
+                        user=mentioned_user,
+                        event='activity.mention',
+                        payload={
+                            'activity_id': str(activity.id),
+                            'lead_id': str(lead.id),
+                            'lead_title': lead.title,
+                            'by_user': request.user.full_name or request.user.email,
+                            'content_preview': activity.content_text[:_MENTION_PREVIEW_LENGTH],
+                        },
+                    )
 
     broadcast_event(
         firm=request.firm,

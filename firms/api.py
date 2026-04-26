@@ -59,6 +59,7 @@ class MemberRoleUpdateIn(Schema):
 
 class MembershipOut(Schema):
     id: str
+    user_id: str
     user_email: str
     user_full_name: str
     role: str
@@ -221,6 +222,7 @@ def list_members(request, firm_id: str):
     return 200, [
         {
             "id": str(m.id),
+            "user_id": str(m.user.id),
             "user_email": m.user.email,
             "user_full_name": m.user.full_name,
             "role": m.role,
@@ -271,6 +273,7 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
 
     return 201, {
         "id": str(membership.id),
+        "user_id": str(invitee.id),
         "user_email": invitee.email,
         "user_full_name": invitee.full_name,
         "role": membership.role,
@@ -341,6 +344,7 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
     target.save(update_fields=["role"])
     return 200, {
         "id": str(target.id),
+        "user_id": str(target.user_id),
         "user_email": target.user.email,
         "user_full_name": target.user.full_name,
         "role": target.role,
