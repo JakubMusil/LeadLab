@@ -5,34 +5,20 @@ import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UpgradePrompt from '@/components/UpgradePrompt.vue'
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart, LineChart, FunnelChart } from 'echarts/charts'
+import { Bar, Line } from 'vue-chartjs'
 import {
-  GridComponent,
-  TooltipComponent,
-  LegendComponent,
-  TitleComponent,
-} from 'echarts/components'
-import type { ComposeOption } from 'echarts/core'
-import type { BarSeriesOption, LineSeriesOption, FunnelSeriesOption } from 'echarts/charts'
-import type {
-  GridComponentOption,
-  TooltipComponentOption,
-  LegendComponentOption,
-} from 'echarts/components'
+  Chart as ChartJS,
+  BarElement,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js'
 
-use([CanvasRenderer, BarChart, LineChart, FunnelChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent])
-
-type EChartsOption = ComposeOption<
-  | BarSeriesOption
-  | LineSeriesOption
-  | FunnelSeriesOption
-  | GridComponentOption
-  | TooltipComponentOption
-  | LegendComponentOption
->
+ChartJS.register(BarElement, LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
 
 const firmStore = useFirmStore()
 const { isPro } = storeToRefs(firmStore)
@@ -173,111 +159,111 @@ const STATUS_COLORS: Record<string, string> = {
   negotiation: '#f97316', won: '#22c55e', lost: '#ef4444', canceled: '#9ca3af',
 }
 
-const velocityChartOption = computed<EChartsOption>(() => {
+const velocityChartData = computed(() => {
   const sorted = [...velocity.value].sort(
     (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
   )
-  const maxHours = Math.max(...sorted.map((r) => r.avg_hours), 1)
   return {
-    tooltip: {
-      trigger: 'item',
-      formatter: (p: unknown) => {
-        const { name, value } = p as { name: string; value: number }
-        return `${STATUS_LABELS[name] ?? name}: ${Number(value).toFixed(1)} h avg (${sorted.find((r) => r.status === name)?.sample_count ?? 0} transitions)`
-      },
-    },
-    series: [
+    labels: sorted.map((r) => STATUS_LABELS[r.status] ?? r.status),
+    datasets: [
       {
-        type: 'funnel',
-        sort: 'none',
-        left: '5%',
-        width: '90%',
-        min: 0,
-        max: maxHours,
-        minSize: '10%',
-        maxSize: '100%',
-        gap: 4,
-        label: {
-          show: true,
-          formatter: (p: unknown) => {
-            const { name, value } = p as { name: string; value: number }
-            return `${STATUS_LABELS[name] ?? name}: ${Number(value).toFixed(1)} h`
-          },
-        },
-        data: sorted.map((r) => ({
-          name: r.status,
-          value: r.avg_hours,
-          itemStyle: { color: STATUS_COLORS[r.status] ?? '#6b7280' },
-        })),
+        label: 'Avg hours in status',
+        data: sorted.map((r) => r.avg_hours),
+        backgroundColor: sorted.map((r) => STATUS_COLORS[r.status] ?? '#6b7280'),
+        borderRadius: 4,
+        maxBarThickness: 48,
       },
     ],
   }
 })
+
+const velocityChartOptions = computed(() => ({
+  indexAxis: 'y' as const,
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: (ctx: { raw: unknown; dataIndex: number }) => {
+          const sorted = [...velocity.value].sort(
+            (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
+          )
+          const row = sorted[ctx.dataIndex]
+          return ` ${Number(ctx.raw).toFixed(1)} h avg (${row?.sample_count ?? 0} transitions)`
+        },
+      },
+    },
+  },
+  scales: { x: { ticks: { precision: 1 } }, y: { ticks: { font: { size: 11 } } } },
+}))
 
 const SOURCE_LABELS: Record<string, string> = {
   web: 'Web', email: 'Email', referral: 'Referral',
   cold_call: 'Cold Call', social: 'Social', other: 'Other',
 }
 
-const wonLostChartOption = computed<EChartsOption>(() => {
-  const sources = wonLost.value.map((r) => SOURCE_LABELS[r.source] ?? r.source)
+const wonLostChartData = computed(() => ({
+  labels: wonLost.value.map((r) => SOURCE_LABELS[r.source] ?? r.source),
+  datasets: [
+    {
+      label: 'Won',
+      data: wonLost.value.map((r) => r.won),
+      backgroundColor: '#22c55e',
+      borderRadius: 4,
+      maxBarThickness: 48,
+    },
+    {
+      label: 'Lost',
+      data: wonLost.value.map((r) => r.lost),
+      backgroundColor: '#ef4444',
+      borderRadius: 4,
+      maxBarThickness: 48,
+    },
+  ],
+}))
+
+const wonLostChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 } } } },
+  scales: { x: { stacked: true, ticks: { font: { size: 11 } } }, y: { stacked: true, ticks: { precision: 0 } } },
+}
+
+const trendsChartData = computed(() => {
+  if (!trends.value) return { labels: [], datasets: [] }
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { bottom: 0, textStyle: { fontSize: 11 } },
-    grid: { left: 8, right: 8, top: 8, bottom: 32, containLabel: true },
-    xAxis: { type: 'category', data: sources, axisLabel: { fontSize: 11 } },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [
+    labels: trends.value.weekly.map((r) => {
+      const d = new Date(r.week_start)
+      return `${d.getMonth() + 1}/${d.getDate()}`
+    }),
+    datasets: [
       {
-        name: 'Won',
-        type: 'bar',
-        stack: 'total',
-        data: wonLost.value.map((r) => r.won),
-        itemStyle: { color: '#22c55e' },
-        barMaxWidth: 48,
+        label: 'Created',
+        data: trends.value.weekly.map((r) => r.created),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        tension: 0.3,
+        fill: true,
       },
       {
-        name: 'Lost',
-        type: 'bar',
-        stack: 'total',
-        data: wonLost.value.map((r) => r.lost),
-        itemStyle: { color: '#ef4444' },
-        barMaxWidth: 48,
+        label: 'Closed',
+        data: trends.value.weekly.map((r) => r.closed),
+        borderColor: '#9ca3af',
+        backgroundColor: 'rgba(156,163,175,0.1)',
+        tension: 0.3,
+        fill: true,
       },
     ],
   }
 })
 
-const trendsChartOption = computed<EChartsOption>(() => {
-  if (!trends.value) return {}
-  const weeks = trends.value.weekly.map((r) => {
-    const d = new Date(r.week_start)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  })
-  return {
-    tooltip: { trigger: 'axis' },
-    legend: { bottom: 0, textStyle: { fontSize: 11 } },
-    grid: { left: 8, right: 8, top: 8, bottom: 32, containLabel: true },
-    xAxis: { type: 'category', data: weeks, axisLabel: { fontSize: 11 } },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [
-      {
-        name: 'Created',
-        type: 'line',
-        data: trends.value.weekly.map((r) => r.created),
-        itemStyle: { color: '#3b82f6' },
-        smooth: true,
-      },
-      {
-        name: 'Closed',
-        type: 'line',
-        data: trends.value.weekly.map((r) => r.closed),
-        itemStyle: { color: '#9ca3af' },
-        smooth: true,
-      },
-    ],
-  }
-})
+const trendsChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 } } } },
+  scales: { x: { ticks: { font: { size: 11 } } }, y: { ticks: { precision: 0 } } },
+}
 </script>
 
 <template>
@@ -313,7 +299,9 @@ const trendsChartOption = computed<EChartsOption>(() => {
           <div v-if="velocity.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
             No status history data yet
           </div>
-          <VChart v-else :option="velocityChartOption" style="height: 260px" autoresize />
+          <div v-else style="height: 260px; position: relative">
+            <Bar :data="velocityChartData" :options="velocityChartOptions" />
+          </div>
         </div>
 
         <!-- Won / Lost by source stacked bar -->
@@ -332,7 +320,9 @@ const trendsChartOption = computed<EChartsOption>(() => {
           <div v-if="wonLost.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
             No closed leads yet
           </div>
-          <VChart v-else :option="wonLostChartOption" style="height: 220px" autoresize />
+          <div v-else style="height: 220px; position: relative">
+            <Bar :data="wonLostChartData" :options="wonLostChartOptions" />
+          </div>
         </div>
       </div>
 
@@ -354,7 +344,9 @@ const trendsChartOption = computed<EChartsOption>(() => {
         <div v-if="!trends || trends.weekly.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
           No trend data yet
         </div>
-        <VChart v-else :option="trendsChartOption" style="height: 240px" autoresize />
+        <div v-else style="height: 240px; position: relative">
+          <Line :data="trendsChartData" :options="trendsChartOptions" />
+        </div>
       </div>
 
       <!-- Row 3: Team performance -->

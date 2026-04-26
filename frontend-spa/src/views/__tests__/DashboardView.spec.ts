@@ -7,14 +7,22 @@ import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import DashboardView from '../DashboardView.vue'
 
-// Mock ECharts / vue-echarts
-vi.mock('vue-echarts', () => ({
-  default: { template: '<canvas />' },
+// Mock Chart.js / vue-chartjs
+vi.mock('vue-chartjs', () => ({
+  Bar: { template: '<canvas />' },
+  Line: { template: '<canvas />' },
 }))
-vi.mock('echarts/core', () => ({ use: vi.fn() }))
-vi.mock('echarts/renderers', () => ({ CanvasRenderer: {} }))
-vi.mock('echarts/charts', () => ({ BarChart: {} }))
-vi.mock('echarts/components', () => ({ GridComponent: {}, TooltipComponent: {} }))
+vi.mock('chart.js', () => ({
+  Chart: { register: vi.fn() },
+  BarElement: {},
+  CategoryScale: {},
+  LinearScale: {},
+  Tooltip: {},
+  Legend: {},
+  LineElement: {},
+  PointElement: {},
+  Filler: {},
+}))
 
 vi.mock('@/stores/firm', () => ({
   useFirmStore: () => ({

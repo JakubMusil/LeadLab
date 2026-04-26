@@ -2,19 +2,17 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import type { ComposeOption } from 'echarts/core'
-import type { BarSeriesOption } from 'echarts/charts'
-import type { GridComponentOption, TooltipComponentOption } from 'echarts/components'
+import { Bar } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+} from 'chart.js'
 import { VueDraggable } from 'vue-draggable-plus'
 
-use([CanvasRenderer, BarChart, GridComponent, TooltipComponent])
-
-type EChartsOption = ComposeOption<BarSeriesOption | GridComponentOption | TooltipComponentOption>
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
 
 interface ActivityItem {
   id: string
@@ -76,25 +74,31 @@ const STATUS_COLORS: Record<string, string> = {
   negotiation: '#f97316', won: '#22c55e', lost: '#ef4444', canceled: '#9ca3af',
 }
 
-const chartOption = computed<EChartsOption>(() => {
-  if (!stats.value) return {}
+const chartData = computed(() => {
+  if (!stats.value) return { labels: [], datasets: [] }
   const entries = Object.entries(stats.value.leads_by_status)
   return {
-    tooltip: { trigger: 'axis' },
-    grid: { left: 8, right: 8, top: 8, bottom: 0, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: entries.map(([k]) => STATUS_LABELS[k] ?? k),
-      axisLabel: { fontSize: 11 },
-    },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [{
-      type: 'bar',
-      data: entries.map(([k, v]) => ({ value: v, itemStyle: { color: STATUS_COLORS[k] ?? '#6b7280' } })),
-      barMaxWidth: 40,
-    }],
+    labels: entries.map(([k]) => STATUS_LABELS[k] ?? k),
+    datasets: [
+      {
+        data: entries.map(([, v]) => v),
+        backgroundColor: entries.map(([k]) => STATUS_COLORS[k] ?? '#6b7280'),
+        borderRadius: 4,
+        maxBarThickness: 40,
+      },
+    ],
   }
 })
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { mode: 'index' as const } },
+  scales: {
+    x: { ticks: { font: { size: 11 } } },
+    y: { ticks: { precision: 0 } },
+  },
+}
 
 const visibleWidgets = computed(() =>
   widgets.value
@@ -300,7 +304,9 @@ const showSetupBanner = computed(() => {
             <!-- Pipeline bar chart -->
             <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Status</h3>
-              <VChart :option="chartOption" style="height: 220px" autoresize />
+              <div style="height: 220px; position: relative">
+                <Bar :data="chartData" :options="chartOptions" />
+              </div>
             </div>
 
             <!-- Recent activities (rendered alongside chart) -->
@@ -330,7 +336,9 @@ const showSetupBanner = computed(() => {
           <template v-else-if="widget.id === 'pipeline_chart' && !visibleWidgets.some((w) => w.id === 'recent_activity')">
             <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Status</h3>
-              <VChart :option="chartOption" style="height: 220px" autoresize />
+              <div style="height: 220px; position: relative">
+                <Bar :data="chartData" :options="chartOptions" />
+              </div>
             </div>
           </template>
 
