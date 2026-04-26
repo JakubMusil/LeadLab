@@ -987,3 +987,124 @@ class SequenceEnrollment(TenantModel):
 
     def __str__(self):
         return f"Enrollment: {self.lead} → {self.sequence} (step {self.current_step})"
+
+
+# ---------------------------------------------------------------------------
+# Workflow Automation (v2.5)
+# ---------------------------------------------------------------------------
+
+class AutomationTrigger(models.TextChoices):
+    LEAD_CREATED = "lead_created", "Lead Created"
+    LEAD_STATUS_CHANGE = "lead_status_change", "Lead Status Changed"
+    TASK_OVERDUE = "task_overdue", "Task Overdue"
+    PROPOSAL_SENT = "proposal_sent", "Proposal Sent"
+    PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
+    LEAD_INACTIVE = "lead_inactive", "Lead Inactive (N days)"
+    WEBHOOK_RECEIVED = "webhook_received", "Custom Webhook Received"
+
+
+class AutomationRunStatus(models.TextChoices):
+    SUCCESS = "success", "Success"
+    FAILURE = "failure", "Failure"
+    SKIPPED = "skipped", "Skipped"
+
+
+class AutomationRule(TenantModel):
+    """
+    A trigger → condition(s) → action(s) automation rule scoped to a Firm.
+
+    ``trigger``        — which event fires the rule
+    ``trigger_config`` — trigger-specific settings (e.g. ``inactive_days`` for
+                         LEAD_INACTIVE, ``warning_days`` for TASK_OVERDUE)
+    ``conditions``     — list of ``{field, operator, value}`` dicts; ALL must
+                         match (logical AND) for actions to run
+    ``actions``        — ordered list of action dicts executed when triggered
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True, db_index=True)
+    trigger = models.CharField(
+        max_length=50,
+        choices=AutomationTrigger.choices,
+        db_index=True,
+    )
+    trigger_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Trigger-specific configuration. "
+            "LEAD_INACTIVE: {inactive_days: 30}. "
+            "TASK_OVERDUE: {warning_days: 1}."
+        ),
+    )
+    conditions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "List of {field, operator, value} condition objects. "
+            "Supported operators: eq, neq, gt, gte, lt, lte, contains. "
+            "All conditions must match (AND)."
+        ),
+    )
+    actions = models.JSONField(
+        default=list,
+        help_text=(
+            "Ordered list of action objects. Each action has a 'type' key: "
+            "send_email, create_task, update_field, call_webhook, run_plugin_action."
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "automation rule"
+        verbose_name_plural = "automation rules"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["firm", "trigger", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.trigger}) [{self.firm}]"
+
+
+class AutomationRun(models.Model):
+    """
+    Immutable execution log for an AutomationRule firing.
+
+    Created for every trigger evaluation — whether the rule ran successfully,
+    was skipped (conditions not met), or failed with an error.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rule = models.ForeignKey(
+        AutomationRule,
+        on_delete=models.CASCADE,
+        related_name="runs",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=AutomationRunStatus.choices,
+        db_index=True,
+    )
+    triggered_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    context = models.JSONField(
+        default=dict,
+        help_text="Serialised event context that fired this run.",
+    )
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "automation run"
+        verbose_name_plural = "automation runs"
+        ordering = ["-triggered_at"]
+        indexes = [
+            models.Index(fields=["rule", "-triggered_at"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"AutomationRun({self.rule.name}, {self.status}) "
+            f"@ {self.triggered_at:%Y-%m-%d %H:%M}"
+        )

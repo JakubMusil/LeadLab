@@ -286,6 +286,54 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
     }
 
 
+def _build_lead_automation_context(lead: Lead, firm) -> dict:
+    """Build the evaluation context dict for automation rules fired from a Lead event."""
+    from firms.models import Membership
+
+    customer_name = ""
+    customer_email = ""
+    if lead.customer_id:
+        try:
+            # customer may already be loaded via select_related
+            c = lead.customer
+            customer_name = f"{c.first_name} {c.last_name}".strip()
+            customer_email = c.email or ""
+        except Exception:  # noqa: BLE001
+            pass
+
+    assignee_email = ""
+    assignee_name = ""
+    if lead.assigned_to_id:
+        try:
+            u = lead.assigned_to
+            assignee_email = u.email or ""
+            assignee_name = f"{u.first_name} {u.last_name}".strip()
+        except Exception:  # noqa: BLE001
+            pass
+
+    owner_email = (
+        Membership.objects
+        .filter(firm=firm, role="owner")
+        .select_related("user")
+        .values_list("user__email", flat=True)
+        .first()
+    ) or ""
+
+    return {
+        "lead_id": str(lead.id),
+        "lead_title": lead.title,
+        "lead_status": lead.status,
+        "lead_source": lead.source,
+        "lead_value": str(lead.value) if lead.value is not None else "",
+        "firm_id": str(firm.pk),
+        "customer_name": customer_name,
+        "customer_email": customer_email,
+        "assignee_email": assignee_email,
+        "assignee_name": assignee_name,
+        "owner_email": owner_email,
+    }
+
+
 @router.get("/leads", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
 def list_leads(
     request,
@@ -362,6 +410,15 @@ def create_lead(request, payload: LeadIn):
         currency=payload.currency,
     )
     broadcast_event(firm=request.firm, event='lead.created', payload=_lead_out(lead))
+
+    # Fire workflow automation trigger: lead_created
+    from crm.tasks import evaluate_automation_rules
+    _automation_ctx = _build_lead_automation_context(lead, request.firm)
+    from django.db import transaction
+    transaction.on_commit(
+        lambda: evaluate_automation_rules.delay("lead_created", str(request.firm.pk), _automation_ctx)
+    )
+
     return 201, _lead_out(lead)
 
 
@@ -419,6 +476,18 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
                 to_status=new_status,
                 changed_at=tz.now(),
                 changed_by=request.user,
+            )
+            # Fire workflow automation trigger: lead_status_change
+            from crm.tasks import evaluate_automation_rules
+            _automation_ctx = {
+                **_build_lead_automation_context(lead, request.firm),
+                "from_status": old_status,
+                "to_status": new_status,
+            }
+            transaction.on_commit(
+                lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
+                    "lead_status_change", str(request.firm.pk), ctx
+                )
             )
         else:
             lead.save()

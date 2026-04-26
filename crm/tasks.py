@@ -11,6 +11,244 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Workflow Automation helpers (v2.5)
+# ---------------------------------------------------------------------------
+
+def _render_template(text: str, context: dict) -> str:
+    """Replace {{key}} placeholders in *text* with values from *context*."""
+    for key, value in context.items():
+        if isinstance(value, str):
+            text = text.replace("{{" + key + "}}", value)
+    return text
+
+
+def _get_context_field(field: str, context: dict):
+    """Extract a (possibly dot-separated) field from the evaluation context."""
+    parts = field.split(".")
+    current = context
+    for part in parts:
+        if isinstance(current, dict):
+            current = current.get(part)
+        else:
+            return None
+    return current
+
+
+def _compare(actual, operator: str, expected) -> bool:
+    """Return True if *actual* <operator> *expected*."""
+    if operator == "eq":
+        return str(actual) == str(expected)
+    if operator == "neq":
+        return str(actual) != str(expected)
+    if operator == "contains":
+        return str(expected).lower() in str(actual).lower()
+    # Numeric comparisons
+    try:
+        a, e = float(actual), float(expected)
+    except (TypeError, ValueError):
+        return False
+    if operator == "gt":
+        return a > e
+    if operator == "gte":
+        return a >= e
+    if operator == "lt":
+        return a < e
+    if operator == "lte":
+        return a <= e
+    return False
+
+
+def _evaluate_conditions(conditions: list, context: dict) -> bool:
+    """Return True if all conditions pass (logical AND)."""
+    for cond in conditions:
+        field = cond.get("field", "")
+        operator = cond.get("operator", "eq")
+        value = cond.get("value")
+        actual = _get_context_field(field, context)
+        if not _compare(actual, operator, value):
+            return False
+    return True
+
+
+def _action_send_email(action: dict, context: dict) -> None:
+    from django.core.mail import send_mail
+    from django.conf import settings as django_settings
+
+    to_spec = action.get("to", "")
+    # Resolve recipient
+    if to_spec == "assignee":
+        recipient = context.get("assignee_email", "")
+    elif to_spec == "owner":
+        recipient = context.get("owner_email", "")
+    elif to_spec == "customer":
+        recipient = context.get("customer_email", "")
+    else:
+        recipient = to_spec  # literal email address
+
+    if not recipient:
+        logger.warning("automation send_email: no recipient resolved for to=%r", to_spec)
+        return
+
+    subject = _render_template(action.get("subject", "(no subject)"), context)
+    body = _render_template(action.get("body", ""), context)
+    from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.io")
+
+    send_mail(
+        subject=subject,
+        message=body,
+        from_email=from_email,
+        recipient_list=[recipient],
+        fail_silently=False,
+    )
+    logger.info("automation send_email: sent to %s — subject: %s", recipient, subject)
+
+
+def _action_create_task(action: dict, context: dict, rule) -> None:
+    from django.utils import timezone as tz
+    from crm.models import Task
+
+    lead_id = context.get("lead_id")
+    if not lead_id:
+        raise ValueError("create_task: no lead_id in context")
+
+    from crm.models import Lead
+    try:
+        lead = Lead.objects.get(id=lead_id)
+    except Lead.DoesNotExist:
+        raise ValueError(f"create_task: lead {lead_id} not found")
+
+    title = _render_template(action.get("title", "Follow-up task"), context)
+    days_from_now = int(action.get("days_from_now", 0))
+    due_date = tz.now() + datetime.timedelta(days=days_from_now) if days_from_now else None
+
+    Task.objects.create(
+        firm=lead.firm,
+        lead=lead,
+        title=title,
+        due_date=due_date,
+    )
+    logger.info("automation create_task: created task '%s' on lead %s", title, lead_id)
+
+
+def _action_update_field(action: dict, context: dict) -> None:
+    lead_id = context.get("lead_id")
+    if not lead_id:
+        raise ValueError("update_field: no lead_id in context")
+
+    field = action.get("field", "")
+    value = action.get("value")
+
+    _ALLOWED_LEAD_FIELDS = {"status", "source", "currency", "description"}
+    if field not in _ALLOWED_LEAD_FIELDS:
+        raise ValueError(f"update_field: field '{field}' is not allowed")
+
+    from crm.models import Lead
+    updated = Lead.objects.filter(id=lead_id).update(**{field: value})
+    if not updated:
+        raise ValueError(f"update_field: lead {lead_id} not found")
+    logger.info("automation update_field: set %s=%r on lead %s", field, value, lead_id)
+
+
+def _action_call_webhook(action: dict, context: dict) -> None:
+    import json
+    import urllib.request
+    import urllib.error
+
+    url = action.get("url", "")
+    if not url:
+        raise ValueError("call_webhook: no url provided")
+
+    method = action.get("method", "POST").upper()
+    payload = json.dumps(context).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method=method,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info(
+                "automation call_webhook: %s %s → %d",
+                method, url, resp.status,
+            )
+    except urllib.error.HTTPError as exc:
+        raise ValueError(f"call_webhook: HTTP {exc.code} from {url}") from exc
+    except Exception as exc:
+        raise ValueError(f"call_webhook: request to {url} failed: {exc}") from exc
+
+
+def _action_run_plugin(action: dict, context: dict, rule) -> None:
+    from leadlab.plugin_registry import plugin_registry
+    plugin_name = action.get("plugin_name", "")
+    action_name = action.get("action", "")
+    params = action.get("params", {})
+    plugin = next((p for p in plugin_registry if p.get("name") == plugin_name), None)
+    if plugin is None:
+        raise ValueError(f"run_plugin_action: plugin '{plugin_name}' not found")
+    hook = plugin.get("actions", {}).get(action_name)
+    if hook is None:
+        raise ValueError(
+            f"run_plugin_action: action '{action_name}' not found in plugin '{plugin_name}'"
+        )
+    hook(context=context, params=params, rule=rule)
+    logger.info("automation run_plugin_action: %s.%s executed", plugin_name, action_name)
+
+
+def _execute_rule(rule, context: dict) -> None:
+    """Evaluate conditions and execute actions for a single AutomationRule."""
+    from crm.models import AutomationRun, AutomationRunStatus
+
+    try:
+        if not _evaluate_conditions(rule.conditions, context):
+            AutomationRun.objects.create(
+                rule=rule,
+                status=AutomationRunStatus.SKIPPED,
+                context=context,
+            )
+            return
+
+        errors = []
+        for action in rule.actions:
+            action_type = action.get("type")
+            try:
+                if action_type == "send_email":
+                    _action_send_email(action, context)
+                elif action_type == "create_task":
+                    _action_create_task(action, context, rule)
+                elif action_type == "update_field":
+                    _action_update_field(action, context)
+                elif action_type == "call_webhook":
+                    _action_call_webhook(action, context)
+                elif action_type == "run_plugin_action":
+                    _action_run_plugin(action, context, rule)
+                else:
+                    errors.append(f"Unknown action type: {action_type!r}")
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "automation rule %s action %r failed: %s",
+                    rule.id, action_type, exc,
+                )
+                errors.append(str(exc))
+
+        AutomationRun.objects.create(
+            rule=rule,
+            status=AutomationRunStatus.FAILURE if errors else AutomationRunStatus.SUCCESS,
+            context=context,
+            error_message="; ".join(errors),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("automation rule %s crashed: %s", rule.id, exc)
+        from crm.models import AutomationRun, AutomationRunStatus
+        AutomationRun.objects.create(
+            rule=rule,
+            status=AutomationRunStatus.FAILURE,
+            context=context,
+            error_message=str(exc),
+        )
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_activity_email(self, activity_id: str):
     """
@@ -433,3 +671,230 @@ def dispatch_sequence_emails(self):
             enrollment.status = SequenceEnrollmentStatus.COMPLETED
             enrollment.completed_at = now
             enrollment.save(update_fields=["status", "completed_at"])
+
+
+# ---------------------------------------------------------------------------
+# Workflow Automation Celery tasks (v2.5)
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, max_retries=0)
+def evaluate_automation_rules(self, trigger: str, firm_id: str, context: dict):
+    """
+    Evaluate all active AutomationRules for *trigger* in *firm_id*.
+
+    Called by API hooks (lead created, status changed, proposal sent/accepted)
+    and by the periodic check tasks below.  Each matching rule is executed
+    via ``_execute_rule`` which logs an AutomationRun.
+    """
+    from crm.models import AutomationRule
+
+    rules = AutomationRule.objects.filter(
+        firm_id=firm_id,
+        trigger=trigger,
+        is_active=True,
+    )
+    for rule in rules:
+        _execute_rule(rule, context)
+
+
+@shared_task(bind=True, max_retries=0)
+def check_task_overdue_automations(self):
+    """
+    Periodic task: fire ``task_overdue`` automations.
+
+    Runs once per day.  For each firm that has active TASK_OVERDUE rules,
+    finds incomplete tasks whose ``due_date`` is in the past or within the
+    configured ``warning_days`` window (default 1 day), and evaluates the
+    rules.  A rule with ``trigger_config.warning_days = 1`` will fire for
+    tasks due within the next 24 hours; one with ``warning_days = 0`` will
+    only fire for already-overdue tasks.
+
+    Deduplication: a run is skipped if the same rule already has a SUCCESS or
+    SKIPPED run for the same task within the last 24 hours.
+    """
+    from django.utils import timezone as tz
+    from crm.models import AutomationRule, AutomationRun, AutomationRunStatus, Task
+    from firms.models import Membership
+
+    now = tz.now()
+
+    # Collect all firms with active task_overdue rules
+    firm_ids = (
+        AutomationRule.objects
+        .filter(trigger="task_overdue", is_active=True)
+        .values_list("firm_id", flat=True)
+        .distinct()
+    )
+
+    for firm_id in firm_ids:
+        rules = AutomationRule.objects.filter(
+            firm_id=firm_id, trigger="task_overdue", is_active=True
+        )
+        # Determine the widest warning window across rules
+        max_warning_days = max(
+            (int(r.trigger_config.get("warning_days", 1)) for r in rules),
+            default=1,
+        )
+        cutoff = now + datetime.timedelta(days=max_warning_days)
+
+        overdue_tasks = (
+            Task.objects
+            .filter(firm_id=firm_id, is_completed=False, due_date__lte=cutoff)
+            .select_related("lead", "lead__customer", "assigned_to")
+        )
+
+        # Get owner email (first OWNER of the firm)
+        owner_email = (
+            Membership.objects
+            .filter(firm_id=firm_id, role="owner")
+            .select_related("user")
+            .values_list("user__email", flat=True)
+            .first()
+        ) or ""
+
+        for task in overdue_tasks:
+            lead = task.lead
+            customer_name = ""
+            customer_email = ""
+            if lead.customer:
+                customer_name = (
+                    f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+                )
+                customer_email = lead.customer.email or ""
+
+            context = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "lead_id": str(lead.id),
+                "lead_title": lead.title,
+                "firm_id": str(firm_id),
+                "due_date": task.due_date.isoformat() if task.due_date else "",
+                "days_until_due": (
+                    str((task.due_date - now).days) if task.due_date else "0"
+                ),
+                "assignee_email": task.assigned_to.email if task.assigned_to else "",
+                "assignee_name": (
+                    f"{task.assigned_to.first_name} {task.assigned_to.last_name}".strip()
+                    if task.assigned_to else ""
+                ),
+                "owner_email": owner_email,
+                "customer_email": customer_email,
+                "customer_name": customer_name,
+            }
+
+            for rule in rules:
+                # Skip if already fired for this task in the last 24 hours
+                already_ran = AutomationRun.objects.filter(
+                    rule=rule,
+                    triggered_at__gte=now - datetime.timedelta(hours=24),
+                ).filter(context__task_id=str(task.id)).exists()
+                if already_ran:
+                    continue
+                _execute_rule(rule, context)
+
+
+@shared_task(bind=True, max_retries=0)
+def check_lead_inactivity_automations(self):
+    """
+    Periodic task: fire ``lead_inactive`` automations.
+
+    Runs once per day.  For each firm that has active LEAD_INACTIVE rules,
+    finds leads with no Activity records in the last ``inactive_days`` days
+    (from ``trigger_config``, default 30), then evaluates the rules.
+
+    Deduplication: a run is skipped if the same rule already has a SUCCESS or
+    SKIPPED run for the same lead within the last 24 hours.
+    """
+    from django.utils import timezone as tz
+    from django.db.models import Max
+    from crm.models import Activity, AutomationRule, AutomationRun, Lead
+    from firms.models import Membership
+
+    now = tz.now()
+
+    firm_ids = (
+        AutomationRule.objects
+        .filter(trigger="lead_inactive", is_active=True)
+        .values_list("firm_id", flat=True)
+        .distinct()
+    )
+
+    for firm_id in firm_ids:
+        rules = AutomationRule.objects.filter(
+            firm_id=firm_id, trigger="lead_inactive", is_active=True
+        )
+        # Smallest inactive_days across rules (so we don't miss any)
+        min_inactive_days = min(
+            (int(r.trigger_config.get("inactive_days", 30)) for r in rules),
+            default=30,
+        )
+        inactivity_cutoff = now - datetime.timedelta(days=min_inactive_days)
+
+        # Find leads whose most-recent activity is older than the cutoff
+        # (or leads with no activities at all, treating created_at as last activity)
+        leads_qs = Lead.objects.filter(firm_id=firm_id)
+        # Annotate with latest activity date
+        leads_with_last = leads_qs.annotate(
+            last_activity=Max("activities__created_at")
+        ).filter(
+            # Either no activities (last_activity is NULL) and lead is old enough,
+            # or the most recent activity predates the cutoff
+            last_activity__lt=inactivity_cutoff,
+        ) | leads_qs.annotate(
+            last_activity=Max("activities__created_at")
+        ).filter(
+            last_activity__isnull=True,
+            created_at__lt=inactivity_cutoff,
+        )
+        leads_qs = leads_with_last.select_related("customer").distinct()
+
+        # Get owner email
+        owner_email = (
+            Membership.objects
+            .filter(firm_id=firm_id, role="owner")
+            .select_related("user")
+            .values_list("user__email", flat=True)
+            .first()
+        ) or ""
+
+        for lead in leads_qs:
+            customer_name = ""
+            customer_email = ""
+            if lead.customer:
+                customer_name = (
+                    f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+                )
+                customer_email = lead.customer.email or ""
+
+            # Compute actual inactive_days
+            last_act = getattr(lead, "last_activity", None)
+            inactive_days = (
+                (now - last_act).days if last_act else (now - lead.created_at).days
+            )
+
+            context = {
+                "lead_id": str(lead.id),
+                "lead_title": lead.title,
+                "lead_status": lead.status,
+                "firm_id": str(firm_id),
+                "inactive_days": str(inactive_days),
+                "customer_email": customer_email,
+                "customer_name": customer_name,
+                "owner_email": owner_email,
+            }
+
+            for rule in rules:
+                # Respect the per-rule inactive_days threshold
+                rule_inactive_days = int(rule.trigger_config.get("inactive_days", 30))
+                if inactive_days < rule_inactive_days:
+                    continue
+
+                # Skip if already fired for this lead in the last 24 hours
+                already_ran = AutomationRun.objects.filter(
+                    rule=rule,
+                    triggered_at__gte=now - datetime.timedelta(hours=24),
+                ).filter(context__lead_id=str(lead.id)).exists()
+                if already_ran:
+                    continue
+
+                _execute_rule(rule, context)

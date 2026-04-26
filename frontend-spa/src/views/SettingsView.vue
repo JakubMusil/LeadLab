@@ -215,6 +215,8 @@ onMounted(() => {
     leadScoringStore.fetchRules()
     loadPropTemplates()
     loadPluginConfigs()
+    loadAutomations()
+    loadAutomationTemplates()
   }
 })
 
@@ -620,6 +622,267 @@ function setDraftValue(pluginName: string, key: string, value: unknown) {
 
 // Expose installed plugin count from local registry for quick reference
 const localPluginCount = computed(() => pluginRegistry.length)
+
+// ---------------------------------------------------------------------------
+// Automations (v2.5)
+// ---------------------------------------------------------------------------
+
+interface AutomationCondition {
+  field: string
+  operator: string
+  value: string
+}
+
+interface AutomationAction {
+  type: string
+  [key: string]: string | number
+}
+
+interface AutomationRule {
+  id: string
+  name: string
+  is_active: boolean
+  trigger: string
+  trigger_config: Record<string, unknown>
+  conditions: AutomationCondition[]
+  actions: AutomationAction[]
+  created_at: string
+  updated_at: string
+}
+
+interface AutomationTemplate {
+  id: string
+  name: string
+  description: string
+  trigger: string
+  trigger_config: Record<string, unknown>
+  conditions: AutomationCondition[]
+  actions: AutomationAction[]
+}
+
+interface AutomationRun {
+  id: string
+  rule_id: string
+  status: 'success' | 'failure' | 'skipped'
+  triggered_at: string
+  context: Record<string, unknown>
+  error_message: string
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  lead_created: 'Lead Created',
+  lead_status_change: 'Lead Status Changed',
+  task_overdue: 'Task Overdue',
+  proposal_sent: 'Proposal Sent',
+  proposal_accepted: 'Proposal Accepted',
+  lead_inactive: 'Lead Inactive (N days)',
+  webhook_received: 'Custom Webhook Received',
+}
+
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  send_email: 'Send email',
+  create_task: 'Create task',
+  update_field: 'Update field',
+  call_webhook: 'Call webhook',
+  run_plugin_action: 'Run plugin action',
+}
+
+const OPERATOR_LABELS: Record<string, string> = {
+  eq: '=',
+  neq: '≠',
+  gt: '>',
+  gte: '≥',
+  lt: '<',
+  lte: '≤',
+  contains: 'contains',
+}
+
+const automationRules = ref<AutomationRule[]>([])
+const automationTemplates = ref<AutomationTemplate[]>([])
+const automationsLoading = ref(false)
+const showTemplates = ref(false)
+const expandedRuleRuns = ref<string | null>(null)
+const ruleRunsMap = ref<Record<string, AutomationRun[]>>({})
+const ruleRunsLoading = ref(false)
+
+// New / edit rule form
+const showRuleForm = ref(false)
+const editingRule = ref<AutomationRule | null>(null)
+const ruleFormName = ref('')
+const ruleFormTrigger = ref('lead_status_change')
+const ruleFormTriggerConfig = ref<Record<string, unknown>>({})
+const ruleFormConditions = ref<AutomationCondition[]>([])
+const ruleFormActions = ref<AutomationAction[]>([])
+const ruleSaving = ref(false)
+
+function openNewRuleForm() {
+  editingRule.value = null
+  ruleFormName.value = ''
+  ruleFormTrigger.value = 'lead_status_change'
+  ruleFormTriggerConfig.value = {}
+  ruleFormConditions.value = []
+  ruleFormActions.value = []
+  showRuleForm.value = true
+  showTemplates.value = false
+}
+
+function openEditRuleForm(rule: AutomationRule) {
+  editingRule.value = rule
+  ruleFormName.value = rule.name
+  ruleFormTrigger.value = rule.trigger
+  ruleFormTriggerConfig.value = { ...rule.trigger_config }
+  ruleFormConditions.value = rule.conditions.map((c) => ({ ...c }))
+  ruleFormActions.value = rule.actions.map((a) => ({ ...a }))
+  showRuleForm.value = true
+  showTemplates.value = false
+}
+
+function cancelRuleForm() {
+  showRuleForm.value = false
+  editingRule.value = null
+}
+
+function addCondition() {
+  ruleFormConditions.value.push({ field: 'to_status', operator: 'eq', value: '' })
+}
+
+function removeCondition(i: number) {
+  ruleFormConditions.value.splice(i, 1)
+}
+
+function addAction() {
+  ruleFormActions.value.push({ type: 'send_email', to: 'owner', subject: '', body: '' })
+}
+
+function removeAction(i: number) {
+  ruleFormActions.value.splice(i, 1)
+}
+
+function onActionTypeChange(i: number, newType: string) {
+  const defaults: Record<string, AutomationAction> = {
+    send_email: { type: 'send_email', to: 'owner', subject: '', body: '' },
+    create_task: { type: 'create_task', title: '', days_from_now: '3' },
+    update_field: { type: 'update_field', field: 'status', value: '' },
+    call_webhook: { type: 'call_webhook', url: '', method: 'POST' },
+    run_plugin_action: { type: 'run_plugin_action', plugin_name: '', action: '' },
+  }
+  ruleFormActions.value[i] = defaults[newType] ?? { type: newType }
+}
+
+async function loadAutomations() {
+  if (!firmStore.activeFirm) return
+  automationsLoading.value = true
+  const res = await api.get<AutomationRule[]>('/api/v1/crm/automations')
+  automationsLoading.value = false
+  if (res.ok && Array.isArray(res.data)) automationRules.value = res.data
+}
+
+async function loadAutomationTemplates() {
+  const res = await api.get<AutomationTemplate[]>('/api/v1/crm/automations/templates')
+  if (res.ok && Array.isArray(res.data)) automationTemplates.value = res.data
+}
+
+async function saveRule() {
+  if (!ruleFormName.value.trim()) {
+    toast.error('Rule name is required.')
+    return
+  }
+  ruleSaving.value = true
+  const body = {
+    name: ruleFormName.value.trim(),
+    trigger: ruleFormTrigger.value,
+    trigger_config: ruleFormTriggerConfig.value,
+    conditions: ruleFormConditions.value,
+    actions: ruleFormActions.value,
+  }
+  const res = editingRule.value
+    ? await api.patch<AutomationRule>(`/api/v1/crm/automations/${editingRule.value.id}`, body)
+    : await api.post<AutomationRule>('/api/v1/crm/automations', { ...body, is_active: true })
+  ruleSaving.value = false
+  if (res.ok && res.data) {
+    if (editingRule.value) {
+      const idx = automationRules.value.findIndex((r) => r.id === editingRule.value!.id)
+      if (idx !== -1) automationRules.value.splice(idx, 1, res.data)
+    } else {
+      automationRules.value.unshift(res.data)
+    }
+    toast.success(editingRule.value ? 'Rule updated.' : 'Automation rule created.')
+    cancelRuleForm()
+  } else {
+    toast.error('Failed to save rule.')
+  }
+}
+
+async function toggleRule(rule: AutomationRule) {
+  const res = await api.patch<AutomationRule>(`/api/v1/crm/automations/${rule.id}`, {
+    is_active: !rule.is_active,
+  })
+  if (res.ok && res.data) {
+    const idx = automationRules.value.findIndex((r) => r.id === rule.id)
+    if (idx !== -1) automationRules.value.splice(idx, 1, res.data)
+    toast.success(res.data.is_active ? 'Rule enabled.' : 'Rule disabled.')
+  } else {
+    toast.error('Failed to update rule.')
+  }
+}
+
+async function deleteRule(rule: AutomationRule) {
+  if (!confirm(`Delete automation rule "${rule.name}"? This cannot be undone.`)) return
+  const res = await api.delete(`/api/v1/crm/automations/${rule.id}`)
+  if (res.ok || res.status === 204) {
+    automationRules.value = automationRules.value.filter((r) => r.id !== rule.id)
+    if (expandedRuleRuns.value === rule.id) expandedRuleRuns.value = null
+    toast.success('Rule deleted.')
+  } else {
+    toast.error('Failed to delete rule.')
+  }
+}
+
+async function toggleRuleRuns(rule: AutomationRule) {
+  if (expandedRuleRuns.value === rule.id) {
+    expandedRuleRuns.value = null
+    return
+  }
+  expandedRuleRuns.value = rule.id
+  if (!ruleRunsMap.value[rule.id]) {
+    ruleRunsLoading.value = true
+    const res = await api.get<AutomationRun[]>(`/api/v1/crm/automations/${rule.id}/runs?limit=10`)
+    ruleRunsLoading.value = false
+    if (res.ok && Array.isArray(res.data)) ruleRunsMap.value[rule.id] = res.data
+  }
+}
+
+async function createFromTemplate(tmpl: AutomationTemplate) {
+  const res = await api.post<AutomationRule>(
+    `/api/v1/crm/automations/from-template/${tmpl.id}`,
+  )
+  if (res.ok && res.data) {
+    automationRules.value.unshift(res.data)
+    toast.success(`Rule "${res.data.name}" created from template.`)
+    showTemplates.value = false
+  } else {
+    toast.error('Failed to create rule from template.')
+  }
+}
+
+function ruleReadableSummary(rule: AutomationRule): string {
+  const triggerLabel = TRIGGER_LABELS[rule.trigger] ?? rule.trigger
+  const condCount = rule.conditions.length
+  const actCount = rule.actions.length
+  const condPart = condCount ? ` + ${condCount} condition${condCount > 1 ? 's' : ''}` : ''
+  const actPart = `${actCount} action${actCount !== 1 ? 's' : ''}`
+  return `${triggerLabel}${condPart} → ${actPart}`
+}
+
+function actionSummary(action: AutomationAction): string {
+  const label = ACTION_TYPE_LABELS[action.type] ?? action.type
+  if (action.type === 'send_email') return `${label} to ${action.to}`
+  if (action.type === 'create_task') return `${label}: "${action.title}"`
+  if (action.type === 'update_field') return `${label}: ${action.field} = ${action.value}`
+  if (action.type === 'call_webhook') return `${label}: ${action.url}`
+  if (action.type === 'run_plugin_action') return `${label}: ${action.plugin_name}.${action.action}`
+  return label
+}
 </script>
 
 <template>
@@ -1294,6 +1557,373 @@ const localPluginCount = computed(() => pluginRegistry.length)
           rel="noopener"
           class="text-xs text-red-600 hover:underline"
         >Browse the public plugin registry →</a>
+      </div>
+    </div>
+
+    <!-- ===== AUTOMATIONS (v2.5) ===== -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Automations</h2>
+        <div class="flex gap-2">
+          <button
+            class="text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700"
+            @click="showTemplates = !showTemplates; showRuleForm = false"
+          >{{ showTemplates ? 'Hide templates' : '📋 Templates' }}</button>
+          <button
+            class="text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700"
+            @click="openNewRuleForm"
+          >+ New rule</button>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+        Define trigger → condition → action rules that run automatically. No code required.
+      </p>
+
+      <!-- Built-in templates picker -->
+      <div v-if="showTemplates" class="mb-4 border border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-2">
+        <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">Ready-to-use templates</p>
+        <div v-if="automationTemplates.length === 0" class="text-sm text-gray-400">Loading templates…</div>
+        <div
+          v-for="tmpl in automationTemplates"
+          :key="tmpl.id"
+          class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ tmpl.name }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ tmpl.description }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono">{{ TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger }}</p>
+          </div>
+          <button
+            class="flex-shrink-0 text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700"
+            @click="createFromTemplate(tmpl)"
+          >Use</button>
+        </div>
+      </div>
+
+      <!-- Rule editor form (create / edit) -->
+      <div v-if="showRuleForm" class="mb-4 border border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-4">
+        <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+          {{ editingRule ? 'Edit rule' : 'New rule' }}
+        </p>
+
+        <!-- Name -->
+        <div>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Rule name *</label>
+          <input
+            v-model="ruleFormName"
+            type="text"
+            placeholder="e.g. Notify owner when lead won"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          />
+        </div>
+
+        <!-- Trigger -->
+        <div>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Trigger</label>
+          <select
+            v-model="ruleFormTrigger"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          >
+            <option v-for="(label, key) in TRIGGER_LABELS" :key="key" :value="key">{{ label }}</option>
+          </select>
+        </div>
+
+        <!-- Trigger config: inactive_days / warning_days -->
+        <div v-if="ruleFormTrigger === 'lead_inactive'" class="flex items-center gap-3">
+          <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-32">Inactive days</label>
+          <input
+            :value="(ruleFormTriggerConfig['inactive_days'] as string | number) ?? 30"
+            type="number"
+            min="1"
+            class="w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
+            @input="ruleFormTriggerConfig['inactive_days'] = Number(($event.target as HTMLInputElement).value)"
+          />
+        </div>
+        <div v-else-if="ruleFormTrigger === 'task_overdue'" class="flex items-center gap-3">
+          <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-32">Warning days</label>
+          <input
+            :value="(ruleFormTriggerConfig['warning_days'] as string | number) ?? 1"
+            type="number"
+            min="0"
+            class="w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
+            @input="ruleFormTriggerConfig['warning_days'] = Number(($event.target as HTMLInputElement).value)"
+          />
+        </div>
+
+        <!-- Conditions -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Conditions (all must match)</label>
+            <button
+              class="text-xs text-red-600 hover:text-red-700"
+              @click="addCondition"
+            >+ Add condition</button>
+          </div>
+          <div v-if="ruleFormConditions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic">
+            No conditions — rule fires on every trigger event.
+          </div>
+          <div
+            v-for="(cond, i) in ruleFormConditions"
+            :key="i"
+            class="flex gap-2 mb-2 items-center flex-wrap"
+          >
+            <input
+              v-model="cond.field"
+              type="text"
+              placeholder="field (e.g. to_status)"
+              class="flex-1 min-w-[120px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+            />
+            <select
+              v-model="cond.operator"
+              class="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+            >
+              <option v-for="(label, op) in OPERATOR_LABELS" :key="op" :value="op">{{ label }}</option>
+            </select>
+            <input
+              v-model="cond.value"
+              type="text"
+              placeholder="value"
+              class="flex-1 min-w-[100px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+            />
+            <button class="text-gray-300 hover:text-red-400 text-sm" @click="removeCondition(i)">✕</button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Actions (run in order)</label>
+            <button
+              class="text-xs text-red-600 hover:text-red-700"
+              @click="addAction"
+            >+ Add action</button>
+          </div>
+          <div v-if="ruleFormActions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic">
+            No actions — add at least one action.
+          </div>
+          <div
+            v-for="(action, i) in ruleFormActions"
+            :key="i"
+            class="mb-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 space-y-2"
+          >
+            <div class="flex items-center gap-2">
+              <select
+                :value="action.type"
+                class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                @change="onActionTypeChange(i, ($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="(label, key) in ACTION_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+              </select>
+              <button class="text-gray-300 hover:text-red-400 text-sm" @click="removeAction(i)">✕</button>
+            </div>
+
+            <!-- send_email fields -->
+            <template v-if="action.type === 'send_email'">
+              <div class="flex gap-2">
+                <label class="text-xs text-gray-500 dark:text-gray-400 w-10 pt-1.5">To</label>
+                <select
+                  v-model="action.to"
+                  class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                >
+                  <option value="owner">Owner</option>
+                  <option value="assignee">Assignee</option>
+                  <option value="customer">Customer</option>
+                </select>
+              </div>
+              <input
+                v-model="action.subject"
+                type="text"
+                placeholder="Subject"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+              />
+              <textarea
+                v-model="action.body"
+                rows="3"
+                placeholder="Email body. Use {{lead_title}}, {{customer_name}}, {{assignee_name}}…"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400 resize-none"
+              />
+            </template>
+
+            <!-- create_task fields -->
+            <template v-else-if="action.type === 'create_task'">
+              <input
+                v-model="action.title"
+                type="text"
+                placeholder="Task title (supports {{lead_title}})"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+              />
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500 dark:text-gray-400">Due in</label>
+                <input
+                  v-model.number="action.days_from_now"
+                  type="number"
+                  min="0"
+                  class="w-20 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                />
+                <span class="text-xs text-gray-500 dark:text-gray-400">days</span>
+              </div>
+            </template>
+
+            <!-- update_field fields -->
+            <template v-else-if="action.type === 'update_field'">
+              <div class="flex gap-2">
+                <select
+                  v-model="action.field"
+                  class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                >
+                  <option value="status">Status</option>
+                  <option value="source">Source</option>
+                  <option value="currency">Currency</option>
+                  <option value="description">Description</option>
+                </select>
+                <input
+                  v-model="action.value"
+                  type="text"
+                  placeholder="New value"
+                  class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                />
+              </div>
+            </template>
+
+            <!-- call_webhook fields -->
+            <template v-else-if="action.type === 'call_webhook'">
+              <input
+                v-model="action.url"
+                type="url"
+                placeholder="https://your-server.com/webhook"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+              />
+            </template>
+
+            <!-- run_plugin_action fields -->
+            <template v-else-if="action.type === 'run_plugin_action'">
+              <div class="flex gap-2">
+                <input
+                  v-model="action.plugin_name"
+                  type="text"
+                  placeholder="Plugin name"
+                  class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                />
+                <input
+                  v-model="action.action"
+                  type="text"
+                  placeholder="Action name"
+                  class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
+                />
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Form buttons -->
+        <div class="flex gap-2 pt-1">
+          <button
+            :disabled="ruleSaving || !ruleFormName.trim()"
+            class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+            @click="saveRule"
+          >{{ ruleSaving ? 'Saving…' : (editingRule ? 'Update rule' : 'Create rule') }}</button>
+          <button
+            class="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+            @click="cancelRuleForm"
+          >Cancel</button>
+        </div>
+      </div>
+
+      <!-- Rules list -->
+      <div v-if="automationsLoading" class="animate-pulse space-y-3">
+        <div v-for="i in 2" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      </div>
+      <div v-else-if="!automationsLoading && automationRules.length === 0 && !showRuleForm" class="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">
+        No automation rules yet. Create your first rule or pick a template above.
+      </div>
+
+      <div v-else-if="automationRules.length > 0" class="space-y-2">
+        <div
+          v-for="rule in automationRules"
+          :key="rule.id"
+          class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden"
+        >
+          <!-- Rule header row -->
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ rule.name }}</span>
+                <span
+                  :class="rule.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                  class="text-xs px-2 py-0.5 rounded-full"
+                >{{ rule.is_active ? 'Active' : 'Disabled' }}</span>
+              </div>
+              <!-- Readable summary sentence -->
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ ruleReadableSummary(rule) }}</p>
+              <!-- Actions summary chips -->
+              <div class="flex flex-wrap gap-1 mt-1">
+                <span
+                  v-for="(action, i) in rule.actions"
+                  :key="i"
+                  class="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5"
+                >{{ actionSummary(action) }}</span>
+              </div>
+            </div>
+
+            <!-- Actions toolbar -->
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                class="text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700"
+                @click="toggleRuleRuns(rule)"
+              >{{ expandedRuleRuns === rule.id ? 'Hide log' : 'Log' }}</button>
+              <button
+                class="text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700"
+                @click="openEditRuleForm(rule)"
+              >Edit</button>
+              <!-- On/off toggle -->
+              <button
+                :class="rule.is_active ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0"
+                role="switch"
+                :aria-checked="rule.is_active"
+                :aria-label="`Toggle ${rule.name}`"
+                @click="toggleRule(rule)"
+              >
+                <span
+                  :class="rule.is_active ? 'translate-x-6' : 'translate-x-1'"
+                  class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                />
+              </button>
+              <button
+                class="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-400 text-xs"
+                :aria-label="`Delete rule ${rule.name}`"
+                @click="deleteRule(rule)"
+              >🗑</button>
+            </div>
+          </div>
+
+          <!-- Execution log (expanded) -->
+          <div v-if="expandedRuleRuns === rule.id" class="border-t border-gray-100 dark:border-gray-700 px-4 py-3">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Last runs</p>
+            <div v-if="ruleRunsLoading && !ruleRunsMap[rule.id]" class="text-xs text-gray-400">Loading…</div>
+            <div v-else-if="!ruleRunsMap[rule.id] || ruleRunsMap[rule.id].length === 0" class="text-xs text-gray-400 dark:text-gray-500">No runs yet.</div>
+            <ul v-else class="space-y-1.5">
+              <li
+                v-for="run in ruleRunsMap[rule.id]"
+                :key="run.id"
+                class="flex items-start gap-2 text-xs"
+              >
+                <span
+                  :class="{
+                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': run.status === 'success',
+                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300': run.status === 'failure',
+                    'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400': run.status === 'skipped',
+                  }"
+                  class="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0"
+                >{{ run.status }}</span>
+                <span class="text-gray-500 dark:text-gray-400 flex-shrink-0">
+                  {{ new Date(run.triggered_at).toLocaleString() }}
+                </span>
+                <span v-if="run.error_message" class="text-red-600 dark:text-red-400 truncate">{{ run.error_message }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </div>

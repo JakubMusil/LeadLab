@@ -307,6 +307,43 @@ def _get_proposal(proposal_id: str, firm) -> Optional[Proposal]:
         return None
 
 
+def _build_proposal_automation_context(proposal: Proposal) -> dict:
+    """Build the evaluation context dict for automation rules fired from a Proposal event."""
+    from firms.models import Membership
+
+    lead = proposal.lead
+    customer_name = ""
+    customer_email = ""
+    if lead.customer_id:
+        try:
+            c = lead.customer
+            customer_name = f"{c.first_name} {c.last_name}".strip()
+            customer_email = c.email or ""
+        except Exception:  # noqa: BLE001
+            pass
+
+    owner_email = (
+        Membership.objects
+        .filter(firm_id=proposal.firm_id, role="owner")
+        .select_related("user")
+        .values_list("user__email", flat=True)
+        .first()
+    ) or ""
+
+    return {
+        "proposal_id": str(proposal.id),
+        "proposal_title": proposal.title,
+        "proposal_status": proposal.status,
+        "lead_id": str(lead.id),
+        "lead_title": lead.title,
+        "lead_status": lead.status,
+        "firm_id": str(proposal.firm_id),
+        "customer_name": customer_name,
+        "customer_email": customer_email,
+        "owner_email": owner_email,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Proposal CRUD
 # ---------------------------------------------------------------------------
@@ -452,6 +489,17 @@ def send_proposal(request, proposal_id: str):
     proposal.public_token = _uuid.uuid4()
     proposal.token_expires_at = tz.now() + timedelta(days=_PUBLIC_LINK_TTL_DAYS)
     proposal.save()
+
+    # Fire workflow automation trigger: proposal_sent
+    from crm.tasks import evaluate_automation_rules
+    from django.db import transaction
+    _automation_ctx = _build_proposal_automation_context(proposal)
+    transaction.on_commit(
+        lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
+            "proposal_sent", str(proposal.firm_id), ctx
+        )
+    )
+
     return 200, _proposal_out(proposal)
 
 
@@ -1099,6 +1147,17 @@ def public_respond_proposal(request, token: str, payload: PublicProposalRespondI
         content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
         metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},
     )
+
+    # Fire workflow automation trigger: proposal_accepted
+    if payload.action == "accept":
+        from crm.tasks import evaluate_automation_rules
+        from django.db import transaction
+        _automation_ctx = _build_proposal_automation_context(proposal)
+        transaction.on_commit(
+            lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
+                "proposal_accepted", str(proposal.firm_id), ctx
+            )
+        )
 
     firm = proposal.firm
     logo_url = firm.logo.url if firm.logo else None
