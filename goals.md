@@ -214,21 +214,100 @@ Polish for production confidence.
 
 Ship a product teams pay for.
 
-- [ ] **White-label / custom branding** — Firm owners can upload a logo and set a primary colour; the SPA sidebar and email templates reflect the firm's brand
-- [ ] **Multi-language UI** — complete Czech translation (`cs.json`); language selector in Settings; accept-language header auto-detection on first visit
-- [ ] **Public marketing site** — replace the current `landing.html` with a proper landing page: hero, features, pricing table, testimonials, FAQ, and footer; built with Vue + the same Tailwind design system
-- [ ] **Subscription gating in the SPA** — Pinia `useFirm` store is aware of the subscription tier; locked features display an upgrade prompt instead of throwing a 403
-- [ ] **Onboarding wizard v2** — guided 5-step onboarding after workspace creation: invite team → import leads CSV → configure pipeline stages → connect calendar → complete; tracks completion with a checklist on the dashboard
-- [ ] **Super-admin panel** — internal Django admin extension (or a separate `/superadmin/` SPA route) for support staff: view all firms, impersonate users, manually adjust subscription status
-- [ ] **Plugin / extension system** — a documented `LeadLabPlugin` interface that lets third-party developers register new activity types, sidebar nav items, and webhook event types without forking the core
-- [ ] **Comprehensive documentation site** — MkDocs or Docusaurus site with: Getting Started, self-hosting guide, API reference (from OpenAPI), plugin authoring guide, and changelog
+- [x] **White-label / custom branding** — Firm owners can upload a logo and set a primary colour; the SPA sidebar and email templates reflect the firm's brand
+- [x] **Multi-language UI** — complete Czech translation (`cs.json`); language selector in Settings; accept-language header auto-detection on first visit
+- [x] **Public marketing site** — replace the current `landing.html` with a proper landing page: hero, features, pricing table, testimonials, FAQ, and footer; built with Vue + the same Tailwind design system
+- [x] **Subscription gating in the SPA** — Pinia `useFirm` store is aware of the subscription tier; locked features display an upgrade prompt instead of throwing a 403
+- [x] **Onboarding wizard v2** — guided 5-step onboarding after workspace creation: create workspace → invite team → import leads CSV → configure pipeline stages → complete; dashboard banner directs returning users back to onboarding until complete
+- [x] **Super-admin panel** — `/superadmin/` SPA route for support staff: view all firms, manually adjust subscription tier and status
+- [x] **Plugin / extension system** — documented `LeadLabPlugin` interface (`frontend-spa/src/plugins/index.ts`) lets third-party developers register new activity types, sidebar nav items, and webhook event types without forking the core; backend registry in `leadlab/plugin_registry.py`; authoring guide at `docs/plugins.md`
+- [x] **Comprehensive documentation site** — MkDocs Material site (`mkdocs.yml`) with: Getting Started, self-hosting guide, API reference, plugin authoring guide, changelog, and SLA
 - [ ] **Security audit** — external pen test; resolve all critical/high findings; publish a responsible-disclosure policy
 - [ ] **SLA & uptime** — public status page (e.g. Statuspage.io); uptime monitoring with PagerDuty alerting; define and document SLA for hosted offering
 
 ---
 
+## Road to v3.0 — Enhanced Commercial Platform
+
+The v3.0 milestone builds on the solid commercial foundation of v2.0 with three primary themes: **UX/UI excellence**, **business proposal workflows**, and a **rich plugin ecosystem**. The goal is to transform LeadLab from a CRM into a complete sales enablement platform that teams reach for daily.
+
+---
+
+### v2.1 — UX Foundation & Design System
+
+Establish a consistent, polished design language across the entire SPA before adding new features on top.
+
+- [ ] **Design tokens** — extract all colours, spacing, border radii, and shadow values into a shared `design-tokens.ts`; wire them into `tailwind.config.ts` so every component references tokens rather than raw Tailwind classes
+- [ ] **Component library** — build a documented internal library (`src/components/ui/`) of base components: `Button`, `Input`, `Select`, `Modal`, `Badge`, `Avatar`, `Tooltip`, `Dropdown`; replace ad-hoc variants scattered across views
+- [ ] **Storybook** — set up Storybook 8 with the Vite builder; write stories for every base component and the 10 most complex composite components; add Chromatic visual regression CI step
+- [ ] **Micro-interactions** — add entrance / exit transitions (`v-motion` or Tailwind `transition`) to modals, slide-overs, toasts, and Kanban cards; use `reduced-motion` media query to disable for accessibility
+- [ ] **Responsive overhaul** — audit and fix every view on 375 px, 768 px, and 1440 px breakpoints; replace any overflow-hidden hacks with proper flex/grid layouts
+- [ ] **Typography scale** — define and apply a consistent typographic scale (display, heading, body, caption, label) via Tailwind's `fontSize` config; ensure correct heading hierarchy (`h1`–`h4`) for accessibility and SEO
+
+### v2.2 — UX Intelligence & Personalisation
+
+Make the UI feel smart and personal.
+
+- [ ] **Command palette** — `Cmd/Ctrl + K` opens a global fuzzy-search command palette (`vue-command-palette` or custom); supports navigating to any lead, customer, or settings page; shows recent items and keyboard shortcut hints
+- [ ] **Adaptive dashboard** — drag-and-drop widget layout (using `vue-grid-layout`); users pin the stat cards and charts they care about most; layout persisted per user in the backend
+- [ ] **Contextual quick actions** — right-click (or long-press on touch) context menu on lead and customer rows for instant access to: edit, change status, assign, delete, add activity
+- [ ] **Smart lead scoring** — display a configurable score (0–100) beside each lead based on weighted rules (last activity age, value, source); rules editable in Settings; colour-coded badge in list and Kanban views
+- [ ] **Saved views** — users save named filter + sort combinations (e.g. "My open leads", "High-value Q3") on Leads and Customers lists; saved views appear in the sidebar under the respective section
+- [ ] **Activity composer improvements** — rich-text editor (Tiptap) for comments and emails; @mention team members to tag them in activities (creates a notification); emoji picker
+
+### v2.3 — Business Proposals & Quote Builder
+
+Enable teams to create, send, and track professional sales proposals directly within LeadLab, closing the loop between pipeline and commercial output.
+
+- [ ] **Proposal model** — new `Proposal` Django model scoped to a Lead: title, status (`Draft` / `Sent` / `Viewed` / `Accepted` / `Rejected` / `Expired`), expiry date, total value, currency, notes; REST endpoints for full CRUD
+- [ ] **Line-item model** — `ProposalItem` with description, quantity, unit price, discount (%), VAT rate (%); computed totals (subtotal, tax, total) returned by the API
+- [ ] **Template library** — `ProposalTemplate` model stores reusable line-item sets and text blocks scoped to a Firm; CRUD UI in Settings → Proposal Templates; templates can be applied to a new proposal with one click
+- [ ] **Proposal builder UI** — dedicated route `/app/leads/:id/proposals/:pid`; drag-and-drop section reordering; inline rich-text editing for custom intro/closing text; live preview panel alongside the editor
+- [ ] **PDF generation** — server-side PDF rendering via `weasyprint` using a Jinja2 HTML template; custom branding (firm logo, brand colour) injected from the Firm model; download and email buttons in the UI
+- [ ] **Public proposal link** — signed, time-limited public URL (no auth required) that renders a read-only HTML version of the proposal; recipient can accept or reject with a single click; acceptance is logged as a `PROPOSAL_ACCEPTED` activity on the lead
+- [ ] **Proposal analytics** — track: time-to-open, number of views, accepted/rejected ratio per template; displayed in a dedicated Proposals analytics tab in Analytics view
+- [ ] **E-signature integration** — optional DocuSign or Dropbox Sign webhook: when all parties sign, update proposal status to `Accepted` automatically and fire the standard webhook events
+
+### v2.4 — Plugin Marketplace & Ecosystem
+
+Grow a first-party and third-party plugin ecosystem around the architecture established in v2.0.
+
+- [ ] **Plugin manifest standard** — define a `leadlab-plugin.json` schema (name, version, entrypoint, permissions, config schema, icon URL); validate on `registerPlugin()` at startup; surface plugin info in Settings → Plugins
+- [ ] **In-app plugin manager** — Settings → Plugins page listing all installed plugins with name, version, description, status toggle (enable/disable without uninstall), and a link to the authoring docs
+- [ ] **First-party plugin: Email Sequences** — multi-step drip campaign plugin; define a sequence of timed emails per lead status transition; Celery beat schedules individual sends; plugin registers its own `SEQUENCE_EMAIL_SENT` activity type and sidebar nav item
+- [ ] **First-party plugin: VoIP / Click-to-Call** — integrates with Twilio (or Vonage) to place calls directly from a lead detail page; call duration and recording URL logged as a `CALL` activity; plugin configuration in Settings (API key, caller ID)
+- [ ] **First-party plugin: LinkedIn Enrichment** — given a LinkedIn profile URL on a customer record, fetches public profile data (name, title, company, avatar) via a proxy API; updates customer fields and logs an `ENRICHMENT` activity
+- [ ] **First-party plugin: Slack Notifications** — sends a Slack message to a configurable channel on: new lead created, lead won/lost, task overdue, proposal accepted; configurable per event type in Settings; uses Slack Incoming Webhooks
+- [ ] **Plugin config schema UI** — plugins declare a JSON Schema for their configuration; the Settings → Plugins page auto-renders a typed form (text, number, boolean, secret) for each plugin's settings; values stored in a `PluginConfig` model per Firm
+- [ ] **Plugin API sandbox** — a `usePlugin(pluginName)` Vue composable that exposes a scoped API to plugins: `toast()`, `navigate()`, `openModal()`, `useFirm()`, `useAuth()`; prevents plugins from accessing internals they did not declare in their manifest permissions
+- [ ] **Public plugin registry** — a static JSON registry (hosted on GitHub Pages or a CDN) listing community plugins with name, author, description, version, and install instructions; linked from the in-app plugin manager
+
+### v2.5 — Workflow Automation
+
+Let teams define trigger → action rules without writing code.
+
+- [ ] **Automation rule model** — `AutomationRule` with trigger (lead status change, task overdue, proposal accepted, custom webhook), conditions (field comparisons), and actions (send email, create task, update field, call webhook, run plugin action)
+- [ ] **Automation builder UI** — visual rule editor in Settings → Automations; each rule card shows trigger → conditions → actions in a readable sentence; toggle on/off per rule
+- [ ] **Celery execution engine** — rules evaluated in a Celery task on every trigger event; execution log per rule (last run, status, error message) stored in `AutomationRun` model and visible in the UI
+- [ ] **Built-in templates** — ship 5 ready-to-use automation templates: "Remind assignee 1 day before task due", "Notify owner when lead won", "Send welcome email when lead created", "Mark lead as Lost after 30 days of inactivity", "Create follow-up task when proposal sent"
+
+### v3.0 — Platform Release
+
+Consolidate v2.x features, raise quality standards, and position LeadLab as a full-featured sales platform.
+
+- [ ] **Full accessibility audit** — WCAG 2.2 AA compliance verified by automated (`axe-core` CI step) and manual testing; publish an accessibility statement
+- [ ] **Performance budget** — Lighthouse CI enforcing LCP < 2.5 s, TBT < 200 ms, CLS < 0.1 on the dashboard and lead detail pages; bundle size budget enforced in CI (main bundle ≤ 150 kB gzipped)
+- [ ] **Internationalisation expansion** — add German (`de.json`) and Polish (`pl.json`) translations; community contribution guide for adding new locales; locale coverage check in CI (fail if any key is missing from a locale file)
+- [ ] **User impersonation in Super Admin** — super admins can impersonate any firm member to debug issues; impersonation session logged to an `ImpersonationLog` model; banner displayed while impersonating
+- [ ] **Advanced RBAC** — custom roles beyond Owner / Admin / Worker; per-resource permission overrides (e.g. "Worker can delete their own leads"); role editor in Settings
+- [ ] **Data retention & compliance** — configurable data retention policies per Firm (auto-delete leads older than N days); GDPR right-to-erasure endpoint; audit log of all destructive actions
+- [ ] **White-label SaaS mode** — a single LeadLab deployment can serve multiple branded domains (custom domain per Firm); SSL provisioned automatically via Let's Encrypt; login page shows firm logo and brand colour
+- [ ] **Enterprise SSO** — SAML 2.0 / OIDC authentication for firms on an Enterprise plan; JIT provisioning creates Membership on first SSO login; attribute mapping for role assignment
+- [ ] **v3.0 launch** — public announcement, updated marketing site with v3 feature highlights, migration guide from v2.x, and a recorded product demo video
+
+---
+
 ## Out of Scope (for now)
 
-- Complex workflow automation (sequences, drip campaigns) — may be added as an optional plugin in a future major version.
-- LDAP / SSO — session-based auth is sufficient for the target audience; OAuth2 is a potential future addition.
-- Native mobile apps (iOS/Android) — the PWA covers mobile use cases; a React Native / Expo app could be a post-v2.0 initiative.
+- LDAP — SAML/OIDC SSO (planned for v3.0) covers enterprise auth requirements; LDAP sync is not planned.
+- Native mobile apps (iOS/Android) — the PWA covers mobile use cases; a React Native / Expo app could be a post-v3.0 initiative.
