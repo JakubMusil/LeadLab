@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
@@ -9,6 +9,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
 import { useI18n } from '@/composables/useI18n'
+import { pluginRegistry } from '@/plugins'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,6 +19,11 @@ const leadsStore = useLeadsStore()
 const notifStore = useNotificationsStore()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
+
+watchEffect(() => {
+  const color = firmStore.activeFirm?.primary_color ?? '#dc2626'
+  document.documentElement.style.setProperty('--brand-color', color)
+})
 
 const sidebarOpen = ref(true)
 const mobileMenuOpen = ref(false)
@@ -95,7 +101,9 @@ const navItems = computed(() => [
   { label: t('nav.customers'), icon: '👥', path: '/app/customers' },
   { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
   { label: t('nav.team'), icon: '🤝', path: '/app/team' },
-  { label: 'Analytics', icon: '📊', path: '/app/analytics' },
+  { label: t('nav.analytics'), icon: '📊', path: '/app/analytics' },
+  ...(authStore.user?.is_staff ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
+  ...pluginRegistry.flatMap((p) => p.navItems ?? []),
   { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
 ])
 
@@ -195,7 +203,17 @@ function formatNotifTime(ts: string): string {
     >
       <!-- Logo + workspace -->
       <div class="flex items-center h-16 px-4 border-b border-gray-100 dark:border-gray-700 gap-3 min-w-0">
-        <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
+        <img
+          v-if="firmStore.activeFirm?.logo_url"
+          :src="firmStore.activeFirm.logo_url"
+          :alt="firmStore.activeFirm?.name ?? 'Logo'"
+          class="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+        />
+        <div
+          v-else
+          class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          :style="{ backgroundColor: firmStore.activeFirm?.primary_color ?? '#dc2626' }"
+        >
           <span class="text-white text-sm font-bold" aria-hidden="true">L</span>
         </div>
         <div v-if="sidebarOpen" class="min-w-0 flex-1">

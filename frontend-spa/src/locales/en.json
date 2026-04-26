@@ -5,7 +5,9 @@
     "customers": "Customers",
     "calendar": "Calendar",
     "team": "Team",
-    "settings": "Settings"
+    "settings": "Settings",
+    "analytics": "Analytics",
+    "superAdmin": "Super Admin"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -30,7 +32,10 @@
     "conversion": "{rate}% conversion",
     "inAddressBook": "in address book",
     "overdue": "{count} overdue",
-    "won": "Won: {value}"
+    "won": "Won: {value}",
+    "completeSetup": "Complete your setup",
+    "setupBannerText": "You're almost ready! Complete the onboarding steps to get the most out of LeadLab.",
+    "continueSetup": "Continue setup"
   },
   "leads": {
     "title": "Leads",
@@ -43,5 +48,81 @@
     "noLeadsSubtitle": "Start by creating your first lead to track sales opportunities.",
     "createFirstLead": "Create your first lead",
     "dropHere": "Drop here"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "workspace": "Workspace",
+    "branding": "Branding",
+    "language": "Language",
+    "apiTokens": "API Tokens",
+    "webhooks": "Webhooks",
+    "dangerZone": "Danger Zone",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "primaryColor": "Primary colour",
+    "logoUpload": "Logo",
+    "uploadLogo": "Upload logo",
+    "languageSelect": "Interface language",
+    "english": "English",
+    "czech": "Czech"
+  },
+  "team": {
+    "title": "Team",
+    "inviteMember": "Invite member",
+    "email": "Email address",
+    "role": "Role",
+    "invite": "Send invite",
+    "noMembers": "No team members yet"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "today": "Today",
+    "newEvent": "New event"
+  },
+  "customers": {
+    "title": "Customers",
+    "noCustomers": "No customers yet"
+  },
+  "analytics": {
+    "title": "Analytics & Reporting",
+    "proRequired": "Advanced analytics are available on the Pro plan.",
+    "upgradePrompt": "Upgrade to Pro"
+  },
+  "onboarding": {
+    "title": "Get started",
+    "step1": "Create workspace",
+    "step2": "Invite team",
+    "step3": "Import leads",
+    "step4": "Configure pipeline",
+    "step5": "Complete",
+    "skip": "Skip",
+    "next": "Next",
+    "back": "Back",
+    "finish": "Go to dashboard",
+    "inviteEmail": "Team member email",
+    "inviteSend": "Send invite",
+    "importCSV": "Import CSV",
+    "chooseFile": "Choose file",
+    "pipelineInfo": "LeadLab uses a 6-stage pipeline: New → Contacted → Qualified → Proposal → Won / Lost",
+    "gotIt": "Got it",
+    "congratulations": "You're all set!",
+    "completedSteps": "Completed steps",
+    "workspaceCreated": "Workspace created",
+    "teamInvited": "Team invited",
+    "leadsImported": "Leads imported",
+    "pipelineConfigured": "Pipeline configured"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Page not found",
+    "unauthorized": "You are not authorized to view this page",
+    "networkError": "Network error — please check your connection"
+  },
+  "upgrade": {
+    "proFeature": "Pro feature",
+    "upgradeToPro": "Upgrade to Pro",
+    "lockedMessage": "This feature requires a Pro subscription."
   }
 }

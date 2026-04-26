@@ -1,17 +1,74 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 import { api } from '@/api'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { setLocale, useI18n } from '@/composables/useI18n'
 
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const toast = useToast()
 const router = useRouter()
+const { isPro } = storeToRefs(firmStore)
+const { locale: currentLocale } = useI18n()
 const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
+
+// Branding
+const brandColor = ref(firmStore.activeFirm?.primary_color || '#e63946')
+const brandLogoPreview = ref<string | null>(null)
+const brandLogoInput = ref<HTMLInputElement | null>(null)
+const brandSaving = ref(false)
+const brandError = ref('')
+const brandSuccess = ref(false)
+
+function onBrandLogoChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (file) {
+    brandLogoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+async function saveBranding() {
+  if (!firmStore.activeFirm) return
+  brandSaving.value = true
+  brandError.value = ''
+  brandSuccess.value = false
+  try {
+    const formData = new FormData()
+    formData.append('primary_color', brandColor.value)
+    const file = brandLogoInput.value?.files?.[0]
+    if (file) formData.append('logo', file)
+    const res = await fetch(`/api/v1/firms/${firmStore.activeFirm.id}/branding/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+      body: formData,
+    })
+    if (res.ok) {
+      const data = await res.json()
+      firmStore.activeFirm.primary_color = data.primary_color
+      if (data.logo_url) firmStore.activeFirm.logo_url = data.logo_url
+      brandSuccess.value = true
+    } else {
+      brandError.value = 'Failed to save branding.'
+    }
+  } finally {
+    brandSaving.value = false
+  }
+}
+
+function getCsrfToken(): string {
+  const m = document.cookie.match(/csrftoken=([^;]+)/)
+  return m ? m[1] : ''
+}
+
+function changeLocale(code: string) {
+  setLocale(code)
+}
 
 // Profile
 const profileFirstName = ref('')
@@ -601,6 +658,69 @@ async function deleteWorkspace() {
             class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
           />
         </button>
+      </div>
+    </div>
+
+    <!-- Branding (Pro) -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Branding</h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Customise the logo and brand colour for your workspace. Available on Pro.</p>
+      </div>
+
+      <div v-if="!isPro" class="rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
+        Upgrade to <strong>Pro</strong> to unlock white-label branding.
+      </div>
+
+      <template v-else>
+        <!-- Logo upload -->
+        <div class="space-y-2">
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Logo</label>
+          <div class="flex items-center gap-4">
+            <img
+              v-if="brandLogoPreview || firmStore.activeFirm?.logo_url"
+              :src="brandLogoPreview || firmStore.activeFirm?.logo_url"
+              alt="Logo preview"
+              class="h-12 w-auto rounded-lg border border-gray-200"
+            />
+            <div v-else class="h-12 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs text-gray-400">No logo</div>
+            <input ref="brandLogoInput" type="file" accept="image/*" class="hidden" @change="onBrandLogoChange" />
+            <button class="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700" @click="brandLogoInput?.click()">Upload…</button>
+          </div>
+        </div>
+        <!-- Colour picker -->
+        <div class="space-y-2">
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Brand colour</label>
+          <div class="flex items-center gap-3">
+            <input v-model="brandColor" type="color" class="h-9 w-14 cursor-pointer rounded-lg border border-gray-200 p-1" />
+            <span class="text-xs font-mono text-gray-600 dark:text-gray-400">{{ brandColor }}</span>
+          </div>
+        </div>
+        <!-- Save button -->
+        <button
+          :disabled="brandSaving"
+          class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          @click="saveBranding"
+        >{{ brandSaving ? 'Saving…' : 'Save branding' }}</button>
+        <p v-if="brandError" class="text-xs text-red-600">{{ brandError }}</p>
+        <p v-if="brandSuccess" class="text-xs text-green-600">Branding saved!</p>
+      </template>
+    </div>
+
+    <!-- Language -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Language</h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Choose your preferred UI language.</p>
+      </div>
+      <div class="flex gap-3">
+        <button
+          v-for="lang in [{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }]"
+          :key="lang.code"
+          :class="currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+          class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          @click="changeLocale(lang.code)"
+        >{{ lang.label }}</button>
       </div>
     </div>
   </div>

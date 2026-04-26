@@ -5,6 +5,7 @@ import { useFirmStore } from '@/stores/firm'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/', component: () => import('@/views/MarketingView.vue') },
     { path: '/app/', redirect: '/app/dashboard' },
     {
       path: '/app/login',
@@ -83,6 +84,11 @@ const router = createRouter({
           path: 'analytics',
           component: () => import('@/views/AnalyticsView.vue'),
           meta: { title: 'Analytics' },
+        },
+        {
+          path: 'superadmin',
+          component: () => import('@/views/SuperAdminView.vue'),
+          meta: { title: 'Super Admin' },
         },
       ],
     },

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 
@@ -10,6 +10,8 @@ export interface FirmOut {
   subscription_tier: string
   subscription_active: boolean
   is_active: boolean
+  logo_url: string | null
+  primary_color: string
 }
 
 const FIRM_ID_KEY = 'firmId'
@@ -69,5 +71,10 @@ export const useFirmStore = defineStore('firm', () => {
     }
   }
 
-  return { firms, activeFirm, loading, fetchFirms, setActiveFirm, createFirm }
+  const isPro = computed(() =>
+    activeFirm.value?.subscription_tier === 'pro' &&
+    activeFirm.value?.subscription_active === true
+  )
+
+  return { firms, activeFirm, loading, fetchFirms, setActiveFirm, createFirm, isPro }
 })

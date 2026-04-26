@@ -11,6 +11,7 @@ export interface UserOut {
   last_name: string
   timezone: string
   full_name: string
+  is_staff: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {

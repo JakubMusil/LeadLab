@@ -9,7 +9,7 @@ All write endpoints enforce:
 from typing import List, Optional
 
 from django.db import transaction
-from ninja import Router, Schema
+from ninja import File, Form, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
 from firms.auth import (
@@ -37,6 +37,8 @@ class FirmOut(Schema):
     subscription_tier: str
     subscription_active: bool
     is_active: bool
+    logo_url: Optional[str] = None
+    primary_color: str = '#dc2626'
 
 
 class FirmIn(Schema):
@@ -45,6 +47,10 @@ class FirmIn(Schema):
 
 class FirmUpdateIn(Schema):
     name: Optional[str] = None
+
+
+class FirmBrandingIn(Schema):
+    primary_color: Optional[str] = None
 
 
 class MemberRoleUpdateIn(Schema):
@@ -85,23 +91,30 @@ class ErrorOut(Schema):
 # Firm CRUD
 # ---------------------------------------------------------------------------
 
+def _firm_out(firm: Firm) -> dict:
+    logo_url = None
+    if firm.logo:
+        from django.conf import settings
+        logo_url = settings.MEDIA_URL + str(firm.logo)
+    return {
+        "id": str(firm.id),
+        "name": firm.name,
+        "slug": firm.slug,
+        "subscription_tier": firm.subscription_tier,
+        "subscription_active": firm.subscription_active,
+        "is_active": firm.is_active,
+        "logo_url": logo_url,
+        "primary_color": firm.primary_color,
+    }
+
+
 @router.get("/", auth=django_auth, response=List[FirmOut])
 def list_firms(request):
     """Return all Firms the authenticated user is a member of."""
     memberships = Membership.objects.filter(
         user=request.user
     ).select_related("firm")
-    return [
-        {
-            "id": str(m.firm.id),
-            "name": m.firm.name,
-            "slug": m.firm.slug,
-            "subscription_tier": m.firm.subscription_tier,
-            "subscription_active": m.firm.subscription_active,
-            "is_active": m.firm.is_active,
-        }
-        for m in memberships
-    ]
+    return [_firm_out(m.firm) for m in memberships]
 
 
 @router.post("/", auth=django_auth, response={201: FirmOut, 400: ErrorOut})
@@ -114,14 +127,7 @@ def create_firm(request, payload: FirmIn):
             firm=firm,
             role=MembershipRole.OWNER,
         )
-    return 201, {
-        "id": str(firm.id),
-        "name": firm.name,
-        "slug": firm.slug,
-        "subscription_tier": firm.subscription_tier,
-        "subscription_active": firm.subscription_active,
-        "is_active": firm.is_active,
-    }
+    return 201, _firm_out(firm)
 
 
 @router.get("/{firm_id}", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
@@ -135,14 +141,7 @@ def get_firm(request, firm_id: str):
     if not Membership.objects.filter(user=request.user, firm=firm).exists():
         return 403, {"detail": "You are not a member of this Firm."}
 
-    return 200, {
-        "id": str(firm.id),
-        "name": firm.name,
-        "slug": firm.slug,
-        "subscription_tier": firm.subscription_tier,
-        "subscription_active": firm.subscription_active,
-        "is_active": firm.is_active,
-    }
+    return 200, _firm_out(firm)
 
 
 @router.delete("/{firm_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
@@ -185,16 +184,26 @@ def update_firm(request, firm_id: str, payload: FirmUpdateIn):
         firm.name = payload.name
         firm.save(update_fields=["name"])
 
-    return 200, {
-        "id": str(firm.id),
-        "name": firm.name,
-        "slug": firm.slug,
-        "subscription_tier": firm.subscription_tier,
-        "subscription_active": firm.subscription_active,
-        "is_active": firm.is_active,
-    }
+    return 200, _firm_out(firm)
 
 
+
+
+@router.post("/{firm_id}/branding", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
+def update_branding(request, firm_id: str, payload: FirmBrandingIn = Form(...), logo: UploadedFile = File(None)):
+    """Update firm logo and/or primary color. Owner only."""
+    membership = require_membership(request, firm_id)
+    if membership.role != MembershipRole.OWNER:
+        raise PermissionDenied()
+    firm = membership.firm
+    if logo is not None:
+        if firm.logo:
+            firm.logo.delete(save=False)
+        firm.logo.save(logo.name, logo, save=False)
+    if payload.primary_color is not None:
+        firm.primary_color = payload.primary_color
+    firm.save()
+    return _firm_out(firm)
 
 
 @router.get("/{firm_id}/members", auth=django_auth, response={200: List[MembershipOut], 403: ErrorOut})

@@ -30,6 +30,8 @@ class Firm(models.Model):
         default="free",
     )
     subscription_active = models.BooleanField(default=True)
+    logo = models.ImageField(upload_to='firm_logos/', blank=True, null=True)
+    primary_color = models.CharField(max_length=7, blank=True, default='#dc2626')
 
     class Meta:
         verbose_name = "firm"
