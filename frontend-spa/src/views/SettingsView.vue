@@ -99,6 +99,28 @@ const confirmDeleteWorkspace = ref(false)
 const dangerLoading = ref(false)
 const confirmDeleteText = ref('')
 
+// Billing
+const billingLoading = ref(false)
+const billingError = ref('')
+
+async function startCheckout() {
+  if (!firmStore.activeFirm) return
+  billingLoading.value = true
+  billingError.value = ''
+  const res = await api.post<{ checkout_url: string }>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/billing/checkout`,
+    {}
+  )
+  billingLoading.value = false
+  if (res.ok && res.data?.checkout_url) {
+    window.location.href = res.data.checkout_url
+  } else {
+    billingError.value =
+      ((res.data as unknown) as Record<string, string> | null)?.detail ??
+      'Failed to start checkout. Please try again.'
+  }
+}
+
 // API Tokens
 interface APIToken {
   id: string
@@ -123,11 +145,69 @@ interface WebhookEndpoint {
   is_active: boolean
   created_at: string
 }
+interface WebhookDelivery {
+  id: string
+  event: string
+  status_code: number | null
+  success: boolean
+  error: string
+  delivered_at: string
+  duration_ms: number
+}
 const webhooks = ref<WebhookEndpoint[]>([])
 const webhooksLoading = ref(false)
 const newWebhookUrl = ref('')
 const newWebhookEvents = ref('')
 const newWebhookCreating = ref(false)
+const webhookDeliveries = ref<Record<string, WebhookDelivery[]>>({})
+const webhookDeliveriesLoading = ref<Record<string, boolean>>({})
+const webhookDeliveriesOpen = ref<Record<string, boolean>>({})
+
+async function toggleWebhookDeliveries(wh: WebhookEndpoint) {
+  const id = wh.id
+  if (webhookDeliveriesOpen.value[id]) {
+    webhookDeliveriesOpen.value[id] = false
+    return
+  }
+  webhookDeliveriesOpen.value[id] = true
+  if (webhookDeliveries.value[id]) return
+  if (!firmStore.activeFirm) return
+  webhookDeliveriesLoading.value[id] = true
+  const res = await api.get<WebhookDelivery[]>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/webhooks/${id}/deliveries`
+  )
+  webhookDeliveriesLoading.value[id] = false
+  if (res.ok && Array.isArray(res.data)) {
+    webhookDeliveries.value[id] = res.data
+  } else {
+    webhookDeliveries.value[id] = []
+  }
+}
+
+// iCal feed
+const icalUrl = ref('')
+const icalLoading = ref(false)
+const icalCopied = ref(false)
+
+async function loadIcalUrl() {
+  if (!firmStore.activeFirm) return
+  icalLoading.value = true
+  const res = await api.get<{ token: string; url: string }>('/api/v1/integrations/ical/token')
+  icalLoading.value = false
+  if (res.ok && res.data?.url) {
+    icalUrl.value = `${window.location.origin}${res.data.url}`
+  } else {
+    toast.error('Failed to generate calendar feed URL.')
+  }
+}
+
+function copyIcalUrl() {
+  if (!icalUrl.value) return
+  navigator.clipboard.writeText(icalUrl.value).then(() => {
+    icalCopied.value = true
+    setTimeout(() => { icalCopied.value = false }, 2000)
+  })
+}
 
 // Weekly digest
 const digestEnabled = ref(true)
@@ -994,6 +1074,51 @@ function actionSummary(action: AutomationAction): string {
       </div>
     </div>
 
+    <!-- Billing -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">Billing</h2>
+
+      <!-- Current plan badge -->
+      <div class="flex items-center gap-3 mb-4">
+        <div
+          :class="isPro ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-600'"
+          class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold"
+        >
+          <span v-if="isPro">⭐ Pro</span>
+          <span v-else>Free</span>
+        </div>
+        <span v-if="isPro && firmStore.activeFirm?.subscription_active" class="text-xs text-green-600 font-medium">Active</span>
+        <span v-else-if="isPro && !firmStore.activeFirm?.subscription_active" class="text-xs text-red-500 font-medium">Inactive</span>
+      </div>
+
+      <!-- Pro features list for free tier -->
+      <ul v-if="!isPro" class="space-y-1 mb-5 text-xs text-gray-500">
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Custom branding (logo + color)</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> White-label client portal</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Unlimited proposals & templates</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Advanced automations & plugins</li>
+        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Priority support</li>
+      </ul>
+
+      <!-- Already Pro message -->
+      <p v-if="isPro" class="text-sm text-gray-600 mb-4">
+        Your workspace is on the <strong>Pro</strong> plan. To manage or cancel your subscription, please contact support or visit the Stripe customer portal.
+      </p>
+
+      <!-- Error -->
+      <div v-if="billingError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ billingError }}</div>
+
+      <!-- Upgrade button (only for free tier) -->
+      <button
+        v-if="!isPro"
+        :disabled="billingLoading"
+        class="px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-60 transition-colors"
+        @click="startCheckout"
+      >
+        {{ billingLoading ? 'Redirecting…' : 'Upgrade to Pro' }}
+      </button>
+    </div>
+
     <!-- API Tokens -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">API Tokens</h2>
@@ -1101,6 +1226,10 @@ function actionSummary(action: AutomationAction): string {
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <button
+                class="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 hover:bg-gray-50"
+                @click="toggleWebhookDeliveries(wh)"
+              >{{ webhookDeliveriesOpen[wh.id] ? 'Hide log' : 'View log' }}</button>
+              <button
                 :class="wh.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
                 class="text-xs px-2 py-1 rounded-lg"
                 @click="toggleWebhook(wh)"
@@ -1111,8 +1240,68 @@ function actionSummary(action: AutomationAction): string {
               >Delete</button>
             </div>
           </div>
+          <!-- Delivery log -->
+          <div v-if="webhookDeliveriesOpen[wh.id]" class="mt-3 rounded-xl border border-gray-100 bg-gray-50 overflow-hidden">
+            <div v-if="webhookDeliveriesLoading[wh.id]" class="px-3 py-2 text-xs text-gray-400">Loading…</div>
+            <div v-else-if="!webhookDeliveries[wh.id]?.length" class="px-3 py-2 text-xs text-gray-400">No deliveries recorded yet.</div>
+            <table v-else class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500">
+                  <th class="px-3 py-2 text-left font-medium">Event</th>
+                  <th class="px-3 py-2 text-left font-medium">Status</th>
+                  <th class="px-3 py-2 text-left font-medium">Duration</th>
+                  <th class="px-3 py-2 text-left font-medium">Delivered</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="d in webhookDeliveries[wh.id]" :key="d.id">
+                  <td class="px-3 py-2 font-mono text-gray-700">{{ d.event }}</td>
+                  <td class="px-3 py-2">
+                    <span
+                      :class="d.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      class="px-1.5 py-0.5 rounded-md font-medium"
+                    >{{ d.status_code ?? (d.success ? 'OK' : 'ERR') }}</span>
+                  </td>
+                  <td class="px-3 py-2 text-gray-500">{{ d.duration_ms }}ms</td>
+                  <td class="px-3 py-2 text-gray-400">{{ new Date(d.delivered_at).toLocaleString() }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </li>
       </ul>
+    </div>
+
+    <!-- Calendar Feed (iCal) -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">Calendar Feed</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Subscribe to your tasks in any calendar app (Google Calendar, Apple Calendar, Outlook).
+        The feed updates automatically as tasks are added or completed.
+      </p>
+      <div v-if="!icalUrl">
+        <button
+          :disabled="icalLoading"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+          @click="loadIcalUrl"
+        >{{ icalLoading ? 'Generating…' : 'Generate Feed URL' }}</button>
+      </div>
+      <div v-else class="space-y-2">
+        <div class="flex items-center gap-2">
+          <input
+            :value="icalUrl"
+            readonly
+            class="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-600 select-all cursor-text focus:outline-none"
+            @click="($event.target as HTMLInputElement).select()"
+          />
+          <button
+            class="px-3 py-2 text-sm font-medium rounded-xl border flex-shrink-0 transition-colors"
+            :class="icalCopied ? 'bg-green-600 text-white border-green-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
+            @click="copyIcalUrl"
+          >{{ icalCopied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <p class="text-xs text-gray-400">Add this URL as a subscribed calendar. The feed is read-only.</p>
+      </div>
     </div>
 
     <!-- Notifications -->
@@ -1406,7 +1595,7 @@ function actionSummary(action: AutomationAction): string {
       <!-- Plugin list -->
       <div v-else-if="pluginConfigs.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">
         No plugins installed.
-        <a href="https://github.com/JakubMusil/LeadLab/tree/main/docs/plugin-registry.json" target="_blank" class="block mt-1 text-red-600 hover:underline text-xs">Browse the plugin registry →</a>
+        <a href="/plugin-registry.json" target="_blank" class="block mt-1 text-red-600 hover:underline text-xs">Browse the plugin registry →</a>
       </div>
 
       <div v-else class="space-y-3">
@@ -1552,7 +1741,7 @@ function actionSummary(action: AutomationAction): string {
       <!-- Registry link -->
       <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
         <a
-          href="https://github.com/JakubMusil/LeadLab/blob/main/public/plugin-registry.json"
+          href="/plugin-registry.json"
           target="_blank"
           rel="noopener"
           class="text-xs text-red-600 hover:underline"

@@ -12,6 +12,7 @@ export interface UserOut {
   timezone: string
   full_name: string
   is_staff: boolean
+  is_superuser: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {

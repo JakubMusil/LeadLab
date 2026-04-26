@@ -27,6 +27,7 @@ class UserOut(Schema):
     timezone: str
     full_name: str
     is_staff: bool = False
+    is_superuser: bool = False
 
 
 class RegisterIn(Schema):
@@ -221,4 +222,5 @@ def _user_out(user: User) -> dict:
         "timezone": user.timezone,
         "full_name": user.full_name,
         "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
     }

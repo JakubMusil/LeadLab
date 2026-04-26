@@ -245,6 +245,45 @@ async function deleteSavedView(id: string) {
   await savedViewsStore.deleteView(id)
   toast.success('View deleted.')
 }
+
+// CSV Import
+const importInput = ref<HTMLInputElement | null>(null)
+const importLoading = ref(false)
+
+async function onImportFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  importLoading.value = true
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const res = await api.postForm<{ id: string; status: string }>(
+      '/api/v1/integrations/import/leads',
+      fd,
+    )
+    if (res.ok) {
+      toast.success('Import started. Leads will appear shortly.')
+      setTimeout(() => store.fetchLeads({ status: filterStatus.value, source: filterSource.value }), 2000)
+    } else {
+      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Import failed.'
+      toast.error(msg)
+    }
+  } finally {
+    importLoading.value = false
+    if (importInput.value) importInput.value.value = ''
+  }
+}
+
+function exportCsv() {
+  const params = new URLSearchParams()
+  if (filterStatus.value) params.set('status', filterStatus.value)
+  if (filterSource.value) params.set('source', filterSource.value)
+  window.location.href = `/api/v1/integrations/export/leads.csv?${params.toString()}`
+}
+
+function exportPdf() {
+  window.location.href = '/api/v1/integrations/export/pipeline.pdf'
+}
 </script>
 
 <template>
@@ -309,6 +348,26 @@ async function deleteSavedView(id: string) {
         class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
       >+ New Lead</button>
+
+      <!-- Import / Export -->
+      <label
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
+        title="Import leads from CSV"
+      >
+        ⬆ Import CSV
+        <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+      </label>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        title="Export leads as CSV"
+        @click="exportCsv"
+      >⬇ CSV</button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        title="Export pipeline summary as PDF"
+        @click="exportPdf"
+      >⬇ PDF</button>
     </div>
 
     <!-- Loading -->

@@ -106,7 +106,7 @@ const navItems = computed(() => [
   { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
   { label: t('nav.team'), icon: '🤝', path: '/app/team' },
   { label: t('nav.analytics'), icon: '📊', path: '/app/analytics' },
-  ...(authStore.user?.is_staff ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
+  ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
   ...pluginRegistry.flatMap((p) => p.navItems ?? []),
   { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
 ])

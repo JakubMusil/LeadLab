@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useToast } from '@/composables/useToast'
+import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 
 const router = useRouter()
@@ -132,6 +133,40 @@ function onContextAction(id: string) {
   else if (id === 'edit') openEdit(customer)
   else if (id === 'delete') confirmDeleteId.value = customer.id
 }
+
+// CSV Import
+const importInput = ref<HTMLInputElement | null>(null)
+const importLoading = ref(false)
+
+async function onImportFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  importLoading.value = true
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const res = await api.postForm<{ id: string; status: string }>(
+      '/api/v1/integrations/import/customers',
+      fd,
+    )
+    if (res.ok) {
+      toast.success('Import started. Customers will appear shortly.')
+      setTimeout(() => store.fetchCustomers(), 2000)
+    } else {
+      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Import failed.'
+      toast.error(msg)
+    }
+  } finally {
+    importLoading.value = false
+    if (importInput.value) importInput.value.value = ''
+  }
+}
+
+function exportCsv() {
+  const params = new URLSearchParams()
+  if (searchInput.value) params.set('search', searchInput.value)
+  window.location.href = `/api/v1/integrations/export/customers.csv?${params.toString()}`
+}
 </script>
 
 <template>
@@ -165,6 +200,21 @@ function onContextAction(id: string) {
         class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
       >+ New Customer</button>
+
+      <!-- Import / Export -->
+      <label
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
+        title="Import customers from CSV"
+      >
+        ⬆ Import CSV
+        <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+      </label>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        title="Export customers as CSV"
+        @click="exportCsv"
+      >⬇ CSV</button>
     </div>
 
     <!-- Skeleton -->
