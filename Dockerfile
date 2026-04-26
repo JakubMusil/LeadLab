@@ -2,7 +2,7 @@ FROM node:20-slim AS spa-builder
 
 WORKDIR /build/frontend-spa
 COPY frontend-spa/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 COPY frontend-spa/ ./
 RUN npm run build-only
 
