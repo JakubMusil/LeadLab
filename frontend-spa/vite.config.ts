@@ -47,7 +47,7 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('@fullcalendar')) return 'fullcalendar'
-          if (id.includes('echarts') || id.includes('zrender')) return 'echarts'
+          if (id.includes('chart.js') || id.includes('vue-chartjs')) return 'chartjs'
           if (id.includes('node_modules')) return 'vendor'
         },
       },
