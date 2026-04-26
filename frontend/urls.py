@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from frontend import views
 
 urlpatterns = [
@@ -10,15 +11,10 @@ urlpatterns = [
     path("reset-password/<str:uidb64>/<str:token>/", views.reset_password, name="reset-password"),
     path("accept-invite/<str:token>/", views.accept_invite, name="accept-invite"),
     path("onboarding/", views.onboarding, name="onboarding"),
-    path("dashboard/", views.dashboard_index, name="dashboard"),
-    path("dashboard/leads/", views.dashboard_leads, name="dashboard-leads"),
-    path("dashboard/leads/<str:lead_id>/", views.lead_detail, name="lead-detail"),
-    path("dashboard/customers/", views.dashboard_customers, name="dashboard-customers"),
-    path("dashboard/customers/<str:customer_id>/", views.customer_detail, name="customer-detail"),
-    path("dashboard/calendar/", views.dashboard_calendar, name="dashboard-calendar"),
-    path("dashboard/team/", views.dashboard_team, name="dashboard-team"),
-    path("dashboard/settings/", views.dashboard_settings, name="dashboard-settings"),
-    # Vue 3 SPA shell — handles all /app/* routes; old /dashboard/* routes remain intact.
+    # Legacy /dashboard/* routes — permanently redirect to the Vue SPA.
+    path("dashboard/", RedirectView.as_view(url="/app/dashboard", permanent=True), name="dashboard"),
+    path("dashboard/<path:rest>", RedirectView.as_view(url="/app/dashboard", permanent=True), name="dashboard-legacy"),
+    # Vue 3 SPA shell — handles all /app/* routes.
     path("app/", views.spa_shell, name="spa-shell"),
     path("app/<path:path>", views.spa_shell, name="spa-shell-path"),
 ]

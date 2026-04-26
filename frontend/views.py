@@ -40,46 +40,6 @@ def onboarding(request):
     return render(request, "frontend/onboarding.html")
 
 
-@login_required(login_url="/login/")
-def dashboard_index(request):
-    return render(request, "frontend/dashboard/index.html")
-
-
-@login_required(login_url="/login/")
-def dashboard_leads(request):
-    return render(request, "frontend/dashboard/leads.html")
-
-
-@login_required(login_url="/login/")
-def dashboard_customers(request):
-    return render(request, "frontend/dashboard/customers.html")
-
-
-@login_required(login_url="/login/")
-def dashboard_calendar(request):
-    return render(request, "frontend/dashboard/calendar.html")
-
-
-@login_required(login_url="/login/")
-def dashboard_team(request):
-    return render(request, "frontend/dashboard/team.html")
-
-
-@login_required(login_url="/login/")
-def dashboard_settings(request):
-    return render(request, "frontend/dashboard/settings.html")
-
-
-@login_required(login_url="/login/")
-def lead_detail(request, lead_id):
-    return render(request, "frontend/dashboard/lead_detail.html", {"lead_id": lead_id})
-
-
-@login_required(login_url="/login/")
-def customer_detail(request, customer_id):
-    return render(request, "frontend/dashboard/customer_detail.html", {"customer_id": customer_id})
-
-
 def _load_spa_assets():
     """Read the Vite manifest and return (js_url, css_urls) for the SPA entry point."""
     from django.templatetags.static import static

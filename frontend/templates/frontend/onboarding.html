@@ -75,7 +75,7 @@
       <div class="bg-gray-50 border-t border-gray-100 px-8 py-4">
         <p class="text-xs text-gray-400 text-center">
           Already have a workspace?
-          <a href="/dashboard/" class="text-red-600 font-medium hover:underline ml-1">Go to dashboard →</a>
+          <a href="/app/dashboard" class="text-red-600 font-medium hover:underline ml-1">Go to dashboard →</a>
         </p>
       </div>
     </div>
@@ -129,7 +129,7 @@ document.getElementById('onboarding-form').addEventListener('submit', async func
 
   if (res && res.ok) {
     localStorage.setItem('firmId', res.data.id);
-    window.location.href = '/dashboard/';
+    window.location.href = '/app/dashboard';
   } else {
     const msg = (res && res.data && res.data.detail) ? res.data.detail : 'Failed to create workspace. Please try again.';
     errEl.textContent = msg;
