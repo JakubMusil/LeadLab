@@ -22,6 +22,9 @@ stripe>=8.0
 # Image processing
 Pillow>=10.0
 
+# Static file serving
+whitenoise>=6.0
+
 # Utilities
 python-slugify>=8.0
 django-extensions>=3.2
