@@ -654,7 +654,7 @@ watch(
                             <input v-model="item.description" type="text" class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:border-red-400" />
                           </td>
                           <td class="py-1 px-2">
-                            <input v-model.number="item.quantity" type="number" min="0" step="0.001" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
+                            <input v-model.number="item.quantity" type="number" min="0.001" step="0.001" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
                           </td>
                           <td class="py-1 px-2">
                             <input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
@@ -706,7 +706,7 @@ watch(
                       placeholder="Description *"
                       class="flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
                     />
-                    <input v-model.number="newItemQty" type="number" min="0" step="0.001" placeholder="Qty" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
+                    <input v-model.number="newItemQty" type="number" min="0.001" step="0.001" placeholder="Qty" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
                     <input v-model.number="newItemPrice" type="number" min="0" step="0.01" placeholder="Unit price" class="w-28 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
                     <input v-model.number="newItemDiscount" type="number" min="0" max="100" step="0.01" placeholder="Disc%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
                     <input v-model.number="newItemVat" type="number" min="0" max="100" step="0.01" placeholder="VAT%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />

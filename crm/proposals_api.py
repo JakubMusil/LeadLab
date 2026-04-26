@@ -515,6 +515,17 @@ def apply_template(request, proposal_id: str, payload: ApplyTemplateIn):
 # PDF generation
 # ---------------------------------------------------------------------------
 
+def request_absolute_url(path: str) -> str:
+    """Convert a media path to an absolute URL for WeasyPrint."""
+    if path.startswith("http"):
+        return path
+    media_root = str(settings.MEDIA_ROOT)
+    if path.startswith(settings.MEDIA_URL):
+        rel = path[len(settings.MEDIA_URL):]
+        return f"file://{media_root}/{rel}"
+    return path
+
+
 @proposals_router.get(
     "/proposals/{proposal_id}/pdf",
     auth=django_auth,
@@ -563,17 +574,6 @@ def _render_pdf(proposal: Proposal) -> bytes:
         logo_url=logo_url,
     )
     return weasyprint.HTML(string=html).write_pdf()
-
-
-def request_absolute_url(path: str) -> str:
-    """Convert a media path to an absolute URL for WeasyPrint."""
-    if path.startswith("http"):
-        return path
-    media_root = str(settings.MEDIA_ROOT)
-    if path.startswith(settings.MEDIA_URL):
-        rel = path[len(settings.MEDIA_URL):]
-        return f"file://{media_root}/{rel}"
-    return path
 
 
 _PROPOSAL_HTML_TEMPLATE = """
@@ -663,11 +663,6 @@ _PROPOSAL_HTML_TEMPLATE = """
   </table>
 </div>
 <div style="clear:both"></div>
-
-{% if proposal.notes %}
-<h2>Notes</h2>
-<div class="intro">{{ proposal.notes }}</div>
-{% endif %}
 
 {% if proposal.closing_text %}
 <div class="closing">{{ proposal.closing_text }}</div>

@@ -115,6 +115,7 @@
     "acceptedMessage": "Děkujeme za přijetí nabídky!",
     "rejectedMessage": "Nabídku jste odmítli.",
     "senderNotified": "Odesílatel byl informován.",
+    "expired": "Vypršelo",
     "expiredMessage": "Platnost tohoto odkazu vypršela. Kontaktujte odesílatele pro nový odkaz.",
     "poweredBy": "Powered by LeadLab"
   },
