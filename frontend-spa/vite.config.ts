@@ -4,12 +4,19 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
+import { resolve } from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    VueI18nPlugin({
+      // Pre-compile all locale JSON files so the runtime-only vue-i18n build
+      // is used and no new Function() calls occur at runtime (CSP compliance).
+      include: resolve(__dirname, './src/locales/**'),
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -34,7 +41,10 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Use the runtime-only build of vue-i18n so that no message compiler
+      // (which calls new Function()) is included — required for CSP compliance.
+      'vue-i18n': 'vue-i18n/dist/vue-i18n.runtime.esm-bundler.js',
     },
   },
   // Output to Django's static directory so collectstatic picks up the SPA assets.
