@@ -9,9 +9,12 @@
 - **Analytics Dashboard** – revenue, conversion, and activity insights (Pro)
 - **Email Sequences** – automated multi-step outreach
 - **Webhooks** – real-time event delivery to external services
-- **Plugin System** – extend LeadLab with custom activity types and nav items
+- **Plugin System** – extend LeadLab with custom activity types, nav items, and first-party plugins (VoIP, LinkedIn Enrichment, Slack Notifications)
+- **Workflow Automation** – visual trigger → condition → action rule builder
+- **Business Proposals** – create, send, and track sales proposals with PDF export and public signing links
 - **White-label Branding** – custom logo and brand colour per workspace (Pro)
-- **Multi-language UI** – English and Czech, auto-detected from browser
+- **Multi-language UI** – English, Czech, German, and Polish; auto-detected from browser
+- **Demo Data** – `python manage.py load_demo_data` for instant evaluation
 
 ## Quick links
 

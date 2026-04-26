@@ -9,5 +9,5 @@ export function detectLocale(): string {
   const stored = localStorage.getItem('leadlab-locale')
   if (stored) return stored
   const browser = navigator.language?.split('-')[0] ?? 'en'
-  return ['en', 'cs'].includes(browser) ? browser : 'en'
+  return ['en', 'cs', 'de', 'pl'].includes(browser) ? browser : 'en'
 }

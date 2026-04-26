@@ -295,8 +295,8 @@ Let teams define trigger → action rules without writing code.
 
 Consolidate v2.x features, raise quality standards, and position LeadLab as a full-featured sales platform.
 
-- [ ] **Internationalisation expansion** — add German (`de.json`) and Polish (`pl.json`) translations; community contribution guide for adding new locales; locale coverage check in CI (fail if any key is missing from a locale file)
-- [ ] **v3.0 launch** — public announcement, updated marketing site with v3 feature highlights, manuals, readme.md, install.md and a demo data.
+- [x] **Internationalisation expansion** — add German (`de.json`) and Polish (`pl.json`) translations; community contribution guide for adding new locales; locale coverage check in CI (fail if any key is missing from a locale file)
+- [x] **v3.0 launch** — public announcement, updated marketing site with v3 feature highlights, manuals, readme.md, install.md and a demo data.
 
 ---
 

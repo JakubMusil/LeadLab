@@ -67,6 +67,8 @@
     "languageSelect": "Interface language",
     "english": "English",
     "czech": "Czech",
+    "german": "German",
+    "polish": "Polish",
     "proposalTemplates": "Proposal Templates",
     "newTemplate": "New Template",
     "templateName": "Template name",
