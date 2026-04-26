@@ -65,6 +65,37 @@ const newWebhookUrl = ref('')
 const newWebhookEvents = ref('')
 const newWebhookCreating = ref(false)
 
+// Weekly digest
+const digestEnabled = ref(true)
+const digestLoading = ref(false)
+
+async function loadDigestPreference() {
+  if (!firmStore.activeFirm) return
+  const res = await api.get<{ weekly_digest_enabled: boolean }>('/api/v1/crm/digest-preference')
+  if (res.ok && res.data) {
+    digestEnabled.value = res.data.weekly_digest_enabled
+  }
+}
+
+async function toggleDigest() {
+  digestLoading.value = true
+  const res = await api.patch<{ weekly_digest_enabled: boolean }>(
+    '/api/v1/crm/digest-preference',
+    { enabled: !digestEnabled.value },
+  )
+  digestLoading.value = false
+  if (res.ok && res.data) {
+    digestEnabled.value = res.data.weekly_digest_enabled
+    toast.success(
+      res.data.weekly_digest_enabled
+        ? 'Weekly digest enabled.'
+        : 'Weekly digest disabled.',
+    )
+  } else {
+    toast.error('Failed to update digest preference.')
+  }
+}
+
 onMounted(() => {
   if (authStore.user) {
     profileFirstName.value = authStore.user.first_name
@@ -75,6 +106,7 @@ onMounted(() => {
     workspaceName.value = firmStore.activeFirm.name
     loadTokens()
     loadWebhooks()
+    loadDigestPreference()
   }
 })
 
@@ -514,6 +546,32 @@ async function deleteWorkspace() {
           </div>
         </li>
       </ul>
+    </div>
+
+    <!-- Notifications -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">Notifications</h2>
+      <p class="text-xs text-gray-500 mb-4">Manage email notification preferences for this workspace.</p>
+      <div class="flex items-center justify-between py-3 border-b border-gray-50">
+        <div>
+          <div class="text-sm font-medium text-gray-800">Weekly pipeline digest</div>
+          <div class="text-xs text-gray-400 mt-0.5">A summary email with pipeline stats, sent every Monday.</div>
+        </div>
+        <button
+          :disabled="digestLoading"
+          :class="digestEnabled ? 'bg-green-600' : 'bg-gray-200'"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
+          role="switch"
+          :aria-checked="digestEnabled"
+          aria-label="Toggle weekly digest"
+          @click="toggleDigest"
+        >
+          <span
+            :class="digestEnabled ? 'translate-x-6' : 'translate-x-1'"
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+          />
+        </button>
+      </div>
     </div>
   </div>
 </template>

@@ -381,6 +381,54 @@ class Notification(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Lead Status History (pipeline velocity tracking)
+# ---------------------------------------------------------------------------
+
+class LeadStatusHistory(models.Model):
+    """
+    Immutable record of every status transition on a Lead.
+
+    Created automatically whenever a Lead's status changes (via the
+    STATUS_CHANGE activity or direct ``update_lead`` API call).  Used to
+    compute pipeline velocity — the average time a lead spends in each status.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="status_history",
+    )
+    from_status = models.CharField(
+        max_length=20,
+        choices=LeadStatus.choices,
+        blank=True,
+        help_text="Empty string on the very first entry (initial status at creation).",
+    )
+    to_status = models.CharField(max_length=20, choices=LeadStatus.choices)
+    changed_at = models.DateTimeField(db_index=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lead_status_changes",
+    )
+
+    class Meta:
+        verbose_name = "lead status history"
+        verbose_name_plural = "lead status histories"
+        ordering = ["lead", "changed_at"]
+        indexes = [
+            models.Index(fields=["lead", "changed_at"]),
+            models.Index(fields=["lead", "to_status"]),
+        ]
+
+    def __str__(self):
+        return f"Lead#{self.lead_id}: {self.from_status} → {self.to_status} @ {self.changed_at:%Y-%m-%d %H:%M}"
+
+
+# ---------------------------------------------------------------------------
 # Import Job (CSV bulk import)
 # ---------------------------------------------------------------------------
 

@@ -95,6 +95,7 @@ const navItems = computed(() => [
   { label: t('nav.customers'), icon: '👥', path: '/app/customers' },
   { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
   { label: t('nav.team'), icon: '🤝', path: '/app/team' },
+  { label: 'Analytics', icon: '📊', path: '/app/analytics' },
   { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
 ])
 

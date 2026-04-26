@@ -168,3 +168,74 @@ def process_import_job(self, job_id: str):
         job.errors_json = [{"row": 0, "error": str(exc)}]
         job.finished_at = tz.now()
         job.save(update_fields=["status", "errors_json", "finished_at"])
+
+
+@shared_task(bind=True, max_retries=0)
+def send_weekly_digest(self):
+    """
+    Send a weekly pipeline summary email to all Firm members who have
+    ``weekly_digest_enabled=True``.
+
+    Scheduled via ``CELERY_BEAT_SCHEDULE`` to run every Monday at 08:00 UTC.
+    Gracefully degrades when email is not configured.
+    """
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    from crm.models import Lead, LeadStatus, Task
+    from firms.models import Firm, Membership
+
+    for firm in Firm.objects.filter(is_active=True):
+        recipients = list(
+            Membership.objects.filter(firm=firm, weekly_digest_enabled=True)
+            .select_related("user")
+            .values_list("user__email", flat=True)
+        )
+        if not recipients:
+            continue
+
+        total_leads = Lead.objects.filter(firm=firm).count()
+        won = Lead.objects.filter(firm=firm, status=LeadStatus.WON).count()
+        lost = Lead.objects.filter(firm=firm, status=LeadStatus.LOST).count()
+        active = Lead.objects.filter(
+            firm=firm,
+            status__in=[
+                LeadStatus.NEW, LeadStatus.CONTACTED,
+                LeadStatus.PROPOSAL, LeadStatus.NEGOTIATION,
+            ],
+        ).count()
+        open_tasks = Task.objects.filter(firm=firm, is_completed=False).count()
+
+        subject = f"[LeadLab] Weekly Pipeline Digest — {firm.name}"
+        body = (
+            f"Hi,\n\n"
+            f"Here is your weekly pipeline summary for {firm.name}:\n\n"
+            f"  Total leads: {total_leads}\n"
+            f"  Active:      {active}\n"
+            f"  Won:         {won}\n"
+            f"  Lost:        {lost}\n"
+            f"  Open tasks:  {open_tasks}\n\n"
+            f"Log in to LeadLab to see more details.\n\n"
+            f"To unsubscribe from this digest, go to Settings → Notifications "
+            f"and disable the weekly email.\n"
+        )
+
+        try:
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipients,
+                fail_silently=False,
+            )
+            logger.info(
+                "send_weekly_digest: Sent digest for firm '%s' to %d recipient(s).",
+                firm.name,
+                len(recipients),
+            )
+        except Exception as exc:
+            logger.error(
+                "send_weekly_digest: Failed to send digest for firm '%s': %s",
+                firm.name,
+                exc,
+            )

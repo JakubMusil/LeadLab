@@ -84,6 +84,10 @@ class Membership(models.Model):
         choices=MembershipRole.choices,
         default=MembershipRole.WORKER,
     )
+    weekly_digest_enabled = models.BooleanField(
+        default=True,
+        help_text="Receive a weekly email digest with pipeline summary for this workspace.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
