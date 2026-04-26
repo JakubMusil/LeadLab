@@ -286,24 +286,17 @@ Grow a first-party and third-party plugin ecosystem around the architecture esta
 
 Let teams define trigger → action rules without writing code.
 
-- [ ] **Automation rule model** — `AutomationRule` with trigger (lead status change, task overdue, proposal accepted, custom webhook), conditions (field comparisons), and actions (send email, create task, update field, call webhook, run plugin action)
-- [ ] **Automation builder UI** — visual rule editor in Settings → Automations; each rule card shows trigger → conditions → actions in a readable sentence; toggle on/off per rule
-- [ ] **Celery execution engine** — rules evaluated in a Celery task on every trigger event; execution log per rule (last run, status, error message) stored in `AutomationRun` model and visible in the UI
-- [ ] **Built-in templates** — ship 5 ready-to-use automation templates: "Remind assignee 1 day before task due", "Notify owner when lead won", "Send welcome email when lead created", "Mark lead as Lost after 30 days of inactivity", "Create follow-up task when proposal sent"
+- [x] **Automation rule model** — `AutomationRule` with trigger (lead status change, task overdue, proposal accepted, custom webhook), conditions (field comparisons), and actions (send email, create task, update field, call webhook, run plugin action)
+- [x] **Automation builder UI** — visual rule editor in Settings → Automations; each rule card shows trigger → conditions → actions in a readable sentence; toggle on/off per rule
+- [x] **Celery execution engine** — rules evaluated in a Celery task on every trigger event; execution log per rule (last run, status, error message) stored in `AutomationRun` model and visible in the UI
+- [x] **Built-in templates** — ship 5 ready-to-use automation templates: "Remind assignee 1 day before task due", "Notify owner when lead won", "Send welcome email when lead created", "Mark lead as Lost after 30 days of inactivity", "Create follow-up task when proposal sent"
 
 ### v3.0 — Platform Release
 
 Consolidate v2.x features, raise quality standards, and position LeadLab as a full-featured sales platform.
 
-- [ ] **Full accessibility audit** — WCAG 2.2 AA compliance verified by automated (`axe-core` CI step) and manual testing; publish an accessibility statement
-- [ ] **Performance budget** — Lighthouse CI enforcing LCP < 2.5 s, TBT < 200 ms, CLS < 0.1 on the dashboard and lead detail pages; bundle size budget enforced in CI (main bundle ≤ 150 kB gzipped)
 - [ ] **Internationalisation expansion** — add German (`de.json`) and Polish (`pl.json`) translations; community contribution guide for adding new locales; locale coverage check in CI (fail if any key is missing from a locale file)
-- [ ] **User impersonation in Super Admin** — super admins can impersonate any firm member to debug issues; impersonation session logged to an `ImpersonationLog` model; banner displayed while impersonating
-- [ ] **Advanced RBAC** — custom roles beyond Owner / Admin / Worker; per-resource permission overrides (e.g. "Worker can delete their own leads"); role editor in Settings
-- [ ] **Data retention & compliance** — configurable data retention policies per Firm (auto-delete leads older than N days); GDPR right-to-erasure endpoint; audit log of all destructive actions
-- [ ] **White-label SaaS mode** — a single LeadLab deployment can serve multiple branded domains (custom domain per Firm); SSL provisioned automatically via Let's Encrypt; login page shows firm logo and brand colour
-- [ ] **Enterprise SSO** — SAML 2.0 / OIDC authentication for firms on an Enterprise plan; JIT provisioning creates Membership on first SSO login; attribute mapping for role assignment
-- [ ] **v3.0 launch** — public announcement, updated marketing site with v3 feature highlights, migration guide from v2.x, and a recorded product demo video
+- [ ] **v3.0 launch** — public announcement, updated marketing site with v3 feature highlights, manuals, readme.md, install.md and a demo data.
 
 ---
 
