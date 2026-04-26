@@ -259,13 +259,13 @@ Make the UI feel smart and personal.
 
 Enable teams to create, send, and track professional sales proposals directly within LeadLab, closing the loop between pipeline and commercial output.
 
-- [ ] **Proposal model** — new `Proposal` Django model scoped to a Lead: title, status (`Draft` / `Sent` / `Viewed` / `Accepted` / `Rejected` / `Expired`), expiry date, total value, currency, notes; REST endpoints for full CRUD
-- [ ] **Line-item model** — `ProposalItem` with description, quantity, unit price, discount (%), VAT rate (%); computed totals (subtotal, tax, total) returned by the API
-- [ ] **Template library** — `ProposalTemplate` model stores reusable line-item sets and text blocks scoped to a Firm; CRUD UI in Settings → Proposal Templates; templates can be applied to a new proposal with one click
-- [ ] **Proposal builder UI** — dedicated route `/app/leads/:id/proposals/:pid`; drag-and-drop section reordering; inline rich-text editing for custom intro/closing text; live preview panel alongside the editor
-- [ ] **PDF generation** — server-side PDF rendering via `weasyprint` using a Jinja2 HTML template; custom branding (firm logo, brand colour) injected from the Firm model; download and email buttons in the UI
-- [ ] **Public proposal link** — signed, time-limited public URL (no auth required) that renders a read-only HTML version of the proposal; recipient can accept or reject with a single click; acceptance is logged as a `PROPOSAL_ACCEPTED` activity on the lead
-- [ ] **Proposal analytics** — track: time-to-open, number of views, accepted/rejected ratio per template; displayed in a dedicated Proposals analytics tab in Analytics view
+- [x] **Proposal model** — new `Proposal` Django model scoped to a Lead: title, status (`Draft` / `Sent` / `Viewed` / `Accepted` / `Rejected` / `Expired`), expiry date, total value, currency, notes; REST endpoints for full CRUD
+- [x] **Line-item model** — `ProposalItem` with description, quantity, unit price, discount (%), VAT rate (%); computed totals (subtotal, tax, total) returned by the API
+- [x] **Template library** — `ProposalTemplate` model stores reusable line-item sets and text blocks scoped to a Firm; CRUD UI in Settings → Proposal Templates; templates can be applied to a new proposal with one click
+- [x] **Proposal builder UI** — dedicated route `/app/leads/:id/proposals/:pid`; drag-and-drop section reordering; inline rich-text editing for custom intro/closing text; live preview panel alongside the editor
+- [x] **PDF generation** — server-side PDF rendering via `weasyprint` using a Jinja2 HTML template; custom branding (firm logo, brand colour) injected from the Firm model; download and email buttons in the UI
+- [x] **Public proposal link** — signed, time-limited public URL (no auth required) that renders a read-only HTML version of the proposal; recipient can accept or reject with a single click; acceptance is logged as a `PROPOSAL_ACCEPTED` activity on the lead
+- [x] **Proposal analytics** — track: time-to-open, number of views, accepted/rejected ratio per template; displayed in a dedicated Proposals analytics tab in Analytics view
 - [ ] **E-signature integration** — optional DocuSign or Dropbox Sign webhook: when all parties sign, update proposal status to `Accepted` automatically and fire the standard webhook events
 
 ### v2.4 — Plugin Marketplace & Ecosystem
