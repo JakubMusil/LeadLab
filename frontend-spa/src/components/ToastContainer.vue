@@ -42,4 +42,10 @@ const { toasts } = useToast()
   opacity: 0;
   transform: translateX(100%);
 }
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter-active,
+  .toast-leave-active {
+    transition: none;
+  }
+}
 </style>
