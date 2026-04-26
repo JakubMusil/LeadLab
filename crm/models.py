@@ -62,6 +62,17 @@ class ActivityType(models.TextChoices):
     FILE_UPLOAD = "file_upload", "File Upload"
     TASK_ASSIGNED = "task_assigned", "Task Assigned"
     TASK_COMPLETED = "task_completed", "Task Completed"
+    PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
+    PROPOSAL_REJECTED = "proposal_rejected", "Proposal Rejected"
+
+
+class ProposalStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    SENT = "sent", "Sent"
+    VIEWED = "viewed", "Viewed"
+    ACCEPTED = "accepted", "Accepted"
+    REJECTED = "rejected", "Rejected"
+    EXPIRED = "expired", "Expired"
 
 
 # ---------------------------------------------------------------------------
@@ -660,3 +671,194 @@ class SavedView(models.Model):
 
     def __str__(self):
         return f'SavedView("{self.name}", {self.entity}) [{self.user}]'
+
+
+# ---------------------------------------------------------------------------
+# Proposal Template (reusable line-item sets, scoped to Firm)
+# ---------------------------------------------------------------------------
+
+class ProposalTemplate(TenantModel):
+    """
+    A reusable proposal template scoped to a Firm.  Team members can apply a
+    template to a new Proposal with one click to pre-populate line items and
+    intro/closing text.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    intro_text = models.TextField(blank=True)
+    closing_text = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "proposal template"
+        verbose_name_plural = "proposal templates"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} [{self.firm}]"
+
+
+class ProposalTemplateItem(models.Model):
+    """A single line item belonging to a ProposalTemplate."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    template = models.ForeignKey(
+        ProposalTemplate,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    description = models.CharField(max_length=500)
+    quantity = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal("1"))
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="Discount percentage (0–100).",
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="VAT rate percentage (e.g. 21 for 21%).",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "proposal template item"
+        verbose_name_plural = "proposal template items"
+        ordering = ["position"]
+
+    def __str__(self):
+        return f"{self.description} (template: {self.template_id})"
+
+
+# ---------------------------------------------------------------------------
+# Proposal (scoped to a Lead)
+# ---------------------------------------------------------------------------
+
+class Proposal(TenantModel):
+    """
+    A business proposal attached to a Lead.
+
+    ``public_token`` is a UUID used to construct the signed public URL;
+    it is regenerated each time the proposal is re-sent so that old links expire.
+    ``view_count`` / ``first_viewed_at`` power the proposal analytics.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.CASCADE,
+        related_name="proposals",
+    )
+    title = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20,
+        choices=ProposalStatus.choices,
+        default=ProposalStatus.DRAFT,
+        db_index=True,
+    )
+    expiry_date = models.DateField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default="CZK")
+    notes = models.TextField(blank=True)
+    intro_text = models.TextField(blank=True)
+    closing_text = models.TextField(blank=True)
+
+    # Public link
+    public_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        help_text="Token used in the public (no-auth) proposal URL.",
+    )
+    token_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the public link expires.  Null = link never auto-expires.",
+    )
+
+    # Analytics
+    view_count = models.PositiveIntegerField(default=0)
+    first_viewed_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "proposal"
+        verbose_name_plural = "proposals"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["lead", "-created_at"]),
+            models.Index(fields=["firm", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} [{self.get_status_display()}]"
+
+    @property
+    def total_value(self) -> Decimal:
+        """Sum of all item totals (after discount + VAT)."""
+        return sum(
+            (item.total for item in self.items.all()),
+            Decimal("0"),
+        )
+
+
+class ProposalItem(models.Model):
+    """
+    A single line item in a Proposal.
+
+    Computed fields (subtotal, tax, total) are returned by the API as
+    read-only values derived from quantity, unit_price, discount, vat_rate.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    proposal = models.ForeignKey(
+        Proposal,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    description = models.CharField(max_length=500)
+    quantity = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal("1"))
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="Discount percentage (0–100).",
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="VAT rate percentage (e.g. 21 for 21%).",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "proposal item"
+        verbose_name_plural = "proposal items"
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return f"{self.description} (proposal: {self.proposal_id})"
+
+    @property
+    def subtotal(self) -> Decimal:
+        """Quantity × unit price before discount."""
+        return self.quantity * self.unit_price
+
+    @property
+    def discount_amount(self) -> Decimal:
+        return self.subtotal * self.discount / Decimal("100")
+
+    @property
+    def after_discount(self) -> Decimal:
+        return self.subtotal - self.discount_amount
+
+    @property
+    def tax(self) -> Decimal:
+        return self.after_discount * self.vat_rate / Decimal("100")
+
+    @property
+    def total(self) -> Decimal:
+        return self.after_discount + self.tax
