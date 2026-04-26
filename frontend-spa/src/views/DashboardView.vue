@@ -107,10 +107,26 @@ onMounted(async () => {
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
 })
+
+const showSetupBanner = computed(() => {
+  if (!firmStore.activeFirm) return false
+  return !localStorage.getItem('onboarding_complete_' + firmStore.activeFirm.id)
+})
 </script>
 
 <template>
   <div class="p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Setup banner -->
+    <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-semibold text-red-900 dark:text-red-100">Complete your setup</div>
+        <div class="text-xs text-red-700 dark:text-red-300 mt-0.5">You're almost ready! Complete the onboarding steps to get the most out of LeadLab.</div>
+      </div>
+      <RouterLink to="/app/onboarding" class="flex-shrink-0 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
+        Continue setup
+      </RouterLink>
+    </div>
+
     <!-- Skeleton -->
     <div v-if="loading && !stats" class="animate-pulse space-y-4">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -99,6 +99,14 @@ def _load_spa_assets():
         return None, []
 
 
+def public_spa_shell(request, path=''):
+    js_url, css_urls = _load_spa_assets()
+    return render(request, 'frontend/spa_shell.html', {
+        'spa_js_url': js_url,
+        'spa_css_urls': css_urls,
+    })
+
+
 @login_required(login_url='/login/')
 def spa_shell(request, path=''):
     js_url, css_urls = _load_spa_assets()

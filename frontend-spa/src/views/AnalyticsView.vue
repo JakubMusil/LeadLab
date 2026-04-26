@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import UpgradePrompt from '@/components/UpgradePrompt.vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -33,6 +35,7 @@ type EChartsOption = ComposeOption<
 >
 
 const firmStore = useFirmStore()
+const { isPro } = storeToRefs(firmStore)
 const loading = ref(false)
 
 // -- Pipeline Velocity --
@@ -253,7 +256,11 @@ const trendsChartOption = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto space-y-6">
+  <UpgradePrompt
+    v-if="!isPro"
+    description="Advanced analytics are available on the Pro plan."
+  />
+  <div v-else class="p-6 max-w-7xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Analytics &amp; Reporting</h1>
       <button

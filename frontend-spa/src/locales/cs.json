@@ -5,7 +5,9 @@
     "customers": "Zákazníci",
     "calendar": "Kalendář",
     "team": "Tým",
-    "settings": "Nastavení"
+    "settings": "Nastavení",
+    "analytics": "Analytika",
+    "superAdmin": "Super Admin"
   },
   "auth": {
     "welcomeBack": "Vítejte zpět",
@@ -30,7 +32,10 @@
     "conversion": "{rate}% konverze",
     "inAddressBook": "v adresáři",
     "overdue": "{count} po termínu",
-    "won": "Vyhráno: {value}"
+    "won": "Vyhráno: {value}",
+    "completeSetup": "Dokončete nastavení",
+    "setupBannerText": "Jste téměř připraveni! Dokončete kroky nastavení a využijte LeadLab naplno.",
+    "continueSetup": "Pokračovat v nastavení"
   },
   "leads": {
     "title": "Leady",
@@ -43,5 +48,81 @@
     "noLeadsSubtitle": "Začněte vytvořením prvního leadu pro sledování obchodních příležitostí.",
     "createFirstLead": "Vytvořit první lead",
     "dropHere": "Přetáhněte sem"
+  },
+  "settings": {
+    "title": "Nastavení",
+    "profile": "Profil",
+    "workspace": "Pracovní prostor",
+    "branding": "Vizuální identita",
+    "language": "Jazyk",
+    "apiTokens": "API tokeny",
+    "webhooks": "Webhooky",
+    "dangerZone": "Nebezpečná zóna",
+    "save": "Uložit",
+    "saving": "Ukládání…",
+    "saved": "Uloženo",
+    "primaryColor": "Hlavní barva",
+    "logoUpload": "Logo",
+    "uploadLogo": "Nahrát logo",
+    "languageSelect": "Jazyk rozhraní",
+    "english": "Angličtina",
+    "czech": "Čeština"
+  },
+  "team": {
+    "title": "Tým",
+    "inviteMember": "Pozvat člena",
+    "email": "E-mailová adresa",
+    "role": "Role",
+    "invite": "Odeslat pozvánku",
+    "noMembers": "Zatím žádní členové týmu"
+  },
+  "calendar": {
+    "title": "Kalendář",
+    "today": "Dnes",
+    "newEvent": "Nová událost"
+  },
+  "customers": {
+    "title": "Zákazníci",
+    "noCustomers": "Zatím žádní zákazníci"
+  },
+  "analytics": {
+    "title": "Analytika a přehledy",
+    "proRequired": "Pokročilá analytika je dostupná v plánu Pro.",
+    "upgradePrompt": "Upgradovat na Pro"
+  },
+  "onboarding": {
+    "title": "Začínáme",
+    "step1": "Vytvořit pracovní prostor",
+    "step2": "Pozvat tým",
+    "step3": "Importovat leady",
+    "step4": "Nastavit pipeline",
+    "step5": "Dokončit",
+    "skip": "Přeskočit",
+    "next": "Další",
+    "back": "Zpět",
+    "finish": "Přejít na přehled",
+    "inviteEmail": "E-mail člena týmu",
+    "inviteSend": "Odeslat pozvánku",
+    "importCSV": "Importovat CSV",
+    "chooseFile": "Vybrat soubor",
+    "pipelineInfo": "LeadLab používá 6-stupňový pipeline: Nový → Kontaktovaný → Kvalifikovaný → Nabídka → Vyhráno / Prohráno",
+    "gotIt": "Rozumím",
+    "congratulations": "Vše je připraveno!",
+    "completedSteps": "Dokončené kroky",
+    "workspaceCreated": "Pracovní prostor vytvořen",
+    "teamInvited": "Tým pozván",
+    "leadsImported": "Leady importovány",
+    "pipelineConfigured": "Pipeline nastavena"
+  },
+  "errors": {
+    "generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+    "notFound": "Stránka nenalezena",
+    "unauthorized": "Nemáte oprávnění zobrazit tuto stránku",
+    "networkError": "Chyba sítě — zkontrolujte prosím připojení"
+  },
+  "upgrade": {
+    "proFeature": "Funkce Pro",
+    "upgradeToPro": "Upgradovat na Pro",
+    "lockedMessage": "Tato funkce vyžaduje předplatné Pro."
   }
 }

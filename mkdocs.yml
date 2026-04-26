@@ -1,0 +1,23 @@
+site_name: LeadLab Documentation
+site_url: https://docs.leadlab.io
+repo_url: https://github.com/JakubMusil/LeadLab
+repo_name: JakubMusil/LeadLab
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: red
+      accent: red
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Self-Hosting: self-hosting.md
+  - API Reference: api-reference.md
+  - Plugins: plugins.md
+  - Changelog: changelog.md
+  - SLA: sla.md

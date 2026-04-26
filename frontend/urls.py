@@ -2,7 +2,7 @@ from django.urls import path
 from frontend import views
 
 urlpatterns = [
-    path("", views.landing, name="landing"),
+    path("", views.public_spa_shell, name="landing"),
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),
     path("logout/", views.logout_redirect, name="logout"),
