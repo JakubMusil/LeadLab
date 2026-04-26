@@ -225,7 +225,7 @@ function finish() {
         <!-- Step 4: Configure pipeline -->
         <div v-else-if="currentStep === 4">
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Configure pipeline</h1>
-          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">LeadLab uses a 6-stage pipeline to track your deals.</p>
+          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">LeadLab uses a 5-stage pipeline to track your deals, with Won and Lost as terminal outcomes.</p>
           <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 mb-6">
             <div class="flex flex-wrap gap-2 justify-center">
               <template v-for="(stage, i) in ['New', 'Contacted', 'Qualified', 'Proposal', 'Won', 'Lost']" :key="stage">
@@ -233,7 +233,7 @@ function finish() {
                 <span v-if="i < 5" class="text-gray-300 dark:text-gray-600 self-center text-xs">→</span>
               </template>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">LeadLab uses a 6-stage pipeline: New → Contacted → Qualified → Proposal → Won / Lost</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">New → Contacted → Qualified → Proposal → Won / Lost</p>
           </div>
           <div class="flex gap-3">
             <button class="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="prevStep">Back</button>
