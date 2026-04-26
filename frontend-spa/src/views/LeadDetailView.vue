@@ -6,6 +6,15 @@ import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { api } from '@/api'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import DOMPurify from 'dompurify'
+
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
+}
+
+function hasPlainText(html: string): boolean {
+  return Boolean(html.replace(/<[^>]*>/g, '').trim())
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -117,7 +126,7 @@ async function loadFiles() {
 }
 
 async function addActivity() {
-  if (!newActivityText.value.replace(/<[^>]*>/g, '').trim() && newActivityType.value === 'comment') return
+  if (!hasPlainText(newActivityText.value) && newActivityType.value === 'comment') return
   activitySubmitting.value = true
   const res = await api.post<Activity>('/api/v1/crm/activities', {
     lead_id: leadId.value,
@@ -413,7 +422,7 @@ async function switchTab(tab: Tab) {
             />
             <div class="flex justify-end">
               <button
-                :disabled="activitySubmitting || !newActivityText.replace(/<[^>]*>/g, '').trim()"
+                :disabled="activitySubmitting || !hasPlainText(newActivityText)"
                 class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                 @click="addActivity"
               >{{ activitySubmitting ? '…' : 'Add' }}</button>
@@ -434,7 +443,7 @@ async function switchTab(tab: Tab) {
                 <span class="text-xs font-semibold text-gray-700 capitalize">{{ act.type.replace(/_/g, ' ') }}</span>
                 <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
               </div>
-              <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="act.content_text" />
+              <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
               <p v-if="act.type === 'status_change'" class="text-sm text-gray-500 mt-0.5">
                 {{ (act.metadata as Record<string, string>).old_status }} → {{ (act.metadata as Record<string, string>).new_status }}
               </p>
