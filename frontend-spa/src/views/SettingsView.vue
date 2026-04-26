@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 import { api } from '@/api'
 import { useRouter } from 'vue-router'
 
@@ -10,6 +11,7 @@ const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const toast = useToast()
 const router = useRouter()
+const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
 // Profile
 const profileFirstName = ref('')
@@ -551,7 +553,7 @@ async function deleteWorkspace() {
     <!-- Notifications -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">Notifications</h2>
-      <p class="text-xs text-gray-500 mb-4">Manage email notification preferences for this workspace.</p>
+      <p class="text-xs text-gray-500 mb-4">Manage email and push notification preferences for this workspace.</p>
       <div class="flex items-center justify-between py-3 border-b border-gray-50">
         <div>
           <div class="text-sm font-medium text-gray-800">Weekly pipeline digest</div>
@@ -568,6 +570,34 @@ async function deleteWorkspace() {
         >
           <span
             :class="digestEnabled ? 'translate-x-6' : 'translate-x-1'"
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+          />
+        </button>
+      </div>
+
+      <!-- Push notifications -->
+      <div class="flex items-center justify-between py-3">
+        <div>
+          <div class="text-sm font-medium text-gray-800">Browser push notifications</div>
+          <div class="text-xs text-gray-400 mt-0.5">
+            Receive alerts when a task is due or a new lead is assigned to you.
+          </div>
+          <div v-if="!pushSupported" class="text-xs text-amber-600 mt-0.5">
+            Not supported in this browser.
+          </div>
+        </div>
+        <button
+          v-if="pushSupported"
+          :disabled="pushLoading"
+          :class="pushSubscribed ? 'bg-green-600' : 'bg-gray-200'"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
+          role="switch"
+          :aria-checked="pushSubscribed"
+          aria-label="Toggle push notifications"
+          @click="pushSubscribed ? unsubscribePush() : subscribePush()"
+        >
+          <span
+            :class="pushSubscribed ? 'translate-x-6' : 'translate-x-1'"
             class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
           />
         </button>

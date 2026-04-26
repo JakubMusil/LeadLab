@@ -1,3 +1,9 @@
 # Development and CI dependencies — not needed at runtime.
 flake8>=7.0
 coverage>=7.0
+
+# Load testing (v1.9)
+locust>=2.31,<3.0
+
+# Security audit (v1.9)
+pip-audit>=2.7,<3.0

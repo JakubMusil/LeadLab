@@ -497,3 +497,46 @@ class ImportJob(TenantModel):
 
     def __str__(self):
         return f"ImportJob({self.type}, {self.status}) — {self.firm}"
+
+
+# ---------------------------------------------------------------------------
+# Push Notification Subscription (Web Push API)
+# ---------------------------------------------------------------------------
+
+class PushSubscription(models.Model):
+    """
+    Stores a browser Web Push subscription for a specific user.
+
+    Each browser/device that opts in creates one record.  The ``endpoint``,
+    ``p256dh`` key, and ``auth`` secret come from the browser's
+    PushSubscription object and are required to encrypt and deliver a push
+    notification via the Web Push protocol (RFC 8030).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.TextField(unique=True)
+    p256dh = models.TextField(help_text="Browser public key (base64url).")
+    auth = models.TextField(help_text="Authentication secret (base64url).")
+    user_agent = models.CharField(max_length=500, blank=True)
+    push_enabled = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Set to False to soft-disable without removing the subscription.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "push subscription"
+        verbose_name_plural = "push subscriptions"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "push_enabled"]),
+        ]
+
+    def __str__(self):
+        return f"PushSubscription({self.user}, endpoint=…{self.endpoint[-20:]})"
