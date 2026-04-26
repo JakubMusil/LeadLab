@@ -63,7 +63,7 @@ export function usePushNotifications() {
       // 4. Subscribe to push.
       const pushSub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyRes.data.public_key),
+        applicationServerKey: urlBase64ToUint8Array(keyRes.data.public_key) as unknown as BufferSource,
       })
 
       // 5. Send subscription to the server.

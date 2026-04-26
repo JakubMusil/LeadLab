@@ -68,7 +68,7 @@ async function saveBranding() {
 
 function getCsrfToken(): string {
   const m = document.cookie.match(/csrftoken=([^;]+)/)
-  return m ? m[1] : ''
+  return m?.[1] ?? ''
 }
 
 function changeLocale(code: string) {
@@ -1187,7 +1187,7 @@ function actionSummary(action: AutomationAction): string {
           <div class="flex items-center gap-4">
             <img
               v-if="brandLogoPreview || firmStore.activeFirm?.logo_url"
-              :src="brandLogoPreview || firmStore.activeFirm?.logo_url"
+              :src="brandLogoPreview || firmStore.activeFirm?.logo_url || undefined"
               alt="Logo preview"
               class="h-12 w-auto rounded-lg border border-gray-200"
             />
@@ -1901,7 +1901,7 @@ function actionSummary(action: AutomationAction): string {
           <div v-if="expandedRuleRuns === rule.id" class="border-t border-gray-100 dark:border-gray-700 px-4 py-3">
             <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Last runs</p>
             <div v-if="ruleRunsLoading && !ruleRunsMap[rule.id]" class="text-xs text-gray-400">Loading…</div>
-            <div v-else-if="!ruleRunsMap[rule.id] || ruleRunsMap[rule.id].length === 0" class="text-xs text-gray-400 dark:text-gray-500">No runs yet.</div>
+            <div v-else-if="!ruleRunsMap[rule.id] || (ruleRunsMap[rule.id]?.length ?? 0) === 0" class="text-xs text-gray-400 dark:text-gray-500">No runs yet.</div>
             <ul v-else class="space-y-1.5">
               <li
                 v-for="run in ruleRunsMap[rule.id]"

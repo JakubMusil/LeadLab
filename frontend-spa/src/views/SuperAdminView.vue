@@ -49,7 +49,7 @@ async function setTier(firmId: string, tier: string, active: boolean) {
 
 function getCsrf(): string {
   const m = document.cookie.match(/csrftoken=([^;]+)/)
-  return m ? m[1] : ''
+  return m?.[1] ?? ''
 }
 
 onMounted(loadFirms)

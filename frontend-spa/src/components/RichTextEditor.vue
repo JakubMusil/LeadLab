@@ -16,6 +16,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
+import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 
 export interface MentionUser {
   id: string
@@ -109,12 +110,8 @@ const editor = useEditor({
             .slice(0, 8),
 
         render: () => ({
-          onStart(suggProps: Record<string, unknown>) {
-            const p = suggProps as {
-              items: MentionUser[]
-              clientRect?: () => DOMRect | null
-              command: (attrs: { id: string; label: string }) => void
-            }
+          onStart(suggProps: SuggestionProps<MentionUser>) {
+            const p = suggProps
             const rect = p.clientRect?.()
             if (!rect) return
             mentionPopup.value = {
@@ -130,12 +127,8 @@ const editor = useEditor({
               },
             }
           },
-          onUpdate(suggProps: Record<string, unknown>) {
-            const p = suggProps as {
-              items: MentionUser[]
-              clientRect?: () => DOMRect | null
-              command: (attrs: { id: string; label: string }) => void
-            }
+          onUpdate(suggProps: SuggestionProps<MentionUser>) {
+            const p = suggProps
             const rect = p.clientRect?.()
             mentionPopup.value = {
               visible: true,
@@ -150,8 +143,8 @@ const editor = useEditor({
               },
             }
           },
-          onKeyDown(suggProps: Record<string, unknown>) {
-            const p = suggProps as { event: KeyboardEvent }
+          onKeyDown(suggProps: SuggestionKeyDownProps) {
+            const p = suggProps
             if (p.event.key === 'ArrowUp') {
               mentionPopup.value.selectedIndex = Math.max(0, mentionPopup.value.selectedIndex - 1)
               return true
@@ -191,7 +184,7 @@ watch(
   () => props.modelValue,
   (val) => {
     if (editor.value && editor.value.getHTML() !== val) {
-      editor.value.commands.setContent(val, false, { preserveWhitespace: 'full' })
+      editor.value.commands.setContent(val, { emitUpdate: false, parseOptions: { preserveWhitespace: 'full' } })
     }
   },
 )

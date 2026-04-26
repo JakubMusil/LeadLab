@@ -56,6 +56,7 @@ describe('DashboardView', () => {
         await router.isReady();
     });
     it('shows loading skeleton or fallback initially when no stats', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 500, data: null });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -64,6 +65,7 @@ describe('DashboardView', () => {
         expect(wrapper.exists()).toBe(true);
     });
     it('renders stat cards after data loads', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -72,6 +74,7 @@ describe('DashboardView', () => {
         expect(wrapper.text()).toContain('20'); // total customers
     });
     it('shows pipeline value', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -79,6 +82,7 @@ describe('DashboardView', () => {
         expect(wrapper.text()).toContain('Pipeline');
     });
     it('shows overdue tasks in red when overdue > 0', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -87,6 +91,7 @@ describe('DashboardView', () => {
         expect(wrapper.text()).toContain('overdue');
     });
     it('shows conversion rate', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -94,6 +99,7 @@ describe('DashboardView', () => {
         expect(wrapper.text()).toContain('conversion');
     });
     it('shows status breakdown section', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
@@ -102,6 +108,7 @@ describe('DashboardView', () => {
         expect(wrapper.text()).toContain('New');
     });
     it('shows error state when API fails', async () => {
+        vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null });
         vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 500, data: null });
         const wrapper = mount(DashboardView, { global: { plugins: [router] } });
         await new Promise((r) => setTimeout(r, 50));
