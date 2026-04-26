@@ -20,7 +20,21 @@ from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Activity, ActivityType, Customer, Lead, LeadAttachment, LeadSource, LeadStatus, LeadStatusHistory, Notification, Task
+from crm.models import (
+    Activity,
+    ActivityType,
+    Customer,
+    DashboardLayout,
+    Lead,
+    LeadAttachment,
+    LeadScoringRule,
+    LeadSource,
+    LeadStatus,
+    LeadStatusHistory,
+    Notification,
+    SavedView,
+    Task,
+)
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
@@ -183,6 +197,7 @@ class LeadOut(Schema):
     assigned_to_id: Optional[str]
     value: Optional[Decimal]
     currency: str
+    score: Optional[int]
     created_at: datetime
     updated_at: datetime
 
@@ -208,7 +223,50 @@ class LeadUpdateIn(Schema):
     currency: Optional[str] = None
 
 
-def _lead_out(lead: Lead) -> dict:
+def _compute_lead_score(lead: Lead, rules: list) -> int:
+    """
+    Compute a 0–100 lead score by evaluating each scoring rule against
+    the lead.  Rules are pre-fetched by the caller to avoid N+1 queries.
+
+    Supported field values
+    ----------------------
+    ``status``                 — matches if lead.status == operand (string)
+    ``source``                 — matches if lead.source == operand (string)
+    ``value_gte``              — matches if lead.value >= operand (number)
+    ``last_activity_days_lte`` — matches if the lead's most recent activity is
+                                  within *operand* days (number)
+    """
+    score = 50  # baseline
+    for rule in rules:
+        field = rule.field
+        operand = rule.operand
+        matched = False
+
+        if field == "status":
+            matched = lead.status == operand
+        elif field == "source":
+            matched = lead.source == operand
+        elif field == "value_gte":
+            matched = lead.value is not None and lead.value >= Decimal(str(operand))
+        elif field == "last_activity_days_lte":
+            last_activity = (
+                Activity.objects.filter(lead=lead)
+                .order_by("-created_at")
+                .values_list("created_at", flat=True)
+                .first()
+            )
+            if last_activity:
+                age_days = (tz.now() - last_activity).days
+                matched = age_days <= int(operand)
+
+        if matched:
+            score += rule.score_delta
+
+    return max(0, min(100, score))
+
+
+def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
+    score = _compute_lead_score(lead, rules) if rules is not None else None
     return {
         "id": str(lead.id),
         "firm_id": str(lead.firm_id),
@@ -220,6 +278,7 @@ def _lead_out(lead: Lead) -> dict:
         "assigned_to_id": str(lead.assigned_to_id) if lead.assigned_to_id else None,
         "value": lead.value,
         "currency": lead.currency,
+        "score": score,
         "created_at": lead.created_at,
         "updated_at": lead.updated_at,
     }
@@ -256,7 +315,9 @@ def list_leads(
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
     offset = (page - 1) * page_size
-    return 200, [_lead_out(lead) for lead in qs[offset:offset + page_size]]
+    leads = list(qs[offset:offset + page_size])
+    rules = list(LeadScoringRule.objects.filter(firm=request.firm))
+    return 200, [_lead_out(lead, rules) for lead in leads]
 
 
 @router.post("/leads", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
@@ -1434,3 +1495,241 @@ def update_digest_preference(request, payload: DigestPreferenceIn):
     m.weekly_digest_enabled = payload.enabled
     m.save(update_fields=["weekly_digest_enabled"])
     return 200, {"weekly_digest_enabled": m.weekly_digest_enabled}
+
+
+# ===========================================================================
+# v2.2 — DASHBOARD LAYOUT
+# ===========================================================================
+
+class DashboardLayoutOut(Schema):
+    layout: List[Dict[str, Any]]
+    updated_at: Optional[datetime]
+
+
+class DashboardLayoutIn(Schema):
+    layout: List[Dict[str, Any]]
+
+
+@router.get(
+    "/dashboard-layout",
+    auth=django_auth,
+    response={200: DashboardLayoutOut, 403: ErrorOut},
+)
+def get_dashboard_layout(request):
+    """Return the current user's dashboard widget layout for the active firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    obj = DashboardLayout.objects.filter(user=request.user, firm=request.firm).first()
+    if obj:
+        return 200, {"layout": obj.layout, "updated_at": obj.updated_at}
+    return 200, {"layout": [], "updated_at": None}
+
+
+@router.put(
+    "/dashboard-layout",
+    auth=django_auth,
+    response={200: DashboardLayoutOut, 403: ErrorOut},
+)
+def update_dashboard_layout(request, payload: DashboardLayoutIn):
+    """Persist the current user's dashboard widget layout."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    obj, _ = DashboardLayout.objects.update_or_create(
+        user=request.user,
+        firm=request.firm,
+        defaults={"layout": payload.layout},
+    )
+    return 200, {"layout": obj.layout, "updated_at": obj.updated_at}
+
+
+# ===========================================================================
+# v2.2 — LEAD SCORING RULES
+# ===========================================================================
+
+class LeadScoringRuleOut(Schema):
+    id: str
+    field: str
+    operand: Any
+    score_delta: int
+
+
+class LeadScoringRuleIn(Schema):
+    field: str
+    operand: Any
+    score_delta: int
+
+
+@router.get(
+    "/lead-scoring-rules",
+    auth=django_auth,
+    response={200: List[LeadScoringRuleOut], 403: ErrorOut},
+)
+def list_lead_scoring_rules(request):
+    """List all lead scoring rules for the active firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    rules = LeadScoringRule.objects.filter(firm=request.firm)
+    return 200, [
+        {"id": str(r.id), "field": r.field, "operand": r.operand, "score_delta": r.score_delta}
+        for r in rules
+    ]
+
+
+@router.post(
+    "/lead-scoring-rules",
+    auth=django_auth,
+    response={201: LeadScoringRuleOut, 400: ErrorOut, 403: ErrorOut},
+)
+def create_lead_scoring_rule(request, payload: LeadScoringRuleIn):
+    """Create a new lead scoring rule for the active firm."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    valid_fields = {"status", "source", "value_gte", "last_activity_days_lte"}
+    if payload.field not in valid_fields:
+        return 400, {"detail": f"Invalid field. Must be one of: {', '.join(sorted(valid_fields))}."}
+
+    rule = LeadScoringRule.objects.create(
+        firm=request.firm,
+        field=payload.field,
+        operand=payload.operand,
+        score_delta=payload.score_delta,
+    )
+    return 201, {"id": str(rule.id), "field": rule.field, "operand": rule.operand, "score_delta": rule.score_delta}
+
+
+@router.delete(
+    "/lead-scoring-rules/{rule_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_lead_scoring_rule(request, rule_id: str):
+    """Delete a lead scoring rule."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        rule = LeadScoringRule.objects.get(id=rule_id, firm=request.firm)
+    except LeadScoringRule.DoesNotExist:
+        return 404, {"detail": "Rule not found."}
+
+    rule.delete()
+    return 204, None
+
+
+# ===========================================================================
+# v2.2 — SAVED VIEWS
+# ===========================================================================
+
+class SavedViewOut(Schema):
+    id: str
+    name: str
+    entity: str
+    filters: Dict[str, Any]
+    sort_by: str
+    sort_dir: str
+    created_at: datetime
+
+
+class SavedViewIn(Schema):
+    name: str
+    entity: str
+    filters: Dict[str, Any] = {}
+    sort_by: str = ""
+    sort_dir: str = "asc"
+
+
+def _saved_view_out(v: SavedView) -> dict:
+    return {
+        "id": str(v.id),
+        "name": v.name,
+        "entity": v.entity,
+        "filters": v.filters,
+        "sort_by": v.sort_by,
+        "sort_dir": v.sort_dir,
+        "created_at": v.created_at,
+    }
+
+
+@router.get(
+    "/saved-views",
+    auth=django_auth,
+    response={200: List[SavedViewOut], 403: ErrorOut},
+)
+def list_saved_views(request, entity: str = ""):
+    """List the current user's saved views, optionally filtered by entity."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = SavedView.objects.filter(user=request.user, firm=request.firm)
+    if entity:
+        qs = qs.filter(entity=entity)
+    return 200, [_saved_view_out(v) for v in qs]
+
+
+@router.post(
+    "/saved-views",
+    auth=django_auth,
+    response={201: SavedViewOut, 400: ErrorOut, 403: ErrorOut},
+)
+def create_saved_view(request, payload: SavedViewIn):
+    """Save a named filter+sort preset for the current user."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    valid_entities = {SavedView.ENTITY_LEADS, SavedView.ENTITY_CUSTOMERS}
+    if payload.entity not in valid_entities:
+        return 400, {"detail": f"Invalid entity. Must be one of: {', '.join(sorted(valid_entities))}."}
+
+    try:
+        view = SavedView.objects.create(
+            user=request.user,
+            firm=request.firm,
+            name=payload.name,
+            entity=payload.entity,
+            filters=payload.filters,
+            sort_by=payload.sort_by,
+            sort_dir=payload.sort_dir,
+        )
+    except Exception:
+        return 400, {"detail": "A saved view with this name already exists for this entity."}
+
+    return 201, _saved_view_out(view)
+
+
+@router.delete(
+    "/saved-views/{view_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_saved_view(request, view_id: str):
+    """Delete a saved view owned by the current user."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        view = SavedView.objects.get(id=view_id, user=request.user, firm=request.firm)
+    except SavedView.DoesNotExist:
+        return 404, {"detail": "Saved view not found."}
+
+    view.delete()
+    return 204, None

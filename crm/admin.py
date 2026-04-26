@@ -1,6 +1,19 @@
 from django.contrib import admin
 
-from crm.models import Activity, Customer, ImportJob, Lead, LeadAttachment, LeadStatusHistory, Notification, PushSubscription, Task
+from crm.models import (
+    Activity,
+    Customer,
+    DashboardLayout,
+    ImportJob,
+    Lead,
+    LeadAttachment,
+    LeadScoringRule,
+    LeadStatusHistory,
+    Notification,
+    PushSubscription,
+    SavedView,
+    Task,
+)
 
 
 class ActivityInline(admin.TabularInline):
@@ -101,4 +114,27 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     list_display = ("user", "push_enabled", "created_at")
     list_filter = ("push_enabled",)
     search_fields = ("user__email", "endpoint")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(DashboardLayout)
+class DashboardLayoutAdmin(admin.ModelAdmin):
+    list_display = ("user", "firm", "updated_at")
+    list_filter = ("firm",)
+    search_fields = ("user__email",)
+    readonly_fields = ("updated_at",)
+
+
+@admin.register(LeadScoringRule)
+class LeadScoringRuleAdmin(admin.ModelAdmin):
+    list_display = ("field", "operand", "score_delta", "firm")
+    list_filter = ("firm", "field")
+    search_fields = ("field",)
+
+
+@admin.register(SavedView)
+class SavedViewAdmin(admin.ModelAdmin):
+    list_display = ("name", "entity", "user", "firm", "created_at")
+    list_filter = ("firm", "entity")
+    search_fields = ("name", "user__email")
     readonly_fields = ("created_at",)

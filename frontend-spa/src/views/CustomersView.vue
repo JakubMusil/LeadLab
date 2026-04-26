@@ -2,10 +2,13 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
+import { useSavedViewsStore } from '@/stores/savedViews'
 import { useToast } from '@/composables/useToast'
+import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 
 const router = useRouter()
 const store = useCustomersStore()
+const savedViewsStore = useSavedViewsStore()
 const toast = useToast()
 
 const showModal = ref(false)
@@ -24,7 +27,10 @@ const formTagsInput = ref('')
 const formError = ref('')
 const formLoading = ref(false)
 
-onMounted(() => store.fetchCustomers())
+onMounted(() => {
+  store.fetchCustomers()
+  savedViewsStore.fetchViews()
+})
 
 watch(searchInput, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -101,6 +107,31 @@ function goToDetail(id: string) {
 function fullName(c: CustomerOut) {
   return [c.first_name, c.last_name].filter(Boolean).join(' ')
 }
+
+// Context menu
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
+const contextCustomer = ref<CustomerOut | null>(null)
+
+const CUSTOMER_CONTEXT_ITEMS: ContextMenuItem[] = [
+  { id: 'view', label: 'View detail', icon: '↗' },
+  { id: 'edit', label: 'Edit', icon: '✎' },
+  { id: 'divider1', label: '', divider: true },
+  { id: 'delete', label: 'Delete', icon: '🗑', danger: true },
+]
+
+function onRowContextMenu(e: MouseEvent, customer: CustomerOut) {
+  e.preventDefault()
+  contextCustomer.value = customer
+  contextMenuRef.value?.open(e.clientX, e.clientY)
+}
+
+function onContextAction(id: string) {
+  const customer = contextCustomer.value
+  if (!customer) return
+  if (id === 'view') goToDetail(customer.id)
+  else if (id === 'edit') openEdit(customer)
+  else if (id === 'delete') confirmDeleteId.value = customer.id
+}
 </script>
 
 <template>
@@ -108,6 +139,20 @@ function fullName(c: CustomerOut) {
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Customers</h2>
+
+      <!-- Saved views -->
+      <div v-if="savedViewsStore.viewsForEntity('customers').length > 0" class="flex items-center gap-1 flex-wrap">
+        <button
+          v-for="view in savedViewsStore.viewsForEntity('customers')"
+          :key="view.id"
+          class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          :title="view.name"
+          @click="router.push(`/app/customers?view=${view.id}`)"
+        >
+          🔖 {{ view.name }}
+        </button>
+      </div>
+
       <!-- Search -->
       <div class="flex items-center flex-1 min-w-48 max-w-sm bg-gray-100 dark:bg-gray-700 rounded-xl px-3 py-2 gap-2" role="search">
         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -167,6 +212,7 @@ function fullName(c: CustomerOut) {
             :key="c.id"
             class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
             @click.self="goToDetail(c.id)"
+            @contextmenu="onRowContextMenu($event, c)"
           >
             <td class="px-4 py-3" @click="goToDetail(c.id)">
               <div class="font-medium text-gray-900 dark:text-gray-100">{{ fullName(c) }}</div>
@@ -268,4 +314,7 @@ function fullName(c: CustomerOut) {
       </div>
     </div>
   </Teleport>
+
+  <!-- Context menu -->
+  <ContextMenu ref="contextMenuRef" :items="CUSTOMER_CONTEXT_ITEMS" @action="onContextAction" />
 </template>

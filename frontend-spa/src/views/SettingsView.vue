@@ -8,6 +8,9 @@ import { api } from '@/api'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { setLocale, useI18n } from '@/composables/useI18n'
+import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
+
+const leadScoringStore = useLeadScoringStore()
 
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
@@ -155,6 +158,47 @@ async function toggleDigest() {
   }
 }
 
+// ---- Lead Scoring ----
+const newRuleField = ref('status')
+const newRuleOperand = ref('')
+const newRuleScoreDelta = ref(10)
+const ruleError = ref('')
+const ruleLoading = ref(false)
+
+async function addScoringRule() {
+  if (!newRuleOperand.value.toString().trim()) {
+    ruleError.value = 'Operand is required.'
+    return
+  }
+  ruleError.value = ''
+  ruleLoading.value = true
+  let operand: unknown = newRuleOperand.value
+  // coerce numeric operands
+  if (newRuleField.value === 'value_gte' || newRuleField.value === 'last_activity_days_lte') {
+    const n = parseFloat(String(operand))
+    if (isNaN(n)) { ruleError.value = 'Operand must be a number for this field.'; ruleLoading.value = false; return }
+    operand = n
+  }
+  const result = await leadScoringStore.createRule({
+    field: newRuleField.value,
+    operand,
+    score_delta: newRuleScoreDelta.value,
+  })
+  ruleLoading.value = false
+  if (result) {
+    toast.success('Scoring rule added.')
+    newRuleOperand.value = ''
+    newRuleScoreDelta.value = 10
+  } else {
+    ruleError.value = 'Failed to add rule.'
+  }
+}
+
+async function removeScoringRule(id: string) {
+  await leadScoringStore.deleteRule(id)
+  toast.success('Rule deleted.')
+}
+
 onMounted(() => {
   if (authStore.user) {
     profileFirstName.value = authStore.user.first_name
@@ -166,6 +210,7 @@ onMounted(() => {
     loadTokens()
     loadWebhooks()
     loadDigestPreference()
+    leadScoringStore.fetchRules()
   }
 })
 
@@ -721,6 +766,81 @@ async function deleteWorkspace() {
           class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           @click="changeLocale(lang.code)"
         >{{ lang.label }}</button>
+      </div>
+    </div>
+
+    <!-- ===== LEAD SCORING ===== -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Lead Scoring Rules</h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">
+        Configure weighted rules that compute a 0–100 score for each lead. Scores appear as colour-coded badges in Leads and Kanban views.
+      </p>
+
+      <!-- Existing rules -->
+      <div v-if="leadScoringStore.loading" class="animate-pulse space-y-2 mb-4">
+        <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      </div>
+      <div v-else-if="leadScoringStore.rules.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">No rules yet. Add your first rule below.</div>
+      <ul v-else class="space-y-2 mb-5">
+        <li
+          v-for="rule in leadScoringStore.rules"
+          :key="rule.id"
+          class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+        >
+          <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">
+            <span class="font-medium">{{ SCORING_FIELDS.find((f) => f.value === rule.field)?.label ?? rule.field }}</span>
+            <span class="text-gray-400 mx-1">=</span>
+            <code class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">{{ rule.operand }}</code>
+          </span>
+          <span
+            class="text-xs font-semibold px-2 py-0.5 rounded-full"
+            :class="rule.score_delta >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'"
+          >{{ rule.score_delta >= 0 ? '+' : '' }}{{ rule.score_delta }}</span>
+          <button
+            class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 text-xs"
+            :aria-label="`Delete scoring rule for ${rule.field}`"
+            @click="removeScoringRule(rule.id)"
+          >🗑</button>
+        </li>
+      </ul>
+
+      <!-- Add new rule -->
+      <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+        <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3">Add rule</h3>
+        <div v-if="ruleError" class="mb-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ ruleError }}</div>
+        <div class="flex flex-wrap gap-2 items-end">
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Field</label>
+            <select v-model="newRuleField" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
+              <option v-for="f in SCORING_FIELDS" :key="f.value" :value="f.value">{{ f.label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Value</label>
+            <input
+              v-model="newRuleOperand"
+              type="text"
+              placeholder="e.g. won, web, 5000…"
+              class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-36 focus:outline-none focus:border-red-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Score delta</label>
+            <input
+              v-model.number="newRuleScoreDelta"
+              type="number"
+              class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-24 focus:outline-none focus:border-red-400"
+              placeholder="+10"
+            />
+          </div>
+          <button
+            :disabled="ruleLoading"
+            class="px-4 py-1.5 bg-[color:var(--brand-color)] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            @click="addScoringRule"
+          >
+            {{ ruleLoading ? 'Adding…' : '+ Add rule' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>

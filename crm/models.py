@@ -540,3 +540,123 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f"PushSubscription({self.user}, endpoint=…{self.endpoint[-20:]})"
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Layout (per-user adaptive widget layout)
+# ---------------------------------------------------------------------------
+
+class DashboardLayout(models.Model):
+    """
+    Persists each user's dashboard widget arrangement.
+
+    ``layout`` is a list of widget config objects, e.g.:
+    [{"id": "pipeline_value", "visible": true, "order": 0}, ...]
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="dashboard_layouts",
+    )
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="dashboard_layouts",
+    )
+    layout = models.JSONField(
+        default=list,
+        help_text="Ordered list of widget config objects.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "dashboard layout"
+        verbose_name_plural = "dashboard layouts"
+        unique_together = [("user", "firm")]
+
+    def __str__(self):
+        return f"DashboardLayout({self.user}, {self.firm})"
+
+
+# ---------------------------------------------------------------------------
+# Lead Scoring Rule
+# ---------------------------------------------------------------------------
+
+class LeadScoringRule(TenantModel):
+    """
+    A single rule that contributes a delta to a lead's score (0–100).
+
+    ``field``      — which lead attribute to test: 'status', 'source',
+                     'value_gte', 'last_activity_days_lte'
+    ``operand``    — JSON-encoded comparison value (string, number, etc.)
+    ``score_delta``— points added when the rule matches (may be negative)
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    field = models.CharField(
+        max_length=50,
+        help_text="Lead attribute to test.",
+    )
+    operand = models.JSONField(
+        help_text="Comparison value for the field.",
+    )
+    score_delta = models.IntegerField(
+        help_text="Points contributed when this rule matches.",
+    )
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "lead scoring rule"
+        verbose_name_plural = "lead scoring rules"
+        ordering = ["field"]
+
+    def __str__(self):
+        return f"LeadScoringRule(field={self.field}, delta={self.score_delta:+d}) [{self.firm}]"
+
+
+# ---------------------------------------------------------------------------
+# Saved View (named filter + sort preset)
+# ---------------------------------------------------------------------------
+
+class SavedView(models.Model):
+    """
+    A named combination of filters and sort settings saved by a user for
+    the Leads or Customers list.
+    """
+
+    ENTITY_LEADS = "leads"
+    ENTITY_CUSTOMERS = "customers"
+    ENTITY_CHOICES = [
+        (ENTITY_LEADS, "Leads"),
+        (ENTITY_CUSTOMERS, "Customers"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_views",
+    )
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="saved_views",
+    )
+    name = models.CharField(max_length=100)
+    entity = models.CharField(max_length=20, choices=ENTITY_CHOICES)
+    filters = models.JSONField(
+        default=dict,
+        help_text="Serialised filter state, e.g. {\"status\": \"new\", \"source\": \"web\"}.",
+    )
+    sort_by = models.CharField(max_length=50, blank=True)
+    sort_dir = models.CharField(max_length=4, default="asc")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "saved view"
+        verbose_name_plural = "saved views"
+        ordering = ["entity", "name"]
+        unique_together = [("user", "firm", "entity", "name")]
+
+    def __str__(self):
+        return f'SavedView("{self.name}", {self.entity}) [{self.user}]'
