@@ -272,15 +272,15 @@ Enable teams to create, send, and track professional sales proposals directly wi
 
 Grow a first-party and third-party plugin ecosystem around the architecture established in v2.0.
 
-- [ ] **Plugin manifest standard** — define a `leadlab-plugin.json` schema (name, version, entrypoint, permissions, config schema, icon URL); validate on `registerPlugin()` at startup; surface plugin info in Settings → Plugins
-- [ ] **In-app plugin manager** — Settings → Plugins page listing all installed plugins with name, version, description, status toggle (enable/disable without uninstall), and a link to the authoring docs
-- [ ] **First-party plugin: Email Sequences** — multi-step drip campaign plugin; define a sequence of timed emails per lead status transition; Celery beat schedules individual sends; plugin registers its own `SEQUENCE_EMAIL_SENT` activity type and sidebar nav item
-- [ ] **First-party plugin: VoIP / Click-to-Call** — integrates with Twilio (or Vonage) to place calls directly from a lead detail page; call duration and recording URL logged as a `CALL` activity; plugin configuration in Settings (API key, caller ID)
-- [ ] **First-party plugin: LinkedIn Enrichment** — given a LinkedIn profile URL on a customer record, fetches public profile data (name, title, company, avatar) via a proxy API; updates customer fields and logs an `ENRICHMENT` activity
-- [ ] **First-party plugin: Slack Notifications** — sends a Slack message to a configurable channel on: new lead created, lead won/lost, task overdue, proposal accepted; configurable per event type in Settings; uses Slack Incoming Webhooks
-- [ ] **Plugin config schema UI** — plugins declare a JSON Schema for their configuration; the Settings → Plugins page auto-renders a typed form (text, number, boolean, secret) for each plugin's settings; values stored in a `PluginConfig` model per Firm
-- [ ] **Plugin API sandbox** — a `usePlugin(pluginName)` Vue composable that exposes a scoped API to plugins: `toast()`, `navigate()`, `openModal()`, `useFirm()`, `useAuth()`; prevents plugins from accessing internals they did not declare in their manifest permissions
-- [ ] **Public plugin registry** — a static JSON registry (hosted on GitHub Pages or a CDN) listing community plugins with name, author, description, version, and install instructions; linked from the in-app plugin manager
+- [x] **Plugin manifest standard** — define a `leadlab-plugin.json` schema (name, version, entrypoint, permissions, config schema, icon URL); validate on `registerPlugin()` at startup; surface plugin info in Settings → Plugins
+- [x] **In-app plugin manager** — Settings → Plugins page listing all installed plugins with name, version, description, status toggle (enable/disable without uninstall), and a link to the authoring docs
+- [x] **First-party plugin: Email Sequences** — multi-step drip campaign plugin; define a sequence of timed emails per lead status transition; Celery beat schedules individual sends; plugin registers its own `SEQUENCE_EMAIL_SENT` activity type and sidebar nav item
+- [x] **First-party plugin: VoIP / Click-to-Call** — integrates with Twilio (or Vonage) to place calls directly from a lead detail page; call duration and recording URL logged as a `CALL` activity; plugin configuration in Settings (API key, caller ID)
+- [x] **First-party plugin: LinkedIn Enrichment** — given a LinkedIn profile URL on a customer record, fetches public profile data (name, title, company, avatar) via a proxy API; updates customer fields and logs an `ENRICHMENT` activity
+- [x] **First-party plugin: Slack Notifications** — sends a Slack message to a configurable channel on: new lead created, lead won/lost, task overdue, proposal accepted; configurable per event type in Settings; uses Slack Incoming Webhooks
+- [x] **Plugin config schema UI** — plugins declare a JSON Schema for their configuration; the Settings → Plugins page auto-renders a typed form (text, number, boolean, secret) for each plugin's settings; values stored in a `PluginConfig` model per Firm
+- [x] **Plugin API sandbox** — a `usePlugin(pluginName)` Vue composable that exposes a scoped API to plugins: `toast()`, `navigate()`, `openModal()`, `useFirm()`, `useAuth()`; prevents plugins from accessing internals they did not declare in their manifest permissions
+- [x] **Public plugin registry** — a static JSON registry (hosted on GitHub Pages or a CDN) listing community plugins with name, author, description, version, and install instructions; linked from the in-app plugin manager
 
 ### v2.5 — Workflow Automation
 

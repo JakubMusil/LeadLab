@@ -123,6 +123,11 @@ CELERY_BEAT_SCHEDULE = {
         # Every Monday at 08:00 UTC
         'schedule': crontab(hour=8, minute=0, day_of_week=1),
     },
+    'email-sequences-dispatch': {
+        'task': 'crm.tasks.dispatch_sequence_emails',
+        # Every 15 minutes
+        'schedule': crontab(minute='*/15'),
+    },
 }
 
 # Stripe
@@ -291,3 +296,30 @@ CSP_IMG_SRC = os.environ.get("CSP_IMG_SRC", "'self' data: blob:")
 CSP_CONNECT_SRC = os.environ.get("CSP_CONNECT_SRC", "'self' wss: ws:")
 CSP_WORKER_SRC = os.environ.get("CSP_WORKER_SRC", "'self' blob:")
 CSP_REPORT_URI = os.environ.get("CSP_REPORT_URI", "")
+
+# ---------------------------------------------------------------------------
+# First-party plugins (v2.4)
+# Plugins self-register by importing their module.  Only import here so that
+# plugin registration happens after all Django apps are fully loaded.
+# ---------------------------------------------------------------------------
+
+def _load_builtin_plugins():
+    """Import all first-party plugin modules so they call register()."""
+    import importlib
+    _BUILTIN_PLUGINS = [
+        "plugins.slack_notifications",
+        "plugins.linkedin_enrichment",
+        "plugins.voip",
+        "plugins.email_sequences",
+    ]
+    for module_path in _BUILTIN_PLUGINS:
+        try:
+            importlib.import_module(module_path)
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to load built-in plugin %s: %s", module_path, exc
+            )
+
+
+_load_builtin_plugins()

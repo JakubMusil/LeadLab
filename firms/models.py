@@ -297,6 +297,44 @@ class APIToken(models.Model):
 # ---------------------------------------------------------------------------
 
 
+class PluginConfig(models.Model):
+    """
+    Per-firm storage for a single plugin's configuration values and
+    enabled/disabled status.
+
+    ``config`` holds arbitrary JSON matching the plugin's ``config_schema``.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="plugin_configs",
+    )
+    plugin_name = models.CharField(
+        max_length=100,
+        help_text="Matches LeadLabPlugin.manifest['name'].",
+    )
+    enabled = models.BooleanField(default=True)
+    config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Plugin-specific configuration values (validated by plugin's config_schema).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "plugin config"
+        verbose_name_plural = "plugin configs"
+        unique_together = [("firm", "plugin_name")]
+        ordering = ["plugin_name"]
+
+    def __str__(self):
+        status = "enabled" if self.enabled else "disabled"
+        return f"{self.plugin_name} ({status}) — {self.firm}"
+
+
 class WebhookEndpoint(models.Model):
     """
     A user-configured HTTP endpoint that receives signed POST requests when

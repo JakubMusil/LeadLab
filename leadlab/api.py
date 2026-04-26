@@ -17,12 +17,13 @@ from firms.stripe_webhook import webhook_router
 from firms.token_auth import BearerTokenAuth
 from firms.tokens_api import router as tokens_router
 from firms.webhooks_api import router as webhooks_router
+from firms.plugins_api import router as plugins_router
 from leadlab.health import health_router
 from users.api import router as users_router
 
 api = NinjaAPI(
     title="LeadLab API",
-    version="2.3.0",
+    version="2.4.0",
     description="Multi-tenant SaaS CRM — REST API",
     auth=[django_auth, BearerTokenAuth()],
     urls_namespace="api",
@@ -39,4 +40,5 @@ api.add_router("/crm/", proposals_router)
 api.add_router("/integrations/", integrations_router)
 api.add_router("/push/", push_router)
 api.add_router("/stripe/", webhook_router)
+api.add_router("/plugins/", plugins_router)
 api.add_router("/health/", health_router)
