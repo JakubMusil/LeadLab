@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Button as UiButton, Input as UiInput } from '@/components/ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -51,31 +52,25 @@ async function handleSubmit() {
           </div>
 
           <form @submit.prevent="handleSubmit" class="space-y-4">
-            <div>
-              <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-              <input
-                id="email"
-                v-model="email"
-                type="email"
-                required
-                autocomplete="email"
-                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                placeholder="you@example.com"
-              />
-            </div>
+            <UiInput
+              id="email"
+              v-model="email"
+              type="email"
+              label="Email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
 
-            <div>
-              <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-              <input
-                id="password"
-                v-model="password"
-                type="password"
-                required
-                autocomplete="current-password"
-                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                placeholder="••••••••"
-              />
-            </div>
+            <UiInput
+              id="password"
+              v-model="password"
+              type="password"
+              label="Password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              required
+            />
 
             <div class="flex justify-end">
               <RouterLink to="/app/forgot-password" class="text-sm text-red-600 hover:text-red-700">
@@ -83,17 +78,9 @@ async function handleSubmit() {
               </RouterLink>
             </div>
 
-            <button
-              type="submit"
-              :disabled="isLoading"
-              class="w-full bg-red-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <svg v-if="isLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
+            <UiButton type="submit" :loading="isLoading" :disabled="isLoading" class="w-full">
               {{ isLoading ? 'Signing in…' : 'Sign in' }}
-            </button>
+            </UiButton>
           </form>
         </div>
 

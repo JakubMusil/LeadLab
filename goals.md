@@ -237,12 +237,12 @@ The v3.0 milestone builds on the solid commercial foundation of v2.0 with three 
 
 Establish a consistent, polished design language across the entire SPA before adding new features on top.
 
-- [ ] **Design tokens** — extract all colours, spacing, border radii, and shadow values into a shared `design-tokens.ts`; wire them into `tailwind.config.ts` so every component references tokens rather than raw Tailwind classes
-- [ ] **Component library** — build a documented internal library (`src/components/ui/`) of base components: `Button`, `Input`, `Select`, `Modal`, `Badge`, `Avatar`, `Tooltip`, `Dropdown`; replace ad-hoc variants scattered across views
-- [ ] **Storybook** — set up Storybook 8 with the Vite builder; write stories for every base component and the 10 most complex composite components; add Chromatic visual regression CI step
-- [ ] **Micro-interactions** — add entrance / exit transitions (`v-motion` or Tailwind `transition`) to modals, slide-overs, toasts, and Kanban cards; use `reduced-motion` media query to disable for accessibility
-- [ ] **Responsive overhaul** — audit and fix every view on 375 px, 768 px, and 1440 px breakpoints; replace any overflow-hidden hacks with proper flex/grid layouts
-- [ ] **Typography scale** — define and apply a consistent typographic scale (display, heading, body, caption, label) via Tailwind's `fontSize` config; ensure correct heading hierarchy (`h1`–`h4`) for accessibility and SEO
+- [x] **Design tokens** — extract all colours, spacing, border radii, and shadow values into a shared `design-tokens.ts`; wire them into `tailwind.config.ts` so every component references tokens rather than raw Tailwind classes
+- [x] **Component library** — build a documented internal library (`src/components/ui/`) of base components: `Button`, `Input`, `Select`, `Modal`, `Badge`, `Avatar`, `Tooltip`, `Dropdown`; replace ad-hoc variants scattered across views
+- [x] **Storybook** — set up Storybook 8 with the Vite builder; write stories for every base component and the 10 most complex composite components; add Chromatic visual regression CI step
+- [x] **Micro-interactions** — add entrance / exit transitions (`v-motion` or Tailwind `transition`) to modals, slide-overs, toasts, and Kanban cards; use `reduced-motion` media query to disable for accessibility
+- [x] **Responsive overhaul** — audit and fix every view on 375 px, 768 px, and 1440 px breakpoints; replace any overflow-hidden hacks with proper flex/grid layouts
+- [x] **Typography scale** — define and apply a consistent typographic scale (display, heading, body, caption, label) via Tailwind's `fontSize` config; ensure correct heading hierarchy (`h1`–`h4`) for accessibility and SEO
 
 ### v2.2 — UX Intelligence & Personalisation
 
