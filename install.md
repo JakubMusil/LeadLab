@@ -210,7 +210,23 @@ The prompt will ask for an email address and password. Use these credentials to 
 
 ---
 
-### 8. Run the Development Server
+### 8. Load Demo Data (optional)
+
+Populate the database with a sample workspace, contacts, leads, activities, and tasks for evaluation or development:
+
+```bash
+python manage.py load_demo_data
+```
+
+This creates a demo user (`demo@leadlab.io` / `Demo1234!`) and a workspace called *LeadLab Demo* with realistic sample data. You can customise the email, password, and workspace name:
+
+```bash
+python manage.py load_demo_data --email you@example.com --password MyPass123! --firm-name "Acme Corp"
+```
+
+---
+
+### 9. Run the Development Server
 
 ```bash
 python manage.py runserver
@@ -226,7 +242,7 @@ The API is now available at `http://127.0.0.1:8000/api/v1/` and the interactive 
 
 ---
 
-### 9. Run the Celery Worker (optional)
+### 10. Run the Celery Worker (optional)
 
 Celery is required for async outbound email, email invitations, password-reset emails, and CSV import jobs. If Redis is not running the application degrades gracefully.
 

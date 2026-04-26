@@ -26,7 +26,13 @@
 - **Brute-force protection** — django-axes blocks accounts after repeated failed login attempts.
 - **Error tracking** — Optional Sentry integration; activated by setting `SENTRY_DSN`.
 - **Health endpoint** — `GET /api/v1/health/` probes the database and cache for load-balancer use.
-- **Vue 3 SPA** — Full CRM UI with multi-language support (English / Czech), onboarding wizard, analytics dashboard, super-admin panel, and white-label theming.
+- **Vue 3 SPA** — Full CRM UI with multi-language support (English / Czech / German / Polish), onboarding wizard, analytics dashboard, super-admin panel, and white-label theming.
+- **Business proposals** — Create, send, and track professional sales proposals with line items, PDF export, public signing links, and analytics.
+- **Plugin ecosystem** — First-party plugins for Email Sequences, VoIP / Click-to-Call, LinkedIn Enrichment, and Slack Notifications; community plugins via the public registry.
+- **Workflow automation** — Visual trigger → condition → action rule builder; evaluated by Celery with a full execution log.
+- **Design system** — Internal component library (Button, Input, Modal, Badge, …) with Storybook documentation and Chromatic visual regression CI.
+- **Smart lead scoring** — Configurable weighted rules produce a 0–100 score badge per lead.
+- **Saved views** — Users save named filter + sort combinations on Leads and Customers lists.
 
 ---
 

@@ -1223,7 +1223,7 @@ function actionSummary(action: AutomationAction): string {
       </div>
       <div class="flex gap-3">
         <button
-          v-for="lang in [{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }]"
+          v-for="lang in [{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }, { code: 'de', label: '🇩🇪 Deutsch' }, { code: 'pl', label: '🇵🇱 Polski' }]"
           :key="lang.code"
           :class="currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
           class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"

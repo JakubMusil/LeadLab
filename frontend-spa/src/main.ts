@@ -6,6 +6,8 @@ import router from './router'
 import './assets/main.css'
 import en from './locales/en.json'
 import cs from './locales/cs.json'
+import de from './locales/de.json'
+import pl from './locales/pl.json'
 import { detectLocale } from './composables/useI18n'
 import { pluginRegistry } from './plugins'
 
@@ -19,7 +21,7 @@ const i18n = createI18n({
   legacy: false,
   locale: detectLocale(),
   fallbackLocale: 'en',
-  messages: { en, cs },
+  messages: { en, cs, de, pl },
 })
 
 const app = createApp(App)
