@@ -15,7 +15,7 @@ export default defineConfig({
     VueI18nPlugin({
       // Pre-compile all locale JSON files so the runtime-only vue-i18n build
       // is used and no new Function() calls occur at runtime (CSP compliance).
-      include: resolve(__dirname, './src/locales/**'),
+      include: resolve(__dirname, './src/locales/**/*.json'),
     }),
     VitePWA({
       registerType: 'autoUpdate',
