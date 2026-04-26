@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'frontend',
     'django.contrib.postgres',
     'channels',
+    # Brute-force protection (v1.9)
+    'axes',
 ]
 
 MIDDLEWARE = [
@@ -59,9 +61,13 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Axes must come after AuthenticationMiddleware
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'firms.middleware.TenantMiddleware',
+    # Content-Security-Policy (v1.9)
+    'leadlab.middleware.ContentSecurityPolicyMiddleware',
 ]
 
 ROOT_URLCONF = 'leadlab.urls'
@@ -240,3 +246,48 @@ else:
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         }
     }
+
+# ---------------------------------------------------------------------------
+# django-axes — brute-force protection (v1.9)
+# ---------------------------------------------------------------------------
+
+AUTHENTICATION_BACKENDS = [
+    # AxesStandaloneBackend must be first
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', '10'))
+AXES_COOLOFF_TIME = 1  # hours
+AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
+# Disable axes in testing to avoid interference
+AXES_ENABLED = os.environ.get('AXES_ENABLE', 'True') == 'True'
+
+# ---------------------------------------------------------------------------
+# Web Push (VAPID) settings (v1.9)
+# ---------------------------------------------------------------------------
+
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_ADMIN_EMAIL = os.environ.get('VAPID_ADMIN_EMAIL', 'admin@leadlab.io')
+
+# ---------------------------------------------------------------------------
+# Content-Security-Policy (v1.9)
+# ---------------------------------------------------------------------------
+
+# The CSP is enforced via leadlab.middleware.ContentSecurityPolicyMiddleware.
+# Override individual directives via environment variables.
+CSP_DEFAULT_SRC = os.environ.get("CSP_DEFAULT_SRC", "'self'")
+CSP_SCRIPT_SRC = os.environ.get(
+    "CSP_SCRIPT_SRC",
+    "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
+)
+CSP_STYLE_SRC = os.environ.get(
+    "CSP_STYLE_SRC",
+    "'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+)
+CSP_FONT_SRC = os.environ.get("CSP_FONT_SRC", "'self' https://fonts.gstatic.com")
+CSP_IMG_SRC = os.environ.get("CSP_IMG_SRC", "'self' data: blob:")
+CSP_CONNECT_SRC = os.environ.get("CSP_CONNECT_SRC", "'self' wss: ws:")
+CSP_WORKER_SRC = os.environ.get("CSP_WORKER_SRC", "'self' blob:")
+CSP_REPORT_URI = os.environ.get("CSP_REPORT_URI", "")

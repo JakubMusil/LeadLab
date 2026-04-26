@@ -11,6 +11,16 @@ vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }))
 
+vi.mock('@/composables/usePushNotifications', () => ({
+  usePushNotifications: () => ({
+    isSupported: false,
+    isSubscribed: { value: false },
+    isLoading: { value: false },
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+  }),
+}))
+
 vi.mock('@/api', () => ({
   api: {
     get: vi.fn(),

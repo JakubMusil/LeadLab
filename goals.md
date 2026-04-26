@@ -203,12 +203,12 @@ Give sales managers actionable data.
 
 Polish for production confidence.
 
-- [ ] **PWA manifest** — `manifest.json` with icons, theme colour, display mode `standalone`; service worker (Workbox via Vite plugin) caches the app shell and static assets for offline use
-- [ ] **Push notifications** — Web Push API integration; notify assigned user when a task is due or a new lead is assigned; preference toggle in Settings
-- [ ] **Playwright E2E tests** — cover the critical paths: registration → onboarding → create lead → change status → add activity → complete task; run in CI on every PR
-- [ ] **Visual regression tests** — Percy or Playwright screenshot comparisons for the dashboard overview, lead detail, and Kanban board
-- [ ] **Load testing** — Locust scenario simulating 50 concurrent users; confirm API p95 < 200 ms
-- [ ] **Security hardening** — Content-Security-Policy header; Subresource Integrity for any remaining CDN assets; `django-axes` for brute-force protection on login; run `pip-audit` in CI
+- [x] **PWA manifest** — `manifest.json` with icons, theme colour, display mode `standalone`; service worker (Workbox via Vite plugin) caches the app shell and static assets for offline use
+- [x] **Push notifications** — Web Push API integration; notify assigned user when a task is due or a new lead is assigned; preference toggle in Settings
+- [x] **Playwright E2E tests** — cover the critical paths: registration → onboarding → create lead → change status → add activity → complete task; run in CI on every PR
+- [x] **Visual regression tests** — Percy or Playwright screenshot comparisons for the dashboard overview, lead detail, and Kanban board
+- [x] **Load testing** — Locust scenario simulating 50 concurrent users; confirm API p95 < 200 ms
+- [x] **Security hardening** — Content-Security-Policy header; Subresource Integrity for any remaining CDN assets; `django-axes` for brute-force protection on login; run `pip-audit` in CI
 
 ### v2.0 — Commercial Release
 

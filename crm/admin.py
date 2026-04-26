@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from crm.models import Activity, Customer, ImportJob, Lead, LeadAttachment, LeadStatusHistory, Notification, Task
+from crm.models import Activity, Customer, ImportJob, Lead, LeadAttachment, LeadStatusHistory, Notification, PushSubscription, Task
 
 
 class ActivityInline(admin.TabularInline):
@@ -94,3 +94,11 @@ class ImportJobAdmin(admin.ModelAdmin):
     list_filter = ("firm", "type", "status")
     search_fields = ("firm__name", "user__email", "original_filename")
     readonly_fields = ("created_at", "finished_at")
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("user", "push_enabled", "created_at")
+    list_filter = ("push_enabled",)
+    search_fields = ("user__email", "endpoint")
+    readonly_fields = ("created_at",)

@@ -239,3 +239,69 @@ def send_weekly_digest(self):
                 firm.name,
                 exc,
             )
+
+
+# ---------------------------------------------------------------------------
+# Push notifications (v1.9)
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_push_notification(self, user_id: str, title: str, body: str, url: str = "/app/dashboard"):
+    """
+    Deliver a Web Push notification to all active subscriptions for a user.
+
+    Silently skips if VAPID keys are not configured.  Removes subscriptions
+    that report a 410 Gone response (browser has unsubscribed).
+    """
+    from django.conf import settings
+
+    from crm.models import PushSubscription
+
+    private_key = getattr(settings, "VAPID_PRIVATE_KEY", "")
+    public_key = getattr(settings, "VAPID_PUBLIC_KEY", "")
+    admin_email = getattr(settings, "VAPID_ADMIN_EMAIL", "admin@leadlab.io")
+
+    if not private_key or not public_key:
+        logger.debug("send_push_notification: VAPID keys not configured — skipping.")
+        return
+
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        logger.warning("send_push_notification: pywebpush not installed.")
+        return
+
+    import json
+
+    subscriptions = PushSubscription.objects.filter(user_id=user_id, push_enabled=True)
+
+    payload = json.dumps({"title": title, "body": body, "url": url})
+
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                },
+                data=payload,
+                vapid_private_key=private_key,
+                vapid_claims={"sub": f"mailto:{admin_email}"},
+            )
+        except WebPushException as exc:
+            if exc.response is not None and exc.response.status_code == 410:
+                # Browser has revoked the subscription — remove it.
+                sub.delete()
+                logger.info("send_push_notification: Removed expired subscription %s.", sub.id)
+            else:
+                logger.error(
+                    "send_push_notification: Failed to deliver to subscription %s: %s",
+                    sub.id,
+                    exc,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "send_push_notification: Unexpected error for subscription %s: %s",
+                sub.id,
+                exc,
+            )
