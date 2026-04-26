@@ -2,12 +2,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
+import { useSavedViewsStore } from '@/stores/savedViews'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
+import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
+import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
+const savedViewsStore = useSavedViewsStore()
 const toast = useToast()
 
 type ViewMode = 'table' | 'kanban'
@@ -19,6 +23,11 @@ const editingLead = ref<LeadOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const statusPopupId = ref<string | null>(null)
 
+// Saved view UI
+const showSaveViewDialog = ref(false)
+const saveViewName = ref('')
+const savingView = ref(false)
+
 // Form
 const formTitle = ref('')
 const formDescription = ref('')
@@ -29,11 +38,58 @@ const formCurrency = ref('CZK')
 const formError = ref('')
 const formLoading = ref(false)
 
+// Context menu
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
+const contextLead = ref<LeadOut | null>(null)
+
+const LEAD_CONTEXT_ITEMS: ContextMenuItem[] = [
+  { id: 'view', label: 'View detail', icon: '↗' },
+  { id: 'edit', label: 'Edit', icon: '✎' },
+  { id: 'change_status', label: 'Change status', icon: '🔄' },
+  { id: 'divider1', label: '', divider: true },
+  { id: 'delete', label: 'Delete', icon: '🗑', danger: true },
+]
+
+function onRowContextMenu(e: MouseEvent, lead: LeadOut) {
+  e.preventDefault()
+  contextLead.value = lead
+  contextMenuRef.value?.open(e.clientX, e.clientY)
+}
+
+function onRowLongPress(lead: LeadOut, e: TouchEvent) {
+  e.preventDefault()
+  const touch = e.touches[0]
+  if (!touch) return
+  contextLead.value = lead
+  contextMenuRef.value?.open(touch.clientX, touch.clientY)
+}
+
+function onContextAction(id: string) {
+  const lead = contextLead.value
+  if (!lead) return
+  if (id === 'view') goToDetail(lead.id)
+  else if (id === 'edit') openEdit(lead)
+  else if (id === 'change_status') statusPopupId.value = lead.id
+  else if (id === 'delete') confirmDeleteId.value = lead.id
+}
+
 watch(filterStatus, () => { store.fetchLeads({ status: filterStatus.value, source: filterSource.value }) })
 watch(filterSource, () => { store.fetchLeads({ status: filterStatus.value, source: filterSource.value }) })
 
-onMounted(() => {
+// Apply saved view from ?view= query param
+watch(() => route.query.view, async (viewId) => {
+  if (!viewId) return
+  await savedViewsStore.fetchViews()
+  const v = savedViewsStore.views.find((sv) => sv.id === viewId)
+  if (v) {
+    filterStatus.value = (v.filters.status as string) ?? ''
+    filterSource.value = (v.filters.source as string) ?? ''
+  }
+}, { immediate: true })
+
+onMounted(async () => {
   store.fetchLeads({ status: filterStatus.value })
+  savedViewsStore.fetchViews()
 })
 
 const leadsByStatus = computed(() => {
@@ -162,35 +218,75 @@ async function checkOverdueTasks() {
   }
 }
 onMounted(checkOverdueTasks)
+
+// Saved views
+async function saveCurrentView() {
+  if (!saveViewName.value.trim()) return
+  savingView.value = true
+  const result = await savedViewsStore.createView({
+    name: saveViewName.value.trim(),
+    entity: 'leads',
+    filters: {
+      ...(filterStatus.value ? { status: filterStatus.value } : {}),
+      ...(filterSource.value ? { source: filterSource.value } : {}),
+    },
+  })
+  savingView.value = false
+  if (result) {
+    toast.success('View saved.')
+    showSaveViewDialog.value = false
+    saveViewName.value = ''
+  } else {
+    toast.error('Failed to save view.')
+  }
+}
+
+async function deleteSavedView(id: string) {
+  await savedViewsStore.deleteView(id)
+  toast.success('View deleted.')
+}
 </script>
 
 <template>
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 flex-1">Leads</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">Leads</h2>
+
+      <!-- Saved views -->
+      <div v-if="savedViewsStore.viewsForEntity('leads').length > 0" class="flex items-center gap-1 flex-wrap">
+        <button
+          v-for="view in savedViewsStore.viewsForEntity('leads')"
+          :key="view.id"
+          class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          :title="view.name"
+          @click="router.push(`/app/leads?view=${view.id}`)"
+        >
+          🔖 {{ view.name }}
+        </button>
+      </div>
 
       <!-- View toggle -->
-      <div class="flex rounded-xl border border-gray-200 overflow-hidden text-sm">
+      <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden text-sm">
         <button
           class="px-3 py-1.5 transition-colors"
-          :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-50'"
+          :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'table'"
         >☰ Table</button>
         <button
           class="px-3 py-1.5 transition-colors"
-          :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-50'"
+          :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'kanban'"
         >⊞ Kanban</button>
       </div>
 
       <!-- Filters (table only) -->
       <template v-if="viewMode === 'table'">
-        <select v-model="filterStatus" class="rounded-xl border border-gray-200 text-sm px-3 py-1.5 text-gray-700 focus:outline-none focus:border-red-400">
+        <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
           <option value="">All Statuses</option>
           <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
         </select>
-        <select v-model="filterSource" class="rounded-xl border border-gray-200 text-sm px-3 py-1.5 text-gray-700 focus:outline-none focus:border-red-400">
+        <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
           <option value="">All Sources</option>
           <option value="web">Web</option>
           <option value="email">Email</option>
@@ -199,6 +295,14 @@ onMounted(checkOverdueTasks)
           <option value="social">Social</option>
           <option value="other">Other</option>
         </select>
+        <!-- Save current view -->
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          title="Save current filters as a view"
+          @click="showSaveViewDialog = true"
+        >
+          🔖 Save view
+        </button>
       </template>
 
       <button
@@ -239,6 +343,7 @@ onMounted(checkOverdueTasks)
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Source</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Value</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">Score</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Created</th>
               <th class="px-4 py-3" />
             </tr>
@@ -249,6 +354,7 @@ onMounted(checkOverdueTasks)
               :key="lead.id"
               class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
               @click.self="goToDetail(lead.id)"
+              @contextmenu="onRowContextMenu($event, lead)"
             >
               <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-xs" @click="goToDetail(lead.id)">
                 <div class="flex items-center gap-1.5">
@@ -292,6 +398,9 @@ onMounted(checkOverdueTasks)
               </td>
               <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell capitalize" @click="goToDetail(lead.id)">{{ lead.source.replace('_', ' ') }}</td>
               <td class="px-4 py-3 text-gray-700 dark:text-gray-300 hidden lg:table-cell" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
+              <td class="px-4 py-3 hidden xl:table-cell" @click="goToDetail(lead.id)">
+                <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
+              </td>
               <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -352,6 +461,7 @@ onMounted(checkOverdueTasks)
               class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
               draggable="true"
               @dragstart="onDragStart(lead)"
+              @contextmenu="onRowContextMenu($event, lead)"
             >
               <div class="flex items-start justify-between gap-2">
                 <button
@@ -364,6 +474,7 @@ onMounted(checkOverdueTasks)
               </div>
               <div class="flex items-center gap-2 mt-2 flex-wrap">
                 <span v-if="fmtValue(lead)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(lead) }}</span>
+                <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
                 <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" title="Overdue task">⚠ overdue</span>
               </div>
             </div>
@@ -373,6 +484,38 @@ onMounted(checkOverdueTasks)
       </div>
     </template>
   </div>
+
+  <!-- Context menu -->
+  <ContextMenu ref="contextMenuRef" :items="LEAD_CONTEXT_ITEMS" @action="onContextAction" />
+
+  <!-- Save view dialog -->
+  <Teleport to="body">
+    <div v-if="showSaveViewDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showSaveViewDialog = false">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-label="Save view">
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Save current view</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">View name</label>
+            <input
+              v-model="saveViewName"
+              type="text"
+              placeholder="e.g. New Web Leads"
+              class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+            />
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Saves: status={{ filterStatus || 'any' }}, source={{ filterSource || 'any' }}
+          </p>
+        </div>
+        <div class="flex gap-3 pt-4">
+          <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showSaveViewDialog = false">Cancel</button>
+          <button type="button" :disabled="savingView || !saveViewName.trim()" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60" @click="saveCurrentView">
+            {{ savingView ? 'Saving…' : 'Save view' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 
   <!-- Create/Edit Modal -->
   <Teleport to="body">

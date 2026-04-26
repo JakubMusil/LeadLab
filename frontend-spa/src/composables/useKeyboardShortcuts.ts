@@ -2,8 +2,10 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 export const shortcutHelpOpen = ref(false)
+export const commandPaletteOpen = ref(false)
 
 export const SHORTCUTS = [
+  { keys: 'Cmd/Ctrl + K', description: 'Open command palette' },
   { keys: 'G L', description: 'Go to Leads' },
   { keys: 'G C', description: 'Go to Customers' },
   { keys: 'G D', description: 'Go to Dashboard' },
@@ -18,6 +20,13 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
   let pendingTimer: ReturnType<typeof setTimeout> | null = null
 
   function handleKeydown(e: KeyboardEvent) {
+    // Cmd/Ctrl + K → command palette (fires even inside inputs)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      commandPaletteOpen.value = !commandPaletteOpen.value
+      return
+    }
+
     const tag = (e.target as HTMLElement).tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
     if (e.metaKey || e.ctrlKey || e.altKey) return

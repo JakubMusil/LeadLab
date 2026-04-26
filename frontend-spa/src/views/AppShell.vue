@@ -5,11 +5,13 @@ import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useLeadsStore, type LeadOut } from '@/stores/leads'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useSavedViewsStore } from '@/stores/savedViews'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
-import { useKeyboardShortcuts, shortcutHelpOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
+import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
 import { useI18n } from '@/composables/useI18n'
 import { pluginRegistry } from '@/plugins'
+import CommandPalette from '@/components/CommandPalette.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,6 +19,7 @@ const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const leadsStore = useLeadsStore()
 const notifStore = useNotificationsStore()
+const savedViewsStore = useSavedViewsStore()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 
@@ -70,6 +73,7 @@ onMounted(async () => {
   if (!authStore.user) await authStore.fetchMe()
   if (firmStore.firms.length === 0) await firmStore.fetchFirms()
   await notifStore.fetchNotifications()
+  savedViewsStore.fetchViews()
 
   on('lead.created', onLeadCreated)
   on('lead.updated', onLeadUpdated)
@@ -234,22 +238,50 @@ function formatNotifTime(ts: string): string {
 
       <!-- Nav items -->
       <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label="Main navigation">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors group"
-          :class="
-            isActive(item.path)
-              ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
-          "
-          :aria-current="isActive(item.path) ? 'page' : undefined"
-          @click="mobileMenuOpen = false"
-        >
-          <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
-          <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="item in navItems" :key="item.path">
+          <RouterLink
+            :to="item.path"
+            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors group"
+            :class="
+              isActive(item.path)
+                ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+            "
+            :aria-current="isActive(item.path) ? 'page' : undefined"
+            @click="mobileMenuOpen = false"
+          >
+            <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
+            <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
+          </RouterLink>
+
+          <!-- Saved views for Leads -->
+          <template v-if="sidebarOpen && item.path === '/app/leads' && savedViewsStore.viewsForEntity('leads').length > 0">
+            <RouterLink
+              v-for="view in savedViewsStore.viewsForEntity('leads')"
+              :key="view.id"
+              :to="`/app/leads?view=${view.id}`"
+              class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+              @click="mobileMenuOpen = false"
+            >
+              <span aria-hidden="true">🔖</span>
+              <span class="truncate">{{ view.name }}</span>
+            </RouterLink>
+          </template>
+
+          <!-- Saved views for Customers -->
+          <template v-if="sidebarOpen && item.path === '/app/customers' && savedViewsStore.viewsForEntity('customers').length > 0">
+            <RouterLink
+              v-for="view in savedViewsStore.viewsForEntity('customers')"
+              :key="view.id"
+              :to="`/app/customers?view=${view.id}`"
+              class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+              @click="mobileMenuOpen = false"
+            >
+              <span aria-hidden="true">🔖</span>
+              <span class="truncate">{{ view.name }}</span>
+            </RouterLink>
+          </template>
+        </template>
       </nav>
 
       <!-- Dark mode toggle + user section -->
@@ -317,13 +349,13 @@ function formatNotifTime(ts: string): string {
 
         <div class="flex-1" />
 
-        <!-- Global search -->
-        <div class="hidden md:flex items-center w-64 bg-gray-100 dark:bg-gray-700 rounded-xl px-3 py-2 gap-2" role="search">
+        <!-- Global search / command palette trigger -->
+        <div class="hidden md:flex items-center w-64 bg-gray-100 dark:bg-gray-700 rounded-xl px-3 py-2 gap-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" role="button" tabindex="0" aria-label="Open command palette (Cmd+K)" @click="commandPaletteOpen = true" @keydown.enter="commandPaletteOpen = true">
           <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <label for="global-search" class="sr-only">Search</label>
-          <input id="global-search" type="search" placeholder="Search…" class="bg-transparent text-sm text-gray-600 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none flex-1" />
+          <span class="text-sm text-gray-400 dark:text-gray-500 flex-1">Search…</span>
+          <kbd class="text-xs text-gray-400 dark:text-gray-500 font-mono">⌘K</kbd>
         </div>
 
         <!-- Notification bell -->
@@ -467,5 +499,10 @@ function formatNotifTime(ts: string): string {
         </ul>
       </div>
     </div>
+  </Teleport>
+
+  <!-- Command Palette (Cmd/Ctrl + K) -->
+  <Teleport to="body">
+    <CommandPalette v-if="commandPaletteOpen" @close="commandPaletteOpen = false" />
   </Teleport>
 </template>
