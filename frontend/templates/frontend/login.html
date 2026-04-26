@@ -92,7 +92,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
 
   if (res && res.ok) {
     localStorage.setItem('user', JSON.stringify(res.data));
-    window.location.href = '/dashboard/';
+    window.location.href = '/app/dashboard';
   } else {
     const msg = (res && res.data && res.data.detail) ? res.data.detail : 'Invalid credentials. Please try again.';
     errMsg.textContent = msg;
