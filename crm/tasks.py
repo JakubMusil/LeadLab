@@ -108,9 +108,19 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     from django.utils import timezone as tz
     from crm.models import Task
 
-    title = _render_template(action.get("title", "Follow-up task"), context)
-    days_from_now = int(action.get("days_from_now", 0))
+    # Support both legacy "title" and new "title_template" field
+    title_template = action.get("title_template") or action.get("title", "Follow-up task")
+    title = _render_template(title_template, context)
+
+    # Support both "days_from_now" (legacy) and "due_days_offset" (Phase 4)
+    days_from_now = int(action.get("due_days_offset") or action.get("days_from_now") or 0)
     due_date = tz.now() + datetime.timedelta(days=days_from_now) if days_from_now else None
+
+    # Priority and tags
+    priority = action.get("priority") or "medium"
+    tags = action.get("tags") or []
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
 
     lead_id = context.get("lead_id")
     lead = None
@@ -134,13 +144,112 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
         except Firm.DoesNotExist:
             raise ValueError(f"create_task: firm {firm_id} not found")
 
-    Task.objects.create(
+    # Resolve assignee
+    assigned_to = None
+    assign_to_user_id = action.get("assign_to_user_id", "")
+    if assign_to_user_id == "inherit":
+        # Inherit from the triggering context (use assignee_id standardized key)
+        inherit_id = context.get("assignee_id")
+        if inherit_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                assigned_to = User.objects.get(id=inherit_id)
+            except User.DoesNotExist:
+                pass
+    elif assign_to_user_id:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            assigned_to = User.objects.get(id=assign_to_user_id)
+        except User.DoesNotExist:
+            logger.warning("create_task: assign_to_user_id %s not found", assign_to_user_id)
+
+    # Resolve parent task
+    parent_task = None
+    parent_task_id = action.get("parent_task_id", "")
+    if parent_task_id:
+        try:
+            parent_task = Task.objects.get(id=parent_task_id, firm=firm)
+        except Task.DoesNotExist:
+            logger.warning("create_task: parent_task_id %s not found", parent_task_id)
+
+    task = Task.objects.create(
         firm=firm,
         lead=lead,
         title=title,
         due_date=due_date,
+        priority=priority,
+        tags=tags,
+        assigned_to=assigned_to,
+        parent_task=parent_task,
     )
-    logger.info("automation create_task: created task '%s'%s", title, f" on lead {lead_id}" if lead_id else "")
+    logger.info(
+        "automation create_task: rule=%s created task '%s' (id=%s)%s",
+        getattr(rule, 'id', 'unknown'), title, task.id,
+        f" on lead {lead_id}" if lead_id else "",
+    )
+
+
+def _action_set_task_status(action: dict, context: dict) -> None:
+    """Set the status of a task identified by task_id in action or context."""
+    from crm.models import Task, TaskStatus
+
+    task_id = action.get("task_id") or context.get("task_id")
+    if not task_id:
+        raise ValueError("set_task_status: no task_id in action or context")
+
+    status = action.get("status", "")
+    valid_statuses = [s.value for s in TaskStatus]
+    if status not in valid_statuses:
+        raise ValueError(
+            f"set_task_status: invalid status '{status}'. "
+            f"Choose from: {', '.join(valid_statuses)}"
+        )
+
+    updated = Task.objects.filter(id=task_id).update(status=status)
+    if not updated:
+        raise ValueError(f"set_task_status: task {task_id} not found")
+    logger.info("automation set_task_status: task %s → %s", task_id, status)
+
+
+def _action_assign_tag(action: dict, context: dict) -> None:
+    """Add a tag to a task or lead."""
+    tag = action.get("tag", "").strip()
+    if not tag:
+        raise ValueError("assign_tag: no tag specified")
+
+    target_type = action.get("target_type", "task")  # "task" or "lead"
+
+    if target_type == "lead":
+        lead_id = action.get("lead_id") or context.get("lead_id")
+        if not lead_id:
+            raise ValueError("assign_tag: no lead_id in action or context")
+        from crm.models import Lead
+        try:
+            lead = Lead.objects.get(id=lead_id)
+        except Lead.DoesNotExist:
+            raise ValueError(f"assign_tag: lead {lead_id} not found")
+        tags = list(lead.tags or [])
+        if tag not in tags:
+            tags.append(tag)
+            Lead.objects.filter(id=lead_id).update(tags=tags)
+        logger.info("automation assign_tag: added tag '%s' to lead %s", tag, lead_id)
+    else:
+        # Default: task
+        task_id = action.get("task_id") or context.get("task_id")
+        if not task_id:
+            raise ValueError("assign_tag: no task_id in action or context")
+        from crm.models import Task
+        try:
+            task = Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            raise ValueError(f"assign_tag: task {task_id} not found")
+        tags = list(task.tags or [])
+        if tag not in tags:
+            tags.append(tag)
+            Task.objects.filter(id=task_id).update(tags=tags)
+        logger.info("automation assign_tag: added tag '%s' to task %s", tag, task_id)
 
 
 def _action_update_field(action: dict, context: dict) -> None:
@@ -235,6 +344,10 @@ def _execute_rule(rule, context: dict) -> None:
                     _action_call_webhook(action, context)
                 elif action_type == "run_plugin_action":
                     _action_run_plugin(action, context, rule)
+                elif action_type == "set_task_status":
+                    _action_set_task_status(action, context)
+                elif action_type == "assign_tag":
+                    _action_assign_tag(action, context)
                 else:
                     errors.append(f"Unknown action type: {action_type!r}")
             except Exception as exc:  # noqa: BLE001

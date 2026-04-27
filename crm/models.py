@@ -1554,6 +1554,8 @@ class AutomationTrigger(models.TextChoices):
     LEAD_CREATED = "lead_created", "Lead Created"
     LEAD_STATUS_CHANGE = "lead_status_change", "Lead Status Changed"
     TASK_OVERDUE = "task_overdue", "Task Overdue"
+    TASK_CREATED = "task_created", "Task Created"
+    TASK_COMPLETED = "task_completed", "Task Completed"
     PROPOSAL_SENT = "proposal_sent", "Proposal Sent"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     LEAD_INACTIVE = "lead_inactive", "Lead Inactive (N days)"

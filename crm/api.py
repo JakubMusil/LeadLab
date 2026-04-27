@@ -351,7 +351,83 @@ def _build_lead_automation_context(lead: Lead, firm) -> dict:
     }
 
 
-@router.get("/leads", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
+def _build_task_automation_context(task, firm) -> dict:
+    """Build the evaluation context dict for automation rules fired from a Task event.
+
+    Args:
+        task: A Task model instance (should have lead, customer, assigned_to pre-fetched).
+        firm: The Firm instance that owns the task.
+
+    Returns:
+        A dict with string values suitable for condition evaluation and template rendering.
+        Keys: task_id, task_title, task_status, task_priority, lead_id, lead_title,
+              firm_id, assignee_id, assignee_email, assignee_name,
+              customer_name, customer_email, owner_email, due_date.
+    """
+    from firms.models import Membership
+
+    lead_id = str(task.lead_id) if task.lead_id else ""
+    lead_title = ""
+    customer_name = ""
+    customer_email = ""
+
+    if task.lead_id:
+        try:
+            lead = task.lead
+            lead_title = lead.title or ""
+            if lead.customer_id:
+                c = lead.customer
+                customer_name = f"{c.first_name} {c.last_name}".strip()
+                customer_email = c.email or ""
+        except Exception:  # noqa: BLE001
+            pass
+    elif task.customer_id:
+        try:
+            c = task.customer
+            customer_name = f"{c.first_name} {c.last_name}".strip()
+            customer_email = c.email or ""
+        except Exception:  # noqa: BLE001
+            pass
+
+    assignee_id = ""
+    assignee_email = ""
+    assignee_name = ""
+    if task.assigned_to_id:
+        try:
+            u = task.assigned_to
+            assignee_id = str(u.pk)
+            assignee_email = u.email or ""
+            assignee_name = f"{u.first_name} {u.last_name}".strip()
+        except Exception:  # noqa: BLE001
+            pass
+
+    owner_email = (
+        Membership.objects
+        .filter(firm=firm, role="owner")
+        .select_related("user")
+        .values_list("user__email", flat=True)
+        .first()
+    ) or ""
+
+    return {
+        "task_id": str(task.id),
+        "task_title": task.title,
+        "task_status": task.status,
+        "task_priority": task.priority,
+        "lead_id": lead_id,
+        "lead_title": lead_title,
+        "firm_id": str(firm.pk),
+        "assignee_id": assignee_id,
+        "assignee_email": assignee_email,
+        "assignee_name": assignee_name,
+        "customer_name": customer_name,
+        "customer_email": customer_email,
+        "owner_email": owner_email,
+        "due_date": task.due_date.isoformat() if task.due_date else "",
+    }
+
+
+
 def list_leads(
     request,
     status: str = "",
@@ -1170,6 +1246,14 @@ def create_task(request, payload: TaskIn):
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))
     # Phase 2: log system timeline event
     _log_timeline_event(task, TimelineEventType.TASK_CREATED, author=request.user)
+    # Phase 4: fire task_created automation trigger
+    from crm.tasks import evaluate_automation_rules
+    _task_auto_ctx = _build_task_automation_context(task, request.firm)
+    transaction.on_commit(
+        lambda ctx=_task_auto_ctx: evaluate_automation_rules.delay(
+            "task_created", str(request.firm.pk), ctx
+        )
+    )
     return 201, _task_out(task, request.user)
 
 
@@ -1386,6 +1470,14 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task, request.user))
     # Phase 2: log completion event
     _log_timeline_event(task, TimelineEventType.TASK_COMPLETED, author=request.user)
+    # Phase 4: fire task_completed automation trigger
+    from crm.tasks import evaluate_automation_rules
+    _task_auto_ctx = _build_task_automation_context(task, request.firm)
+    transaction.on_commit(
+        lambda ctx=_task_auto_ctx: evaluate_automation_rules.delay(
+            "task_completed", str(request.firm.pk), ctx
+        )
+    )
     if follow_up_task:
         _notify_task_watchers(follow_up_task, "task.created")
         broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task, request.user))

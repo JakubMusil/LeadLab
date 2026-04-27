@@ -20,6 +20,7 @@ import {
   CalendarDaysIcon,
   ChartBarIcon,
   EnvelopeIcon,
+  BoltIcon,
   UserGroupIcon,
   Cog6ToothIcon,
   ShieldCheckIcon,
@@ -127,6 +128,7 @@ const navSections = computed(() => [
     items: [
       { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
       { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
+      { label: 'Automations', icon: BoltIcon, path: '/app/automations' },
       ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
     ],
   },
