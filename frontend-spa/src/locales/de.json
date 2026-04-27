@@ -458,7 +458,7 @@
     "addTaskBtn": "Aufgabe hinzufügen",
     "noTasks": "Noch keine Aufgaben.",
     "taskTitlePlaceholder": "Aufgabentitel…",
-    "descAndAssignees": "Beschreibung & Zugewiesene — @ zum Erwähnen und Zuweisen von Teammitgliedern",
+    "descAndAssignees": "Beschreibung & Zugewiesene — {'@'} zum Erwähnen und Zuweisen von Teammitgliedern",
     "addMentionPlaceholder": "Details hinzufügen oder @Zugewiesene erwähnen…",
     "dueLabel": "Fällig:",
     "assignedLabel": "Zugewiesen:",

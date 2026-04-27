@@ -458,7 +458,7 @@
     "addTaskBtn": "Přidat úkol",
     "noTasks": "Zatím žádné úkoly.",
     "taskTitlePlaceholder": "Název úkolu…",
-    "descAndAssignees": "Popis a přiřazení — použijte @ pro zmínění a přiřazení členů týmu",
+    "descAndAssignees": "Popis a přiřazení — použijte {'@'} pro zmínění a přiřazení členů týmu",
     "addMentionPlaceholder": "Přidejte detaily nebo @zmiňte přiřazené osoby…",
     "dueLabel": "Termín:",
     "assignedLabel": "Přiřazeno:",
