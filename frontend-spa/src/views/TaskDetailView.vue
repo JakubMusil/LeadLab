@@ -625,7 +625,6 @@ async function removeDependency(depId: string) {
   const result = await tasksStore.deleteDependency(taskId.value, depId)
   if (result.ok) {
     dependencies.value = dependencies.value.filter((d) => d.id !== depId)
-    toast.success(t('tasks.dependencyCreated'))
   } else {
     toast.error(result.error ?? t('tasks.dependencyDeleteFailed'))
   }
