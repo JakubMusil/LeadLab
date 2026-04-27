@@ -62,6 +62,16 @@ export interface TaskOut {
   approval_requested_from_id: string | null
   approval_requested_from_name: string | null
   approval_note: string
+  // Phase 8: custom fields
+  custom_fields: Array<{
+    field_id: string
+    name: string
+    field_type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox' | 'url'
+    options: string[]
+    is_required: boolean
+    position: number
+    value: string | number | boolean | null
+  }>
 }
 
 export interface TaskIn {
@@ -330,6 +340,45 @@ export interface TaskTemplateApplyIn {
   assigned_to_id?: string | null
   watcher_ids?: string[]
   due_date?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8: Custom Fields types
+// ---------------------------------------------------------------------------
+
+export interface TaskCustomFieldOut {
+  id: string
+  firm_id: string
+  name: string
+  field_type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox' | 'url'
+  options: string[]
+  is_required: boolean
+  position: number
+  created_at: string
+}
+
+export interface TaskCustomFieldIn {
+  name: string
+  field_type?: string
+  options?: string[]
+  is_required?: boolean
+  position?: number
+}
+
+export interface TaskCustomFieldUpdateIn {
+  name?: string
+  field_type?: string
+  options?: string[]
+  is_required?: boolean
+  position?: number
+}
+
+export interface TaskCustomFieldValueIn {
+  field_id: string
+  value_text?: string | null
+  value_number?: number | null
+  value_date?: string | null
+  value_bool?: boolean | null
 }
 
 export const useTasksStore = defineStore('tasks', () => {
@@ -824,6 +873,47 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to apply task template.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 8: Custom Fields
+  // ---------------------------------------------------------------------------
+
+  async function fetchCustomFields(): Promise<{ ok: boolean; data?: TaskCustomFieldOut[]; error?: string }> {
+    const res = await api.get<TaskCustomFieldOut[]>('/api/v1/crm/custom-fields')
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load custom fields.') }
+  }
+
+  async function createCustomField(payload: TaskCustomFieldIn): Promise<{ ok: boolean; data?: TaskCustomFieldOut; error?: string }> {
+    const res = await api.post<TaskCustomFieldOut>('/api/v1/crm/custom-fields', payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create custom field.') }
+  }
+
+  async function updateCustomField(id: string, payload: TaskCustomFieldUpdateIn): Promise<{ ok: boolean; data?: TaskCustomFieldOut; error?: string }> {
+    const res = await api.patch<TaskCustomFieldOut>(`/api/v1/crm/custom-fields/${id}`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update custom field.') }
+  }
+
+  async function deleteCustomField(id: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/custom-fields/${id}`)
+    if (res.ok) return { ok: true }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete custom field.') }
+  }
+
+  async function upsertTaskCustomFields(
+    taskId: string,
+    values: TaskCustomFieldValueIn[],
+  ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.patch<TaskOut>(`/api/v1/crm/tasks/${taskId}/custom-fields`, { values })
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === taskId)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to save custom field values.') }
+  }
+
   return {
     tasks,
     loading,
@@ -884,5 +974,11 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTaskTemplate,
     deleteTaskTemplate,
     applyTaskTemplate,
+    // Phase 8: custom fields
+    fetchCustomFields,
+    createCustomField,
+    updateCustomField,
+    deleteCustomField,
+    upsertTaskCustomFields,
   }
 })
