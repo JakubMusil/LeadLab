@@ -356,16 +356,11 @@ watch(() => route.params.pid, async (pid) => {
         await loadProposal(pid);
     }
 });
-const __VLS_ctx = {
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({ ...{} });
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "p-6 max-w-7xl mx-auto" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'p-6 max-w-7xl mx-auto' }));
 /** @type {__VLS_StyleScopedClasses['p-6']} */ ;
 /** @type {__VLS_StyleScopedClasses['max-w-7xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['mx-auto']} */ ;
@@ -373,14 +368,14 @@ let __VLS_0;
 /** @ts-ignore @type {typeof __VLS_components.RouterLink | typeof __VLS_components.RouterLink} */
 RouterLink;
 // @ts-ignore
-const __VLS_1 = __VLS_asFunctionalComponent1(__VLS_0, new __VLS_0({
-    to: (`/app/leads/${__VLS_ctx.leadId}`),
-    ...{ class: "inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4" },
-}));
-const __VLS_2 = __VLS_1({
-    to: (`/app/leads/${__VLS_ctx.leadId}`),
-    ...{ class: "inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4" },
-}, ...__VLS_functionalComponentArgsRest(__VLS_1));
+const __VLS_1 = __VLS_asFunctionalComponent1(__VLS_0, new __VLS_0(({
+	to: `/app/leads/${__VLS_ctx.leadId}`,
+	class: 'inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4'
+})));
+const __VLS_2 = __VLS_1(({
+	to: `/app/leads/${__VLS_ctx.leadId}`,
+	class: 'inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4'
+}), ...__VLS_functionalComponentArgsRest(__VLS_1));
 /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-1']} */ ;
@@ -392,44 +387,34 @@ const { default: __VLS_5 } = __VLS_3.slots;
 // @ts-ignore
 [leadId,];
 var __VLS_3;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex gap-6" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-6' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-6']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.aside, __VLS_intrinsics.aside)({
-    ...{ class: "w-64 flex-shrink-0" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.aside, __VLS_intrinsics.aside)(({ class: 'w-64 flex-shrink-0' }));
 /** @type {__VLS_StyleScopedClasses['w-64']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-3' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-3']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center justify-between mb-2 px-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-2 px-1' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
 /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (__VLS_ctx.createProposal) },
-    ...{ class: "text-xs px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.createProposal,
+	...{ class: 'text-xs px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors' }
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
@@ -439,17 +424,15 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
 if (__VLS_ctx.loading && __VLS_ctx.proposals.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "animate-pulse space-y-2 py-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'animate-pulse space-y-2 py-2' }));
     /** @type {__VLS_StyleScopedClasses['animate-pulse']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     for (const [i] of __VLS_vFor((3))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "h-12 bg-gray-100 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	key: i,
+	class: 'h-12 bg-gray-100 rounded-xl'
+}));
         /** @type {__VLS_StyleScopedClasses['h-12']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -458,9 +441,7 @@ if (__VLS_ctx.loading && __VLS_ctx.proposals.length === 0) {
     }
 }
 else if (__VLS_ctx.proposals.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "py-6 text-center text-xs text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'py-6 text-center text-xs text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['py-6']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -468,51 +449,44 @@ else if (__VLS_ctx.proposals.length === 0) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.br)({});
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-1' }));
     /** @type {__VLS_StyleScopedClasses['space-y-1']} */ ;
     for (const [p] of __VLS_vFor((__VLS_ctx.proposals))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.loading && __VLS_ctx.proposals.length === 0))
-                        return;
-                    if (!!(__VLS_ctx.proposals.length === 0))
-                        return;
-                    __VLS_ctx.selectProposal(p);
-                    // @ts-ignore
-                    [proposals, proposals, selectProposal,];
-                } },
-            key: (p.id),
-            ...{ class: "w-full text-left px-3 py-2.5 rounded-xl transition-colors" },
-            ...{ class: (__VLS_ctx.currentProposal?.id === p.id
-                    ? 'bg-red-50 text-red-700'
-                    : 'hover:bg-gray-50 text-gray-700') },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(__VLS_ctx.loading && __VLS_ctx.proposals.length === 0)) return;
+		if (!!(__VLS_ctx.proposals.length === 0)) return;
+		__VLS_ctx.selectProposal(p);
+		[
+			proposals,
+			proposals,
+			selectProposal
+		];
+	},
+	key: p.id,
+	...{ class: 'w-full text-left px-3 py-2.5 rounded-xl transition-colors' },
+	...{ class: __VLS_ctx.currentProposal?.id === p.id ? 'bg-red-50 text-red-700' : 'hover:bg-gray-50 text-gray-700' }
+}));
         /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-2.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-sm font-medium truncate" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm font-medium truncate' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['truncate']} */ ;
         (p.title);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-1.5 mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-1.5 mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "inline-block px-1.5 py-0.5 rounded text-[10px] font-medium" },
-            ...{ class: (__VLS_ctx.statusMeta(p.status).color) },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: 'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
+	...{ class: __VLS_ctx.statusMeta(p.status).color }
+}));
         /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-0.5']} */ ;
@@ -520,9 +494,7 @@ else {
         /** @type {__VLS_StyleScopedClasses['text-[10px]']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         (__VLS_ctx.statusMeta(p.status).label);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-[10px] text-gray-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-[10px] text-gray-400' }));
         /** @type {__VLS_StyleScopedClasses['text-[10px]']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         (__VLS_ctx.fmt(p.total_value));
@@ -531,16 +503,12 @@ else {
         [currentProposal, statusMeta, statusMeta, fmt,];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 min-w-0 space-y-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0 space-y-4' }));
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
 /** @type {__VLS_StyleScopedClasses['space-y-4']} */ ;
 if (!__VLS_ctx.currentProposal && !__VLS_ctx.loading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -548,15 +516,13 @@ if (!__VLS_ctx.currentProposal && !__VLS_ctx.loading) {
     /** @type {__VLS_StyleScopedClasses['p-10']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-sm mb-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-sm mb-3' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.createProposal) },
-        ...{ class: "px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.createProposal,
+	...{ class: 'px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -567,9 +533,7 @@ if (!__VLS_ctx.currentProposal && !__VLS_ctx.loading) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
 }
 else if (__VLS_ctx.currentProposal) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4 flex flex-wrap items-center gap-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4 flex flex-wrap items-center gap-3' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -579,17 +543,15 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex-1 min-w-0" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0' }));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        value: (__VLS_ctx.editTitle),
-        type: "text",
-        ...{ class: "w-full text-lg font-semibold bg-transparent border-b border-transparent focus:border-gray-300 focus:outline-none text-gray-900 pb-0.5" },
-        placeholder: "Proposal title…",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.editTitle,
+	type: 'text',
+	class: 'w-full text-lg font-semibold bg-transparent border-b border-transparent focus:border-gray-300 focus:outline-none text-gray-900 pb-0.5',
+	placeholder: 'Proposal title…'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
@@ -600,10 +562,10 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
     /** @type {__VLS_StyleScopedClasses['pb-0.5']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-        value: (__VLS_ctx.editStatus),
-        ...{ class: "rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: __VLS_ctx.editStatus,
+	class: 'rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400'
+}));
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -621,11 +583,11 @@ else if (__VLS_ctx.currentProposal) {
         // @ts-ignore
         [createProposal, loading, currentProposal, currentProposal, editTitle, editStatus, STATUSES,];
     }
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.saveProposal) },
-        ...{ class: "px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-        disabled: (__VLS_ctx.saving),
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.saveProposal,
+	...{ class: 'px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50' },
+	disabled: __VLS_ctx.saving
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -636,11 +598,11 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.saving ? 'Saving…' : 'Save');
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.sendProposal) },
-        ...{ class: "px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50" },
-        disabled: (__VLS_ctx.sendingProposal),
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.sendProposal,
+	...{ class: 'px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50' },
+	disabled: __VLS_ctx.sendingProposal
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -650,10 +612,10 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
     (__VLS_ctx.sendingProposal ? '…' : '📤 Send');
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.downloadPdf) },
-        ...{ class: "px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.downloadPdf,
+	...{ class: 'px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -662,11 +624,11 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.copyPublicLink) },
-        ...{ class: "px-3 py-1.5 rounded-xl border border-gray-200 text-sm hover:bg-gray-50" },
-        ...{ class: (__VLS_ctx.publicLinkCopied ? 'text-green-600' : 'text-gray-600') },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.copyPublicLink,
+	...{ class: 'px-3 py-1.5 rounded-xl border border-gray-200 text-sm hover:bg-gray-50' },
+	...{ class: __VLS_ctx.publicLinkCopied ? 'text-green-600' : 'text-gray-600' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -675,18 +637,28 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
     (__VLS_ctx.publicLinkCopied ? '✓ Copied!' : '🔗 Copy Link');
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                    return;
-                if (!(__VLS_ctx.currentProposal))
-                    return;
-                __VLS_ctx.showPreview = !__VLS_ctx.showPreview;
-                // @ts-ignore
-                [saveProposal, saving, saving, sendProposal, sendingProposal, sendingProposal, downloadPdf, copyPublicLink, publicLinkCopied, publicLinkCopied, showPreview, showPreview,];
-            } },
-        ...{ class: "px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		__VLS_ctx.showPreview = !__VLS_ctx.showPreview;
+		[
+			saveProposal,
+			saving,
+			saving,
+			sendProposal,
+			sendingProposal,
+			sendingProposal,
+			downloadPdf,
+			copyPublicLink,
+			publicLinkCopied,
+			publicLinkCopied,
+			showPreview,
+			showPreview
+		];
+	},
+	...{ class: 'px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -696,18 +668,19 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
     (__VLS_ctx.showPreview ? 'Hide Preview' : 'Preview');
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                    return;
-                if (!(__VLS_ctx.currentProposal))
-                    return;
-                __VLS_ctx.deleteProposal(__VLS_ctx.currentProposal.id);
-                // @ts-ignore
-                [currentProposal, showPreview, deleteProposal,];
-            } },
-        ...{ class: "px-3 py-1.5 rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		__VLS_ctx.deleteProposal(__VLS_ctx.currentProposal.id);
+		[
+			currentProposal,
+			showPreview,
+			deleteProposal
+		];
+	},
+	...{ class: 'px-3 py-1.5 rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -716,52 +689,40 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-50']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex gap-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-4' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex-1 min-w-0 space-y-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0 space-y-4' }));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "grid grid-cols-2 gap-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'grid grid-cols-2 gap-3' }));
     /** @type {__VLS_StyleScopedClasses['grid']} */ ;
     /** @type {__VLS_StyleScopedClasses['grid-cols-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs text-gray-500 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs text-gray-500 mb-1' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-        value: (__VLS_ctx.editCurrency),
-        ...{ class: "w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: __VLS_ctx.editCurrency,
+	class: 'w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -781,17 +742,15 @@ else if (__VLS_ctx.currentProposal) {
         [editCurrency, CURRENCIES,];
     }
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs text-gray-500 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs text-gray-500 mb-1' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "date",
-        ...{ class: "w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'date',
+	class: 'w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400'
+}));
     (__VLS_ctx.editExpiry);
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -803,9 +762,7 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     if (__VLS_ctx.currentProposal.view_count > 0) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "mt-3 flex gap-4 text-xs text-gray-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mt-3 flex gap-4 text-xs text-gray-400' }));
         /** @type {__VLS_StyleScopedClasses['mt-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-4']} */ ;
@@ -819,29 +776,25 @@ else if (__VLS_ctx.currentProposal) {
             (__VLS_ctx.formatDate(__VLS_ctx.currentProposal.first_viewed_at));
         }
     }
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-        value: (__VLS_ctx.editIntro),
-        rows: "3",
-        ...{ class: "w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" },
-        placeholder: "Write an introduction for your proposal…",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: __VLS_ctx.editIntro,
+	rows: '3',
+	class: 'w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none',
+	placeholder: 'Write an introduction for your proposal…'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -852,41 +805,43 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center justify-between mb-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-3' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                    return;
-                if (!(__VLS_ctx.currentProposal))
-                    return;
-                __VLS_ctx.showApplyTemplate = !__VLS_ctx.showApplyTemplate;
-                // @ts-ignore
-                [currentProposal, currentProposal, currentProposal, currentProposal, currentProposal, editExpiry, formatDate, editIntro, showApplyTemplate, showApplyTemplate,];
-            } },
-        ...{ class: "text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		__VLS_ctx.showApplyTemplate = !__VLS_ctx.showApplyTemplate;
+		[
+			currentProposal,
+			currentProposal,
+			currentProposal,
+			currentProposal,
+			currentProposal,
+			editExpiry,
+			formatDate,
+			editIntro,
+			showApplyTemplate,
+			showApplyTemplate
+		];
+	},
+	...{ class: 'text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
@@ -896,50 +851,42 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
     if (__VLS_ctx.showApplyTemplate) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "mb-3 p-3 bg-gray-50 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 p-3 bg-gray-50 rounded-xl' }));
         /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['p-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-50']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-500 mb-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 mb-2' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
         if (__VLS_ctx.templates.length === 0) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "text-xs text-gray-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         }
         else {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "space-y-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-1' }));
             /** @type {__VLS_StyleScopedClasses['space-y-1']} */ ;
             for (const [tmpl] of __VLS_vFor((__VLS_ctx.templates))) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                    ...{ onClick: (...[$event]) => {
-                            if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                                return;
-                            if (!(__VLS_ctx.currentProposal))
-                                return;
-                            if (!(__VLS_ctx.showApplyTemplate))
-                                return;
-                            if (!!(__VLS_ctx.templates.length === 0))
-                                return;
-                            __VLS_ctx.applyTemplate(tmpl.id);
-                            // @ts-ignore
-                            [showApplyTemplate, templates, templates, applyTemplate,];
-                        } },
-                    key: (tmpl.id),
-                    ...{ class: "w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white border border-transparent hover:border-gray-200 transition-colors" },
-                    disabled: (__VLS_ctx.applyingTemplate),
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!__VLS_ctx.showApplyTemplate) return;
+		if (!!(__VLS_ctx.templates.length === 0)) return;
+		__VLS_ctx.applyTemplate(tmpl.id);
+		[
+			showApplyTemplate,
+			templates,
+			templates,
+			applyTemplate
+		];
+	},
+	key: tmpl.id,
+	...{ class: 'w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white border border-transparent hover:border-gray-200 transition-colors' },
+	disabled: __VLS_ctx.applyingTemplate
+}));
                 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
@@ -951,14 +898,10 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['border-transparent']} */ ;
                 /** @type {__VLS_StyleScopedClasses['hover:border-gray-200']} */ ;
                 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                    ...{ class: "font-medium" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'font-medium' }));
                 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
                 (tmpl.name);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                    ...{ class: "text-xs text-gray-400 ml-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400 ml-2' }));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                 /** @type {__VLS_StyleScopedClasses['ml-2']} */ ;
@@ -969,25 +912,17 @@ else if (__VLS_ctx.currentProposal) {
         }
     }
     if (__VLS_ctx.items.length > 0) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "mb-3 overflow-x-auto" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 overflow-x-auto' }));
         /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-x-auto']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)({
-            ...{ class: "w-full text-sm" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)(({ class: 'w-full text-sm' }));
         /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         __VLS_asFunctionalElement1(__VLS_intrinsics.thead, __VLS_intrinsics.thead)({});
-        __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-            ...{ class: "border-b border-gray-100" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({ class: 'border-b border-gray-100' }));
         /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-left py-1.5 pr-2 text-xs font-medium text-gray-500 w-6" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-left py-1.5 pr-2 text-xs font-medium text-gray-500 w-6' }));
         /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
@@ -995,18 +930,14 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-6']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-left py-1.5 pr-2 text-xs font-medium text-gray-500" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-left py-1.5 pr-2 text-xs font-medium text-gray-500' }));
         /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16' }));
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -1014,9 +945,7 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-24" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-24' }));
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -1024,9 +953,7 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16' }));
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -1034,9 +961,7 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16' }));
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -1044,9 +969,7 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "text-right py-1.5 pl-2 text-xs font-medium text-gray-500 w-24" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right py-1.5 pl-2 text-xs font-medium text-gray-500 w-24' }));
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['pl-2']} */ ;
@@ -1054,63 +977,53 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-            ...{ class: "w-8" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'w-8' }));
         /** @type {__VLS_StyleScopedClasses['w-8']} */ ;
         __VLS_asFunctionalElement1(__VLS_intrinsics.tbody, __VLS_intrinsics.tbody)({});
         for (const [item, index] of __VLS_vFor((__VLS_ctx.items))) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-                ...{ onDragstart: (...[$event]) => {
-                        if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                            return;
-                        if (!(__VLS_ctx.currentProposal))
-                            return;
-                        if (!(__VLS_ctx.items.length > 0))
-                            return;
-                        __VLS_ctx.onDragStart(index);
-                        // @ts-ignore
-                        [items, items, onDragStart,];
-                    } },
-                ...{ onDragover: (...[$event]) => {
-                        if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                            return;
-                        if (!(__VLS_ctx.currentProposal))
-                            return;
-                        if (!(__VLS_ctx.items.length > 0))
-                            return;
-                        __VLS_ctx.onDragOver($event, index);
-                        // @ts-ignore
-                        [onDragOver,];
-                    } },
-                ...{ onDragend: (__VLS_ctx.onDragEnd) },
-                key: (item.id),
-                draggable: "true",
-                ...{ class: "border-b border-gray-50 hover:bg-gray-50 cursor-grab" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({
+	onDragstart: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!(__VLS_ctx.items.length > 0)) return;
+		__VLS_ctx.onDragStart(index);
+		[
+			items,
+			items,
+			onDragStart
+		];
+	},
+	...{ onDragover: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!(__VLS_ctx.items.length > 0)) return;
+		__VLS_ctx.onDragOver($event, index);
+		[onDragOver];
+	} },
+	...{ onDragend: __VLS_ctx.onDragEnd },
+	key: item.id,
+	draggable: 'true',
+	...{ class: 'border-b border-gray-50 hover:bg-gray-50 cursor-grab' }
+}));
             /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-50']} */ ;
             /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
             /** @type {__VLS_StyleScopedClasses['cursor-grab']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                ...{ class: "py-1.5 pr-2 text-gray-300 cursor-grab select-none" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 pr-2 text-gray-300 cursor-grab select-none' }));
             /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
             /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-300']} */ ;
             /** @type {__VLS_StyleScopedClasses['cursor-grab']} */ ;
             /** @type {__VLS_StyleScopedClasses['select-none']} */ ;
             if (__VLS_ctx.editingItemId === item.id) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 pr-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 pr-2' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                    value: (item.description),
-                    type: "text",
-                    ...{ class: "w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:border-red-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: item.description,
+	type: 'text',
+	class: 'w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:border-red-400'
+}));
                 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
                 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1120,17 +1033,15 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 px-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 px-2' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                    type: "number",
-                    min: "0.001",
-                    step: "0.001",
-                    ...{ class: "w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0.001',
+	step: '0.001',
+	class: 'w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400'
+}));
                 (item.quantity);
                 /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
                 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
@@ -1142,17 +1053,15 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 px-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 px-2' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                    type: "number",
-                    min: "0",
-                    step: "0.01",
-                    ...{ class: "w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	step: '0.01',
+	class: 'w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400'
+}));
                 (item.unit_price);
                 /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
                 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
@@ -1164,18 +1073,16 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 px-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 px-2' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                    type: "number",
-                    min: "0",
-                    max: "100",
-                    step: "0.01",
-                    ...{ class: "w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	max: '100',
+	step: '0.01',
+	class: 'w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400'
+}));
                 (item.discount);
                 /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
                 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
@@ -1187,18 +1094,16 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 px-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 px-2' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                    type: "number",
-                    min: "0",
-                    max: "100",
-                    step: "0.01",
-                    ...{ class: "w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	max: '100',
+	step: '0.01',
+	class: 'w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400'
+}));
                 (item.vat_rate);
                 /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
                 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
@@ -1210,9 +1115,7 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
                 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 pl-2 text-right text-xs font-medium text-gray-700" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 pl-2 text-right text-xs font-medium text-gray-700' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pl-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
@@ -1220,81 +1123,67 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                 (__VLS_ctx.fmt(item.total));
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 pl-1" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 pl-1' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pl-1']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                    ...{ onClick: (...[$event]) => {
-                            if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                                return;
-                            if (!(__VLS_ctx.currentProposal))
-                                return;
-                            if (!(__VLS_ctx.items.length > 0))
-                                return;
-                            if (!(__VLS_ctx.editingItemId === item.id))
-                                return;
-                            __VLS_ctx.updateItem(item);
-                            // @ts-ignore
-                            [fmt, onDragEnd, editingItemId, updateItem,];
-                        } },
-                    ...{ class: "text-xs text-green-600 hover:text-green-700 px-1" },
-                    title: "Save",
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!(__VLS_ctx.items.length > 0)) return;
+		if (!(__VLS_ctx.editingItemId === item.id)) return;
+		__VLS_ctx.updateItem(item);
+		[
+			fmt,
+			onDragEnd,
+			editingItemId,
+			updateItem
+		];
+	},
+	...{ class: 'text-xs text-green-600 hover:text-green-700 px-1' },
+	title: 'Save'
+}));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-green-600']} */ ;
                 /** @type {__VLS_StyleScopedClasses['hover:text-green-700']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-1']} */ ;
             }
             else {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 pr-2 text-sm text-gray-700" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 pr-2 text-sm text-gray-700' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                 (item.description);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 px-2 text-right text-xs text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 px-2 text-right text-xs text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                 (item.quantity);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 px-2 text-right text-xs text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 px-2 text-right text-xs text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                 (__VLS_ctx.fmt(item.unit_price));
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 px-2 text-right text-xs text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 px-2 text-right text-xs text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                 (item.discount);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 px-2 text-right text-xs text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 px-2 text-right text-xs text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                 (item.vat_rate);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 pl-2 text-right text-xs font-medium text-gray-700" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 pl-2 text-right text-xs font-medium text-gray-700' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pl-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
@@ -1302,52 +1191,44 @@ else if (__VLS_ctx.currentProposal) {
                 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                 (__VLS_ctx.fmt(item.total));
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1.5 pl-1 flex items-center gap-0.5" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 pl-1 flex items-center gap-0.5' }));
                 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pl-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
                 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
                 /** @type {__VLS_StyleScopedClasses['gap-0.5']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                    ...{ onClick: (...[$event]) => {
-                            if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                                return;
-                            if (!(__VLS_ctx.currentProposal))
-                                return;
-                            if (!(__VLS_ctx.items.length > 0))
-                                return;
-                            if (!!(__VLS_ctx.editingItemId === item.id))
-                                return;
-                            __VLS_ctx.editingItemId = item.id;
-                            // @ts-ignore
-                            [fmt, fmt, editingItemId,];
-                        } },
-                    ...{ class: "text-xs text-gray-400 hover:text-blue-500 px-1" },
-                    title: "Edit",
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!(__VLS_ctx.items.length > 0)) return;
+		if (!!(__VLS_ctx.editingItemId === item.id)) return;
+		__VLS_ctx.editingItemId = item.id;
+		[
+			fmt,
+			fmt,
+			editingItemId
+		];
+	},
+	...{ class: 'text-xs text-gray-400 hover:text-blue-500 px-1' },
+	title: 'Edit'
+}));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                 /** @type {__VLS_StyleScopedClasses['hover:text-blue-500']} */ ;
                 /** @type {__VLS_StyleScopedClasses['px-1']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                    ...{ onClick: (...[$event]) => {
-                            if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading))
-                                return;
-                            if (!(__VLS_ctx.currentProposal))
-                                return;
-                            if (!(__VLS_ctx.items.length > 0))
-                                return;
-                            if (!!(__VLS_ctx.editingItemId === item.id))
-                                return;
-                            __VLS_ctx.deleteItem(item.id);
-                            // @ts-ignore
-                            [deleteItem,];
-                        } },
-                    ...{ class: "text-xs text-gray-400 hover:text-red-500 px-1" },
-                    title: "Delete",
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!(!__VLS_ctx.currentProposal && !__VLS_ctx.loading)) return;
+		if (!__VLS_ctx.currentProposal) return;
+		if (!(__VLS_ctx.items.length > 0)) return;
+		if (!!(__VLS_ctx.editingItemId === item.id)) return;
+		__VLS_ctx.deleteItem(item.id);
+		[deleteItem];
+	},
+	...{ class: 'text-xs text-gray-400 hover:text-red-500 px-1' },
+	title: 'Delete'
+}));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                 /** @type {__VLS_StyleScopedClasses['hover:text-red-500']} */ ;
@@ -1358,19 +1239,17 @@ else if (__VLS_ctx.currentProposal) {
         }
         __VLS_asFunctionalElement1(__VLS_intrinsics.tfoot, __VLS_intrinsics.tfoot)({});
         __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({});
-        __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-            colspan: "6",
-            ...{ class: "py-2 text-right text-xs font-semibold text-gray-700 pr-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({
+	colspan: '6',
+	class: 'py-2 text-right text-xs font-semibold text-gray-700 pr-2'
+}));
         /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['pr-2']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-            ...{ class: "py-2 pl-2 text-right text-sm font-bold text-gray-900" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-2 pl-2 text-right text-sm font-bold text-gray-900' }));
         /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['pl-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
@@ -1381,33 +1260,27 @@ else if (__VLS_ctx.currentProposal) {
         (__VLS_ctx.editCurrency);
         __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({});
     }
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "border border-dashed border-gray-200 rounded-xl p-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border border-dashed border-gray-200 rounded-xl p-3' }));
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-dashed']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-xs text-gray-400 mb-2 font-medium" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 mb-2 font-medium' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex flex-wrap gap-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex flex-wrap gap-2' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        value: (__VLS_ctx.newItemDesc),
-        type: "text",
-        placeholder: "Description *",
-        ...{ class: "flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newItemDesc,
+	type: 'text',
+	placeholder: 'Description *',
+	class: 'flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400'
+}));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['min-w-40']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1418,13 +1291,13 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "number",
-        min: "0.001",
-        step: "0.001",
-        placeholder: "Qty",
-        ...{ class: "w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0.001',
+	step: '0.001',
+	placeholder: 'Qty',
+	class: 'w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400'
+}));
     (__VLS_ctx.newItemQty);
     /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1436,13 +1309,13 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "number",
-        min: "0",
-        step: "0.01",
-        placeholder: "Unit price",
-        ...{ class: "w-28 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	step: '0.01',
+	placeholder: 'Unit price',
+	class: 'w-28 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400'
+}));
     (__VLS_ctx.newItemPrice);
     /** @type {__VLS_StyleScopedClasses['w-28']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1454,14 +1327,14 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "number",
-        min: "0",
-        max: "100",
-        step: "0.01",
-        placeholder: "Disc%",
-        ...{ class: "w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	max: '100',
+	step: '0.01',
+	placeholder: 'Disc%',
+	class: 'w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400'
+}));
     (__VLS_ctx.newItemDiscount);
     /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1473,14 +1346,14 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "number",
-        min: "0",
-        max: "100",
-        step: "0.01",
-        placeholder: "VAT%",
-        ...{ class: "w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	max: '100',
+	step: '0.01',
+	placeholder: 'VAT%',
+	class: 'w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400'
+}));
     (__VLS_ctx.newItemVat);
     /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1492,11 +1365,11 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.addItem) },
-        disabled: (__VLS_ctx.addingItem || !__VLS_ctx.newItemDesc.trim()),
-        ...{ class: "px-4 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.addItem,
+	disabled: __VLS_ctx.addingItem || !__VLS_ctx.newItemDesc.trim(),
+	...{ class: 'px-4 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1507,29 +1380,25 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.addingItem ? '…' : '+ Add');
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-        value: (__VLS_ctx.editNotes),
-        rows: "2",
-        ...{ class: "w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" },
-        placeholder: "Internal notes (not shown to recipient)…",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: __VLS_ctx.editNotes,
+	rows: '2',
+	class: 'w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none',
+	placeholder: 'Internal notes (not shown to recipient)…'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1540,29 +1409,25 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-white rounded-2xl border border-gray-100 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-4' }));
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-        value: (__VLS_ctx.editClosing),
-        rows: "3",
-        ...{ class: "w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" },
-        placeholder: "Write a closing message (e.g. terms, next steps)…",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: __VLS_ctx.editClosing,
+	rows: '3',
+	class: 'w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none',
+	placeholder: 'Write a closing message (e.g. terms, next steps)…'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1574,14 +1439,10 @@ else if (__VLS_ctx.currentProposal) {
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
     if (__VLS_ctx.showPreview) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "w-96 flex-shrink-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'w-96 flex-shrink-0' }));
         /** @type {__VLS_StyleScopedClasses['w-96']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "bg-white rounded-2xl border border-gray-100 p-5 sticky top-4" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5 sticky top-4' }));
         /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1589,41 +1450,37 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
         /** @type {__VLS_StyleScopedClasses['sticky']} */ ;
         /** @type {__VLS_StyleScopedClasses['top-4']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-            ...{ class: "text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['uppercase']} */ ;
         /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "border-b-4 pb-3 mb-4" },
-            ...{ style: ({ borderColor: __VLS_ctx.firmStore.activeFirm?.primary_color || '#dc2626' }) },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'border-b-4 pb-3 mb-4',
+	...{ style: { borderColor: __VLS_ctx.firmStore.activeFirm?.primary_color || '#dc2626' } }
+}));
         /** @type {__VLS_StyleScopedClasses['border-b-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['pb-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-base font-bold" },
-            ...{ style: ({ color: __VLS_ctx.firmStore.activeFirm?.primary_color || '#dc2626' }) },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'text-base font-bold',
+	...{ style: { color: __VLS_ctx.firmStore.activeFirm?.primary_color || '#dc2626' } }
+}));
         /** @type {__VLS_StyleScopedClasses['text-base']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-bold']} */ ;
         (__VLS_ctx.firmStore.activeFirm?.name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-lg font-semibold text-gray-900 mt-1" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-lg font-semibold text-gray-900 mt-1' }));
         /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
         (__VLS_ctx.editTitle || 'Proposal Title');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium" },
-            ...{ class: (__VLS_ctx.statusMeta(__VLS_ctx.editStatus).color) },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: 'inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium',
+	...{ class: __VLS_ctx.statusMeta(__VLS_ctx.editStatus).color }
+}));
         /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -1632,9 +1489,7 @@ else if (__VLS_ctx.currentProposal) {
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         (__VLS_ctx.statusMeta(__VLS_ctx.editStatus).label);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex gap-4 text-xs text-gray-400 mb-4" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-4 text-xs text-gray-400 mb-4' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -1647,9 +1502,7 @@ else if (__VLS_ctx.currentProposal) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({});
         (__VLS_ctx.editCurrency);
         if (__VLS_ctx.editIntro) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "text-xs text-gray-600 mb-4 leading-relaxed whitespace-pre-wrap" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-600 mb-4 leading-relaxed whitespace-pre-wrap' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
             /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
@@ -1658,46 +1511,34 @@ else if (__VLS_ctx.currentProposal) {
             (__VLS_ctx.editIntro);
         }
         if (__VLS_ctx.items.length > 0) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)({
-                ...{ class: "w-full text-xs mb-4" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)(({ class: 'w-full text-xs mb-4' }));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
             __VLS_asFunctionalElement1(__VLS_intrinsics.thead, __VLS_intrinsics.thead)({});
-            __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-                ...{ class: "text-gray-500 border-b border-gray-100" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({ class: 'text-gray-500 border-b border-gray-100' }));
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                ...{ class: "text-left pb-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-left pb-1' }));
             /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
             /** @type {__VLS_StyleScopedClasses['pb-1']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                ...{ class: "text-right pb-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right pb-1' }));
             /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
             /** @type {__VLS_StyleScopedClasses['pb-1']} */ ;
             __VLS_asFunctionalElement1(__VLS_intrinsics.tbody, __VLS_intrinsics.tbody)({});
             for (const [item] of __VLS_vFor((__VLS_ctx.items))) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-                    key: (item.id),
-                    ...{ class: "border-b border-gray-50" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({
+	key: item.id,
+	class: 'border-b border-gray-50'
+}));
                 /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
                 /** @type {__VLS_StyleScopedClasses['border-gray-50']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 text-gray-700" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 text-gray-700' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                 (item.description);
-                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                    ...{ class: "py-1 text-right text-gray-700" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1 text-right text-gray-700' }));
                 /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
@@ -1706,17 +1547,13 @@ else if (__VLS_ctx.currentProposal) {
                 [statusMeta, statusMeta, fmt, fmt, editTitle, editStatus, editStatus, showPreview, editCurrency, editCurrency, editExpiry, editExpiry, editIntro, editIntro, items, items, previewTotal, newItemDesc, newItemDesc, newItemQty, newItemPrice, newItemDiscount, newItemVat, addItem, addingItem, addingItem, editNotes, editClosing, firmStore, firmStore, firmStore,];
             }
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "border-t border-gray-100 pt-2 text-xs space-y-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border-t border-gray-100 pt-2 text-xs space-y-0.5' }));
         /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['pt-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['space-y-0.5']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex justify-between text-gray-500" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex justify-between text-gray-500' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
@@ -1724,9 +1561,7 @@ else if (__VLS_ctx.currentProposal) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({});
         (__VLS_ctx.fmt(__VLS_ctx.previewSubtotal));
         if (__VLS_ctx.previewDiscount > 0) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex justify-between text-gray-500" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex justify-between text-gray-500' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
@@ -1735,9 +1570,7 @@ else if (__VLS_ctx.currentProposal) {
             (__VLS_ctx.fmt(__VLS_ctx.previewDiscount));
         }
         if (__VLS_ctx.previewTax > 0) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex justify-between text-gray-500" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex justify-between text-gray-500' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
@@ -1745,9 +1578,7 @@ else if (__VLS_ctx.currentProposal) {
             __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({});
             (__VLS_ctx.fmt(__VLS_ctx.previewTax));
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex justify-between font-bold text-sm text-gray-900 pt-1" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex justify-between font-bold text-sm text-gray-900 pt-1' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-bold']} */ ;
@@ -1759,9 +1590,7 @@ else if (__VLS_ctx.currentProposal) {
         (__VLS_ctx.fmt(__VLS_ctx.previewTotal));
         (__VLS_ctx.editCurrency);
         if (__VLS_ctx.editClosing) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "mt-4 text-xs text-gray-500 leading-relaxed whitespace-pre-wrap" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mt-4 text-xs text-gray-500 leading-relaxed whitespace-pre-wrap' }));
             /** @type {__VLS_StyleScopedClasses['mt-4']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;

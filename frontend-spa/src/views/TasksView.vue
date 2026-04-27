@@ -360,12 +360,13 @@ onMounted(async () => {
 
         <!-- Task info -->
         <div class="flex-1 min-w-0">
-          <p
-            class="text-sm font-medium text-gray-900 dark:text-gray-100"
-            :class="task.is_completed ? 'line-through text-gray-400' : ''"
+          <RouterLink
+            :to="`/app/tasks/${task.id}`"
+            class="text-sm font-medium hover:underline"
+            :class="task.is_completed ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100'"
           >
             {{ task.title }}
-          </p>
+          </RouterLink>
           <p v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
             {{ task.description }}
           </p>

@@ -31,44 +31,37 @@ const __VLS_defaults = {
     modelValueTo: '',
     label: 'Date range',
 };
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex flex-wrap items-center gap-2" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex flex-wrap items-center gap-2' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "text-xs font-medium text-gray-500 dark:text-gray-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs font-medium text-gray-500 dark:text-gray-400' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 (__VLS_ctx.label);
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center gap-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-1' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    ...{ onChange: (__VLS_ctx.onFromChange) },
-    type: "date",
-    value: (__VLS_ctx.localFrom),
-    ...{ class: "text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400" },
-    'aria-label': "From date",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onChange: __VLS_ctx.onFromChange,
+	type: 'date',
+	value: __VLS_ctx.localFrom,
+	...{ class: 'text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400' },
+	'aria-label': 'From date'
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -83,18 +76,16 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:ring-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:ring-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "text-xs text-gray-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    ...{ onChange: (__VLS_ctx.onToChange) },
-    type: "date",
-    value: (__VLS_ctx.localTo),
-    ...{ class: "text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400" },
-    'aria-label': "To date",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onChange: __VLS_ctx.onToChange,
+	type: 'date',
+	value: __VLS_ctx.localTo,
+	...{ class: 'text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400' },
+	'aria-label': 'To date'
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -110,12 +101,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['focus:ring-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:ring-red-400']} */ ;
 if (__VLS_ctx.hasValue) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.clear) },
-        ...{ class: "text-xs text-gray-400 hover:text-red-500 transition-colors" },
-        'aria-label': "Clear date range",
-        title: "Clear",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.clear,
+	...{ class: 'text-xs text-gray-400 hover:text-red-500 transition-colors' },
+	'aria-label': 'Clear date range',
+	title: 'Clear'
+}));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:text-red-500']} */ ;

@@ -4,23 +4,18 @@ defineOptions({ inheritAttrs: false });
 const __VLS_props = withDefaults(defineProps(), {});
 const __VLS_emit = defineEmits();
 const __VLS_defaults = {};
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "w-full" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'w-full' }));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 if (__VLS_ctx.label) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
@@ -29,19 +24,20 @@ if (__VLS_ctx.label) {
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
     (__VLS_ctx.label);
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-    ...{ onChange: (...[$event]) => {
-            __VLS_ctx.$emit('update:modelValue', $event.target.value);
-            // @ts-ignore
-            [label, label, $emit,];
-        } },
-    value: (__VLS_ctx.modelValue),
-    disabled: (__VLS_ctx.disabled),
-    ...{ class: "w-full rounded-xl border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed" },
-    ...{ class: (__VLS_ctx.error
-            ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-            : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500') },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	onChange: (...[$event]) => {
+		__VLS_ctx.$emit('update:modelValue', $event.target.value);
+		[
+			label,
+			label,
+			$emit
+		];
+	},
+	value: __VLS_ctx.modelValue,
+	disabled: __VLS_ctx.disabled,
+	...{ class: 'w-full rounded-xl border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed' },
+	...{ class: __VLS_ctx.error ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500' }
+}));
 (__VLS_ctx.$attrs);
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -74,9 +70,7 @@ for (const [opt] of __VLS_vFor((__VLS_ctx.options))) {
     [modelValue, disabled, error, $attrs, placeholder, placeholder, options,];
 }
 if (__VLS_ctx.error) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "mt-1 text-xs text-red-500 dark:text-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'mt-1 text-xs text-red-500 dark:text-red-400' }));
     /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-500']} */ ;

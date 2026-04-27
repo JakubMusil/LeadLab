@@ -751,45 +751,32 @@ function actionSummary(action) {
         return `${label}: ${action.plugin_name}.${action.action}`;
     return label;
 }
-const __VLS_ctx = {
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({ ...{} });
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "p-6 max-w-2xl mx-auto space-y-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'p-6 max-w-2xl mx-auto space-y-5' }));
 /** @type {__VLS_StyleScopedClasses['p-6']} */ ;
 /** @type {__VLS_StyleScopedClasses['max-w-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['mx-auto']} */ ;
 /** @type {__VLS_StyleScopedClasses['space-y-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center gap-4 mb-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-4 mb-5' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "relative w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center overflow-hidden flex-shrink-0" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'relative w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center overflow-hidden flex-shrink-0' }));
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-16']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-16']} */ ;
@@ -801,47 +788,43 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
 if (__VLS_ctx.avatarPreview) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.img)({
-        src: (__VLS_ctx.avatarPreview),
-        alt: "Avatar preview",
-        ...{ class: "w-full h-full object-cover" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.img)(({
+	src: __VLS_ctx.avatarPreview,
+	alt: 'Avatar preview',
+	class: 'w-full h-full object-cover'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['object-cover']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-        ...{ class: "text-red-600 text-2xl font-semibold" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-red-600 text-2xl font-semibold' }));
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     (__VLS_ctx.authStore.user?.first_name?.[0]?.toUpperCase() ?? '?');
 }
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "cursor-pointer text-sm text-red-600 hover:text-red-700 font-medium" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'cursor-pointer text-sm text-red-600 hover:text-red-700 font-medium' }));
 /** @type {__VLS_StyleScopedClasses['cursor-pointer']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:text-red-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    ...{ onChange: (__VLS_ctx.onAvatarChange) },
-    ref: "avatarInput",
-    type: "file",
-    accept: "image/*",
-    ...{ class: "hidden" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onChange: __VLS_ctx.onAvatarChange,
+	ref: 'avatarInput',
+	type: 'file',
+	accept: 'image/*',
+	...{ class: 'hidden' }
+}));
 /** @type {__VLS_StyleScopedClasses['hidden']} */ ;
 if (__VLS_ctx.avatarPreview) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.uploadAvatar) },
-        disabled: (__VLS_ctx.avatarLoading),
-        ...{ class: "ml-3 text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-50 disabled:opacity-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.uploadAvatar,
+	disabled: __VLS_ctx.avatarLoading,
+	...{ class: 'ml-3 text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-50 disabled:opacity-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['ml-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
@@ -854,16 +837,12 @@ if (__VLS_ctx.avatarPreview) {
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.avatarLoading ? 'Uploading…' : 'Upload');
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-400 mt-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 mt-1' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
 if (__VLS_ctx.profileError) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700' }));
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-red-50']} */ ;
@@ -876,9 +855,7 @@ if (__VLS_ctx.profileError) {
     (__VLS_ctx.profileError);
 }
 if (__VLS_ctx.profileSuccess) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700' }));
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-green-50']} */ ;
@@ -889,31 +866,27 @@ if (__VLS_ctx.profileSuccess) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-green-700']} */ ;
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)({
-    ...{ onSubmit: (__VLS_ctx.saveProfile) },
-    ...{ class: "space-y-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)(({
+	onSubmit: __VLS_ctx.saveProfile,
+	...{ class: 'space-y-3' }
+}));
 /** @type {__VLS_StyleScopedClasses['space-y-3']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "grid grid-cols-2 gap-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'grid grid-cols-2 gap-3' }));
 /** @type {__VLS_StyleScopedClasses['grid']} */ ;
 /** @type {__VLS_StyleScopedClasses['grid-cols-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs font-medium text-gray-700 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.profileFirstName),
-    type: "text",
-    ...{ class: "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.profileFirstName,
+	type: 'text',
+	class: 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -924,19 +897,17 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs font-medium text-gray-700 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.profileLastName),
-    type: "text",
-    ...{ class: "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.profileLastName,
+	type: 'text',
+	class: 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -947,20 +918,18 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs font-medium text-gray-700 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.authStore.user?.email),
-    type: "email",
-    disabled: true,
-    ...{ class: "w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.authStore.user?.email,
+	type: 'email',
+	disabled: true,
+	class: 'w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -972,20 +941,18 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs font-medium text-gray-700 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.profileTimezone),
-    type: "text",
-    ...{ class: "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-    placeholder: "Europe/Prague",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.profileTimezone,
+	type: 'text',
+	class: 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400',
+	placeholder: 'Europe/Prague'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -995,11 +962,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    type: "submit",
-    disabled: (__VLS_ctx.profileLoading),
-    ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	type: 'submit',
+	disabled: __VLS_ctx.profileLoading,
+	class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60'
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -1010,47 +977,33 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 (__VLS_ctx.profileLoading ? 'Saving…' : 'Save Profile');
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-xs text-gray-500 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-500 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "font-mono" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'font-mono' }));
 /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
 (__VLS_ctx.firmStore.activeFirm?.slug);
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-xs text-gray-500 mb-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-500 mb-3' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "capitalize" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'capitalize' }));
 /** @type {__VLS_StyleScopedClasses['capitalize']} */ ;
 (__VLS_ctx.firmStore.activeFirm?.subscription_tier);
 if (__VLS_ctx.workspaceError) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700' }));
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-red-50']} */ ;
@@ -1063,9 +1016,7 @@ if (__VLS_ctx.workspaceError) {
     (__VLS_ctx.workspaceError);
 }
 if (__VLS_ctx.workspaceSuccess) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700' }));
     /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-green-50']} */ ;
@@ -1076,18 +1027,18 @@ if (__VLS_ctx.workspaceSuccess) {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-green-700']} */ ;
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)({
-    ...{ onSubmit: (__VLS_ctx.saveWorkspaceName) },
-    ...{ class: "flex gap-2" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)(({
+	onSubmit: __VLS_ctx.saveWorkspaceName,
+	...{ class: 'flex gap-2' }
+}));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.workspaceName),
-    type: "text",
-    ...{ class: "flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-    placeholder: "Workspace name",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.workspaceName,
+	type: 'text',
+	class: 'flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400',
+	placeholder: 'Workspace name'
+}));
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1097,11 +1048,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    type: "submit",
-    disabled: (__VLS_ctx.workspaceLoading),
-    ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	type: 'submit',
+	disabled: __VLS_ctx.workspaceLoading,
+	class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60'
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -1112,32 +1063,56 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 (__VLS_ctx.workspaceLoading ? 'Saving…' : 'Rename');
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-red-200 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-red-200 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-red-200']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-red-600 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-red-600 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 if (!__VLS_ctx.confirmDeleteWorkspace) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(!__VLS_ctx.confirmDeleteWorkspace))
-                    return;
-                __VLS_ctx.confirmDeleteWorkspace = true;
-                // @ts-ignore
-                [avatarPreview, avatarPreview, avatarPreview, authStore, authStore, onAvatarChange, uploadAvatar, avatarLoading, avatarLoading, profileError, profileError, profileSuccess, saveProfile, profileFirstName, profileLastName, profileTimezone, profileLoading, profileLoading, firmStore, firmStore, workspaceError, workspaceError, workspaceSuccess, saveWorkspaceName, workspaceName, workspaceLoading, workspaceLoading, confirmDeleteWorkspace, confirmDeleteWorkspace,];
-            } },
-        ...{ class: "px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm hover:bg-red-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.confirmDeleteWorkspace) return;
+		__VLS_ctx.confirmDeleteWorkspace = true;
+		[
+			avatarPreview,
+			avatarPreview,
+			avatarPreview,
+			authStore,
+			authStore,
+			onAvatarChange,
+			uploadAvatar,
+			avatarLoading,
+			avatarLoading,
+			profileError,
+			profileError,
+			profileSuccess,
+			saveProfile,
+			profileFirstName,
+			profileLastName,
+			profileTimezone,
+			profileLoading,
+			profileLoading,
+			firmStore,
+			firmStore,
+			workspaceError,
+			workspaceError,
+			workspaceSuccess,
+			saveWorkspaceName,
+			workspaceName,
+			workspaceLoading,
+			workspaceLoading,
+			confirmDeleteWorkspace,
+			confirmDeleteWorkspace
+		];
+	},
+	...{ class: 'px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm hover:bg-red-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1148,23 +1123,19 @@ if (!__VLS_ctx.confirmDeleteWorkspace) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-50']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-3' }));
     /** @type {__VLS_StyleScopedClasses['space-y-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-sm text-gray-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-sm text-gray-700' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     __VLS_asFunctionalElement1(__VLS_intrinsics.strong, __VLS_intrinsics.strong)({});
     (__VLS_ctx.firmStore.activeFirm?.name);
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        value: (__VLS_ctx.confirmDeleteText),
-        type: "text",
-        placeholder: (__VLS_ctx.firmStore.activeFirm?.name),
-        ...{ class: "w-full rounded-xl border border-red-300 px-3 py-2 text-sm focus:outline-none focus:border-red-500" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.confirmDeleteText,
+	type: 'text',
+	placeholder: __VLS_ctx.firmStore.activeFirm?.name,
+	class: 'w-full rounded-xl border border-red-300 px-3 py-2 text-sm focus:outline-none focus:border-red-500'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1174,33 +1145,35 @@ else {
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-500']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex gap-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!!(!__VLS_ctx.confirmDeleteWorkspace))
-                    return;
-                __VLS_ctx.confirmDeleteWorkspace = false;
-                __VLS_ctx.confirmDeleteText = '';
-                // @ts-ignore
-                [firmStore, firmStore, confirmDeleteWorkspace, confirmDeleteText, confirmDeleteText,];
-            } },
-        ...{ class: "flex-1 rounded-xl border border-gray-200 py-2 text-sm" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!!__VLS_ctx.confirmDeleteWorkspace) return;
+		__VLS_ctx.confirmDeleteWorkspace = false;
+		__VLS_ctx.confirmDeleteText = '';
+		[
+			firmStore,
+			firmStore,
+			confirmDeleteWorkspace,
+			confirmDeleteText,
+			confirmDeleteText
+		];
+	},
+	...{ class: 'flex-1 rounded-xl border border-gray-200 py-2 text-sm' }
+}));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.deleteWorkspace) },
-        disabled: (__VLS_ctx.dangerLoading || __VLS_ctx.confirmDeleteText !== __VLS_ctx.firmStore.activeFirm?.name),
-        ...{ class: "flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.deleteWorkspace,
+	disabled: __VLS_ctx.dangerLoading || __VLS_ctx.confirmDeleteText !== __VLS_ctx.firmStore.activeFirm?.name,
+	...{ class: 'flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-white']} */ ;
@@ -1212,60 +1185,44 @@ else {
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.dangerLoading ? 'Deleting…' : 'Delete Workspace');
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)({
-    ...{ class: "font-mono bg-gray-100 px-1 rounded" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)(({ class: 'font-mono bg-gray-100 px-1 rounded' }));
 /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
 if (__VLS_ctx.createdTokenValue) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-4 rounded-xl bg-green-50 border border-green-200 p-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-4 rounded-xl bg-green-50 border border-green-200 p-4' }));
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-green-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-green-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-xs font-semibold text-green-800 mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs font-semibold text-green-800 mb-2' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-green-800']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center gap-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)({
-        ...{ class: "flex-1 text-xs font-mono bg-white border border-green-200 rounded-lg px-3 py-2 break-all select-all" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)(({ class: 'flex-1 text-xs font-mono bg-white border border-green-200 rounded-lg px-3 py-2 break-all select-all' }));
     /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
@@ -1278,10 +1235,10 @@ if (__VLS_ctx.createdTokenValue) {
     /** @type {__VLS_StyleScopedClasses['break-all']} */ ;
     /** @type {__VLS_StyleScopedClasses['select-all']} */ ;
     (__VLS_ctx.createdTokenValue);
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.copyToken) },
-        ...{ class: "px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 flex-shrink-0" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.copyToken,
+	...{ class: 'px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 flex-shrink-0' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-green-600']} */ ;
@@ -1291,34 +1248,42 @@ if (__VLS_ctx.createdTokenValue) {
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-green-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.createdTokenValue))
-                    return;
-                __VLS_ctx.createdTokenValue = null;
-                // @ts-ignore
-                [firmStore, confirmDeleteText, deleteWorkspace, dangerLoading, dangerLoading, createdTokenValue, createdTokenValue, createdTokenValue, copyToken,];
-            } },
-        ...{ class: "mt-2 text-xs text-green-700 underline" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.createdTokenValue) return;
+		__VLS_ctx.createdTokenValue = null;
+		[
+			firmStore,
+			confirmDeleteText,
+			deleteWorkspace,
+			dangerLoading,
+			dangerLoading,
+			createdTokenValue,
+			createdTokenValue,
+			createdTokenValue,
+			copyToken
+		];
+	},
+	...{ class: 'mt-2 text-xs text-green-700 underline' }
+}));
     /** @type {__VLS_StyleScopedClasses['mt-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-green-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['underline']} */ ;
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)({
-    ...{ onSubmit: (__VLS_ctx.createToken) },
-    ...{ class: "flex gap-2 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)(({
+	onSubmit: __VLS_ctx.createToken,
+	...{ class: 'flex gap-2 mb-4' }
+}));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.newTokenName),
-    type: "text",
-    placeholder: "Token name (e.g. CI/CD pipeline)",
-    ...{ class: "flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newTokenName,
+	type: 'text',
+	placeholder: 'Token name (e.g. CI/CD pipeline)',
+	class: 'flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1328,11 +1293,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    type: "submit",
-    disabled: (__VLS_ctx.newTokenCreating || !__VLS_ctx.newTokenName.trim()),
-    ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	type: 'submit',
+	disabled: __VLS_ctx.newTokenCreating || !__VLS_ctx.newTokenName.trim(),
+	class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60'
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -1344,72 +1309,56 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 (__VLS_ctx.newTokenCreating ? 'Creating…' : 'Create');
 if (__VLS_ctx.tokensLoading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 }
 else if (__VLS_ctx.tokens.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)({
-        ...{ class: "divide-y divide-gray-100" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)(({ class: 'divide-y divide-gray-100' }));
     /** @type {__VLS_StyleScopedClasses['divide-y']} */ ;
     /** @type {__VLS_StyleScopedClasses['divide-gray-100']} */ ;
     for (const [token] of __VLS_vFor((__VLS_ctx.tokens))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)({
-            key: (token.id),
-            ...{ class: "flex items-center justify-between py-3 gap-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)(({
+	key: token.id,
+	class: 'flex items-center justify-between py-3 gap-3'
+}));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "min-w-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'min-w-0' }));
         /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-sm font-medium text-gray-800" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-sm font-medium text-gray-800' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
         (token.name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: (token.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500') },
-            ...{ class: "text-xs px-2 py-0.5 rounded-full" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: token.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500',
+	...{ class: 'text-xs px-2 py-0.5 rounded-full' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-0.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
         (token.is_active ? 'Active' : 'Revoked');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-400 font-mono mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 font-mono mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
         (token.prefix);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-400 mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
@@ -1418,20 +1367,26 @@ else {
             (new Date(token.last_used_at).toLocaleDateString());
         }
         if (token.is_active) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!!(__VLS_ctx.tokensLoading))
-                            return;
-                        if (!!(__VLS_ctx.tokens.length === 0))
-                            return;
-                        if (!(token.is_active))
-                            return;
-                        __VLS_ctx.revokeToken(token);
-                        // @ts-ignore
-                        [createToken, newTokenName, newTokenName, newTokenCreating, newTokenCreating, tokensLoading, tokens, tokens, revokeToken,];
-                    } },
-                ...{ class: "flex-shrink-0 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.tokensLoading) return;
+		if (!!(__VLS_ctx.tokens.length === 0)) return;
+		if (!token.is_active) return;
+		__VLS_ctx.revokeToken(token);
+		[
+			createToken,
+			newTokenName,
+			newTokenName,
+			newTokenCreating,
+			newTokenCreating,
+			tokensLoading,
+			tokens,
+			tokens,
+			revokeToken
+		];
+	},
+	...{ class: 'flex-shrink-0 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50' }
+}));
             /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
@@ -1446,38 +1401,32 @@ else {
         [];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)({
-    ...{ onSubmit: (__VLS_ctx.createWebhook) },
-    ...{ class: "space-y-2 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.form, __VLS_intrinsics.form)(({
+	onSubmit: __VLS_ctx.createWebhook,
+	...{ class: 'space-y-2 mb-4' }
+}));
 /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    type: "url",
-    placeholder: "https://your-server.com/webhook",
-    ...{ class: "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'url',
+	placeholder: 'https://your-server.com/webhook',
+	class: 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 (__VLS_ctx.newWebhookUrl);
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -1488,12 +1437,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.newWebhookEvents),
-    type: "text",
-    placeholder: "Events (comma-separated, e.g. lead.created,activity.created)",
-    ...{ class: "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newWebhookEvents,
+	type: 'text',
+	placeholder: 'Events (comma-separated, e.g. lead.created,activity.created)',
+	class: 'w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1503,11 +1452,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    type: "submit",
-    disabled: (__VLS_ctx.newWebhookCreating || !__VLS_ctx.newWebhookUrl.trim()),
-    ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	type: 'submit',
+	disabled: __VLS_ctx.newWebhookCreating || !__VLS_ctx.newWebhookUrl.trim(),
+	class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60'
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -1519,98 +1468,85 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 (__VLS_ctx.newWebhookCreating ? 'Adding…' : 'Add Endpoint');
 if (__VLS_ctx.webhooksLoading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 }
 else if (__VLS_ctx.webhooks.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)({
-        ...{ class: "divide-y divide-gray-100" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)(({ class: 'divide-y divide-gray-100' }));
     /** @type {__VLS_StyleScopedClasses['divide-y']} */ ;
     /** @type {__VLS_StyleScopedClasses['divide-gray-100']} */ ;
     for (const [wh] of __VLS_vFor((__VLS_ctx.webhooks))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)({
-            key: (wh.id),
-            ...{ class: "py-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)(({
+	key: wh.id,
+	class: 'py-3'
+}));
         /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-start justify-between gap-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-start justify-between gap-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-start']} */ ;
         /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "min-w-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'min-w-0' }));
         /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-sm font-mono text-gray-800 break-all" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-sm font-mono text-gray-800 break-all' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
         /** @type {__VLS_StyleScopedClasses['break-all']} */ ;
         (wh.url);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-400 mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "font-medium" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'font-medium' }));
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         (wh.events.length ? wh.events.join(', ') : 'all');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2 flex-shrink-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2 flex-shrink-0' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.webhooksLoading))
-                        return;
-                    if (!!(__VLS_ctx.webhooks.length === 0))
-                        return;
-                    __VLS_ctx.toggleWebhook(wh);
-                    // @ts-ignore
-                    [createWebhook, newWebhookUrl, newWebhookUrl, newWebhookEvents, newWebhookCreating, newWebhookCreating, webhooksLoading, webhooks, webhooks, toggleWebhook,];
-                } },
-            ...{ class: (wh.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200') },
-            ...{ class: "text-xs px-2 py-1 rounded-lg" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.webhooksLoading) return;
+		if (!!(__VLS_ctx.webhooks.length === 0)) return;
+		__VLS_ctx.toggleWebhook(wh);
+		[
+			createWebhook,
+			newWebhookUrl,
+			newWebhookUrl,
+			newWebhookEvents,
+			newWebhookCreating,
+			newWebhookCreating,
+			webhooksLoading,
+			webhooks,
+			webhooks,
+			toggleWebhook
+		];
+	},
+	...{ class: wh.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' },
+	...{ class: 'text-xs px-2 py-1 rounded-lg' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
         (wh.is_active ? 'Active' : 'Disabled');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.webhooksLoading))
-                        return;
-                    if (!!(__VLS_ctx.webhooks.length === 0))
-                        return;
-                    __VLS_ctx.deleteWebhook(wh);
-                    // @ts-ignore
-                    [deleteWebhook,];
-                } },
-            ...{ class: "text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.webhooksLoading) return;
+		if (!!(__VLS_ctx.webhooks.length === 0)) return;
+		__VLS_ctx.deleteWebhook(wh);
+		[deleteWebhook];
+	},
+	...{ class: 'text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1623,30 +1559,22 @@ else {
         [];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center justify-between py-3 border-b border-gray-50" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between py-3 border-b border-gray-50' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
@@ -1654,27 +1582,23 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-50']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-sm font-medium text-gray-800" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm font-medium text-gray-800' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-xs text-gray-400 mt-0.5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 mt-0.5' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (__VLS_ctx.toggleDigest) },
-    disabled: (__VLS_ctx.digestLoading),
-    ...{ class: (__VLS_ctx.digestEnabled ? 'bg-green-600' : 'bg-gray-200') },
-    ...{ class: "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0" },
-    role: "switch",
-    'aria-checked': (__VLS_ctx.digestEnabled),
-    'aria-label': "Toggle weekly digest",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.toggleDigest,
+	disabled: __VLS_ctx.digestLoading,
+	...{ class: __VLS_ctx.digestEnabled ? 'bg-green-600' : 'bg-gray-200' },
+	...{ class: 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0' },
+	role: 'switch',
+	'aria-checked': __VLS_ctx.digestEnabled,
+	'aria-label': 'Toggle weekly digest'
+}));
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
@@ -1684,10 +1608,10 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span)({
-    ...{ class: (__VLS_ctx.digestEnabled ? 'translate-x-6' : 'translate-x-1') },
-    ...{ class: "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span)(({
+	class: __VLS_ctx.digestEnabled ? 'translate-x-6' : 'translate-x-1',
+	...{ class: 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform' }
+}));
 /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-4']} */ ;
@@ -1696,50 +1620,51 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span)({
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow']} */ ;
 /** @type {__VLS_StyleScopedClasses['transition-transform']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center justify-between py-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between py-3' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-sm font-medium text-gray-800" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm font-medium text-gray-800' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "text-xs text-gray-400 mt-0.5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 mt-0.5' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
 if (!__VLS_ctx.pushSupported) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-xs text-amber-600 mt-0.5" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-amber-600 mt-0.5' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-amber-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
 }
 if (__VLS_ctx.pushSupported) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.pushSupported))
-                    return;
-                __VLS_ctx.pushSubscribed ? __VLS_ctx.unsubscribePush() : __VLS_ctx.subscribePush();
-                // @ts-ignore
-                [toggleDigest, digestLoading, digestEnabled, digestEnabled, digestEnabled, pushSupported, pushSupported, pushSubscribed, unsubscribePush, subscribePush,];
-            } },
-        disabled: (__VLS_ctx.pushLoading),
-        ...{ class: (__VLS_ctx.pushSubscribed ? 'bg-green-600' : 'bg-gray-200') },
-        ...{ class: "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0" },
-        role: "switch",
-        'aria-checked': (__VLS_ctx.pushSubscribed),
-        'aria-label': "Toggle push notifications",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.pushSupported) return;
+		__VLS_ctx.pushSubscribed ? __VLS_ctx.unsubscribePush() : __VLS_ctx.subscribePush();
+		[
+			toggleDigest,
+			digestLoading,
+			digestEnabled,
+			digestEnabled,
+			digestEnabled,
+			pushSupported,
+			pushSupported,
+			pushSubscribed,
+			unsubscribePush,
+			subscribePush
+		];
+	},
+	disabled: __VLS_ctx.pushLoading,
+	...{ class: __VLS_ctx.pushSubscribed ? 'bg-green-600' : 'bg-gray-200' },
+	...{ class: 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0' },
+	role: 'switch',
+	'aria-checked': __VLS_ctx.pushSubscribed,
+	'aria-label': 'Toggle push notifications'
+}));
     /** @type {__VLS_StyleScopedClasses['relative']} */ ;
     /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
@@ -1749,10 +1674,10 @@ if (__VLS_ctx.pushSupported) {
     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
     /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.span)({
-        ...{ class: (__VLS_ctx.pushSubscribed ? 'translate-x-6' : 'translate-x-1') },
-        ...{ class: "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.span)(({
+	class: __VLS_ctx.pushSubscribed ? 'translate-x-6' : 'translate-x-1',
+	...{ class: 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform' }
+}));
     /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['w-4']} */ ;
@@ -1762,9 +1687,7 @@ if (__VLS_ctx.pushSupported) {
     /** @type {__VLS_StyleScopedClasses['shadow']} */ ;
     /** @type {__VLS_StyleScopedClasses['transition-transform']} */ ;
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
@@ -1774,24 +1697,18 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
 /** @type {__VLS_StyleScopedClasses['space-y-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 dark:text-gray-100" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 dark:text-gray-100' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 mt-0.5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mt-0.5' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
 if (!__VLS_ctx.isPro) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 px-4 py-3 text-sm text-purple-700 dark:text-purple-300" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 px-4 py-3 text-sm text-purple-700 dark:text-purple-300' }));
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-purple-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:bg-purple-900/20']} */ ;
@@ -1806,30 +1723,24 @@ if (!__VLS_ctx.isPro) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.strong, __VLS_intrinsics.strong)({});
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-2' }));
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center gap-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-4' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-4']} */ ;
     if (__VLS_ctx.brandLogoPreview || __VLS_ctx.firmStore.activeFirm?.logo_url) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.img)({
-            src: (__VLS_ctx.brandLogoPreview || __VLS_ctx.firmStore.activeFirm?.logo_url),
-            alt: "Logo preview",
-            ...{ class: "h-12 w-auto rounded-lg border border-gray-200" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.img)(({
+	src: __VLS_ctx.brandLogoPreview || __VLS_ctx.firmStore.activeFirm?.logo_url,
+	alt: 'Logo preview',
+	class: 'h-12 w-auto rounded-lg border border-gray-200'
+}));
         /** @type {__VLS_StyleScopedClasses['h-12']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-auto']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -1837,9 +1748,7 @@ else {
         /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
     }
     else {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "h-12 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs text-gray-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'h-12 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs text-gray-400' }));
         /** @type {__VLS_StyleScopedClasses['h-12']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -1854,24 +1763,34 @@ else {
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     }
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        ...{ onChange: (__VLS_ctx.onBrandLogoChange) },
-        ref: "brandLogoInput",
-        type: "file",
-        accept: "image/*",
-        ...{ class: "hidden" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onChange: __VLS_ctx.onBrandLogoChange,
+	ref: 'brandLogoInput',
+	type: 'file',
+	accept: 'image/*',
+	...{ class: 'hidden' }
+}));
     /** @type {__VLS_StyleScopedClasses['hidden']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!!(!__VLS_ctx.isPro))
-                    return;
-                __VLS_ctx.brandLogoInput?.click();
-                // @ts-ignore
-                [firmStore, firmStore, pushSubscribed, pushSubscribed, pushSubscribed, pushLoading, isPro, brandLogoPreview, brandLogoPreview, onBrandLogoChange, brandLogoInput,];
-            } },
-        ...{ class: "px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!!__VLS_ctx.isPro) return;
+		__VLS_ctx.brandLogoInput?.click();
+		[
+			firmStore,
+			firmStore,
+			pushSubscribed,
+			pushSubscribed,
+			pushSubscribed,
+			pushLoading,
+			isPro,
+			brandLogoPreview,
+			brandLogoPreview,
+			onBrandLogoChange,
+			brandLogoInput
+		];
+	},
+	...{ class: 'px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -1881,28 +1800,22 @@ else {
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-2' }));
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center gap-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-3' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        type: "color",
-        ...{ class: "h-9 w-14 cursor-pointer rounded-lg border border-gray-200 p-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'color',
+	class: 'h-9 w-14 cursor-pointer rounded-lg border border-gray-200 p-1'
+}));
     (__VLS_ctx.brandColor);
     /** @type {__VLS_StyleScopedClasses['h-9']} */ ;
     /** @type {__VLS_StyleScopedClasses['w-14']} */ ;
@@ -1911,19 +1824,17 @@ else {
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-        ...{ class: "text-xs font-mono text-gray-600 dark:text-gray-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs font-mono text-gray-600 dark:text-gray-400' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
     (__VLS_ctx.brandColor);
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.saveBranding) },
-        disabled: (__VLS_ctx.brandSaving),
-        ...{ class: "px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.saveBranding,
+	disabled: __VLS_ctx.brandSaving,
+	...{ class: 'px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-blue-600']} */ ;
@@ -1935,24 +1846,18 @@ else {
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.brandSaving ? 'Saving…' : 'Save branding');
     if (__VLS_ctx.brandError) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-red-600" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-red-600' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
         (__VLS_ctx.brandError);
     }
     if (__VLS_ctx.brandSuccess) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-green-600" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-green-600' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-green-600']} */ ;
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
@@ -1962,36 +1867,39 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
 /** @type {__VLS_StyleScopedClasses['space-y-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 dark:text-gray-100" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 dark:text-gray-100' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 mt-0.5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mt-0.5' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex gap-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-3' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
 for (const [lang] of __VLS_vFor(([{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }]))) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                __VLS_ctx.changeLocale(lang.code);
-                // @ts-ignore
-                [brandColor, brandColor, saveBranding, brandSaving, brandSaving, brandError, brandError, brandSuccess, changeLocale,];
-            } },
-        key: (lang.code),
-        ...{ class: (__VLS_ctx.currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600') },
-        ...{ class: "px-4 py-2 rounded-xl text-sm font-medium transition-colors" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		__VLS_ctx.changeLocale(lang.code);
+		[
+			brandColor,
+			brandColor,
+			saveBranding,
+			brandSaving,
+			brandSaving,
+			brandError,
+			brandError,
+			brandSuccess,
+			changeLocale
+		];
+	},
+	key: lang.code,
+	...{ class: __VLS_ctx.currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' },
+	...{ class: 'px-4 py-2 rounded-xl text-sm font-medium transition-colors' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -2002,9 +1910,7 @@ for (const [lang] of __VLS_vFor(([{ code: 'en', label: '🇬🇧 English' }, { c
     // @ts-ignore
     [currentLocale,];
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
@@ -2012,33 +1918,27 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-6']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-base font-semibold text-gray-900 dark:text-gray-100 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-base font-semibold text-gray-900 dark:text-gray-100 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['text-base']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 mb-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mb-5' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-5']} */ ;
 if (__VLS_ctx.leadScoringStore.loading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "animate-pulse space-y-2 mb-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'animate-pulse space-y-2 mb-4' }));
     /** @type {__VLS_StyleScopedClasses['animate-pulse']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     for (const [i] of __VLS_vFor((2))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	key: i,
+	class: 'h-10 bg-gray-100 dark:bg-gray-700 rounded-xl'
+}));
         /** @type {__VLS_StyleScopedClasses['h-10']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:bg-gray-700']} */ ;
@@ -2048,25 +1948,21 @@ if (__VLS_ctx.leadScoringStore.loading) {
     }
 }
 else if (__VLS_ctx.leadScoringStore.rules.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400 dark:text-gray-500 mb-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400 dark:text-gray-500 mb-4' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)({
-        ...{ class: "space-y-2 mb-5" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)(({ class: 'space-y-2 mb-5' }));
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-5']} */ ;
     for (const [rule] of __VLS_vFor((__VLS_ctx.leadScoringStore.rules))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)({
-            key: (rule.id),
-            ...{ class: "flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)(({
+	key: rule.id,
+	class: 'flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'
+}));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
@@ -2078,26 +1974,18 @@ else {
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "flex-1 text-sm text-gray-700 dark:text-gray-300" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'flex-1 text-sm text-gray-700 dark:text-gray-300' }));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "font-medium" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'font-medium' }));
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         (__VLS_ctx.SCORING_FIELDS.find((f) => f.value === rule.field)?.label ?? rule.field);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-gray-400 mx-1" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-gray-400 mx-1' }));
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['mx-1']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)({
-            ...{ class: "bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.code, __VLS_intrinsics.code)(({ class: 'bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs' }));
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:bg-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-1.5']} */ ;
@@ -2105,10 +1993,10 @@ else {
         /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         (rule.operand);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-xs font-semibold px-2 py-0.5 rounded-full" },
-            ...{ class: (rule.score_delta >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300') },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: 'text-xs font-semibold px-2 py-0.5 rounded-full',
+	...{ class: rule.score_delta >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
@@ -2116,19 +2004,21 @@ else {
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
         (rule.score_delta >= 0 ? '+' : '');
         (rule.score_delta);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.leadScoringStore.loading))
-                        return;
-                    if (!!(__VLS_ctx.leadScoringStore.rules.length === 0))
-                        return;
-                    __VLS_ctx.removeScoringRule(rule.id);
-                    // @ts-ignore
-                    [leadScoringStore, leadScoringStore, SCORING_FIELDS, removeScoringRule,];
-                } },
-            ...{ class: "p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 text-xs" },
-            'aria-label': (`Delete scoring rule for ${rule.field}`),
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.leadScoringStore.loading) return;
+		if (!!(__VLS_ctx.leadScoringStore.rules.length === 0)) return;
+		__VLS_ctx.removeScoringRule(rule.id);
+		[
+			leadScoringStore,
+			leadScoringStore,
+			SCORING_FIELDS,
+			removeScoringRule
+		];
+	},
+	...{ class: 'p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 text-xs' },
+	'aria-label': `Delete scoring rule for ${rule.field}`
+}));
         /** @type {__VLS_StyleScopedClasses['p-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:bg-red-50']} */ ;
@@ -2139,16 +2029,12 @@ else {
         [];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "border-t border-gray-100 dark:border-gray-700 pt-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border-t border-gray-100 dark:border-gray-700 pt-4' }));
 /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['pt-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-    ...{ class: "text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)(({ class: 'text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
@@ -2157,36 +2043,32 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
 /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
 if (__VLS_ctx.ruleError) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-2 text-xs text-red-600 dark:text-red-400" },
-        role: "alert",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'mb-2 text-xs text-red-600 dark:text-red-400',
+	role: 'alert'
+}));
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-red-400']} */ ;
     (__VLS_ctx.ruleError);
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex flex-wrap gap-2 items-end" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex flex-wrap gap-2 items-end' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-end']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs text-gray-500 dark:text-gray-400 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs text-gray-500 dark:text-gray-400 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-    value: (__VLS_ctx.newRuleField),
-    ...{ class: "rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: __VLS_ctx.newRuleField,
+	class: 'rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -2210,20 +2092,18 @@ for (const [f] of __VLS_vFor((__VLS_ctx.SCORING_FIELDS))) {
     [SCORING_FIELDS, ruleError, ruleError, newRuleField,];
 }
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs text-gray-500 dark:text-gray-400 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs text-gray-500 dark:text-gray-400 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.newRuleOperand),
-    type: "text",
-    placeholder: "e.g. won, web, 5000…",
-    ...{ class: "rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-36 focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newRuleOperand,
+	type: 'text',
+	placeholder: 'e.g. won, web, 5000…',
+	class: 'rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-36 focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -2239,19 +2119,17 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    ...{ class: "block text-xs text-gray-500 dark:text-gray-400 mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs text-gray-500 dark:text-gray-400 mb-1' }));
 /** @type {__VLS_StyleScopedClasses['block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    type: "number",
-    ...{ class: "rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-24 focus:outline-none focus:border-red-400" },
-    placeholder: "+10",
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	class: 'rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 w-24 focus:outline-none focus:border-red-400',
+	placeholder: '+10'
+}));
 (__VLS_ctx.newRuleScoreDelta);
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -2267,11 +2145,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (__VLS_ctx.addScoringRule) },
-    disabled: (__VLS_ctx.ruleLoading),
-    ...{ class: "px-4 py-1.5 bg-[color:var(--brand-color)] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.addScoringRule,
+	disabled: __VLS_ctx.ruleLoading,
+	...{ class: 'px-4 py-1.5 bg-[color:var(--brand-color)] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50' }
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-[color:var(--brand-color)]']} */ ;
@@ -2283,33 +2161,27 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['transition-opacity']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
 (__VLS_ctx.ruleLoading ? 'Adding…' : '+ Add rule');
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white rounded-2xl border border-gray-100 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white rounded-2xl border border-gray-100 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 if (__VLS_ctx.propTemplatesLoading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "animate-pulse space-y-2 mb-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'animate-pulse space-y-2 mb-4' }));
     /** @type {__VLS_StyleScopedClasses['animate-pulse']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     for (const [i] of __VLS_vFor((2))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "h-10 bg-gray-100 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	key: i,
+	class: 'h-10 bg-gray-100 rounded-xl'
+}));
         /** @type {__VLS_StyleScopedClasses['h-10']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -2318,48 +2190,44 @@ if (__VLS_ctx.propTemplatesLoading) {
     }
 }
 else if (__VLS_ctx.propTemplates.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400 mb-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400 mb-4' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-4 space-y-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-4 space-y-2' }));
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     for (const [tmpl] of __VLS_vFor((__VLS_ctx.propTemplates))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (tmpl.id),
-            ...{ class: "border border-gray-100 rounded-xl overflow-hidden" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: tmpl.id,
+	class: 'border border-gray-100 rounded-xl overflow-hidden'
+}));
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2 px-4 py-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2 px-4 py-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.propTemplatesLoading))
-                        return;
-                    if (!!(__VLS_ctx.propTemplates.length === 0))
-                        return;
-                    __VLS_ctx.expandedTemplate = __VLS_ctx.expandedTemplate === tmpl.id ? null : tmpl.id;
-                    // @ts-ignore
-                    [propTemplates, propTemplates, expandedTemplate, expandedTemplate,];
-                } },
-            ...{ class: "flex-1 text-left text-sm font-medium text-gray-800 hover:text-red-600 transition-colors" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.propTemplatesLoading) return;
+		if (!!(__VLS_ctx.propTemplates.length === 0)) return;
+		__VLS_ctx.expandedTemplate = __VLS_ctx.expandedTemplate === tmpl.id ? null : tmpl.id;
+		[
+			propTemplates,
+			propTemplates,
+			expandedTemplate,
+			expandedTemplate
+		];
+	},
+	...{ class: 'flex-1 text-left text-sm font-medium text-gray-800 hover:text-red-600 transition-colors' }
+}));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
@@ -2368,137 +2236,101 @@ else {
         /** @type {__VLS_StyleScopedClasses['hover:text-red-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
         (tmpl.name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-xs text-gray-400 ml-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400 ml-2' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['ml-2']} */ ;
         (tmpl.items.length);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-xs text-gray-400 ml-1" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400 ml-1' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['ml-1']} */ ;
         (__VLS_ctx.expandedTemplate === tmpl.id ? '▲' : '▼');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.propTemplatesLoading))
-                        return;
-                    if (!!(__VLS_ctx.propTemplates.length === 0))
-                        return;
-                    __VLS_ctx.deletePropTemplate(tmpl.id);
-                    // @ts-ignore
-                    [expandedTemplate, deletePropTemplate,];
-                } },
-            ...{ class: "text-xs text-red-400 hover:text-red-600 px-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.propTemplatesLoading) return;
+		if (!!(__VLS_ctx.propTemplates.length === 0)) return;
+		__VLS_ctx.deletePropTemplate(tmpl.id);
+		[expandedTemplate, deletePropTemplate];
+	},
+	...{ class: 'text-xs text-red-400 hover:text-red-600 px-2' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-red-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:text-red-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
         if (__VLS_ctx.expandedTemplate === tmpl.id) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "border-t border-gray-100 px-4 pb-3" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border-t border-gray-100 px-4 pb-3' }));
             /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
             /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
             /** @type {__VLS_StyleScopedClasses['pb-3']} */ ;
             if (tmpl.items.length === 0) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                    ...{ class: "text-xs text-gray-400 py-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 py-2' }));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
             }
             else {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)({
-                    ...{ class: "w-full text-xs mb-2 mt-2" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.table, __VLS_intrinsics.table)(({ class: 'w-full text-xs mb-2 mt-2' }));
                 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
                 /** @type {__VLS_StyleScopedClasses['mt-2']} */ ;
                 __VLS_asFunctionalElement1(__VLS_intrinsics.thead, __VLS_intrinsics.thead)({});
-                __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-                    ...{ class: "border-b border-gray-100 text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({ class: 'border-b border-gray-100 text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
                 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                    ...{ class: "text-left pb-1.5" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-left pb-1.5' }));
                 /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pb-1.5']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                    ...{ class: "text-right pb-1.5 w-12" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right pb-1.5 w-12' }));
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pb-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['w-12']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                    ...{ class: "text-right pb-1.5 w-20" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'text-right pb-1.5 w-20' }));
                 /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                 /** @type {__VLS_StyleScopedClasses['pb-1.5']} */ ;
                 /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
-                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)({
-                    ...{ class: "w-8" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.th, __VLS_intrinsics.th)(({ class: 'w-8' }));
                 /** @type {__VLS_StyleScopedClasses['w-8']} */ ;
                 __VLS_asFunctionalElement1(__VLS_intrinsics.tbody, __VLS_intrinsics.tbody)({});
                 for (const [item] of __VLS_vFor((tmpl.items))) {
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)({
-                        key: (item.id),
-                        ...{ class: "border-b border-gray-50" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.tr, __VLS_intrinsics.tr)(({
+	key: item.id,
+	class: 'border-b border-gray-50'
+}));
                     /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
                     /** @type {__VLS_StyleScopedClasses['border-gray-50']} */ ;
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                        ...{ class: "py-1.5 text-gray-700" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 text-gray-700' }));
                     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                     (item.description);
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                        ...{ class: "py-1.5 text-right text-gray-500" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 text-right text-gray-500' }));
                     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                     (item.quantity);
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                        ...{ class: "py-1.5 text-right text-gray-500" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 text-right text-gray-500' }));
                     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                     (Number(item.unit_price).toFixed(2));
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)({
-                        ...{ class: "py-1.5 text-right" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.td, __VLS_intrinsics.td)(({ class: 'py-1.5 text-right' }));
                     /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                        ...{ onClick: (...[$event]) => {
-                                if (!!(__VLS_ctx.propTemplatesLoading))
-                                    return;
-                                if (!!(__VLS_ctx.propTemplates.length === 0))
-                                    return;
-                                if (!(__VLS_ctx.expandedTemplate === tmpl.id))
-                                    return;
-                                if (!!(tmpl.items.length === 0))
-                                    return;
-                                __VLS_ctx.deleteTmplItem(tmpl, item.id);
-                                // @ts-ignore
-                                [expandedTemplate, deleteTmplItem,];
-                            } },
-                        ...{ class: "text-gray-300 hover:text-red-400 transition-colors" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.propTemplatesLoading) return;
+		if (!!(__VLS_ctx.propTemplates.length === 0)) return;
+		if (!(__VLS_ctx.expandedTemplate === tmpl.id)) return;
+		if (!!(tmpl.items.length === 0)) return;
+		__VLS_ctx.deleteTmplItem(tmpl, item.id);
+		[expandedTemplate, deleteTmplItem];
+	},
+	...{ class: 'text-gray-300 hover:text-red-400 transition-colors' }
+}));
                     /** @type {__VLS_StyleScopedClasses['text-gray-300']} */ ;
                     /** @type {__VLS_StyleScopedClasses['hover:text-red-400']} */ ;
                     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
@@ -2506,18 +2338,16 @@ else {
                     [];
                 }
             }
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex gap-2 mt-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2 mt-1' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
             /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (__VLS_ctx.newTmplItemDesc),
-                type: "text",
-                placeholder: "Item description",
-                ...{ class: "flex-1 rounded-lg border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newTmplItemDesc,
+	type: 'text',
+	placeholder: 'Item description',
+	class: 'flex-1 rounded-lg border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -2527,13 +2357,13 @@ else {
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                type: "number",
-                min: "1",
-                step: "1",
-                placeholder: "Qty",
-                ...{ class: "w-14 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '1',
+	step: '1',
+	placeholder: 'Qty',
+	class: 'w-14 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400'
+}));
             (__VLS_ctx.newTmplItemQty);
             /** @type {__VLS_StyleScopedClasses['w-14']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -2545,13 +2375,13 @@ else {
             /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                type: "number",
-                min: "0",
-                step: "0.01",
-                placeholder: "Price",
-                ...{ class: "w-20 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	step: '0.01',
+	placeholder: 'Price',
+	class: 'w-20 rounded-lg border border-gray-200 px-2 py-1 text-xs text-right focus:outline-none focus:border-red-400'
+}));
             (__VLS_ctx.newTmplItemPrice);
             /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -2563,21 +2393,22 @@ else {
             /** @type {__VLS_StyleScopedClasses['text-right']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!!(__VLS_ctx.propTemplatesLoading))
-                            return;
-                        if (!!(__VLS_ctx.propTemplates.length === 0))
-                            return;
-                        if (!(__VLS_ctx.expandedTemplate === tmpl.id))
-                            return;
-                        __VLS_ctx.addTmplItem(tmpl);
-                        // @ts-ignore
-                        [newTmplItemDesc, newTmplItemQty, newTmplItemPrice, addTmplItem,];
-                    } },
-                disabled: (__VLS_ctx.addingTmplItem || !__VLS_ctx.newTmplItemDesc.trim()),
-                ...{ class: "px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.propTemplatesLoading) return;
+		if (!!(__VLS_ctx.propTemplates.length === 0)) return;
+		if (!(__VLS_ctx.expandedTemplate === tmpl.id)) return;
+		__VLS_ctx.addTmplItem(tmpl);
+		[
+			newTmplItemDesc,
+			newTmplItemQty,
+			newTmplItemPrice,
+			addTmplItem
+		];
+	},
+	disabled: __VLS_ctx.addingTmplItem || !__VLS_ctx.newTmplItemDesc.trim(),
+	...{ class: 'px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
             /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
             /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -2592,27 +2423,23 @@ else {
         [newTmplItemDesc, addingTmplItem,];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "border border-dashed border-gray-200 rounded-xl p-4 space-y-2" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border border-dashed border-gray-200 rounded-xl p-4 space-y-2' }));
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-dashed']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs font-medium text-gray-500" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs font-medium text-gray-500' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    value: (__VLS_ctx.newTemplateName),
-    type: "text",
-    placeholder: "Template name *",
-    ...{ class: "w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.newTemplateName,
+	type: 'text',
+	placeholder: 'Template name *',
+	class: 'w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -2622,28 +2449,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-    value: (__VLS_ctx.newTemplateIntro),
-    rows: "2",
-    placeholder: "Intro text (optional)…",
-    ...{ class: "w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" },
-});
-/** @type {__VLS_StyleScopedClasses['w-full']} */ ;
-/** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
-/** @type {__VLS_StyleScopedClasses['border']} */ ;
-/** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['px-3']} */ ;
-/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
-/** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
-/** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
-/** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-/** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-    value: (__VLS_ctx.newTemplateClosing),
-    rows: "2",
-    placeholder: "Closing text (optional)…",
-    ...{ class: "w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: __VLS_ctx.newTemplateIntro,
+	rows: '2',
+	placeholder: 'Intro text (optional)…',
+	class: 'w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none'
+}));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -2654,11 +2465,27 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
 /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (__VLS_ctx.createPropTemplate) },
-    disabled: (__VLS_ctx.newTemplateCreating || !__VLS_ctx.newTemplateName.trim()),
-    ...{ class: "px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: __VLS_ctx.newTemplateClosing,
+	rows: '2',
+	placeholder: 'Closing text (optional)…',
+	class: 'w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none'
+}));
+/** @type {__VLS_StyleScopedClasses['w-full']} */ ;
+/** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
+/** @type {__VLS_StyleScopedClasses['border']} */ ;
+/** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
+/** @type {__VLS_StyleScopedClasses['px-3']} */ ;
+/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
+/** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
+/** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.createPropTemplate,
+	disabled: __VLS_ctx.newTemplateCreating || !__VLS_ctx.newTemplateName.trim(),
+	...{ class: 'px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
 /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -2669,9 +2496,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
 (__VLS_ctx.newTemplateCreating ? 'Creating…' : '+ Create Template');
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
@@ -2679,52 +2504,42 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center justify-between mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-1' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 dark:text-gray-100" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 dark:text-gray-100' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "text-xs text-gray-400 dark:text-gray-500" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400 dark:text-gray-500' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
 (__VLS_ctx.localPluginCount);
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)({
-    href: "/docs/plugins/",
-    target: "_blank",
-    ...{ class: "text-red-600 hover:underline" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)(({
+	href: '/docs/plugins/',
+	target: '_blank',
+	class: 'text-red-600 hover:underline'
+}));
 /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:underline']} */ ;
 if (__VLS_ctx.pluginsLoading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "animate-pulse space-y-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'animate-pulse space-y-3' }));
     /** @type {__VLS_StyleScopedClasses['animate-pulse']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-3']} */ ;
     for (const [i] of __VLS_vFor((3))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	key: i,
+	class: 'h-14 bg-gray-100 dark:bg-gray-700 rounded-xl'
+}));
         /** @type {__VLS_StyleScopedClasses['h-14']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:bg-gray-700']} */ ;
@@ -2734,19 +2549,17 @@ if (__VLS_ctx.pluginsLoading) {
     }
 }
 else if (__VLS_ctx.pluginConfigs.length === 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400 dark:text-gray-500 py-4 text-center" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400 dark:text-gray-500 py-4 text-center' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)({
-        href: "https://github.com/JakubMusil/LeadLab/tree/main/docs/plugin-registry.json",
-        target: "_blank",
-        ...{ class: "block mt-1 text-red-600 hover:underline text-xs" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)(({
+	href: 'https://github.com/JakubMusil/LeadLab/tree/main/docs/plugin-registry.json',
+	target: '_blank',
+	class: 'block mt-1 text-red-600 hover:underline text-xs'
+}));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
@@ -2754,31 +2567,25 @@ else if (__VLS_ctx.pluginConfigs.length === 0) {
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 }
 else {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-3' }));
     /** @type {__VLS_StyleScopedClasses['space-y-3']} */ ;
     for (const [pc] of __VLS_vFor((__VLS_ctx.pluginConfigs))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (pc.plugin_name),
-            ...{ class: "border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: pc.plugin_name,
+	class: 'border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden'
+}));
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-3 px-4 py-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-3 px-4 py-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden' }));
         /** @type {__VLS_StyleScopedClasses['w-8']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-8']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -2790,79 +2597,66 @@ else {
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
         if (pc.plugin?.icon_url) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.img)({
-                ...{ onError: ((e) => e.target.style.display = 'none') },
-                src: (pc.plugin.icon_url),
-                alt: (pc.plugin_name),
-                ...{ class: "w-full h-full object-cover" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.img)(({
+	onError: ((e) => e.target.style.display = 'none'),
+	src: pc.plugin.icon_url,
+	alt: pc.plugin_name,
+	...{ class: 'w-full h-full object-cover' }
+}));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['h-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['object-cover']} */ ;
         }
         else {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                ...{ class: "text-lg" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-lg' }));
             /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex-1 min-w-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0' }));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2 flex-wrap" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2 flex-wrap' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-sm font-medium text-gray-800 dark:text-gray-100" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-sm font-medium text-gray-800 dark:text-gray-100' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
         (pc.plugin_name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-xs text-gray-400 dark:text-gray-500" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-400 dark:text-gray-500' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
         (pc.plugin?.version ?? '?');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-500 dark:text-gray-400 truncate" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 truncate' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['truncate']} */ ;
         (pc.plugin?.description ?? '');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2 flex-shrink-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2 flex-shrink-0' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
         if (pc.plugin && Object.keys(pc.plugin.config_schema?.properties ?? {}).length > 0) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!!(__VLS_ctx.pluginsLoading))
-                            return;
-                        if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                            return;
-                        if (!(pc.plugin && Object.keys(pc.plugin.config_schema?.properties ?? {}).length > 0))
-                            return;
-                        __VLS_ctx.expandedPlugin = __VLS_ctx.expandedPlugin === pc.plugin_name ? null : pc.plugin_name;
-                        // @ts-ignore
-                        [pluginConfigs, pluginConfigs, expandedPlugin, expandedPlugin,];
-                    } },
-                ...{ class: "text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(pc.plugin && Object.keys(pc.plugin.config_schema?.properties ?? {}).length > 0)) return;
+		__VLS_ctx.expandedPlugin = __VLS_ctx.expandedPlugin === pc.plugin_name ? null : pc.plugin_name;
+		[
+			pluginConfigs,
+			pluginConfigs,
+			expandedPlugin,
+			expandedPlugin
+		];
+	},
+	...{ class: 'text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1' }
+}));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
             /** @type {__VLS_StyleScopedClasses['hover:text-gray-700']} */ ;
@@ -2876,22 +2670,19 @@ else {
             /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
             (__VLS_ctx.expandedPlugin === pc.plugin_name ? 'Close' : 'Configure');
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.pluginsLoading))
-                        return;
-                    if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                        return;
-                    __VLS_ctx.togglePlugin(pc);
-                    // @ts-ignore
-                    [expandedPlugin, togglePlugin,];
-                } },
-            ...{ class: (pc.enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600') },
-            ...{ class: "relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0" },
-            role: "switch",
-            'aria-checked': (pc.enabled),
-            'aria-label': (`Toggle ${pc.plugin_name}`),
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		__VLS_ctx.togglePlugin(pc);
+		[expandedPlugin, togglePlugin];
+	},
+	...{ class: pc.enabled ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600' },
+	...{ class: 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0' },
+	role: 'switch',
+	'aria-checked': pc.enabled,
+	'aria-label': `Toggle ${pc.plugin_name}`
+}));
         /** @type {__VLS_StyleScopedClasses['relative']} */ ;
         /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
@@ -2900,10 +2691,10 @@ else {
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span)({
-            ...{ class: (pc.enabled ? 'translate-x-6' : 'translate-x-1') },
-            ...{ class: "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span)(({
+	class: pc.enabled ? 'translate-x-6' : 'translate-x-1',
+	...{ class: 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform' }
+}));
         /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-4']} */ ;
@@ -2913,19 +2704,17 @@ else {
         /** @type {__VLS_StyleScopedClasses['shadow']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-transform']} */ ;
         if (pc.plugin?.permissions?.length) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "px-4 pb-2 flex flex-wrap gap-1" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'px-4 pb-2 flex flex-wrap gap-1' }));
             /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
             /** @type {__VLS_StyleScopedClasses['pb-2']} */ ;
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-1']} */ ;
             for (const [perm] of __VLS_vFor((pc.plugin.permissions))) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                    key: (perm),
-                    ...{ class: "text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	key: perm,
+	class: 'text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5'
+}));
                 /** @type {__VLS_StyleScopedClasses['text-[10px]']} */ ;
                 /** @type {__VLS_StyleScopedClasses['bg-blue-50']} */ ;
                 /** @type {__VLS_StyleScopedClasses['dark:bg-blue-900/20']} */ ;
@@ -2940,9 +2729,7 @@ else {
             }
         }
         if (__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "border-t border-gray-100 dark:border-gray-700 px-4 pb-4 pt-3 space-y-3" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border-t border-gray-100 dark:border-gray-700 px-4 pb-4 pt-3 space-y-3' }));
             /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
@@ -2953,55 +2740,42 @@ else {
             for (const [prop, key] of __VLS_vFor(((pc.plugin.config_schema?.properties ?? {})))) {
                 (key);
                 if (prop.type === 'boolean') {
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                        ...{ class: "flex items-center justify-between" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between' }));
                     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
                     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
                     /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
                     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                        ...{ class: "text-xs font-medium text-gray-700 dark:text-gray-300" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs font-medium text-gray-700 dark:text-gray-300' }));
                     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
                     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
                     (prop.title ?? key);
                     if (prop.description) {
-                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-                            ...{ class: "text-xs text-gray-400 dark:text-gray-500" },
-                        });
+                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 dark:text-gray-500' }));
                         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
                         (prop.description);
                     }
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                        ...{ onChange: (...[$event]) => {
-                                if (!!(__VLS_ctx.pluginsLoading))
-                                    return;
-                                if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                                    return;
-                                if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin))
-                                    return;
-                                if (!(prop.type === 'boolean'))
-                                    return;
-                                __VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.checked);
-                                // @ts-ignore
-                                [expandedPlugin, setDraftValue,];
-                            } },
-                        type: "checkbox",
-                        checked: (Boolean(__VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? false)),
-                        ...{ class: "rounded" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onChange: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin)) return;
+		if (!(prop.type === 'boolean')) return;
+		__VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.checked);
+		[expandedPlugin, setDraftValue];
+	},
+	type: 'checkbox',
+	checked: Boolean(__VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? false),
+	...{ class: 'rounded' }
+}));
                     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
                 }
                 else if (prop.type === 'number') {
                     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1' }));
                     /** @type {__VLS_StyleScopedClasses['block']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
@@ -3010,35 +2784,27 @@ else {
                     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                     (prop.title ?? key);
                     if (prop.description) {
-                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-                            ...{ class: "text-xs text-gray-400 dark:text-gray-500 mb-1" },
-                        });
+                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 dark:text-gray-500 mb-1' }));
                         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
                         /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                         (prop.description);
                     }
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                        ...{ onInput: (...[$event]) => {
-                                if (!!(__VLS_ctx.pluginsLoading))
-                                    return;
-                                if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                                    return;
-                                if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin))
-                                    return;
-                                if (!!(prop.type === 'boolean'))
-                                    return;
-                                if (!(prop.type === 'number'))
-                                    return;
-                                __VLS_ctx.setDraftValue(pc.plugin_name, key, Number($event.target.value));
-                                // @ts-ignore
-                                [setDraftValue, getDraftValue,];
-                            } },
-                        type: "number",
-                        value: (__VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? ''),
-                        ...{ class: "w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin)) return;
+		if (!!(prop.type === 'boolean')) return;
+		if (!(prop.type === 'number')) return;
+		__VLS_ctx.setDraftValue(pc.plugin_name, key, Number($event.target.value));
+		[setDraftValue, getDraftValue];
+	},
+	type: 'number',
+	value: __VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? '',
+	...{ class: 'w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400' }
+}));
                     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
                     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3056,9 +2822,7 @@ else {
                 }
                 else if (prop.secret) {
                     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1' }));
                     /** @type {__VLS_StyleScopedClasses['block']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
@@ -3067,39 +2831,30 @@ else {
                     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                     (prop.title ?? key);
                     if (prop.description) {
-                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-                            ...{ class: "text-xs text-gray-400 dark:text-gray-500 mb-1" },
-                        });
+                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 dark:text-gray-500 mb-1' }));
                         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
                         /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                         (prop.description);
                     }
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                        ...{ onInput: (...[$event]) => {
-                                if (!!(__VLS_ctx.pluginsLoading))
-                                    return;
-                                if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                                    return;
-                                if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin))
-                                    return;
-                                if (!!(prop.type === 'boolean'))
-                                    return;
-                                if (!!(prop.type === 'number'))
-                                    return;
-                                if (!(prop.secret))
-                                    return;
-                                __VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.value);
-                                // @ts-ignore
-                                [setDraftValue, getDraftValue,];
-                            } },
-                        type: "password",
-                        autocomplete: "new-password",
-                        value: (__VLS_ctx.getDraftValue(pc.plugin_name, key) ?? ''),
-                        ...{ class: "w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-                        placeholder: "••••••••",
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin)) return;
+		if (!!(prop.type === 'boolean')) return;
+		if (!!(prop.type === 'number')) return;
+		if (!prop.secret) return;
+		__VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.value);
+		[setDraftValue, getDraftValue];
+	},
+	type: 'password',
+	autocomplete: 'new-password',
+	value: __VLS_ctx.getDraftValue(pc.plugin_name, key) ?? '',
+	...{ class: 'w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400' },
+	placeholder: '••••••••'
+}));
                     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
                     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3117,9 +2872,7 @@ else {
                 }
                 else {
                     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1' }));
                     /** @type {__VLS_StyleScopedClasses['block']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
@@ -3128,37 +2881,28 @@ else {
                     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                     (prop.title ?? key);
                     if (prop.description) {
-                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-                            ...{ class: "text-xs text-gray-400 dark:text-gray-500 mb-1" },
-                        });
+                        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 dark:text-gray-500 mb-1' }));
                         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
                         /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
                         (prop.description);
                     }
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                        ...{ onInput: (...[$event]) => {
-                                if (!!(__VLS_ctx.pluginsLoading))
-                                    return;
-                                if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                                    return;
-                                if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin))
-                                    return;
-                                if (!!(prop.type === 'boolean'))
-                                    return;
-                                if (!!(prop.type === 'number'))
-                                    return;
-                                if (!!(prop.secret))
-                                    return;
-                                __VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.value);
-                                // @ts-ignore
-                                [setDraftValue, getDraftValue,];
-                            } },
-                        type: "text",
-                        value: (__VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? ''),
-                        ...{ class: "w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin)) return;
+		if (!!(prop.type === 'boolean')) return;
+		if (!!(prop.type === 'number')) return;
+		if (!!prop.secret) return;
+		__VLS_ctx.setDraftValue(pc.plugin_name, key, $event.target.value);
+		[setDraftValue, getDraftValue];
+	},
+	type: 'text',
+	value: __VLS_ctx.getDraftValue(pc.plugin_name, key) ?? prop.default ?? '',
+	...{ class: 'w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400' }
+}));
                     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
                     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
                     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3177,21 +2921,17 @@ else {
                 // @ts-ignore
                 [getDraftValue,];
             }
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!!(__VLS_ctx.pluginsLoading))
-                            return;
-                        if (!!(__VLS_ctx.pluginConfigs.length === 0))
-                            return;
-                        if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin))
-                            return;
-                        __VLS_ctx.savePluginConfig(pc);
-                        // @ts-ignore
-                        [savePluginConfig,];
-                    } },
-                disabled: (__VLS_ctx.pluginSaving[pc.plugin_name]),
-                ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.pluginsLoading) return;
+		if (!!(__VLS_ctx.pluginConfigs.length === 0)) return;
+		if (!(__VLS_ctx.expandedPlugin === pc.plugin_name && pc.plugin)) return;
+		__VLS_ctx.savePluginConfig(pc);
+		[savePluginConfig];
+	},
+	disabled: __VLS_ctx.pluginSaving[pc.plugin_name],
+	...{ class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
             /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
             /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
             /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -3207,26 +2947,22 @@ else {
         [pluginSaving, pluginSaving,];
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "mt-4 pt-4 border-t border-gray-100 dark:border-gray-700" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mt-4 pt-4 border-t border-gray-100 dark:border-gray-700' }));
 /** @type {__VLS_StyleScopedClasses['mt-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['pt-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)({
-    href: "https://github.com/JakubMusil/LeadLab/blob/main/public/plugin-registry.json",
-    target: "_blank",
-    rel: "noopener",
-    ...{ class: "text-xs text-red-600 hover:underline" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.a, __VLS_intrinsics.a)(({
+	href: 'https://github.com/JakubMusil/LeadLab/blob/main/public/plugin-registry.json',
+	target: '_blank',
+	rel: 'noopener',
+	class: 'text-xs text-red-600 hover:underline'
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:underline']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5' }));
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
@@ -3234,34 +2970,31 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-5']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex items-center justify-between mb-1" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-1' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-sm font-semibold text-gray-900 dark:text-gray-100" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({ class: 'text-sm font-semibold text-gray-900 dark:text-gray-100' }));
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex gap-2" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2' }));
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (...[$event]) => {
-            __VLS_ctx.showTemplates = !__VLS_ctx.showTemplates;
-            __VLS_ctx.showRuleForm = false;
-            // @ts-ignore
-            [showTemplates, showTemplates, showRuleForm,];
-        } },
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		__VLS_ctx.showTemplates = !__VLS_ctx.showTemplates;
+		__VLS_ctx.showRuleForm = false;
+		[
+			showTemplates,
+			showTemplates,
+			showRuleForm
+		];
+	},
+	...{ class: 'text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700' }
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
@@ -3274,10 +3007,10 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
 (__VLS_ctx.showTemplates ? 'Hide templates' : '📋 Templates');
-__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-    ...{ onClick: (__VLS_ctx.openNewRuleForm) },
-    ...{ class: "text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.openNewRuleForm,
+	...{ class: 'text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700' }
+}));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-white']} */ ;
@@ -3285,17 +3018,13 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-1.5']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-xs text-gray-500 dark:text-gray-400 mb-4" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mb-4' }));
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 if (__VLS_ctx.showTemplates) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-4 border border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-4 border border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-2' }));
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-dashed']} */ ;
@@ -3304,9 +3033,7 @@ if (__VLS_ctx.showTemplates) {
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
@@ -3315,17 +3042,15 @@ if (__VLS_ctx.showTemplates) {
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
     if (__VLS_ctx.automationTemplates.length === 0) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-sm text-gray-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     }
     for (const [tmpl] of __VLS_vFor((__VLS_ctx.automationTemplates))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (tmpl.id),
-            ...{ class: "flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: tmpl.id,
+	class: 'flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700'
+}));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-start']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
@@ -3336,46 +3061,44 @@ if (__VLS_ctx.showTemplates) {
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex-1 min-w-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0' }));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-sm font-medium text-gray-800 dark:text-gray-100" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-sm font-medium text-gray-800 dark:text-gray-100' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
         (tmpl.name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-500 dark:text-gray-400 mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
         (tmpl.description);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
         (__VLS_ctx.TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!(__VLS_ctx.showTemplates))
-                        return;
-                    __VLS_ctx.createFromTemplate(tmpl);
-                    // @ts-ignore
-                    [showTemplates, showTemplates, openNewRuleForm, automationTemplates, automationTemplates, TRIGGER_LABELS, createFromTemplate,];
-                } },
-            ...{ class: "flex-shrink-0 text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.showTemplates) return;
+		__VLS_ctx.createFromTemplate(tmpl);
+		[
+			showTemplates,
+			showTemplates,
+			openNewRuleForm,
+			automationTemplates,
+			automationTemplates,
+			TRIGGER_LABELS,
+			createFromTemplate
+		];
+	},
+	...{ class: 'flex-shrink-0 text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700' }
+}));
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -3389,9 +3112,7 @@ if (__VLS_ctx.showTemplates) {
     }
 }
 if (__VLS_ctx.showRuleForm) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-4 border border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-4" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'mb-4 border border-gray-200 dark:border-gray-600 rounded-xl p-4 space-y-4' }));
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -3399,9 +3120,7 @@ if (__VLS_ctx.showRuleForm) {
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-4']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-600']} */ ;
@@ -3410,21 +3129,19 @@ if (__VLS_ctx.showRuleForm) {
     /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
     (__VLS_ctx.editingRule ? 'Edit rule' : 'New rule');
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-        value: (__VLS_ctx.ruleFormName),
-        type: "text",
-        placeholder: "e.g. Notify owner when lead won",
-        ...{ class: "w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: __VLS_ctx.ruleFormName,
+	type: 'text',
+	placeholder: 'e.g. Notify owner when lead won',
+	class: 'w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3440,19 +3157,17 @@ if (__VLS_ctx.showRuleForm) {
     /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
     /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1' }));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-        value: (__VLS_ctx.ruleFormTrigger),
-        ...{ class: "w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: __VLS_ctx.ruleFormTrigger,
+	class: 'w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400'
+}));
     /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3477,35 +3192,28 @@ if (__VLS_ctx.showRuleForm) {
         [showRuleForm, TRIGGER_LABELS, editingRule, ruleFormName, ruleFormTrigger,];
     }
     if (__VLS_ctx.ruleFormTrigger === 'lead_inactive') {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-            ...{ class: "text-xs font-medium text-gray-700 dark:text-gray-300 w-32" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs font-medium text-gray-700 dark:text-gray-300 w-32' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-32']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-            ...{ onInput: (...[$event]) => {
-                    if (!(__VLS_ctx.showRuleForm))
-                        return;
-                    if (!(__VLS_ctx.ruleFormTrigger === 'lead_inactive'))
-                        return;
-                    __VLS_ctx.ruleFormTriggerConfig['inactive_days'] = Number($event.target.value);
-                    // @ts-ignore
-                    [ruleFormTrigger, ruleFormTriggerConfig,];
-                } },
-            value: (__VLS_ctx.ruleFormTriggerConfig['inactive_days'] ?? 30),
-            type: "number",
-            min: "1",
-            ...{ class: "w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		if (!__VLS_ctx.showRuleForm) return;
+		if (!(__VLS_ctx.ruleFormTrigger === 'lead_inactive')) return;
+		__VLS_ctx.ruleFormTriggerConfig['inactive_days'] = Number($event.target.value);
+		[ruleFormTrigger, ruleFormTriggerConfig];
+	},
+	value: __VLS_ctx.ruleFormTriggerConfig['inactive_days'] ?? 30,
+	type: 'number',
+	min: '1',
+	...{ class: 'w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400' }
+}));
         /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3522,37 +3230,33 @@ if (__VLS_ctx.showRuleForm) {
         /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     }
     else if (__VLS_ctx.ruleFormTrigger === 'task_overdue') {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-            ...{ class: "text-xs font-medium text-gray-700 dark:text-gray-300 w-32" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs font-medium text-gray-700 dark:text-gray-300 w-32' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-32']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-            ...{ onInput: (...[$event]) => {
-                    if (!(__VLS_ctx.showRuleForm))
-                        return;
-                    if (!!(__VLS_ctx.ruleFormTrigger === 'lead_inactive'))
-                        return;
-                    if (!(__VLS_ctx.ruleFormTrigger === 'task_overdue'))
-                        return;
-                    __VLS_ctx.ruleFormTriggerConfig['warning_days'] = Number($event.target.value);
-                    // @ts-ignore
-                    [ruleFormTrigger, ruleFormTriggerConfig, ruleFormTriggerConfig,];
-                } },
-            value: (__VLS_ctx.ruleFormTriggerConfig['warning_days'] ?? 1),
-            type: "number",
-            min: "0",
-            ...{ class: "w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		if (!__VLS_ctx.showRuleForm) return;
+		if (!!(__VLS_ctx.ruleFormTrigger === 'lead_inactive')) return;
+		if (!(__VLS_ctx.ruleFormTrigger === 'task_overdue')) return;
+		__VLS_ctx.ruleFormTriggerConfig['warning_days'] = Number($event.target.value);
+		[
+			ruleFormTrigger,
+			ruleFormTriggerConfig,
+			ruleFormTriggerConfig
+		];
+	},
+	value: __VLS_ctx.ruleFormTriggerConfig['warning_days'] ?? 1,
+	type: 'number',
+	min: '0',
+	...{ class: 'w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400' }
+}));
         /** @type {__VLS_StyleScopedClasses['w-24']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3569,52 +3273,46 @@ if (__VLS_ctx.showRuleForm) {
         /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
     }
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center justify-between mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-2' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "text-xs font-medium text-gray-700 dark:text-gray-300" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs font-medium text-gray-700 dark:text-gray-300' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.addCondition) },
-        ...{ class: "text-xs text-red-600 hover:text-red-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.addCondition,
+	...{ class: 'text-xs text-red-600 hover:text-red-700' }
+}));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:text-red-700']} */ ;
     if (__VLS_ctx.ruleFormConditions.length === 0) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-xs text-gray-400 dark:text-gray-500 italic" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 dark:text-gray-500 italic' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['italic']} */ ;
     }
     for (const [cond, i] of __VLS_vFor((__VLS_ctx.ruleFormConditions))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "flex gap-2 mb-2 items-center flex-wrap" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: i,
+	class: 'flex gap-2 mb-2 items-center flex-wrap'
+}));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-            value: (cond.field),
-            type: "text",
-            placeholder: "field (e.g. to_status)",
-            ...{ class: "flex-1 min-w-[120px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: cond.field,
+	type: 'text',
+	placeholder: 'field (e.g. to_status)',
+	class: 'flex-1 min-w-[120px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['min-w-[120px]']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -3630,10 +3328,10 @@ if (__VLS_ctx.showRuleForm) {
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
         /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-            value: (cond.operator),
-            ...{ class: "rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: cond.operator,
+	class: 'rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
@@ -3656,12 +3354,12 @@ if (__VLS_ctx.showRuleForm) {
             // @ts-ignore
             [ruleFormTriggerConfig, addCondition, ruleFormConditions, ruleFormConditions, OPERATOR_LABELS,];
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-            value: (cond.value),
-            type: "text",
-            placeholder: "value",
-            ...{ class: "flex-1 min-w-[100px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: cond.value,
+	type: 'text',
+	placeholder: 'value',
+	class: 'flex-1 min-w-[100px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['min-w-[100px]']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -3677,16 +3375,14 @@ if (__VLS_ctx.showRuleForm) {
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
         /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!(__VLS_ctx.showRuleForm))
-                        return;
-                    __VLS_ctx.removeCondition(i);
-                    // @ts-ignore
-                    [removeCondition,];
-                } },
-            ...{ class: "text-gray-300 hover:text-red-400 text-sm" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.showRuleForm) return;
+		__VLS_ctx.removeCondition(i);
+		[removeCondition];
+	},
+	...{ class: 'text-gray-300 hover:text-red-400 text-sm' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-gray-300']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:text-red-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
@@ -3694,41 +3390,35 @@ if (__VLS_ctx.showRuleForm) {
         [];
     }
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center justify-between mb-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between mb-2' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        ...{ class: "text-xs font-medium text-gray-700 dark:text-gray-300" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs font-medium text-gray-700 dark:text-gray-300' }));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-300']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.addAction) },
-        ...{ class: "text-xs text-red-600 hover:text-red-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.addAction,
+	...{ class: 'text-xs text-red-600 hover:text-red-700' }
+}));
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['hover:text-red-700']} */ ;
     if (__VLS_ctx.ruleFormActions.length === 0) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "text-xs text-gray-400 dark:text-gray-500 italic" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 dark:text-gray-500 italic' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['italic']} */ ;
     }
     for (const [action, i] of __VLS_vFor((__VLS_ctx.ruleFormActions))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "mb-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 space-y-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: i,
+	class: 'mb-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 space-y-2'
+}));
         /** @type {__VLS_StyleScopedClasses['mb-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['p-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -3738,23 +3428,24 @@ if (__VLS_ctx.showRuleForm) {
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-            ...{ onChange: (...[$event]) => {
-                    if (!(__VLS_ctx.showRuleForm))
-                        return;
-                    __VLS_ctx.onActionTypeChange(i, $event.target.value);
-                    // @ts-ignore
-                    [addAction, ruleFormActions, ruleFormActions, onActionTypeChange,];
-                } },
-            value: (action.type),
-            ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	onChange: (...[$event]) => {
+		if (!__VLS_ctx.showRuleForm) return;
+		__VLS_ctx.onActionTypeChange(i, $event.target.value);
+		[
+			addAction,
+			ruleFormActions,
+			ruleFormActions,
+			onActionTypeChange
+		];
+	},
+	value: action.type,
+	...{ class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400' }
+}));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3778,37 +3469,31 @@ if (__VLS_ctx.showRuleForm) {
             // @ts-ignore
             [ACTION_TYPE_LABELS,];
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!(__VLS_ctx.showRuleForm))
-                        return;
-                    __VLS_ctx.removeAction(i);
-                    // @ts-ignore
-                    [removeAction,];
-                } },
-            ...{ class: "text-gray-300 hover:text-red-400 text-sm" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.showRuleForm) return;
+		__VLS_ctx.removeAction(i);
+		[removeAction];
+	},
+	...{ class: 'text-gray-300 hover:text-red-400 text-sm' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-gray-300']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:text-red-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         if (action.type === 'send_email') {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex gap-2" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                ...{ class: "text-xs text-gray-500 dark:text-gray-400 w-10 pt-1.5" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs text-gray-500 dark:text-gray-400 w-10 pt-1.5' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
             /** @type {__VLS_StyleScopedClasses['w-10']} */ ;
             /** @type {__VLS_StyleScopedClasses['pt-1.5']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-                value: (action.to),
-                ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: action.to,
+	class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3832,12 +3517,12 @@ if (__VLS_ctx.showRuleForm) {
             __VLS_asFunctionalElement1(__VLS_intrinsics.option, __VLS_intrinsics.option)({
                 value: "customer",
             });
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (action.subject),
-                type: "text",
-                placeholder: "Subject",
-                ...{ class: "w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: action.subject,
+	type: 'text',
+	placeholder: 'Subject',
+	class: 'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3852,12 +3537,12 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)({
-                value: (action.body),
-                rows: "3",
-                placeholder: "Email body. Use {{lead_title}}, {{customer_name}}, {{assignee_name}}…",
-                ...{ class: "w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400 resize-none" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.textarea)(({
+	value: action.body,
+	rows: '3',
+	placeholder: 'Email body. Use {{lead_title}}, {{customer_name}}, {{assignee_name}}…',
+	class: 'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400 resize-none'
+}));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3875,12 +3560,12 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['resize-none']} */ ;
         }
         else if (action.type === 'create_task') {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (action.title),
-                type: "text",
-                placeholder: "Task title (supports {{lead_title}})",
-                ...{ class: "w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: action.title,
+	type: 'text',
+	placeholder: 'Task title (supports {{lead_title}})',
+	class: 'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3895,23 +3580,19 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex items-center gap-2" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-                ...{ class: "text-xs text-gray-500 dark:text-gray-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({ class: 'text-xs text-gray-500 dark:text-gray-400' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                type: "number",
-                min: "0",
-                ...{ class: "w-20 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'number',
+	min: '0',
+	class: 'w-20 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             (action.days_from_now);
             /** @type {__VLS_StyleScopedClasses['w-20']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -3927,23 +3608,19 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                ...{ class: "text-xs text-gray-500 dark:text-gray-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-xs text-gray-500 dark:text-gray-400' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
         }
         else if (action.type === 'update_field') {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex gap-2" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
-                value: (action.field),
-                ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)(({
+	value: action.field,
+	class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3970,12 +3647,12 @@ if (__VLS_ctx.showRuleForm) {
             __VLS_asFunctionalElement1(__VLS_intrinsics.option, __VLS_intrinsics.option)({
                 value: "description",
             });
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (action.value),
-                type: "text",
-                placeholder: "New value",
-                ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: action.value,
+	type: 'text',
+	placeholder: 'New value',
+	class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -3992,11 +3669,11 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
         }
         else if (action.type === 'call_webhook') {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                type: "url",
-                placeholder: "https://your-server.com/webhook",
-                ...{ class: "w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	type: 'url',
+	placeholder: 'https://your-server.com/webhook',
+	class: 'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             (action.url);
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
@@ -4014,17 +3691,15 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
         }
         else if (action.type === 'run_plugin_action') {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex gap-2" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (action.plugin_name),
-                type: "text",
-                placeholder: "Plugin name",
-                ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: action.plugin_name,
+	type: 'text',
+	placeholder: 'Plugin name',
+	class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -4039,12 +3714,12 @@ if (__VLS_ctx.showRuleForm) {
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:outline-none']} */ ;
             /** @type {__VLS_StyleScopedClasses['focus:border-red-400']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-                value: (action.action),
-                type: "text",
-                placeholder: "Action name",
-                ...{ class: "flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	value: action.action,
+	type: 'text',
+	placeholder: 'Action name',
+	class: 'flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400'
+}));
             /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
             /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -4063,17 +3738,15 @@ if (__VLS_ctx.showRuleForm) {
         // @ts-ignore
         [];
     }
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex gap-2 pt-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex gap-2 pt-1' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['pt-1']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.saveRule) },
-        disabled: (__VLS_ctx.ruleSaving || !__VLS_ctx.ruleFormName.trim()),
-        ...{ class: "px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.saveRule,
+	disabled: __VLS_ctx.ruleSaving || !__VLS_ctx.ruleFormName.trim(),
+	...{ class: 'px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-red-600']} */ ;
@@ -4084,10 +3757,10 @@ if (__VLS_ctx.showRuleForm) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-red-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['disabled:opacity-50']} */ ;
     (__VLS_ctx.ruleSaving ? 'Saving…' : (__VLS_ctx.editingRule ? 'Update rule' : 'Create rule'));
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (__VLS_ctx.cancelRuleForm) },
-        ...{ class: "px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: __VLS_ctx.cancelRuleForm,
+	...{ class: 'px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700' }
+}));
     /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
@@ -4101,16 +3774,14 @@ if (__VLS_ctx.showRuleForm) {
     /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
 }
 if (__VLS_ctx.automationsLoading) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "animate-pulse space-y-3" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'animate-pulse space-y-3' }));
     /** @type {__VLS_StyleScopedClasses['animate-pulse']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-y-3']} */ ;
     for (const [i] of __VLS_vFor((2))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-            key: (i),
-            ...{ class: "h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	key: i,
+	class: 'h-14 bg-gray-100 dark:bg-gray-700 rounded-xl'
+}));
         /** @type {__VLS_StyleScopedClasses['h-14']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:bg-gray-700']} */ ;
@@ -4120,9 +3791,7 @@ if (__VLS_ctx.automationsLoading) {
     }
 }
 else if (!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-sm text-gray-400 dark:text-gray-500 py-4 text-center" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-sm text-gray-400 dark:text-gray-500 py-4 text-center' }));
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
@@ -4130,77 +3799,63 @@ else if (!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0
     /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
 }
 else if (__VLS_ctx.automationRules.length > 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "space-y-2" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'space-y-2' }));
     /** @type {__VLS_StyleScopedClasses['space-y-2']} */ ;
     for (const [rule] of __VLS_vFor((__VLS_ctx.automationRules))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            key: (rule.id),
-            ...{ class: "border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	key: rule.id,
+	class: 'border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden'
+}));
         /** @type {__VLS_StyleScopedClasses['border']} */ ;
         /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-start gap-3 px-4 py-3" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-start gap-3 px-4 py-3' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-start']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex-1 min-w-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex-1 min-w-0' }));
         /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['min-w-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-2 flex-wrap" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-2 flex-wrap' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-sm font-medium text-gray-800 dark:text-gray-100" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-sm font-medium text-gray-800 dark:text-gray-100' }));
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-800']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
         (rule.name);
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: (rule.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400') },
-            ...{ class: "text-xs px-2 py-0.5 rounded-full" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: rule.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+	...{ class: 'text-xs px-2 py-0.5 rounded-full' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-0.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
         (rule.is_active ? 'Active' : 'Disabled');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-xs text-gray-500 dark:text-gray-400 mt-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs text-gray-500 dark:text-gray-400 mt-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-0.5']} */ ;
         (__VLS_ctx.ruleReadableSummary(rule));
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex flex-wrap gap-1 mt-1" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex flex-wrap gap-1 mt-1' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-wrap']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
         for (const [action, i] of __VLS_vFor((rule.actions))) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                key: (i),
-                ...{ class: "text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	key: i,
+	class: 'text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-full px-2 py-0.5'
+}));
             /** @type {__VLS_StyleScopedClasses['text-[10px]']} */ ;
             /** @type {__VLS_StyleScopedClasses['bg-blue-50']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:bg-blue-900/20']} */ ;
@@ -4213,27 +3868,21 @@ else if (__VLS_ctx.automationRules.length > 0) {
             // @ts-ignore
             [showRuleForm, automationsLoading, automationRules, automationRules, automationRules, ruleReadableSummary, actionSummary,];
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "flex items-center gap-1.5 flex-shrink-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-1.5 flex-shrink-0' }));
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['gap-1.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.automationsLoading))
-                        return;
-                    if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm))
-                        return;
-                    if (!(__VLS_ctx.automationRules.length > 0))
-                        return;
-                    __VLS_ctx.toggleRuleRuns(rule);
-                    // @ts-ignore
-                    [toggleRuleRuns,];
-                } },
-            ...{ class: "text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.automationsLoading) return;
+		if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm)) return;
+		if (!(__VLS_ctx.automationRules.length > 0)) return;
+		__VLS_ctx.toggleRuleRuns(rule);
+		[toggleRuleRuns];
+	},
+	...{ class: 'text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
@@ -4246,20 +3895,16 @@ else if (__VLS_ctx.automationRules.length > 0) {
         /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
         (__VLS_ctx.expandedRuleRuns === rule.id ? 'Hide log' : 'Log');
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.automationsLoading))
-                        return;
-                    if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm))
-                        return;
-                    if (!(__VLS_ctx.automationRules.length > 0))
-                        return;
-                    __VLS_ctx.openEditRuleForm(rule);
-                    // @ts-ignore
-                    [expandedRuleRuns, openEditRuleForm,];
-                } },
-            ...{ class: "text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.automationsLoading) return;
+		if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm)) return;
+		if (!(__VLS_ctx.automationRules.length > 0)) return;
+		__VLS_ctx.openEditRuleForm(rule);
+		[expandedRuleRuns, openEditRuleForm];
+	},
+	...{ class: 'text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700' }
+}));
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
@@ -4271,24 +3916,20 @@ else if (__VLS_ctx.automationRules.length > 0) {
         /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:bg-gray-50']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.automationsLoading))
-                        return;
-                    if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm))
-                        return;
-                    if (!(__VLS_ctx.automationRules.length > 0))
-                        return;
-                    __VLS_ctx.toggleRule(rule);
-                    // @ts-ignore
-                    [toggleRule,];
-                } },
-            ...{ class: (rule.is_active ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600') },
-            ...{ class: "relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0" },
-            role: "switch",
-            'aria-checked': (rule.is_active),
-            'aria-label': (`Toggle ${rule.name}`),
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.automationsLoading) return;
+		if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm)) return;
+		if (!(__VLS_ctx.automationRules.length > 0)) return;
+		__VLS_ctx.toggleRule(rule);
+		[toggleRule];
+	},
+	...{ class: rule.is_active ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600' },
+	...{ class: 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0' },
+	role: 'switch',
+	'aria-checked': rule.is_active,
+	'aria-label': `Toggle ${rule.name}`
+}));
         /** @type {__VLS_StyleScopedClasses['relative']} */ ;
         /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
@@ -4297,10 +3938,10 @@ else if (__VLS_ctx.automationRules.length > 0) {
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span)({
-            ...{ class: (rule.is_active ? 'translate-x-6' : 'translate-x-1') },
-            ...{ class: "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span)(({
+	class: rule.is_active ? 'translate-x-6' : 'translate-x-1',
+	...{ class: 'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform' }
+}));
         /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-4']} */ ;
@@ -4309,21 +3950,17 @@ else if (__VLS_ctx.automationRules.length > 0) {
         /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
         /** @type {__VLS_StyleScopedClasses['shadow']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-transform']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onClick: (...[$event]) => {
-                    if (!!(__VLS_ctx.automationsLoading))
-                        return;
-                    if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm))
-                        return;
-                    if (!(__VLS_ctx.automationRules.length > 0))
-                        return;
-                    __VLS_ctx.deleteRule(rule);
-                    // @ts-ignore
-                    [deleteRule,];
-                } },
-            ...{ class: "p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-400 text-xs" },
-            'aria-label': (`Delete rule ${rule.name}`),
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!!__VLS_ctx.automationsLoading) return;
+		if (!!(!__VLS_ctx.automationsLoading && __VLS_ctx.automationRules.length === 0 && !__VLS_ctx.showRuleForm)) return;
+		if (!(__VLS_ctx.automationRules.length > 0)) return;
+		__VLS_ctx.deleteRule(rule);
+		[deleteRule];
+	},
+	...{ class: 'p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-400 text-xs' },
+	'aria-label': `Delete rule ${rule.name}`
+}));
         /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
         /** @type {__VLS_StyleScopedClasses['hover:bg-red-50']} */ ;
@@ -4331,17 +3968,13 @@ else if (__VLS_ctx.automationRules.length > 0) {
         /** @type {__VLS_StyleScopedClasses['text-red-400']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
         if (__VLS_ctx.expandedRuleRuns === rule.id) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "border-t border-gray-100 dark:border-gray-700 px-4 py-3" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'border-t border-gray-100 dark:border-gray-700 px-4 py-3' }));
             /** @type {__VLS_StyleScopedClasses['border-t']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
             /** @type {__VLS_StyleScopedClasses['px-4']} */ ;
             /** @type {__VLS_StyleScopedClasses['py-3']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-                ...{ class: "text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2' }));
             /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
             /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
@@ -4350,42 +3983,36 @@ else if (__VLS_ctx.automationRules.length > 0) {
             /** @type {__VLS_StyleScopedClasses['tracking-wide']} */ ;
             /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
             if (__VLS_ctx.ruleRunsLoading && !__VLS_ctx.ruleRunsMap[rule.id]) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                    ...{ class: "text-xs text-gray-400" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400' }));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
             }
             else if (!__VLS_ctx.ruleRunsMap[rule.id] || __VLS_ctx.ruleRunsMap[rule.id].length === 0) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                    ...{ class: "text-xs text-gray-400 dark:text-gray-500" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'text-xs text-gray-400 dark:text-gray-500' }));
                 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
                 /** @type {__VLS_StyleScopedClasses['dark:text-gray-500']} */ ;
             }
             else {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)({
-                    ...{ class: "space-y-1.5" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.ul, __VLS_intrinsics.ul)(({ class: 'space-y-1.5' }));
                 /** @type {__VLS_StyleScopedClasses['space-y-1.5']} */ ;
                 for (const [run] of __VLS_vFor((__VLS_ctx.ruleRunsMap[rule.id]))) {
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)({
-                        key: (run.id),
-                        ...{ class: "flex items-start gap-2 text-xs" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.li, __VLS_intrinsics.li)(({
+	key: run.id,
+	class: 'flex items-start gap-2 text-xs'
+}));
                     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
                     /** @type {__VLS_StyleScopedClasses['items-start']} */ ;
                     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                        ...{ class: ({
-                                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': run.status === 'success',
-                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300': run.status === 'failure',
-                                'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400': run.status === 'skipped',
-                            }) },
-                        ...{ class: "px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({
+	class: {
+		'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': run.status === 'success',
+		'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300': run.status === 'failure',
+		'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400': run.status === 'skipped'
+	},
+	...{ class: 'px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0' }
+}));
                     /** @type {__VLS_StyleScopedClasses['bg-green-100']} */ ;
                     /** @type {__VLS_StyleScopedClasses['text-green-700']} */ ;
                     /** @type {__VLS_StyleScopedClasses['dark:bg-green-900/30']} */ ;
@@ -4405,17 +4032,13 @@ else if (__VLS_ctx.automationRules.length > 0) {
                     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
                     /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
                     (run.status);
-                    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                        ...{ class: "text-gray-500 dark:text-gray-400 flex-shrink-0" },
-                    });
+                    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-gray-500 dark:text-gray-400 flex-shrink-0' }));
                     /** @type {__VLS_StyleScopedClasses['text-gray-500']} */ ;
                     /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
                     /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
                     (new Date(run.triggered_at).toLocaleString());
                     if (run.error_message) {
-                        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                            ...{ class: "text-red-600 dark:text-red-400 truncate" },
-                        });
+                        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-red-600 dark:text-red-400 truncate' }));
                         /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
                         /** @type {__VLS_StyleScopedClasses['dark:text-red-400']} */ ;
                         /** @type {__VLS_StyleScopedClasses['truncate']} */ ;

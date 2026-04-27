@@ -76,6 +76,11 @@ const router = createRouter({
           meta: { title: 'Tasks' },
         },
         {
+          path: 'tasks/:id',
+          component: () => import('@/views/TaskDetailView.vue'),
+          meta: { title: 'Task Detail' },
+        },
+        {
           path: 'calendar',
           component: () => import('@/views/CalendarView.vue'),
           meta: { title: 'Calendar' },
