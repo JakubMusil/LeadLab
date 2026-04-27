@@ -34,6 +34,7 @@ export interface TaskUpdateIn {
   assigned_to_id?: string | null
   watcher_ids?: string[]
   due_date?: string | null
+  clear_due_date?: boolean
 }
 
 export interface FollowUpTaskIn {

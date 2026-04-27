@@ -7,6 +7,7 @@ Every endpoint requires:
   3. The authenticated user to be a member of that Firm.
 """
 import datetime as dt
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -50,6 +51,7 @@ from crm.events import broadcast_event
 router = Router(tags=["crm"])
 
 _MENTION_PREVIEW_LENGTH = 120
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -699,6 +701,7 @@ class TaskUpdateIn(Schema):
     assigned_to_id: Optional[str] = None
     watcher_ids: Optional[List[str]] = None
     due_date: Optional[datetime] = None
+    clear_due_date: bool = False
 
 
 class FollowUpTaskIn(Schema):
@@ -717,7 +720,8 @@ def _task_out(t: Task) -> dict:
     # Resolve lead title (use cached select_related if available)
     try:
         lead_title = t.lead.title
-    except Exception:
+    except (AttributeError, Exception) as exc:
+        logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
         lead_title = ""
 
     # Resolve assigned_to display name
@@ -726,13 +730,14 @@ def _task_out(t: Task) -> dict:
         try:
             u = t.assigned_to
             assigned_to_name = f"{u.first_name} {u.last_name}".strip() or u.email
-        except Exception:
-            pass
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve assigned_to name for task %s: %s", t.id, exc)
 
     # Resolve watcher IDs
     try:
         watcher_ids = [str(uid) for uid in t.watchers.values_list("id", flat=True)]
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not resolve watchers for task %s: %s", t.id, exc)
         watcher_ids = []
 
     return {
@@ -794,7 +799,7 @@ def _notify_task_watchers(task: Task, event: str) -> None:
             ]
             Notification.objects.bulk_create(notifications, ignore_conflicts=True)
     except Exception:
-        pass
+        logger.exception("Failed to persist watcher notifications for task %s event %s", task.id, event)
 
 
 @router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
@@ -910,7 +915,10 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
         task.description = payload.description
         update_fields.append("description")
 
-    if payload.due_date is not None:
+    if payload.clear_due_date:
+        task.due_date = None
+        update_fields.append("due_date")
+    elif payload.due_date is not None:
         task.due_date = payload.due_date
         update_fields.append("due_date")
 
