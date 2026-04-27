@@ -12,6 +12,18 @@ import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS }
 import { useI18n } from '@/composables/useI18n'
 import { pluginRegistry } from '@/plugins'
 import CommandPalette from '@/components/CommandPalette.vue'
+import {
+  Squares2X2Icon,
+  FunnelIcon,
+  UsersIcon,
+  ClipboardDocumentListIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  EnvelopeIcon,
+  UserGroupIcon,
+  Cog6ToothIcon,
+  ShieldCheckIcon,
+} from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const route = useRoute()
@@ -103,27 +115,27 @@ const navSections = computed(() => [
   {
     label: 'CRM',
     items: [
-      { label: t('nav.overview'), icon: '⊞', path: '/app/dashboard' },
-      { label: t('nav.leads'), icon: '◎', path: '/app/leads' },
-      { label: t('nav.customers'), icon: '👥', path: '/app/customers' },
-      { label: t('nav.tasks'), icon: '✅', path: '/app/tasks' },
-      { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
+      { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
+      { label: t('nav.leads'), icon: FunnelIcon, path: '/app/leads' },
+      { label: t('nav.customers'), icon: UsersIcon, path: '/app/customers' },
+      { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
+      { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
     ],
   },
   {
     label: 'Insights',
     items: [
-      { label: t('nav.analytics'), icon: '📊', path: '/app/analytics' },
-      { label: t('nav.sequences'), icon: '📧', path: '/app/sequences' },
+      { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
+      { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
       ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
     ],
   },
   {
     label: 'Workspace',
     items: [
-      { label: t('nav.team'), icon: '🤝', path: '/app/team' },
-      { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
-      ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
+      { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
+      { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
+      ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: ShieldCheckIcon, path: '/app/superadmin' }] : []),
     ],
   },
 ])
@@ -276,7 +288,8 @@ function formatNotifTime(ts: string): string {
                 :aria-current="isActive(item.path) ? 'page' : undefined"
                 @click="mobileMenuOpen = false"
               >
-                <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
+                <component v-if="typeof item.icon !== 'string'" :is="item.icon" class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                <span v-else class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
                 <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
               </RouterLink>
 

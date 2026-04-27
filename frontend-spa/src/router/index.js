@@ -70,6 +70,11 @@ const router = createRouter({
                     meta: { title: 'Customer Detail' },
                 },
                 {
+                    path: 'tasks',
+                    component: () => import('@/views/TasksView.vue'),
+                    meta: { title: 'Tasks' },
+                },
+                {
                     path: 'calendar',
                     component: () => import('@/views/CalendarView.vue'),
                     meta: { title: 'Calendar' },
@@ -88,6 +93,11 @@ const router = createRouter({
                     path: 'analytics',
                     component: () => import('@/views/AnalyticsView.vue'),
                     meta: { title: 'Analytics' },
+                },
+                {
+                    path: 'sequences',
+                    component: () => import('@/views/SequencesView.vue'),
+                    meta: { title: 'Sequences' },
                 },
                 {
                     path: 'superadmin',
