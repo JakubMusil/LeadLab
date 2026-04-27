@@ -1162,6 +1162,164 @@ const estimateButtonLabel = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
+// Phase 7: Recurrence
+// ---------------------------------------------------------------------------
+const showRecurrenceModal = ref(false)
+const recurrenceType = ref('daily')
+const recurrenceInterval = ref(1)
+const recurrenceDayOfWeek = ref<number[]>([])
+const recurrenceEndsAt = ref('')
+const recurrenceSaving = ref(false)
+
+function openRecurrenceModal() {
+  if (!task.value) return
+  const rec = task.value.recurrence
+  if (rec) {
+    recurrenceType.value = String(rec.type ?? 'daily')
+    recurrenceInterval.value = Number(rec.interval ?? 1)
+    recurrenceDayOfWeek.value = Array.isArray(rec.day_of_week) ? rec.day_of_week.map(Number) : []
+    recurrenceEndsAt.value = rec.ends_at ? String(rec.ends_at).split('T')[0] : ''
+  } else {
+    recurrenceType.value = 'daily'
+    recurrenceInterval.value = 1
+    recurrenceDayOfWeek.value = []
+    recurrenceEndsAt.value = ''
+  }
+  showRecurrenceModal.value = true
+}
+
+function toggleRecurrenceDow(day: number) {
+  const idx = recurrenceDayOfWeek.value.indexOf(day)
+  if (idx !== -1) recurrenceDayOfWeek.value.splice(idx, 1)
+  else recurrenceDayOfWeek.value.push(day)
+}
+
+async function saveRecurrence() {
+  if (!task.value) return
+  recurrenceSaving.value = true
+  const recurrencePayload = {
+    type: recurrenceType.value,
+    interval: recurrenceInterval.value,
+    ...(recurrenceType.value === 'weekly' && recurrenceDayOfWeek.value.length > 0
+      ? { day_of_week: recurrenceDayOfWeek.value }
+      : {}),
+    ...(recurrenceEndsAt.value ? { ends_at: new Date(recurrenceEndsAt.value).toISOString() } : { ends_at: null }),
+  }
+  const result = await tasksStore.updateTask(task.value.id, { recurrence: recurrencePayload })
+  recurrenceSaving.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showRecurrenceModal.value = false
+    toast.success(t('tasks.recurrenceSaved'))
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+async function clearRecurrence() {
+  if (!task.value) return
+  recurrenceSaving.value = true
+  const result = await tasksStore.updateTask(task.value.id, { clear_recurrence: true })
+  recurrenceSaving.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showRecurrenceModal.value = false
+    toast.success(t('tasks.recurrenceCleared'))
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+function recurrenceLabel(rec: Record<string, unknown> | null): string {
+  if (!rec) return t('tasks.noRecurrence')
+  const type = String(rec.type ?? '')
+  const interval = Number(rec.interval ?? 1)
+  const labelMap: Record<string, string> = {
+    daily: t('tasks.recurrenceDaily'),
+    weekly: t('tasks.recurrenceWeekly'),
+    monthly: t('tasks.recurrenceMonthly'),
+    custom: t('tasks.recurrenceCustom'),
+  }
+  const base = labelMap[type] ?? type
+  if (interval > 1) return `${t('tasks.recurrenceEvery')} ${interval} ${base.toLowerCase()}`
+  return base
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: Approval
+// ---------------------------------------------------------------------------
+const showApprovalRequestModal = ref(false)
+const approvalRequestApproverId = ref('')
+const approvalRequestSubmitting = ref(false)
+const showApprovalRejectModal = ref(false)
+const approvalRejectNote = ref('')
+const approvalRejectSubmitting = ref(false)
+const approvalActionLoading = ref(false)
+
+async function submitApprovalRequest() {
+  if (!task.value || !approvalRequestApproverId.value) return
+  approvalRequestSubmitting.value = true
+  const result = await tasksStore.requestApproval(task.value.id, approvalRequestApproverId.value)
+  approvalRequestSubmitting.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showApprovalRequestModal.value = false
+    toast.success(t('tasks.approvalRequested'))
+  } else {
+    toast.error(result.error ?? t('tasks.approvalRequestFailed'))
+  }
+}
+
+async function handleApproveTask() {
+  if (!task.value) return
+  approvalActionLoading.value = true
+  const result = await tasksStore.approveTask(task.value.id)
+  approvalActionLoading.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    toast.success(t('tasks.taskApproved'))
+  } else {
+    toast.error(result.error ?? t('tasks.approveFailed'))
+  }
+}
+
+async function submitReject() {
+  if (!task.value) return
+  approvalRejectSubmitting.value = true
+  const result = await tasksStore.rejectTask(task.value.id, approvalRejectNote.value)
+  approvalRejectSubmitting.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showApprovalRejectModal.value = false
+    approvalRejectNote.value = ''
+    toast.success(t('tasks.taskRejected'))
+  } else {
+    toast.error(result.error ?? t('tasks.rejectFailed'))
+  }
+}
+
+const approvalStatusColor = computed(() => {
+  if (!task.value) return ''
+  const map: Record<string, string> = {
+    none: 'text-gray-400',
+    pending: 'text-yellow-600 dark:text-yellow-400',
+    approved: 'text-green-600 dark:text-green-400',
+    rejected: 'text-red-600 dark:text-red-400',
+  }
+  return map[task.value.approval_status] ?? 'text-gray-400'
+})
+
+const approvalStatusIcon = computed(() => {
+  const map: Record<string, string> = {
+    none: '○',
+    pending: '⏳',
+    approved: '✅',
+    rejected: '❌',
+  }
+  return map[task.value?.approval_status ?? 'none'] ?? '○'
+})
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
@@ -2051,6 +2209,95 @@ onUnmounted(() => {
         <div class="fixed inset-0 z-[-1]" @click="showEstimateEdit = false" />
       </div>
 
+      <!-- ===================== PHASE 7: RECURRENCE ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            🔁 {{ t('tasks.recurrence') }}
+          </h2>
+          <button
+            class="text-xs px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+            @click="openRecurrenceModal"
+          >
+            {{ task!.recurrence ? t('tasks.editRecurrence') : t('tasks.setRecurrence') }}
+          </button>
+        </div>
+
+        <div v-if="task!.recurrence" class="flex items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+            🔁 {{ recurrenceLabel(task!.recurrence) }}
+          </span>
+          <span v-if="task!.recurrence_parent_id" class="text-xs text-gray-400 dark:text-gray-500">
+            {{ t('tasks.recurrenceInstance') }}
+            <RouterLink :to="`/app/tasks/${task!.recurrence_parent_id}`" class="text-blue-500 hover:underline ml-1">
+              {{ t('tasks.viewParent') }}
+            </RouterLink>
+          </span>
+          <span v-if="task!.recurrence?.ends_at" class="text-xs text-gray-400">
+            · {{ t('tasks.recurrenceEndsAt') }}: {{ formatDate(String(task!.recurrence.ends_at)) }}
+          </span>
+        </div>
+        <div v-else class="text-sm text-gray-400 dark:text-gray-500">
+          {{ t('tasks.noRecurrence') }}
+        </div>
+      </div>
+
+      <!-- ===================== PHASE 7: APPROVAL ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            ✅ {{ t('tasks.approval') }}
+          </h2>
+          <!-- Request approval button (only when not yet pending/approved) -->
+          <button
+            v-if="task!.approval_status === 'none' || task!.approval_status === 'rejected'"
+            class="text-xs px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+            @click="showApprovalRequestModal = true; approvalRequestApproverId = ''"
+          >
+            {{ t('tasks.requestApproval') }}
+          </button>
+        </div>
+
+        <!-- Status badge row -->
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <span :class="['text-sm font-semibold', approvalStatusColor]">
+            {{ approvalStatusIcon }} {{ t(`tasks.approvalStatus_${task!.approval_status}`) }}
+          </span>
+          <span v-if="task!.approval_requested_from_name" class="text-sm text-gray-500 dark:text-gray-400">
+            → {{ task!.approval_requested_from_name }}
+          </span>
+        </div>
+
+        <!-- Rejection note -->
+        <div
+          v-if="task!.approval_status === 'rejected' && task!.approval_note"
+          class="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-700 dark:text-red-300"
+        >
+          <span class="font-medium">{{ t('tasks.approvalNote') }}:</span> {{ task!.approval_note }}
+        </div>
+
+        <!-- Approve / Reject buttons (shown when pending) -->
+        <div v-if="task!.approval_status === 'pending'" class="flex gap-3">
+          <button
+            :disabled="approvalActionLoading"
+            class="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+            @click="handleApproveTask"
+          >
+            {{ approvalActionLoading ? '…' : t('tasks.approve') }}
+          </button>
+          <button
+            :disabled="approvalActionLoading"
+            class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+            @click="showApprovalRejectModal = true; approvalRejectNote = ''"
+          >
+            {{ t('tasks.reject') }}
+          </button>
+        </div>
+        <div v-else-if="task!.approval_status === 'none'" class="text-sm text-gray-400 dark:text-gray-500">
+          {{ t('tasks.approvalNotRequired') }}
+        </div>
+      </div>
+
       <!-- ===================== TIMELINE (Unified: popis + komentáře + systémové záznamy) ===================== -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
         <!-- Header with sort toggle -->
@@ -2665,6 +2912,143 @@ onUnmounted(() => {
             <button class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60" :disabled="deleting" @click="confirmDelete">
               {{ deleting ? '…' : t('tasks.deleteTask') }}
             </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Phase 7: Recurrence Modal -->
+    <Teleport to="body">
+      <div v-if="showRecurrenceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showRecurrenceModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🔁 {{ t('tasks.recurrence') }}</h2>
+
+          <!-- Type -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.recurrenceType') }}</label>
+            <select
+              v-model="recurrenceType"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+            >
+              <option value="daily">{{ t('tasks.recurrenceDaily') }}</option>
+              <option value="weekly">{{ t('tasks.recurrenceWeekly') }}</option>
+              <option value="monthly">{{ t('tasks.recurrenceMonthly') }}</option>
+              <option value="custom">{{ t('tasks.recurrenceCustom') }}</option>
+            </select>
+          </div>
+
+          <!-- Interval -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.recurrenceInterval') }}</label>
+            <input
+              v-model.number="recurrenceInterval"
+              type="number"
+              min="1"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+            />
+          </div>
+
+          <!-- Day of week (only for weekly) -->
+          <div v-if="recurrenceType === 'weekly'">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{{ t('tasks.recurrenceDaysOfWeek') }}</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(day, idx) in [t('tasks.dowMon'), t('tasks.dowTue'), t('tasks.dowWed'), t('tasks.dowThu'), t('tasks.dowFri'), t('tasks.dowSat'), t('tasks.dowSun')]"
+                :key="idx"
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors"
+                :class="recurrenceDayOfWeek.includes(idx)
+                  ? 'bg-blue-500 border-blue-500 text-white'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-400'"
+                @click="toggleRecurrenceDow(idx)"
+              >{{ day }}</button>
+            </div>
+          </div>
+
+          <!-- Ends at -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.recurrenceEndsAt') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
+            <input
+              v-model="recurrenceEndsAt"
+              type="date"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+            />
+          </div>
+
+          <div class="flex justify-between pt-2">
+            <button
+              v-if="task!.recurrence"
+              :disabled="recurrenceSaving"
+              class="px-4 py-2 rounded-xl border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+              @click="clearRecurrence"
+            >{{ t('tasks.clearRecurrence') }}</button>
+            <div v-else />
+            <div class="flex gap-2">
+              <button
+                class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                @click="showRecurrenceModal = false"
+              >{{ t('tasks.cancel') }}</button>
+              <button
+                :disabled="recurrenceSaving"
+                class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                @click="saveRecurrence"
+              >{{ recurrenceSaving ? '…' : t('tasks.save') }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Phase 7: Approval Request Modal -->
+    <Teleport to="body">
+      <div v-if="showApprovalRequestModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showApprovalRequestModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">✅ {{ t('tasks.requestApproval') }}</h2>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.approver') }}</label>
+            <select
+              v-model="approvalRequestApproverId"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+            >
+              <option value="">{{ t('tasks.selectApprover') }}</option>
+              <option v-for="m in members" :key="m.user_id" :value="m.user_id">
+                {{ memberLabel(m) }}
+              </option>
+            </select>
+          </div>
+          <div class="flex gap-3 justify-end pt-2">
+            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showApprovalRequestModal = false">{{ t('tasks.cancel') }}</button>
+            <button
+              :disabled="approvalRequestSubmitting || !approvalRequestApproverId"
+              class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              @click="submitApprovalRequest"
+            >{{ approvalRequestSubmitting ? '…' : t('tasks.sendApprovalRequest') }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Phase 7: Approval Reject Modal -->
+    <Teleport to="body">
+      <div v-if="showApprovalRejectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showApprovalRejectModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">❌ {{ t('tasks.rejectApproval') }}</h2>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.rejectionNote') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
+            <textarea
+              v-model="approvalRejectNote"
+              rows="3"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              :placeholder="t('tasks.rejectionNotePlaceholder')"
+            />
+          </div>
+          <div class="flex gap-3 justify-end pt-2">
+            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showApprovalRejectModal = false">{{ t('tasks.cancel') }}</button>
+            <button
+              :disabled="approvalRejectSubmitting"
+              class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              @click="submitReject"
+            >{{ approvalRejectSubmitting ? '…' : t('tasks.confirmReject') }}</button>
           </div>
         </div>
       </div>

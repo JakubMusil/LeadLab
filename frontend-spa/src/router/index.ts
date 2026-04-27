@@ -81,6 +81,11 @@ const router = createRouter({
           meta: { title: 'Task Detail' },
         },
         {
+          path: 'task-templates',
+          component: () => import('@/views/TaskTemplatesView.vue'),
+          meta: { title: 'Task Templates' },
+        },
+        {
           path: 'calendar',
           component: () => import('@/views/CalendarView.vue'),
           meta: { title: 'Calendar' },

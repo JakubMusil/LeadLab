@@ -140,6 +140,11 @@ CELERY_BEAT_SCHEDULE = {
         # Once per day at 10:00 UTC
         'schedule': crontab(hour=10, minute=0),
     },
+    # Phase 7 — Spawn recurring task instances once per day at midnight UTC
+    'spawn-recurring-tasks': {
+        'task': 'crm.tasks.spawn_recurring_tasks',
+        'schedule': crontab(hour=0, minute=5),
+    },
 }
 
 # Stripe

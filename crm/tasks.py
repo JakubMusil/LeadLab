@@ -1023,3 +1023,175 @@ def check_lead_inactivity_automations(self):
                     continue
 
                 _execute_rule(rule, context)
+
+
+# ===========================================================================
+# Phase 7 — Spawn Recurring Task Instances
+# ===========================================================================
+
+def _next_due_date_for_recurrence(recurrence: dict, from_dt: "datetime.datetime") -> "Optional[datetime.datetime]":
+    """
+    Compute the next due date based on a recurrence config dict.
+
+    Supported types:
+      - ``daily``   — repeat every ``interval`` days
+      - ``weekly``  — repeat every ``interval`` weeks; ``day_of_week`` may be
+                      a list of weekday numbers (0=Monday … 6=Sunday).
+      - ``monthly`` — repeat every ``interval`` months on the same day
+      - ``custom``  — alias for ``daily`` with arbitrary interval
+
+    Returns ``None`` when ``ends_at`` is set and has already passed.
+    """
+    import datetime as _dt
+    from django.utils import timezone as _tz
+
+    rec_type = recurrence.get("type", "daily")
+    interval = max(1, int(recurrence.get("interval", 1)))
+    ends_at_str = recurrence.get("ends_at")
+
+    ends_at = None
+    if ends_at_str:
+        try:
+            from django.utils.dateparse import parse_datetime as _pd
+            ends_at = _pd(ends_at_str)
+            if ends_at is None:
+                ends_at = _dt.datetime.fromisoformat(ends_at_str)
+            if _tz.is_naive(ends_at):
+                ends_at = _tz.make_aware(ends_at)
+        except (ValueError, TypeError):
+            ends_at = None
+
+    if rec_type == "daily" or rec_type == "custom":
+        next_dt = from_dt + _dt.timedelta(days=interval)
+    elif rec_type == "weekly":
+        day_of_week = recurrence.get("day_of_week")
+        if day_of_week and isinstance(day_of_week, list) and len(day_of_week) > 0:
+            # Find the next matching weekday within the week(s) defined by interval.
+            # Skip forward at most 7 days to find the nearest matching day.
+            normalized_days = [int(d) % 7 for d in day_of_week]
+            candidate = from_dt + _dt.timedelta(days=1)
+            for _ in range(7):  # at most 7 days to find next matching weekday
+                if candidate.weekday() in normalized_days:
+                    break
+                candidate += _dt.timedelta(days=1)
+            # Advance by (interval - 1) additional full weeks for multi-week intervals
+            next_dt = candidate + _dt.timedelta(weeks=max(0, interval - 1))
+        else:
+            next_dt = from_dt + _dt.timedelta(weeks=interval)
+    elif rec_type == "monthly":
+        import calendar as _cal
+        month = from_dt.month + interval
+        year = from_dt.year + (month - 1) // 12
+        month = (month - 1) % 12 + 1
+        max_day = _cal.monthrange(year, month)[1]
+        day = min(from_dt.day, max_day)
+        next_dt = from_dt.replace(year=year, month=month, day=day)
+    else:
+        next_dt = from_dt + _dt.timedelta(days=interval)
+
+    if ends_at and next_dt > ends_at:
+        return None
+    return next_dt
+
+
+@shared_task
+def spawn_recurring_tasks():
+    """
+    Celery periodic task — run once daily (e.g. at midnight UTC).
+
+    Finds all root recurring tasks that were completed since the last run
+    and spawns a new instance for the next recurrence date.
+
+    A "root" recurring task is one where ``recurrence`` is not null and
+    ``recurrence_parent`` is null (i.e. it is the original template task).
+    We spawn from the *most-recent completed instance* (which could be the
+    root itself or the last spawned copy).
+    """
+    import datetime as _dt
+    from django.utils import timezone as _tz
+    from crm.models import Task, TaskChecklistItem
+
+    logger.info("spawn_recurring_tasks: starting")
+    now = _tz.now()
+
+    # Find all recurring root tasks that have been completed and have no
+    # outstanding (incomplete) instance already spawned.
+    root_tasks = Task.objects.filter(
+        recurrence__isnull=False,
+        recurrence_parent__isnull=True,  # only root tasks
+        is_completed=True,
+    ).select_related("firm", "lead", "proposal", "customer", "assigned_to", "created_by")
+
+    spawned = 0
+    for root in root_tasks:
+        # Check whether there is already a pending (uncompleted) child instance
+        pending_child = Task.objects.filter(
+            recurrence_parent=root,
+            is_completed=False,
+            is_archived=False,
+        ).exists()
+        if pending_child:
+            continue
+
+        # Find the most-recently-completed instance (root or last child)
+        last_instance = (
+            Task.objects.filter(
+                recurrence_parent=root,
+                is_completed=True,
+            )
+            .order_by("-completed_at")
+            .first()
+        )
+        source = last_instance if last_instance else root
+
+        # Use the scheduled due_date as anchor to prevent drift caused by
+        # late completions.  Fall back to completed_at only when due_date
+        # is absent, and finally to now() as a last resort.
+        from_dt = source.due_date or source.completed_at or now
+
+        # Compute next due date
+        next_due = _next_due_date_for_recurrence(root.recurrence, from_dt)
+        if next_due is None:
+            logger.debug("spawn_recurring_tasks: recurrence ended for task %s", root.id)
+            continue
+
+        # Create new instance
+        try:
+            new_task = Task.objects.create(
+                firm=root.firm,
+                lead=root.lead,
+                proposal=root.proposal,
+                customer=root.customer,
+                title=root.title,
+                description=root.description,
+                description_html=root.description_html,
+                description_added_at=root.description_added_at,
+                priority=root.priority,
+                assigned_to=root.assigned_to,
+                created_by=root.created_by,
+                tags=list(root.tags) if isinstance(root.tags, list) else [],
+                estimated_minutes=root.estimated_minutes,
+                due_date=next_due,
+                recurrence=root.recurrence,
+                recurrence_parent=root,
+                approval_required=root.approval_required,
+            )
+            # Copy checklist items from root
+            for item in TaskChecklistItem.objects.filter(task=root).order_by("position"):
+                TaskChecklistItem.objects.create(
+                    task=new_task,
+                    text=item.text,
+                    is_checked=False,
+                    position=item.position,
+                    created_by=root.created_by,
+                )
+            spawned += 1
+            logger.info(
+                "spawn_recurring_tasks: spawned task '%s' (id=%s) for root=%s, due=%s",
+                new_task.title, new_task.id, root.id, next_due,
+            )
+        except Exception as exc:
+            logger.exception("spawn_recurring_tasks: failed to spawn for root=%s: %s", root.id, exc)
+
+    logger.info("spawn_recurring_tasks: done — spawned %d tasks", spawned)
+    return spawned

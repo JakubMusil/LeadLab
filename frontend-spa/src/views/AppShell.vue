@@ -24,6 +24,7 @@ import {
   UserGroupIcon,
   Cog6ToothIcon,
   ShieldCheckIcon,
+  DocumentDuplicateIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -120,6 +121,7 @@ const navSections = computed(() => [
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/leads' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/customers' },
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
+      { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
     ],
   },
