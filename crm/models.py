@@ -465,6 +465,13 @@ class Task(TenantModel):
         help_text="End of date range when 'Rozsah termínů' toggle is on.",
     )
 
+    # Time tracking
+    estimated_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Estimated time budget in minutes (Phase 6).",
+    )
+
     # State flags
     is_completed = models.BooleanField(default=False, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -1694,3 +1701,99 @@ class TaskPublicShare(models.Model):
 
     def __str__(self):
         return f"Public share for task {self.task_id}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — Time Tracking
+# ---------------------------------------------------------------------------
+
+class TaskTimeLog(models.Model):
+    """
+    A manual or timer-stopped time-log entry for a Task.
+
+    ``duration_minutes`` is the work duration in minutes.
+    ``description``      is an optional note about what was worked on.
+    ``logged_at``        is the date/time the work was performed (defaults
+                         to creation time; the user may back-date it).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="time_logs",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="task_time_logs",
+    )
+    logged_at = models.DateTimeField(
+        help_text="When the work was performed (may be back-dated by the user).",
+        db_index=True,
+    )
+    duration_minutes = models.PositiveIntegerField(
+        help_text="Worked time in minutes.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional note about what was worked on.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task time log"
+        verbose_name_plural = "task time logs"
+        ordering = ["-logged_at", "-created_at"]
+        indexes = [
+            models.Index(fields=["task", "-logged_at"]),
+            models.Index(fields=["user", "-logged_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.duration_minutes}min on Task#{self.task_id} by {self.user_id}"
+
+
+class TaskTimer(models.Model):
+    """
+    An active or completed stopwatch session for a Task.
+
+    There can be at most **one** running timer per user across all tasks:
+    ``stopped_at=None`` means the timer is currently running.
+    When a timer is stopped a ``TaskTimeLog`` record is automatically created.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="timers",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="task_timers",
+    )
+    started_at = models.DateTimeField(db_index=True)
+    stopped_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Null while the timer is still running.",
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task timer"
+        verbose_name_plural = "task timers"
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["user", "stopped_at"]),
+            models.Index(fields=["task", "user", "stopped_at"]),
+        ]
+
+    def __str__(self):
+        state = "running" if self.stopped_at is None else "stopped"
+        return f"Timer({state}) on Task#{self.task_id} by {self.user_id}"

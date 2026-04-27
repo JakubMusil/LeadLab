@@ -49,6 +49,10 @@ export interface TaskOut {
   // Phase 3: checklist counters
   checklist_count: number
   checklist_checked: number
+  // Phase 6: time tracking
+  estimated_minutes: number | null
+  total_logged_minutes: number
+  my_active_timer_started_at: string | null
 }
 
 export interface TaskIn {
@@ -84,6 +88,8 @@ export interface TaskUpdateIn {
   is_pinned?: boolean
   is_archived?: boolean
   project_ids?: string[]
+  estimated_minutes?: number | null
+  clear_estimated_minutes?: boolean
 }
 
 export interface FollowUpTaskIn {
@@ -234,6 +240,36 @@ export interface TaskTimelinePostIn {
   set_due_date?: string | null
 }
 
+// ---------------------------------------------------------------------------
+// Phase 6: Time tracking types
+// ---------------------------------------------------------------------------
+
+export interface TaskTimeLogOut {
+  id: string
+  task_id: string
+  user_id: string | null
+  user_name: string | null
+  logged_at: string
+  duration_minutes: number
+  description: string
+  created_at: string
+}
+
+export interface TaskTimeLogIn {
+  duration_minutes: number
+  description?: string
+  logged_at?: string | null
+}
+
+export interface TaskTimerOut {
+  id: string
+  task_id: string
+  user_id: string
+  started_at: string
+  stopped_at: string | null
+  is_running: boolean
+}
+
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<TaskOut[]>([])
   const loading = ref(false)
@@ -339,7 +375,7 @@ export const useTasksStore = defineStore('tasks', () => {
     const res = await api.post<{ task_id: string; is_favourite: boolean }>(`/api/v1/crm/tasks/${id}/favourite`)
     if (res.ok) {
       const idx = tasks.value.findIndex((t) => t.id === id)
-      if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], is_favourite: res.data.is_favourite }
+      if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], is_favourite: res.data.is_favourite } as TaskOut
       return { ok: true, is_favourite: res.data.is_favourite }
     }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to toggle favourite.') }
@@ -598,6 +634,46 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to perform batch action.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 6: Time tracking
+  // ---------------------------------------------------------------------------
+
+  async function fetchTimeLogs(taskId: string): Promise<{ ok: boolean; data?: TaskTimeLogOut[]; error?: string }> {
+    const res = await api.get<TaskTimeLogOut[]>(`/api/v1/crm/tasks/${taskId}/time-logs`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load time logs.') }
+  }
+
+  async function createTimeLog(taskId: string, payload: TaskTimeLogIn): Promise<{ ok: boolean; data?: TaskTimeLogOut; error?: string }> {
+    const res = await api.post<TaskTimeLogOut>(`/api/v1/crm/tasks/${taskId}/time-logs`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create time log.') }
+  }
+
+  async function deleteTimeLog(taskId: string, logId: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/time-logs/${logId}`)
+    if (res.ok) return { ok: true }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete time log.') }
+  }
+
+  async function startTimer(taskId: string): Promise<{ ok: boolean; data?: TaskTimerOut; error?: string }> {
+    const res = await api.post<TaskTimerOut>(`/api/v1/crm/tasks/${taskId}/timer/start`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to start timer.') }
+  }
+
+  async function stopTimer(taskId: string): Promise<{ ok: boolean; data?: TaskTimerOut; error?: string }> {
+    const res = await api.post<TaskTimerOut>(`/api/v1/crm/tasks/${taskId}/timer/stop`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to stop timer.') }
+  }
+
+  async function getActiveTimer(taskId: string): Promise<{ ok: boolean; data?: TaskTimerOut | null; error?: string }> {
+    const res = await api.get<TaskTimerOut | null>(`/api/v1/crm/tasks/${taskId}/timer/active`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to get active timer.') }
+  }
+
   return {
     tasks,
     loading,
@@ -640,5 +716,12 @@ export const useTasksStore = defineStore('tasks', () => {
     moveTask,
     getPublicLink,
     batchAction,
+    // Phase 6: time tracking
+    fetchTimeLogs,
+    createTimeLog,
+    deleteTimeLog,
+    startTimer,
+    stopTimer,
+    getActiveTimer,
   }
 })
