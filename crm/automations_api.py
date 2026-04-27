@@ -147,8 +147,51 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         "actions": [
             {
                 "type": "create_task",
-                "title": "Follow up on sent proposal for {{lead_title}}",
-                "days_from_now": 3,
+                "title_template": "Follow up on sent proposal for {{lead_title}}",
+                "due_days_offset": 3,
+                "priority": "medium",
+                "assign_to_user_id": "inherit",
+            }
+        ],
+    },
+    {
+        "id": "create_onboarding_task_proposal_accepted",
+        "name": "Create onboarding task when proposal accepted",
+        "description": (
+            "Automatically creates a high-priority onboarding task "
+            "when a proposal is accepted by the customer."
+        ),
+        "trigger": AutomationTrigger.PROPOSAL_ACCEPTED,
+        "trigger_config": {},
+        "conditions": [],
+        "actions": [
+            {
+                "type": "create_task",
+                "title_template": "Onboarding: {{customer_name}}",
+                "due_days_offset": 7,
+                "priority": "high",
+                "assign_to_user_id": "inherit",
+                "tags": ["onboarding"],
+            }
+        ],
+    },
+    {
+        "id": "create_review_task_on_task_completed",
+        "name": "Create review task when task completed",
+        "description": (
+            "Creates a review follow-up task 3 days after any task is completed, "
+            "so nothing falls through the cracks."
+        ),
+        "trigger": AutomationTrigger.TASK_COMPLETED,
+        "trigger_config": {},
+        "conditions": [],
+        "actions": [
+            {
+                "type": "create_task",
+                "title_template": "Review: {{task_title}}",
+                "due_days_offset": 3,
+                "priority": "low",
+                "assign_to_user_id": "inherit",
             }
         ],
     },
