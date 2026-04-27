@@ -14,6 +14,7 @@ export interface TaskOut {
   customer_id: string | null
   customer_name: string | null
   parent_task_id: string | null
+  parent_task_title: string | null
   project_ids: string[]
   // Authorship
   assigned_to_id: string | null
@@ -42,6 +43,12 @@ export interface TaskOut {
   created_at: string
   created_by_id: string | null
   created_by_name: string | null
+  // Phase 3: subtask counters
+  subtask_count: number
+  subtasks_completed: number
+  // Phase 3: checklist counters
+  checklist_count: number
+  checklist_checked: number
 }
 
 export interface TaskIn {
@@ -124,6 +131,59 @@ export interface TaskFetchOpts {
   tag?: string
   page?: number
   page_size?: number
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 types
+// ---------------------------------------------------------------------------
+
+export interface SubtaskIn {
+  title: string
+  description?: string
+  description_html?: string
+  assigned_to_id?: string | null
+  watcher_ids?: string[]
+  due_date?: string | null
+  priority?: string
+  status?: string
+  tags?: string[]
+}
+
+export interface ChecklistItemOut {
+  id: string
+  task_id: string
+  text: string
+  is_checked: boolean
+  position: number
+  created_by_id: string | null
+  created_at: string
+}
+
+export interface ChecklistItemIn {
+  text: string
+  position?: number
+}
+
+export interface ChecklistItemUpdateIn {
+  text?: string
+  is_checked?: boolean
+  position?: number
+}
+
+export interface TaskDependencyOut {
+  id: string
+  from_task_id: string
+  from_task_title: string
+  to_task_id: string
+  to_task_title: string
+  type: 'blocks' | 'related_to'
+  created_by_id: string | null
+  created_at: string
+}
+
+export interface TaskDependencyIn {
+  to_task_id: string
+  type?: 'blocks' | 'related_to'
 }
 
 export const useTasksStore = defineStore('tasks', () => {
@@ -289,6 +349,72 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete attachment.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 3: Subtasks
+  // ---------------------------------------------------------------------------
+
+  async function fetchSubtasks(taskId: string): Promise<{ ok: boolean; data?: TaskOut[]; error?: string }> {
+    const res = await api.get<TaskOut[]>(`/api/v1/crm/tasks/${taskId}/subtasks`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load subtasks.') }
+  }
+
+  async function createSubtask(taskId: string, payload: SubtaskIn): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${taskId}/subtasks`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create subtask.') }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 3: Checklist
+  // ---------------------------------------------------------------------------
+
+  async function fetchChecklist(taskId: string): Promise<{ ok: boolean; data?: ChecklistItemOut[]; error?: string }> {
+    const res = await api.get<ChecklistItemOut[]>(`/api/v1/crm/tasks/${taskId}/checklist`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load checklist.') }
+  }
+
+  async function createChecklistItem(taskId: string, payload: ChecklistItemIn): Promise<{ ok: boolean; data?: ChecklistItemOut; error?: string }> {
+    const res = await api.post<ChecklistItemOut>(`/api/v1/crm/tasks/${taskId}/checklist`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create checklist item.') }
+  }
+
+  async function updateChecklistItem(taskId: string, itemId: string, payload: ChecklistItemUpdateIn): Promise<{ ok: boolean; data?: ChecklistItemOut; error?: string }> {
+    const res = await api.patch<ChecklistItemOut>(`/api/v1/crm/tasks/${taskId}/checklist/${itemId}`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update checklist item.') }
+  }
+
+  async function deleteChecklistItem(taskId: string, itemId: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/checklist/${itemId}`)
+    if (res.ok) return { ok: true }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete checklist item.') }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 3: Dependencies
+  // ---------------------------------------------------------------------------
+
+  async function fetchDependencies(taskId: string): Promise<{ ok: boolean; data?: TaskDependencyOut[]; error?: string }> {
+    const res = await api.get<TaskDependencyOut[]>(`/api/v1/crm/tasks/${taskId}/dependencies`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load dependencies.') }
+  }
+
+  async function createDependency(taskId: string, payload: TaskDependencyIn): Promise<{ ok: boolean; data?: TaskDependencyOut; error?: string }> {
+    const res = await api.post<TaskDependencyOut>(`/api/v1/crm/tasks/${taskId}/dependencies`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create dependency.') }
+  }
+
+  async function deleteDependency(taskId: string, dependencyId: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/dependencies/${dependencyId}`)
+    if (res.ok) return { ok: true }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete dependency.') }
+  }
+
   return {
     tasks,
     loading,
@@ -307,5 +433,15 @@ export const useTasksStore = defineStore('tasks', () => {
     fetchTaskAttachments,
     uploadTaskAttachment,
     deleteTaskAttachment,
+    // Phase 3
+    fetchSubtasks,
+    createSubtask,
+    fetchChecklist,
+    createChecklistItem,
+    updateChecklistItem,
+    deleteChecklistItem,
+    fetchDependencies,
+    createDependency,
+    deleteDependency,
   }
 })

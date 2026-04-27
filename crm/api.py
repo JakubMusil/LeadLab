@@ -38,7 +38,10 @@ from crm.models import (
     SavedView,
     Task,
     TaskAttachment,
+    TaskChecklistItem,
     TaskComment,
+    TaskDependency,
+    TaskDependencyType,
     TaskFavourite,
     TaskPriority,
     TaskStatus,
@@ -688,6 +691,7 @@ class TaskOut(Schema):
     customer_id: Optional[str]
     customer_name: Optional[str]
     parent_task_id: Optional[str]
+    parent_task_title: Optional[str]
     project_ids: List[str]
     # Authorship
     assigned_to_id: Optional[str]
@@ -716,6 +720,12 @@ class TaskOut(Schema):
     created_at: datetime
     created_by_id: Optional[str]
     created_by_name: Optional[str]
+    # Phase 3: subtask counters
+    subtask_count: int
+    subtasks_completed: int
+    # Phase 3: checklist counters
+    checklist_count: int
+    checklist_checked: int
 
 
 class TaskIn(Schema):
@@ -864,6 +874,14 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve created_by name for task %s: %s", t.id, exc)
 
+    # Resolve parent task title
+    parent_task_title: Optional[str] = None
+    if t.parent_task_id:
+        try:
+            parent_task_title = t.parent_task.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve parent_task title for task %s: %s", t.id, exc)
+
     # Resolve is_favourite for the requesting user
     is_favourite = False
     if requesting_user and requesting_user.is_authenticated:
@@ -871,6 +889,24 @@ def _task_out(t: Task, requesting_user=None) -> dict:
             is_favourite = TaskFavourite.objects.filter(task=t, user=requesting_user).exists()
         except Exception:
             pass
+
+    # Phase 3: subtask counters
+    try:
+        subtask_qs = Task.objects.filter(parent_task=t)
+        subtask_count = subtask_qs.count()
+        subtasks_completed = subtask_qs.filter(is_completed=True).count()
+    except Exception:
+        subtask_count = 0
+        subtasks_completed = 0
+
+    # Phase 3: checklist counters
+    try:
+        checklist_qs = TaskChecklistItem.objects.filter(task=t)
+        checklist_count = checklist_qs.count()
+        checklist_checked = checklist_qs.filter(is_checked=True).count()
+    except Exception:
+        checklist_count = 0
+        checklist_checked = 0
 
     return {
         "id": str(t.id),
@@ -882,6 +918,7 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "customer_id": customer_id,
         "customer_name": customer_name,
         "parent_task_id": str(t.parent_task_id) if t.parent_task_id else None,
+        "parent_task_title": parent_task_title,
         "project_ids": project_ids,
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "assigned_to_name": assigned_to_name,
@@ -905,6 +942,10 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "created_at": t.created_at,
         "created_by_id": str(t.created_by_id) if t.created_by_id else None,
         "created_by_name": created_by_name,
+        "subtask_count": subtask_count,
+        "subtasks_completed": subtasks_completed,
+        "checklist_count": checklist_count,
+        "checklist_checked": checklist_checked,
     }
 
 
@@ -1610,6 +1651,438 @@ def toggle_task_favourite(request, task_id: str):
         fav.delete()
         return 200, {"task_id": str(task.id), "is_favourite": False}
     return 200, {"task_id": str(task.id), "is_favourite": True}
+
+
+# ===========================================================================
+# PHASE 3 — SUBTASKS
+# ===========================================================================
+
+def _get_task_depth(task: Task, max_depth: int = 3) -> int:
+    """Return the depth of *task* in the hierarchy (root = 1). Stops at max_depth+1."""
+    depth = 1
+    current = task
+    for _ in range(max_depth):
+        if current.parent_task_id is None:
+            break
+        try:
+            current = Task.objects.only("id", "parent_task_id").get(pk=current.parent_task_id)
+        except Task.DoesNotExist:
+            break
+        depth += 1
+    return depth
+
+
+class SubtaskIn(Schema):
+    title: str
+    description: str = ""
+    description_html: str = ""
+    assigned_to_id: Optional[str] = None
+    watcher_ids: List[str] = []
+    due_date: Optional[datetime] = None
+    priority: str = TaskPriority.MEDIUM
+    status: str = TaskStatus.TODO
+    tags: List[str] = []
+
+
+@router.get(
+    "/tasks/{task_id}/subtasks",
+    auth=django_auth,
+    response={200: List[TaskOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_subtasks(request, task_id: str):
+    """Return all direct subtasks of the specified task."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    subtasks = Task.objects.filter(parent_task=task).select_related(
+        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
+    )
+    return 200, [_task_out(s, request.user) for s in subtasks]
+
+
+@router.post(
+    "/tasks/{task_id}/subtasks",
+    auth=django_auth,
+    response={201: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_subtask(request, task_id: str, payload: SubtaskIn):
+    """Create a direct subtask under *task_id*. Maximum depth is 3."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        parent = Task.objects.select_related("parent_task", "parent_task__parent_task").get(
+            id=task_id, firm=request.firm
+        )
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    # Enforce maximum depth of 3
+    parent_depth = _get_task_depth(parent)
+    if parent_depth >= 3:
+        return 400, {"detail": "Maximum subtask depth of 3 reached."}
+
+    # Validate priority and status
+    valid_priorities = [p.value for p in TaskPriority]
+    if payload.priority not in valid_priorities:
+        return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
+    valid_statuses = [s.value for s in TaskStatus]
+    if payload.status not in valid_statuses:
+        return 400, {"detail": f"Invalid status. Choose from: {valid_statuses}"}
+
+    assigned_to = None
+    if payload.assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
+
+    description_added_at = None
+    if payload.description_html:
+        description_added_at = tz.now()
+
+    with transaction.atomic():
+        subtask = Task.objects.create(
+            firm=request.firm,
+            parent_task=parent,
+            # Inherit entity links from parent
+            lead=parent.lead,
+            proposal=parent.proposal,
+            customer=parent.customer,
+            assigned_to=assigned_to,
+            created_by=request.user,
+            title=payload.title,
+            description=payload.description,
+            description_html=payload.description_html,
+            description_added_at=description_added_at,
+            due_date=payload.due_date,
+            priority=payload.priority,
+            status=payload.status,
+            tags=payload.tags,
+        )
+        watcher_err = _set_task_watchers(subtask, payload.watcher_ids, request.firm)
+        if watcher_err:
+            return watcher_err
+
+    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(subtask, request.user))
+    return 201, _task_out(subtask, request.user)
+
+
+# ===========================================================================
+# PHASE 3 — CHECKLIST
+# ===========================================================================
+
+class ChecklistItemOut(Schema):
+    id: str
+    task_id: str
+    text: str
+    is_checked: bool
+    position: int
+    created_by_id: Optional[str]
+    created_at: datetime
+
+
+class ChecklistItemIn(Schema):
+    text: str
+    position: int = 0
+
+
+class ChecklistItemUpdateIn(Schema):
+    text: Optional[str] = None
+    is_checked: Optional[bool] = None
+    position: Optional[int] = None
+
+
+def _checklist_item_out(item: TaskChecklistItem) -> dict:
+    return {
+        "id": str(item.id),
+        "task_id": str(item.task_id),
+        "text": item.text,
+        "is_checked": item.is_checked,
+        "position": item.position,
+        "created_by_id": str(item.created_by_id) if item.created_by_id else None,
+        "created_at": item.created_at,
+    }
+
+
+@router.get(
+    "/tasks/{task_id}/checklist",
+    auth=django_auth,
+    response={200: List[ChecklistItemOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_checklist_items(request, task_id: str):
+    """Return all checklist items for a task, ordered by position."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    items = TaskChecklistItem.objects.filter(task=task).order_by("position", "created_at")
+    return 200, [_checklist_item_out(i) for i in items]
+
+
+@router.post(
+    "/tasks/{task_id}/checklist",
+    auth=django_auth,
+    response={201: ChecklistItemOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_checklist_item(request, task_id: str, payload: ChecklistItemIn):
+    """Add a new checklist item to a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if not payload.text.strip():
+        return 400, {"detail": "Checklist item text cannot be empty."}
+
+    item = TaskChecklistItem.objects.create(
+        task=task,
+        text=payload.text.strip(),
+        position=payload.position,
+        created_by=request.user,
+    )
+    return 201, _checklist_item_out(item)
+
+
+@router.patch(
+    "/tasks/{task_id}/checklist/{item_id}",
+    auth=django_auth,
+    response={200: ChecklistItemOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_checklist_item(request, task_id: str, item_id: str, payload: ChecklistItemUpdateIn):
+    """Update a checklist item (text, is_checked, position)."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        item = TaskChecklistItem.objects.get(id=item_id, task_id=task_id)
+    except TaskChecklistItem.DoesNotExist:
+        return 404, {"detail": "Checklist item not found."}
+
+    update_fields = []
+    if payload.text is not None:
+        if not payload.text.strip():
+            return 400, {"detail": "Checklist item text cannot be empty."}
+        item.text = payload.text.strip()
+        update_fields.append("text")
+    if payload.is_checked is not None:
+        item.is_checked = payload.is_checked
+        update_fields.append("is_checked")
+    if payload.position is not None:
+        item.position = payload.position
+        update_fields.append("position")
+
+    if update_fields:
+        item.save(update_fields=update_fields)
+    return 200, _checklist_item_out(item)
+
+
+@router.delete(
+    "/tasks/{task_id}/checklist/{item_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_checklist_item(request, task_id: str, item_id: str):
+    """Delete a checklist item."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        item = TaskChecklistItem.objects.get(id=item_id, task_id=task_id)
+    except TaskChecklistItem.DoesNotExist:
+        return 404, {"detail": "Checklist item not found."}
+
+    item.delete()
+    return 204, None
+
+
+# ===========================================================================
+# PHASE 3 — DEPENDENCIES
+# ===========================================================================
+
+class TaskDependencyOut(Schema):
+    id: str
+    from_task_id: str
+    from_task_title: str
+    to_task_id: str
+    to_task_title: str
+    type: str
+    created_by_id: Optional[str]
+    created_at: datetime
+
+
+class TaskDependencyIn(Schema):
+    to_task_id: str
+    type: str = TaskDependencyType.BLOCKS
+
+
+def _dependency_out(dep: TaskDependency) -> dict:
+    return {
+        "id": str(dep.id),
+        "from_task_id": str(dep.from_task_id),
+        "from_task_title": dep.from_task.title if dep.from_task_id else "",
+        "to_task_id": str(dep.to_task_id),
+        "to_task_title": dep.to_task.title if dep.to_task_id else "",
+        "type": dep.type,
+        "created_by_id": str(dep.created_by_id) if dep.created_by_id else None,
+        "created_at": dep.created_at,
+    }
+
+
+def _has_blocking_cycle(from_task: Task, to_task: Task, max_depth: int = 50) -> bool:
+    """
+    Return True if adding a 'blocks' edge from_task → to_task would create a cycle.
+    A cycle exists if to_task can already reach from_task through existing 'blocks' edges.
+    """
+    visited = set()
+    queue = [to_task.pk]
+    for _ in range(max_depth):
+        if not queue:
+            break
+        current_id = queue.pop(0)
+        if current_id == from_task.pk:
+            return True
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+        # Tasks that current_id blocks
+        blocked_ids = TaskDependency.objects.filter(
+            from_task_id=current_id, type=TaskDependencyType.BLOCKS
+        ).values_list("to_task_id", flat=True)
+        queue.extend(blocked_ids)
+    return False
+
+
+@router.get(
+    "/tasks/{task_id}/dependencies",
+    auth=django_auth,
+    response={200: List[TaskDependencyOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_task_dependencies(request, task_id: str):
+    """Return all dependencies where this task is either source or target."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    deps = TaskDependency.objects.filter(
+        Q(from_task=task) | Q(to_task=task)
+    ).select_related("from_task", "to_task")
+    return 200, [_dependency_out(d) for d in deps]
+
+
+@router.post(
+    "/tasks/{task_id}/dependencies",
+    auth=django_auth,
+    response={201: TaskDependencyOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_task_dependency(request, task_id: str, payload: TaskDependencyIn):
+    """Add a dependency from this task to another task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        from_task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    # Validate dependency type
+    valid_types = [t.value for t in TaskDependencyType]
+    if payload.type not in valid_types:
+        return 400, {"detail": f"Invalid dependency type. Choose from: {valid_types}"}
+
+    # Validate target task exists in the same firm
+    try:
+        to_task = Task.objects.get(id=payload.to_task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 400, {"detail": "Target task not found in this Firm."}
+
+    if from_task.pk == to_task.pk:
+        return 400, {"detail": "A task cannot depend on itself."}
+
+    # Check for cycles on 'blocks' type
+    if payload.type == TaskDependencyType.BLOCKS and _has_blocking_cycle(from_task, to_task):
+        return 400, {"detail": "Adding this dependency would create a circular blocking cycle."}
+
+    dep, created = TaskDependency.objects.get_or_create(
+        from_task=from_task,
+        to_task=to_task,
+        type=payload.type,
+        defaults={"created_by": request.user},
+    )
+    if not created:
+        return 400, {"detail": "This dependency already exists."}
+
+    dep_with_related = TaskDependency.objects.select_related("from_task", "to_task").get(pk=dep.pk)
+    return 201, _dependency_out(dep_with_related)
+
+
+@router.delete(
+    "/tasks/{task_id}/dependencies/{dependency_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task_dependency(request, task_id: str, dependency_id: str):
+    """Remove a dependency."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        dep = TaskDependency.objects.get(
+            Q(id=dependency_id) & (Q(from_task_id=task_id) | Q(to_task_id=task_id))
+        )
+    except TaskDependency.DoesNotExist:
+        return 404, {"detail": "Dependency not found."}
+
+    dep.delete()
+    return 204, None
 
 
 # ===========================================================================
