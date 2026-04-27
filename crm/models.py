@@ -631,6 +631,97 @@ class TaskAttachment(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Task Checklist Item
+# ---------------------------------------------------------------------------
+
+class TaskChecklistItem(models.Model):
+    """A single checkbox item inside a Task's built-in checklist."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="checklist_items")
+    text = models.CharField(max_length=500)
+    is_checked = models.BooleanField(default=False, db_index=True)
+    position = models.PositiveSmallIntegerField(default=0, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_checklist_items",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task checklist item"
+        verbose_name_plural = "task checklist items"
+        ordering = ["position", "created_at"]
+        indexes = [
+            models.Index(fields=["task", "position"]),
+        ]
+
+    def __str__(self):
+        checked = "☑" if self.is_checked else "☐"
+        return f"{checked} {self.text}"
+
+
+# ---------------------------------------------------------------------------
+# Task Dependency
+# ---------------------------------------------------------------------------
+
+class TaskDependencyType(models.TextChoices):
+    BLOCKS = "blocks", "Blocks"
+    RELATED_TO = "related_to", "Related To"
+
+
+class TaskDependency(models.Model):
+    """
+    A directed dependency between two tasks.
+
+    ``type=blocks``    — from_task blocks to_task (to_task cannot start until from_task is done)
+    ``type=related_to`` — loose relation without blocking semantics
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    from_task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="outgoing_dependencies",
+        help_text="The task that is the source of the dependency.",
+    )
+    to_task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="incoming_dependencies",
+        help_text="The task that is the target of the dependency.",
+    )
+    type = models.CharField(
+        max_length=20,
+        choices=TaskDependencyType.choices,
+        default=TaskDependencyType.BLOCKS,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_task_dependencies",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task dependency"
+        verbose_name_plural = "task dependencies"
+        unique_together = [("from_task", "to_task", "type")]
+        indexes = [
+            models.Index(fields=["from_task", "type"]),
+            models.Index(fields=["to_task", "type"]),
+        ]
+
+    def __str__(self):
+        return f"Task {self.from_task_id} {self.type} Task {self.to_task_id}"
+
+
+# ---------------------------------------------------------------------------
 # Notification
 # ---------------------------------------------------------------------------
 

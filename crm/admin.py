@@ -17,6 +17,8 @@ from crm.models import (
     PushSubscription,
     SavedView,
     Task,
+    TaskChecklistItem,
+    TaskDependency,
 )
 
 
@@ -185,3 +187,19 @@ class ProposalTemplateAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     readonly_fields = ("created_at", "updated_at")
     inlines = [ProposalTemplateItemInline]
+
+
+@admin.register(TaskChecklistItem)
+class TaskChecklistItemAdmin(admin.ModelAdmin):
+    list_display = ("text", "task", "is_checked", "position", "created_by", "created_at")
+    list_filter = ("is_checked",)
+    search_fields = ("text", "task__title")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(TaskDependency)
+class TaskDependencyAdmin(admin.ModelAdmin):
+    list_display = ("from_task", "type", "to_task", "created_by", "created_at")
+    list_filter = ("type",)
+    search_fields = ("from_task__title", "to_task__title")
+    readonly_fields = ("created_at",)

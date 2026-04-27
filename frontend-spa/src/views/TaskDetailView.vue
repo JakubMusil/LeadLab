@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut } from '@/stores/tasks'
+import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -438,10 +438,203 @@ function formatFileSize(bytes: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3: Subtasks
+// ---------------------------------------------------------------------------
+const subtasks = ref<TaskOut[]>([])
+const subtasksLoading = ref(false)
+const showAddSubtaskDropdown = ref(false)
+const showNewSubtaskForm = ref(false)
+const newSubtaskTitle = ref('')
+const newSubtaskAssigneeId = ref('')
+const newSubtaskPriority = ref('medium')
+const subtaskSubmitting = ref(false)
+
+async function loadSubtasks() {
+  if (!taskId.value) return
+  subtasksLoading.value = true
+  const result = await tasksStore.fetchSubtasks(taskId.value)
+  subtasksLoading.value = false
+  if (result.ok && result.data) subtasks.value = result.data
+}
+
+async function submitNewSubtask() {
+  if (!newSubtaskTitle.value.trim()) return
+  subtaskSubmitting.value = true
+  const result = await tasksStore.createSubtask(taskId.value, {
+    title: newSubtaskTitle.value.trim(),
+    assigned_to_id: newSubtaskAssigneeId.value || null,
+    priority: newSubtaskPriority.value,
+  })
+  subtaskSubmitting.value = false
+  if (result.ok && result.data) {
+    subtasks.value.push(result.data)
+    newSubtaskTitle.value = ''
+    newSubtaskAssigneeId.value = ''
+    newSubtaskPriority.value = 'medium'
+    showNewSubtaskForm.value = false
+    showAddSubtaskDropdown.value = false
+    toast.success(t('tasks.subtaskCreated'))
+    // Reload task to refresh counters
+    await loadTask()
+  } else {
+    toast.error(result.error ?? t('tasks.subtaskCreateFailed'))
+  }
+}
+
+async function completeSubtask(subtask: TaskOut) {
+  if (subtask.is_completed) return
+  const result = await tasksStore.completeTask(subtask.id)
+  if (result.ok) {
+    await loadSubtasks()
+    await loadTask()
+  } else {
+    toast.error(result.error ?? t('tasks.completeFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Checklist
+// ---------------------------------------------------------------------------
+const checklistItems = ref<ChecklistItemOut[]>([])
+const checklistLoading = ref(false)
+const newChecklistText = ref('')
+const checklistSubmitting = ref(false)
+
+async function loadChecklist() {
+  if (!taskId.value) return
+  checklistLoading.value = true
+  const result = await tasksStore.fetchChecklist(taskId.value)
+  checklistLoading.value = false
+  if (result.ok && result.data) checklistItems.value = result.data
+}
+
+async function addChecklistItem() {
+  if (!newChecklistText.value.trim()) return
+  checklistSubmitting.value = true
+  const result = await tasksStore.createChecklistItem(taskId.value, {
+    text: newChecklistText.value.trim(),
+    position: checklistItems.value.length,
+  })
+  checklistSubmitting.value = false
+  if (result.ok && result.data) {
+    checklistItems.value.push(result.data)
+    newChecklistText.value = ''
+    toast.success(t('tasks.checklistItemCreated'))
+    await loadTask()
+  } else {
+    toast.error(result.error ?? t('tasks.checklistItemCreateFailed'))
+  }
+}
+
+async function toggleChecklistItem(item: ChecklistItemOut) {
+  const result = await tasksStore.updateChecklistItem(taskId.value, item.id, {
+    is_checked: !item.is_checked,
+  })
+  if (result.ok && result.data) {
+    const idx = checklistItems.value.findIndex((i) => i.id === item.id)
+    if (idx !== -1) checklistItems.value[idx] = result.data
+    await loadTask()
+  } else {
+    toast.error(result.error ?? t('tasks.checklistItemUpdateFailed'))
+  }
+}
+
+async function deleteChecklistItem(itemId: string) {
+  const result = await tasksStore.deleteChecklistItem(taskId.value, itemId)
+  if (result.ok) {
+    checklistItems.value = checklistItems.value.filter((i) => i.id !== itemId)
+    await loadTask()
+  } else {
+    toast.error(result.error ?? t('tasks.checklistItemDeleteFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Dependencies
+// ---------------------------------------------------------------------------
+const dependencies = ref<TaskDependencyOut[]>([])
+const dependenciesLoading = ref(false)
+const showAddDepForm = ref(false)
+const depSearchQuery = ref('')
+const depSearchResults = ref<TaskOut[]>([])
+const depSearchLoading = ref(false)
+const selectedDepTaskId = ref('')
+const selectedDepType = ref<'blocks' | 'related_to'>('blocks')
+const depSubmitting = ref(false)
+
+async function loadDependencies() {
+  if (!taskId.value) return
+  dependenciesLoading.value = true
+  const result = await tasksStore.fetchDependencies(taskId.value)
+  dependenciesLoading.value = false
+  if (result.ok && result.data) dependencies.value = result.data
+}
+
+const blocksOthers = computed(() =>
+  dependencies.value.filter((d) => d.type === 'blocks' && d.from_task_id === taskId.value)
+)
+const blockedBy = computed(() =>
+  dependencies.value.filter((d) => d.type === 'blocks' && d.to_task_id === taskId.value)
+)
+const relatedTo = computed(() =>
+  dependencies.value.filter((d) => d.type === 'related_to')
+)
+
+let depSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchTasksForDep() {
+  if (!depSearchQuery.value.trim() || depSearchQuery.value.length < 2) {
+    depSearchResults.value = []
+    return
+  }
+  if (depSearchTimer) clearTimeout(depSearchTimer)
+  depSearchTimer = setTimeout(async () => {
+    depSearchLoading.value = true
+    const res = await api.get<TaskOut[]>(`/api/v1/crm/tasks?page_size=20`)
+    depSearchLoading.value = false
+    if (res.ok && res.data) {
+      const q = depSearchQuery.value.toLowerCase()
+      depSearchResults.value = (res.data as TaskOut[]).filter(
+        (t) => t.id !== taskId.value && t.title.toLowerCase().includes(q)
+      )
+    }
+  }, 300)
+}
+
+async function submitDependency() {
+  if (!selectedDepTaskId.value) return
+  depSubmitting.value = true
+  const result = await tasksStore.createDependency(taskId.value, {
+    to_task_id: selectedDepTaskId.value,
+    type: selectedDepType.value,
+  })
+  depSubmitting.value = false
+  if (result.ok) {
+    await loadDependencies()
+    showAddDepForm.value = false
+    selectedDepTaskId.value = ''
+    depSearchQuery.value = ''
+    depSearchResults.value = []
+    toast.success(t('tasks.dependencyCreated'))
+  } else {
+    toast.error(result.error ?? t('tasks.dependencyCreateFailed'))
+  }
+}
+
+async function removeDependency(depId: string) {
+  const result = await tasksStore.deleteDependency(taskId.value, depId)
+  if (result.ok) {
+    dependencies.value = dependencies.value.filter((d) => d.id !== depId)
+  } else {
+    toast.error(result.error ?? t('tasks.dependencyDeleteFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadTask(), loadComments(), loadAttachments()])
+  await Promise.all([loadMembers(), loadTask(), loadComments(), loadAttachments(), loadSubtasks(), loadChecklist(), loadDependencies()])
 })
 </script>
 
@@ -491,6 +684,16 @@ onMounted(async () => {
           </template>
           <template v-else>
             <span>{{ t('tasks.standalone') }}</span>
+            <span>›</span>
+          </template>
+          <!-- Parent task breadcrumb -->
+          <template v-if="task.parent_task_id">
+            <RouterLink
+              :to="`/app/tasks/${task.parent_task_id}`"
+              class="hover:text-blue-500 truncate max-w-[200px]"
+            >
+              {{ task.parent_task_title || task.parent_task_id }}
+            </RouterLink>
             <span>›</span>
           </template>
           <span class="text-gray-600 dark:text-gray-300 truncate max-w-[200px]">{{ task.title }}</span>
@@ -658,6 +861,390 @@ onMounted(async () => {
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.watchers') }}</span>
                 <span>🔔 {{ task.watcher_ids.length }}</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== ADD SUBTASK BUTTON ===================== -->
+      <div class="mb-4 relative">
+        <div class="flex items-center gap-2">
+          <button
+            class="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+            @click="showAddSubtaskDropdown = !showAddSubtaskDropdown"
+          >
+            {{ t('tasks.addSubtask') }}
+          </button>
+        </div>
+        <!-- Dropdown -->
+        <div
+          v-if="showAddSubtaskDropdown"
+          class="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg z-20 min-w-[180px]"
+        >
+          <button
+            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-xl"
+            @click="showNewSubtaskForm = true; showAddSubtaskDropdown = false"
+          >
+            {{ t('tasks.addEmptySubtask') }}
+          </button>
+        </div>
+        <!-- Click outside to close -->
+        <div
+          v-if="showAddSubtaskDropdown"
+          class="fixed inset-0 z-10"
+          @click="showAddSubtaskDropdown = false"
+        />
+      </div>
+
+      <!-- ===================== SUBTASKS ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          📋 {{ t('tasks.subtasks') }}
+          <span v-if="task.subtask_count > 0" class="text-sm font-normal text-gray-400 ml-1">
+            ({{ task.subtasks_completed }}/{{ task.subtask_count }})
+          </span>
+        </h2>
+
+        <!-- Progress bar -->
+        <div v-if="task.subtask_count > 0" class="mb-4">
+          <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>{{ t('tasks.subtasksProgress').replace('{done}', String(task.subtasks_completed)).replace('{total}', String(task.subtask_count)) }}</span>
+            <span>{{ Math.round((task.subtasks_completed / task.subtask_count) * 100) }}%</span>
+          </div>
+          <div class="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-green-500 rounded-full transition-all"
+              :style="{ width: `${Math.round((task.subtasks_completed / task.subtask_count) * 100)}%` }"
+            />
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="subtasksLoading" class="space-y-2 animate-pulse">
+          <div v-for="i in 2" :key="i" class="h-9 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        </div>
+
+        <!-- Subtask list -->
+        <div v-else-if="subtasks.length === 0 && !showNewSubtaskForm" class="text-sm text-gray-400 dark:text-gray-500">
+          {{ t('tasks.noSubtasks') }}
+        </div>
+
+        <ul v-else class="space-y-2 mb-3">
+          <li
+            v-for="sub in subtasks"
+            :key="sub.id"
+            class="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
+          >
+            <!-- Completion toggle -->
+            <button
+              class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
+              :class="sub.is_completed
+                ? 'bg-green-500 border-green-500 text-white cursor-default'
+                : 'border-gray-300 hover:border-green-400'"
+              :disabled="sub.is_completed"
+              @click="!sub.is_completed && completeSubtask(sub)"
+            >
+              <span v-if="sub.is_completed" class="text-xs">✓</span>
+            </button>
+
+            <!-- Title + link -->
+            <RouterLink
+              :to="`/app/tasks/${sub.id}`"
+              class="flex-1 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 truncate"
+              :class="sub.is_completed ? 'line-through text-gray-400' : ''"
+            >
+              {{ sub.title }}
+            </RouterLink>
+
+            <!-- Assignee + priority badge -->
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <span
+                v-if="sub.priority && sub.priority !== 'none'"
+                class="text-xs px-1.5 py-0.5 rounded-full"
+                :class="PRIORITY_COLORS[sub.priority] ?? ''"
+              >⚠</span>
+              <span v-if="sub.assigned_to_name" class="text-xs text-gray-400 truncate max-w-[80px]">
+                {{ sub.assigned_to_name }}
+              </span>
+            </div>
+          </li>
+        </ul>
+
+        <!-- New subtask inline form -->
+        <div v-if="showNewSubtaskForm" class="border border-green-200 dark:border-green-800 rounded-xl p-3 space-y-2 mt-2">
+          <input
+            v-model="newSubtaskTitle"
+            type="text"
+            :placeholder="t('tasks.taskTitle')"
+            class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-green-400"
+            @keydown.enter="submitNewSubtask"
+            @keydown.escape="showNewSubtaskForm = false"
+          />
+          <div class="flex gap-2 items-center">
+            <select
+              v-model="newSubtaskAssigneeId"
+              class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-green-400"
+            >
+              <option value="">{{ t('tasks.noAssignee') }}</option>
+              <option v-for="m in members" :key="m.user_id" :value="m.user_id">{{ memberLabel(m) }}</option>
+            </select>
+            <select
+              v-model="newSubtaskPriority"
+              class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-green-400"
+            >
+              <option value="none">{{ t('tasks.priorityNone') }}</option>
+              <option value="low">{{ t('tasks.priorityLow') }}</option>
+              <option value="medium">{{ t('tasks.priorityMedium') }}</option>
+              <option value="high">{{ t('tasks.priorityHigh') }}</option>
+              <option value="critical">{{ t('tasks.priorityCritical') }}</option>
+            </select>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50"
+              @click="showNewSubtaskForm = false; newSubtaskTitle = ''"
+            >{{ t('tasks.cancel') }}</button>
+            <button
+              :disabled="subtaskSubmitting || !newSubtaskTitle.trim()"
+              class="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 disabled:opacity-50"
+              @click="submitNewSubtask"
+            >{{ subtaskSubmitting ? '…' : t('tasks.create') }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== CHECKLIST ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          ☑️ {{ t('tasks.checklist') }}
+          <span v-if="task.checklist_count > 0" class="text-sm font-normal text-gray-400 ml-1">
+            ({{ task.checklist_checked }}/{{ task.checklist_count }})
+          </span>
+        </h2>
+
+        <!-- Progress bar -->
+        <div v-if="task.checklist_count > 0" class="mb-4">
+          <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>{{ t('tasks.checklistProgress').replace('{done}', String(task.checklist_checked)).replace('{total}', String(task.checklist_count)) }}</span>
+            <span>{{ Math.round((task.checklist_checked / task.checklist_count) * 100) }}%</span>
+          </div>
+          <div class="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-blue-500 rounded-full transition-all"
+              :style="{ width: `${Math.round((task.checklist_checked / task.checklist_count) * 100)}%` }"
+            />
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="checklistLoading" class="space-y-2 animate-pulse">
+          <div v-for="i in 2" :key="i" class="h-8 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        </div>
+
+        <!-- Checklist items -->
+        <div v-else>
+          <div v-if="checklistItems.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-3">
+            {{ t('tasks.noChecklist') }}
+          </div>
+          <ul v-else class="space-y-1.5 mb-3">
+            <li
+              v-for="item in checklistItems"
+              :key="item.id"
+              class="flex items-center gap-2.5 group"
+            >
+              <button
+                class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
+                :class="item.is_checked
+                  ? 'bg-blue-500 border-blue-500 text-white'
+                  : 'border-gray-300 hover:border-blue-400'"
+                @click="toggleChecklistItem(item)"
+              >
+                <span v-if="item.is_checked" class="text-xs">✓</span>
+              </button>
+              <span
+                class="flex-1 text-sm text-gray-700 dark:text-gray-200"
+                :class="item.is_checked ? 'line-through text-gray-400' : ''"
+              >{{ item.text }}</span>
+              <button
+                class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                @click="deleteChecklistItem(item.id)"
+              >🗑</button>
+            </li>
+          </ul>
+
+          <!-- Add new item input -->
+          <div class="flex items-center gap-2">
+            <input
+              v-model="newChecklistText"
+              type="text"
+              :placeholder="t('tasks.checklistPlaceholder')"
+              class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+              @keydown.enter="addChecklistItem"
+            />
+            <button
+              :disabled="checklistSubmitting || !newChecklistText.trim()"
+              class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+              @click="addChecklistItem"
+            >{{ checklistSubmitting ? '…' : '+' }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== ZÁVISLOSTI ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+            🔗 {{ t('tasks.dependencies') }}
+          </h2>
+          <button
+            class="text-xs text-blue-500 hover:text-blue-600 font-medium"
+            @click="showAddDepForm = !showAddDepForm"
+          >{{ t('tasks.addDependency') }}</button>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="dependenciesLoading" class="space-y-2 animate-pulse">
+          <div v-for="i in 2" :key="i" class="h-8 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        </div>
+
+        <div v-else>
+          <!-- No deps -->
+          <div
+            v-if="dependencies.length === 0 && !showAddDepForm"
+            class="text-sm text-gray-400 dark:text-gray-500"
+          >
+            {{ t('tasks.noDependencies') }}
+          </div>
+
+          <!-- Blocks others -->
+          <div v-if="blocksOthers.length" class="mb-3">
+            <p class="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wide mb-1.5">
+              🚫 {{ t('tasks.dependencyBlocks') }}
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="dep in blocksOthers"
+                :key="dep.id"
+                class="flex items-center gap-2 group"
+              >
+                <RouterLink
+                  :to="`/app/tasks/${dep.to_task_id}`"
+                  class="flex-1 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 truncate"
+                >
+                  {{ dep.to_task_title }}
+                </RouterLink>
+                <button
+                  class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="removeDependency(dep.id)"
+                >✕</button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Blocked by -->
+          <div v-if="blockedBy.length" class="mb-3">
+            <p class="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-1.5">
+              ⛔ {{ t('tasks.dependencyBlockedBy') }}
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="dep in blockedBy"
+                :key="dep.id"
+                class="flex items-center gap-2 group"
+              >
+                <RouterLink
+                  :to="`/app/tasks/${dep.from_task_id}`"
+                  class="flex-1 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 truncate"
+                >
+                  {{ dep.from_task_title }}
+                </RouterLink>
+                <button
+                  class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="removeDependency(dep.id)"
+                >✕</button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Related to -->
+          <div v-if="relatedTo.length" class="mb-3">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              ↔ {{ t('tasks.dependencyRelatedTo') }}
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="dep in relatedTo"
+                :key="dep.id"
+                class="flex items-center gap-2 group"
+              >
+                <RouterLink
+                  :to="`/app/tasks/${dep.from_task_id === taskId ? dep.to_task_id : dep.from_task_id}`"
+                  class="flex-1 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 truncate"
+                >
+                  {{ dep.from_task_id === taskId ? dep.to_task_title : dep.from_task_title }}
+                </RouterLink>
+                <button
+                  class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="removeDependency(dep.id)"
+                >✕</button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Add dependency form -->
+          <div v-if="showAddDepForm" class="mt-3 border border-blue-200 dark:border-blue-800 rounded-xl p-3 space-y-2">
+            <!-- Type selector -->
+            <div class="flex gap-2">
+              <button
+                class="flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                :class="selectedDepType === 'blocks'
+                  ? 'bg-orange-100 border-orange-400 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                @click="selectedDepType = 'blocks'"
+              >🚫 {{ t('tasks.dependencyTypeBlocks') }}</button>
+              <button
+                class="flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                :class="selectedDepType === 'related_to'
+                  ? 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                @click="selectedDepType = 'related_to'"
+              >↔ {{ t('tasks.dependencyTypeRelatedTo') }}</button>
+            </div>
+
+            <!-- Task search -->
+            <div class="relative">
+              <input
+                v-model="depSearchQuery"
+                type="text"
+                :placeholder="t('tasks.selectTask')"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-blue-400"
+                @input="searchTasksForDep"
+              />
+              <div
+                v-if="depSearchResults.length"
+                class="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg z-20 w-full max-h-48 overflow-y-auto"
+              >
+                <button
+                  v-for="searchTask in depSearchResults"
+                  :key="searchTask.id"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  @click="selectedDepTaskId = searchTask.id; depSearchQuery = searchTask.title; depSearchResults = []"
+                >
+                  {{ searchTask.title }}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <button
+                class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50"
+                @click="showAddDepForm = false; depSearchQuery = ''; selectedDepTaskId = ''"
+              >{{ t('tasks.cancel') }}</button>
+              <button
+                :disabled="depSubmitting || !selectedDepTaskId"
+                class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                @click="submitDependency"
+              >{{ depSubmitting ? '…' : t('tasks.create') }}</button>
             </div>
           </div>
         </div>
