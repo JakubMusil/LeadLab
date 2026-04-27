@@ -300,21 +300,99 @@ class LeadAttachment(TenantModel):
 
 
 # ---------------------------------------------------------------------------
+# Project
+# ---------------------------------------------------------------------------
+
+class Project(TenantModel):
+    """
+    A lightweight project container. Tasks can be assigned to multiple projects.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "project"
+        verbose_name_plural = "projects"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+# ---------------------------------------------------------------------------
+# Task choices
+# ---------------------------------------------------------------------------
+
+class TaskPriority(models.TextChoices):
+    NONE = "none", "None"
+    LOW = "low", "Low"
+    MEDIUM = "medium", "Medium"
+    HIGH = "high", "High"
+    CRITICAL = "critical", "Critical"
+
+
+class TaskStatus(models.TextChoices):
+    TODO = "todo", "To Do"
+    IN_PROGRESS = "in_progress", "In Progress"
+    BLOCKED = "blocked", "Blocked"
+    DONE = "done", "Done"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+# ---------------------------------------------------------------------------
 # Task
 # ---------------------------------------------------------------------------
 
 class Task(TenantModel):
     """
-    A to-do item scoped to a Lead. Completion is tracked explicitly so that
-    we can log a TASK_COMPLETED Activity automatically.
+    A to-do item that can optionally be linked to a Lead, Proposal, Customer,
+    or exist independently. Completion is tracked explicitly so that we can
+    log a TASK_COMPLETED Activity automatically.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Entity links — all optional; a task may exist standalone
     lead = models.ForeignKey(
         Lead,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    proposal = models.ForeignKey(
+        "Proposal",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+    )
+    parent_task = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="subtasks",
+        help_text="Parent task for subtask hierarchy (prepared for Phase 3).",
+    )
+    projects = models.ManyToManyField(
+        Project,
+        blank=True,
+        related_name="tasks",
+        help_text="Projects this task belongs to (multi-project support).",
+    )
+
+    # Authorship
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -323,6 +401,8 @@ class Task(TenantModel):
         related_name="created_tasks",
         help_text="User who originally created this task.",
     )
+
+    # Assignment
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -330,17 +410,67 @@ class Task(TenantModel):
         on_delete=models.SET_NULL,
         related_name="tasks",
     )
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="completed_tasks",
+        help_text="User who marked this task as done.",
+    )
     watchers = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         blank=True,
         related_name="watched_tasks",
         help_text="Users who receive notifications about changes to this task.",
     )
+
+    # Content
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, help_text="Optional task description or notes.")
+    description = models.TextField(blank=True, help_text="Plain-text description (legacy).")
+    description_html = models.TextField(
+        blank=True,
+        help_text="Rich-text HTML description from TipTap editor.",
+    )
+    description_added_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the rich-text description was last set.",
+    )
+
+    # Classification
+    priority = models.CharField(
+        max_length=20,
+        choices=TaskPriority.choices,
+        default=TaskPriority.MEDIUM,
+        db_index=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=TaskStatus.choices,
+        default=TaskStatus.TODO,
+        db_index=True,
+    )
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of tag strings.",
+    )
+
+    # Dates
     due_date = models.DateTimeField(null=True, blank=True)
+    due_date_end = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="End of date range when 'Rozsah termínů' toggle is on.",
+    )
+
+    # State flags
     is_completed = models.BooleanField(default=False, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    is_pinned = models.BooleanField(default=False, db_index=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(
         default=dict,
@@ -354,12 +484,66 @@ class Task(TenantModel):
         ordering = ["due_date", "created_at"]
         indexes = [
             models.Index(fields=["firm", "is_completed"]),
-            models.Index(fields=["lead", "is_completed"]),
+            models.Index(fields=["firm", "status"]),
+            models.Index(fields=["firm", "priority"]),
+            models.Index(fields=["firm", "is_archived"]),
         ]
 
     def __str__(self):
         done = "✓" if self.is_completed else "○"
         return f"{done} {self.title}"
+
+
+# ---------------------------------------------------------------------------
+# Task Favourite (per-user ⭐)
+# ---------------------------------------------------------------------------
+
+class TaskFavourite(models.Model):
+    """Tracks which tasks a user has starred as favourite."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="favourites")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="task_favourites",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task favourite"
+        verbose_name_plural = "task favourites"
+        unique_together = [("task", "user")]
+
+    def __str__(self):
+        return f"Favourite: {self.task_id} by {self.user_id}"
+
+
+# ---------------------------------------------------------------------------
+# Task Reminder (personal reminder per user)
+# ---------------------------------------------------------------------------
+
+class TaskReminder(models.Model):
+    """Personal reminder for a task — triggers a notification at remind_at."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="reminders")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="task_reminders",
+    )
+    remind_at = models.DateTimeField(db_index=True)
+    is_sent = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task reminder"
+        verbose_name_plural = "task reminders"
+        ordering = ["remind_at"]
+
+    def __str__(self):
+        return f"Reminder for task {self.task_id} at {self.remind_at}"
 
 
 # ---------------------------------------------------------------------------

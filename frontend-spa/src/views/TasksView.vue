@@ -67,6 +67,12 @@ type ViewMode = 'mine' | 'all' | 'user'
 const viewMode = ref<ViewMode>('mine')
 const selectedUserId = ref<string>('')
 const showCompleted = ref(false)
+const filterStatus = ref<string>('')
+const filterPriority = ref<string>('')
+const filterTag = ref<string>('')
+const showFavourites = ref(false)
+const showArchived = ref(false)
+const showPinned = ref(false)
 
 async function loadTasks() {
   let assignedToId: string | undefined
@@ -78,10 +84,16 @@ async function loadTasks() {
   await tasksStore.fetchTasksForView({
     assignedToId,
     completed: showCompleted.value ? undefined : false,
+    status: filterStatus.value || undefined,
+    priority: filterPriority.value || undefined,
+    tag: filterTag.value || undefined,
+    isFavourite: showFavourites.value ? true : undefined,
+    isArchived: showArchived.value ? true : undefined,
+    isPinned: showPinned.value ? true : undefined,
   })
 }
 
-watch([viewMode, selectedUserId, showCompleted], () => loadTasks())
+watch([viewMode, selectedUserId, showCompleted, filterStatus, filterPriority, filterTag, showFavourites, showArchived, showPinned], () => loadTasks())
 
 // ---------------------------------------------------------------------------
 // Task list helpers
@@ -107,6 +119,9 @@ const newTaskDescription = ref('')
 const newTaskDueDate = ref('')
 const newTaskAssigneeId = ref('')
 const newTaskWatcherIds = ref<string[]>([])
+const newTaskPriority = ref('medium')
+const newTaskStatus = ref('todo')
+const newTaskTags = ref('')
 const newTaskSubmitting = ref(false)
 const newTaskError = ref('')
 
@@ -117,22 +132,31 @@ function openNewTask() {
   newTaskDueDate.value = ''
   newTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
   newTaskWatcherIds.value = []
+  newTaskPriority.value = 'medium'
+  newTaskStatus.value = 'todo'
+  newTaskTags.value = ''
   newTaskError.value = ''
   showNewTask.value = true
 }
 
 async function submitNewTask() {
-  if (!newTaskLeadId.value) { newTaskError.value = 'Please select a lead.'; return }
-  if (!newTaskTitle.value.trim()) { newTaskError.value = 'Title is required.'; return }
+  if (!newTaskTitle.value.trim()) { newTaskError.value = t('tasks.titleRequired'); return }
   newTaskSubmitting.value = true
   newTaskError.value = ''
+  const tagsArray = newTaskTags.value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   const result = await tasksStore.createTask({
-    lead_id: newTaskLeadId.value,
+    lead_id: newTaskLeadId.value || null,
     title: newTaskTitle.value.trim(),
     description: newTaskDescription.value,
     assigned_to_id: newTaskAssigneeId.value || null,
     watcher_ids: newTaskWatcherIds.value,
     due_date: newTaskDueDate.value ? new Date(newTaskDueDate.value).toISOString() : null,
+    priority: newTaskPriority.value,
+    status: newTaskStatus.value,
+    tags: tagsArray,
   })
   newTaskSubmitting.value = false
   if (result.ok) {
@@ -154,6 +178,9 @@ const editDescription = ref('')
 const editDueDate = ref('')
 const editAssigneeId = ref('')
 const editWatcherIds = ref<string[]>([])
+const editPriority = ref('medium')
+const editStatus = ref('todo')
+const editTags = ref('')
 const editSubmitting = ref(false)
 const editError = ref('')
 
@@ -164,21 +191,31 @@ function openEditTask(task: TaskOut) {
   editDueDate.value = task.due_date ? task.due_date.split('T')[0] : ''
   editAssigneeId.value = task.assigned_to_id ?? ''
   editWatcherIds.value = [...task.watcher_ids]
+  editPriority.value = task.priority
+  editStatus.value = task.status
+  editTags.value = (task.tags ?? []).join(', ')
   editError.value = ''
   showEditTask.value = true
 }
 
 async function submitEditTask() {
-  if (!editTitle.value.trim()) { editError.value = 'Title is required.'; return }
+  if (!editTitle.value.trim()) { editError.value = t('tasks.titleRequired'); return }
   if (!editingTask.value) return
   editSubmitting.value = true
   editError.value = ''
+  const tagsArray = editTags.value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   const result = await tasksStore.updateTask(editingTask.value.id, {
     title: editTitle.value.trim(),
     description: editDescription.value,
     assigned_to_id: editAssigneeId.value || null,
     watcher_ids: editWatcherIds.value,
     due_date: editDueDate.value ? new Date(editDueDate.value).toISOString() : null,
+    priority: editPriority.value,
+    status: editStatus.value,
+    tags: tagsArray,
   })
   editSubmitting.value = false
   if (result.ok) {
@@ -317,11 +354,59 @@ onMounted(async () => {
         </option>
       </select>
 
-      <!-- Show completed toggle -->
-      <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer ml-auto">
-        <input type="checkbox" v-model="showCompleted" class="rounded" />
-        {{ t('tasks.showCompleted') }}
-      </label>
+      <!-- Status filter -->
+      <select
+        v-model="filterStatus"
+        class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+      >
+        <option value="">{{ t('tasks.allStatuses') }}</option>
+        <option value="todo">{{ t('tasks.statusTodo') }}</option>
+        <option value="in_progress">{{ t('tasks.statusInProgress') }}</option>
+        <option value="blocked">{{ t('tasks.statusBlocked') }}</option>
+        <option value="done">{{ t('tasks.statusDone') }}</option>
+        <option value="cancelled">{{ t('tasks.statusCancelled') }}</option>
+      </select>
+
+      <!-- Priority filter -->
+      <select
+        v-model="filterPriority"
+        class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+      >
+        <option value="">{{ t('tasks.allPriorities') }}</option>
+        <option value="critical">{{ t('tasks.priorityCritical') }}</option>
+        <option value="high">{{ t('tasks.priorityHigh') }}</option>
+        <option value="medium">{{ t('tasks.priorityMedium') }}</option>
+        <option value="low">{{ t('tasks.priorityLow') }}</option>
+        <option value="none">{{ t('tasks.priorityNone') }}</option>
+      </select>
+
+      <!-- Tag filter -->
+      <input
+        v-model="filterTag"
+        type="text"
+        :placeholder="t('tasks.filterByTag')"
+        class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 w-32"
+      />
+
+      <!-- Flags row -->
+      <div class="flex items-center gap-3 ml-auto flex-wrap">
+        <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input type="checkbox" v-model="showFavourites" class="rounded" />
+          ⭐ {{ t('tasks.favourites') }}
+        </label>
+        <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input type="checkbox" v-model="showPinned" class="rounded" />
+          📌 {{ t('tasks.pinned') }}
+        </label>
+        <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input type="checkbox" v-model="showArchived" class="rounded" />
+          🗄 {{ t('tasks.archived') }}
+        </label>
+        <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input type="checkbox" v-model="showCompleted" class="rounded" />
+          {{ t('tasks.showCompleted') }}
+        </label>
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -349,8 +434,8 @@ onMounted(async () => {
         <button
           class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
           :class="task.is_completed
-            ? 'bg-green-500 border-green-500 text-white cursor-default'
-            : 'border-gray-300 hover:border-green-400'"
+            ? 'bg-blue-500 border-blue-500 text-white cursor-default'
+            : 'border-gray-300 hover:border-blue-400'"
           :disabled="task.is_completed"
           :title="task.is_completed ? '' : t('tasks.complete')"
           @click="!task.is_completed && startComplete(task)"
@@ -360,39 +445,71 @@ onMounted(async () => {
 
         <!-- Task info -->
         <div class="flex-1 min-w-0">
-          <RouterLink
-            :to="`/app/tasks/${task.id}`"
-            class="text-sm font-medium hover:underline"
-            :class="task.is_completed ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100'"
-          >
-            {{ task.title }}
-          </RouterLink>
-          <p v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-            {{ task.description }}
-          </p>
-          <div class="flex flex-wrap gap-3 mt-1 text-xs">
+          <div class="flex items-center gap-2">
+            <span v-if="task.is_favourite" class="text-yellow-400 text-sm">⭐</span>
+            <span v-if="task.is_pinned" class="text-yellow-500 text-sm">📌</span>
+            <RouterLink
+              :to="`/app/tasks/${task.id}`"
+              class="text-sm font-medium hover:underline"
+              :class="task.is_completed ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100'"
+            >
+              {{ task.title }}
+            </RouterLink>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-1">
+            <!-- Status badge -->
+            <span
+              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium"
+              :class="{
+                'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300': task.status === 'todo',
+                'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300': task.status === 'in_progress',
+                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300': task.status === 'blocked',
+                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': task.status === 'done',
+                'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400': task.status === 'cancelled',
+              }"
+            >
+              {{ { todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'), blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled') }[task.status] ?? task.status }}
+            </span>
+            <!-- Priority -->
+            <span
+              v-if="task.priority && task.priority !== 'none'"
+              class="text-xs font-medium"
+              :class="{
+                'text-blue-500': task.priority === 'low',
+                'text-yellow-500': task.priority === 'medium',
+                'text-orange-500': task.priority === 'high',
+                'text-red-600': task.priority === 'critical',
+              }"
+            >
+              ⚠ {{ { low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'), high: t('tasks.priorityHigh'), critical: t('tasks.priorityCritical') }[task.priority] ?? task.priority }}
+            </span>
             <!-- Lead link -->
             <RouterLink
+              v-if="task.lead_id"
               :to="`/app/leads/${task.lead_id}`"
-              class="text-blue-500 hover:underline truncate max-w-[200px]"
+              class="text-xs text-blue-500 hover:underline truncate max-w-[160px]"
             >
               {{ task.lead_title || task.lead_id }}
             </RouterLink>
+            <!-- Tags -->
+            <span
+              v-for="tag in (task.tags ?? []).slice(0, 3)"
+              :key="tag"
+              class="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+            >🏷 {{ tag }}</span>
             <!-- Assignee -->
-            <span v-if="task.assigned_to_name" class="text-gray-500 dark:text-gray-400">
+            <span v-if="task.assigned_to_name" class="text-xs text-gray-500 dark:text-gray-400">
               👤 {{ task.assigned_to_name }}
             </span>
             <!-- Due date -->
             <span
               v-if="task.due_date"
+              class="text-xs"
               :class="isOverdue(task) ? 'text-red-500 font-semibold' : 'text-gray-400'"
             >
               📅 {{ formatDate(task.due_date) }}
+              <template v-if="task.due_date_end"> – {{ formatDate(task.due_date_end) }}</template>
               <span v-if="isOverdue(task)" class="ml-1">({{ t('tasks.overdue') }})</span>
-            </span>
-            <!-- Watchers -->
-            <span v-if="task.watcher_ids.length" class="text-gray-400 dark:text-gray-500">
-              🔔 {{ task.watcher_ids.length }}
             </span>
           </div>
         </div>
@@ -427,16 +544,16 @@ onMounted(async () => {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         @click.self="showNewTask = false"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 overflow-y-auto max-h-[90vh]">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.newTask') }}</h2>
 
           <div v-if="newTaskError" class="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-xl px-3 py-2">
             {{ newTaskError }}
           </div>
 
-          <!-- Lead -->
+          <!-- Lead (optional) -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }}</label>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
             <select
               v-model="newTaskLeadId"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
@@ -464,6 +581,45 @@ onMounted(async () => {
               v-model="newTaskDescription"
               rows="2"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
+            />
+          </div>
+
+          <!-- Priority + Status row -->
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.priority') }}</label>
+              <select
+                v-model="newTaskPriority"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="none">{{ t('tasks.priorityNone') }}</option>
+                <option value="low">{{ t('tasks.priorityLow') }}</option>
+                <option value="medium">{{ t('tasks.priorityMedium') }}</option>
+                <option value="high">{{ t('tasks.priorityHigh') }}</option>
+                <option value="critical">{{ t('tasks.priorityCritical') }}</option>
+              </select>
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.status') }}</label>
+              <select
+                v-model="newTaskStatus"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="todo">{{ t('tasks.statusTodo') }}</option>
+                <option value="in_progress">{{ t('tasks.statusInProgress') }}</option>
+                <option value="blocked">{{ t('tasks.statusBlocked') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.tags') }} <span class="text-gray-400">({{ t('tasks.tagsHint') }})</span></label>
+            <input
+              v-model="newTaskTags"
+              type="text"
+              :placeholder="t('tasks.tagsPlaceholder')"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
             />
           </div>
 
@@ -543,7 +699,7 @@ onMounted(async () => {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         @click.self="showEditTask = false"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 overflow-y-auto max-h-[90vh]">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.editTask') }}</h2>
 
           <div v-if="editError" class="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-xl px-3 py-2">
@@ -567,6 +723,47 @@ onMounted(async () => {
               v-model="editDescription"
               rows="2"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
+            />
+          </div>
+
+          <!-- Priority + Status row -->
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.priority') }}</label>
+              <select
+                v-model="editPriority"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="none">{{ t('tasks.priorityNone') }}</option>
+                <option value="low">{{ t('tasks.priorityLow') }}</option>
+                <option value="medium">{{ t('tasks.priorityMedium') }}</option>
+                <option value="high">{{ t('tasks.priorityHigh') }}</option>
+                <option value="critical">{{ t('tasks.priorityCritical') }}</option>
+              </select>
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.status') }}</label>
+              <select
+                v-model="editStatus"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="todo">{{ t('tasks.statusTodo') }}</option>
+                <option value="in_progress">{{ t('tasks.statusInProgress') }}</option>
+                <option value="blocked">{{ t('tasks.statusBlocked') }}</option>
+                <option value="done">{{ t('tasks.statusDone') }}</option>
+                <option value="cancelled">{{ t('tasks.statusCancelled') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.tags') }} <span class="text-gray-400">({{ t('tasks.tagsHint') }})</span></label>
+            <input
+              v-model="editTags"
+              type="text"
+              :placeholder="t('tasks.tagsPlaceholder')"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
             />
           </div>
 
