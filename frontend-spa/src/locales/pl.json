@@ -631,7 +631,14 @@
     "priority_low": "Niski",
     "priority_medium": "Średni",
     "priority_high": "Wysoki",
-    "priority_critical": "Krytyczny"
+    "priority_critical": "Krytyczny",
+    "viewGantt": "Gantt",
+    "viewTable": "Tabela",
+    "ganttViewMode": "Tryb widoku",
+    "ganttNoTasks": "Brak zadań z ustawionym terminem dla wykresu Gantta.",
+    "tableGroupBy": "Grupuj według",
+    "tableGroupNone": "Bez grupowania",
+    "customFields": "Własne pola"
   },
   "leadDetail": {
     "backToLeads": "← Leady",

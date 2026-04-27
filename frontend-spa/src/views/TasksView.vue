@@ -7,6 +7,8 @@ import { useTasksStore, type TaskOut, type FollowUpTaskIn } from '@/stores/tasks
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
+import GanttView from '@/components/GanttView.vue'
+import TaskTableView from '@/components/TaskTableView.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -293,7 +295,7 @@ async function completeWithFollowUp() {
 // ---------------------------------------------------------------------------
 // View mode (List / Kanban)
 // ---------------------------------------------------------------------------
-type DisplayMode = 'list' | 'kanban'
+type DisplayMode = 'list' | 'kanban' | 'gantt' | 'table'
 const displayMode = ref<DisplayMode>('list')
 
 // ---------------------------------------------------------------------------
@@ -440,10 +442,10 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Display mode toggle (List / Kanban) — only on active tab -->
+    <!-- Display mode toggle — only on active tab -->
     <div v-if="tabMode === 'active'" class="flex gap-1 mb-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
       <button
-        v-for="mode in (['list', 'kanban'] as const)"
+        v-for="mode in (['list', 'kanban', 'gantt', 'table'] as const)"
         :key="mode"
         class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
         :class="displayMode === mode
@@ -451,7 +453,7 @@ onMounted(async () => {
           : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
         @click="displayMode = mode"
       >
-        {{ mode === 'list' ? ('☰ ' + t('tasks.viewList')) : ('⬛ ' + t('tasks.viewKanban')) }}
+        {{ ({ list: '☰ ' + t('tasks.viewList'), kanban: '⬛ ' + t('tasks.viewKanban'), gantt: '📊 ' + t('tasks.viewGantt'), table: '⊞ ' + t('tasks.viewTable') } as Record<string, string>)[mode] }}
       </button>
     </div>
 
@@ -772,6 +774,27 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- GANTT VIEW                                               -->
+    <!-- ======================================================= -->
+    <div v-if="displayMode === 'gantt' && tabMode === 'active'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+      <GanttView
+        :tasks="tasks"
+        @task-date-change="(id, start, end) => tasksStore.updateTask(id, { due_date: start + 'T00:00:00Z', due_date_end: end + 'T00:00:00Z' })"
+      />
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- TABLE VIEW                                               -->
+    <!-- ======================================================= -->
+    <div v-if="displayMode === 'table' && tabMode === 'active'">
+      <TaskTableView
+        :tasks="tasks"
+        :on-update-task="(id, payload) => tasksStore.updateTask(id, payload)"
+        @refresh="loadTasks"
+      />
     </div>
 
     <!-- ======================================================= -->

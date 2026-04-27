@@ -631,7 +631,14 @@
     "priority_low": "Niedrig",
     "priority_medium": "Mittel",
     "priority_high": "Hoch",
-    "priority_critical": "Kritisch"
+    "priority_critical": "Kritisch",
+    "viewGantt": "Gantt",
+    "viewTable": "Tabelle",
+    "ganttViewMode": "Ansichtsmodus",
+    "ganttNoTasks": "Keine Aufgaben mit gesetztem Fälligkeitsdatum für das Gantt-Diagramm.",
+    "tableGroupBy": "Gruppieren nach",
+    "tableGroupNone": "Keine Gruppierung",
+    "customFields": "Eigene Felder"
   },
   "leadDetail": {
     "backToLeads": "← Leads",

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut, type TaskTimeLogOut, type TaskTimerOut } from '@/stores/tasks'
+import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut, type TaskTimeLogOut, type TaskTimerOut, type TaskCustomFieldValueIn } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -1320,6 +1320,48 @@ const approvalStatusIcon = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
+// Phase 8: Custom Fields
+// ---------------------------------------------------------------------------
+const customFields = ref<TaskOut['custom_fields']>([])
+
+function loadCustomFieldsFromTask() {
+  if (task.value) {
+    customFields.value = task.value.custom_fields ?? []
+  }
+}
+
+watch(task, loadCustomFieldsFromTask, { immediate: true })
+
+const savingCustomFieldId = ref<string | null>(null)
+
+async function saveCustomFieldValue(fieldId: string, newValue: unknown) {
+  if (!task.value) return
+  savingCustomFieldId.value = fieldId
+  const cf = customFields.value.find((f) => f.field_id === fieldId)
+  if (!cf) { savingCustomFieldId.value = null; return }
+
+  const valueIn: TaskCustomFieldValueIn = { field_id: fieldId }
+  if (cf.field_type === 'text' || cf.field_type === 'dropdown' || cf.field_type === 'url') {
+    valueIn.value_text = String(newValue ?? '')
+  } else if (cf.field_type === 'number') {
+    valueIn.value_number = (newValue !== '' && newValue !== null && newValue !== undefined) ? Number(newValue) : null
+  } else if (cf.field_type === 'date') {
+    valueIn.value_date = newValue ? String(newValue) : null
+  } else if (cf.field_type === 'checkbox') {
+    valueIn.value_bool = Boolean(newValue)
+  }
+
+  const result = await tasksStore.upsertTaskCustomFields(task.value.id, [valueIn])
+  if (result.ok && result.data) {
+    task.value = result.data
+    customFields.value = result.data.custom_fields ?? []
+  } else if (!result.ok) {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+  savingCustomFieldId.value = null
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
@@ -2295,6 +2337,99 @@ onUnmounted(() => {
         </div>
         <div v-else-if="task!.approval_status === 'none'" class="text-sm text-gray-400 dark:text-gray-500">
           {{ t('tasks.approvalNotRequired') }}
+        </div>
+      </div>
+
+      <!-- ===================== PHASE 8: CUSTOM FIELDS ===================== -->
+      <div
+        v-if="customFields.length > 0"
+        class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6"
+      >
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          🔧 {{ t('tasks.customFields') }}
+        </h2>
+        <div class="space-y-4">
+          <div v-for="cf in customFields" :key="cf.field_id">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {{ cf.name }}
+              <span v-if="cf.is_required" class="text-red-400 ml-0.5">*</span>
+            </label>
+
+            <!-- Text -->
+            <input
+              v-if="cf.field_type === 'text'"
+              :value="(cf.value as string) ?? ''"
+              type="text"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+              :placeholder="cf.name"
+              :disabled="savingCustomFieldId === cf.field_id"
+              @blur="saveCustomFieldValue(cf.field_id, ($event.target as HTMLInputElement).value)"
+            />
+
+            <!-- Number -->
+            <input
+              v-else-if="cf.field_type === 'number'"
+              :value="(cf.value as number) ?? ''"
+              type="number"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+              :placeholder="cf.name"
+              :disabled="savingCustomFieldId === cf.field_id"
+              @blur="saveCustomFieldValue(cf.field_id, ($event.target as HTMLInputElement).value)"
+            />
+
+            <!-- Date -->
+            <input
+              v-else-if="cf.field_type === 'date'"
+              :value="(cf.value as string) ?? ''"
+              type="date"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+              :disabled="savingCustomFieldId === cf.field_id"
+              @change="saveCustomFieldValue(cf.field_id, ($event.target as HTMLInputElement).value)"
+            />
+
+            <!-- Dropdown -->
+            <select
+              v-else-if="cf.field_type === 'dropdown'"
+              :value="(cf.value as string) ?? ''"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+              :disabled="savingCustomFieldId === cf.field_id"
+              @change="saveCustomFieldValue(cf.field_id, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">—</option>
+              <option v-for="opt in cf.options" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+
+            <!-- Checkbox -->
+            <label v-else-if="cf.field_type === 'checkbox'" class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="Boolean(cf.value)"
+                class="rounded"
+                :disabled="savingCustomFieldId === cf.field_id"
+                @change="saveCustomFieldValue(cf.field_id, ($event.target as HTMLInputElement).checked)"
+              />
+              <span class="text-sm text-gray-600 dark:text-gray-400">{{ cf.name }}</span>
+            </label>
+
+            <!-- URL -->
+            <div v-else-if="cf.field_type === 'url'" class="flex gap-1.5">
+              <input
+                :value="(cf.value as string) ?? ''"
+                type="url"
+                class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+                placeholder="https://..."
+                :disabled="savingCustomFieldId === cf.field_id"
+                @blur="saveCustomFieldValue(cf.field_id, ($event.target as HTMLInputElement).value)"
+              />
+              <a
+                v-if="cf.value"
+                :href="(cf.value as string)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-2 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs hover:bg-blue-100 dark:hover:bg-blue-900/30 flex items-center"
+              >↗</a>
+            </div>
+          </div>
         </div>
       </div>
 

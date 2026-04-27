@@ -299,6 +299,7 @@ onMounted(() => {
       loadPluginConfigs()
       loadAutomations()
       loadAutomationTemplates()
+      loadCustomFields()
     }
   })
   // Seed the workspace name from the cached store value immediately so the input is not blank
@@ -969,6 +970,102 @@ function actionSummary(action: AutomationAction): string {
   if (action.type === 'call_webhook') return `${label}: ${action.url}`
   if (action.type === 'run_plugin_action') return `${label}: ${action.plugin_name}.${action.action}`
   return label
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8: Custom Fields management
+// ---------------------------------------------------------------------------
+import { useTasksStore, type TaskCustomFieldOut } from '@/stores/tasks'
+
+const tasksStore = useTasksStore()
+const customFieldsList = ref<TaskCustomFieldOut[]>([])
+const customFieldsLoading = ref(false)
+
+const showNewCFModal = ref(false)
+const newCFName = ref('')
+const newCFType = ref('text')
+const newCFOptions = ref('')
+const newCFRequired = ref(false)
+const newCFSaving = ref(false)
+const newCFError = ref('')
+
+const editingCF = ref<TaskCustomFieldOut | null>(null)
+const editCFName = ref('')
+const editCFType = ref('text')
+const editCFOptions = ref('')
+const editCFRequired = ref(false)
+const editCFSaving = ref(false)
+
+async function loadCustomFields() {
+  customFieldsLoading.value = true
+  const result = await tasksStore.fetchCustomFields()
+  if (result.ok) customFieldsList.value = result.data ?? []
+  customFieldsLoading.value = false
+}
+
+async function saveNewCF() {
+  if (!newCFName.value.trim()) { newCFError.value = 'Name is required'; return }
+  newCFSaving.value = true
+  newCFError.value = ''
+  const options = newCFType.value === 'dropdown'
+    ? newCFOptions.value.split('\n').map((s) => s.trim()).filter(Boolean)
+    : []
+  const result = await tasksStore.createCustomField({
+    name: newCFName.value.trim(),
+    field_type: newCFType.value,
+    options,
+    is_required: newCFRequired.value,
+    position: customFieldsList.value.length,
+  })
+  newCFSaving.value = false
+  if (result.ok) {
+    showNewCFModal.value = false
+    newCFName.value = ''
+    newCFType.value = 'text'
+    newCFOptions.value = ''
+    newCFRequired.value = false
+    await loadCustomFields()
+  } else {
+    newCFError.value = result.error ?? 'Failed to create custom field'
+  }
+}
+
+function openEditCF(cf: TaskCustomFieldOut) {
+  editingCF.value = cf
+  editCFName.value = cf.name
+  editCFType.value = cf.field_type
+  editCFOptions.value = (cf.options ?? []).join('\n')
+  editCFRequired.value = cf.is_required
+}
+
+async function saveEditCF() {
+  if (!editingCF.value) return
+  editCFSaving.value = true
+  const options = editCFType.value === 'dropdown'
+    ? editCFOptions.value.split('\n').map((s) => s.trim()).filter(Boolean)
+    : []
+  const result = await tasksStore.updateCustomField(editingCF.value.id, {
+    name: editCFName.value.trim(),
+    field_type: editCFType.value,
+    options,
+    is_required: editCFRequired.value,
+  })
+  editCFSaving.value = false
+  if (result.ok) {
+    editingCF.value = null
+    await loadCustomFields()
+  }
+}
+
+async function deleteCF(cf: TaskCustomFieldOut) {
+  if (!confirm(`Delete field "${cf.name}"?`)) return
+  await tasksStore.deleteCustomField(cf.id)
+  await loadCustomFields()
+}
+
+const CF_TYPE_LABELS: Record<string, string> = {
+  text: 'Text', number: 'Číslo', date: 'Datum',
+  dropdown: 'Výběr', checkbox: 'Zaškrtnutí', url: 'URL',
 }
 </script>
 
@@ -2122,5 +2219,127 @@ function actionSummary(action: AutomationAction): string {
         </div>
       </div>
     </div>
+
+    <!-- ====================================================== -->
+    <!-- Phase 8: Custom Fields                                  -->
+    <!-- ====================================================== -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">🔧 Vlastní pole úkolů</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Přidejte vlastní pole, která se zobrazí ve všech úkolech vaší firmy.</p>
+        </div>
+        <button
+          class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+          @click="showNewCFModal = true"
+        >+ Přidat pole</button>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div v-if="customFieldsLoading" class="animate-pulse space-y-2">
+        <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      </div>
+
+      <!-- Empty state -->
+      <div v-else-if="customFieldsList.length === 0" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+        Žádná vlastní pole. Přidejte první pomocí tlačítka výše.
+      </div>
+
+      <!-- Field list -->
+      <div v-else class="space-y-2">
+        <div
+          v-for="cf in customFieldsList"
+          :key="cf.id"
+          class="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+        >
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ cf.name }}</span>
+              <span v-if="cf.is_required" class="text-xs text-red-500">*</span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {{ CF_TYPE_LABELS[cf.field_type] ?? cf.field_type }}
+              <template v-if="cf.field_type === 'dropdown' && cf.options.length">
+                · {{ cf.options.slice(0, 3).join(', ') }}<span v-if="cf.options.length > 3">…</span>
+              </template>
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click="openEditCF(cf)"
+            >Upravit</button>
+            <button
+              class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              @click="deleteCF(cf)"
+            >🗑</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- New CF Modal -->
+      <Teleport to="body">
+        <div v-if="showNewCFModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showNewCFModal = false">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Nové vlastní pole</h3>
+            <div v-if="newCFError" class="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-xl px-3 py-2">{{ newCFError }}</div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Název pole</label>
+              <input v-model="newCFName" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400" placeholder="Např. Číslo zakázky" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Typ pole</label>
+              <select v-model="newCFType" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+                <option v-for="(label, val) in CF_TYPE_LABELS" :key="val" :value="val">{{ label }}</option>
+              </select>
+            </div>
+            <div v-if="newCFType === 'dropdown'">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Možnosti výběru <span class="text-gray-400">(každá na novém řádku)</span></label>
+              <textarea v-model="newCFOptions" rows="4" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" placeholder="Možnost 1&#10;Možnost 2&#10;Možnost 3" />
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" v-model="newCFRequired" class="rounded" />
+              Povinné pole
+            </label>
+            <div class="flex gap-3 justify-end pt-2">
+              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showNewCFModal = false">Zrušit</button>
+              <button :disabled="newCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveNewCF">{{ newCFSaving ? '…' : 'Uložit' }}</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Edit CF Modal -->
+      <Teleport to="body">
+        <div v-if="editingCF" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="editingCF = null">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Upravit pole</h3>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Název pole</label>
+              <input v-model="editCFName" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Typ pole</label>
+              <select v-model="editCFType" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+                <option v-for="(label, val) in CF_TYPE_LABELS" :key="val" :value="val">{{ label }}</option>
+              </select>
+            </div>
+            <div v-if="editCFType === 'dropdown'">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Možnosti výběru</label>
+              <textarea v-model="editCFOptions" rows="4" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" />
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" v-model="editCFRequired" class="rounded" />
+              Povinné pole
+            </label>
+            <div class="flex gap-3 justify-end pt-2">
+              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="editingCF = null">Zrušit</button>
+              <button :disabled="editCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveEditCF">{{ editCFSaving ? '…' : 'Uložit' }}</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+    </div>
+
   </div>
 </template>
