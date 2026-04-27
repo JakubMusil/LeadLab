@@ -19,7 +19,7 @@ const firmStore = useFirmStore()
 const toast = useToast()
 const router = useRouter()
 const { isPro } = storeToRefs(firmStore)
-const { locale: currentLocale } = useI18n()
+const { locale: currentLocale, t } = useI18n()
 const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
 // Branding
@@ -1004,7 +1004,7 @@ async function loadCustomFields() {
 }
 
 async function saveNewCF() {
-  if (!newCFName.value.trim()) { newCFError.value = 'Name is required'; return }
+  if (!newCFName.value.trim()) { newCFError.value = t('tasks.cfSettings_nameRequired'); return }
   newCFSaving.value = true
   newCFError.value = ''
   const options = newCFType.value === 'dropdown'
@@ -1026,7 +1026,7 @@ async function saveNewCF() {
     newCFRequired.value = false
     await loadCustomFields()
   } else {
-    newCFError.value = result.error ?? 'Failed to create custom field'
+    newCFError.value = result.error ?? t('tasks.cfSettings_createFailed')
   }
 }
 
@@ -1058,15 +1058,28 @@ async function saveEditCF() {
 }
 
 async function deleteCF(cf: TaskCustomFieldOut) {
-  if (!confirm(`Delete field "${cf.name}"?`)) return
+  if (!confirm(t('tasks.cfSettings_deleteConfirm').replace('{name}', cf.name))) return
   await tasksStore.deleteCustomField(cf.id)
   await loadCustomFields()
 }
 
-const CF_TYPE_LABELS: Record<string, string> = {
-  text: 'Text', number: 'Číslo', date: 'Datum',
-  dropdown: 'Výběr', checkbox: 'Zaškrtnutí', url: 'URL',
-}
+const cfFieldTypes = computed(() => [
+  { value: 'text', label: t('tasks.cfTypeText') },
+  { value: 'number', label: t('tasks.cfTypeNumber') },
+  { value: 'date', label: t('tasks.cfTypeDate') },
+  { value: 'dropdown', label: t('tasks.cfTypeDropdown') },
+  { value: 'checkbox', label: t('tasks.cfTypeCheckbox') },
+  { value: 'url', label: t('tasks.cfTypeUrl') },
+])
+
+const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
+  text: t('tasks.cfTypeText'),
+  number: t('tasks.cfTypeNumber'),
+  date: t('tasks.cfTypeDate'),
+  dropdown: t('tasks.cfTypeDropdown'),
+  checkbox: t('tasks.cfTypeCheckbox'),
+  url: t('tasks.cfTypeUrl'),
+}))
 </script>
 
 <template>
@@ -2226,13 +2239,13 @@ const CF_TYPE_LABELS: Record<string, string> = {
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">🔧 Vlastní pole úkolů</h2>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Přidejte vlastní pole, která se zobrazí ve všech úkolech vaší firmy.</p>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">🔧 {{ t('tasks.cfSettings_title') }}</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t('tasks.cfSettings_subtitle') }}</p>
         </div>
         <button
           class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
           @click="showNewCFModal = true"
-        >+ Přidat pole</button>
+        >{{ t('tasks.cfSettings_addBtn') }}</button>
       </div>
 
       <!-- Loading skeleton -->
@@ -2242,7 +2255,7 @@ const CF_TYPE_LABELS: Record<string, string> = {
 
       <!-- Empty state -->
       <div v-else-if="customFieldsList.length === 0" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-        Žádná vlastní pole. Přidejte první pomocí tlačítka výše.
+        {{ t('tasks.cfSettings_empty') }}
       </div>
 
       <!-- Field list -->
@@ -2268,7 +2281,7 @@ const CF_TYPE_LABELS: Record<string, string> = {
             <button
               class="px-2.5 py-1 rounded-lg text-xs border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
               @click="openEditCF(cf)"
-            >Upravit</button>
+            >{{ t('tasks.cfSettings_editBtn') }}</button>
             <button
               class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
               @click="deleteCF(cf)"
@@ -2281,29 +2294,29 @@ const CF_TYPE_LABELS: Record<string, string> = {
       <Teleport to="body">
         <div v-if="showNewCFModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showNewCFModal = false">
           <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Nové vlastní pole</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.cfSettings_newTitle') }}</h3>
             <div v-if="newCFError" class="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-xl px-3 py-2">{{ newCFError }}</div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Název pole</label>
-              <input v-model="newCFName" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400" placeholder="Např. Číslo zakázky" />
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_fieldName') }}</label>
+              <input v-model="newCFName" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400" :placeholder="t('tasks.cfSettings_fieldNamePlaceholder')" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Typ pole</label>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_fieldType') }}</label>
               <select v-model="newCFType" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
-                <option v-for="(label, val) in CF_TYPE_LABELS" :key="val" :value="val">{{ label }}</option>
+                <option v-for="item in cfFieldTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
               </select>
             </div>
             <div v-if="newCFType === 'dropdown'">
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Možnosti výběru <span class="text-gray-400">(každá na novém řádku)</span></label>
-              <textarea v-model="newCFOptions" rows="4" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" placeholder="Možnost 1&#10;Možnost 2&#10;Možnost 3" />
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_options') }} <span class="text-gray-400">{{ t('tasks.cfSettings_optionsHint') }}</span></label>
+              <textarea v-model="newCFOptions" rows="4" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" :placeholder="t('tasks.cfSettings_optionsPlaceholder')" />
             </div>
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input type="checkbox" v-model="newCFRequired" class="rounded" />
-              Povinné pole
+              {{ t('tasks.cfSettings_required') }}
             </label>
             <div class="flex gap-3 justify-end pt-2">
-              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showNewCFModal = false">Zrušit</button>
-              <button :disabled="newCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveNewCF">{{ newCFSaving ? '…' : 'Uložit' }}</button>
+              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showNewCFModal = false">{{ t('tasks.cfSettings_cancel') }}</button>
+              <button :disabled="newCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveNewCF">{{ newCFSaving ? '…' : t('tasks.cfSettings_save') }}</button>
             </div>
           </div>
         </div>
@@ -2313,28 +2326,28 @@ const CF_TYPE_LABELS: Record<string, string> = {
       <Teleport to="body">
         <div v-if="editingCF" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="editingCF = null">
           <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Upravit pole</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.cfSettings_editTitle') }}</h3>
             <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Název pole</label>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_fieldName') }}</label>
               <input v-model="editCFName" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Typ pole</label>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_fieldType') }}</label>
               <select v-model="editCFType" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
-                <option v-for="(label, val) in CF_TYPE_LABELS" :key="val" :value="val">{{ label }}</option>
+                <option v-for="item in cfFieldTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
               </select>
             </div>
             <div v-if="editCFType === 'dropdown'">
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Možnosti výběru</label>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.cfSettings_options') }}</label>
               <textarea v-model="editCFOptions" rows="4" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none" />
             </div>
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input type="checkbox" v-model="editCFRequired" class="rounded" />
-              Povinné pole
+              {{ t('tasks.cfSettings_required') }}
             </label>
             <div class="flex gap-3 justify-end pt-2">
-              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="editingCF = null">Zrušit</button>
-              <button :disabled="editCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveEditCF">{{ editCFSaving ? '…' : 'Uložit' }}</button>
+              <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="editingCF = null">{{ t('tasks.cfSettings_cancel') }}</button>
+              <button :disabled="editCFSaving" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="saveEditCF">{{ editCFSaving ? '…' : t('tasks.cfSettings_save') }}</button>
             </div>
           </div>
         </div>
