@@ -519,7 +519,15 @@
     "overviewValue": "Value",
     "taskCompleteFailed": "Failed to complete task.",
     "taskFailed": "Failed to create task.",
-    "updated": "Lead updated."
+    "updated": "Lead updated.",
+    "chooseActionType": "What would you like to add?",
+    "changeType": "Change",
+    "typeComment": "Comment",
+    "typeCall": "Call",
+    "typeMeeting": "Meeting",
+    "typeEmailOut": "Email (sent)",
+    "typeEmailIn": "Email (received)",
+    "typeTask": "Task"
   },
   "sequences": {
     "title": "Email Sequences",

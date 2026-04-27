@@ -519,7 +519,15 @@
     "overviewValue": "Hodnota",
     "taskCompleteFailed": "Nepodařilo se dokončit úkol.",
     "taskFailed": "Nepodařilo se vytvořit úkol.",
-    "updated": "Lead aktualizován."
+    "updated": "Lead aktualizován.",
+    "chooseActionType": "Co chcete přidat?",
+    "changeType": "Změnit",
+    "typeComment": "Komentář",
+    "typeCall": "Volání",
+    "typeMeeting": "Schůzka",
+    "typeEmailOut": "E-mail (odeslaný)",
+    "typeEmailIn": "E-mail (přijatý)",
+    "typeTask": "Úkol"
   },
   "sequences": {
     "title": "E-mailové sekvence",
