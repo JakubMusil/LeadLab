@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut } from '@/stores/tasks'
+import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -631,10 +631,178 @@ async function removeDependency(depId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 2: Unified timeline
+// ---------------------------------------------------------------------------
+const timeline = ref<TaskTimelineEntryOut[]>([])
+const timelineLoading = ref(false)
+const timelineSortOrder = ref<'asc' | 'desc'>('asc')
+
+// New comment form state
+const newCommentHtmlTimeline = ref('')
+const commentTimelineSubmitting = ref(false)
+const commentTimelineEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+
+// "Upozornění dostávají" panel
+const notifyPanelOpen = ref(false)
+const toggleChangeAssignee = ref(false)
+const toggleLogTime = ref(false)
+const toggleSetDueDate = ref(false)
+const actionAssigneeId = ref('')
+const actionLogMinutes = ref<number | null>(null)
+const actionLogDescription = ref('')
+const actionDueDate = ref('')
+
+// Emoji picker per entry
+const emojiPickerEntryId = ref<string | null>(null)
+const COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '👏', '🎉', '🔥', '✅']
+
+async function loadTimeline() {
+  timelineLoading.value = true
+  const result = await tasksStore.fetchTimeline(taskId.value, { order: timelineSortOrder.value })
+  timelineLoading.value = false
+  if (result.ok && result.data) timeline.value = result.data
+}
+
+async function toggleTimelineSort() {
+  timelineSortOrder.value = timelineSortOrder.value === 'asc' ? 'desc' : 'asc'
+  await loadTimeline()
+}
+
+async function submitTimelineComment() {
+  if (!hasPlainText(newCommentHtmlTimeline.value)) return
+  commentTimelineSubmitting.value = true
+
+  const payload: TaskTimelinePostIn = {
+    content_html: newCommentHtmlTimeline.value,
+  }
+  if (toggleChangeAssignee.value && actionAssigneeId.value) {
+    payload.change_assignee_to = actionAssigneeId.value
+  }
+  if (toggleLogTime.value && actionLogMinutes.value) {
+    payload.log_time_minutes = actionLogMinutes.value
+    payload.log_time_description = actionLogDescription.value
+  }
+  if (toggleSetDueDate.value && actionDueDate.value) {
+    // Parse date as local midnight to avoid UTC off-by-one-day errors
+    const [year, month, day] = actionDueDate.value.split('-').map(Number)
+    const localDate = new Date(year, month - 1, day, 12, 0, 0)
+    payload.set_due_date = localDate.toISOString()
+  }
+
+  const result = await tasksStore.createTimelineEntry(taskId.value, payload)
+  commentTimelineSubmitting.value = false
+  if (result.ok && result.data) {
+    // Reload full timeline to include any side-effect system events
+    await loadTimeline()
+    if (toggleChangeAssignee.value || toggleSetDueDate.value) {
+      await loadTask()
+    }
+    newCommentHtmlTimeline.value = ''
+    notifyPanelOpen.value = false
+    toggleChangeAssignee.value = false
+    toggleLogTime.value = false
+    toggleSetDueDate.value = false
+    actionAssigneeId.value = ''
+    actionLogMinutes.value = null
+    actionLogDescription.value = ''
+    actionDueDate.value = ''
+  } else {
+    toast.error(result.error ?? t('tasks.commentFailed'))
+  }
+}
+
+function handleCommentCtrlEnter(event: KeyboardEvent) {
+  if (event.ctrlKey && event.key === 'Enter') {
+    submitTimelineComment()
+  }
+}
+
+async function toggleReaction(entryId: string, emoji: string) {
+  const result = await tasksStore.toggleTimelineReaction(taskId.value, entryId, emoji)
+  if (result.ok && result.data) {
+    const entry = timeline.value.find((e) => e.id === entryId)
+    if (entry) {
+      const existingIdx = entry.reactions.findIndex((r) => r.emoji === emoji)
+      if (existingIdx !== -1) {
+        entry.reactions[existingIdx] = result.data
+        if (result.data.count === 0) entry.reactions.splice(existingIdx, 1)
+      } else if (result.data.count > 0) {
+        entry.reactions.push(result.data)
+      }
+    }
+  }
+  emojiPickerEntryId.value = null
+}
+
+// File-type icon helper (colored by extension)
+function fileTypeIcon(filename: string, contentType: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  if (['xls', 'xlsx', 'csv'].includes(ext) || contentType.includes('spreadsheet') || contentType.includes('excel')) return '🟩'
+  if (['doc', 'docx'].includes(ext) || contentType.includes('word')) return '🟦'
+  if (['ppt', 'pptx'].includes(ext) || contentType.includes('presentation')) return '🟧'
+  if (['pdf'].includes(ext) || contentType.includes('pdf')) return '🟥'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext) || contentType.startsWith('image/')) return '🖼️'
+  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext) || contentType.startsWith('audio/')) return '🎵'
+  if (['mp4', 'webm', 'mov', 'avi'].includes(ext) || contentType.startsWith('video/')) return '🎬'
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
+  return '📄'
+}
+
+// System event human-readable description
+function systemEventLabel(entry: TaskTimelineEntryOut): string {
+  const meta = entry.metadata as Record<string, string>
+  switch (entry.event_type) {
+    case 'task_created': return t('tasks.eventTaskCreated')
+    case 'task_completed': return t('tasks.eventTaskCompleted')
+    case 'task_archived': return t('tasks.eventTaskArchived')
+    case 'status_change':
+      return t('tasks.eventStatusChange')
+        .replace('{from}', meta.from ?? '')
+        .replace('{to}', meta.to ?? '')
+    case 'priority_change':
+      return t('tasks.eventPriorityChange')
+        .replace('{from}', meta.from ?? '')
+        .replace('{to}', meta.to ?? '')
+    case 'assignee_change':
+      return t('tasks.eventAssigneeChange')
+        .replace('{from}', meta.from_name ?? t('tasks.noAssignee'))
+        .replace('{to}', meta.to_name ?? t('tasks.noAssignee'))
+    case 'due_date_change':
+      return t('tasks.eventDueDateChange')
+        .replace('{to}', meta.new ? formatDate(meta.new) : '—')
+    case 'sub_task_added':
+      return t('tasks.eventSubtaskAdded').replace('{title}', meta.title ?? '')
+    case 'time_logged':
+      return t('tasks.eventTimeLogged').replace('{minutes}', String(meta.minutes ?? 0))
+    case 'checklist_item_checked':
+      return t('tasks.eventChecklistItemChecked')
+    default:
+      return entry.event_type
+  }
+}
+
+// Attachment context menu state
+const attContextMenuId = ref<string | null>(null)
+
+async function downloadAll() {
+  // Collect all attachment URLs from timeline
+  const urls = timeline.value
+    .filter((e) => e.attachment)
+    .map((e) => e.attachment!.url)
+  for (const url of urls) {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = ''
+    a.target = '_blank'
+    a.click()
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadTask(), loadComments(), loadAttachments(), loadSubtasks(), loadChecklist(), loadDependencies()])
+  await Promise.all([loadMembers(), loadTask(), loadTimeline(), loadSubtasks(), loadChecklist(), loadDependencies()])
 })
 </script>
 
@@ -1250,227 +1418,392 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ===================== POPIS ÚKOLU ===================== -->
+      <!-- ===================== TIMELINE (Unified: popis + komentáře + systémové záznamy) ===================== -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
-        <div class="flex items-center justify-between mb-3">
+        <!-- Header with sort toggle -->
+        <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-            📝 {{ t('tasks.descriptionSection') }}
+            💬 {{ t('tasks.timeline') }}
           </h2>
-          <button
-            v-if="!editingDescription"
-            class="text-xs text-gray-400 hover:text-blue-500"
-            @click="startEditDescription"
-          >{{ t('tasks.edit') }}</button>
-        </div>
-
-        <!-- View mode -->
-        <template v-if="!editingDescription">
-          <div
-            v-if="task.description_html"
-            class="prose prose-sm dark:prose-invert max-w-none"
-            v-html="sanitizeHtml(task.description_html)"
-          />
-          <p
-            v-else-if="task.description"
-            class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap"
-          >{{ task.description }}</p>
-          <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
-            {{ t('tasks.noDescription') }}
-          </p>
-          <p v-if="task.description_added_at" class="text-xs text-gray-400 mt-2">
-            {{ t('tasks.descriptionAddedAt') }} {{ formatDateTime(task.description_added_at) }}
-          </p>
-        </template>
-
-        <!-- Edit mode -->
-        <div v-else class="space-y-2">
-          <RichTextEditor
-            v-model="editDescHtml"
-            :members="teamMembers"
-            :placeholder="t('tasks.descriptionPlaceholder')"
-          />
-          <div class="flex justify-end gap-2">
+          <div class="flex items-center gap-3">
+            <span v-if="timeline.length" class="text-sm text-gray-400">({{ timeline.length }})</span>
+            <!-- Sort toggle -->
             <button
-              class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              @click="cancelEditDescription"
-            >{{ t('tasks.cancel') }}</button>
+              class="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400"
+              :title="t('tasks.sortOrder')"
+              @click="toggleTimelineSort"
+            >
+              {{ timelineSortOrder === 'asc' ? '↑' : '↓' }}
+              {{ timelineSortOrder === 'asc' ? t('tasks.sortOldestFirst') : t('tasks.sortNewestFirst') }}
+            </button>
+            <!-- Download all attachments -->
             <button
-              :disabled="descSaving"
-              class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-              @click="saveDescription"
-            >{{ descSaving ? '…' : t('tasks.save') }}</button>
+              v-if="timeline.some((e) => e.attachment)"
+              class="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400"
+              @click="downloadAll"
+            >
+              📦 {{ t('tasks.downloadAll') }}
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- ===================== COMMENTS ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          💬 {{ t('tasks.comments') }}
-          <span v-if="comments.length" class="text-sm font-normal text-gray-400">({{ comments.length }})</span>
-        </h2>
-
-        <!-- Comment list -->
-        <div v-if="commentsLoading" class="space-y-3 animate-pulse">
-          <div v-for="i in 2" :key="i" class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        <!-- Loading -->
+        <div v-if="timelineLoading" class="space-y-3 animate-pulse">
+          <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />
         </div>
 
-        <div v-else-if="comments.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">
-          {{ t('tasks.noComments') }}
-        </div>
-
-        <div v-else class="space-y-4 mb-6">
-          <div
-            v-for="comment in comments"
-            :key="comment.id"
-            class="group border border-gray-100 dark:border-gray-700 rounded-xl p-4"
-          >
-            <!-- Comment header -->
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <span class="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {{ (comment.author_name || '?').charAt(0).toUpperCase() }}
-                </span>
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ comment.author_name || t('tasks.unknownAuthor') }}</span>
-                <span>·</span>
-                <span :title="formatDateTime(comment.updated_at)">
-                  {{ formatDateTime(comment.created_at) }}
-                  <span v-if="comment.updated_at !== comment.created_at" class="italic ml-1">({{ t('tasks.edited') }})</span>
-                </span>
-              </div>
-              <!-- Actions (author or admin) -->
-              <div v-if="canEditComment(comment)" class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  class="text-xs text-gray-400 hover:text-blue-500 px-2 py-0.5 rounded"
-                  @click="startEditComment(comment)"
-                >
-                  {{ t('tasks.editComment') }}
-                </button>
-                <button
-                  class="text-xs text-gray-400 hover:text-red-500 px-2 py-0.5 rounded"
-                  @click="deleteComment(comment.id)"
-                >
-                  {{ t('tasks.deleteComment') }}
-                </button>
-              </div>
+        <div v-else>
+          <!-- FIRST ITEM: task description (from Phase 1) -->
+          <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 pb-6 relative">
+            <!-- dot -->
+            <span class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-blue-400 border-2 border-white dark:border-gray-800" />
+            <div class="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
+              <span class="font-medium text-gray-600 dark:text-gray-300">📝 {{ t('tasks.descriptionSection') }}</span>
+              <span>·</span>
+              <span>{{ formatDateTime(task!.created_at) }}</span>
+              <button
+                v-if="!editingDescription"
+                class="ml-1 text-xs text-gray-300 hover:text-blue-500"
+                @click="startEditDescription"
+              >{{ t('tasks.edit') }}</button>
             </div>
-
-            <!-- Comment content (view or edit mode) -->
-            <div v-if="editingCommentId !== comment.id">
-              <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(comment.content_html)" />
-            </div>
-            <div v-else class="space-y-2">
-              <RichTextEditor
-                ref="editCommentEditorRef"
-                v-model="editCommentHtml"
-                :members="teamMembers"
-                :placeholder="t('tasks.editCommentPlaceholder')"
+            <!-- View mode -->
+            <template v-if="!editingDescription">
+              <div
+                v-if="task!.description_html"
+                class="prose prose-sm dark:prose-invert max-w-none"
+                v-html="sanitizeHtml(task!.description_html)"
               />
+              <p
+                v-else-if="task!.description"
+                class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap"
+              >{{ task!.description }}</p>
+              <p v-else class="text-sm text-gray-400 italic">{{ t('tasks.noDescription') }}</p>
+              <p v-if="task!.description_added_at" class="text-xs text-gray-400 mt-1">
+                {{ t('tasks.descriptionAddedAt') }} {{ formatDateTime(task!.description_added_at) }}
+              </p>
+            </template>
+            <!-- Edit mode -->
+            <div v-else class="space-y-2 mt-2">
+              <RichTextEditor v-model="editDescHtml" :members="teamMembers" :placeholder="t('tasks.descriptionPlaceholder')" />
               <div class="flex justify-end gap-2">
                 <button
-                  class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  @click="cancelEditComment"
-                >
-                  {{ t('tasks.cancel') }}
-                </button>
+                  class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 hover:bg-gray-50"
+                  @click="cancelEditDescription"
+                >{{ t('tasks.cancel') }}</button>
                 <button
-                  :disabled="editCommentSubmitting || !hasPlainText(editCommentHtml)"
+                  :disabled="descSaving"
                   class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-                  @click="submitEditComment(comment.id)"
+                  @click="saveDescription"
+                >{{ descSaving ? '…' : t('tasks.save') }}</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timeline entries -->
+          <div v-if="timeline.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">
+            {{ t('tasks.noTimeline') }}
+          </div>
+
+          <div
+            v-for="entry in timeline"
+            :key="entry.id"
+            class="border-l-2 pl-4 pb-5 relative"
+            :class="entry.event_type === 'comment' || entry.source === 'legacy_comment' ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-gray-600'"
+          >
+            <!-- dot -->
+            <span
+              class="absolute -left-1.5 top-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800"
+              :class="entry.event_type === 'comment' || entry.source === 'legacy_comment' ? 'bg-blue-400' : (entry.source === 'legacy_attachment' ? 'bg-green-400' : 'bg-gray-400')"
+            />
+
+            <!-- ====== COMMENT entry ====== -->
+            <div
+              v-if="entry.event_type === 'comment' || entry.source === 'legacy_comment'"
+              class="group"
+            >
+              <!-- Header -->
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {{ (entry.author_name || '?').charAt(0).toUpperCase() }}
+                  </span>
+                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ entry.author_name || t('tasks.unknownAuthor') }}</span>
+                  <span>·</span>
+                  <span>{{ formatDateTime(entry.created_at) }}</span>
+                </div>
+              </div>
+
+              <!-- Content -->
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(entry.content_html)" />
+
+              <!-- Reactions bar -->
+              <div class="mt-2 flex flex-wrap items-center gap-1.5 relative">
+                <!-- Existing reactions -->
+                <button
+                  v-for="reaction in entry.reactions"
+                  :key="reaction.emoji"
+                  class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs border transition-colors"
+                  :class="reaction.reacted_by_me
+                    ? 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    : 'bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400'"
+                  :title="`${reaction.count} reaction(s)`"
+                  @click="toggleReaction(entry.id, reaction.emoji)"
                 >
-                  {{ editCommentSubmitting ? t('tasks.saving') : t('tasks.save') }}
+                  {{ reaction.emoji }} {{ reaction.count }}
+                </button>
+
+                <!-- Add reaction button (only on true timeline entries with reactions support) -->
+                <template v-if="entry.source === 'timeline_entry'">
+                  <button
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:border-blue-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    @click="emojiPickerEntryId = emojiPickerEntryId === entry.id ? null : entry.id"
+                  >😊 +</button>
+
+                  <!-- Emoji picker -->
+                  <div
+                    v-if="emojiPickerEntryId === entry.id"
+                    class="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-2 flex gap-1"
+                  >
+                    <button
+                      v-for="emoji in COMMON_EMOJIS"
+                      :key="emoji"
+                      class="text-lg hover:scale-125 transition-transform"
+                      @click="toggleReaction(entry.id, emoji)"
+                    >{{ emoji }}</button>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- ====== FILE UPLOAD entry ====== -->
+            <div v-else-if="entry.source === 'legacy_attachment' || entry.event_type === 'file_upload'">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 group/att">
+                  <!-- Colored file type icon -->
+                  <span class="text-base flex-shrink-0">
+                    {{ entry.attachment ? fileTypeIcon(entry.attachment.original_filename, entry.attachment.content_type) : '📎' }}
+                  </span>
+                  <div class="min-w-0">
+                    <a
+                      v-if="entry.attachment"
+                      :href="entry.attachment.url"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-sm font-medium text-blue-500 hover:underline truncate block"
+                    >
+                      {{ entry.attachment.original_filename }}
+                    </a>
+                    <p class="text-xs text-gray-400">
+                      <template v-if="entry.attachment">
+                        {{ formatFileSize(entry.attachment.size_bytes) }} ·
+                      </template>
+                      {{ entry.author_name || t('tasks.unknownAuthor') }} ·
+                      {{ formatDateTime(entry.created_at) }}
+                    </p>
+                  </div>
+                </div>
+                <!-- ⋮ context menu -->
+                <div class="relative">
+                  <button
+                    class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                    @click="attContextMenuId = attContextMenuId === entry.id ? null : entry.id"
+                  >⋮</button>
+                  <div
+                    v-if="attContextMenuId === entry.id"
+                    class="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg min-w-[140px] py-1"
+                  >
+                    <a
+                      v-if="entry.attachment"
+                      :href="entry.attachment.url"
+                      target="_blank"
+                      rel="noopener"
+                      download
+                      class="block w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      @click="attContextMenuId = null"
+                    >
+                      ⬇ {{ t('tasks.downloadAttachment') }}
+                    </a>
+                    <button
+                      v-if="entry.attachment"
+                      class="block w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      @click="() => { attContextMenuId = null; navigator.clipboard.writeText(entry.attachment!.url).then(() => toast.success(t('tasks.linkCopied'))).catch(() => toast.error(t('tasks.copyLinkFailed'))) }"
+                    >
+                      🔗 {{ t('tasks.copyLink') }}
+                    </button>
+                    <button
+                      class="block w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      @click="() => { if (entry.attachment) deleteAttachment(entry.attachment.id); attContextMenuId = null }"
+                    >
+                      🗑 {{ t('tasks.deleteAttachment') }}
+                    </button>
+                  </div>
+                  <!-- click outside to close -->
+                  <div v-if="attContextMenuId === entry.id" class="fixed inset-0 z-10" @click="attContextMenuId = null" />
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== SYSTEM EVENT entry ====== -->
+            <div v-else class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <span>🔔</span>
+              <span>{{ entry.author_name || t('tasks.system') }} — {{ systemEventLabel(entry) }}</span>
+              <span class="ml-auto flex-shrink-0">{{ formatDateTime(entry.created_at) }}</span>
+            </div>
+          </div>
+
+          <!-- ====== NEW COMMENT FORM ====== -->
+          <div class="mt-4 border border-gray-200 dark:border-gray-600 rounded-2xl p-4 space-y-3" @keydown="handleCommentCtrlEnter">
+            <RichTextEditor
+              ref="commentTimelineEditorRef"
+              v-model="newCommentHtmlTimeline"
+              :members="teamMembers"
+              :placeholder="t('tasks.timelineCommentPlaceholder')"
+            />
+
+            <!-- "Upozornění dostávají" expandable panel -->
+            <div class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
+              <button
+                class="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                @click="notifyPanelOpen = !notifyPanelOpen"
+              >
+                <span>🔔 {{ t('tasks.notifyPanel') }}</span>
+                <span>{{ notifyPanelOpen ? '▲' : '▼' }}</span>
+              </button>
+              <div v-if="notifyPanelOpen" class="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-gray-700 pt-2">
+                <!-- Watcher avatars -->
+                <div v-if="task!.watcher_ids.length" class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="wid in task!.watcher_ids"
+                    :key="wid"
+                    class="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300"
+                    :title="members.find((m) => m.user_id === wid)?.user_full_name ?? wid"
+                  >
+                    {{ (members.find((m) => m.user_id === wid)?.user_full_name ?? '?').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <div v-else class="text-xs text-gray-400">{{ t('tasks.noWatchers') }}</div>
+
+                <!-- Action toggle: Change assignee -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button
+                    class="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                    :class="toggleChangeAssignee
+                      ? 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                    @click="toggleChangeAssignee = !toggleChangeAssignee"
+                  >
+                    👤 {{ t('tasks.toggleChangeAssignee') }}
+                    <span class="ml-1 opacity-70">{{ task!.assigned_to_name ? `[${task!.assigned_to_name}]` : '' }}</span>
+                  </button>
+                  <select
+                    v-if="toggleChangeAssignee"
+                    v-model="actionAssigneeId"
+                    class="rounded-lg border border-blue-300 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-blue-400"
+                  >
+                    <option value="">{{ t('tasks.noAssignee') }}</option>
+                    <option v-for="m in members" :key="m.user_id" :value="m.user_id">{{ memberLabel(m) }}</option>
+                  </select>
+                </div>
+
+                <!-- Action toggle: Log time -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button
+                    class="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                    :class="toggleLogTime
+                      ? 'bg-purple-100 border-purple-400 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                    @click="toggleLogTime = !toggleLogTime"
+                  >
+                    ⏱ {{ t('tasks.toggleLogTime') }}
+                  </button>
+                  <template v-if="toggleLogTime">
+                    <input
+                      v-model="actionLogMinutes"
+                      type="number"
+                      min="1"
+                      :placeholder="t('tasks.logMinutesPlaceholder')"
+                      class="w-24 rounded-lg border border-purple-300 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-purple-400"
+                    />
+                    <input
+                      v-model="actionLogDescription"
+                      type="text"
+                      :placeholder="t('tasks.logDescriptionPlaceholder')"
+                      class="flex-1 rounded-lg border border-purple-300 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-purple-400"
+                    />
+                  </template>
+                </div>
+
+                <!-- Action toggle: Set due date -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button
+                    class="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                    :class="toggleSetDueDate
+                      ? 'bg-orange-100 border-orange-400 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                    @click="toggleSetDueDate = !toggleSetDueDate"
+                  >
+                    📅 {{ t('tasks.toggleSetDueDate') }}
+                    <span class="ml-1 opacity-70">{{ task!.due_date ? `[${formatDate(task!.due_date)}]` : '' }}</span>
+                  </button>
+                  <input
+                    v-if="toggleSetDueDate"
+                    v-model="actionDueDate"
+                    type="date"
+                    class="rounded-lg border border-orange-300 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1.5 focus:outline-none focus:border-orange-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Form action buttons -->
+            <div class="flex items-center justify-between">
+              <!-- Attachment upload -->
+              <div
+                class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-blue-500"
+                @click="fileInput?.click()"
+                @dragover.prevent="isDraggingOver = true"
+                @dragleave="isDraggingOver = false"
+                @drop.prevent="onDrop"
+              >
+                <input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
+                <span :class="isDraggingOver ? 'text-blue-500' : ''">📎 {{ t('tasks.attachFile') }}</span>
+                <span v-if="uploadingFile" class="text-gray-400">{{ t('leadDetail.uploading') }}</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 hidden sm:inline">Ctrl+Enter</span>
+                <button
+                  class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  @click="newCommentHtmlTimeline = ''"
+                >{{ t('tasks.cancel') }}</button>
+                <button
+                  :disabled="commentTimelineSubmitting || !hasPlainText(newCommentHtmlTimeline)"
+                  class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                  @click="submitTimelineComment"
+                >
+                  {{ commentTimelineSubmitting ? t('tasks.saving') : t('tasks.save') }}
                 </button>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- New comment composer -->
-        <div class="space-y-2">
-          <RichTextEditor
-            ref="commentEditorRef"
-            v-model="newCommentHtml"
-            :members="teamMembers"
-            :placeholder="t('tasks.commentPlaceholder')"
-          />
-          <div class="flex justify-end">
-            <button
-              :disabled="commentSubmitting || !hasPlainText(newCommentHtml)"
-              class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              @click="submitComment"
-            >
-              {{ commentSubmitting ? t('tasks.saving') : t('tasks.addComment') }}
-            </button>
+          <!-- "Sledující:" section -->
+          <div v-if="task!.watcher_ids.length" class="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <span class="font-medium">🔔 {{ t('tasks.watchersSection') }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="wid in task!.watcher_ids"
+                :key="wid"
+                class="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-medium"
+                :title="members.find((m) => m.user_id === wid)?.user_full_name ?? wid"
+              >
+                {{ (members.find((m) => m.user_id === wid)?.user_full_name ?? '?').charAt(0).toUpperCase() }}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- ===================== ATTACHMENTS ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          📎 {{ t('tasks.attachments') }}
-          <span v-if="attachments.length" class="text-sm font-normal text-gray-400">({{ attachments.length }})</span>
-        </h2>
-
-        <!-- Drop zone -->
-        <div
-          class="relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors mb-4"
-          :class="isDraggingOver
-            ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
-            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'"
-          @click="fileInput?.click()"
-          @dragover.prevent="isDraggingOver = true"
-          @dragleave="isDraggingOver = false"
-          @drop.prevent="onDrop"
-        >
-          <input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
-          <p v-if="uploadingFile" class="text-sm text-gray-500 dark:text-gray-400">{{ t('leadDetail.uploading') }}</p>
-          <template v-else>
-            <p v-if="isDraggingOver" class="text-sm font-medium text-red-500">{{ t('leadDetail.dropToUpload') }}</p>
-            <template v-else>
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('leadDetail.clickOrDrop') }}</p>
-              <p class="text-xs text-gray-400 mt-1">{{ t('leadDetail.maxSize') }}</p>
-            </template>
-          </template>
-        </div>
-
-        <!-- Attachment list -->
-        <div v-if="attachmentsLoading" class="space-y-2 animate-pulse">
-          <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-
-        <div v-else-if="attachments.length === 0" class="text-sm text-gray-400 dark:text-gray-500 text-center py-2">
-          {{ t('tasks.noAttachments') }}
-        </div>
-
-        <ul v-else class="space-y-2">
-          <li
-            v-for="att in attachments"
-            :key="att.id"
-            class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
-          >
-            <span class="text-lg flex-shrink-0">📄</span>
-            <div class="flex-1 min-w-0">
-              <a
-                :href="att.url"
-                target="_blank"
-                rel="noopener"
-                class="text-sm font-medium text-blue-500 hover:underline truncate block"
-              >
-                {{ att.original_filename }}
-              </a>
-              <p class="text-xs text-gray-400">{{ formatFileSize(att.size_bytes) }} · {{ formatDateTime(att.created_at) }}</p>
-            </div>
-            <button
-              class="text-xs text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              :title="t('tasks.deleteAttachment')"
-              @click="deleteAttachment(att.id)"
-            >
-              🗑
-            </button>
-          </li>
-        </ul>
       </div>
     </template>
 

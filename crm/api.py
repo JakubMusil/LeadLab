@@ -40,11 +40,15 @@ from crm.models import (
     TaskAttachment,
     TaskChecklistItem,
     TaskComment,
+    TaskCommentReaction,
     TaskDependency,
     TaskDependencyType,
     TaskFavourite,
     TaskPriority,
     TaskStatus,
+    TaskTimelineEntry,
+    TaskVoiceAttachment,
+    TimelineEventType,
 )
 from firms.auth import (
     MembershipRole,
@@ -1163,6 +1167,8 @@ def create_task(request, payload: TaskIn):
 
     _notify_task_watchers(task, "task.created")
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))
+    # Phase 2: log system timeline event
+    _log_timeline_event(task, TimelineEventType.TASK_CREATED, author=request.user)
     return 201, _task_out(task, request.user)
 
 
@@ -1175,9 +1181,16 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
         return 403, {"detail": str(exc)}
 
     try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
+        task = Task.objects.select_related("assigned_to").get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
+
+    # Snapshot old values for timeline event logging
+    old_status = task.status
+    old_priority = task.priority
+    old_assignee_name = _author_name_for(task.assigned_to) if task.assigned_to_id else None
+    old_due_date = task.due_date.isoformat() if task.due_date else None
+    old_archived = task.is_archived
 
     update_fields = []
 
@@ -1261,6 +1274,35 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
 
     _notify_task_watchers(task, "task.updated")
     broadcast_event(firm=request.firm, event='task.updated', payload=_task_out(task, request.user))
+
+    # Phase 2: log system timeline events for significant changes
+    if payload.status is not None and task.status != old_status:
+        _log_timeline_event(
+            task, TimelineEventType.STATUS_CHANGE, author=request.user,
+            metadata={"from": old_status, "to": task.status},
+        )
+    if payload.priority is not None and task.priority != old_priority:
+        _log_timeline_event(
+            task, TimelineEventType.PRIORITY_CHANGE, author=request.user,
+            metadata={"from": old_priority, "to": task.priority},
+        )
+    if payload.assigned_to_id is not None:
+        new_assignee_name = _author_name_for(task.assigned_to) if task.assigned_to_id else None
+        if new_assignee_name != old_assignee_name:
+            _log_timeline_event(
+                task, TimelineEventType.ASSIGNEE_CHANGE, author=request.user,
+                metadata={"from_name": old_assignee_name, "to_name": new_assignee_name},
+            )
+    due_date_payload_changed = payload.due_date is not None or payload.clear_due_date
+    new_due_date_value = task.due_date.isoformat() if task.due_date else None
+    if due_date_payload_changed and new_due_date_value != old_due_date:
+        _log_timeline_event(
+            task, TimelineEventType.DUE_DATE_CHANGE, author=request.user,
+            metadata={"old": old_due_date, "new": new_due_date_value},
+        )
+    if payload.is_archived is not None and task.is_archived != old_archived and task.is_archived:
+        _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+
     return 200, _task_out(task, request.user)
 
 
@@ -1341,9 +1383,12 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
 
     _notify_task_watchers(task, "task.completed")
     broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task, request.user))
+    # Phase 2: log completion event
+    _log_timeline_event(task, TimelineEventType.TASK_COMPLETED, author=request.user)
     if follow_up_task:
         _notify_task_watchers(follow_up_task, "task.created")
         broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task, request.user))
+        _log_timeline_event(follow_up_task, TimelineEventType.TASK_CREATED, author=request.user)
 
     return 200, _task_out(task, request.user)
 
@@ -1773,6 +1818,12 @@ def create_subtask(request, task_id: str, payload: SubtaskIn):
             return watcher_err
 
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(subtask, request.user))
+    # Phase 2: log subtask creation on parent's timeline
+    _log_timeline_event(
+        parent, TimelineEventType.SUB_TASK_ADDED, author=request.user,
+        metadata={"subtask_id": str(subtask.id), "title": subtask.title},
+    )
+    _log_timeline_event(subtask, TimelineEventType.TASK_CREATED, author=request.user)
     return 201, _task_out(subtask, request.user)
 
 
@@ -2083,6 +2134,421 @@ def delete_task_dependency(request, task_id: str, dependency_id: str):
 
     dep.delete()
     return 204, None
+
+
+# ===========================================================================
+# PHASE 2 — UNIFIED TASK TIMELINE
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+class ReactionSummaryOut(Schema):
+    """Aggregated count of a single emoji reaction on a timeline entry."""
+    emoji: str
+    count: int
+    user_ids: List[str]
+    reacted_by_me: bool
+
+
+class TimelineAttachmentOut(Schema):
+    """Inline attachment metadata embedded in a timeline entry."""
+    id: str
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    uploaded_by_id: Optional[str]
+    created_at: datetime
+
+
+class TaskTimelineEntryOut(Schema):
+    """
+    A single item in the unified task timeline.
+
+    ``source`` distinguishes the backing model:
+      - ``timeline_entry``   — new-style TaskTimelineEntry record
+      - ``legacy_comment``   — TaskComment migrated into the feed
+      - ``legacy_attachment`` — TaskAttachment shown as a file_upload event
+    """
+    id: str
+    source: str
+    event_type: str
+    author_id: Optional[str]
+    author_name: Optional[str]
+    content_html: str
+    metadata: Dict[str, Any]
+    parent_entry_id: Optional[str]
+    reactions: List[ReactionSummaryOut]
+    reply_count: int
+    attachment: Optional[TimelineAttachmentOut]
+    created_at: datetime
+
+
+class TaskTimelinePostIn(Schema):
+    """
+    Payload for POST /tasks/{id}/timeline.
+
+    ``content_html`` is required when creating a comment entry.
+    Action toggles allow atomic side-effects alongside the comment:
+      - ``change_assignee_to`` — reassign the task to this user ID
+      - ``log_time_minutes``   — add a time-log entry (Phase 6 placeholder)
+      - ``set_due_date``       — update the task's due_date
+    """
+    content_html: str
+    parent_entry_id: Optional[str] = None
+    # Action toggles
+    change_assignee_to: Optional[str] = None
+    log_time_minutes: Optional[int] = None
+    log_time_description: str = ""
+    set_due_date: Optional[datetime] = None
+
+
+class TimelineReactionIn(Schema):
+    emoji: str
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _author_name_for(user) -> Optional[str]:
+    """Return display name for a user object or None."""
+    if user is None:
+        return None
+    try:
+        return f"{user.first_name} {user.last_name}".strip() or user.email
+    except Exception:
+        return None
+
+
+def _reactions_for_entry(entry: TaskTimelineEntry, requesting_user) -> List[dict]:
+    """Build aggregated reaction list for a TaskTimelineEntry."""
+    reactions: dict[str, dict] = {}
+    for r in entry.reactions.select_related("user"):
+        if r.emoji not in reactions:
+            reactions[r.emoji] = {"emoji": r.emoji, "count": 0, "user_ids": [], "reacted_by_me": False}
+        reactions[r.emoji]["count"] += 1
+        reactions[r.emoji]["user_ids"].append(str(r.user_id))
+        if requesting_user and requesting_user.is_authenticated and str(r.user_id) == str(requesting_user.id):
+            reactions[r.emoji]["reacted_by_me"] = True
+    return list(reactions.values())
+
+
+def _timeline_entry_out(entry: TaskTimelineEntry, requesting_user=None) -> dict:
+    """Serialise a TaskTimelineEntry to the common timeline dict."""
+    author_name = None
+    if entry.author_id:
+        try:
+            author_name = _author_name_for(entry.author)
+        except Exception:
+            pass
+    return {
+        "id": str(entry.id),
+        "source": "timeline_entry",
+        "event_type": entry.event_type,
+        "author_id": str(entry.author_id) if entry.author_id else None,
+        "author_name": author_name,
+        "content_html": entry.content_html,
+        "metadata": entry.metadata if isinstance(entry.metadata, dict) else {},
+        "parent_entry_id": str(entry.parent_entry_id) if entry.parent_entry_id else None,
+        "reactions": _reactions_for_entry(entry, requesting_user),
+        "reply_count": entry.replies.count(),
+        "attachment": None,
+        "created_at": entry.created_at,
+    }
+
+
+def _legacy_comment_out(comment: TaskComment) -> dict:
+    """Wrap a legacy TaskComment as a timeline entry dict."""
+    author_name = None
+    if comment.author_id:
+        try:
+            author_name = _author_name_for(comment.author)
+        except Exception:
+            pass
+    return {
+        "id": f"legacy_comment_{comment.id}",
+        "source": "legacy_comment",
+        "event_type": TimelineEventType.COMMENT,
+        "author_id": str(comment.author_id) if comment.author_id else None,
+        "author_name": author_name,
+        "content_html": comment.content_html,
+        "metadata": {},
+        "parent_entry_id": None,
+        "reactions": [],
+        "reply_count": 0,
+        "attachment": None,
+        "created_at": comment.created_at,
+    }
+
+
+def _legacy_attachment_out(att: TaskAttachment) -> dict:
+    """Wrap a legacy TaskAttachment as a file_upload timeline entry dict."""
+    uploader_name = None
+    if att.uploaded_by_id:
+        try:
+            uploader_name = _author_name_for(att.uploaded_by)
+        except Exception:
+            pass
+    attachment_data = {
+        "id": str(att.id),
+        "original_filename": att.original_filename,
+        "content_type": att.content_type or "",
+        "size_bytes": att.size_bytes,
+        "url": att.file.url,
+        "uploaded_by_id": str(att.uploaded_by_id) if att.uploaded_by_id else None,
+        "created_at": att.created_at,
+    }
+    return {
+        "id": f"legacy_attachment_{att.id}",
+        "source": "legacy_attachment",
+        "event_type": TimelineEventType.FILE_UPLOAD,
+        "author_id": str(att.uploaded_by_id) if att.uploaded_by_id else None,
+        "author_name": uploader_name,
+        "content_html": "",
+        "metadata": {"filename": att.original_filename, "size_bytes": att.size_bytes},
+        "parent_entry_id": None,
+        "reactions": [],
+        "reply_count": 0,
+        "attachment": attachment_data,
+        "created_at": att.created_at,
+    }
+
+
+def _log_timeline_event(task: Task, event_type: str, author=None, metadata: dict = None) -> None:
+    """
+    Create a system TaskTimelineEntry for the given event.
+
+    Silently swallows any errors so that it never breaks the main request.
+    """
+    try:
+        TaskTimelineEntry.objects.create(
+            task=task,
+            author=author,
+            event_type=event_type,
+            content_html="",
+            metadata=metadata or {},
+        )
+    except Exception:
+        logger.exception("Failed to log timeline event %s for task %s", event_type, task.id)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/tasks/{task_id}/timeline",
+    auth=django_auth,
+    response={200: List[TaskTimelineEntryOut], 403: ErrorOut, 404: ErrorOut},
+)
+def get_task_timeline(
+    request,
+    task_id: str,
+    event_type: Optional[str] = None,
+    order: str = "asc",
+    page: int = 1,
+    page_size: int = 100,
+):
+    """
+    Return the unified chronological timeline for a task.
+
+    Merges new-style ``TaskTimelineEntry`` records with legacy ``TaskComment``
+    and ``TaskAttachment`` records from older data.
+
+    Query parameters:
+      - ``event_type`` — filter to ``comment`` or ``system`` (all non-comment) entries
+      - ``order``      — ``asc`` (oldest first, default) or ``desc`` (newest first)
+      - ``page`` / ``page_size`` — pagination
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    # --- Collect entries from all sources ---
+    entries: list[dict] = []
+
+    # 1. New-style TaskTimelineEntry records
+    tle_qs = (
+        TaskTimelineEntry.objects.filter(task=task, parent_entry__isnull=True)
+        .select_related("author")
+        .prefetch_related("reactions__user", "replies")
+    )
+    if event_type == "comment":
+        tle_qs = tle_qs.filter(event_type=TimelineEventType.COMMENT)
+    elif event_type == "system":
+        tle_qs = tle_qs.exclude(event_type=TimelineEventType.COMMENT)
+
+    for entry in tle_qs:
+        entries.append(_timeline_entry_out(entry, request.user))
+
+    # 2. Legacy TaskComment records (only if not filtered to system events)
+    if event_type != "system":
+        for comment in TaskComment.objects.filter(task=task).select_related("author"):
+            entries.append(_legacy_comment_out(comment))
+
+    # 3. Legacy TaskAttachment records as file_upload events (only if not filtered to comment)
+    if event_type != "comment":
+        for att in TaskAttachment.objects.filter(task=task).select_related("uploaded_by"):
+            entries.append(_legacy_attachment_out(att))
+
+    # --- Sort merged results ---
+    reverse = order == "desc"
+    entries.sort(key=lambda e: e["created_at"], reverse=reverse)
+
+    # --- Paginate ---
+    offset = (page - 1) * page_size
+    return 200, entries[offset: offset + page_size]
+
+
+@router.post(
+    "/tasks/{task_id}/timeline",
+    auth=django_auth,
+    response={201: TaskTimelineEntryOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostIn):
+    """
+    Add a comment to the task timeline.
+
+    Optionally performs side-effect actions when the action toggles are set:
+      - ``change_assignee_to`` — reassigns the task Řešitel
+      - ``set_due_date``       — updates the task due date
+      - ``log_time_minutes``   — records a time entry (placeholder; full
+                                 implementation in Phase 6)
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.select_related("assigned_to").get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if not payload.content_html or not payload.content_html.strip():
+        return 400, {"detail": "Comment content is required."}
+
+    # Validate parent entry if given
+    parent_entry = None
+    if payload.parent_entry_id:
+        try:
+            parent_entry = TaskTimelineEntry.objects.get(id=payload.parent_entry_id, task=task)
+        except TaskTimelineEntry.DoesNotExist:
+            return 400, {"detail": "Parent entry not found on this task."}
+
+    with transaction.atomic():
+        # --- Create the comment timeline entry ---
+        entry = TaskTimelineEntry.objects.create(
+            task=task,
+            author=request.user,
+            event_type=TimelineEventType.COMMENT,
+            content_html=payload.content_html,
+            parent_entry=parent_entry,
+        )
+
+        # --- Action toggle: reassign task ---
+        if payload.change_assignee_to:
+            old_name = _author_name_for(task.assigned_to) if task.assigned_to_id else None
+            new_user, err = _resolve_user_in_firm(payload.change_assignee_to, request.firm)
+            if err:
+                return err
+            new_name = _author_name_for(new_user)
+            task.assigned_to = new_user
+            task.save(update_fields=["assigned_to"])
+            _log_timeline_event(
+                task, TimelineEventType.ASSIGNEE_CHANGE, author=request.user,
+                metadata={"from_name": old_name, "to_name": new_name},
+            )
+
+        # --- Action toggle: set due date ---
+        if payload.set_due_date is not None:
+            old_due = task.due_date.isoformat() if task.due_date else None
+            task.due_date = payload.set_due_date
+            task.save(update_fields=["due_date"])
+            _log_timeline_event(
+                task, TimelineEventType.DUE_DATE_CHANGE, author=request.user,
+                metadata={"old": old_due, "new": payload.set_due_date.isoformat()},
+            )
+
+        # --- Action toggle: log time (Phase 6 placeholder) ---
+        if payload.log_time_minutes:
+            _log_timeline_event(
+                task, TimelineEventType.TIME_LOGGED, author=request.user,
+                metadata={
+                    "minutes": payload.log_time_minutes,
+                    "description": payload.log_time_description,
+                },
+            )
+
+    _notify_task_watchers(task, "task.comment_added")
+    # Re-fetch to get prefetched reactions
+    entry.refresh_from_db()
+    return 201, _timeline_entry_out(entry, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/timeline/{entry_id}/reactions",
+    auth=django_auth,
+    response={200: ReactionSummaryOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: TimelineReactionIn):
+    """
+    Toggle an emoji reaction on a comment timeline entry.
+
+    If the current user has already reacted with this emoji, the reaction is
+    removed.  Otherwise it is added.  Returns the updated aggregate for this
+    emoji.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        entry = TaskTimelineEntry.objects.get(id=entry_id, task=task)
+    except TaskTimelineEntry.DoesNotExist:
+        return 404, {"detail": "Timeline entry not found."}
+
+    if entry.event_type != TimelineEventType.COMMENT:
+        return 400, {"detail": "Reactions are only supported on comment entries."}
+
+    emoji = payload.emoji.strip()
+    if not emoji:
+        return 400, {"detail": "Emoji must not be empty."}
+
+    reaction, created = TaskCommentReaction.objects.get_or_create(
+        entry=entry, user=request.user, emoji=emoji,
+    )
+    if not created:
+        reaction.delete()
+
+    # Return updated aggregate for this emoji
+    count = TaskCommentReaction.objects.filter(entry=entry, emoji=emoji).count()
+    user_ids = list(
+        TaskCommentReaction.objects.filter(entry=entry, emoji=emoji).values_list("user_id", flat=True)
+    )
+    # Re-query to get the definitive post-operation state for the requesting user
+    reacted_by_me = TaskCommentReaction.objects.filter(entry=entry, user=request.user, emoji=emoji).exists()
+    return 200, {
+        "emoji": emoji,
+        "count": count,
+        "user_ids": [str(uid) for uid in user_ids],
+        "reacted_by_me": reacted_by_me,
+    }
 
 
 # ===========================================================================

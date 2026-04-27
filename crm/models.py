@@ -722,6 +722,184 @@ class TaskDependency(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Phase 2 — Unified task timeline
+# ---------------------------------------------------------------------------
+
+class TimelineEventType(models.TextChoices):
+    """
+    All possible event types in a task timeline.
+
+    ``comment``                — user-authored rich-text comment
+    ``file_upload``            — file attached to the task
+    ``status_change``          — task status was changed
+    ``priority_change``        — task priority was changed
+    ``assignee_change``        — task was (re-)assigned
+    ``due_date_change``        — due date or range was updated
+    ``sub_task_added``         — a sub-task was created under this task
+    ``task_created``           — the task itself was created
+    ``task_assigned``          — task first-assigned to a user
+    ``task_completed``         — task was marked as completed
+    ``task_archived``          — task was archived
+    ``approval_requested``     — approval workflow started
+    ``approval_resolved``      — approval was accepted or rejected
+    ``time_logged``            — time was manually logged or timer stopped
+    ``checklist_item_checked`` — a checklist item was ticked/unticked
+    """
+
+    COMMENT = "comment", "Comment"
+    FILE_UPLOAD = "file_upload", "File Upload"
+    STATUS_CHANGE = "status_change", "Status Change"
+    PRIORITY_CHANGE = "priority_change", "Priority Change"
+    ASSIGNEE_CHANGE = "assignee_change", "Assignee Change"
+    DUE_DATE_CHANGE = "due_date_change", "Due Date Change"
+    SUB_TASK_ADDED = "sub_task_added", "Sub-task Added"
+    TASK_CREATED = "task_created", "Task Created"
+    TASK_ASSIGNED = "task_assigned", "Task Assigned"
+    TASK_COMPLETED = "task_completed", "Task Completed"
+    TASK_ARCHIVED = "task_archived", "Task Archived"
+    APPROVAL_REQUESTED = "approval_requested", "Approval Requested"
+    APPROVAL_RESOLVED = "approval_resolved", "Approval Resolved"
+    TIME_LOGGED = "time_logged", "Time Logged"
+    CHECKLIST_ITEM_CHECKED = "checklist_item_checked", "Checklist Item Checked"
+
+
+class TaskTimelineEntry(models.Model):
+    """
+    A single entry in the unified task timeline.
+
+    Covers both user-authored comments (``event_type=comment``) and automatic
+    system events such as status changes, assignments, completions, etc.
+
+    ``content_html`` is non-empty only for ``comment`` events.
+    ``metadata``     carries structured data that varies per event type:
+        - status_change:   {"from": "todo", "to": "in_progress"}
+        - priority_change: {"from": "low",  "to": "high"}
+        - assignee_change: {"from_name": "...", "to_name": "..."}
+        - due_date_change: {"old": "ISO", "new": "ISO"}
+        - sub_task_added:  {"subtask_id": "...", "title": "..."}
+        - time_logged:     {"minutes": 30, "description": "..."}
+    ``parent_entry`` enables shallow reply-threading on comment entries.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="timeline_entries",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="task_timeline_entries",
+        help_text="User who created this entry (null for automated system events).",
+    )
+    event_type = models.CharField(
+        max_length=30,
+        choices=TimelineEventType.choices,
+        default=TimelineEventType.COMMENT,
+        db_index=True,
+    )
+    content_html = models.TextField(
+        blank=True,
+        help_text="Sanitised HTML from TipTap; only populated for comment entries.",
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Structured event data (varies by event_type).",
+    )
+    parent_entry = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="replies",
+        help_text="Parent comment entry for reply threading.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "task timeline entry"
+        verbose_name_plural = "task timeline entries"
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["task", "created_at"]),
+            models.Index(fields=["task", "event_type"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.event_type}] on Task#{self.task_id} at {self.created_at}"
+
+
+class TaskCommentReaction(models.Model):
+    """
+    An emoji reaction (e.g. 👍 ❤️ 😂) on a TaskTimelineEntry comment.
+
+    The ``unique_together`` constraint ensures one user can only add each
+    emoji once per comment; toggling sends the same request to remove it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entry = models.ForeignKey(
+        TaskTimelineEntry,
+        on_delete=models.CASCADE,
+        related_name="reactions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="task_comment_reactions",
+    )
+    emoji = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task comment reaction"
+        verbose_name_plural = "task comment reactions"
+        unique_together = [("entry", "user", "emoji")]
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.emoji} by {self.user_id} on entry {self.entry_id}"
+
+
+def _voice_attachment_upload_to(instance, filename):
+    """Store voice attachments under media/task_voice/<entry_id>/<filename>."""
+    return f"task_voice/{instance.timeline_entry_id}/{filename}"
+
+
+class TaskVoiceAttachment(models.Model):
+    """
+    An audio recording (voice message) attached to a TaskTimelineEntry comment.
+
+    ``duration_seconds`` is set by the frontend recorder before upload.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    timeline_entry = models.ForeignKey(
+        TaskTimelineEntry,
+        on_delete=models.CASCADE,
+        related_name="voice_attachments",
+    )
+    file = models.FileField(upload_to=_voice_attachment_upload_to)
+    duration_seconds = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Duration of the recording in seconds (provided by the client).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task voice attachment"
+        verbose_name_plural = "task voice attachments"
+
+    def __str__(self):
+        return f"Voice msg on entry {self.timeline_entry_id}"
+
+
+# ---------------------------------------------------------------------------
 # Notification
 # ---------------------------------------------------------------------------
 
