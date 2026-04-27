@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -16,6 +17,7 @@ const tasksStore = useTasksStore()
 const leadsStore = useLeadsStore()
 const firmStore = useFirmStore()
 const toast = useToast()
+const { t } = useI18n()
 
 // New task form (triggered by clicking a date)
 const showNewTaskModal = ref(false)
@@ -80,15 +82,15 @@ function handleEventClick(info: EventClickArg) {
   const task = info.event.extendedProps['task'] as { is_completed: boolean } | undefined
   if (task && !task.is_completed) {
     tasksStore.completeTask(info.event.id).then((r) => {
-      if (!r.ok) toast.error(r.error ?? 'Failed to complete task.')
-      else toast.success('Task marked complete!')
+      if (!r.ok) toast.error(r.error ?? t('calendar.failedToComplete'))
+      else toast.success(t('calendar.taskComplete'))
     })
   }
 }
 
 async function submitNewTask() {
-  if (!newTaskTitle.value.trim()) { taskFormError.value = 'Title is required.'; return }
-  if (!newTaskLeadId.value) { taskFormError.value = 'Please select a lead.'; return }
+  if (!newTaskTitle.value.trim()) { taskFormError.value = t('calendar.titleRequired'); return }
+  if (!newTaskLeadId.value) { taskFormError.value = t('calendar.leadRequired'); return }
   taskFormLoading.value = true
   taskFormError.value = ''
   const result = await tasksStore.createTask({
@@ -99,9 +101,9 @@ async function submitNewTask() {
   taskFormLoading.value = false
   if (result.ok) {
     showNewTaskModal.value = false
-    toast.success('Task created.')
+    toast.success(t('calendar.taskCreated'))
   } else {
-    taskFormError.value = result.error ?? 'Failed to create task.'
+    taskFormError.value = result.error ?? t('calendar.failedToCreate')
   }
 }
 
@@ -133,27 +135,27 @@ onMounted(async () => {
     <!-- Stats row -->
     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Overdue Tasks</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('calendar.overdueTasks') }}</div>
         <div class="text-2xl font-bold" :class="overdueCount > 0 ? 'text-red-600' : 'text-gray-400 dark:text-gray-500'">{{ overdueCount }}</div>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Due This Week</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('calendar.dueThisWeek') }}</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ upcomingTasks.length }}</div>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 col-span-2 lg:col-span-1">
-        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Open</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('calendar.totalOpen') }}</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ filteredTasks.filter(t => !t.is_completed).length }}</div>
       </div>
     </div>
 
     <!-- User filter -->
     <div v-if="members.length > 1" class="flex items-center gap-2 mb-4">
-      <label class="text-xs font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">Filter by user:</label>
+      <label class="text-xs font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">{{ t('calendar.filterByUser') }}</label>
       <select
         v-model="filterUserId"
         class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400"
       >
-        <option value="">All users</option>
+        <option value="">{{ t('calendar.allUsers') }}</option>
         <option v-for="m in members" :key="m.id" :value="m.id">{{ m.label }}</option>
       </select>
     </div>
@@ -166,7 +168,7 @@ onMounted(async () => {
 
     <!-- Upcoming tasks panel -->
     <div v-if="upcomingTasks.length > 0" class="mt-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Upcoming (next 7 days)</h3>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('calendar.upcomingNext7') }}</h3>
       <div class="space-y-2">
         <div v-for="task in upcomingTasks" :key="task.id" class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <button
@@ -187,28 +189,28 @@ onMounted(async () => {
   <Teleport to="body">
     <div v-if="showNewTaskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showNewTaskModal = false">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="new-task-title">
-        <h3 id="new-task-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">New Task</h3>
+        <h3 id="new-task-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('calendar.newTask') }}</h3>
         <div v-if="taskFormError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ taskFormError }}</div>
         <form class="space-y-3" @submit.prevent="submitNewTask">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('calendar.titleField') }} *</label>
             <input v-model="newTaskTitle" type="text" required autofocus class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Lead *</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('calendar.leadField') }} *</label>
             <select v-model="newTaskLeadId" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-              <option value="">Select a lead…</option>
+              <option value="">{{ t('calendar.selectLead') }}</option>
               <option v-for="l in leadOptions" :key="l.id" :value="l.id">{{ l.title }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('calendar.dueDateField') }}</label>
             <input v-model="newTaskDueDate" type="date" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300" @click="showNewTaskModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300" @click="showNewTaskModal = false">{{ t('calendar.cancel') }}</button>
             <button type="submit" :disabled="taskFormLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ taskFormLoading ? 'Creating…' : 'Create' }}
+              {{ taskFormLoading ? t('calendar.creating') : t('calendar.createTask') }}
             </button>
           </div>
         </form>

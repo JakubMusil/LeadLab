@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 
@@ -11,6 +12,7 @@ const router = useRouter()
 const store = useCustomersStore()
 const savedViewsStore = useSavedViewsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const showModal = ref(false)
 const editingCustomer = ref<CustomerOut | null>(null)
@@ -66,10 +68,10 @@ function openEdit(c: CustomerOut) {
 }
 
 async function submitForm() {
-  if (!formFirstName.value.trim()) { formError.value = 'First name is required.'; return }
+  if (!formFirstName.value.trim()) { formError.value = t('customers.firstNameRequired'); return }
   formLoading.value = true
   formError.value = ''
-  const tags = formTagsInput.value.split(',').map((t) => t.trim()).filter(Boolean)
+  const tags = formTagsInput.value.split(',').map((tag) => tag.trim()).filter(Boolean)
   const payload = {
     first_name: formFirstName.value.trim(),
     last_name: formLastName.value.trim(),
@@ -88,17 +90,17 @@ async function submitForm() {
   formLoading.value = false
   if (result.ok) {
     showModal.value = false
-    toast.success(editingCustomer.value ? 'Customer updated.' : 'Customer created.')
+    toast.success(editingCustomer.value ? t('customers.updated') : t('customers.created'))
   } else {
-    formError.value = result.error ?? 'An error occurred.'
+    formError.value = result.error ?? t('customers.errorOccurred')
   }
 }
 
 async function confirmDelete(id: string) {
   const result = await store.deleteCustomer(id)
   confirmDeleteId.value = null
-  if (result.ok) toast.success('Customer deleted.')
-  else toast.error(result.error ?? 'Failed to delete.')
+  if (result.ok) toast.success(t('customers.deleted'))
+  else toast.error(result.error ?? t('customers.failedToDelete'))
 }
 
 function goToDetail(id: string) {
@@ -113,12 +115,12 @@ function fullName(c: CustomerOut) {
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextCustomer = ref<CustomerOut | null>(null)
 
-const CUSTOMER_CONTEXT_ITEMS: ContextMenuItem[] = [
-  { id: 'view', label: 'View detail', icon: '↗' },
-  { id: 'edit', label: 'Edit', icon: '✎' },
+const CUSTOMER_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
+  { id: 'view', label: t('customers.contextView'), icon: '↗' },
+  { id: 'edit', label: t('customers.contextEdit'), icon: '✎' },
   { id: 'divider1', label: '', divider: true },
-  { id: 'delete', label: 'Delete', icon: '🗑', danger: true },
-]
+  { id: 'delete', label: t('customers.contextDelete'), icon: '🗑', danger: true },
+])
 
 function onRowContextMenu(e: MouseEvent, customer: CustomerOut) {
   e.preventDefault()
@@ -150,10 +152,10 @@ async function onImportFile(e: Event) {
       fd,
     )
     if (res.ok) {
-      toast.success('Import started. Customers will appear shortly.')
+      toast.success(t('customers.importStarted'))
       setTimeout(() => store.fetchCustomers(), 2000)
     } else {
-      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Import failed.'
+      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('customers.importFailed')
       toast.error(msg)
     }
   } finally {
@@ -173,7 +175,7 @@ function exportCsv() {
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Customers</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('customers.title') }}</h2>
 
       <!-- Saved views -->
       <div v-if="savedViewsStore.viewsForEntity('customers').length > 0" class="flex items-center gap-1 flex-wrap">
@@ -193,28 +195,28 @@ function exportCsv() {
         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <label for="customer-search" class="sr-only">Search customers</label>
-        <input id="customer-search" v-model="searchInput" type="search" placeholder="Search customers…" class="bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none flex-1" />
+        <label for="customer-search" class="sr-only">{{ t('customers.searchPlaceholder') }}</label>
+        <input id="customer-search" v-model="searchInput" type="search" :placeholder="t('customers.searchPlaceholder')" class="bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none flex-1" />
       </div>
       <button
         class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
-      >+ New Customer</button>
+      >{{ t('customers.newCustomer') }}</button>
 
       <!-- Import / Export -->
       <label
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
         :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
-        title="Import customers from CSV"
+        :title="t('customers.importTitle')"
       >
-        ⬆ Import CSV
+        ⬆ {{ t('customers.importCsv') }}
         <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
       </label>
       <button
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        title="Export customers as CSV"
+        :title="t('customers.exportTitle')"
         @click="exportCsv"
-      >⬇ CSV</button>
+      >⬇ {{ t('customers.exportCsv') }}</button>
     </div>
 
     <!-- Skeleton -->
@@ -230,18 +232,18 @@ function exportCsv() {
         </svg>
       </div>
       <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
-        <template v-if="searchInput">No customers match your search</template>
-        <template v-else>No customers yet</template>
+        <template v-if="searchInput">{{ t('customers.noSearchResults') }}</template>
+        <template v-else>{{ t('customers.noCustomers') }}</template>
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
-        <template v-if="searchInput">Try a different search term or clear the filter.</template>
-        <template v-else>Add your first customer to start managing your contacts.</template>
+        <template v-if="searchInput">{{ t('customers.tryDifferentSearch') }}</template>
+        <template v-else>{{ t('customers.addFirstHint') }}</template>
       </p>
       <button
         v-if="!searchInput"
         class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
-      >Add first customer</button>
+      >{{ t('customers.addFirst') }}</button>
     </div>
 
     <!-- Table -->
@@ -249,10 +251,10 @@ function exportCsv() {
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Name</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">Company</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Email</th>
-            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Tags</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('customers.colName') }}</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">{{ t('customers.colCompany') }}</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('customers.colEmail') }}</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('customers.colTags') }}</th>
             <th class="px-4 py-3" />
           </tr>
         </thead>
@@ -279,8 +281,8 @@ function exportCsv() {
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" aria-label="Edit customer" @click.stop="openEdit(c)">✎</button>
-                <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" aria-label="Delete customer" @click.stop="confirmDeleteId = c.id">🗑</button>
+                <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('customers.editAria')" @click.stop="openEdit(c)">✎</button>
+                <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('customers.deleteAria')" @click.stop="confirmDeleteId = c.id">🗑</button>
               </div>
             </td>
           </tr>
@@ -289,18 +291,18 @@ function exportCsv() {
 
       <!-- Pagination -->
       <div class="flex justify-between items-center px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-        <span class="text-xs text-gray-400 dark:text-gray-500">Page {{ store.page }}</span>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('customers.page', { n: store.page }) }}</span>
         <div class="flex gap-2">
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             @click="store.fetchCustomers({ page: store.page - 1 })"
-          >← Prev</button>
+          >{{ t('customers.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             @click="store.fetchCustomers({ page: store.page + 1 })"
-          >Next →</button>
+          >{{ t('customers.next') }}</button>
         </div>
       </div>
     </div>
@@ -309,40 +311,40 @@ function exportCsv() {
   <!-- Modal -->
   <Teleport to="body">
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingCustomer ? 'Edit Customer' : 'New Customer'">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingCustomer ? 'Edit Customer' : 'New Customer' }}</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingCustomer ? t('customers.editTitle') : t('customers.newTitle')">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingCustomer ? t('customers.editTitle') : t('customers.newTitle') }}</h3>
         <div v-if="formError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ formError }}</div>
         <form class="space-y-3" @submit.prevent="submitForm">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.firstName') }} *</label>
               <input v-model="formFirstName" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.lastName') }}</label>
               <input v-model="formLastName" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.email') }}</label>
             <input v-model="formEmail" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.phone') }}</label>
             <input v-model="formPhone" type="tel" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Company</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.company') }}</label>
             <input v-model="formCompany" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (comma-separated)</label>
-            <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="vip, enterprise, priority" />
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.tags') }}</label>
+            <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" :placeholder="t('customers.tagsPlaceholder')" />
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">{{ t('customers.cancel') }}</button>
             <button type="submit" :disabled="formLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ formLoading ? 'Saving…' : (editingCustomer ? 'Save' : 'Create') }}
+              {{ formLoading ? t('customers.saving') : (editingCustomer ? t('customers.save') : t('customers.create')) }}
             </button>
           </div>
         </form>
@@ -355,11 +357,11 @@ function exportCsv() {
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete customer confirmation">
         <div class="text-3xl mb-3" aria-hidden="true">🗑</div>
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete this customer?</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">This action cannot be undone.</p>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('customers.deleteTitle') }}</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('customers.deleteDesc') }}</p>
         <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">Cancel</button>
-          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">Delete</button>
+          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">{{ t('customers.cancel') }}</button>
+          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">{{ t('customers.delete') }}</button>
         </div>
       </div>
     </div>

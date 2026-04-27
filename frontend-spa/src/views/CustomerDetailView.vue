@@ -3,12 +3,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const store = useCustomersStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const customerId = computed(() => route.params.id as string)
 
@@ -53,7 +55,7 @@ function cancelEdit() {
 }
 
 async function saveEdit() {
-  if (!editFirstName.value.trim()) { editError.value = 'First name required.'; return }
+  if (!editFirstName.value.trim()) { editError.value = t('customers.firstNameRequired'); return }
   editLoading.value = true
   const c = store.currentCustomer!
   const result = await store.updateCustomer(customerId.value, {
@@ -68,9 +70,9 @@ async function saveEdit() {
   editLoading.value = false
   if (result.ok) {
     editing.value = false
-    toast.success('Customer updated.')
+    toast.success(t('customers.updated'))
   } else {
-    editError.value = result.error ?? 'Failed to update.'
+    editError.value = result.error ?? t('customers.failedToUpdate')
   }
 }
 
@@ -88,7 +90,7 @@ async function addTag() {
   })
   tagsLoading.value = false
   if (result.ok) newTag.value = ''
-  else toast.error('Failed to add tag.')
+  else toast.error(t('customers.failedToAddTag'))
 }
 
 async function removeTag(tag: string) {
@@ -97,7 +99,7 @@ async function removeTag(tag: string) {
   await store.updateCustomer(customerId.value, {
     first_name: c.first_name, last_name: c.last_name,
     email: c.email, phone: c.phone, company_name: c.company_name,
-    tags: c.tags.filter((t) => t !== tag),
+    tags: c.tags.filter((tg) => tg !== tag),
     metadata: c.metadata,
   })
   tagsLoading.value = false
@@ -117,7 +119,7 @@ async function addMetadata() {
   })
   metaLoading.value = false
   if (result.ok) { newMetaKey.value = ''; newMetaValue.value = '' }
-  else toast.error('Failed to save metadata.')
+  else toast.error(t('customers.failedToSaveMeta'))
 }
 
 async function removeMetadata(key: string) {
@@ -173,7 +175,7 @@ onMounted(async () => {
 <template>
   <div class="p-6 max-w-4xl mx-auto space-y-5">
     <RouterLink to="/app/customers" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600">
-      ← Customers
+      ← {{ t('customers.title') }}
     </RouterLink>
 
     <!-- Skeleton -->
@@ -207,26 +209,26 @@ onMounted(async () => {
               <template v-else>
                 <div v-if="editError" class="mb-2 text-sm text-red-600">{{ editError }}</div>
                 <div class="grid grid-cols-2 gap-2">
-                  <input v-model="editFirstName" placeholder="First name" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editLastName" placeholder="Last name" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editEmail" type="email" placeholder="Email" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editPhone" type="tel" placeholder="Phone" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editCompany" placeholder="Company" class="col-span-2 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+                  <input v-model="editFirstName" :placeholder="t('customers.firstName')" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+                  <input v-model="editLastName" :placeholder="t('customers.lastName')" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+                  <input v-model="editEmail" type="email" :placeholder="t('customers.email')" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+                  <input v-model="editPhone" type="tel" :placeholder="t('customers.phone')" class="rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+                  <input v-model="editCompany" :placeholder="t('customers.company')" class="col-span-2 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
                 </div>
                 <div class="flex gap-2 mt-2">
-                  <button :disabled="editLoading" class="px-3 py-1.5 bg-red-600 text-white rounded-xl text-sm hover:bg-red-700 disabled:opacity-50" @click="saveEdit">{{ editLoading ? 'Saving…' : 'Save' }}</button>
-                  <button class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm" @click="cancelEdit">Cancel</button>
+                  <button :disabled="editLoading" class="px-3 py-1.5 bg-red-600 text-white rounded-xl text-sm hover:bg-red-700 disabled:opacity-50" @click="saveEdit">{{ editLoading ? t('customers.saving') : t('customers.save') }}</button>
+                  <button class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm" @click="cancelEdit">{{ t('customers.cancel') }}</button>
                 </div>
               </template>
             </div>
           </div>
-          <button v-if="!editing" class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50" @click="startEdit">Edit</button>
+          <button v-if="!editing" class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50" @click="startEdit">{{ t('customers.edit') }}</button>
         </div>
       </div>
 
       <!-- Tags -->
       <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Tags</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">{{ t('customers.tagsSection') }}</h3>
         <div class="flex flex-wrap gap-2 mb-3">
           <span
             v-for="tag in store.currentCustomer.tags"
@@ -236,23 +238,23 @@ onMounted(async () => {
             {{ tag }}
             <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">×</button>
           </span>
-          <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400">No tags</span>
+          <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400">{{ t('customers.noTags') }}</span>
         </div>
         <div class="flex gap-2">
           <input
             v-model="newTag"
             type="text"
-            placeholder="Add tag…"
+            :placeholder="t('customers.addTag')"
             class="flex-1 max-w-48 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
             @keydown.enter.prevent="addTag"
           />
-          <button :disabled="tagsLoading || !newTag.trim()" class="px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-700 hover:bg-gray-200 disabled:opacity-50" @click="addTag">Add</button>
+          <button :disabled="tagsLoading || !newTag.trim()" class="px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-700 hover:bg-gray-200 disabled:opacity-50" @click="addTag">{{ t('customers.add') }}</button>
         </div>
       </div>
 
       <!-- Metadata -->
       <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Custom Fields</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">{{ t('customers.customFields') }}</h3>
         <div v-if="Object.keys(store.currentCustomer.metadata).length > 0" class="divide-y divide-gray-50 mb-3">
           <div v-for="(val, key) in store.currentCustomer.metadata" :key="key" class="flex items-center gap-3 py-2 group">
             <span class="text-sm font-medium text-gray-700 w-32 flex-shrink-0 truncate">{{ key }}</span>
@@ -260,21 +262,21 @@ onMounted(async () => {
             <button class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700" :disabled="metaLoading" @click="removeMetadata(key)">✕</button>
           </div>
         </div>
-        <div v-else class="text-sm text-gray-400 mb-3">No custom fields</div>
+        <div v-else class="text-sm text-gray-400 mb-3">{{ t('customers.noCustomFields') }}</div>
         <div class="flex gap-2 flex-wrap">
-          <input v-model="newMetaKey" type="text" placeholder="Key" class="w-36 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-          <input v-model="newMetaValue" type="text" placeholder="Value" class="flex-1 min-w-36 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-          <button :disabled="metaLoading || !newMetaKey.trim()" class="px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-700 hover:bg-gray-200 disabled:opacity-50" @click="addMetadata">Add</button>
+          <input v-model="newMetaKey" type="text" :placeholder="t('customers.metaKeyPlaceholder')" class="w-36 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+          <input v-model="newMetaValue" type="text" :placeholder="t('customers.metaValuePlaceholder')" class="flex-1 min-w-36 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+          <button :disabled="metaLoading || !newMetaKey.trim()" class="px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-700 hover:bg-gray-200 disabled:opacity-50" @click="addMetadata">{{ t('customers.add') }}</button>
         </div>
       </div>
 
       <!-- Linked Leads -->
       <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Linked Leads</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">{{ t('customers.linkedLeads') }}</h3>
         <div v-if="leadsLoading" class="animate-pulse space-y-2">
           <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 rounded-xl" />
         </div>
-        <div v-else-if="linkedLeads.length === 0" class="text-sm text-gray-400">No leads linked to this customer.</div>
+        <div v-else-if="linkedLeads.length === 0" class="text-sm text-gray-400">{{ t('customers.noLinkedLeads') }}</div>
         <div v-else class="space-y-2">
           <RouterLink
             v-for="lead in linkedLeads"
@@ -290,6 +292,6 @@ onMounted(async () => {
       </div>
     </template>
 
-    <div v-else class="text-center py-12 text-gray-400">Customer not found.</div>
+    <div v-else class="text-center py-12 text-gray-400">{{ t('customers.notFound') }}</div>
   </div>
 </template>
