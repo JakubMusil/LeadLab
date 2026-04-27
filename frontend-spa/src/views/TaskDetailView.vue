@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut } from '@/stores/tasks'
+import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut, type TaskTimeLogOut, type TaskTimerOut } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -974,10 +974,197 @@ async function downloadAll() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 6: Time Tracking
+// ---------------------------------------------------------------------------
+const timeLogs = ref<TaskTimeLogOut[]>([])
+const timeLogsLoading = ref(false)
+const activeTimer = ref<TaskTimerOut | null>(null)
+const timerTick = ref(0)   // incremented every second while timer runs
+let timerInterval: ReturnType<typeof setInterval> | null = null
+
+// Manual log form
+const showLogForm = ref(false)
+const logFormMinutes = ref<number | null>(null)
+const logFormDescription = ref('')
+const logFormDate = ref('')
+const logFormSubmitting = ref(false)
+
+// Estimate edit
+const showEstimateEdit = ref(false)
+const estimateHours = ref<number | null>(null)
+const estimateMinutes = ref<number | null>(null)
+const estimateSaving = ref(false)
+
+// Timer start/stop
+const timerActionLoading = ref(false)
+
+function formatMinutesHuman(mins: number): string {
+  if (!mins) return '0 min'
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} h`
+  return `${h} h ${m} min`
+}
+
+function elapsedFromTimer(timer: TaskTimerOut | null): number {
+  // Returns elapsed seconds (updated reactively via timerTick)
+  if (!timer || !timer.is_running) return 0
+  void timerTick.value  // reactive dependency
+  return Math.floor((Date.now() - new Date(timer.started_at).getTime()) / 1000)
+}
+
+function formatElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(h)}:${pad(m)}:${pad(s)}`
+}
+
+function startTickInterval() {
+  if (timerInterval) return
+  timerInterval = setInterval(() => { timerTick.value++ }, 1000)
+}
+
+function stopTickInterval() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+}
+
+async function loadTimeLogs() {
+  timeLogsLoading.value = true
+  const result = await tasksStore.fetchTimeLogs(taskId.value)
+  timeLogsLoading.value = false
+  if (result.ok && result.data) timeLogs.value = result.data
+}
+
+async function loadActiveTimer() {
+  const result = await tasksStore.getActiveTimer(taskId.value)
+  if (result.ok) {
+    activeTimer.value = result.data ?? null
+    if (activeTimer.value?.is_running) {
+      startTickInterval()
+    } else {
+      stopTickInterval()
+    }
+  }
+}
+
+async function handleStartTimer() {
+  timerActionLoading.value = true
+  const result = await tasksStore.startTimer(taskId.value)
+  timerActionLoading.value = false
+  if (result.ok && result.data) {
+    activeTimer.value = result.data
+    timerTick.value = 0
+    startTickInterval()
+    // Update task to reflect my_active_timer_started_at
+    await loadTask()
+    toast.success(t('tasks.timerStarted'))
+  } else {
+    toast.error(result.error ?? t('tasks.timerStartFailed'))
+  }
+}
+
+async function handleStopTimer() {
+  timerActionLoading.value = true
+  const result = await tasksStore.stopTimer(taskId.value)
+  timerActionLoading.value = false
+  if (result.ok) {
+    stopTickInterval()
+    activeTimer.value = null
+    await Promise.all([loadTimeLogs(), loadTask(), loadTimeline()])
+    toast.success(t('tasks.timerStopped'))
+  } else {
+    toast.error(result.error ?? t('tasks.timerStopFailed'))
+  }
+}
+
+function openLogForm() {
+  const now = new Date()
+  logFormDate.value = now.toISOString().split('T')[0]
+  logFormMinutes.value = null
+  logFormDescription.value = ''
+  showLogForm.value = true
+}
+
+async function submitLogForm() {
+  const mins = Number(logFormMinutes.value)
+  if (!mins || mins <= 0) {
+    toast.error(t('tasks.durationMinutes') + ' > 0')
+    return
+  }
+  logFormSubmitting.value = true
+  const loggedAt = logFormDate.value
+    ? new Date(logFormDate.value + 'T12:00:00').toISOString()
+    : new Date().toISOString()
+  const result = await tasksStore.createTimeLog(taskId.value, {
+    duration_minutes: mins,
+    description: logFormDescription.value,
+    logged_at: loggedAt,
+  })
+  logFormSubmitting.value = false
+  if (result.ok && result.data) {
+    timeLogs.value.unshift(result.data)
+    showLogForm.value = false
+    logFormMinutes.value = null
+    logFormDescription.value = ''
+    await Promise.all([loadTask(), loadTimeline()])
+    toast.success(t('tasks.logTime'))
+  } else {
+    toast.error(result.error ?? t('tasks.logTimeFailed'))
+  }
+}
+
+async function removeTimeLog(logId: string) {
+  const result = await tasksStore.deleteTimeLog(taskId.value, logId)
+  if (result.ok) {
+    timeLogs.value = timeLogs.value.filter((l) => l.id !== logId)
+    await loadTask()
+    toast.success(t('tasks.timeLogDeleted'))
+  } else {
+    toast.error(result.error ?? t('tasks.timeLogDeleteFailed'))
+  }
+}
+
+function openEstimateEdit() {
+  if (!task.value) return
+  const total = task.value.estimated_minutes ?? 0
+  estimateHours.value = Math.floor(total / 60) || null
+  estimateMinutes.value = total % 60 || null
+  showEstimateEdit.value = true
+}
+
+async function saveEstimate() {
+  const totalMins = (Number(estimateHours.value || 0) * 60) + Number(estimateMinutes.value || 0)
+  estimateSaving.value = true
+  const result = totalMins > 0
+    ? await tasksStore.updateTask(taskId.value, { estimated_minutes: totalMins })
+    : await tasksStore.updateTask(taskId.value, { clear_estimated_minutes: true })
+  estimateSaving.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showEstimateEdit.value = false
+    toast.success(t('tasks.estimateSaved'))
+  } else {
+    toast.error(result.error ?? t('tasks.estimateSaveFailed'))
+  }
+}
+
+const timePercent = computed(() => {
+  if (!task.value || !task.value.estimated_minutes) return null
+  return Math.min(100, Math.round((task.value.total_logged_minutes / task.value.estimated_minutes) * 100))
+})
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadLeads(), loadTask(), loadTimeline(), loadSubtasks(), loadChecklist(), loadDependencies()])
+  await Promise.all([loadMembers(), loadLeads(), loadTask(), loadTimeline(), loadSubtasks(), loadChecklist(), loadDependencies(), loadTimeLogs(), loadActiveTimer()])
+})
+
+onUnmounted(() => {
+  stopTickInterval()
 })
 </script>
 
@@ -1630,6 +1817,233 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ===================== TIME TRACKING ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            ⏱ {{ t('tasks.timeTracking') }}
+          </h2>
+          <div class="flex items-center gap-2">
+            <!-- Estimate edit -->
+            <button
+              class="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors"
+              @click="openEstimateEdit"
+            >
+              {{ task!.estimated_minutes ? t('tasks.estimate') + ': ' + formatMinutesHuman(task!.estimated_minutes) : t('tasks.setEstimate') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress bar (logged vs estimate) -->
+        <div v-if="task!.estimated_minutes" class="mb-5">
+          <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+            <span>
+              <span class="font-medium text-gray-700 dark:text-gray-200">{{ formatMinutesHuman(task!.total_logged_minutes) }}</span>
+              {{ ' ' + t('tasks.logged').toLowerCase() }}
+            </span>
+            <span class="text-gray-400">
+              {{ t('tasks.timeProgress')
+                  .replace('{logged}', formatMinutesHuman(task!.total_logged_minutes))
+                  .replace('{estimated}', formatMinutesHuman(task!.estimated_minutes)) }}
+              <span
+                v-if="timePercent !== null"
+                class="ml-1.5 font-semibold"
+                :class="timePercent >= 100 ? 'text-red-500' : timePercent >= 80 ? 'text-orange-500' : 'text-green-600 dark:text-green-400'"
+              >{{ timePercent }}%</span>
+            </span>
+          </div>
+          <div class="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all duration-500"
+              :class="timePercent !== null && timePercent >= 100 ? 'bg-red-500' : timePercent !== null && timePercent >= 80 ? 'bg-orange-400' : 'bg-blue-500'"
+              :style="{ width: `${Math.min(100, timePercent ?? 0)}%` }"
+            />
+          </div>
+        </div>
+
+        <!-- Summary row (no estimate) -->
+        <div v-else-if="task!.total_logged_minutes > 0" class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+          {{ t('tasks.logged') }}: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ formatMinutesHuman(task!.total_logged_minutes) }}</span>
+        </div>
+
+        <!-- ======= STOPWATCH WIDGET ======= -->
+        <div
+          class="flex items-center gap-4 p-4 rounded-xl mb-5 transition-all duration-300"
+          :class="activeTimer?.is_running
+            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
+            : 'bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600'"
+        >
+          <!-- Elapsed time display -->
+          <div class="flex-1 min-w-0">
+            <div
+              class="text-2xl font-mono font-bold tabular-nums tracking-wider transition-colors"
+              :class="activeTimer?.is_running ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'"
+            >
+              {{ formatElapsed(elapsedFromTimer(activeTimer)) }}
+            </div>
+            <div class="text-xs mt-0.5 transition-colors" :class="activeTimer?.is_running ? 'text-blue-400 dark:text-blue-500' : 'text-gray-400'">
+              {{ activeTimer?.is_running ? t('tasks.timerRunning') : t('tasks.elapsed') }}
+            </div>
+          </div>
+
+          <!-- Start / Stop button -->
+          <button
+            :disabled="timerActionLoading"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 flex-shrink-0"
+            :class="activeTimer?.is_running
+              ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-200 dark:shadow-red-900/30'
+              : 'bg-blue-500 hover:bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/30'"
+            @click="activeTimer?.is_running ? handleStopTimer() : handleStartTimer()"
+          >
+            <span class="text-base">{{ activeTimer?.is_running ? '⏹' : '▶' }}</span>
+            <span>{{ activeTimer?.is_running ? t('tasks.stopTimer') : t('tasks.startTimer') }}</span>
+          </button>
+        </div>
+
+        <!-- ======= TIME LOG LIST ======= -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {{ t('tasks.logged') }}
+              <span v-if="timeLogs.length" class="font-normal normal-case text-gray-400">({{ timeLogs.length }})</span>
+            </span>
+            <button
+              class="text-xs px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 font-medium transition-colors"
+              @click="openLogForm"
+            >
+              + {{ t('tasks.logTimeManually') }}
+            </button>
+          </div>
+
+          <!-- Manual log form (inline) -->
+          <div
+            v-if="showLogForm"
+            class="mb-3 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-700 space-y-3"
+          >
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Duration -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('tasks.durationMinutes') }}</label>
+                <input
+                  v-model.number="logFormMinutes"
+                  type="number"
+                  min="1"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+                  :placeholder="t('tasks.minutesShort')"
+                />
+              </div>
+              <!-- Date -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('tasks.logDate') }}</label>
+                <input
+                  v-model="logFormDate"
+                  type="date"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+            </div>
+            <!-- Description -->
+            <div>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('tasks.logDescription') }}</label>
+              <input
+                v-model="logFormDescription"
+                type="text"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+                :placeholder="t('tasks.logDescription')"
+              />
+            </div>
+            <div class="flex justify-end gap-2">
+              <button
+                class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                @click="showLogForm = false"
+              >{{ t('tasks.cancelLog') }}</button>
+              <button
+                :disabled="logFormSubmitting || !logFormMinutes || logFormMinutes <= 0"
+                class="px-4 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 disabled:opacity-50"
+                @click="submitLogForm"
+              >{{ logFormSubmitting ? '…' : t('tasks.logTime') }}</button>
+            </div>
+          </div>
+
+          <!-- Logs list -->
+          <div v-if="timeLogsLoading" class="py-4 text-center text-xs text-gray-400 animate-pulse">…</div>
+          <div v-else-if="timeLogs.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-2">
+            {{ t('tasks.noTimeLogs') }}
+          </div>
+          <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
+            <div
+              v-for="log in timeLogs"
+              :key="log.id"
+              class="flex items-start justify-between py-2.5 group"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                    {{ formatMinutesHuman(log.duration_minutes) }}
+                  </span>
+                  <span class="text-xs text-gray-400">·</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ log.user_name || '?' }}</span>
+                  <span class="text-xs text-gray-400">·</span>
+                  <span class="text-xs text-gray-400">{{ formatDate(log.logged_at) }}</span>
+                </div>
+                <p v-if="log.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ log.description }}</p>
+              </div>
+              <button
+                class="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs text-red-400 hover:text-red-600 flex-shrink-0 px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                :title="t('tasks.timeLogDeleted')"
+                @click="removeTimeLog(log.id)"
+              >🗑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estimate edit modal -->
+      <div v-if="showEstimateEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-600 p-6 w-full max-w-sm mx-4">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            ⏱ {{ t('tasks.setEstimate') }}
+          </h3>
+          <div class="flex gap-3 mb-4">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('tasks.hoursShort') }}</label>
+              <input
+                v-model.number="estimateHours"
+                type="number"
+                min="0"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+                placeholder="0"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('tasks.minutesShort') }}</label>
+              <input
+                v-model.number="estimateMinutes"
+                type="number"
+                min="0"
+                max="59"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-blue-400"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+              @click="showEstimateEdit = false"
+            >{{ t('tasks.cancel') }}</button>
+            <button
+              :disabled="estimateSaving"
+              class="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 disabled:opacity-50"
+              @click="saveEstimate"
+            >{{ estimateSaving ? '…' : t('tasks.save') }}</button>
+          </div>
+        </div>
+        <!-- Backdrop -->
+        <div class="fixed inset-0 z-[-1]" @click="showEstimateEdit = false" />
       </div>
 
       <!-- ===================== TIMELINE (Unified: popis + komentáře + systémové záznamy) ===================== -->

@@ -48,6 +48,8 @@ from crm.models import (
     TaskPublicShare,
     TaskStatus,
     TaskTimelineEntry,
+    TaskTimeLog,
+    TaskTimer,
     TaskVoiceAttachment,
     TimelineEventType,
 )
@@ -807,6 +809,10 @@ class TaskOut(Schema):
     # Phase 3: checklist counters
     checklist_count: int
     checklist_checked: int
+    # Phase 6: time tracking
+    estimated_minutes: Optional[int]
+    total_logged_minutes: int
+    my_active_timer_started_at: Optional[datetime]
 
 
 class TaskIn(Schema):
@@ -842,6 +848,8 @@ class TaskUpdateIn(Schema):
     is_pinned: Optional[bool] = None
     is_archived: Optional[bool] = None
     project_ids: Optional[List[str]] = None
+    estimated_minutes: Optional[int] = None
+    clear_estimated_minutes: bool = False
 
 
 class FollowUpTaskIn(Schema):
@@ -989,6 +997,26 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         checklist_count = 0
         checklist_checked = 0
 
+    # Phase 6: time tracking
+    try:
+        from django.db.models import Sum as _Sum
+        total_logged_minutes = (
+            TaskTimeLog.objects.filter(task=t).aggregate(total=_Sum("duration_minutes"))["total"] or 0
+        )
+    except Exception:
+        total_logged_minutes = 0
+
+    my_active_timer_started_at = None
+    if requesting_user and requesting_user.is_authenticated:
+        try:
+            active_timer = TaskTimer.objects.filter(
+                task=t, user=requesting_user, stopped_at__isnull=True
+            ).first()
+            if active_timer:
+                my_active_timer_started_at = active_timer.started_at
+        except Exception:
+            pass
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
@@ -1027,6 +1055,10 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "subtasks_completed": subtasks_completed,
         "checklist_count": checklist_count,
         "checklist_checked": checklist_checked,
+        # Phase 6
+        "estimated_minutes": t.estimated_minutes,
+        "total_logged_minutes": total_logged_minutes,
+        "my_active_timer_started_at": my_active_timer_started_at,
     }
 
 
@@ -1333,6 +1365,13 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
     if payload.is_archived is not None:
         task.is_archived = payload.is_archived
         update_fields.append("is_archived")
+
+    if payload.clear_estimated_minutes:
+        task.estimated_minutes = None
+        update_fields.append("estimated_minutes")
+    elif payload.estimated_minutes is not None:
+        task.estimated_minutes = payload.estimated_minutes
+        update_fields.append("estimated_minutes")
 
     if payload.assigned_to_id is not None:
         if payload.assigned_to_id == "":
@@ -3015,13 +3054,21 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
                 metadata={"old": old_due, "new": payload.set_due_date.isoformat()},
             )
 
-        # --- Action toggle: log time (Phase 6 placeholder) ---
+        # --- Action toggle: log time (Phase 6 — creates a real TaskTimeLog) ---
         if payload.log_time_minutes:
+            time_log = TaskTimeLog.objects.create(
+                task=task,
+                user=request.user,
+                logged_at=tz.now(),
+                duration_minutes=payload.log_time_minutes,
+                description=payload.log_time_description or "",
+            )
             _log_timeline_event(
                 task, TimelineEventType.TIME_LOGGED, author=request.user,
                 metadata={
                     "minutes": payload.log_time_minutes,
                     "description": payload.log_time_description,
+                    "time_log_id": str(time_log.id),
                 },
             )
 
@@ -3088,8 +3135,275 @@ def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: Time
 
 
 # ===========================================================================
-# STATS
+# PHASE 6 — TIME TRACKING
 # ===========================================================================
+
+class TaskTimeLogOut(Schema):
+    id: str
+    task_id: str
+    user_id: Optional[str]
+    user_name: Optional[str]
+    logged_at: datetime
+    duration_minutes: int
+    description: str
+    created_at: datetime
+
+
+class TaskTimeLogIn(Schema):
+    duration_minutes: int
+    description: str = ""
+    logged_at: Optional[datetime] = None
+
+
+class TaskTimerOut(Schema):
+    id: str
+    task_id: str
+    user_id: str
+    started_at: datetime
+    stopped_at: Optional[datetime]
+    is_running: bool
+
+
+def _time_log_out(log: TaskTimeLog) -> dict:
+    user_name = None
+    if log.user_id:
+        try:
+            user_name = _author_name_for(log.user)
+        except Exception:
+            pass
+    return {
+        "id": str(log.id),
+        "task_id": str(log.task_id),
+        "user_id": str(log.user_id) if log.user_id else None,
+        "user_name": user_name,
+        "logged_at": log.logged_at,
+        "duration_minutes": log.duration_minutes,
+        "description": log.description,
+        "created_at": log.created_at,
+    }
+
+
+def _timer_out(timer: TaskTimer) -> dict:
+    return {
+        "id": str(timer.id),
+        "task_id": str(timer.task_id),
+        "user_id": str(timer.user_id),
+        "started_at": timer.started_at,
+        "stopped_at": timer.stopped_at,
+        "is_running": timer.stopped_at is None,
+    }
+
+
+@router.get(
+    "/tasks/{task_id}/time-logs",
+    auth=django_auth,
+    response={200: List[TaskTimeLogOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_time_logs(request, task_id: str):
+    """List all time log entries for a task."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    logs = TaskTimeLog.objects.filter(task=task).select_related("user").order_by("-logged_at", "-created_at")
+    return 200, [_time_log_out(log) for log in logs]
+
+
+@router.post(
+    "/tasks/{task_id}/time-logs",
+    auth=django_auth,
+    response={201: TaskTimeLogOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_time_log(request, task_id: str, payload: TaskTimeLogIn):
+    """Manually log time worked on a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if payload.duration_minutes <= 0:
+        return 400, {"detail": "duration_minutes must be a positive integer."}
+
+    logged_at = payload.logged_at or tz.now()
+
+    with transaction.atomic():
+        log = TaskTimeLog.objects.create(
+            task=task,
+            user=request.user,
+            logged_at=logged_at,
+            duration_minutes=payload.duration_minutes,
+            description=payload.description,
+        )
+        _log_timeline_event(
+            task, TimelineEventType.TIME_LOGGED, author=request.user,
+            metadata={
+                "minutes": payload.duration_minutes,
+                "description": payload.description,
+                "time_log_id": str(log.id),
+            },
+        )
+
+    broadcast_event(firm=request.firm, event="task.time_logged", payload={"task_id": task_id})
+    return 201, _time_log_out(log)
+
+
+@router.delete(
+    "/tasks/{task_id}/time-logs/{log_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_time_log(request, task_id: str, log_id: str):
+    """Delete a time log entry. Users can only delete their own logs unless they are an admin."""
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        log = TaskTimeLog.objects.get(id=log_id, task=task)
+    except TaskTimeLog.DoesNotExist:
+        return 404, {"detail": "Time log not found."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    if not is_admin and (log.user_id is None or str(log.user_id) != str(request.user.id)):
+        return 403, {"detail": "You can only delete your own time log entries."}
+
+    log.delete()
+    return 204, None
+
+
+@router.post(
+    "/tasks/{task_id}/timer/start",
+    auth=django_auth,
+    response={201: TaskTimerOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def start_timer(request, task_id: str):
+    """
+    Start a stopwatch timer for the current user on this task.
+
+    Only one active timer per user is allowed. If the user already has a
+    running timer on *any* task it is returned as a 400 error — the client
+    should stop that timer first.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    # One running timer per user
+    existing = TaskTimer.objects.filter(user=request.user, stopped_at__isnull=True).first()
+    if existing:
+        return 400, {"detail": "You already have a running timer. Stop it before starting a new one."}
+
+    timer = TaskTimer.objects.create(
+        task=task,
+        user=request.user,
+        started_at=tz.now(),
+    )
+    return 201, _timer_out(timer)
+
+
+@router.post(
+    "/tasks/{task_id}/timer/stop",
+    auth=django_auth,
+    response={200: TaskTimerOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def stop_timer(request, task_id: str):
+    """
+    Stop the running timer for the current user on this task.
+
+    Automatically creates a ``TaskTimeLog`` entry for the elapsed time and
+    logs a ``time_logged`` timeline event.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        timer = TaskTimer.objects.get(task=task, user=request.user, stopped_at__isnull=True)
+    except TaskTimer.DoesNotExist:
+        return 400, {"detail": "No running timer found for this task."}
+
+    now = tz.now()
+    elapsed_seconds = (now - timer.started_at).total_seconds()
+    duration_minutes = max(1, round(elapsed_seconds / 60))
+
+    with transaction.atomic():
+        timer.stopped_at = now
+        timer.save(update_fields=["stopped_at"])
+
+        log = TaskTimeLog.objects.create(
+            task=task,
+            user=request.user,
+            logged_at=timer.started_at,
+            duration_minutes=duration_minutes,
+            description="",
+        )
+        _log_timeline_event(
+            task, TimelineEventType.TIME_LOGGED, author=request.user,
+            metadata={
+                "minutes": duration_minutes,
+                "description": "Timer stopped",
+                "time_log_id": str(log.id),
+            },
+        )
+
+    broadcast_event(firm=request.firm, event="task.time_logged", payload={"task_id": task_id})
+    return 200, _timer_out(timer)
+
+
+@router.get(
+    "/tasks/{task_id}/timer/active",
+    auth=django_auth,
+    response={200: Optional[TaskTimerOut], 403: ErrorOut, 404: ErrorOut},
+)
+def get_active_timer(request, task_id: str):
+    """
+    Return the currently running timer for this task and the current user,
+    or ``null`` if no timer is running.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    timer = TaskTimer.objects.filter(task=task, user=request.user, stopped_at__isnull=True).first()
+    return 200, _timer_out(timer) if timer else None
+
+
+
 
 class StatsOut(Schema):
     total_leads: int
