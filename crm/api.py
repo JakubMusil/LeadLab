@@ -1293,10 +1293,12 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
                 task, TimelineEventType.ASSIGNEE_CHANGE, author=request.user,
                 metadata={"from_name": old_assignee_name, "to_name": new_assignee_name},
             )
-    if (payload.due_date is not None or payload.clear_due_date) and (task.due_date.isoformat() if task.due_date else None) != old_due_date:
+    due_date_payload_changed = payload.due_date is not None or payload.clear_due_date
+    new_due_date_value = task.due_date.isoformat() if task.due_date else None
+    if due_date_payload_changed and new_due_date_value != old_due_date:
         _log_timeline_event(
             task, TimelineEventType.DUE_DATE_CHANGE, author=request.user,
-            metadata={"old": old_due_date, "new": task.due_date.isoformat() if task.due_date else None},
+            metadata={"old": old_due_date, "new": new_due_date_value},
         )
     if payload.is_archived is not None and task.is_archived != old_archived and task.is_archived:
         _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
@@ -2539,7 +2541,8 @@ def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: Time
     user_ids = list(
         TaskCommentReaction.objects.filter(entry=entry, emoji=emoji).values_list("user_id", flat=True)
     )
-    reacted_by_me = created  # True when just added, False when removed
+    # Re-query to get the definitive post-operation state for the requesting user
+    reacted_by_me = TaskCommentReaction.objects.filter(entry=entry, user=request.user, emoji=emoji).exists()
     return 200, {
         "emoji": emoji,
         "count": count,

@@ -576,7 +576,8 @@
     "eventTimeLogged": "{minutes} min logged.",
     "eventChecklistItemChecked": "Checklist item updated.",
     "timelineLoadFailed": "Failed to load timeline.",
-    "reactionFailed": "Failed to toggle reaction."
+    "reactionFailed": "Failed to toggle reaction.",
+    "copyLinkFailed": "Failed to copy link."
   },
   "leadDetail": {
     "backToLeads": "← Leads",

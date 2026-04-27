@@ -576,7 +576,8 @@
     "eventTimeLogged": "{minutes} Min. erfasst.",
     "eventChecklistItemChecked": "Checklisteneintrag aktualisiert.",
     "timelineLoadFailed": "Aktivität konnte nicht geladen werden.",
-    "reactionFailed": "Reaktion konnte nicht umgeschaltet werden."
+    "reactionFailed": "Reaktion konnte nicht umgeschaltet werden.",
+    "copyLinkFailed": "Link konnte nicht kopiert werden."
   },
   "leadDetail": {
     "backToLeads": "← Leads",

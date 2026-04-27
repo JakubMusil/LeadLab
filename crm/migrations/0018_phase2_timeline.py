@@ -1,5 +1,9 @@
 # Generated for Phase 2 — Unified task timeline (TaskTimelineEntry,
 # TaskCommentReaction, TaskVoiceAttachment).
+#
+# NOTE: This migration is numbered 0018 even though it implements "Phase 2"
+# of the product roadmap.  Phase 3 (0017) was merged first.  The migration
+# sequence follows the order of database history, not the product roadmap.
 
 import django.db.models.deletion
 import uuid

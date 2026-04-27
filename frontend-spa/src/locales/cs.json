@@ -576,7 +576,8 @@
     "eventTimeLogged": "Vykázáno {minutes} min.",
     "eventChecklistItemChecked": "Položka kontrolního seznamu aktualizována.",
     "timelineLoadFailed": "Nepodařilo se načíst aktivitu.",
-    "reactionFailed": "Nepodařilo se přepnout reakci."
+    "reactionFailed": "Nepodařilo se přepnout reakci.",
+    "copyLinkFailed": "Nepodařilo se zkopírovat odkaz."
   },
   "leadDetail": {
     "backToLeads": "← Leady",

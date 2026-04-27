@@ -576,7 +576,8 @@
     "eventTimeLogged": "Zarejestrowano {minutes} min.",
     "eventChecklistItemChecked": "Element listy kontrolnej zaktualizowany.",
     "timelineLoadFailed": "Nie udało się załadować aktywności.",
-    "reactionFailed": "Nie udało się przełączyć reakcji."
+    "reactionFailed": "Nie udało się przełączyć reakcji.",
+    "copyLinkFailed": "Nie udało się skopiować linku."
   },
   "leadDetail": {
     "backToLeads": "← Leady",

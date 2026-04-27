@@ -683,7 +683,10 @@ async function submitTimelineComment() {
     payload.log_time_description = actionLogDescription.value
   }
   if (toggleSetDueDate.value && actionDueDate.value) {
-    payload.set_due_date = new Date(actionDueDate.value).toISOString()
+    // Parse date as local midnight to avoid UTC off-by-one-day errors
+    const [year, month, day] = actionDueDate.value.split('-').map(Number)
+    const localDate = new Date(year, month - 1, day, 12, 0, 0)
+    payload.set_due_date = localDate.toISOString()
   }
 
   const result = await tasksStore.createTimelineEntry(taskId.value, payload)
@@ -1625,7 +1628,7 @@ onMounted(async () => {
                     <button
                       v-if="entry.attachment"
                       class="block w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      @click="() => { navigator.clipboard.writeText(entry.attachment!.url); attContextMenuId = null; toast.success(t('tasks.linkCopied')) }"
+                      @click="() => { attContextMenuId = null; navigator.clipboard.writeText(entry.attachment!.url).then(() => toast.success(t('tasks.linkCopied'))).catch(() => toast.error(t('tasks.copyLinkFailed'))) }"
                     >
                       🔗 {{ t('tasks.copyLink') }}
                     </button>
