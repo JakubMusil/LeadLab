@@ -478,6 +478,60 @@ class Task(TenantModel):
     is_pinned = models.BooleanField(default=False, db_index=True)
     is_archived = models.BooleanField(default=False, db_index=True)
 
+    # ---------------------------------------------------------------------------
+    # Phase 7 — Recurrence
+    # ---------------------------------------------------------------------------
+    recurrence = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=(
+            'Recurrence config, e.g. {"type": "daily|weekly|monthly|custom", '
+            '"interval": 1, "day_of_week": [1,3], "ends_at": null}. '
+            "Null means no recurrence."
+        ),
+    )
+    recurrence_parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="recurrence_instances",
+        help_text="Points to the original (root) recurring task this instance was spawned from.",
+    )
+
+    # ---------------------------------------------------------------------------
+    # Phase 7 — Approval workflow
+    # ---------------------------------------------------------------------------
+    approval_required = models.BooleanField(
+        default=False,
+        help_text="When True, the task must be approved before it is considered done.",
+    )
+    approval_requested_from = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approval_tasks",
+        help_text="The user who is asked to approve this task.",
+    )
+
+    class ApprovalStatus(models.TextChoices):
+        NONE = "none", "None"
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    approval_status = models.CharField(
+        max_length=20,
+        choices=ApprovalStatus.choices,
+        default=ApprovalStatus.NONE,
+        db_index=True,
+    )
+    approval_note = models.TextField(
+        blank=True,
+        help_text="Optional note explaining the approval decision (especially rejection reason).",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(
         default=dict,
@@ -494,6 +548,7 @@ class Task(TenantModel):
             models.Index(fields=["firm", "status"]),
             models.Index(fields=["firm", "priority"]),
             models.Index(fields=["firm", "is_archived"]),
+            models.Index(fields=["firm", "approval_status"]),
         ]
 
     def __str__(self):
@@ -1674,6 +1729,69 @@ class AutomationRun(models.Model):
             f"AutomationRun({self.rule.name}, {self.status}) "
             f"@ {self.triggered_at:%Y-%m-%d %H:%M}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 — Task Template
+# ---------------------------------------------------------------------------
+
+class TaskTemplate(TenantModel):
+    """
+    A reusable task template scoped to a Firm.
+
+    When applied, it creates a new Task pre-populated with the template's
+    description, priority, estimated time, checklist items, and tags.
+
+    ``checklist_items`` is a JSON list of ``{"text": "...", "position": N}``
+    objects that will be converted to ``TaskChecklistItem`` records upon apply.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description_html = models.TextField(
+        blank=True,
+        help_text="Rich-text HTML description (TipTap output).",
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=TaskPriority.choices,
+        default=TaskPriority.MEDIUM,
+    )
+    estimated_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Estimated task duration in minutes.",
+    )
+    checklist_items = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of checklist item objects: [{"text": "...", "position": 0}].',
+    )
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of tag strings pre-filled on tasks created from this template.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_task_templates",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "task template"
+        verbose_name_plural = "task templates"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["firm", "name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} [{self.firm}]"
 
 
 # ---------------------------------------------------------------------------

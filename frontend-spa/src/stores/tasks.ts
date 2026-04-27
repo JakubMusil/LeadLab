@@ -53,6 +53,15 @@ export interface TaskOut {
   estimated_minutes: number | null
   total_logged_minutes: number
   my_active_timer_started_at: string | null
+  // Phase 7: recurrence
+  recurrence: Record<string, unknown> | null
+  recurrence_parent_id: string | null
+  // Phase 7: approval
+  approval_required: boolean
+  approval_status: 'none' | 'pending' | 'approved' | 'rejected'
+  approval_requested_from_id: string | null
+  approval_requested_from_name: string | null
+  approval_note: string
 }
 
 export interface TaskIn {
@@ -90,6 +99,11 @@ export interface TaskUpdateIn {
   project_ids?: string[]
   estimated_minutes?: number | null
   clear_estimated_minutes?: boolean
+  // Phase 7: recurrence
+  recurrence?: Record<string, unknown> | null
+  clear_recurrence?: boolean
+  // Phase 7: approval
+  approval_required?: boolean
 }
 
 export interface FollowUpTaskIn {
@@ -268,6 +282,54 @@ export interface TaskTimerOut {
   started_at: string
   stopped_at: string | null
   is_running: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: Task Templates
+// ---------------------------------------------------------------------------
+
+export interface TaskTemplateOut {
+  id: string
+  firm_id: string
+  name: string
+  description_html: string
+  priority: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  estimated_minutes: number | null
+  checklist_items: Array<{ text: string; position: number }>
+  tags: string[]
+  created_by_id: string | null
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TaskTemplateIn {
+  name: string
+  description_html?: string
+  priority?: string
+  estimated_minutes?: number | null
+  checklist_items?: Array<{ text: string; position: number }>
+  tags?: string[]
+}
+
+export interface TaskTemplateUpdateIn {
+  name?: string
+  description_html?: string
+  priority?: string
+  estimated_minutes?: number | null
+  clear_estimated_minutes?: boolean
+  checklist_items?: Array<{ text: string; position: number }>
+  tags?: string[]
+}
+
+export interface TaskTemplateApplyIn {
+  title: string
+  lead_id?: string | null
+  proposal_id?: string | null
+  customer_id?: string | null
+  assigned_to_id?: string | null
+  watcher_ids?: string[]
+  due_date?: string | null
 }
 
 export const useTasksStore = defineStore('tasks', () => {
@@ -674,6 +736,94 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to get active timer.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 7: Approval workflow
+  // ---------------------------------------------------------------------------
+
+  async function requestApproval(
+    taskId: string,
+    approverId: string,
+  ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${taskId}/request-approval`, {
+      approver_id: approverId,
+    })
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === taskId)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to request approval.') }
+  }
+
+  async function approveTask(taskId: string): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${taskId}/approve`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === taskId)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to approve task.') }
+  }
+
+  async function rejectTask(taskId: string, note = ''): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${taskId}/reject`, { note })
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === taskId)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to reject task.') }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 7: Task Templates
+  // ---------------------------------------------------------------------------
+
+  async function fetchTaskTemplates(): Promise<{ ok: boolean; data?: TaskTemplateOut[]; error?: string }> {
+    const res = await api.get<TaskTemplateOut[]>('/api/v1/crm/task-templates')
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load task templates.') }
+  }
+
+  async function fetchTaskTemplate(id: string): Promise<{ ok: boolean; data?: TaskTemplateOut; error?: string }> {
+    const res = await api.get<TaskTemplateOut>(`/api/v1/crm/task-templates/${id}`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load task template.') }
+  }
+
+  async function createTaskTemplate(payload: TaskTemplateIn): Promise<{ ok: boolean; data?: TaskTemplateOut; error?: string }> {
+    const res = await api.post<TaskTemplateOut>('/api/v1/crm/task-templates', payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create task template.') }
+  }
+
+  async function updateTaskTemplate(
+    id: string,
+    payload: TaskTemplateUpdateIn,
+  ): Promise<{ ok: boolean; data?: TaskTemplateOut; error?: string }> {
+    const res = await api.patch<TaskTemplateOut>(`/api/v1/crm/task-templates/${id}`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update task template.') }
+  }
+
+  async function deleteTaskTemplate(id: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/task-templates/${id}`)
+    if (res.ok) return { ok: true }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete task template.') }
+  }
+
+  async function applyTaskTemplate(
+    templateId: string,
+    payload: TaskTemplateApplyIn,
+  ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/task-templates/${templateId}/apply`, payload)
+    if (res.ok) {
+      tasks.value.push(res.data)
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to apply task template.') }
+  }
+
   return {
     tasks,
     loading,
@@ -723,5 +873,16 @@ export const useTasksStore = defineStore('tasks', () => {
     startTimer,
     stopTimer,
     getActiveTimer,
+    // Phase 7: approval
+    requestApproval,
+    approveTask,
+    rejectTask,
+    // Phase 7: task templates
+    fetchTaskTemplates,
+    fetchTaskTemplate,
+    createTaskTemplate,
+    updateTaskTemplate,
+    deleteTaskTemplate,
+    applyTaskTemplate,
   }
 })

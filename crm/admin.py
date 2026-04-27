@@ -19,6 +19,7 @@ from crm.models import (
     Task,
     TaskChecklistItem,
     TaskDependency,
+    TaskTemplate,
 )
 
 
@@ -203,3 +204,11 @@ class TaskDependencyAdmin(admin.ModelAdmin):
     list_filter = ("type",)
     search_fields = ("from_task__title", "to_task__title")
     readonly_fields = ("created_at",)
+
+
+@admin.register(TaskTemplate)
+class TaskTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "firm", "priority", "estimated_minutes", "created_by", "created_at")
+    list_filter = ("firm", "priority")
+    search_fields = ("name", "firm__name")
+    readonly_fields = ("created_at", "updated_at")

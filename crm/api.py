@@ -47,6 +47,7 @@ from crm.models import (
     TaskPriority,
     TaskPublicShare,
     TaskStatus,
+    TaskTemplate,
     TaskTimelineEntry,
     TaskTimeLog,
     TaskTimer,
@@ -814,6 +815,15 @@ class TaskOut(Schema):
     estimated_minutes: Optional[int]
     total_logged_minutes: int
     my_active_timer_started_at: Optional[datetime]
+    # Phase 7: recurrence
+    recurrence: Optional[Dict[str, Any]]
+    recurrence_parent_id: Optional[str]
+    # Phase 7: approval
+    approval_required: bool
+    approval_status: str
+    approval_requested_from_id: Optional[str]
+    approval_requested_from_name: Optional[str]
+    approval_note: str
 
 
 class TaskIn(Schema):
@@ -851,6 +861,11 @@ class TaskUpdateIn(Schema):
     project_ids: Optional[List[str]] = None
     estimated_minutes: Optional[int] = None
     clear_estimated_minutes: bool = False
+    # Phase 7: recurrence
+    recurrence: Optional[Dict[str, Any]] = None
+    clear_recurrence: bool = False
+    # Phase 7: approval
+    approval_required: Optional[bool] = None
 
 
 class FollowUpTaskIn(Schema):
@@ -1018,6 +1033,15 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         except Exception:
             pass
 
+    # Phase 7: approval
+    approval_requested_from_name: Optional[str] = None
+    if t.approval_requested_from_id:
+        try:
+            arf = t.approval_requested_from
+            approval_requested_from_name = f"{arf.first_name} {arf.last_name}".strip() or arf.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve approval_requested_from for task %s: %s", t.id, exc)
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
@@ -1060,6 +1084,15 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "estimated_minutes": t.estimated_minutes,
         "total_logged_minutes": total_logged_minutes,
         "my_active_timer_started_at": my_active_timer_started_at,
+        # Phase 7: recurrence
+        "recurrence": t.recurrence,
+        "recurrence_parent_id": str(t.recurrence_parent_id) if t.recurrence_parent_id else None,
+        # Phase 7: approval
+        "approval_required": t.approval_required,
+        "approval_status": t.approval_status,
+        "approval_requested_from_id": str(t.approval_requested_from_id) if t.approval_requested_from_id else None,
+        "approval_requested_from_name": approval_requested_from_name,
+        "approval_note": t.approval_note,
     }
 
 
@@ -1373,6 +1406,23 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
     elif payload.estimated_minutes is not None:
         task.estimated_minutes = payload.estimated_minutes
         update_fields.append("estimated_minutes")
+
+    # Phase 7: recurrence
+    if payload.clear_recurrence:
+        task.recurrence = None
+        update_fields.append("recurrence")
+    elif payload.recurrence is not None:
+        _valid_recurrence_types = {"daily", "weekly", "monthly", "custom"}
+        rec_type = payload.recurrence.get("type", "")
+        if rec_type not in _valid_recurrence_types:
+            return 400, {"detail": f"Invalid recurrence type '{rec_type}'. Choose from: {sorted(_valid_recurrence_types)}"}
+        task.recurrence = payload.recurrence
+        update_fields.append("recurrence")
+
+    # Phase 7: approval_required toggle
+    if payload.approval_required is not None:
+        task.approval_required = payload.approval_required
+        update_fields.append("approval_required")
 
     if payload.assigned_to_id is not None:
         if payload.assigned_to_id == "":
@@ -3404,6 +3454,473 @@ def get_active_timer(request, task_id: str):
     return 200, _timer_out(timer) if timer else None
 
 
+# ===========================================================================
+# PHASE 7 — APPROVAL WORKFLOW
+# ===========================================================================
+
+class ApprovalRequestIn(Schema):
+    approver_id: str
+
+
+class ApprovalRejectIn(Schema):
+    note: str = ""
+
+
+@router.post(
+    "/tasks/{task_id}/request-approval",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def request_approval(request, task_id: str, payload: ApprovalRequestIn):
+    """
+    Send an approval request for a task to a specific firm member.
+
+    Sets ``approval_status`` to ``pending`` and records the approver.
+    A timeline entry is logged automatically.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if task.approval_status == Task.ApprovalStatus.PENDING:
+        return 400, {"detail": "An approval request is already pending for this task."}
+
+    approver, err = _resolve_user_in_firm(payload.approver_id, request.firm)
+    if err:
+        return err
+
+    with transaction.atomic():
+        task.approval_required = True
+        task.approval_requested_from = approver
+        task.approval_status = Task.ApprovalStatus.PENDING
+        task.approval_note = ""
+        task.save(update_fields=["approval_required", "approval_requested_from", "approval_status", "approval_note"])
+
+        _log_timeline_event(
+            task, TimelineEventType.APPROVAL_REQUESTED, author=request.user,
+            metadata={
+                "approver_id": str(approver.id),
+                "approver_name": _author_name_for(approver),
+            },
+        )
+
+    broadcast_event(firm=request.firm, event="task.approval_requested", payload=_task_out(task, request.user))
+    _notify_task_watchers(task, "task.updated")
+    return 200, _task_out(task, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/approve",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def approve_task(request, task_id: str):
+    """
+    Approve a pending task.  Only the designated approver (or an admin/owner)
+    can approve.  Sets ``approval_status`` to ``approved``.
+    """
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.select_related("approval_requested_from").get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if task.approval_status != Task.ApprovalStatus.PENDING:
+        return 400, {"detail": "Task does not have a pending approval request."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_approver = task.approval_requested_from_id and str(task.approval_requested_from_id) == str(request.user.id)
+    if not is_approver and not is_admin:
+        return 403, {"detail": "Only the designated approver or an admin can approve this task."}
+
+    with transaction.atomic():
+        task.approval_status = Task.ApprovalStatus.APPROVED
+        task.save(update_fields=["approval_status"])
+
+        _log_timeline_event(
+            task, TimelineEventType.APPROVAL_RESOLVED, author=request.user,
+            metadata={"decision": "approved", "approver_name": _author_name_for(request.user)},
+        )
+
+    broadcast_event(firm=request.firm, event="task.approval_resolved", payload=_task_out(task, request.user))
+    _notify_task_watchers(task, "task.updated")
+    return 200, _task_out(task, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/reject",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def reject_task(request, task_id: str, payload: ApprovalRejectIn):
+    """
+    Reject a pending task approval.  Only the designated approver (or an
+    admin/owner) can reject.  Sets ``approval_status`` to ``rejected`` and
+    stores the optional rejection note.
+    """
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.select_related("approval_requested_from").get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if task.approval_status != Task.ApprovalStatus.PENDING:
+        return 400, {"detail": "Task does not have a pending approval request."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_approver = task.approval_requested_from_id and str(task.approval_requested_from_id) == str(request.user.id)
+    if not is_approver and not is_admin:
+        return 403, {"detail": "Only the designated approver or an admin can reject this task."}
+
+    with transaction.atomic():
+        task.approval_status = Task.ApprovalStatus.REJECTED
+        task.approval_note = payload.note
+        task.save(update_fields=["approval_status", "approval_note"])
+
+        _log_timeline_event(
+            task, TimelineEventType.APPROVAL_RESOLVED, author=request.user,
+            metadata={
+                "decision": "rejected",
+                "note": payload.note,
+                "approver_name": _author_name_for(request.user),
+            },
+        )
+
+    broadcast_event(firm=request.firm, event="task.approval_resolved", payload=_task_out(task, request.user))
+    _notify_task_watchers(task, "task.updated")
+    return 200, _task_out(task, request.user)
+
+
+# ===========================================================================
+# PHASE 7 — TASK TEMPLATES
+# ===========================================================================
+
+class TaskTemplateOut(Schema):
+    id: str
+    firm_id: str
+    name: str
+    description_html: str
+    priority: str
+    estimated_minutes: Optional[int]
+    checklist_items: List[Dict[str, Any]]
+    tags: List[str]
+    created_by_id: Optional[str]
+    created_by_name: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskTemplateIn(Schema):
+    name: str
+    description_html: str = ""
+    priority: str = TaskPriority.MEDIUM
+    estimated_minutes: Optional[int] = None
+    checklist_items: List[Dict[str, Any]] = []
+    tags: List[str] = []
+
+
+class TaskTemplateUpdateIn(Schema):
+    name: Optional[str] = None
+    description_html: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_minutes: Optional[int] = None
+    clear_estimated_minutes: bool = False
+    checklist_items: Optional[List[Dict[str, Any]]] = None
+    tags: Optional[List[str]] = None
+
+
+class TaskTemplateApplyIn(Schema):
+    title: str
+    lead_id: Optional[str] = None
+    proposal_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    assigned_to_id: Optional[str] = None
+    watcher_ids: List[str] = []
+    due_date: Optional[datetime] = None
+
+
+def _template_out(tmpl: TaskTemplate) -> dict:
+    created_by_name = None
+    if tmpl.created_by_id:
+        try:
+            created_by_name = _author_name_for(tmpl.created_by)
+        except Exception:
+            pass
+    return {
+        "id": str(tmpl.id),
+        "firm_id": str(tmpl.firm_id),
+        "name": tmpl.name,
+        "description_html": tmpl.description_html,
+        "priority": tmpl.priority,
+        "estimated_minutes": tmpl.estimated_minutes,
+        "checklist_items": tmpl.checklist_items if isinstance(tmpl.checklist_items, list) else [],
+        "tags": tmpl.tags if isinstance(tmpl.tags, list) else [],
+        "created_by_id": str(tmpl.created_by_id) if tmpl.created_by_id else None,
+        "created_by_name": created_by_name,
+        "created_at": tmpl.created_at,
+        "updated_at": tmpl.updated_at,
+    }
+
+
+@router.get(
+    "/task-templates",
+    auth=django_auth,
+    response={200: List[TaskTemplateOut], 403: ErrorOut},
+)
+def list_task_templates(request):
+    """List all task templates for the active firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    templates = TaskTemplate.objects.filter(firm=request.firm).select_related("created_by")
+    return 200, [_template_out(tmpl) for tmpl in templates]
+
+
+@router.post(
+    "/task-templates",
+    auth=django_auth,
+    response={201: TaskTemplateOut, 400: ErrorOut, 403: ErrorOut},
+)
+def create_task_template(request, payload: TaskTemplateIn):
+    """Create a new task template for the active firm."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    if not payload.name.strip():
+        return 400, {"detail": "Template name must not be empty."}
+
+    valid_priorities = [p.value for p in TaskPriority]
+    if payload.priority not in valid_priorities:
+        return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
+
+    tmpl = TaskTemplate.objects.create(
+        firm=request.firm,
+        name=payload.name.strip(),
+        description_html=payload.description_html,
+        priority=payload.priority,
+        estimated_minutes=payload.estimated_minutes,
+        checklist_items=payload.checklist_items,
+        tags=payload.tags,
+        created_by=request.user,
+    )
+    return 201, _template_out(tmpl)
+
+
+@router.get(
+    "/task-templates/{template_id}",
+    auth=django_auth,
+    response={200: TaskTemplateOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_task_template(request, template_id: str):
+    """Get a single task template by ID."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        tmpl = TaskTemplate.objects.select_related("created_by").get(id=template_id, firm=request.firm)
+    except TaskTemplate.DoesNotExist:
+        return 404, {"detail": "Task template not found."}
+
+    return 200, _template_out(tmpl)
+
+
+@router.patch(
+    "/task-templates/{template_id}",
+    auth=django_auth,
+    response={200: TaskTemplateOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_task_template(request, template_id: str, payload: TaskTemplateUpdateIn):
+    """Partially update an existing task template."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        tmpl = TaskTemplate.objects.get(id=template_id, firm=request.firm)
+    except TaskTemplate.DoesNotExist:
+        return 404, {"detail": "Task template not found."}
+
+    update_fields = []
+
+    if payload.name is not None:
+        if not payload.name.strip():
+            return 400, {"detail": "Template name must not be empty."}
+        tmpl.name = payload.name.strip()
+        update_fields.append("name")
+
+    if payload.description_html is not None:
+        tmpl.description_html = payload.description_html
+        update_fields.append("description_html")
+
+    if payload.priority is not None:
+        valid_priorities = [p.value for p in TaskPriority]
+        if payload.priority not in valid_priorities:
+            return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
+        tmpl.priority = payload.priority
+        update_fields.append("priority")
+
+    if payload.clear_estimated_minutes:
+        tmpl.estimated_minutes = None
+        update_fields.append("estimated_minutes")
+    elif payload.estimated_minutes is not None:
+        tmpl.estimated_minutes = payload.estimated_minutes
+        update_fields.append("estimated_minutes")
+
+    if payload.checklist_items is not None:
+        tmpl.checklist_items = payload.checklist_items
+        update_fields.append("checklist_items")
+
+    if payload.tags is not None:
+        tmpl.tags = payload.tags
+        update_fields.append("tags")
+
+    if update_fields:
+        tmpl.save(update_fields=update_fields)
+
+    return 200, _template_out(tmpl)
+
+
+@router.delete(
+    "/task-templates/{template_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task_template(request, template_id: str):
+    """Delete a task template."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        tmpl = TaskTemplate.objects.get(id=template_id, firm=request.firm)
+    except TaskTemplate.DoesNotExist:
+        return 404, {"detail": "Task template not found."}
+
+    tmpl.delete()
+    return 204, None
+
+
+@router.post(
+    "/task-templates/{template_id}/apply",
+    auth=django_auth,
+    response={201: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn):
+    """
+    Create a new task from a template.
+
+    The template's description, priority, estimated_minutes, tags, and
+    checklist items are all copied into the newly created task.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        tmpl = TaskTemplate.objects.get(id=template_id, firm=request.firm)
+    except TaskTemplate.DoesNotExist:
+        return 404, {"detail": "Task template not found."}
+
+    if not payload.title.strip():
+        return 400, {"detail": "Task title must not be empty."}
+
+    # Resolve optional entity links
+    lead = None
+    if payload.lead_id:
+        try:
+            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+        except Lead.DoesNotExist:
+            return 400, {"detail": "Lead not found."}
+
+    proposal = None
+    if payload.proposal_id:
+        try:
+            proposal = Proposal.objects.get(id=payload.proposal_id, lead__firm=request.firm)
+        except Proposal.DoesNotExist:
+            return 400, {"detail": "Proposal not found."}
+
+    customer = None
+    if payload.customer_id:
+        try:
+            customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Customer not found."}
+
+    # Resolve assignee
+    assigned_to = None
+    if payload.assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
+
+    with transaction.atomic():
+        task = Task.objects.create(
+            firm=request.firm,
+            lead=lead,
+            proposal=proposal,
+            customer=customer,
+            title=payload.title.strip(),
+            description_html=tmpl.description_html,
+            description_added_at=tz.now() if tmpl.description_html else None,
+            priority=tmpl.priority,
+            estimated_minutes=tmpl.estimated_minutes,
+            tags=list(tmpl.tags),
+            assigned_to=assigned_to,
+            due_date=payload.due_date,
+            created_by=request.user,
+        )
+
+        # Set watchers
+        if payload.watcher_ids:
+            watcher_err = _set_task_watchers(task, payload.watcher_ids, request.firm)
+            if watcher_err:
+                raise ValueError(f"Watcher error: {watcher_err}")
+
+        # Copy checklist items from template
+        checklist_items = tmpl.checklist_items if isinstance(tmpl.checklist_items, list) else []
+        for item_data in checklist_items:
+            text = str(item_data.get("text", "")).strip()
+            if text:
+                TaskChecklistItem.objects.create(
+                    task=task,
+                    text=text,
+                    position=int(item_data.get("position", 0)),
+                    created_by=request.user,
+                )
+
+        _log_timeline_event(
+            task, TimelineEventType.TASK_CREATED, author=request.user,
+            metadata={"from_template_id": str(tmpl.id), "template_name": tmpl.name},
+        )
+
+    broadcast_event(firm=request.firm, event="task.created", payload=_task_out(task, request.user))
+    _notify_task_watchers(task, "task.created")
+    return 201, _task_out(task, request.user)
 
 
 class StatsOut(Schema):
