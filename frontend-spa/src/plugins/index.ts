@@ -1,4 +1,4 @@
-import type { App } from 'vue'
+import type { App, Component } from 'vue'
 
 // ---------------------------------------------------------------------------
 // Manifest schema (v2.4)
@@ -52,7 +52,7 @@ export interface ActivityTypeDefinition {
 
 export interface NavItemDefinition {
   label: string
-  icon: string
+  icon: string | Component
   path: string
   requiresPro?: boolean
 }
