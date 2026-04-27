@@ -1066,13 +1066,16 @@ def _next_due_date_for_recurrence(recurrence: dict, from_dt: "datetime.datetime"
     elif rec_type == "weekly":
         day_of_week = recurrence.get("day_of_week")
         if day_of_week and isinstance(day_of_week, list) and len(day_of_week) > 0:
-            # Find the next matching weekday
+            # Find the next matching weekday within the week(s) defined by interval.
+            # Skip forward at most 7 days to find the nearest matching day.
+            normalized_days = [int(d) % 7 for d in day_of_week]
             candidate = from_dt + _dt.timedelta(days=1)
-            for _ in range(7 * interval + 7):  # safety cap
-                if candidate.weekday() in [int(d) for d in day_of_week]:
+            for _ in range(7):  # at most 7 days to find next matching weekday
+                if candidate.weekday() in normalized_days:
                     break
                 candidate += _dt.timedelta(days=1)
-            next_dt = candidate
+            # Advance by (interval - 1) additional full weeks for multi-week intervals
+            next_dt = candidate + _dt.timedelta(weeks=max(0, interval - 1))
         else:
             next_dt = from_dt + _dt.timedelta(weeks=interval)
     elif rec_type == "monthly":
@@ -1140,7 +1143,11 @@ def spawn_recurring_tasks():
             .first()
         )
         source = last_instance if last_instance else root
-        from_dt = source.completed_at or source.due_date or now
+
+        # Use the scheduled due_date as anchor to prevent drift caused by
+        # late completions.  Fall back to completed_at only when due_date
+        # is absent, and finally to now() as a last resort.
+        from_dt = source.due_date or source.completed_at or now
 
         # Compute next due date
         next_due = _next_due_date_for_recurrence(root.recurrence, from_dt)
