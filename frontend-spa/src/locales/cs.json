@@ -492,7 +492,7 @@
     "failedToUpdateStatus": "Nepodařilo se aktualizovat stav.",
     "failedToUpdate": "Nepodařilo se aktualizovat.",
     "failedToDelete": "Nepodařilo se smazat.",
-    "commentPlaceholder": "Napište komentář… (zadejte @ pro zmínění člena týmu)",
+    "commentPlaceholder": "Napište komentář… (zadejte {'@'} pro zmínění člena týmu)",
     "notePlaceholder": "Přidejte poznámku, záznam hovoru nebo e-mail…",
     "titleRequired": "Název je povinný.",
     "add": "Přidat",

@@ -492,7 +492,7 @@
     "failedToUpdateStatus": "Failed to update status.",
     "failedToUpdate": "Failed to update.",
     "failedToDelete": "Failed to delete.",
-    "commentPlaceholder": "Write a comment… (type @ to mention a team member)",
+    "commentPlaceholder": "Write a comment… (type {'@'} to mention a team member)",
     "notePlaceholder": "Add a note, call log, or email…",
     "titleRequired": "Title is required.",
     "add": "Add",
