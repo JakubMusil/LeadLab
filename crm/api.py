@@ -7,6 +7,7 @@ Every endpoint requires:
   3. The authenticated user to be a member of that Firm.
 """
 import datetime as dt
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -50,6 +51,7 @@ from crm.events import broadcast_event
 router = Router(tags=["crm"])
 
 _MENTION_PREVIEW_LENGTH = 120
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -672,8 +674,12 @@ class TaskOut(Schema):
     id: str
     firm_id: str
     lead_id: str
+    lead_title: str
     assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str]
+    watcher_ids: List[str]
     title: str
+    description: str
     due_date: Optional[datetime]
     is_completed: bool
     completed_at: Optional[datetime]
@@ -683,17 +689,67 @@ class TaskOut(Schema):
 class TaskIn(Schema):
     lead_id: str
     title: str
+    description: str = ""
     assigned_to_id: Optional[str] = None
+    watcher_ids: List[str] = []
     due_date: Optional[datetime] = None
 
 
+class TaskUpdateIn(Schema):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assigned_to_id: Optional[str] = None
+    watcher_ids: Optional[List[str]] = None
+    due_date: Optional[datetime] = None
+    clear_due_date: bool = False
+
+
+class FollowUpTaskIn(Schema):
+    title: str
+    description: str = ""
+    assigned_to_id: Optional[str] = None
+    watcher_ids: List[str] = []
+    due_date: Optional[datetime] = None
+
+
+class CompleteTaskIn(Schema):
+    follow_up: Optional[FollowUpTaskIn] = None
+
+
 def _task_out(t: Task) -> dict:
+    # Resolve lead title (use cached select_related if available)
+    try:
+        lead_title = t.lead.title
+    except (AttributeError, Exception) as exc:
+        logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
+        lead_title = ""
+
+    # Resolve assigned_to display name
+    assigned_to_name: Optional[str] = None
+    if t.assigned_to_id:
+        try:
+            u = t.assigned_to
+            assigned_to_name = f"{u.first_name} {u.last_name}".strip() or u.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve assigned_to name for task %s: %s", t.id, exc)
+
+    # Resolve watcher IDs
+    try:
+        watcher_ids = [str(uid) for uid in t.watchers.values_list("id", flat=True)]
+    except Exception as exc:
+        logger.debug("Could not resolve watchers for task %s: %s", t.id, exc)
+        watcher_ids = []
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
         "lead_id": str(t.lead_id),
+        "lead_title": lead_title,
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
+        "assigned_to_name": assigned_to_name,
+        "watcher_ids": watcher_ids,
         "title": t.title,
+        "description": t.description,
         "due_date": t.due_date,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
@@ -701,16 +757,91 @@ def _task_out(t: Task) -> dict:
     }
 
 
-@router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
-def list_tasks(request, completed: Optional[bool] = None, page: int = 1, page_size: int = 20):
+def _resolve_user_in_firm(user_id: str, firm) -> tuple:
+    """Return (user, error_response) where error_response is None on success."""
+    from users.models import User
     try:
-        require_membership(request)
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return None, (400, {"detail": "User not found."})
+    if not Membership.objects.filter(user=user, firm=firm).exists():
+        return None, (400, {"detail": "User is not a member of this Firm."})
+    return user, None
+
+
+def _set_task_watchers(task: Task, watcher_ids: List[str], firm) -> Optional[tuple]:
+    """Validate and set watchers on *task*. Returns an error tuple or None."""
+    from users.models import User
+    if not watcher_ids:
+        task.watchers.clear()
+        return None
+    watcher_qs = User.objects.filter(id__in=watcher_ids)
+    member_ids = set(
+        Membership.objects.filter(firm=firm, user__in=watcher_qs).values_list("user_id", flat=True)
+    )
+    invalid = [uid for uid in watcher_ids if uid not in {str(m) for m in member_ids}]
+    if invalid:
+        return 400, {"detail": f"Some watcher IDs are not members of this Firm: {invalid}"}
+    task.watchers.set(watcher_qs.filter(id__in=watcher_ids))
+    return None
+
+
+def _notify_task_watchers(task: Task, event: str) -> None:
+    """Broadcast *event* to task watchers only (not the whole firm)."""
+    from crm.models import Notification
+    payload = _task_out(task)
+    try:
+        watchers = list(task.watchers.all())
+        if watchers:
+            notifications = [
+                Notification(firm=task.firm, user=w, event=event, payload=payload)
+                for w in watchers
+            ]
+            Notification.objects.bulk_create(notifications, ignore_conflicts=True)
+    except Exception:
+        logger.exception("Failed to persist watcher notifications for task %s event %s", task.id, event)
+
+
+@router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
+def list_tasks(
+    request,
+    completed: Optional[bool] = None,
+    assigned_to_id: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+):
+    """
+    List tasks for the current firm.
+
+    - Any member sees tasks by default.
+    - Pass ``assigned_to_id=<uuid>`` to filter by assignee (any role).
+    - Pass ``assigned_to_id=all`` to see all tasks (admin/owner only).
+    - Omitting ``assigned_to_id`` returns the current user's tasks (for workers)
+      or all tasks (for admins/owners).
+    """
+    try:
+        membership = require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    qs = Task.objects.filter(firm=request.firm)
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+
+    qs = Task.objects.filter(firm=request.firm).select_related("lead", "assigned_to")
+
+    if assigned_to_id == "all":
+        # Admins/owners may request all tasks; workers are silently scoped to themselves
+        if not is_admin:
+            qs = qs.filter(assigned_to=request.user)
+    elif assigned_to_id:
+        qs = qs.filter(assigned_to_id=assigned_to_id)
+    else:
+        # Default: workers see only their own tasks, admins see all
+        if not is_admin:
+            qs = qs.filter(assigned_to=request.user)
+
     if completed is not None:
         qs = qs.filter(is_completed=completed)
+
     offset = (page - 1) * page_size
     return 200, [_task_out(t) for t in qs[offset:offset + page_size]]
 
@@ -729,13 +860,9 @@ def create_task(request, payload: TaskIn):
 
     assigned_to = None
     if payload.assigned_to_id:
-        from users.models import User
-        try:
-            assigned_to = User.objects.get(id=payload.assigned_to_id)
-            if not Membership.objects.filter(user=assigned_to, firm=request.firm).exists():
-                return 400, {"detail": "Assigned user is not a member of this Firm."}
-        except User.DoesNotExist:
-            return 400, {"detail": "Assigned user not found."}
+        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
 
     with transaction.atomic():
         task = Task.objects.create(
@@ -743,8 +870,12 @@ def create_task(request, payload: TaskIn):
             lead=lead,
             assigned_to=assigned_to,
             title=payload.title,
+            description=payload.description,
             due_date=payload.due_date,
         )
+        watcher_err = _set_task_watchers(task, payload.watcher_ids, request.firm)
+        if watcher_err:
+            return watcher_err
         Activity.objects.create(
             lead=lead,
             user=request.user,
@@ -756,12 +887,68 @@ def create_task(request, payload: TaskIn):
             },
         )
 
+    _notify_task_watchers(task, "task.created")
+    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task))
     return 201, _task_out(task)
 
 
-@router.post("/tasks/{task_id}/complete", auth=django_auth, response={200: TaskOut, 403: ErrorOut, 404: ErrorOut})
-def complete_task(request, task_id: str):
-    """Mark a Task as completed and log a TASK_COMPLETED Activity."""
+@router.patch("/tasks/{task_id}", auth=django_auth, response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
+def update_task(request, task_id: str, payload: TaskUpdateIn):
+    """Partially update a task (title, description, due date, assignee, watchers)."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    update_fields = []
+
+    if payload.title is not None:
+        task.title = payload.title
+        update_fields.append("title")
+
+    if payload.description is not None:
+        task.description = payload.description
+        update_fields.append("description")
+
+    if payload.clear_due_date:
+        task.due_date = None
+        update_fields.append("due_date")
+    elif payload.due_date is not None:
+        task.due_date = payload.due_date
+        update_fields.append("due_date")
+
+    if payload.assigned_to_id is not None:
+        if payload.assigned_to_id == "":
+            task.assigned_to = None
+            update_fields.append("assigned_to")
+        else:
+            assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+            if err:
+                return err
+            task.assigned_to = assigned_to
+            update_fields.append("assigned_to")
+
+    if update_fields:
+        task.save(update_fields=update_fields)
+
+    if payload.watcher_ids is not None:
+        watcher_err = _set_task_watchers(task, payload.watcher_ids, request.firm)
+        if watcher_err:
+            return watcher_err
+
+    _notify_task_watchers(task, "task.updated")
+    broadcast_event(firm=request.firm, event='task.updated', payload=_task_out(task))
+    return 200, _task_out(task)
+
+
+@router.post("/tasks/{task_id}/complete", auth=django_auth, response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
+def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = None):
+    """Mark a Task as completed, log a TASK_COMPLETED Activity, and optionally create a follow-up task."""
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
@@ -775,6 +962,15 @@ def complete_task(request, task_id: str):
     if task.is_completed:
         return 200, _task_out(task)
 
+    follow_up_data = payload.follow_up if payload else None
+
+    # Validate follow-up assignee before the transaction
+    follow_up_assigned_to = None
+    if follow_up_data and follow_up_data.assigned_to_id:
+        follow_up_assigned_to, err = _resolve_user_in_firm(follow_up_data.assigned_to_id, request.firm)
+        if err:
+            return err
+
     with transaction.atomic():
         task.is_completed = True
         task.completed_at = tz.now()
@@ -786,7 +982,37 @@ def complete_task(request, task_id: str):
             metadata={"task_id": str(task.id), "title": task.title},
         )
 
+        follow_up_task = None
+        if follow_up_data:
+            follow_up_task = Task.objects.create(
+                firm=request.firm,
+                lead=task.lead,
+                assigned_to=follow_up_assigned_to,
+                title=follow_up_data.title,
+                description=follow_up_data.description,
+                due_date=follow_up_data.due_date,
+            )
+            watcher_err = _set_task_watchers(follow_up_task, follow_up_data.watcher_ids, request.firm)
+            if watcher_err:
+                return watcher_err
+            Activity.objects.create(
+                lead=task.lead,
+                user=request.user,
+                type=ActivityType.TASK_ASSIGNED,
+                metadata={
+                    "task_id": str(follow_up_task.id),
+                    "follow_up_of": str(task.id),
+                    "due_date": follow_up_data.due_date.isoformat() if follow_up_data.due_date else None,
+                    "priority": "normal",
+                },
+            )
+
+    _notify_task_watchers(task, "task.completed")
     broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task))
+    if follow_up_task:
+        _notify_task_watchers(follow_up_task, "task.created")
+        broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task))
+
     return 200, _task_out(task)
 
 

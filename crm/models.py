@@ -322,11 +322,23 @@ class Task(TenantModel):
         on_delete=models.SET_NULL,
         related_name="tasks",
     )
+    watchers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="watched_tasks",
+        help_text="Users who receive notifications about changes to this task.",
+    )
     title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, help_text="Optional task description or notes.")
     due_date = models.DateTimeField(null=True, blank=True)
     is_completed = models.BooleanField(default=False, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Arbitrary structured data (e.g. extra assignees from @mentions).",
+    )
 
     class Meta(TenantModel.Meta):
         verbose_name = "task"
