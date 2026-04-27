@@ -186,6 +186,54 @@ export interface TaskDependencyIn {
   type?: 'blocks' | 'related_to'
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2: Unified timeline types
+// ---------------------------------------------------------------------------
+
+export interface ReactionSummaryOut {
+  emoji: string
+  count: number
+  user_ids: string[]
+  reacted_by_me: boolean
+}
+
+export interface TimelineAttachmentOut {
+  id: string
+  original_filename: string
+  content_type: string
+  size_bytes: number
+  url: string
+  uploaded_by_id: string | null
+  created_at: string
+}
+
+export interface TaskTimelineEntryOut {
+  id: string
+  /** 'timeline_entry' | 'legacy_comment' | 'legacy_attachment' */
+  source: string
+  /** 'comment' | 'file_upload' | 'status_change' | 'priority_change' | ... */
+  event_type: string
+  author_id: string | null
+  author_name: string | null
+  content_html: string
+  metadata: Record<string, unknown>
+  parent_entry_id: string | null
+  reactions: ReactionSummaryOut[]
+  reply_count: number
+  attachment: TimelineAttachmentOut | null
+  created_at: string
+}
+
+export interface TaskTimelinePostIn {
+  content_html: string
+  parent_entry_id?: string | null
+  // Action toggles
+  change_assignee_to?: string | null
+  log_time_minutes?: number | null
+  log_time_description?: string
+  set_due_date?: string | null
+}
+
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<TaskOut[]>([])
   const loading = ref(false)
@@ -415,6 +463,46 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete dependency.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 2: Unified timeline
+  // ---------------------------------------------------------------------------
+
+  async function fetchTimeline(
+    taskId: string,
+    opts: { eventType?: string; order?: 'asc' | 'desc'; page?: number; pageSize?: number } = {},
+  ): Promise<{ ok: boolean; data?: TaskTimelineEntryOut[]; error?: string }> {
+    const params = new URLSearchParams()
+    if (opts.eventType) params.set('event_type', opts.eventType)
+    if (opts.order) params.set('order', opts.order)
+    params.set('page', String(opts.page ?? 1))
+    params.set('page_size', String(opts.pageSize ?? 100))
+    const res = await api.get<TaskTimelineEntryOut[]>(`/api/v1/crm/tasks/${taskId}/timeline?${params}`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load timeline.') }
+  }
+
+  async function createTimelineEntry(
+    taskId: string,
+    payload: TaskTimelinePostIn,
+  ): Promise<{ ok: boolean; data?: TaskTimelineEntryOut; error?: string }> {
+    const res = await api.post<TaskTimelineEntryOut>(`/api/v1/crm/tasks/${taskId}/timeline`, payload)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to post comment.') }
+  }
+
+  async function toggleTimelineReaction(
+    taskId: string,
+    entryId: string,
+    emoji: string,
+  ): Promise<{ ok: boolean; data?: ReactionSummaryOut; error?: string }> {
+    const res = await api.post<ReactionSummaryOut>(
+      `/api/v1/crm/tasks/${taskId}/timeline/${entryId}/reactions`,
+      { emoji },
+    )
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to toggle reaction.') }
+  }
+
   return {
     tasks,
     loading,
@@ -443,5 +531,9 @@ export const useTasksStore = defineStore('tasks', () => {
     fetchDependencies,
     createDependency,
     deleteDependency,
+    // Phase 2: timeline
+    fetchTimeline,
+    createTimelineEntry,
+    toggleTimelineReaction,
   }
 })
