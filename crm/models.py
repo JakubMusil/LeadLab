@@ -315,6 +315,14 @@ class Task(TenantModel):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_tasks",
+        help_text="User who originally created this task.",
+    )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -352,6 +360,90 @@ class Task(TenantModel):
     def __str__(self):
         done = "✓" if self.is_completed else "○"
         return f"{done} {self.title}"
+
+
+# ---------------------------------------------------------------------------
+# Task Comment
+# ---------------------------------------------------------------------------
+
+class TaskComment(models.Model):
+    """
+    A rich-text comment on a Task, authored by a Firm member.
+
+    The ``content_html`` field stores sanitised HTML produced by the
+    Tiptap rich-text editor (supports @mentions, bullet lists, checklists, etc.).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="task_comments",
+    )
+    content_html = models.TextField(help_text="Sanitised HTML content from the rich-text editor.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "task comment"
+        verbose_name_plural = "task comments"
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["task", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Comment on Task#{self.task_id} by {self.author_id}"
+
+
+# ---------------------------------------------------------------------------
+# Task Attachment
+# ---------------------------------------------------------------------------
+
+def _task_attachment_upload_to(instance, filename):
+    """Store task attachments under media/task_attachments/<task_id>/<filename>."""
+    return f"task_attachments/{instance.task_id}/{filename}"
+
+
+class TaskAttachment(models.Model):
+    """A file attached to a Task."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="task_attachments",
+    )
+    file = models.FileField(upload_to=_task_attachment_upload_to)
+    original_filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "task attachment"
+        verbose_name_plural = "task attachments"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["task", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return self.original_filename
 
 
 # ---------------------------------------------------------------------------

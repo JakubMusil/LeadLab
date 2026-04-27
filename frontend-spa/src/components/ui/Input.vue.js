@@ -8,24 +8,21 @@ const __VLS_emit = defineEmits();
 const __VLS_defaults = {
     type: 'text',
 };
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "w-full" },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'w-full' }));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 if (__VLS_ctx.label) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-        for: (__VLS_ctx.id),
-        ...{ class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)(({
+	for: __VLS_ctx.id,
+	class: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
+}));
     /** @type {__VLS_StyleScopedClasses['block']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
@@ -34,31 +31,32 @@ if (__VLS_ctx.label) {
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
     (__VLS_ctx.label);
     if (__VLS_ctx.required) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "text-red-500 ml-0.5" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'text-red-500 ml-0.5' }));
         /** @type {__VLS_StyleScopedClasses['text-red-500']} */ ;
         /** @type {__VLS_StyleScopedClasses['ml-0.5']} */ ;
     }
 }
-__VLS_asFunctionalElement1(__VLS_intrinsics.input)({
-    ...{ onInput: (...[$event]) => {
-            __VLS_ctx.$emit('update:modelValue', $event.target.value);
-            // @ts-ignore
-            [label, label, id, required, $emit,];
-        } },
-    id: (__VLS_ctx.id),
-    type: (__VLS_ctx.type),
-    value: (__VLS_ctx.modelValue),
-    placeholder: (__VLS_ctx.placeholder),
-    disabled: (__VLS_ctx.disabled),
-    required: (__VLS_ctx.required),
-    autocomplete: (__VLS_ctx.autocomplete),
-    ...{ class: "w-full rounded-xl border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 text-sm focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed" },
-    ...{ class: (__VLS_ctx.error
-            ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-            : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500') },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.input)(({
+	onInput: (...[$event]) => {
+		__VLS_ctx.$emit('update:modelValue', $event.target.value);
+		[
+			label,
+			label,
+			id,
+			required,
+			$emit
+		];
+	},
+	id: __VLS_ctx.id,
+	type: __VLS_ctx.type,
+	value: __VLS_ctx.modelValue,
+	placeholder: __VLS_ctx.placeholder,
+	disabled: __VLS_ctx.disabled,
+	required: __VLS_ctx.required,
+	autocomplete: __VLS_ctx.autocomplete,
+	...{ class: 'w-full rounded-xl border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-4 py-2.5 text-sm focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed' },
+	...{ class: __VLS_ctx.error ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500' }
+}));
 (__VLS_ctx.$attrs);
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-xl']} */ ;
@@ -77,9 +75,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.input)({
 /** @type {__VLS_StyleScopedClasses['disabled:opacity-60']} */ ;
 /** @type {__VLS_StyleScopedClasses['disabled:cursor-not-allowed']} */ ;
 if (__VLS_ctx.error) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-        ...{ class: "mt-1 text-xs text-red-500 dark:text-red-400" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)(({ class: 'mt-1 text-xs text-red-500 dark:text-red-400' }));
     /** @type {__VLS_StyleScopedClasses['mt-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-red-500']} */ ;

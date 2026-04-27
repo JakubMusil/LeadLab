@@ -50,13 +50,12 @@ onUnmounted(() => {
 });
 const __VLS_exposed = { open, close };
 defineExpose(__VLS_exposed);
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
@@ -94,13 +93,16 @@ const __VLS_10 = __VLS_9({
 }, ...__VLS_functionalComponentArgsRest(__VLS_9));
 const { default: __VLS_13 } = __VLS_11.slots;
 if (__VLS_ctx.visible) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ onClick: () => { } },
-        ...{ class: "fixed z-[200] min-w-[160px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden" },
-        ...{ style: ({ top: `${__VLS_ctx.y}px`, left: `${__VLS_ctx.x}px` }) },
-        role: "menu",
-        'aria-label': "Context menu",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	onClick: () => {},
+	...{ class: 'fixed z-[200] min-w-[160px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden' },
+	...{ style: {
+		top: `${__VLS_ctx.y}px`,
+		left: `${__VLS_ctx.x}px`
+	} },
+	role: 'menu',
+	'aria-label': 'Context menu'
+}));
     /** @type {__VLS_StyleScopedClasses['fixed']} */ ;
     /** @type {__VLS_StyleScopedClasses['z-[200]']} */ ;
     /** @type {__VLS_StyleScopedClasses['min-w-[160px]']} */ ;
@@ -116,10 +118,10 @@ if (__VLS_ctx.visible) {
     for (const [item] of __VLS_vFor((__VLS_ctx.items))) {
         (item.id);
         if (item.divider) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-                ...{ class: "h-px mx-2 my-1 bg-gray-200 dark:bg-gray-700" },
-                role: "separator",
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({
+	class: 'h-px mx-2 my-1 bg-gray-200 dark:bg-gray-700',
+	role: 'separator'
+}));
             /** @type {__VLS_StyleScopedClasses['h-px']} */ ;
             /** @type {__VLS_StyleScopedClasses['mx-2']} */ ;
             /** @type {__VLS_StyleScopedClasses['my-1']} */ ;
@@ -127,24 +129,25 @@ if (__VLS_ctx.visible) {
             /** @type {__VLS_StyleScopedClasses['dark:bg-gray-700']} */ ;
         }
         else {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!(__VLS_ctx.visible))
-                            return;
-                        if (!!(item.divider))
-                            return;
-                        __VLS_ctx.handleAction(item.id);
-                        // @ts-ignore
-                        [visible, y, x, items, handleAction,];
-                    } },
-                type: "button",
-                ...{ class: "w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed" },
-                ...{ class: (item.danger
-                        ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700') },
-                disabled: (item.disabled),
-                role: "menuitem",
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.visible) return;
+		if (!!item.divider) return;
+		__VLS_ctx.handleAction(item.id);
+		[
+			visible,
+			y,
+			x,
+			items,
+			handleAction
+		];
+	},
+	type: 'button',
+	...{ class: 'w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed' },
+	...{ class: item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' },
+	disabled: item.disabled,
+	role: 'menuitem'
+}));
             /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
@@ -157,9 +160,7 @@ if (__VLS_ctx.visible) {
             /** @type {__VLS_StyleScopedClasses['disabled:opacity-40']} */ ;
             /** @type {__VLS_StyleScopedClasses['disabled:cursor-not-allowed']} */ ;
             if (item.icon) {
-                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                    ...{ class: "w-4 text-center flex-shrink-0" },
-                });
+                __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'w-4 text-center flex-shrink-0' }));
                 /** @type {__VLS_StyleScopedClasses['w-4']} */ ;
                 /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
                 /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;

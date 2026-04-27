@@ -20,13 +20,12 @@ function onKeydown(e) {
         emit('close');
 }
 const __VLS_defaults = { size: 'md' };
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
@@ -57,12 +56,12 @@ const __VLS_8 = __VLS_7({
 }, ...__VLS_functionalComponentArgsRest(__VLS_7));
 const { default: __VLS_11 } = __VLS_9.slots;
 if (__VLS_ctx.open) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ onClick: (__VLS_ctx.onBackdropClick) },
-        ...{ onKeydown: (__VLS_ctx.onKeydown) },
-        ...{ class: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" },
-        'aria-hidden': "true",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	onClick: __VLS_ctx.onBackdropClick,
+	...{ onKeydown: __VLS_ctx.onKeydown },
+	...{ class: 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50' },
+	'aria-hidden': 'true'
+}));
     /** @type {__VLS_StyleScopedClasses['fixed']} */ ;
     /** @type {__VLS_StyleScopedClasses['inset-0']} */ ;
     /** @type {__VLS_StyleScopedClasses['z-50']} */ ;
@@ -83,16 +82,16 @@ if (__VLS_ctx.open) {
     }, ...__VLS_functionalComponentArgsRest(__VLS_13));
     const { default: __VLS_17 } = __VLS_15.slots;
     if (__VLS_ctx.open) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ onClick: () => { } },
-            ref: "dialogRef",
-            role: "dialog",
-            'aria-modal': "true",
-            'aria-labelledby': (__VLS_ctx.title ? 'modal-title' : undefined),
-            ...{ class: "relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full overflow-hidden" },
-            ...{ class: (__VLS_ctx.size === 'sm' ? 'max-w-sm' : __VLS_ctx.size === 'lg' ? 'max-w-2xl' : 'max-w-lg') },
-            'aria-hidden': "false",
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	onClick: () => {},
+	ref: 'dialogRef',
+	role: 'dialog',
+	'aria-modal': 'true',
+	'aria-labelledby': __VLS_ctx.title ? 'modal-title' : undefined,
+	...{ class: 'relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full overflow-hidden' },
+	...{ class: __VLS_ctx.size === 'sm' ? 'max-w-sm' : __VLS_ctx.size === 'lg' ? 'max-w-2xl' : 'max-w-lg' },
+	'aria-hidden': 'false'
+}));
         /** @type {__VLS_StyleScopedClasses['relative']} */ ;
         /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
@@ -101,9 +100,7 @@ if (__VLS_ctx.open) {
         /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
         if (__VLS_ctx.title) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
             /** @type {__VLS_StyleScopedClasses['justify-between']} */ ;
@@ -112,43 +109,50 @@ if (__VLS_ctx.open) {
             /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
             /** @type {__VLS_StyleScopedClasses['border-gray-100']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-                id: "modal-title",
-                ...{ class: "text-base font-semibold text-gray-900 dark:text-gray-100" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)(({
+	id: 'modal-title',
+	class: 'text-base font-semibold text-gray-900 dark:text-gray-100'
+}));
             /** @type {__VLS_StyleScopedClasses['text-base']} */ ;
             /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-gray-900']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:text-gray-100']} */ ;
             (__VLS_ctx.title);
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!(__VLS_ctx.open))
-                            return;
-                        if (!(__VLS_ctx.open))
-                            return;
-                        if (!(__VLS_ctx.title))
-                            return;
-                        __VLS_ctx.$emit('close');
-                        // @ts-ignore
-                        [open, open, onBackdropClick, onKeydown, title, title, title, size, size, $emit,];
-                    } },
-                ...{ class: "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-lg" },
-                'aria-label': "Close dialog",
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.open) return;
+		if (!__VLS_ctx.open) return;
+		if (!__VLS_ctx.title) return;
+		__VLS_ctx.$emit('close');
+		[
+			open,
+			open,
+			onBackdropClick,
+			onKeydown,
+			title,
+			title,
+			title,
+			size,
+			size,
+			$emit
+		];
+	},
+	...{ class: 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-lg' },
+	'aria-label': 'Close dialog'
+}));
             /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
             /** @type {__VLS_StyleScopedClasses['hover:text-gray-600']} */ ;
             /** @type {__VLS_StyleScopedClasses['dark:hover:text-gray-200']} */ ;
             /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
             /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
             /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
-            __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
-                ...{ class: "w-5 h-5" },
-                fill: "none",
-                stroke: "currentColor",
-                viewBox: "0 0 24 24",
-                'aria-hidden': "true",
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)(({
+	class: 'w-5 h-5',
+	fill: 'none',
+	stroke: 'currentColor',
+	viewBox: '0 0 24 24',
+	'aria-hidden': 'true'
+}));
             /** @type {__VLS_StyleScopedClasses['w-5']} */ ;
             /** @type {__VLS_StyleScopedClasses['h-5']} */ ;
             __VLS_asFunctionalElement1(__VLS_intrinsics.path)({
@@ -158,16 +162,12 @@ if (__VLS_ctx.open) {
                 d: "M6 18L18 6M6 6l12 12",
             });
         }
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "px-6 py-4" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'px-6 py-4' }));
         /** @type {__VLS_StyleScopedClasses['px-6']} */ ;
         /** @type {__VLS_StyleScopedClasses['py-4']} */ ;
         var __VLS_18 = {};
         if (__VLS_ctx.$slots.footer) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-                ...{ class: "flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" },
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50' }));
             /** @type {__VLS_StyleScopedClasses['flex']} */ ;
             /** @type {__VLS_StyleScopedClasses['justify-end']} */ ;
             /** @type {__VLS_StyleScopedClasses['gap-3']} */ ;

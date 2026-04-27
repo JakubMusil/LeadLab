@@ -170,20 +170,19 @@ const __VLS_defaults = {
     disabled: false,
     members: () => [],
 };
-const __VLS_ctx = {
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-    ...{},
-};
+const __VLS_ctx = ({
+	...{},
+	...{},
+	...{},
+	...{}
+});
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
-__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900 focus-within:ring-2 focus-within:ring-[color:var(--brand-color)] focus-within:border-transparent transition-shadow" },
-    ...{ class: ({ 'opacity-60 cursor-not-allowed': __VLS_ctx.disabled }) },
-});
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900 focus-within:ring-2 focus-within:ring-[color:var(--brand-color)] focus-within:border-transparent transition-shadow',
+	...{ class: { 'opacity-60 cursor-not-allowed': __VLS_ctx.disabled } }
+}));
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-300']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-gray-600']} */ ;
@@ -198,9 +197,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['opacity-60']} */ ;
 /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
 if (__VLS_ctx.editor) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "flex items-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({ class: 'flex items-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800' }));
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['gap-0.5']} */ ;
@@ -211,21 +208,23 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-gray-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:bg-gray-800']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.editor.chain().focus().toggleBold().run();
-                // @ts-ignore
-                [disabled, editor, editor,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-xs font-bold w-6 h-6 flex items-center justify-center transition-colors" },
-        ...{ class: (__VLS_ctx.editor.isActive('bold') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400') },
-        disabled: (__VLS_ctx.disabled),
-        title: "Bold (Ctrl+B)",
-        'aria-label': "Bold",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.editor.chain().focus().toggleBold().run();
+		[
+			disabled,
+			editor,
+			editor
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-xs font-bold w-6 h-6 flex items-center justify-center transition-colors' },
+	...{ class: __VLS_ctx.editor.isActive('bold') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled,
+	title: 'Bold (Ctrl+B)',
+	'aria-label': 'Bold'
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -236,21 +235,23 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.editor.chain().focus().toggleItalic().run();
-                // @ts-ignore
-                [disabled, editor, editor,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-xs italic w-6 h-6 flex items-center justify-center transition-colors" },
-        ...{ class: (__VLS_ctx.editor.isActive('italic') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400') },
-        disabled: (__VLS_ctx.disabled),
-        title: "Italic (Ctrl+I)",
-        'aria-label': "Italic",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.editor.chain().focus().toggleItalic().run();
+		[
+			disabled,
+			editor,
+			editor
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-xs italic w-6 h-6 flex items-center justify-center transition-colors' },
+	...{ class: __VLS_ctx.editor.isActive('italic') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled,
+	title: 'Italic (Ctrl+I)',
+	'aria-label': 'Italic'
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -261,29 +262,29 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-        ...{ class: "w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({ class: 'w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5' }));
     /** @type {__VLS_StyleScopedClasses['w-px']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-gray-300']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:bg-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['mx-0.5']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.editor.chain().focus().toggleBulletList().run();
-                // @ts-ignore
-                [disabled, editor, editor,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors" },
-        ...{ class: (__VLS_ctx.editor.isActive('bulletList') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400') },
-        disabled: (__VLS_ctx.disabled),
-        title: "Bullet list",
-        'aria-label': "Bullet list",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.editor.chain().focus().toggleBulletList().run();
+		[
+			disabled,
+			editor,
+			editor
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors' },
+	...{ class: __VLS_ctx.editor.isActive('bulletList') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled,
+	title: 'Bullet list',
+	'aria-label': 'Bullet list'
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -293,21 +294,23 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.editor.chain().focus().toggleOrderedList().run();
-                // @ts-ignore
-                [disabled, editor, editor,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors" },
-        ...{ class: (__VLS_ctx.editor.isActive('orderedList') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400') },
-        disabled: (__VLS_ctx.disabled),
-        title: "Numbered list",
-        'aria-label': "Numbered list",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.editor.chain().focus().toggleOrderedList().run();
+		[
+			disabled,
+			editor,
+			editor
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors' },
+	...{ class: __VLS_ctx.editor.isActive('orderedList') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled,
+	title: 'Numbered list',
+	'aria-label': 'Numbered list'
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -317,28 +320,28 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['justify-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-        ...{ class: "w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({ class: 'w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5' }));
     /** @type {__VLS_StyleScopedClasses['w-px']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-gray-300']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:bg-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['mx-0.5']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.editor.chain().focus().undo().run();
-                // @ts-ignore
-                [disabled, editor, editor,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400" },
-        disabled: (__VLS_ctx.disabled || !__VLS_ctx.editor.can().undo()),
-        title: "Undo",
-        'aria-label': "Undo",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.editor.chain().focus().undo().run();
+		[
+			disabled,
+			editor,
+			editor
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-xs w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled || !__VLS_ctx.editor.can().undo(),
+	title: 'Undo',
+	'aria-label': 'Undo'
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
@@ -352,34 +355,35 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['hover:bg-gray-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div)({
-        ...{ class: "w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" },
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div)(({ class: 'w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5' }));
     /** @type {__VLS_StyleScopedClasses['w-px']} */ ;
     /** @type {__VLS_StyleScopedClasses['h-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-gray-300']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:bg-gray-600']} */ ;
     /** @type {__VLS_StyleScopedClasses['mx-0.5']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "relative" },
-        'data-emoji-picker': true,
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'relative',
+	'data-emoji-picker': true
+}));
     /** @type {__VLS_StyleScopedClasses['relative']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-        ...{ onClick: (...[$event]) => {
-                if (!(__VLS_ctx.editor))
-                    return;
-                __VLS_ctx.showEmojiPicker = !__VLS_ctx.showEmojiPicker;
-                // @ts-ignore
-                [disabled, editor, showEmojiPicker, showEmojiPicker,];
-            } },
-        type: "button",
-        ...{ class: "p-1 rounded text-sm w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400" },
-        disabled: (__VLS_ctx.disabled),
-        title: "Insert emoji",
-        'aria-label': "Insert emoji",
-        'aria-expanded': (__VLS_ctx.showEmojiPicker),
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		__VLS_ctx.showEmojiPicker = !__VLS_ctx.showEmojiPicker;
+		[
+			disabled,
+			editor,
+			showEmojiPicker,
+			showEmojiPicker
+		];
+	},
+	type: 'button',
+	...{ class: 'p-1 rounded text-sm w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400' },
+	disabled: __VLS_ctx.disabled,
+	title: 'Insert emoji',
+	'aria-label': 'Insert emoji',
+	'aria-expanded': __VLS_ctx.showEmojiPicker
+}));
     /** @type {__VLS_StyleScopedClasses['p-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
@@ -394,11 +398,11 @@ if (__VLS_ctx.editor) {
     /** @type {__VLS_StyleScopedClasses['dark:hover:bg-gray-700']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:text-gray-400']} */ ;
     if (__VLS_ctx.showEmojiPicker) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-            ...{ class: "absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-2 grid grid-cols-8 gap-0.5 w-48" },
-            role: "listbox",
-            'aria-label': "Emoji picker",
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-2 grid grid-cols-8 gap-0.5 w-48',
+	role: 'listbox',
+	'aria-label': 'Emoji picker'
+}));
         /** @type {__VLS_StyleScopedClasses['absolute']} */ ;
         /** @type {__VLS_StyleScopedClasses['left-0']} */ ;
         /** @type {__VLS_StyleScopedClasses['top-full']} */ ;
@@ -417,23 +421,26 @@ if (__VLS_ctx.editor) {
         /** @type {__VLS_StyleScopedClasses['gap-0.5']} */ ;
         /** @type {__VLS_StyleScopedClasses['w-48']} */ ;
         for (const [emoji] of __VLS_vFor((__VLS_ctx.COMMON_EMOJIS))) {
-            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-                ...{ onClick: (...[$event]) => {
-                        if (!(__VLS_ctx.editor))
-                            return;
-                        if (!(__VLS_ctx.showEmojiPicker))
-                            return;
-                        __VLS_ctx.insertEmoji(emoji);
-                        // @ts-ignore
-                        [disabled, showEmojiPicker, showEmojiPicker, COMMON_EMOJIS, insertEmoji,];
-                    } },
-                key: (emoji),
-                type: "button",
-                ...{ class: "w-5 h-5 text-sm flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" },
-                title: (emoji),
-                'aria-label': (emoji),
-                role: "option",
-            });
+            __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onClick: (...[$event]) => {
+		if (!__VLS_ctx.editor) return;
+		if (!__VLS_ctx.showEmojiPicker) return;
+		__VLS_ctx.insertEmoji(emoji);
+		[
+			disabled,
+			showEmojiPicker,
+			showEmojiPicker,
+			COMMON_EMOJIS,
+			insertEmoji
+		];
+	},
+	key: emoji,
+	type: 'button',
+	...{ class: 'w-5 h-5 text-sm flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors' },
+	title: emoji,
+	'aria-label': emoji,
+	role: 'option'
+}));
             /** @type {__VLS_StyleScopedClasses['w-5']} */ ;
             /** @type {__VLS_StyleScopedClasses['h-5']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
@@ -493,12 +500,15 @@ const __VLS_13 = __VLS_12({
 }, ...__VLS_functionalComponentArgsRest(__VLS_12));
 const { default: __VLS_16 } = __VLS_14.slots;
 if (__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "fixed z-[300] min-w-[180px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden" },
-        ...{ style: ({ top: `${__VLS_ctx.mentionPopup.y}px`, left: `${__VLS_ctx.mentionPopup.x}px` }) },
-        role: "listbox",
-        'aria-label': "Mention suggestions",
-    });
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)(({
+	class: 'fixed z-[300] min-w-[180px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 overflow-hidden',
+	...{ style: {
+		top: `${__VLS_ctx.mentionPopup.y}px`,
+		left: `${__VLS_ctx.mentionPopup.x}px`
+	} },
+	role: 'listbox',
+	'aria-label': 'Mention suggestions'
+}));
     /** @type {__VLS_StyleScopedClasses['fixed']} */ ;
     /** @type {__VLS_StyleScopedClasses['z-[300]']} */ ;
     /** @type {__VLS_StyleScopedClasses['min-w-[180px]']} */ ;
@@ -512,30 +522,32 @@ if (__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0) {
     /** @type {__VLS_StyleScopedClasses['py-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
     for (const [item, index] of __VLS_vFor((__VLS_ctx.mentionPopup.items))) {
-        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
-            ...{ onMouseenter: (...[$event]) => {
-                    if (!(__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0))
-                        return;
-                    __VLS_ctx.mentionPopup.selectedIndex = index;
-                    // @ts-ignore
-                    [editor, mentionPopup, mentionPopup, mentionPopup, mentionPopup, mentionPopup, mentionPopup,];
-                } },
-            ...{ onClick: (...[$event]) => {
-                    if (!(__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0))
-                        return;
-                    __VLS_ctx.mentionPopup.selectItem?.(index);
-                    // @ts-ignore
-                    [mentionPopup,];
-                } },
-            key: (item.id),
-            type: "button",
-            ...{ class: "w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors" },
-            ...{ class: (index === __VLS_ctx.mentionPopup.selectedIndex
-                    ? 'bg-[color:var(--brand-color)] text-white'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700') },
-            role: "option",
-            'aria-selected': (index === __VLS_ctx.mentionPopup.selectedIndex),
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)(({
+	onMouseenter: (...[$event]) => {
+		if (!(__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0)) return;
+		__VLS_ctx.mentionPopup.selectedIndex = index;
+		[
+			editor,
+			mentionPopup,
+			mentionPopup,
+			mentionPopup,
+			mentionPopup,
+			mentionPopup,
+			mentionPopup
+		];
+	},
+	...{ onClick: (...[$event]) => {
+		if (!(__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0)) return;
+		__VLS_ctx.mentionPopup.selectItem?.(index);
+		[mentionPopup];
+	} },
+	key: item.id,
+	type: 'button',
+	...{ class: 'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors' },
+	...{ class: index === __VLS_ctx.mentionPopup.selectedIndex ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' },
+	role: 'option',
+	'aria-selected': index === __VLS_ctx.mentionPopup.selectedIndex
+}));
         /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
@@ -545,9 +557,7 @@ if (__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0) {
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-left']} */ ;
         /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0' }));
         /** @type {__VLS_StyleScopedClasses['w-6']} */ ;
         /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
         /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
@@ -560,9 +570,7 @@ if (__VLS_ctx.mentionPopup.visible && __VLS_ctx.mentionPopup.items.length > 0) {
         /** @type {__VLS_StyleScopedClasses['font-bold']} */ ;
         /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
         (item.label.charAt(0).toUpperCase());
-        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "truncate" },
-        });
+        __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)(({ class: 'truncate' }));
         /** @type {__VLS_StyleScopedClasses['truncate']} */ ;
         (item.label);
         // @ts-ignore

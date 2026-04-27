@@ -35,6 +35,8 @@ from crm.models import (
     Notification,
     SavedView,
     Task,
+    TaskAttachment,
+    TaskComment,
 )
 from firms.auth import (
     MembershipRole,
@@ -684,6 +686,8 @@ class TaskOut(Schema):
     is_completed: bool
     completed_at: Optional[datetime]
     created_at: datetime
+    created_by_id: Optional[str]
+    created_by_name: Optional[str]
 
 
 class TaskIn(Schema):
@@ -716,6 +720,31 @@ class CompleteTaskIn(Schema):
     follow_up: Optional[FollowUpTaskIn] = None
 
 
+class TaskCommentOut(Schema):
+    id: str
+    task_id: str
+    author_id: Optional[str]
+    author_name: Optional[str]
+    content_html: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskCommentIn(Schema):
+    content_html: str
+
+
+class TaskAttachmentOut(Schema):
+    id: str
+    task_id: str
+    uploaded_by_id: Optional[str]
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
+
+
 def _task_out(t: Task) -> dict:
     # Resolve lead title (use cached select_related if available)
     try:
@@ -740,6 +769,15 @@ def _task_out(t: Task) -> dict:
         logger.debug("Could not resolve watchers for task %s: %s", t.id, exc)
         watcher_ids = []
 
+    # Resolve created_by display name
+    created_by_name: Optional[str] = None
+    if t.created_by_id:
+        try:
+            cb = t.created_by
+            created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve created_by name for task %s: %s", t.id, exc)
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
@@ -754,6 +792,8 @@ def _task_out(t: Task) -> dict:
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
         "created_at": t.created_at,
+        "created_by_id": str(t.created_by_id) if t.created_by_id else None,
+        "created_by_name": created_by_name,
     }
 
 
@@ -869,6 +909,7 @@ def create_task(request, payload: TaskIn):
             firm=request.firm,
             lead=lead,
             assigned_to=assigned_to,
+            created_by=request.user,
             title=payload.title,
             description=payload.description,
             due_date=payload.due_date,
@@ -1014,6 +1055,278 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task))
 
     return 200, _task_out(task)
+
+
+# ---------------------------------------------------------------------------
+# Task detail (single task)
+# ---------------------------------------------------------------------------
+
+@router.get("/tasks/{task_id}", auth=django_auth, response={200: TaskOut, 403: ErrorOut, 404: ErrorOut})
+def get_task(request, task_id: str):
+    """Retrieve a single task by ID."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.select_related("lead", "assigned_to", "created_by").get(
+            id=task_id, firm=request.firm
+        )
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    return 200, _task_out(task)
+
+
+# ---------------------------------------------------------------------------
+# Task comments
+# ---------------------------------------------------------------------------
+
+def _comment_out(c: TaskComment) -> dict:
+    author_name: Optional[str] = None
+    if c.author_id:
+        try:
+            a = c.author
+            author_name = f"{a.first_name} {a.last_name}".strip() or a.email
+        except (AttributeError, Exception):
+            pass
+    return {
+        "id": str(c.id),
+        "task_id": str(c.task_id),
+        "author_id": str(c.author_id) if c.author_id else None,
+        "author_name": author_name,
+        "content_html": c.content_html,
+        "created_at": c.created_at,
+        "updated_at": c.updated_at,
+    }
+
+
+@router.get(
+    "/tasks/{task_id}/comments",
+    auth=django_auth,
+    response={200: List[TaskCommentOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_task_comments(request, task_id: str, page: int = 1, page_size: int = 100):
+    """List all comments for a task, oldest first."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    offset = (page - 1) * page_size
+    comments = (
+        TaskComment.objects.filter(task=task)
+        .select_related("author")
+        .order_by("created_at")[offset: offset + page_size]
+    )
+    return 200, [_comment_out(c) for c in comments]
+
+
+@router.post(
+    "/tasks/{task_id}/comments",
+    auth=django_auth,
+    response={201: TaskCommentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_task_comment(request, task_id: str, payload: TaskCommentIn):
+    """Add a comment to a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if not payload.content_html or not payload.content_html.strip():
+        return 400, {"detail": "Comment content is required."}
+
+    comment = TaskComment.objects.create(
+        task=task,
+        author=request.user,
+        content_html=payload.content_html,
+    )
+    _notify_task_watchers(task, "task.comment_added")
+    return 201, _comment_out(comment)
+
+
+@router.patch(
+    "/tasks/{task_id}/comments/{comment_id}",
+    auth=django_auth,
+    response={200: TaskCommentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_task_comment(request, task_id: str, comment_id: str, payload: TaskCommentIn):
+    """Edit a comment. Only the original author (or admin/owner) may edit."""
+    try:
+        membership = require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        comment = TaskComment.objects.select_related("author").get(id=comment_id, task_id=task_id)
+    except TaskComment.DoesNotExist:
+        return 404, {"detail": "Comment not found."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    if str(comment.author_id) != str(request.user.id) and not is_admin:
+        return 403, {"detail": "You can only edit your own comments."}
+
+    if not payload.content_html or not payload.content_html.strip():
+        return 400, {"detail": "Comment content is required."}
+
+    comment.content_html = payload.content_html
+    comment.save(update_fields=["content_html", "updated_at"])
+    return 200, _comment_out(comment)
+
+
+@router.delete(
+    "/tasks/{task_id}/comments/{comment_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task_comment(request, task_id: str, comment_id: str):
+    """Delete a comment. Only the original author (or admin/owner) may delete."""
+    try:
+        membership = require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        comment = TaskComment.objects.get(id=comment_id, task_id=task_id)
+    except TaskComment.DoesNotExist:
+        return 404, {"detail": "Comment not found."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    if str(comment.author_id) != str(request.user.id) and not is_admin:
+        return 403, {"detail": "You can only delete your own comments."}
+
+    comment.delete()
+    return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Task attachments
+# ---------------------------------------------------------------------------
+
+_MAX_TASK_ATTACHMENT_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+def _task_attachment_out(a: TaskAttachment) -> dict:
+    return {
+        "id": str(a.id),
+        "task_id": str(a.task_id),
+        "uploaded_by_id": str(a.uploaded_by_id) if a.uploaded_by_id else None,
+        "original_filename": a.original_filename,
+        "content_type": a.content_type or "",
+        "size_bytes": a.size_bytes,
+        "url": a.file.url,
+        "created_at": a.created_at,
+    }
+
+
+@router.get(
+    "/tasks/{task_id}/attachments",
+    auth=django_auth,
+    response={200: List[TaskAttachmentOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_task_attachments(request, task_id: str, page: int = 1, page_size: int = 50):
+    """List all file attachments for a task, newest first."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    offset = (page - 1) * page_size
+    attachments = TaskAttachment.objects.filter(task=task).order_by("-created_at")[
+        offset: offset + page_size
+    ]
+    return 200, [_task_attachment_out(a) for a in attachments]
+
+
+@router.post(
+    "/tasks/{task_id}/attachments",
+    auth=django_auth,
+    response={201: TaskAttachmentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upload_task_attachment(request, task_id: str, file: UploadedFile = File(...)):
+    """Upload a file and attach it to a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if file.size > _MAX_TASK_ATTACHMENT_BYTES:
+        return 400, {
+            "detail": f"File exceeds the maximum allowed size of {_MAX_TASK_ATTACHMENT_BYTES // (1024 * 1024)} MB."
+        }
+
+    attachment = TaskAttachment(
+        task=task,
+        uploaded_by=request.user,
+        original_filename=file.name,
+        content_type=file.content_type or "",
+        size_bytes=file.size,
+    )
+    attachment.file.save(file.name, file, save=True)
+    return 201, _task_attachment_out(attachment)
+
+
+@router.delete(
+    "/tasks/{task_id}/attachments/{attachment_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task_attachment(request, task_id: str, attachment_id: str):
+    """Delete a task attachment. Only uploader or admin/owner may delete."""
+    try:
+        membership = require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        attachment = TaskAttachment.objects.get(id=attachment_id, task_id=task_id)
+    except TaskAttachment.DoesNotExist:
+        return 404, {"detail": "Attachment not found."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    if str(attachment.uploaded_by_id) != str(request.user.id) and not is_admin:
+        return 403, {"detail": "You can only delete your own attachments."}
+
+    attachment.file.delete(save=False)
+    attachment.delete()
+    return 204, None
 
 
 # ===========================================================================
