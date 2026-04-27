@@ -1665,3 +1665,30 @@ class AutomationRun(models.Model):
             f"AutomationRun({self.rule.name}, {self.status}) "
             f"@ {self.triggered_at:%Y-%m-%d %H:%M}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Task Public Share
+# ---------------------------------------------------------------------------
+
+class TaskPublicShare(models.Model):
+    """Public share link for a task — allows readonly access without auth."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.OneToOneField(Task, on_delete=models.CASCADE, related_name="public_share")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "task public share"
+        verbose_name_plural = "task public shares"
+
+    def __str__(self):
+        return f"Public share for task {self.task_id}"

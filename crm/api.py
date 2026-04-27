@@ -45,6 +45,7 @@ from crm.models import (
     TaskDependencyType,
     TaskFavourite,
     TaskPriority,
+    TaskPublicShare,
     TaskStatus,
     TaskTimelineEntry,
     TaskVoiceAttachment,
@@ -2137,8 +2138,451 @@ def delete_task_dependency(request, task_id: str, dependency_id: str):
 
 
 # ===========================================================================
-# PHASE 2 — UNIFIED TASK TIMELINE
+# PHASE 5 — TASK OPERATIONS (delete, archive, pin, copy, move, public share, batch)
 # ===========================================================================
+
+@router.delete(
+    "/tasks/{task_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task(request, task_id: str):
+    """Permanently delete a task. Requires ADMIN role."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    task.delete()
+    return 204, None
+
+
+@router.post(
+    "/tasks/{task_id}/archive",
+    auth=django_auth,
+    response={200: TaskOut, 403: ErrorOut, 404: ErrorOut},
+)
+def archive_task(request, task_id: str):
+    """Archive a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    task.is_archived = True
+    task.save(update_fields=["is_archived"])
+    _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+    return 200, _task_out(task, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/unarchive",
+    auth=django_auth,
+    response={200: TaskOut, 403: ErrorOut, 404: ErrorOut},
+)
+def unarchive_task(request, task_id: str):
+    """Unarchive a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    task.is_archived = False
+    task.save(update_fields=["is_archived"])
+    return 200, _task_out(task, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/pin",
+    auth=django_auth,
+    response={200: TaskOut, 403: ErrorOut, 404: ErrorOut},
+)
+def pin_task(request, task_id: str):
+    """Pin a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    task.is_pinned = True
+    task.save(update_fields=["is_pinned"])
+    return 200, _task_out(task, request.user)
+
+
+@router.post(
+    "/tasks/{task_id}/unpin",
+    auth=django_auth,
+    response={200: TaskOut, 403: ErrorOut, 404: ErrorOut},
+)
+def unpin_task(request, task_id: str):
+    """Unpin a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    task.is_pinned = False
+    task.save(update_fields=["is_pinned"])
+    return 200, _task_out(task, request.user)
+
+
+class TaskCopyIn(Schema):
+    include_subtasks: bool = False
+    include_checklist: bool = True
+    include_attachments: bool = False
+    title: Optional[str] = None
+
+
+def _copy_task(original: Task, firm, created_by, title: str, parent_task=None) -> Task:
+    """Create a copy of *original* under *firm*. Does not copy subtasks/checklist."""
+    new_task = Task.objects.create(
+        firm=firm,
+        lead=original.lead,
+        proposal=original.proposal,
+        customer=original.customer,
+        parent_task=parent_task,
+        created_by=created_by,
+        assigned_to=original.assigned_to,
+        title=title,
+        description=original.description,
+        description_html=original.description_html,
+        description_added_at=original.description_added_at,
+        priority=original.priority,
+        status=TaskStatus.TODO,
+        tags=original.tags if isinstance(original.tags, list) else [],
+        due_date=original.due_date,
+        due_date_end=original.due_date_end,
+        is_completed=False,
+        is_pinned=False,
+        is_archived=False,
+    )
+    # Copy watchers
+    if original.watchers.exists():
+        new_task.watchers.set(original.watchers.all())
+    # Copy projects
+    if original.projects.exists():
+        new_task.projects.set(original.projects.all())
+    return new_task
+
+
+def _copy_subtasks_recursive(original: Task, new_parent: Task, firm, created_by, depth: int = 1, max_depth: int = 3):
+    """
+    Recursively copy direct subtasks of *original* under *new_parent*.
+
+    Mirrors the 3-level depth limit enforced when creating subtasks
+    interactively.  *depth* starts at 1 (children of the root copy) and the
+    recursion stops when ``depth >= max_depth`` so that the copied hierarchy
+    never exceeds the allowed nesting level.
+    """
+    if depth >= max_depth:
+        return
+    for sub in Task.objects.filter(parent_task=original):
+        new_sub = _copy_task(sub, firm, created_by, title=sub.title, parent_task=new_parent)
+        _log_timeline_event(new_sub, TimelineEventType.TASK_CREATED, author=created_by)
+        _copy_subtasks_recursive(sub, new_sub, firm, created_by, depth=depth + 1, max_depth=max_depth)
+
+
+@router.post(
+    "/tasks/{task_id}/copy",
+    auth=django_auth,
+    response={201: TaskOut, 403: ErrorOut, 404: ErrorOut},
+)
+def copy_task(request, task_id: str, payload: TaskCopyIn):
+    """Create a copy of a task, optionally including checklist, subtasks and attachments."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        original = Task.objects.select_related(
+            "lead", "proposal", "customer", "assigned_to",
+        ).prefetch_related("watchers", "projects").get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    copy_title = payload.title if payload.title else f"{original.title} (copy)"
+
+    with transaction.atomic():
+        new_task = _copy_task(original, request.firm, request.user, title=copy_title)
+
+        if payload.include_checklist:
+            for item in TaskChecklistItem.objects.filter(task=original).order_by("position", "created_at"):
+                TaskChecklistItem.objects.create(
+                    task=new_task,
+                    text=item.text,
+                    position=item.position,
+                    is_checked=False,
+                    created_by=request.user,
+                )
+
+        if payload.include_attachments:
+            for att in TaskAttachment.objects.filter(task=original):
+                # Metadata record points to the same underlying file; uploaded_by
+                # is set to the user performing the copy to reflect actual ownership.
+                TaskAttachment.objects.create(
+                    task=new_task,
+                    uploaded_by=request.user,
+                    file=att.file,
+                    original_filename=att.original_filename,
+                    content_type=att.content_type,
+                    size_bytes=att.size_bytes,
+                )
+
+        if payload.include_subtasks:
+            _copy_subtasks_recursive(original, new_task, request.firm, request.user)
+
+        _log_timeline_event(new_task, TimelineEventType.TASK_CREATED, author=request.user)
+
+    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(new_task, request.user))
+    return 201, _task_out(new_task, request.user)
+
+
+class TaskMoveIn(Schema):
+    lead_id: Optional[str] = None
+    proposal_id: Optional[str] = None
+    customer_id: Optional[str] = None
+
+
+@router.post(
+    "/tasks/{task_id}/move",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def move_task(request, task_id: str, payload: TaskMoveIn):
+    """Move a task to a different entity (lead/proposal/customer) or make it standalone."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    # Clear existing entity links
+    task.lead = None
+    task.proposal = None
+    task.customer = None
+
+    if payload.lead_id:
+        try:
+            task.lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+        except Lead.DoesNotExist:
+            return 400, {"detail": "Lead not found."}
+    elif payload.proposal_id:
+        try:
+            task.proposal = Proposal.objects.get(id=payload.proposal_id, firm=request.firm)
+        except Proposal.DoesNotExist:
+            return 400, {"detail": "Proposal not found."}
+    elif payload.customer_id:
+        try:
+            task.customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Customer not found."}
+
+    task.save(update_fields=["lead", "proposal", "customer"])
+    return 200, _task_out(task, request.user)
+
+
+class TaskPublicLinkOut(Schema):
+    token: str
+    url: str
+
+
+@router.get(
+    "/tasks/{task_id}/public-link",
+    auth=django_auth,
+    response={200: TaskPublicLinkOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_task_public_link(request, task_id: str):
+    """Get or create a public share link for a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    share, _ = TaskPublicShare.objects.get_or_create(
+        task=task,
+        defaults={"created_by": request.user},
+    )
+    token = str(share.token)
+    return 200, {"token": token, "url": f"/app/tasks/public/{token}"}
+
+
+class PublicTaskOut(Schema):
+    id: str
+    title: str
+    description_html: str
+    priority: str
+    status: str
+    tags: List[str]
+    due_date: Optional[datetime]
+    due_date_end: Optional[datetime]
+    is_completed: bool
+    created_at: datetime
+    assigned_to_name: Optional[str]
+    firm_name: str
+    checklist: List[Dict[str, Any]]
+
+
+@router.get(
+    "/public/tasks/{token}",
+    auth=None,
+    response={200: PublicTaskOut, 404: ErrorOut},
+)
+def get_public_task(request, token: str):
+    """Return a publicly accessible (read-only) task view. No authentication required."""
+    try:
+        share = TaskPublicShare.objects.select_related("task__firm", "task__assigned_to").get(token=token)
+    except TaskPublicShare.DoesNotExist:
+        return 404, {"detail": "Not found."}
+
+    if share.expires_at and share.expires_at < tz.now():
+        logger.debug("Expired public share token accessed: %s", token)
+        return 404, {"detail": "Not found."}
+
+    task = share.task
+
+    assigned_to_name = None
+    if task.assigned_to_id:
+        try:
+            u = task.assigned_to
+            assigned_to_name = f"{u.first_name} {u.last_name}".strip() or u.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve assigned_to for public task share %s: %s", token, exc)
+
+    firm_name = ""
+    try:
+        firm_name = task.firm.name
+    except (AttributeError, Exception) as exc:
+        logger.debug("Could not resolve firm name for public task share %s: %s", token, exc)
+
+    checklist = [
+        {"text": item.text, "is_checked": item.is_checked}
+        for item in TaskChecklistItem.objects.filter(task=task).order_by("position", "created_at")
+    ]
+
+    return 200, {
+        "id": str(task.id),
+        "title": task.title,
+        "description_html": task.description_html,
+        "priority": task.priority,
+        "status": task.status,
+        "tags": task.tags if isinstance(task.tags, list) else [],
+        "due_date": task.due_date,
+        "due_date_end": task.due_date_end,
+        "is_completed": task.is_completed,
+        "created_at": task.created_at,
+        "assigned_to_name": assigned_to_name,
+        "firm_name": firm_name,
+        "checklist": checklist,
+    }
+
+
+class TaskBatchIn(Schema):
+    task_ids: List[str]
+    action: str
+    assigned_to_id: Optional[str] = None
+
+
+@router.post(
+    "/tasks/batch",
+    auth=django_auth,
+    response={200: Dict[str, Any], 403: ErrorOut, 400: ErrorOut},
+)
+def batch_task_action(request, payload: TaskBatchIn):
+    """Apply a bulk action to multiple tasks at once."""
+    valid_actions = {"complete", "archive", "unarchive", "delete", "assign"}
+    if payload.action not in valid_actions:
+        return 400, {"detail": f"Invalid action. Choose from: {', '.join(sorted(valid_actions))}."}
+
+    # delete requires ADMIN, others require WORKER
+    required_role = MembershipRole.ADMIN if payload.action == "delete" else MembershipRole.WORKER
+    try:
+        require_membership(request, min_role=required_role)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    assigned_to_user = None
+    if payload.action == "assign":
+        if not payload.assigned_to_id:
+            return 400, {"detail": "assigned_to_id is required for the 'assign' action."}
+        assigned_to_user, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
+
+    processed = 0
+    failed = 0
+
+    for task_id in payload.task_ids:
+        try:
+            task = Task.objects.get(id=task_id, firm=request.firm)
+        except Task.DoesNotExist:
+            failed += 1
+            continue
+
+        try:
+            if payload.action == "complete":
+                if not task.is_completed:
+                    task.is_completed = True
+                    task.completed_at = tz.now()
+                    task.completed_by = request.user
+                    task.status = TaskStatus.DONE
+                    task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
+                    _log_timeline_event(task, TimelineEventType.TASK_COMPLETED, author=request.user)
+            elif payload.action == "archive":
+                task.is_archived = True
+                task.save(update_fields=["is_archived"])
+                _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+            elif payload.action == "unarchive":
+                task.is_archived = False
+                task.save(update_fields=["is_archived"])
+            elif payload.action == "delete":
+                task.delete()
+            elif payload.action == "assign":
+                task.assigned_to = assigned_to_user
+                task.save(update_fields=["assigned_to"])
+            processed += 1
+        except (Exception, OSError):
+            logger.exception("Batch action %s failed for task %s", payload.action, task_id)
+            failed += 1
+
+    return 200, {"processed": processed, "failed": failed}
+
+
+
 
 # ---------------------------------------------------------------------------
 # Schemas
