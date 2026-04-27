@@ -459,7 +459,7 @@
     "noTasks": "Noch keine Aufgaben.",
     "taskTitlePlaceholder": "Aufgabentitel…",
     "descAndAssignees": "Beschreibung & Zugewiesene — {'@'} zum Erwähnen und Zuweisen von Teammitgliedern",
-    "addMentionPlaceholder": "Details hinzufügen oder @Zugewiesene erwähnen…",
+    "addMentionPlaceholder": "Details hinzufügen oder {'@'}Zugewiesene erwähnen…",
     "dueLabel": "Fällig:",
     "assignedLabel": "Zugewiesen:",
     "dropToUpload": "Zum Hochladen ablegen",

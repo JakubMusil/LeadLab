@@ -459,7 +459,7 @@
     "noTasks": "No tasks yet.",
     "taskTitlePlaceholder": "Task title…",
     "descAndAssignees": "Description & assignees — use {'@'} to mention & assign team members",
-    "addMentionPlaceholder": "Add details or @mention assignees…",
+    "addMentionPlaceholder": "Add details or {'@'}mention assignees…",
     "dueLabel": "Due:",
     "assignedLabel": "Assigned:",
     "dropToUpload": "Drop to upload",
