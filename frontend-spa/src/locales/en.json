@@ -458,7 +458,7 @@
     "addTaskBtn": "Add Task",
     "noTasks": "No tasks yet.",
     "taskTitlePlaceholder": "Task title…",
-    "descAndAssignees": "Description & assignees — use @ to mention & assign team members",
+    "descAndAssignees": "Description & assignees — use {'@'} to mention & assign team members",
     "addMentionPlaceholder": "Add details or @mention assignees…",
     "dueLabel": "Due:",
     "assignedLabel": "Assigned:",

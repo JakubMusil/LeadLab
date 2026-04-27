@@ -458,7 +458,7 @@
     "addTaskBtn": "Dodaj zadanie",
     "noTasks": "Brak zadań.",
     "taskTitlePlaceholder": "Tytuł zadania…",
-    "descAndAssignees": "Opis i przypisani — użyj @ aby wspomnieć i przypisać członków zespołu",
+    "descAndAssignees": "Opis i przypisani — użyj {'@'} aby wspomnieć i przypisać członków zespołu",
     "addMentionPlaceholder": "Dodaj szczegóły lub @wspomnij przypisanych…",
     "dueLabel": "Termin:",
     "assignedLabel": "Przypisano:",
