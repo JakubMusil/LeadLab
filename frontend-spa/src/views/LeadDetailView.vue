@@ -173,7 +173,9 @@ async function addTask() {
   taskSubmitting.value = true
   // Collect mentioned user IDs from the task description editor
   const mentionedIds = taskEditorRef.value?.getMentionedIds() ?? []
-  // Assignees = all explicitly @mentioned users in the description
+  // The Task model supports a single assigned_to_id; additional assignees are stored in
+  // metadata.assignees for notification purposes. When the description has @mentions those
+  // users are used; otherwise fall back to manually selected assigneeIds.
   const assigneeIds = mentionedIds.length > 0 ? mentionedIds : newTaskAssigneeIds.value
   const payload: Record<string, unknown> = {
     lead_id: leadId.value,
