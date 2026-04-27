@@ -1,7 +1,7 @@
 # Task Enhancement Goals — Freelo-Inspired Roadmap
 
 Tento dokument rozděluje požadované úpravy systému tasků do logických, postupně implementovatelných fází.
-Inspirace: SaaS aplikace [Freelo](https://app.freelo.io) — propracovaný task management analyzovaný z detailu úkolu (screenshot + HTML Freelo task detail view).
+Inspirace: SaaS aplikace [Freelo](https://app.freelo.io) — propracovaný task management analyzovaný z detailu úkolu (3 screenshoty Freelo task detail view).
 
 ---
 
@@ -10,124 +10,153 @@ Inspirace: SaaS aplikace [Freelo](https://app.freelo.io) — propracovaný task 
 Níže jsou všechny funkce nalezené v detailu úkolu Freela, rozdělené do tematických skupin.
 
 ### Identifikace a metadata
-| Prvek | Popis |
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| Název (inline editable, strikethrough) | Kliknutím na název lze přímo editovat; dokončený task má přeškrtnutý název | ✅ SS1/2/3 |
+| Popis úkolu (rich text, labeled section) | Sekce "Popis úkolu" — samostatný blok před komentáři, s timestampem přidání | ✅ SS3 |
+| Breadcrumb navigace | "Firma > Úkoly > Projekt" v hlavičce — 3-úrovňová hierarchie | ✅ SS1/2/3 |
+| Metadata vytvoření a dokončení | "Vytvořil [jméno] [datum]  \|  Dokončil [jméno] [datum]" — bar pod hlavičkou | ✅ SS3 |
+| Stav/status (zaškrtnutí) | Modrý checkbox vlevo od názvu — kliknutím přepne dokončeno/nedokončeno | ✅ SS1/2/3 |
+| Priorita | Nastavit... s ikonou trojúhelníku/vlajky; výběr z úrovní | ✅ sidebar |
+| Štítky/tagy | Nastavit... s ikonou štítku | ✅ sidebar |
+| Projekty (multi-project) | Task lze přiřadit k více projektům: "+ Přidat..." v sidebaru | ✅ sidebar |
+| Vlastní pole | "+ Přidat..." v sidebaru — custom fields per-firma | ✅ sidebar |
+| Vazby | "+ Přidat..." v sidebaru — relations/dependencies | ✅ sidebar |
+
+### Hlavičkový action bar (ikony vedle názvu)
+| Ikona | Akce |
 |---|---|
-| Sekvenční číslo úkolu | Každý task má viditelné `#ID` číslo pro snadné referencování |
-| Název (inline editable) | Kliknutím na název lze přímo editovat bez otevření modálu |
-| Popis (rich text) | Plnohodnotný rich-text editor pro popis (nikoliv jen plain text) |
-| Priorita | 5 úrovní: žádná / nízká / střední / vysoká / kritická (s barevným kódováním) |
-| Štítky/tagy | Barevně kódované tagy sdílené napříč projektem |
-| Barva úkolu | Vizuální barevné označení celého úkolu (cover color) |
-| Stav/status | todo / in-progress / done / cancelled / blocked (vlastní stavy) |
-| Pozice/pořadí | Ruční řazení drag&dropem v seznamu |
-| Viditelnost | Soukromý úkol (vidí jen přiřazení) nebo týmový |
+| ▷ (Play) | Rychlý start stopek (timer) přímo z hlavičky |
+| 📅 (Calendar) | Rychlý přístup k nastavení termínu |
+| 🏷️ (Tag) | Rychlé přidání štítku |
+| ⚠️ (Triangle) | Rychlé nastavení priority |
+| ⋮ (More) | Rozbalovací menu dalších akcí |
+| ⭐ (Star) | Oblíbit / přidat do oblíbených (top-right sidebar) |
+| ↺ (Recurrence) | Indikátor / nastavení opakování (top-right sidebar) |
+| 👁️ (Eye) | Sledovat / přestat sledovat task (top-right sidebar) |
+| 🔗 (Link) | Zkopírovat přímý odkaz na task (top-right sidebar) |
 
 ### Přiřazení a termíny
-| Prvek | Popis |
-|---|---|
-| Více přiřazených | Více assignee na jeden task (ne jen jeden) |
-| Datum zahájení | Start date (od kdy) + due date (do kdy) — datum rozsah |
-| Čas termínu | Přesný čas deadline (nejen datum) |
-| Osobní připomenutí | Per-user reminder na konkrétní datum/čas |
-| Pozorovatelé (watchers) | Sledující task bez nutnosti přiřazení |
-| Schválení (approval) | Požádat konkrétní osobu o schválení; stav: čeká / schváleno / zamítnuto |
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| Řešitel (jeden) | **Jeden primární** "Řešitel" s avatarem v sidebaru — ne multi-assignee | ✅ sidebar |
+| Sledující (watchers, více) | "Sledující" — několik avatarů + tlačítko přidat; zobrazeni i pod formulářem komentáře | ✅ SS1/2/3 |
+| Termín(y) — date range | "Termín(y)" v sidebaru (plurál) — toggle "Rozsah termínů" zapne start+end datum | ✅ SS2 date picker |
+| Vybrat čas k termínu | Toggle "Vybrat čas" v date pickeru — přidá časový vstup k datu | ✅ SS2 |
+| Date picker s týdny | Kalendář zobrazuje čísla týdnů (sloupec "Týd.") vlevo | ✅ SS2 |
+| Zrušit termín | Tlačítko "Zrušit termín(y)" v date pickeru — odstraní termín | ✅ SS2 |
 
 ### Časové sledování
-| Prvek | Popis |
-|---|---|
-| Odhad času | Budget hodin/minut na úkol |
-| Logování odpracovaného času | Ručně zadat odpracovaný čas (datum + popis + hodiny) |
-| Stopky (timer) | Start/stop timer přímo na detailu tasku; auto-přidá záznam po zastavení |
-| Přehled strávený čas | Celkový čas logovaný všemi členy vs. budget (progress bar) |
-| Historie logů | Seznam všech časových záznamů (kdo, kdy, kolik, popis) |
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| Výkazy (time reports) | Sidebar sekce "Výkazy" s ikonou ▷ i ⏱️ — dva způsoby přidání (timer i manuálně) | ✅ sidebar |
+| Odhad | Sidebar sekce "Odhad" — "+ Přidat..." — budget hodin | ✅ sidebar |
+| Stopky z hlavičky | ▷ v action baru — rychlý start stopek bez otevření sekce | ✅ SS1 header |
 
-### Checklist a podtasky
+### Podtasky a checklist
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| "+ Přidat podúkoly ▼" | Zelené tlačítko s dropdown šipkou nad popisem tasku | ✅ SS3 |
+| Dropdown podúkolů | Šipka naznačuje volby při přidání (prázdný / ze šablony) | ✅ SS3 |
+
+### Přílohy a média
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| Příloha v komentáři | Soubory přiložené ke komentáři: barevná ikona typu (zelená XLS), název, autor, datum, velikost | ✅ SS1/2/3 |
+| Kontextové menu přílohy | Ikona ⋮ na každé příloze — stáhnout, smazat, sdílet odkaz | ✅ SS1/2 |
+| Inline obrázky v komentářích | Screenshot/obrázek se zobrazí jako embedded náhled přímo v komentáři | ✅ SS3 |
+
+### Timeline a komentáře
+| Prvek | Popis | Vidět ve screenshotu |
+|---|---|---|
+| Unified timeline | Popis úkolu (jako první položka) + komentáře + přílohy v jednom scrollovatelném feedu | ✅ SS3 |
+| Řazení komentářů | "↑↓ Nejnovější dole" — toggle pro změnu směru řazení | ✅ SS3 |
+| Timestamp komentáře | Avatar + jméno + "Přidáno [datum] v [čas]" pod každým komentářem | ✅ SS2/3 |
+| Comment placeholder | "Přidej komentář, řešitele, sledující, ..." — smart input, @-mention přidá i watcher | ✅ SS2/3 |
+| "Sledující:" pod inputem | Avatary sledujících zobrazeny přímo pod formulářem komentáře | ✅ SS2/3 |
+
+### Formulář komentáře (editor toolbar)
 | Prvek | Popis |
 |---|---|
-| Checklist | Rychlý interní checklist uvnitř tasku (ne plnohodnotné sub-tasky) |
-| Podtasky (sub-tasks) | Plnohodnotné child tasky s vlastním detailem, timeline, přílohami |
-| Progress sub-tasků | Vizuální progress bar X/Y dokončených podtasků |
-| Breadcrumb navigace | Rodičovský task → podtask v hlavičce detailu |
+| Tučné, kurzíva, přeškrtnutí | **B** *I* S |
+| Odkaz | 🔗 — vložit hyperlink |
+| Zvýraznění/marker | ✏️ — highlight textu |
+| Citace (blockquote) | " — citát |
+| Kód (inline/block) | `</>` — kód |
+| Seznamy | ≡ nečíslovaný + ≡ číslovaný |
+| Přiložit soubor | 📎 "Přiložit soubor" — click-to-upload příloha ke komentáři |
+| Zpět / Vpřed | ← → — undo/redo |
+| Hlasová zpráva | 🎤 — nahrát hlasovou zprávu a přiložit ke komentáři |
+| Video zpráva | 📹 — nahrát nebo nahrát video ke komentáři |
+| Emoji v textu | 😊 — vložit emoji do textu komentáře |
+
+### "Upozornění dostávají" panel v editoru komentáře
+| Prvek | Popis |
+|---|---|
+| Zobrazení příjemců | Avatary všech, kdo dostávají upozornění na tento task |
+| Toggle "Změnit řešitele..." | Při uložení komentáře zároveň změnit Řešitele na jmenovanou osobu |
+| Toggle "Vykázat..." | Při uložení komentáře zároveň zalogovat čas (vyplnit výkaz) |
+| Toggle "Změnit termín..." | Při uložení komentáře zároveň nastavit nový termín (zobrazí se aktuální datum) |
+| "Uložit" s dropdown šipkou | Primární tlačítko + dropdown naznačuje alternativní možnosti uložení |
 
 ### Závislosti a vazby
 | Prvek | Popis |
 |---|---|
-| Blokuje | Task A blokuje Task B (dependency) |
+| Blokuje | Task A blokuje Task B |
 | Blokován | Task A je blokován Task B |
-| Kapcsolódik | Task je "related to" jiným taskem (bez blokování) |
+| Souvisí s | "Related to" — volné propojení bez blokování |
 | Vazba na entitu | Task vázaný na Lead / Nabídku / Zákazníka / samostatný |
-
-### Přílohy a média
-| Prvek | Popis |
-|---|---|
-| Upload souborů | Drag & drop nebo click-to-upload |
-| Inline náhled obrázků | Obrázky se zobrazují jako galerie přímo v detailu |
-| Stažení všech příloh | "Stáhnout vše jako ZIP" |
-| Odkaz na přílohu | Přímý odkaz ke sdílení jednotlivého souboru |
-| Náhled dokumentů | PDF viewer, video přehrávač přímo v detailu |
-
-### Timeline a komentáře
-| Prvek | Popis |
-|---|---|
-| Unified timeline | Komentáře + systémové události v jednom chronologickém feedu |
-| Rich-text komentář | Tiptap editor s @mentions, tučné, kurzíva, seznamy, kód |
-| Příloha ke komentáři | Přiložit soubor přímo ke komentáři |
-| Emoji reakce | 👍❤️😄 reakce na komentáře (picker) |
-| Odpověď na komentář | Reply threading — odpovědět na konkrétní komentář |
-| Citace komentáře | Citovat část komentáře v odpovědi |
-| Editace/smazání komentáře | Autor nebo admin může editovat/smazat |
-| Systémové záznamy | Automatické záznamy: přiřazen, stav změněn, dokončen, termín změněn |
-| Zmínky (@mentions) | @jméno upozorní konkrétního člena |
-| Filtrování timeline | Zobrazit jen komentáře / jen systémové záznamy / vše |
 
 ### Operace nad taskem
 | Prvek | Popis |
 |---|---|
-| Kopírovat task | Duplikovat task (s/bez podtasků, s/bez příloh) |
+| Oblíbit (⭐) | Přidat task do osobních oblíbených |
+| Sledovat (👁️) | Přihlásit se / odhlásit z notifikací na task |
+| Kopírovat přímý odkaz (🔗) | Zkopírovat URL na task do schránky |
+| Kopírovat task | Duplikovat (s/bez podtasků, příloh) |
 | Přesunout task | Přesunout na jiný projekt / entitu |
-| Archivovat | Soft-delete: task zmizí ze seznamu, ale je dohledatelný |
-| Smazat | Permanentní smazání (admin/vlastník) |
-| Sdílet (public link) | Veřejný odkaz na task pro externího klienta (bez přihlášení) |
-| Exportovat do PDF | Tisknout/exportovat detail tasku |
-| Připnout | Pin task na začátek seznamu |
-| Vytvořit šablonu | Uložit task jako šablonu pro opakované použití |
-| Vytvořit z šablony | Vytvořit nový task z uložené šablony |
-| Opakující se task | Nastavit recurrenci: denně / týdně / měsíčně / vlastní interval |
+| Archivovat | Soft-delete |
+| Smazat | Permanentní smazání |
+| Sdílet (public link) | Veřejný odkaz bez přihlášení |
+| Exportovat do PDF | Tisknout / exportovat |
+| Připnout | Pin na začátek seznamu |
+| Opakující se task | Nastavit recurrenci |
+| Vytvořit šablonu / ze šablony | Uložit nebo použít šablonu |
 
 ### Vlastní pole (Custom fields)
 | Prvek | Popis |
 |---|---|
-| Textové pole | Libovolný text (poznámka, číslo zakázky, ...) |
+| Textové pole | Libovolný text |
 | Číselné pole | Číslo s volitelnou jednotkou |
-| Datum | Datové pole (jiné než termín) |
+| Datum | Datové pole |
 | Dropdown | Výběr z předdefinovaných hodnot |
-| Checkbox | Ano/Ne pole |
-| URL | Odkaz (zobrazí se jako klikatelný link) |
-| Per-project konfigurace | Vlastní pole se definují na úrovni projektu / firmy |
+| Checkbox | Ano/Ne |
+| URL | Klikatelný odkaz |
+| Per-firma konfigurace | Definují se na úrovni firmy/projektu |
 
 ### Zobrazení (Views)
 | Prvek | Popis |
 |---|---|
-| Seznam (list) | Standardní řádkový seznam tasků |
-| Kanban board | Sloupce dle stavu nebo priority, drag & drop |
-| Ganttův diagram | Timeline zobrazení s datovými rozsahy a závislostmi |
-| Kalendář | Tasky na kalendáři podle due date |
-| Tabulka (table) | Tabulkové zobrazení se sloupci (jako spreadsheet) |
-| Groupby | Seskupení dle: assignee / priorita / stav / štítek / vlastní pole |
-| Filtr panel | Kombinovatelné filtry: stav, priorita, assignee, tagy, datum, vlastní pole |
-| Uložené filtry / pohledy | Pojmenované sady filtrů (savedViews — základ existuje) |
-| Batch akce | Vybrat více tasků → hromadné akce |
+| Seznam (list) | Standardní řádkový seznam |
+| Kanban board | Sloupce dle stavu, drag & drop |
+| Ganttův diagram | Timeline s rozsahy a závislostmi |
+| Kalendář | Tasky dle due date v kalendáři |
+| Tabulka (spreadsheet) | Sloupce = task fields, inline editace |
+| Groupby | Seskupení dle assignee / priorita / stav / tag |
+| Filtr panel | Kombinovatelné filtry |
+| Uložené pohledy | Pojmenované sady filtrů |
+| Batch akce | Hromadné operace nad vybranými tasky |
 
 ### Automatizace
 | Prvek | Popis |
 |---|---|
-| Trigger: stav leadu/tasku | Automaticky vytvořit task při splnění podmínek |
-| Akce: přiřadit uživatele | Pravidlo přiřadí task konkrétnímu členovi |
+| Trigger: stav leadu/tasku | Automaticky vytvořit task |
+| Akce: přiřadit řešitele | Přiřadit task uživateli |
 | Akce: nastavit deadline | Relativní deadline (N dní od triggeru) |
-| Akce: přiřadit štítek | Automaticky přidat tag |
-| Akce: přesunout task | Automaticky přesunout do jiného stavu/sloupce |
-| Šablony placeholderů | `{{lead_title}}`, `{{customer_name}}`, `{{due_date}}` v názvech |
-| Log spuštění | Historie všech spuštění pravidla (kdy, co se stalo) |
+| Akce: přiřadit štítek | Přidat tag |
+| Akce: přesunout task | Změnit stav/sloupec |
+| Šablony placeholderů | `{{lead_title}}`, `{{customer_name}}`, `{{due_date}}` |
+| Log spuštění | Historie spuštění pravidla |
 
 ---
 
@@ -135,72 +164,96 @@ Níže jsou všechny funkce nalezené v detailu úkolu Freela, rozdělené do te
 
 | # | Požadavek | Složitost | Fáze |
 |---|-----------|-----------|------|
-| 1 | Task timeline — unified chronologický feed | Střední | 2 |
-| 2 | Tasky nezávislé na Leadu + vazby na Proposal/Customer | Střední | 1 |
-| 3 | Podtasky (hierarchie) + checklist uvnitř tasku | Střední | 3 |
-| 4 | Závislosti mezi tasky (blokuje / blokován / related) | Střední | 3 |
-| 5 | Pravidla pro automatické vytváření tasků (UI) | Střední | 4 |
-| 6 | Priorita, štítky/tagy, barva, stav | Nízká | 1 |
-| 7 | Více přiřazených + start date + osobní připomenutí | Nízká–Střední | 1 |
-| 8 | Sledování času (odhad, log, timer/stopky) | Střední–Vysoká | 6 |
-| 9 | Emoji reakce na komentáře + reply threading | Nízká | 2 |
-| 10 | Opakující se tasky (recurrence) | Střední | 7 |
-| 11 | Schválení (approval workflow) | Střední | 7 |
-| 12 | Kopírovat / přesunout / archivovat task | Nízká | 5 |
-| 13 | Public link na task (sdílení bez přihlášení) | Nízká | 5 |
-| 14 | Šablony tasků | Střední | 7 |
-| 15 | Vlastní pole (custom fields) per-firma | Vysoká | 8 |
-| 16 | Kanban board view | Střední | 5 |
-| 17 | Ganttův diagram | Vysoká | 8 |
-| 18 | Tabulkový pohled | Střední | 8 |
-| 19 | Inline náhled obrázků + download all ZIP | Nízká | 2 |
-| 20 | Export tasku do PDF | Nízká | 5 |
-| 21 | Sekvenční #ID číslo tasku | Nízká | 1 |
-| 22 | Inline editace názvu (bez modálu) | Nízká | 2 |
+| 1 | Task timeline — unified chronologický feed + řazení komentářů | Střední | 2 |
+| 2 | Tasky nezávislé na Leadu + vazby na Proposal/Customer + multi-project | Střední | 1 |
+| 3 | Podtasky — "Přidat podúkoly ▼" button + dropdown (prázdný / ze šablony) | Střední | 3 |
+| 4 | Checklist uvnitř tasku | Nízká | 3 |
+| 5 | Závislosti mezi tasky (blokuje / blokován / related) | Střední | 3 |
+| 6 | Pravidla pro automatické vytváření tasků (UI) | Střední | 4 |
+| 7 | Priorita, štítky/tagy, stav (sidebar + quick-access ikony v header) | Nízká | 1 |
+| 8 | Řešitel (jeden) + Sledující (watchers M2M) | Nízká | 1 |
+| 9 | Termín s date range toggle + "Vybrat čas" toggle + čísla týdnů | Nízká | 1 |
+| 10 | Metadata bar: Vytvořil / Dokončil (jméno + datum) | Nízká | 1 |
+| 11 | Sekce "Popis úkolu" s TipTap editorem + timestamp přidání | Nízká | 1 |
+| 12 | Sledování času: Výkazy (timer ▷ + manuál ⏱️) + Odhad v sidebaru | Střední–Vysoká | 6 |
+| 13 | Formulář komentáře: B/I/S/link/highlight/quote/code/list + 📎/🎤/📹/😊 | Nízká | 2 |
+| 14 | "Upozornění dostávají" panel v editoru + action toggles (řešitel / čas / termín) | Střední | 2 |
+| 15 | "Přidej komentář, řešitele, sledující, ..." smart placeholder | Nízká | 2 |
+| 16 | Řazení komentářů toggle "↑↓ Nejnovější dole" | Nízká | 2 |
+| 17 | Inline obrázky v komentářích (embedded náhled) | Nízká | 2 |
+| 18 | Příloha: barevná ikona typu, název, autor, datum, velikost, ⋮ menu | Nízká | 2 |
+| 19 | Header action bar ikony: ▷ 📅 🏷️ ⚠️ ⋮ | Nízká | 2 |
+| 20 | Sidebar top-right ikony: ⭐ ↺ 👁️ 🔗 | Nízká | 5 |
+| 21 | Emoji reakce na komentáře + reply threading | Nízká | 2 |
+| 22 | Opakující se tasky (recurrence) | Střední | 7 |
+| 23 | Schválení (approval workflow) | Střední | 7 |
+| 24 | Kopírovat / přesunout / archivovat task | Nízká | 5 |
+| 25 | Public link na task (sdílení bez přihlášení) | Nízká | 5 |
+| 26 | Šablony tasků | Střední | 7 |
+| 27 | Vlastní pole (custom fields) per-firma | Vysoká | 8 |
+| 28 | Kanban board view | Střední | 5 |
+| 29 | Ganttův diagram | Vysoká | 8 |
+| 30 | Tabulkový pohled | Střední | 8 |
+| 31 | Export tasku do PDF | Nízká | 5 |
+| 32 | Hlasové a video zprávy v komentářích | Střední | 2 |
 
 ---
 
 ## Fáze 1 — Flexibilní task entita + rozšířená metadata
 
-**Cíl:** Task nemusí být nutně vázán na Lead. Může být vázán na Proposal, Customer, nebo existovat samostatně. Přidat všechna základní metadatová pole inspirovaná Freelem.
+**Cíl:** Task nemusí být nutně vázán na Lead. Může být vázán na Proposal, Customer, nebo existovat samostatně. Přidat všechna základní metadatová pole potvrzená screenshoty Freela.
 
 ### Backend
 - `Task.lead` — změnit z povinného FK na `null=True, blank=True`
 - Přidat `Task.proposal` — nullable FK na `Proposal`
 - Přidat `Task.customer` — nullable FK na `Customer`
-- Přidat `Task.parent_task` — nullable self-FK pro podporu podtasků (příprava pro Fázi 3)
+- Přidat `Task.parent_task` — nullable self-FK (příprava pro Fázi 3)
 - Přidat `Task.priority` — CharField: `none / low / medium / high / critical` (default: `medium`)
-- Přidat `Task.status` — CharField: `todo / in_progress / blocked / done / cancelled` (default: `todo`; doplňuje `is_completed`)
+- Přidat `Task.status` — CharField: `todo / in_progress / blocked / done / cancelled` (default: `todo`; doplňuje `is_completed` boolean)
 - Přidat `Task.tags` — JSONField (list of strings)
-- Přidat `Task.color` — CharField(max_length=7, blank=True) — hex barva cover
-- Přidat `Task.sequence_number` — PositiveIntegerField auto-inkrementovaný per-firma → viditelné `#ID`
-- Přidat `Task.start_date` — DateTimeField(null=True, blank=True)
-- Přidat `Task.description_html` — TextField(blank=True) — rich-text HTML popis
-- Přidat `Task.is_private` — BooleanField(default=False)
 - Přidat `Task.is_pinned` — BooleanField(default=False)
 - Přidat `Task.is_archived` — BooleanField(default=False) — soft-delete
-- Přidat `Task.assignees` — ManyToManyField (více přiřazených; zachovat `assigned_to` jako primární pro compat)
-- Nový model `TaskReminder`: `id, task (FK), user (FK), remind_at, is_sent` — osobní připomenutí per-user
+- Přidat `Task.is_favourite` — BooleanField(default=False) per-user přes M2M (viz níže)
+- Přidat `Task.description_html` — TextField(blank=True) — TipTap rich-text HTML; zobrazuje se jako sekce "Popis úkolu" s timestampem přidání
+- Přidat `Task.description_added_at` — DateTimeField(null=True) — kdy byl popis přidán/naposledy upraven
+- **Řešitel**: `Task.assigned_to` (stávající FK) = primární "Řešitel" — **jeden uživatel** (jak ukazuje screenshot sidebar)
+- **Sledující**: `Task.watchers` (stávající M2M) — "Sledující" zobrazeni v sidebaru i pod formulářem komentáře
+- Přidat `Task.due_date` s podporou rozsahu: přidat `Task.due_date_end` — DateTimeField(null=True) — toggle "Rozsah termínů"
+- Přidat `Task.projects` — ManyToManyField na `Project` (task lze přiřadit k více projektům — potvrzeno v sidebaru "Projekty")
+- Nový model `TaskFavourite`: `id, task (FK), user (FK)` — per-user oblíbené (⭐)
+- Nový model `TaskReminder`: `id, task (FK), user (FK), remind_at, is_sent` — osobní připomenutí
 - Aktualizovat `TaskOut` schema a `_task_out()` helper
 - Nová DB migrace
 
 ### Frontend
 - `stores/tasks.ts`: rozšířit `TaskOut` o všechna nová pole
 - `TaskDetailView.vue`:
-  - Zobrazit `#sequence_number` v hlavičce
-  - Inline editace názvu (klik → edit, Enter/Escape)
-  - TipTap rich-text editor pro popis
-  - Barevný chip priority + status badge
-  - Datum rozsah: start + due date picker
-  - Multi-assignee (avatary + přidat/odebrat)
-  - Color/cover picker, přepínač private/public
-- `TasksView.vue`: filtry podle entity, stavu, priority, tagů
+  - **Breadcrumb** v hlavičce: "Firma > Úkoly > Projekt"
+  - **Metadata bar** pod hlavičkou: "Vytvořil [jméno] [datum] | Dokončil [jméno] [datum]"
+  - **Název**: přeškrtnutý pokud `is_completed`; klik → inline edit, Enter/Escape
+  - **Modrý checkbox** vlevo od názvu — kliknutí přepíná `is_completed`
+  - **Header action bar** vpravo od názvu: `▷` (timer) `📅` (termín) `🏷️` (štítek) `⚠️` (priorita) `⋮` (více)
+  - **Sidebar top-right** ikony: `⭐` oblíbit, `↺` recurrence, `👁️` sledovat, `🔗` kopírovat odkaz
+  - **Sidebar pole** (s "+ Přidat..." / "Nastavit..." pro každé):
+    - Řešitel (avatar + jméno)
+    - Sledující (avatary + přidat)
+    - Termín(y) (date picker s week numbers, range toggle, time toggle)
+    - Projekty (multi-project přiřazení)
+    - Priorita
+    - Štítky
+    - Výkazy (▷ timer + ⏱️ manuální log)
+    - Odhad
+    - Vlastní pole
+    - Vazby
+  - **"Popis úkolu" sekce**: TipTap rich-text editor, zobrazuje "(Přidáno [datum])" footer
+  - **Date picker**: měsíční grid + čísla týdnů (sloupec "Týd."), toggle "Rozsah termínů", toggle "Vybrat čas", tlačítka "Uložit" + "Zrušit termín(y)"
+- `TasksView.vue`: filtry podle entity, stavu, priority, tagů, oblíbených
 
 ---
 
 ## Fáze 2 — Unified task timeline + bohaté komentáře
 
-**Cíl:** Místo oddělených sekcí "Komentáře" a "Přílohy" zobrazit jeden chronologický feed — jako v Freelu. Komentáře rozšířit o reakce, threading a citace.
+**Cíl:** Jeden chronologický feed (popis → komentáře → systémové záznamy). Formulář komentáře s plným toolbarem, hlasovými/video zprávami, "Upozornění dostávají" panelem a action toggles.
 
 ### Backend
 - Nový model `TaskTimelineEntry`:
@@ -212,37 +265,51 @@ Níže jsou všechny funkce nalezené v detailu úkolu Freela, rozdělené do te
               approval_requested | approval_resolved | time_logged | checklist_item_checked,
   content_html (blank), metadata (JSON), created_at
   ```
-- Nový model `TaskCommentReaction`: `id, comment (FK na TaskTimelineEntry), user (FK), emoji (CharField)` — emoji reakce
-- Nový model `TaskCommentReply` (nebo `parent_entry` self-FK na `TaskTimelineEntry`) — reply threading
-- Při každé akci na tasku automaticky vytvořit systémový `TaskTimelineEntry`
-- Endpoint `GET /api/v1/crm/tasks/{id}/timeline` → seřazený feed (filtrovatelný: `?type=comment|system|all`)
-- Endpoint `POST /api/v1/crm/tasks/{id}/timeline` → přidat komentář s volitelnou přílohou (multipart)
-- Endpoint `POST /api/v1/crm/tasks/{id}/timeline/{entry_id}/reactions` → přidat/odebrat emoji reakci
-- Zachovat zpětnou kompatibilitu `/comments` a `/attachments` endpointů
+- Nový model `TaskCommentReaction`: `id, comment (FK na TaskTimelineEntry), user (FK), emoji (CharField)`
+- Self-FK `TaskTimelineEntry.parent_entry` — reply threading
+- Nový model `TaskVoiceAttachment`: `id, timeline_entry (FK), file_field, duration_seconds` — hlasová zpráva
+- Endpoint `GET /api/v1/crm/tasks/{id}/timeline?type=all|comment|system&order=asc|desc` — feed s filtrováním a řazením
+- Endpoint `POST /api/v1/crm/tasks/{id}/timeline` — přidat komentář (multipart: content_html + soubory)
+- Endpoint `POST /api/v1/crm/tasks/{id}/timeline/{entry_id}/reactions`
+- Komentář může zároveň provést side-effects (z "action toggles"):
+  - `change_assignee_to` — přeřadit Řešitele
+  - `log_time` — přidat `TaskTimeLog` záznam
+  - `set_due_date` — nastavit termín
+- Zachovat zpětnou kompatibilitu `/comments` a `/attachments`
 
-### Frontend
-- `TaskDetailView.vue`: nahradit oddělené sekce jedním `<TaskTimeline>` komponentem
-- Timeline položky:
-  - 💬 `comment` — rich-text + @mentions + inline přílohy (galerie obrázků) + emoji reakce + Reply tlačítko
-  - 📎 `file_upload` — karta se souborem (náhled obrázku / ikona), stáhnout / smazat
-  - 🔔 systémové záznamy — kompaktní řádek s ikonou a popisem změny
-  - ↩️ reply threading — odpovědi zanořené pod rodičovský komentář
-- Formulář nového komentáře: TipTap editor + drag&drop přílohy + Odeslat (Ctrl+Enter)
-- Filtr timeline: "Vše / Komentáře / Systémové"
-- Inline obrázková galerie (lightbox pro náhledy)
-- "Stáhnout vše jako ZIP" tlačítko nad přílohami
-- Inline editace názvu tasku (klik na název → input, Enter/Esc)
+### Frontend — `<TaskTimeline>` komponenta
+- Nahradit oddělené sekce jedním chronologickým feedem
+- Jako **první položka** feed zobrazí "Popis úkolu" sekci (z Fáze 1) s timestampem
+- **Řazení toggle**: "↑↓ Nejnovější dole" — kliknutím přepíná asc/desc (default: nejnovější dole)
+- Timeline typy:
+  - 💬 `comment` — rich-text + inline obrázky (embedded) + přílohy (barevná ikona typu, název, autor, datum, velikost, ⋮ menu) + emoji reakce + Reply
+  - 🔔 systémové záznamy — kompaktní řádek s ikonou
+- **Formulář nového komentáře**:
+  - Placeholder: "Přidej komentář, řešitele, sledující, ..." (@-mention přidá watcher)
+  - **Toolbar**: **B** *I* S 🔗 ✏️ " `</>` ≡ ≡ | 📎 Přiložit soubor | ← → | 🎤 hlasová zpráva | 📹 video zpráva | 😊 emoji v textu
+  - Drag & drop přílohy do editoru
+  - **"Upozornění dostávají" panel** (rozbalitelný pod editorem):
+    - Zobrazení avatarů příjemců upozornění
+    - Toggle "Změnit řešitele... [aktuální jméno]" — změní Řešitele při uložení
+    - Toggle "Vykázat..." — otevře mini-formulář pro log času
+    - Toggle "Změnit termín... [aktuální datum]" — přepíše termín při uložení
+  - Tlačítko **"Uložit ▼"** (dropdown šipka) + "Zrušit"
+  - Klávesová zkratka: Ctrl+Enter pro odeslání
+- **"Sledující:"** sekce pod formulářem — avatary všech sledujících
+- **Přílohy**: každá s barevnou ikonou typu souboru (zelená XLS, modrá DOC, ...), ⋮ kontextové menu (stáhnout / smazat / kopírovat odkaz)
+- **Inline obrázky** v komentářích — renderovat jako embedded náhled (ne jako attachment karta)
+- "Stáhnout vše jako ZIP" tlačítko
 
 ---
 
 ## Fáze 3 — Podtasky, checklist a závislosti
 
-**Cíl:** Hierarchie tasků, interní checklist (rychlé položky bez plného detailu) a závislosti mezi tasky.
+**Cíl:** Hierarchie tasků, interní checklist a závislosti. Freelo zobrazuje prominentní "**+ Přidat podúkoly ▼**" zelené tlačítko s dropdown šipkou hned pod metadata barem — to je výchozí vstupní bod pro přidání podtasku.
 
 ### Backend — Podtasky
 - Využít `Task.parent_task` FK z Fáze 1
 - Endpoint `GET /api/v1/crm/tasks/{id}/subtasks` → seznam přímých podtasků
-- Endpoint `POST /api/v1/crm/tasks/{id}/subtasks` → vytvořit podtask
+- Endpoint `POST /api/v1/crm/tasks/{id}/subtasks` → vytvořit podtask; dropdown parametr `from_template_id` (ze šablony)
 - `TaskOut` rozšířit o `subtask_count: int` a `subtasks_completed: int`
 - Validace: max hloubka 3, žádné cyklické závislosti
 
@@ -258,8 +325,9 @@ Níže jsou všechny funkce nalezené v detailu úkolu Freela, rozdělené do te
 
 ### Frontend
 - `TaskDetailView.vue`:
-  - Sekce "Podtasky" — progress bar + inline přidání + seznam s checkboxy + link na detail
-  - Sekce "Checklist" — rychlé položky zaškrtávatelné inline, drag&drop řazení
+  - **"+ Přidat podúkoly ▼"** zelené tlačítko s dropdown šipkou pod metadata barem — dropdown: "Prázdný podúkol" / "Ze šablony"
+  - Sekce "Podtasky" — progress bar (X/Y dokončeno) + seznam s checkboxy + link na detail
+  - Sekce "Checklist" — položky inline zaškrtávatelné, drag&drop řazení
   - Sekce "Závislosti" — "Blokuje:" / "Blokován:" / "Souvisí s:" + vyhledávání tasků pro přidání
   - Breadcrumb: Rodičovský task → aktuální task v hlavičce
 
@@ -470,32 +538,54 @@ Fáze 1 → Fáze 3 → Fáze 2 → Fáze 5 → Fáze 4 → Fáze 6 → Fáze 7 
 | `Task` model (vázaný na Lead) | ✅ Hotovo |
 | `TaskComment` model + CRUD API | ✅ Hotovo |
 | `TaskAttachment` model + upload API | ✅ Hotovo |
-| `Task.watchers` (M2M) | ✅ Hotovo |
-| `TaskDetailView.vue` (komentáře + přílohy) | ✅ Hotovo (sekce oddělené) |
+| `Task.watchers` / Sledující (M2M) | ✅ Hotovo |
+| `TaskDetailView.vue` (komentáře + přílohy, oddělené sekce) | ✅ Hotovo (nahradit Fází 2) |
 | `TasksView.vue` (seznam + filtrování) | ✅ Hotovo |
 | Follow-up task po dokončení | ✅ Hotovo |
 | `AutomationRule` s `create_task` akcí | ✅ Backend hotovo |
-| Task nezávislý na Leadu | ❌ Chybí (Fáze 1) |
-| Sekvenční `#ID`, inline edit názvu, `status`, `priority`, `tags`, `color` | ❌ Chybí (Fáze 1) |
-| Více assignee, start_date, soukromý task, archivace, připnutí | ❌ Chybí (Fáze 1) |
-| `TaskReminder` — osobní připomenutí | ❌ Chybí (Fáze 1) |
-| Rich-text popis (`description_html`) | ❌ Chybí (Fáze 1) |
-| Podtasky (`parent_task` FK) | ❌ Chybí (Fáze 3) |
-| `TaskChecklistItem` — interní checklist | ❌ Chybí (Fáze 3) |
-| `TaskDependency` — závislosti (blokuje/blokován/related) | ❌ Chybí (Fáze 3) |
-| Unified timeline (`TaskTimelineEntry`) | ❌ Chybí (Fáze 2) |
-| Emoji reakce na komentáře (`TaskCommentReaction`) | ❌ Chybí (Fáze 2) |
-| Reply threading na komentáře | ❌ Chybí (Fáze 2) |
-| Inline galerie + download all ZIP | ❌ Chybí (Fáze 2) |
-| Kanban board pohled | ❌ Chybí (Fáze 5) |
-| Kopírovat / přesunout / archivovat task | ❌ Chybí (Fáze 5) |
-| Public link na task | ❌ Chybí (Fáze 5) |
-| Export tasku do PDF | ❌ Chybí (Fáze 5) |
-| Pravidla tasků UI | ❌ Chybí (Fáze 4) |
-| `TaskTimeLog` + `TaskTimer` (stopky) | ❌ Chybí (Fáze 6) |
-| Opakující se tasky (recurrence) | ❌ Chybí (Fáze 7) |
-| Approval workflow | ❌ Chybí (Fáze 7) |
-| `TaskTemplate` — šablony tasků | ❌ Chybí (Fáze 7) |
-| `TaskCustomField` — vlastní pole | ❌ Chybí (Fáze 8) |
-| Ganttův diagram | ❌ Chybí (Fáze 8) |
-| Tabulkový pohled | ❌ Chybí (Fáze 8) |
+| **Fáze 1** | |
+| Task nezávislý na Leadu, vazba na Proposal/Customer, multi-project | ❌ Chybí |
+| Breadcrumb, metadata bar (Vytvořil/Dokončil), přeškrtnutý název | ❌ Chybí |
+| `status`, `priority`, `tags`, `is_pinned`, `is_archived`, `is_favourite` | ❌ Chybí |
+| `description_html` + `description_added_at` (sekce "Popis úkolu") | ❌ Chybí |
+| `due_date_end` (Rozsah termínů) + date picker s week numbers + Vybrat čas | ❌ Chybí |
+| `Task.projects` M2M (multi-project) | ❌ Chybí |
+| `TaskFavourite` model (⭐ oblíbit) | ❌ Chybí |
+| `TaskReminder` model (osobní připomenutí) | ❌ Chybí |
+| Sidebar s 10 poli (Řešitel, Sledující, Termíny, Projekty, Priorita, Štítky, Výkazy, Odhad, Vlastní pole, Vazby) | ❌ Chybí |
+| Header action bar ikony (▷ 📅 🏷️ ⚠️ ⋮) | ❌ Chybí |
+| Sidebar top-right ikony (⭐ ↺ 👁️ 🔗) | ❌ Chybí |
+| **Fáze 2** | |
+| Unified timeline (`TaskTimelineEntry`) | ❌ Chybí |
+| Řazení komentářů toggle (↑↓ Nejnovější dole) | ❌ Chybí |
+| TipTap toolbar: B/I/S/link/highlight/quote/code/list + 📎/🎤/📹/😊 | ❌ Chybí |
+| "Upozornění dostávají" panel + action toggles (řešitel/čas/termín) | ❌ Chybí |
+| "Uložit ▼" s dropdown + side-effects při uložení komentáře | ❌ Chybí |
+| Smart placeholder "Přidej komentář, řešitele, sledující, ..." | ❌ Chybí |
+| Emoji reakce (`TaskCommentReaction`) | ❌ Chybí |
+| Reply threading (self-FK na `TaskTimelineEntry`) | ❌ Chybí |
+| Inline obrázky embedded v komentářích | ❌ Chybí |
+| Příloha: barevná ikona, autor, datum, velikost, ⋮ menu | ❌ Chybí |
+| Hlasové zprávy (🎤) a video zprávy (📹) v komentářích | ❌ Chybí |
+| Download all ZIP | ❌ Chybí |
+| **Fáze 3** | |
+| `parent_task` FK + "Přidat podúkoly ▼" button s dropdown | ❌ Chybí |
+| `TaskChecklistItem` — interní checklist | ❌ Chybí |
+| `TaskDependency` — závislosti (blokuje/blokován/related) | ❌ Chybí |
+| **Fáze 4** | |
+| Pravidla tasků UI (AutomationsView) | ❌ Chybí |
+| **Fáze 5** | |
+| Kanban board pohled | ❌ Chybí |
+| Kopírovat / přesunout / archivovat task | ❌ Chybí |
+| Public link na task (`TaskPublicShare`) | ❌ Chybí |
+| Export tasku do PDF | ❌ Chybí |
+| **Fáze 6** | |
+| `TaskTimeLog` + `TaskTimer` (stopky, Výkazy sidebar) | ❌ Chybí |
+| **Fáze 7** | |
+| Opakující se tasky (recurrence) | ❌ Chybí |
+| Approval workflow | ❌ Chybí |
+| `TaskTemplate` — šablony + "Ze šablony" v dropdown podúkolů | ❌ Chybí |
+| **Fáze 8** | |
+| `TaskCustomField` + `TaskCustomFieldValue` (Vlastní pole sidebar) | ❌ Chybí |
+| Ganttův diagram | ❌ Chybí |
+| Tabulkový pohled (spreadsheet) | ❌ Chybí |
