@@ -459,7 +459,7 @@
     "noTasks": "Brak zadań.",
     "taskTitlePlaceholder": "Tytuł zadania…",
     "descAndAssignees": "Opis i przypisani — użyj {'@'} aby wspomnieć i przypisać członków zespołu",
-    "addMentionPlaceholder": "Dodaj szczegóły lub @wspomnij przypisanych…",
+    "addMentionPlaceholder": "Dodaj szczegóły lub {'@'}wspomnij przypisanych…",
     "dueLabel": "Termin:",
     "assignedLabel": "Przypisano:",
     "dropToUpload": "Upuść, aby przesłać",
