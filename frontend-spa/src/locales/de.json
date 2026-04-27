@@ -492,7 +492,7 @@
     "failedToUpdateStatus": "Status konnte nicht aktualisiert werden.",
     "failedToUpdate": "Aktualisierung fehlgeschlagen.",
     "failedToDelete": "Löschen fehlgeschlagen.",
-    "commentPlaceholder": "Kommentar schreiben… (@ für Teammitglied erwähnen)",
+    "commentPlaceholder": "Kommentar schreiben… ({'@'} für Teammitglied erwähnen)",
     "notePlaceholder": "Notiz, Anrufprotokoll oder E-Mail hinzufügen…",
     "titleRequired": "Titel ist erforderlich.",
     "add": "Hinzufügen",

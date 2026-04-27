@@ -492,7 +492,7 @@
     "failedToUpdateStatus": "Nie udało się zaktualizować statusu.",
     "failedToUpdate": "Aktualizacja nie powiodła się.",
     "failedToDelete": "Usunięcie nie powiodło się.",
-    "commentPlaceholder": "Napisz komentarz… (wpisz @ aby wspomnieć członka zespołu)",
+    "commentPlaceholder": "Napisz komentarz… (wpisz {'@'} aby wspomnieć członka zespołu)",
     "notePlaceholder": "Dodaj notatkę, log połączenia lub e-mail…",
     "titleRequired": "Tytuł jest wymagany.",
     "add": "Dodaj",
