@@ -15,7 +15,9 @@ function sanitizeHtml(html: string): string {
 }
 
 function hasPlainText(html: string): boolean {
-  return Boolean(html.replace(/<[^>]*>/g, '').trim())
+  const div = document.createElement('div')
+  div.innerHTML = DOMPurify.sanitize(html)
+  return Boolean(div.textContent?.trim())
 }
 
 const route = useRoute()
