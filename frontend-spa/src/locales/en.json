@@ -461,7 +461,7 @@
     "createdAt": "Created:",
     "comments": "Comments",
     "noComments": "No comments yet. Be the first to comment.",
-    "commentPlaceholder": "Write a comment… (type @ to mention a team member)",
+    "commentPlaceholder": "Write a comment… (type {'@'} to mention a team member)",
     "editCommentPlaceholder": "Edit comment…",
     "addComment": "Add Comment",
     "editComment": "Edit",

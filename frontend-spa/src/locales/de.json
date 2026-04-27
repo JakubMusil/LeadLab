@@ -461,7 +461,7 @@
     "createdAt": "Erstellt:",
     "comments": "Kommentare",
     "noComments": "Noch keine Kommentare. Sei der Erste.",
-    "commentPlaceholder": "Kommentar schreiben… (@ eingeben um ein Teammitglied zu erwähnen)",
+    "commentPlaceholder": "Kommentar schreiben… ({'@'} eingeben um ein Teammitglied zu erwähnen)",
     "editCommentPlaceholder": "Kommentar bearbeiten…",
     "addComment": "Kommentar hinzufügen",
     "editComment": "Bearbeiten",

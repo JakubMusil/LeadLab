@@ -461,7 +461,7 @@
     "createdAt": "Utworzono:",
     "comments": "Komentarze",
     "noComments": "Brak komentarzy. Bądź pierwszy.",
-    "commentPlaceholder": "Napisz komentarz… (wpisz @ aby wspomnieć członka zespołu)",
+    "commentPlaceholder": "Napisz komentarz… (wpisz {'@'} aby wspomnieć członka zespołu)",
     "editCommentPlaceholder": "Edytuj komentarz…",
     "addComment": "Dodaj komentarz",
     "editComment": "Edytuj",
