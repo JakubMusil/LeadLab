@@ -45,6 +45,13 @@ export default defineConfig({
       // Use the runtime-only build of vue-i18n so that no message compiler
       // (which calls new Function()) is included — required for CSP compliance.
       'vue-i18n': 'vue-i18n/dist/vue-i18n.runtime.esm-bundler.js',
+      // frappe-gantt@1.2.2 only exports its CSS via the root "." entry with a
+      // "style" condition; the subpath "./dist/frappe-gantt.css" is absent from
+      // the package exports field.  Vite 8 enforces exports strictly in
+      // production, so map the import directly to the file to bypass the check.
+      'frappe-gantt/dist/frappe-gantt.css': fileURLToPath(
+        new URL('./node_modules/frappe-gantt/dist/frappe-gantt.css', import.meta.url),
+      ),
     },
   },
   // Output to Django's static directory so collectstatic picks up the SPA assets.
