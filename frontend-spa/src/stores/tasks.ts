@@ -503,6 +503,101 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to toggle reaction.') }
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase 5: Task operations
+  // ---------------------------------------------------------------------------
+
+  async function deleteTask(id: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/tasks/${id}`)
+    if (res.ok) {
+      tasks.value = tasks.value.filter((t) => t.id !== id)
+      return { ok: true }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete task.') }
+  }
+
+  async function archiveTask(id: string): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/archive`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to archive task.') }
+  }
+
+  async function unarchiveTask(id: string): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/unarchive`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to unarchive task.') }
+  }
+
+  async function pinTask(id: string): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/pin`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to pin task.') }
+  }
+
+  async function unpinTask(id: string): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/unpin`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to unpin task.') }
+  }
+
+  async function copyTask(
+    id: string,
+    opts: { title?: string; include_subtasks?: boolean; include_checklist?: boolean; include_attachments?: boolean },
+  ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/copy`, opts)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to copy task.') }
+  }
+
+  async function moveTask(
+    id: string,
+    opts: { lead_id?: string | null; proposal_id?: string | null; customer_id?: string | null },
+  ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/move`, opts)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to move task.') }
+  }
+
+  async function getPublicLink(id: string): Promise<{ ok: boolean; data?: { token: string; url: string }; error?: string }> {
+    const res = await api.get<{ token: string; url: string }>(`/api/v1/crm/tasks/${id}/public-link`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to get public link.') }
+  }
+
+  async function batchAction(
+    taskIds: string[],
+    action: string,
+    opts: { assigned_to_id?: string } = {},
+  ): Promise<{ ok: boolean; data?: { processed: number; failed: number }; error?: string }> {
+    const res = await api.post<{ processed: number; failed: number }>(`/api/v1/crm/tasks/batch`, {
+      task_ids: taskIds,
+      action,
+      ...opts,
+    })
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to perform batch action.') }
+  }
+
   return {
     tasks,
     loading,
@@ -535,5 +630,15 @@ export const useTasksStore = defineStore('tasks', () => {
     fetchTimeline,
     createTimelineEntry,
     toggleTimelineReaction,
+    // Phase 5
+    deleteTask,
+    archiveTask,
+    unarchiveTask,
+    pinTask,
+    unpinTask,
+    copyTask,
+    moveTask,
+    getPublicLink,
+    batchAction,
   }
 })

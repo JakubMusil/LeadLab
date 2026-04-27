@@ -117,6 +117,10 @@ const router = createRouter({
       path: '/proposals/public/:token',
       component: () => import('@/views/PublicProposalView.vue'),
     },
+    {
+      path: '/app/tasks/public/:token',
+      component: () => import('@/views/PublicTaskView.vue'),
+    },
   ],
 })
 
