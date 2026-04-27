@@ -338,7 +338,7 @@ async function onDrop(e: DragEvent, status: string) {
   }
   // Optimistic update
   const idx = tasks.value.findIndex((t) => t.id === dragTaskId.value)
-  if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], status: status as any }
+  if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], status: status as TaskOut['status'] }
   const result = await tasksStore.updateTask(dragTaskId.value, { status })
   dragTaskId.value = null
   if (!result.ok) {

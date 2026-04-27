@@ -306,7 +306,7 @@ async function submitCopyTask() {
 
 function openCopyModal() {
   if (!task.value) return
-  copyTitle.value = task.value.title + ' (copy)'
+  copyTitle.value = task.value.title + ' ' + t('tasks.copySuffix')
   copyIncludeSubtasks.value = false
   copyIncludeChecklist.value = true
   copyIncludeAttachments.value = false

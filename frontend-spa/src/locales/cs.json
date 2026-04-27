@@ -614,7 +614,8 @@
     "clearSelection": "Zrušit výběr",
     "batchDone": "{n} úkolů aktualizováno",
     "batchFailed": "Nepodařilo se provést hromadnou akci",
-    "dropHere": "Přetáhněte úkoly sem"
+    "dropHere": "Přetáhněte úkoly sem",
+    "copySuffix": "(kopie)"
   },
   "leadDetail": {
     "backToLeads": "← Leady",
