@@ -430,6 +430,7 @@ def _build_task_automation_context(task, firm) -> dict:
 
 
 
+@router.get("/leads", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
 def list_leads(
     request,
     status: str = "",
