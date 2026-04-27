@@ -291,6 +291,110 @@ async function completeWithFollowUp() {
 }
 
 // ---------------------------------------------------------------------------
+// View mode (List / Kanban)
+// ---------------------------------------------------------------------------
+type DisplayMode = 'list' | 'kanban'
+const displayMode = ref<DisplayMode>('list')
+
+// ---------------------------------------------------------------------------
+// Kanban — drag & drop
+// ---------------------------------------------------------------------------
+const KANBAN_COLUMNS = [
+  { key: 'todo', label: 'To Do' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'blocked', label: 'Blocked' },
+  { key: 'done', label: 'Done' },
+  { key: 'cancelled', label: 'Cancelled' },
+] as const
+
+function tasksByStatus(status: string) {
+  return tasks.value.filter((t) => t.status === status)
+}
+
+const dragTaskId = ref<string | null>(null)
+const dragOverStatus = ref<string | null>(null)
+
+function onDragStart(task: TaskOut) {
+  dragTaskId.value = task.id
+}
+
+function onDragOver(e: DragEvent, status: string) {
+  e.preventDefault()
+  dragOverStatus.value = status
+}
+
+function onDragLeave() {
+  dragOverStatus.value = null
+}
+
+async function onDrop(e: DragEvent, status: string) {
+  e.preventDefault()
+  dragOverStatus.value = null
+  if (!dragTaskId.value) return
+  const task = tasks.value.find((t) => t.id === dragTaskId.value)
+  if (!task || task.status === status) {
+    dragTaskId.value = null
+    return
+  }
+  // Optimistic update
+  const idx = tasks.value.findIndex((t) => t.id === dragTaskId.value)
+  if (idx !== -1) tasks.value[idx] = { ...tasks.value[idx], status: status as TaskOut['status'] }
+  const result = await tasksStore.updateTask(dragTaskId.value, { status })
+  dragTaskId.value = null
+  if (!result.ok) {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+    await loadTasks()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Batch actions
+// ---------------------------------------------------------------------------
+const selectedTaskIds = ref<Set<string>>(new Set())
+const batchAction_submitting = ref(false)
+
+function toggleSelectTask(id: string) {
+  if (selectedTaskIds.value.has(id)) {
+    selectedTaskIds.value.delete(id)
+  } else {
+    selectedTaskIds.value.add(id)
+  }
+}
+
+function selectAll() {
+  tasks.value.forEach((t) => selectedTaskIds.value.add(t.id))
+}
+
+function clearSelection() {
+  selectedTaskIds.value.clear()
+}
+
+async function doBatchAction(action: string) {
+  if (selectedTaskIds.value.size === 0) return
+  batchAction_submitting.value = true
+  const result = await tasksStore.batchAction([...selectedTaskIds.value], action)
+  batchAction_submitting.value = false
+  if (result.ok && result.data) {
+    toast.success(t('tasks.batchDone').replace('{n}', String(result.data.processed)))
+    clearSelection()
+    await loadTasks()
+  } else {
+    toast.error(result.error ?? t('tasks.batchFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Archive tab
+// ---------------------------------------------------------------------------
+type TabMode = 'active' | 'archived'
+const tabMode = ref<TabMode>('active')
+
+watch(tabMode, () => {
+  showArchived.value = tabMode.value === 'archived'
+  loadTasks()
+})
+
+// ---------------------------------------------------------------------------
 // Watcher toggle helpers
 // ---------------------------------------------------------------------------
 function toggleWatcher(watcherIds: string[], userId: string) {
@@ -318,6 +422,36 @@ onMounted(async () => {
         @click="openNewTask"
       >
         {{ t('tasks.newTask') }}
+      </button>
+    </div>
+
+    <!-- Tabs: Active / Archived -->
+    <div class="flex gap-1 mb-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
+      <button
+        v-for="tab in (['active', 'archived'] as const)"
+        :key="tab"
+        class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        :class="tabMode === tab
+          ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+        @click="tabMode = tab"
+      >
+        {{ tab === 'active' ? t('tasks.active') : t('tasks.archiveTab') }}
+      </button>
+    </div>
+
+    <!-- Display mode toggle (List / Kanban) — only on active tab -->
+    <div v-if="tabMode === 'active'" class="flex gap-1 mb-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
+      <button
+        v-for="mode in (['list', 'kanban'] as const)"
+        :key="mode"
+        class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        :class="displayMode === mode
+          ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+        @click="displayMode = mode"
+      >
+        {{ mode === 'list' ? ('☰ ' + t('tasks.viewList')) : ('⬛ ' + t('tasks.viewKanban')) }}
       </button>
     </div>
 
@@ -409,6 +543,18 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Batch actions toolbar -->
+    <div
+      v-if="selectedTaskIds.size > 0"
+      class="flex items-center gap-3 mb-4 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
+    >
+      <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ selectedTaskIds.size }} {{ t('tasks.selected') }}</span>
+      <button class="px-3 py-1 rounded-lg bg-green-500 text-white text-xs hover:bg-green-600" :disabled="batchAction_submitting" @click="doBatchAction('complete')">✓ {{ t('tasks.complete') }}</button>
+      <button class="px-3 py-1 rounded-lg bg-gray-500 text-white text-xs hover:bg-gray-600" :disabled="batchAction_submitting" @click="doBatchAction('archive')">🗄 {{ t('tasks.archive') }}</button>
+      <button class="px-3 py-1 rounded-lg bg-red-500 text-white text-xs hover:bg-red-600" :disabled="batchAction_submitting" @click="doBatchAction('delete')">🗑 {{ t('tasks.deleteTask') }}</button>
+      <button class="ml-auto text-xs text-gray-500 hover:text-gray-700" @click="clearSelection">✕ {{ t('tasks.clearSelection') }}</button>
+    </div>
+
     <!-- Loading state -->
     <div v-if="tasksStore.loading" class="animate-pulse space-y-2">
       <div v-for="i in 5" :key="i" class="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" />
@@ -423,13 +569,21 @@ onMounted(async () => {
     </div>
 
     <!-- Task list -->
-    <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
+    <div v-else-if="displayMode === 'list'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
       <div
         v-for="task in tasks"
         :key="task.id"
         class="flex items-start gap-3 p-4"
         :class="task.is_completed ? 'opacity-60' : ''"
       >
+        <!-- Selection checkbox -->
+        <input
+          type="checkbox"
+          :checked="selectedTaskIds.has(task.id)"
+          class="rounded flex-shrink-0 mt-0.5"
+          @change="toggleSelectTask(task.id)"
+        />
+
         <!-- Complete checkbox -->
         <button
           class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
@@ -531,6 +685,91 @@ onMounted(async () => {
         </div>
         <div v-else class="text-xs text-gray-400 flex-shrink-0">
           {{ t('tasks.done') }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Kanban board -->
+    <div v-else-if="displayMode === 'kanban' && tabMode === 'active'" class="flex gap-4 overflow-x-auto pb-4">
+      <div
+        v-for="col in KANBAN_COLUMNS"
+        :key="col.key"
+        class="flex-shrink-0 w-72 flex flex-col"
+        @dragover.prevent="onDragOver($event, col.key)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, col.key)"
+      >
+        <!-- Column header -->
+        <div
+          class="flex items-center justify-between px-3 py-2 rounded-t-xl font-semibold text-sm"
+          :class="{
+            'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300': col.key === 'todo',
+            'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300': col.key === 'in_progress',
+            'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300': col.key === 'blocked',
+            'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300': col.key === 'done',
+            'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400': col.key === 'cancelled',
+          }"
+        >
+          <span>{{ { todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'), blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled') }[col.key] }}</span>
+          <span class="ml-2 text-xs opacity-60">{{ tasksByStatus(col.key).length }}</span>
+        </div>
+        <!-- Drop zone -->
+        <div
+          class="flex-1 min-h-[120px] rounded-b-xl p-2 space-y-2 transition-colors"
+          :class="dragOverStatus === col.key
+            ? 'bg-blue-50 dark:bg-blue-900/10 border-2 border-dashed border-blue-400'
+            : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'"
+        >
+          <!-- Task cards -->
+          <div
+            v-for="task in tasksByStatus(col.key)"
+            :key="task.id"
+            class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow"
+            :class="task.id === dragTaskId ? 'opacity-50' : ''"
+            draggable="true"
+            @dragstart="onDragStart(task)"
+          >
+            <div class="flex items-start gap-2 mb-2">
+              <input
+                type="checkbox"
+                :checked="selectedTaskIds.has(task.id)"
+                class="mt-0.5 rounded flex-shrink-0"
+                @change="toggleSelectTask(task.id)"
+                @click.stop
+              />
+              <RouterLink
+                :to="`/app/tasks/${task.id}`"
+                class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:underline flex-1 min-w-0 line-clamp-2"
+                :class="task.is_completed ? 'line-through text-gray-400' : ''"
+              >
+                {{ task.title }}
+              </RouterLink>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 text-xs">
+              <span v-if="task.is_favourite" class="text-yellow-400">⭐</span>
+              <span v-if="task.is_pinned" class="text-yellow-500">📌</span>
+              <span
+                v-if="task.priority && task.priority !== 'none'"
+                :class="{
+                  'text-blue-500': task.priority === 'low',
+                  'text-yellow-500': task.priority === 'medium',
+                  'text-orange-500': task.priority === 'high',
+                  'text-red-600': task.priority === 'critical',
+                }"
+              >⚠ {{ { low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'), high: t('tasks.priorityHigh'), critical: t('tasks.priorityCritical') }[task.priority] ?? task.priority }}</span>
+              <span v-if="task.due_date" class="text-gray-400" :class="isOverdue(task) ? 'text-red-500 font-semibold' : ''">
+                📅 {{ formatDate(task.due_date) }}
+              </span>
+              <span v-if="task.assigned_to_name" class="text-gray-400">👤 {{ task.assigned_to_name }}</span>
+            </div>
+            <div v-if="(task.tags ?? []).length > 0" class="flex flex-wrap gap-1 mt-1.5">
+              <span v-for="tag in (task.tags ?? []).slice(0, 2)" :key="tag" class="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs">🏷 {{ tag }}</span>
+            </div>
+          </div>
+          <!-- Empty state -->
+          <div v-if="tasksByStatus(col.key).length === 0" class="text-center py-6 text-xs text-gray-400">
+            {{ t('tasks.dropHere') }}
+          </div>
         </div>
       </div>
     </div>

@@ -245,6 +245,17 @@ function toggleWatcher(watcherIds: string[], userId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Leads (for move modal)
+// ---------------------------------------------------------------------------
+interface LeadOption { id: string; title: string }
+const leads = ref<LeadOption[]>([])
+
+async function loadLeads() {
+  const res = await api.get<LeadOption[]>('/api/v1/crm/leads?page_size=200')
+  if (res.ok) leads.value = res.data as LeadOption[]
+}
+
+// ---------------------------------------------------------------------------
 // Favourite
 // ---------------------------------------------------------------------------
 const togglingFavourite = ref(false)
@@ -262,9 +273,173 @@ async function toggleFavourite() {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 5: Action menu (⋮)
+// ---------------------------------------------------------------------------
+const showActionMenu = ref(false)
+
+// Copy task
+const showCopyModal = ref(false)
+const copyTitle = ref('')
+const copyIncludeSubtasks = ref(false)
+const copyIncludeChecklist = ref(true)
+const copyIncludeAttachments = ref(false)
+const copySubmitting = ref(false)
+
+async function submitCopyTask() {
+  if (!task.value) return
+  copySubmitting.value = true
+  const result = await tasksStore.copyTask(task.value.id, {
+    title: copyTitle.value || undefined,
+    include_subtasks: copyIncludeSubtasks.value,
+    include_checklist: copyIncludeChecklist.value,
+    include_attachments: copyIncludeAttachments.value,
+  })
+  copySubmitting.value = false
+  if (result.ok && result.data) {
+    showCopyModal.value = false
+    toast.success(t('tasks.taskCopied'))
+    router.push(`/app/tasks/${result.data.id}`)
+  } else {
+    toast.error(result.error ?? t('tasks.copyFailed'))
+  }
+}
+
+function openCopyModal() {
+  if (!task.value) return
+  copyTitle.value = task.value.title + ' ' + t('tasks.copySuffix')
+  copyIncludeSubtasks.value = false
+  copyIncludeChecklist.value = true
+  copyIncludeAttachments.value = false
+  showCopyModal.value = true
+  showActionMenu.value = false
+}
+
+// Move task
+const showMoveModal = ref(false)
+const moveLeadId = ref('')
+const moveCustomerId = ref('')
+const moveSubmitting = ref(false)
+const customers = ref<{ id: string; display: string }[]>([])
+
+async function loadCustomers() {
+  const res = await api.get<{ id: string; first_name: string; last_name: string; company_name: string }[]>('/api/v1/crm/customers?page_size=200')
+  if (res.ok) {
+    customers.value = (res.data as any[]).map((c) => ({
+      id: c.id,
+      display: `${c.first_name} ${c.last_name}`.trim() || c.company_name || c.id,
+    }))
+  }
+}
+
+function openMoveModal() {
+  if (!task.value) return
+  moveLeadId.value = task.value.lead_id ?? ''
+  moveCustomerId.value = task.value.customer_id ?? ''
+  showMoveModal.value = true
+  showActionMenu.value = false
+  loadCustomers()
+}
+
+async function submitMoveTask() {
+  if (!task.value) return
+  moveSubmitting.value = true
+  const result = await tasksStore.moveTask(task.value.id, {
+    lead_id: moveLeadId.value || null,
+    customer_id: moveCustomerId.value || null,
+  })
+  moveSubmitting.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    showMoveModal.value = false
+    toast.success(t('tasks.taskMoved'))
+  } else {
+    toast.error(result.error ?? t('tasks.moveFailed'))
+  }
+}
+
+// Archive / Unarchive
+const archiving = ref(false)
+
+async function toggleArchive() {
+  if (!task.value) return
+  archiving.value = true
+  showActionMenu.value = false
+  const result = task.value.is_archived
+    ? await tasksStore.unarchiveTask(task.value.id)
+    : await tasksStore.archiveTask(task.value.id)
+  archiving.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    toast.success(task.value.is_archived ? t('tasks.taskArchived') : t('tasks.taskUnarchived'))
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+// Pin / Unpin
+const pinning = ref(false)
+
+async function togglePin() {
+  if (!task.value) return
+  pinning.value = true
+  showActionMenu.value = false
+  const result = task.value.is_pinned
+    ? await tasksStore.unpinTask(task.value.id)
+    : await tasksStore.pinTask(task.value.id)
+  pinning.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    toast.success(task.value.is_pinned ? t('tasks.taskPinned') : t('tasks.taskUnpinned'))
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+// Share (public link)
+async function sharePublicLink() {
+  if (!task.value) return
+  showActionMenu.value = false
+  const result = await tasksStore.getPublicLink(task.value.id)
+  if (result.ok && result.data) {
+    const fullUrl = window.location.origin + '/app/tasks/public/' + result.data.token
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      toast.success(t('tasks.linkCopied'))
+    } catch {
+      toast.error(t('tasks.copyLinkFailed'))
+    }
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+// Export to PDF (browser print)
+function exportPdf() {
+  showActionMenu.value = false
+  window.print()
+}
+
+// Delete task
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+
+async function confirmDelete() {
+  if (!task.value) return
+  deleting.value = true
+  const result = await tasksStore.deleteTask(task.value.id)
+  deleting.value = false
+  if (result.ok) {
+    showDeleteConfirm.value = false
+    toast.success(t('tasks.taskDeleted'))
+    router.push('/app/tasks')
+  } else {
+    toast.error(result.error ?? t('tasks.deleteFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Description HTML inline editor
 // ---------------------------------------------------------------------------
-const editingDescription = ref(false)
 const editDescHtml = ref('')
 const descSaving = ref(false)
 
@@ -802,7 +977,7 @@ async function downloadAll() {
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadTask(), loadTimeline(), loadSubtasks(), loadChecklist(), loadDependencies()])
+  await Promise.all([loadMembers(), loadLeads(), loadTask(), loadTimeline(), loadSubtasks(), loadChecklist(), loadDependencies()])
 })
 </script>
 
@@ -953,6 +1128,45 @@ onMounted(async () => {
                 <span v-if="task.is_completed" class="px-3 py-1.5 rounded-xl bg-green-50 text-xs text-green-600 font-medium">
                   ✓ {{ t('tasks.done') }}
                 </span>
+
+                <!-- Action menu -->
+                <div class="relative">
+                  <button
+                    class="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    :title="t('tasks.moreActions')"
+                    @click.stop="showActionMenu = !showActionMenu"
+                  >⋮</button>
+                  <div
+                    v-if="showActionMenu"
+                    class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg z-30 min-w-[200px] py-1"
+                  >
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="togglePin">
+                      <span>📌</span>
+                      {{ task.is_pinned ? t('tasks.unpin') : t('tasks.pin') }}
+                    </button>
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="openCopyModal">
+                      <span>📋</span> {{ t('tasks.copyTask') }}
+                    </button>
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="openMoveModal">
+                      <span>↗️</span> {{ t('tasks.moveTask') }}
+                    </button>
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="toggleArchive">
+                      <span>🗄</span> {{ task.is_archived ? t('tasks.unarchive') : t('tasks.archive') }}
+                    </button>
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="sharePublicLink">
+                      <span>🔗</span> {{ t('tasks.sharePublicLink') }}
+                    </button>
+                    <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="exportPdf">
+                      <span>📄</span> {{ t('tasks.exportPdf') }}
+                    </button>
+                    <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
+                    <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2" @click="showDeleteConfirm = true; showActionMenu = false">
+                      <span>🗑</span> {{ t('tasks.deleteTask') }}
+                    </button>
+                  </div>
+                  <!-- Click outside overlay -->
+                  <div v-if="showActionMenu" class="fixed inset-0 z-20" @click="showActionMenu = false" />
+                </div>
               </div>
             </div>
 
@@ -1953,6 +2167,84 @@ onMounted(async () => {
               @click="submitEditTask"
             >
               {{ editSubmitting ? t('tasks.saving') : t('tasks.save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+    <!-- Copy Task Modal -->
+    <Teleport to="body">
+      <div v-if="showCopyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showCopyModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.copyTask') }}</h2>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.taskTitle') }}</label>
+            <input v-model="copyTitle" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" v-model="copyIncludeChecklist" class="rounded" />
+              {{ t('tasks.copyChecklist') }}
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" v-model="copyIncludeSubtasks" class="rounded" />
+              {{ t('tasks.copySubtasks') }}
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" v-model="copyIncludeAttachments" class="rounded" />
+              {{ t('tasks.copyAttachments') }}
+            </label>
+          </div>
+          <div class="flex gap-3 justify-end pt-2">
+            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showCopyModal = false">{{ t('tasks.cancel') }}</button>
+            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60" :disabled="copySubmitting" @click="submitCopyTask">
+              {{ copySubmitting ? '…' : t('tasks.copyTask') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Move Task Modal -->
+    <Teleport to="body">
+      <div v-if="showMoveModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMoveModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.moveTask') }}</h2>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
+            <select v-model="moveLeadId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+              <option value="">{{ t('tasks.noLead') }}</option>
+              <option v-for="l in leads" :key="l.id" :value="l.id">{{ l.title }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.customer') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
+            <select v-model="moveCustomerId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+              <option value="">{{ t('tasks.noCustomer') }}</option>
+              <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.display }}</option>
+            </select>
+          </div>
+          <p class="text-xs text-gray-400">{{ t('tasks.moveHint') }}</p>
+          <div class="flex gap-3 justify-end pt-2">
+            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showMoveModal = false">{{ t('tasks.cancel') }}</button>
+            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60" :disabled="moveSubmitting" @click="submitMoveTask">
+              {{ moveSubmitting ? '…' : t('tasks.moveTask') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Delete Confirm Modal -->
+    <Teleport to="body">
+      <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showDeleteConfirm = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.deleteTask') }}</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('tasks.deleteConfirm') }}</p>
+          <div class="flex gap-3 justify-end pt-2">
+            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showDeleteConfirm = false">{{ t('tasks.cancel') }}</button>
+            <button class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60" :disabled="deleting" @click="confirmDelete">
+              {{ deleting ? '…' : t('tasks.deleteTask') }}
             </button>
           </div>
         </div>
