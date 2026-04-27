@@ -1156,6 +1156,11 @@ const timePercent = computed(() => {
   return Math.min(100, Math.round((task.value.total_logged_minutes / task.value.estimated_minutes) * 100))
 })
 
+const estimateButtonLabel = computed(() => {
+  if (!task.value?.estimated_minutes) return t('tasks.setEstimate')
+  return `${t('tasks.estimate')}: ${formatMinutesHuman(task.value.estimated_minutes)}`
+})
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -1832,7 +1837,7 @@ onUnmounted(() => {
               class="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors"
               @click="openEstimateEdit"
             >
-              {{ task!.estimated_minutes ? t('tasks.estimate') + ': ' + formatMinutesHuman(task!.estimated_minutes) : t('tasks.setEstimate') }}
+              {{ estimateButtonLabel }}
             </button>
           </div>
         </div>
@@ -1993,7 +1998,7 @@ onUnmounted(() => {
               </div>
               <button
                 class="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs text-red-400 hover:text-red-600 flex-shrink-0 px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                :title="t('tasks.timeLogDeleted')"
+                :title="t('tasks.deleteTimeLog')"
                 @click="removeTimeLog(log.id)"
               >🗑</button>
             </div>

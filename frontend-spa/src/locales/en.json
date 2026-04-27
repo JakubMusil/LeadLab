@@ -646,7 +646,8 @@
     "estimateSaveFailed": "Failed to save estimate",
     "timeProgress": "{logged} / {estimated}",
     "elapsed": "Elapsed",
-    "cancelLog": "Cancel"
+    "cancelLog": "Cancel",
+    "deleteTimeLog": "Delete time log"
   },
   "leadDetail": {
     "backToLeads": "← Leads",

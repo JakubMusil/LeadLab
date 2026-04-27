@@ -646,7 +646,8 @@
     "estimateSaveFailed": "Nepodařilo se uložit odhad",
     "timeProgress": "{logged} / {estimated}",
     "elapsed": "Uplynulo",
-    "cancelLog": "Zrušit"
+    "cancelLog": "Zrušit",
+    "deleteTimeLog": "Smazat záznam"
   },
   "leadDetail": {
     "backToLeads": "← Leady",
