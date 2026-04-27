@@ -8,11 +8,13 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { CalendarOptions, EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
 import { useTasksStore } from '@/stores/tasks'
 import { useLeadsStore } from '@/stores/leads'
+import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 
 const tasksStore = useTasksStore()
 const leadsStore = useLeadsStore()
+const firmStore = useFirmStore()
 const toast = useToast()
 
 // New task form (triggered by clicking a date)
@@ -26,8 +28,18 @@ const taskFormError = ref('')
 interface LeadOption { id: string; title: string }
 const leadOptions = ref<LeadOption[]>([])
 
+// User filter
+interface MemberOption { id: string; label: string }
+const members = ref<MemberOption[]>([])
+const filterUserId = ref<string>('')
+
+const filteredTasks = computed(() => {
+  if (!filterUserId.value) return tasksStore.tasks
+  return tasksStore.tasks.filter((t) => t.assigned_to_id === filterUserId.value)
+})
+
 const events = computed<EventInput[]>(() => {
-  return tasksStore.tasks
+  return filteredTasks.value
     .filter((t) => t.due_date)
     .map((t) => ({
       id: t.id,
@@ -93,11 +105,11 @@ async function submitNewTask() {
   }
 }
 
-const overdueCount = computed(() => tasksStore.tasks.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) < new Date()).length)
+const overdueCount = computed(() => filteredTasks.value.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) < new Date()).length)
 const upcomingTasks = computed(() => {
   const now = new Date()
   const next7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  return tasksStore.tasks.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) >= now && new Date(t.due_date) <= next7)
+  return filteredTasks.value.filter((t) => !t.is_completed && t.due_date && new Date(t.due_date) >= now && new Date(t.due_date) <= next7)
 })
 
 onMounted(async () => {
@@ -105,6 +117,14 @@ onMounted(async () => {
   // Load leads for the task creation form
   const res = await api.get<LeadOption[]>('/api/v1/crm/leads?page_size=100')
   if (res.ok) leadOptions.value = res.data
+  // Load team members for user filter
+  const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
+  if (firmId) {
+    const mRes = await api.get<{ id: string; user_id: string; user_full_name: string }[]>(`/api/v1/firms/${firmId}/members`)
+    if (mRes.ok) {
+      members.value = mRes.data.map((m) => ({ id: m.user_id, label: m.user_full_name || m.user_id }))
+    }
+  }
 })
 </script>
 
@@ -122,8 +142,20 @@ onMounted(async () => {
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 col-span-2 lg:col-span-1">
         <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Open</div>
-        <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ tasksStore.tasks.filter(t => !t.is_completed).length }}</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ filteredTasks.filter(t => !t.is_completed).length }}</div>
       </div>
+    </div>
+
+    <!-- User filter -->
+    <div v-if="members.length > 1" class="flex items-center gap-2 mb-4">
+      <label class="text-xs font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">Filter by user:</label>
+      <select
+        v-model="filterUserId"
+        class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400"
+      >
+        <option value="">All users</option>
+        <option v-for="m in members" :key="m.id" :value="m.id">{{ m.label }}</option>
+      </select>
     </div>
 
     <!-- Calendar -->

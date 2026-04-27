@@ -11,8 +11,11 @@ import {
   Tooltip,
 } from 'chart.js'
 import { VueDraggable } from 'vue-draggable-plus'
+import { useI18n } from '@/composables/useI18n'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
+
+const { t } = useI18n()
 
 interface ActivityItem {
   id: string
@@ -69,6 +72,7 @@ const STATUS_LABELS: Record<string, string> = {
   new: 'New', contacted: 'Contacted', proposal: 'Proposal',
   negotiation: 'Negotiation', won: 'Won', lost: 'Lost', canceled: 'Canceled',
 }
+
 const STATUS_COLORS: Record<string, string> = {
   new: '#6b7280', contacted: '#3b82f6', proposal: '#eab308',
   negotiation: '#f97316', won: '#22c55e', lost: '#ef4444', canceled: '#9ca3af',
@@ -194,11 +198,11 @@ const showSetupBanner = computed(() => {
     <!-- Setup banner -->
     <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4">
       <div>
-        <div class="text-sm font-semibold text-red-900 dark:text-red-100">Complete your setup</div>
-        <div class="text-xs text-red-700 dark:text-red-300 mt-0.5">You're almost ready! Complete the onboarding steps to get the most out of LeadLab.</div>
+        <div class="text-sm font-semibold text-red-900 dark:text-red-100">{{ t('dashboard.completeSetup') }}</div>
+        <div class="text-xs text-red-700 dark:text-red-300 mt-0.5">{{ t('dashboard.setupBannerText') }}</div>
       </div>
       <RouterLink to="/app/onboarding" class="flex-shrink-0 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
-        Continue setup
+        {{ t('dashboard.continueSetup') }}
       </RouterLink>
     </div>
 
@@ -211,22 +215,22 @@ const showSetupBanner = computed(() => {
         :aria-expanded="showLayoutEditor"
       >
         <span aria-hidden="true">⊞</span>
-        Customise layout
+        {{ t('dashboard.customiseLayout') }}
       </button>
     </div>
 
     <!-- Layout editor -->
     <div v-if="showLayoutEditor" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Widget Layout</h3>
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('dashboard.widgetLayout') }}</h3>
         <div class="flex items-center gap-2">
-          <span class="text-xs text-gray-400">Drag to reorder · toggle to show/hide</span>
+          <span class="text-xs text-gray-400">{{ t('dashboard.dragToReorder') }}</span>
           <button
             class="px-3 py-1.5 bg-[color:var(--brand-color)] text-white rounded-xl text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             :disabled="savingLayout"
             @click="saveLayout"
           >
-            {{ savingLayout ? 'Saving…' : 'Save' }}
+            {{ savingLayout ? t('dashboard.saving') : t('dashboard.save') }}
           </button>
         </div>
       </div>
@@ -236,7 +240,7 @@ const showSetupBanner = computed(() => {
           :key="widget.id"
           class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-default"
         >
-          <span class="drag-handle cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm" title="Drag to reorder" aria-hidden="true">⠿</span>
+          <span class="drag-handle cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm" :title="t('dashboard.dragToReorder')" aria-hidden="true">⠿</span>
           <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ WIDGET_LABELS[widget.id as WidgetId] ?? widget.id }}</span>
           <button
             type="button"
@@ -273,27 +277,27 @@ const showSetupBanner = computed(() => {
         <!-- Stat cards -->
         <div v-if="widget.id === 'stat_cards'" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Leads</div>
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.totalLeads') }}</div>
             <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_leads }}</div>
-            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ (stats.conversion_rate * 100).toFixed(1) }}% conversion</div>
+            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('dashboard.conversion', { rate: (stats.conversion_rate * 100).toFixed(1) }) }}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Customers</div>
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.customers') }}</div>
             <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_customers }}</div>
-            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">in address book</div>
+            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('dashboard.inAddressBook') }}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pipeline</div>
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.pipeline') }}</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ fmtCurrency(stats.pipeline_value) }}</div>
-            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Won: {{ fmtCurrency(stats.won_value) }}</div>
+            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('dashboard.won', { value: fmtCurrency(stats.won_value) }) }}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Open Tasks</div>
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.openTasks') }}</div>
             <div class="text-3xl font-bold mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'">
               {{ stats.total_tasks_pending }}
             </div>
             <div class="text-xs mt-1" :class="stats.total_tasks_overdue > 0 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'">
-              {{ stats.total_tasks_overdue }} overdue
+              {{ t('dashboard.overdue', { count: stats.total_tasks_overdue }) }}
             </div>
           </div>
         </div>
@@ -303,7 +307,7 @@ const showSetupBanner = computed(() => {
           <template v-if="visibleWidgets.some((w) => w.id === 'pipeline_chart') && visibleWidgets.some((w) => w.id === 'recent_activity') && widget.id === 'pipeline_chart'">
             <!-- Pipeline bar chart -->
             <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Status</h3>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.pipelineByStatus') }}</h3>
               <div style="height: 220px; position: relative">
                 <Bar :data="chartData" :options="chartOptions" />
               </div>
@@ -311,9 +315,9 @@ const showSetupBanner = computed(() => {
 
             <!-- Recent activities (rendered alongside chart) -->
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.recentActivity') }}</h3>
               <div v-if="stats.recent_activities.length === 0" class="text-sm text-gray-400 text-center py-8">
-                No recent activity
+                {{ t('dashboard.noRecentActivity') }}
               </div>
               <ul class="space-y-3 overflow-y-auto max-h-56">
                 <li v-for="act in stats.recent_activities" :key="act.id" class="flex items-start gap-2.5">
@@ -335,7 +339,7 @@ const showSetupBanner = computed(() => {
           <!-- Chart only (no recent activity) -->
           <template v-else-if="widget.id === 'pipeline_chart' && !visibleWidgets.some((w) => w.id === 'recent_activity')">
             <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Status</h3>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.pipelineByStatus') }}</h3>
               <div style="height: 220px; position: relative">
                 <Bar :data="chartData" :options="chartOptions" />
               </div>
@@ -345,9 +349,9 @@ const showSetupBanner = computed(() => {
           <!-- Recent activity only (no chart) -->
           <template v-else-if="widget.id === 'recent_activity' && !visibleWidgets.some((w) => w.id === 'pipeline_chart')">
             <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.recentActivity') }}</h3>
               <div v-if="stats.recent_activities.length === 0" class="text-sm text-gray-400 text-center py-8">
-                No recent activity
+                {{ t('dashboard.noRecentActivity') }}
               </div>
               <ul class="space-y-3">
                 <li v-for="act in stats.recent_activities" :key="act.id" class="flex items-start gap-2.5">
@@ -369,7 +373,7 @@ const showSetupBanner = computed(() => {
 
         <!-- Status breakdown -->
         <div v-else-if="widget.id === 'status_breakdown'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Status Breakdown</h3>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.statusBreakdown') }}</h3>
           <div class="flex flex-wrap gap-3">
             <RouterLink
               v-for="[status, count] in Object.entries(stats.leads_by_status)"
@@ -387,6 +391,6 @@ const showSetupBanner = computed(() => {
       </template>
     </template>
 
-    <div v-else class="text-center py-12 text-gray-400">Failed to load dashboard data.</div>
+    <div v-else class="text-center py-12 text-gray-400">{{ t('dashboard.failedToLoad') }}</div>
   </div>
 </template>

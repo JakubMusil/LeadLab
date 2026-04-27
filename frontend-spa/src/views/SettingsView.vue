@@ -287,16 +287,23 @@ onMounted(() => {
     profileLastName.value = authStore.user.last_name
     profileTimezone.value = authStore.user.timezone
   }
+  // Always re-fetch the firm so subscription_tier/active reflects the latest server state
+  firmStore.fetchFirms().then(() => {
+    if (firmStore.activeFirm) {
+      workspaceName.value = firmStore.activeFirm.name
+      loadTokens()
+      loadWebhooks()
+      loadDigestPreference()
+      leadScoringStore.fetchRules()
+      loadPropTemplates()
+      loadPluginConfigs()
+      loadAutomations()
+      loadAutomationTemplates()
+    }
+  })
+  // Seed the workspace name from the cached store value immediately so the input is not blank
   if (firmStore.activeFirm) {
     workspaceName.value = firmStore.activeFirm.name
-    loadTokens()
-    loadWebhooks()
-    loadDigestPreference()
-    leadScoringStore.fetchRules()
-    loadPropTemplates()
-    loadPluginConfigs()
-    loadAutomations()
-    loadAutomationTemplates()
   }
 })
 
