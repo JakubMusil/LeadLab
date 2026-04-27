@@ -86,7 +86,7 @@ export const useLeadsStore = defineStore('leads', () => {
       const ps = filters.page_size ?? pageSize.value
       params.set('page', String(p))
       params.set('page_size', String(ps))
-      const res = await api.get<LeadOut[]>(`/api/v1/crm/leads?${params}`)
+      const res = await api.get<LeadOut[]>(`/api/v1/crm/opportunities?${params}`)
       if (res.ok) {
         if (p === 1) {
           leads.value = res.data
@@ -106,7 +106,7 @@ export const useLeadsStore = defineStore('leads', () => {
   async function fetchLead(id: string): Promise<{ ok: boolean; error?: string }> {
     loadingDetail.value = true
     try {
-      const res = await api.get<LeadOut>(`/api/v1/crm/leads/${id}`)
+      const res = await api.get<LeadOut>(`/api/v1/crm/opportunities/${id}`)
       if (res.ok) {
         currentLead.value = res.data
         return { ok: true }
@@ -118,7 +118,7 @@ export const useLeadsStore = defineStore('leads', () => {
   }
 
   async function createLead(payload: LeadIn): Promise<{ ok: boolean; data?: LeadOut; error?: string }> {
-    const res = await api.post<LeadOut>('/api/v1/crm/leads', payload)
+    const res = await api.post<LeadOut>('/api/v1/crm/opportunities', payload)
     if (res.ok) {
       leads.value.unshift(res.data)
       return { ok: true, data: res.data }
@@ -127,7 +127,7 @@ export const useLeadsStore = defineStore('leads', () => {
   }
 
   async function updateLead(id: string, payload: Partial<LeadIn>): Promise<{ ok: boolean; data?: LeadOut; error?: string }> {
-    const res = await api.patch<LeadOut>(`/api/v1/crm/leads/${id}`, payload)
+    const res = await api.patch<LeadOut>(`/api/v1/crm/opportunities/${id}`, payload)
     if (res.ok) {
       const idx = leads.value.findIndex((l) => l.id === id)
       if (idx !== -1) leads.value[idx] = res.data
@@ -144,7 +144,7 @@ export const useLeadsStore = defineStore('leads', () => {
     if (idx !== -1) leads.value[idx] = { ...leads.value[idx]!, status }
     if (currentLead.value?.id === id) currentLead.value = { ...currentLead.value, status }
 
-    const res = await api.patch<LeadOut>(`/api/v1/crm/leads/${id}`, { status })
+    const res = await api.patch<LeadOut>(`/api/v1/crm/opportunities/${id}`, { status })
     if (res.ok) {
       if (idx !== -1) leads.value[idx] = res.data
       if (currentLead.value?.id === id) currentLead.value = res.data
@@ -157,7 +157,7 @@ export const useLeadsStore = defineStore('leads', () => {
   }
 
   async function deleteLead(id: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/leads/${id}`)
+    const res = await api.delete(`/api/v1/crm/opportunities/${id}`)
     if (res.ok || res.status === 204) {
       leads.value = leads.value.filter((l) => l.id !== id)
       return { ok: true }

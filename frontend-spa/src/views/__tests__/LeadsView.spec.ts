@@ -33,8 +33,8 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/', component: LeadsView },
-    { path: '/app/leads', component: LeadsView },
-    { path: '/app/leads/:id', component: { template: '<div/>' } },
+    { path: '/app/opportunities', component: LeadsView },
+    { path: '/app/opportunities/:id', component: { template: '<div/>' } },
   ],
 })
 
@@ -42,7 +42,7 @@ describe('LeadsView', () => {
   beforeEach(async () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    await router.push('/app/leads')
+    await router.push('/app/opportunities')
     await router.isReady()
   })
 

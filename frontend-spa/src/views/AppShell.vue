@@ -104,7 +104,7 @@ onUnmounted(() => {
   off('task.completed', onTaskCompleted)
 })
 
-// Keyboard shortcuts (no "new lead" trigger here – LeadsView handles that)
+// Keyboard shortcuts (no "new opportunity" trigger here – LeadsView handles that)
 useKeyboardShortcuts()
 
 const userInitials = computed(() => {
@@ -118,8 +118,8 @@ const navSections = computed(() => [
     label: 'CRM',
     items: [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
-      { label: t('nav.leads'), icon: FunnelIcon, path: '/app/leads' },
-      { label: t('nav.customers'), icon: UsersIcon, path: '/app/customers' },
+      { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
+      { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
       { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
@@ -173,9 +173,9 @@ function toggleNotifPanel() {
 
 function eventLabel(event: string): string {
   const map: Record<string, string> = {
-    'lead.created': 'New lead created',
-    'lead.updated': 'Lead updated',
-    'lead.deleted': 'Lead deleted',
+    'lead.created': 'New opportunity created',
+    'lead.updated': 'Opportunity updated',
+    'lead.deleted': 'Opportunity deleted',
     'activity.created': 'New activity logged',
     'task.completed': 'Task completed',
   }
@@ -298,11 +298,11 @@ function formatNotifTime(ts: string): string {
               </RouterLink>
 
               <!-- Saved views for Leads -->
-              <template v-if="sidebarOpen && item.path === '/app/leads' && savedViewsStore.viewsForEntity('leads').length > 0">
+              <template v-if="sidebarOpen && item.path === '/app/opportunities' && savedViewsStore.viewsForEntity('opportunities').length > 0">
                 <RouterLink
-                  v-for="view in savedViewsStore.viewsForEntity('leads')"
+                  v-for="view in savedViewsStore.viewsForEntity('opportunities')"
                   :key="view.id"
-                  :to="`/app/leads?view=${view.id}`"
+                  :to="`/app/opportunities?view=${view.id}`"
                   class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
                   @click="mobileMenuOpen = false"
                 >
@@ -312,11 +312,11 @@ function formatNotifTime(ts: string): string {
               </template>
 
               <!-- Saved views for Customers -->
-              <template v-if="sidebarOpen && item.path === '/app/customers' && savedViewsStore.viewsForEntity('customers').length > 0">
+              <template v-if="sidebarOpen && item.path === '/app/directory' && savedViewsStore.viewsForEntity('directory').length > 0">
                 <RouterLink
-                  v-for="view in savedViewsStore.viewsForEntity('customers')"
+                  v-for="view in savedViewsStore.viewsForEntity('directory')"
                   :key="view.id"
-                  :to="`/app/customers?view=${view.id}`"
+                  :to="`/app/directory?view=${view.id}`"
                   class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
                   @click="mobileMenuOpen = false"
                 >

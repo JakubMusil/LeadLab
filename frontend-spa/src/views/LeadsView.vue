@@ -60,7 +60,7 @@ let customerSearchTimer: ReturnType<typeof setTimeout> | null = null
 async function searchCustomers(query: string) {
   if (!query.trim()) { customerSuggestions.value = []; return }
   customerSearchLoading.value = true
-  const res = await api.get<CustomerOut[]>(`/api/v1/crm/customers?search=${encodeURIComponent(query)}&page_size=10`)
+  const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory?search=${encodeURIComponent(query)}&page_size=10`)
   customerSearchLoading.value = false
   if (res.ok) customerSuggestions.value = res.data
 }
@@ -256,7 +256,7 @@ async function changeStatus(leadId: string, newStatus: string) {
 }
 
 function goToDetail(id: string) {
-  router.push(`/app/leads/${id}`)
+  router.push(`/app/opportunities/${id}`)
 }
 
 // Kanban drag state
@@ -339,7 +339,7 @@ async function saveCurrentView() {
   savingView.value = true
   const result = await savedViewsStore.createView({
     name: saveViewName.value.trim(),
-    entity: 'leads',
+    entity: 'opportunities',
     filters: {
       ...(filterStatus.value ? { status: filterStatus.value } : {}),
       ...(filterSource.value ? { source: filterSource.value } : {}),
@@ -407,9 +407,9 @@ function exportPdf() {
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
 
       <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('leads').length > 0" class="flex items-center gap-1 flex-wrap">
+      <div v-if="savedViewsStore.viewsForEntity('opportunities').length > 0" class="flex items-center gap-1 flex-wrap">
         <div
-          v-for="view in savedViewsStore.viewsForEntity('leads')"
+          v-for="view in savedViewsStore.viewsForEntity('opportunities')"
           :key="view.id"
           class="flex items-center gap-0.5"
         >

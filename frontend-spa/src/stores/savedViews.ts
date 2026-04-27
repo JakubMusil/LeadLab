@@ -6,7 +6,7 @@ import { useFirmStore } from '@/stores/firm'
 export interface SavedView {
   id: string
   name: string
-  entity: 'leads' | 'customers'
+  entity: 'opportunities' | 'directory'
   filters: Record<string, string>
   sort_by: string
   sort_dir: string
@@ -15,7 +15,7 @@ export interface SavedView {
 
 export interface SavedViewIn {
   name: string
-  entity: 'leads' | 'customers'
+  entity: 'opportunities' | 'directory'
   filters?: Record<string, string>
   sort_by?: string
   sort_dir?: string
@@ -55,7 +55,7 @@ export const useSavedViewsStore = defineStore('savedViews', () => {
     return false
   }
 
-  function viewsForEntity(entity: 'leads' | 'customers') {
+  function viewsForEntity(entity: 'opportunities' | 'directory') {
     return views.value.filter((v) => v.entity === entity)
   }
 

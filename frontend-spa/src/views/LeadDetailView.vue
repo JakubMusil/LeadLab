@@ -117,7 +117,7 @@ function fmtBytes(b: number) {
 async function loadActivities(page = 1) {
   activitiesLoading.value = true
   try {
-    const res = await api.get<Activity[]>(`/api/v1/crm/leads/${leadId.value}/activities?page=${page}&page_size=20`)
+    const res = await api.get<Activity[]>(`/api/v1/crm/opportunities/${leadId.value}/activities?page=${page}&page_size=20`)
     if (res.ok) {
       if (page === 1) activities.value = res.data
       else activities.value = [...activities.value, ...res.data]
@@ -144,7 +144,7 @@ async function loadTasks() {
 async function loadFiles() {
   filesLoading.value = true
   try {
-    const res = await api.get<FileItem[]>(`/api/v1/crm/leads/${leadId.value}/attachments?page_size=50`)
+    const res = await api.get<FileItem[]>(`/api/v1/crm/opportunities/${leadId.value}/attachments?page_size=50`)
     if (res.ok) files.value = res.data
   } finally {
     filesLoading.value = false
@@ -244,7 +244,7 @@ async function doUpload(file: File) {
 
   await new Promise<void>((resolve) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api/v1/crm/leads/${leadId.value}/attachments`)
+    xhr.open('POST', `/api/v1/crm/opportunities/${leadId.value}/attachments`)
     // Forward cookies / CSRF via credentials
     xhr.withCredentials = true
     xhr.upload.onprogress = (ev) => {
@@ -277,7 +277,7 @@ async function doUpload(file: File) {
 }
 
 async function deleteFile(id: string) {
-  const res = await api.delete(`/api/v1/crm/leads/${leadId.value}/attachments/${id}`)
+  const res = await api.delete(`/api/v1/crm/opportunities/${leadId.value}/attachments/${id}`)
   if (res.ok || res.status === 204) {
     files.value = files.value.filter((f) => f.id !== id)
     toast.success('File deleted.')
@@ -330,7 +330,7 @@ async function deleteLead() {
   const result = await store.deleteLead(leadId.value)
   if (result.ok) {
     toast.success(t('leadDetail.deleted'))
-    router.push('/app/leads')
+    router.push('/app/opportunities')
   } else {
     toast.error(result.error ?? 'Failed to delete.')
   }
@@ -370,7 +370,7 @@ async function switchTab(tab: Tab) {
   if (tab === 'activities' && activities.value.length === 0) await loadActivities()
   else if (tab === 'tasks' && tasks.value.length === 0) await loadTasks()
   else if (tab === 'files' && files.value.length === 0) await loadFiles()
-  else if (tab === 'proposals') router.push(`/app/leads/${leadId.value}/proposals`)
+  else if (tab === 'proposals') router.push(`/app/opportunities/${leadId.value}/proposals`)
 }
 
 function getTabLabel(tab: string): string {
@@ -388,7 +388,7 @@ function getTabLabel(tab: string): string {
 <template>
   <div class="p-6 max-w-5xl mx-auto">
     <!-- Back -->
-    <RouterLink to="/app/leads" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
+    <RouterLink to="/app/opportunities" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
       {{ t('leadDetail.backToLeads') }}
     </RouterLink>
 

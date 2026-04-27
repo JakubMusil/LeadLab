@@ -109,8 +109,8 @@ class Customer(TenantModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta(TenantModel.Meta):
-        verbose_name = "customer"
-        verbose_name_plural = "customers"
+        verbose_name = "contact"
+        verbose_name_plural = "directory"
         ordering = ["last_name", "first_name"]
         indexes = [
             models.Index(fields=["firm", "email"]),
@@ -173,8 +173,8 @@ class Lead(TenantModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta(TenantModel.Meta):
-        verbose_name = "lead"
-        verbose_name_plural = "leads"
+        verbose_name = "opportunity"
+        verbose_name_plural = "opportunities"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["firm", "status"]),
@@ -1254,11 +1254,11 @@ class SavedView(models.Model):
     the Leads or Customers list.
     """
 
-    ENTITY_LEADS = "leads"
-    ENTITY_CUSTOMERS = "customers"
+    ENTITY_LEADS = "opportunities"
+    ENTITY_CUSTOMERS = "directory"
     ENTITY_CHOICES = [
-        (ENTITY_LEADS, "Leads"),
-        (ENTITY_CUSTOMERS, "Customers"),
+        (ENTITY_LEADS, "Příležitosti"),
+        (ENTITY_CUSTOMERS, "Adresář"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

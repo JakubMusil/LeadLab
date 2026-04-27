@@ -139,7 +139,7 @@ async function removeMetadata(key: string) {
 async function loadLinkedLeads() {
   leadsLoading.value = true
   try {
-    const res = await api.get<LeadOut[]>(`/api/v1/crm/leads?page_size=50`)
+    const res = await api.get<LeadOut[]>(`/api/v1/crm/opportunities?page_size=50`)
     if (res.ok) {
       linkedLeads.value = res.data.filter((l) => {
         // Filter by customer_id if available from leads endpoint
@@ -147,7 +147,7 @@ async function loadLinkedLeads() {
       })
       // For simplicity fetch all and filter client-side (leads don't include customer_id check here)
       // Actually leads have customer_id field, let's re-fetch properly
-      const allLeads = await api.get<Array<LeadOut & { customer_id: string | null }>>('/api/v1/crm/leads?page_size=100')
+      const allLeads = await api.get<Array<LeadOut & { customer_id: string | null }>>('/api/v1/crm/opportunities?page_size=100')
       if (allLeads.ok) {
         linkedLeads.value = allLeads.data.filter((l) => l.customer_id === customerId.value)
       }
@@ -174,7 +174,7 @@ onMounted(async () => {
 
 <template>
   <div class="p-6 max-w-4xl mx-auto space-y-5">
-    <RouterLink to="/app/customers" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600">
+    <RouterLink to="/app/directory" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600">
       ← {{ t('customers.title') }}
     </RouterLink>
 
@@ -281,7 +281,7 @@ onMounted(async () => {
           <RouterLink
             v-for="lead in linkedLeads"
             :key="lead.id"
-            :to="`/app/leads/${lead.id}`"
+            :to="`/app/opportunities/${lead.id}`"
             class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <span class="flex-1 text-sm font-medium text-gray-900 truncate">{{ lead.title }}</span>

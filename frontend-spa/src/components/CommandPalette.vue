@@ -31,8 +31,8 @@ const selectedIndex = ref(0)
 
 const NAV_COMMANDS: CommandItem[] = [
   { id: 'nav-dashboard', label: 'Dashboard', icon: '⊞', category: 'navigation', action: () => router.push('/app/dashboard') },
-  { id: 'nav-leads', label: 'Leads', icon: '◎', category: 'navigation', action: () => router.push('/app/leads') },
-  { id: 'nav-customers', label: 'Customers', icon: '👥', category: 'navigation', action: () => router.push('/app/customers') },
+  { id: 'nav-opportunities', label: 'Opportunities', icon: '◎', category: 'navigation', action: () => router.push('/app/opportunities') },
+  { id: 'nav-directory', label: 'Directory', icon: '👥', category: 'navigation', action: () => router.push('/app/directory') },
   { id: 'nav-calendar', label: 'Calendar', icon: '📅', category: 'navigation', action: () => router.push('/app/calendar') },
   { id: 'nav-team', label: 'Team', icon: '🤝', category: 'navigation', action: () => router.push('/app/team') },
   { id: 'nav-analytics', label: 'Analytics', icon: '📊', category: 'navigation', action: () => router.push('/app/analytics') },
@@ -46,7 +46,7 @@ const leadItems = computed<CommandItem[]>(() =>
     description: `Lead · ${l.status}`,
     icon: '◎',
     category: 'lead' as const,
-    action: () => router.push(`/app/leads/${l.id}`),
+    action: () => router.push(`/app/opportunities/${l.id}`),
   })),
 )
 
@@ -57,7 +57,7 @@ const customerItems = computed<CommandItem[]>(() =>
     description: c.company_name || 'Customer',
     icon: '👤',
     category: 'customer' as const,
-    action: () => router.push(`/app/customers/${c.id}`),
+    action: () => router.push(`/app/directory/${c.id}`),
   })),
 )
 
