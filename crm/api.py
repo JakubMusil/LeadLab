@@ -836,8 +836,8 @@ def _task_out(t: Task, requesting_user=None) -> dict:
     completed_by_name: Optional[str] = None
     if t.completed_by_id:
         try:
-            cb2 = t.completed_by
-            completed_by_name = f"{cb2.first_name} {cb2.last_name}".strip() or cb2.email
+            completed_by_user = t.completed_by
+            completed_by_name = f"{completed_by_user.first_name} {completed_by_user.last_name}".strip() or completed_by_user.email
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve completed_by name for task %s: %s", t.id, exc)
 
