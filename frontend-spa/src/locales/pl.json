@@ -519,7 +519,15 @@
     "overviewValue": "Wartość",
     "taskCompleteFailed": "Nie udało się ukończyć zadania.",
     "taskFailed": "Nie udało się utworzyć zadania.",
-    "updated": "Lead zaktualizowany."
+    "updated": "Lead zaktualizowany.",
+    "chooseActionType": "Co chcesz dodać?",
+    "changeType": "Zmień",
+    "typeComment": "Komentarz",
+    "typeCall": "Połączenie",
+    "typeMeeting": "Spotkanie",
+    "typeEmailOut": "E-mail (wysłany)",
+    "typeEmailIn": "E-mail (odebrany)",
+    "typeTask": "Zadanie"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

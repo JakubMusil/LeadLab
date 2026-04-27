@@ -51,18 +51,20 @@ const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
-const newActivityType = ref('comment')
+// Unified action picker state (empty string = picker visible, otherwise the selected type)
+const selectedActionType = ref('')
 const newActivityText = ref('')
 const activitySubmitting = ref(false)
 
 // Tasks
-interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null }
+interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null; watcher_ids?: string[] }
 const tasks = ref<Task[]>([])
 const tasksLoading = ref(false)
 const newTaskTitle = ref('')
 const newTaskDueDate = ref('')
 const newTaskDescription = ref('')
-const newTaskAssigneeIds = ref<string[]>([])
+const newTaskAssigneeId = ref('')
+const newTaskWatcherIds = ref<string[]>([])
 const taskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const taskSubmitting = ref(false)
 
@@ -90,16 +92,18 @@ const statusPopupOpen = ref(false)
 const activityIcons: Record<string, string> = {
   comment: '💬', email_out: '📧', email_in: '📥', call: '📞',
   meeting: '🤝', status_change: '🔄', file_upload: '📎',
-  task_assigned: '📋', task_completed: '✅',
+  task_assigned: '📋', task_completed: '✅', task: '📋',
 }
 
-const activityTypes = [
-  { value: 'comment', label: 'Comment' },
-  { value: 'call', label: 'Call' },
-  { value: 'meeting', label: 'Meeting' },
-  { value: 'email_out', label: 'Email (Out)' },
-  { value: 'email_in', label: 'Email (In)' },
-]
+// All action types shown in the unified picker (activity types + task creation)
+const actionPickerItems = computed(() => [
+  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: '💬' },
+  { value: 'call',      label: t('leadDetail.typeCall'),     icon: '📞' },
+  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: '🤝' },
+  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: '📧' },
+  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: '📥' },
+  { value: 'task',      label: t('leadDetail.typeTask'),     icon: '📋' },
+])
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -148,15 +152,15 @@ async function loadFiles() {
 }
 
 async function addActivity() {
-  if (!hasPlainText(newActivityText.value) && newActivityType.value === 'comment') return
+  if (!hasPlainText(newActivityText.value) && selectedActionType.value === 'comment') return
   activitySubmitting.value = true
-  const mentionedIds = newActivityType.value === 'comment'
+  const mentionedIds = selectedActionType.value === 'comment'
     ? (richTextEditorRef.value?.getMentionedIds() ?? [])
     : []
   const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
   const res = await api.post<Activity>('/api/v1/crm/activities', {
     lead_id: leadId.value,
-    type: newActivityType.value,
+    type: selectedActionType.value,
     content_text: newActivityText.value,
     metadata,
   })
@@ -164,6 +168,7 @@ async function addActivity() {
   if (res.ok) {
     activities.value.unshift(res.data)
     newActivityText.value = ''
+    selectedActionType.value = ''
     toast.success(t('leadDetail.activityAdded'))
   } else {
     toast.error(t('leadDetail.activityFailed'))
@@ -173,20 +178,17 @@ async function addActivity() {
 async function addTask() {
   if (!newTaskTitle.value.trim()) return
   taskSubmitting.value = true
-  // Collect mentioned user IDs from the task description editor
+  // Collect @mentioned user IDs from the description editor
   const mentionedIds = taskEditorRef.value?.getMentionedIds() ?? []
-  // The Task model supports a single assigned_to_id; additional assignees are stored in
-  // metadata.assignees for notification purposes. When the description has @mentions those
-  // users are used; otherwise fall back to manually selected assigneeIds.
-  const assigneeIds = mentionedIds.length > 0 ? mentionedIds : newTaskAssigneeIds.value
   const payload: Record<string, unknown> = {
     lead_id: leadId.value,
     title: newTaskTitle.value.trim(),
     description: newTaskDescription.value,
-    assigned_to_id: assigneeIds.length > 0 ? assigneeIds[0] : null,
-    metadata: assigneeIds.length > 0 ? { assignees: assigneeIds } : {},
+    assigned_to_id: newTaskAssigneeId.value || null,
+    watcher_ids: newTaskWatcherIds.value,
   }
   if (newTaskDueDate.value) payload.due_date = new Date(newTaskDueDate.value).toISOString()
+  if (mentionedIds.length > 0) payload.metadata = { mentions: mentionedIds }
   const res = await api.post<Task>('/api/v1/crm/tasks', payload)
   taskSubmitting.value = false
   if (res.ok) {
@@ -194,11 +196,19 @@ async function addTask() {
     newTaskTitle.value = ''
     newTaskDueDate.value = ''
     newTaskDescription.value = ''
-    newTaskAssigneeIds.value = []
+    newTaskAssigneeId.value = ''
+    newTaskWatcherIds.value = []
+    selectedActionType.value = ''
     toast.success(t('leadDetail.taskCreated'))
   } else {
     toast.error(t('leadDetail.taskFailed'))
   }
+}
+
+function toggleTaskWatcher(userId: string) {
+  const idx = newTaskWatcherIds.value.indexOf(userId)
+  if (idx !== -1) newTaskWatcherIds.value.splice(idx, 1)
+  else newTaskWatcherIds.value.push(userId)
 }
 
 async function completeTask(id: string) {
@@ -461,20 +471,42 @@ function getTabLabel(tab: string): string {
 
       <!-- ACTIVITIES TAB -->
       <div v-else-if="activeTab === 'activities'" class="space-y-4">
-        <!-- Add activity form -->
+        <!-- Unified action composer -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-          <div class="flex gap-2 mb-2">
-            <select v-model="newActivityType" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
-              <option v-for="actType in activityTypes" :key="actType.value" :value="actType.value">{{ actType.label }}</option>
-            </select>
+          <!-- Step 1: Action type picker -->
+          <div v-if="!selectedActionType">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2.5">{{ t('leadDetail.chooseActionType') }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="item in actionPickerItems"
+                :key="item.value"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                @click="selectedActionType = item.value; newActivityText = ''"
+              >
+                <span>{{ item.icon }}</span>
+                {{ item.label }}
+              </button>
+            </div>
           </div>
-          <div class="flex flex-col gap-2">
+
+          <!-- Step 2a: Activity form (comment / call / meeting / email) -->
+          <div v-else-if="selectedActionType !== 'task'" class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-base">{{ activityIcons[selectedActionType] ?? '📌' }}</span>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ actionPickerItems.find(i => i.value === selectedActionType)?.label }}
+              </span>
+              <button
+                class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                @click="selectedActionType = ''"
+              >← {{ t('leadDetail.changeType') }}</button>
+            </div>
             <RichTextEditor
               ref="richTextEditorRef"
               v-model="newActivityText"
-              :placeholder="newActivityType === 'comment' ? 'Write a comment… (type @ to mention a team member)' : 'Add a note, call log, or email…'"
+              :placeholder="selectedActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
               :disabled="activitySubmitting"
-              :members="newActivityType === 'comment' ? teamMembers : []"
+              :members="selectedActionType === 'comment' ? teamMembers : []"
             />
             <div class="flex justify-end">
               <button
@@ -482,6 +514,76 @@ function getTabLabel(tab: string): string {
                 class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                 @click="addActivity"
               >{{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
+            </div>
+          </div>
+
+          <!-- Step 2b: Task creation form -->
+          <div v-else class="space-y-3">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-base">📋</span>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
+              <button
+                class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                @click="selectedActionType = ''"
+              >← {{ t('leadDetail.changeType') }}</button>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <input
+                v-model="newTaskTitle"
+                type="text"
+                :placeholder="t('leadDetail.taskTitle')"
+                class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              />
+              <input
+                v-model="newTaskDueDate"
+                type="date"
+                class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
+              <select
+                v-model="newTaskAssigneeId"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="">{{ t('tasks.noAssignee') }}</option>
+                <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
+              </select>
+            </div>
+            <div v-if="teamMembers.length">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.watchers') }}</label>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  v-for="m in teamMembers"
+                  :key="m.id"
+                  class="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-lg border transition-colors"
+                  :class="newTaskWatcherIds.includes(m.id)
+                    ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                >
+                  <input type="checkbox" class="hidden" :checked="newTaskWatcherIds.includes(m.id)" @change="toggleTaskWatcher(m.id)" />
+                  🔔 {{ m.label }}
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                {{ t('leadDetail.descAndAssignees') }}
+              </label>
+              <RichTextEditor
+                ref="taskEditorRef"
+                v-model="newTaskDescription"
+                :mention-users="teamMembers"
+                :placeholder="t('leadDetail.addMentionPlaceholder')"
+                class="min-h-[72px]"
+              />
+            </div>
+            <div class="flex justify-end">
+              <button
+                :disabled="taskSubmitting || !newTaskTitle.trim()"
+                class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                @click="addTask"
+              >{{ taskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
             </div>
           </div>
         </div>
@@ -515,22 +617,50 @@ function getTabLabel(tab: string): string {
 
       <!-- TASKS TAB -->
       <div v-else-if="activeTab === 'tasks'" class="space-y-4">
-        <!-- Add task form (rich editor with mentions) -->
+        <!-- Add task form (assignee, watchers, rich editor with mentions) -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
           <div class="flex gap-2 flex-wrap">
             <input v-model="newTaskTitle" type="text" :placeholder="t('leadDetail.taskTitle')" class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             <input v-model="newTaskDueDate" type="date" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
-          <!-- Rich-text description / notes with @mention for assignment -->
+          <!-- Assignee selector -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
+            <select
+              v-model="newTaskAssigneeId"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+            >
+              <option value="">{{ t('tasks.noAssignee') }}</option>
+              <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
+            </select>
+          </div>
+          <!-- Watchers / notification recipients -->
+          <div v-if="teamMembers.length">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.watchers') }}</label>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="m in teamMembers"
+                :key="m.id"
+                class="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-lg border transition-colors"
+                :class="newTaskWatcherIds.includes(m.id)
+                  ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+              >
+                <input type="checkbox" class="hidden" :checked="newTaskWatcherIds.includes(m.id)" @change="toggleTaskWatcher(m.id)" />
+                🔔 {{ m.label }}
+              </label>
+            </div>
+          </div>
+          <!-- Rich-text description / notes with @mention -->
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Description &amp; assignees — use <kbd class="px-1 rounded bg-gray-100 dark:bg-gray-700 text-xs font-mono">@</kbd> to mention &amp; assign team members
+              {{ t('leadDetail.descAndAssignees') }}
             </label>
             <RichTextEditor
               ref="taskEditorRef"
               v-model="newTaskDescription"
               :mention-users="teamMembers"
-              placeholder="Add details or @mention assignees…"
+              :placeholder="t('leadDetail.addMentionPlaceholder')"
               class="min-h-[72px]"
             />
           </div>
@@ -559,12 +689,17 @@ function getTabLabel(tab: string): string {
               <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
               <!-- eslint-disable-next-line vue/no-v-html -->
               <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
-              <p v-if="task.due_date" class="text-xs mt-0.5" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500' : 'text-gray-400'">
-                Due: {{ new Date(task.due_date).toLocaleDateString() }}
-              </p>
-              <p v-if="task.assigned_to_id" class="text-xs text-blue-500 mt-0.5">
-                Assigned: {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
-              </p>
+              <div class="flex flex-wrap gap-3 mt-1 text-xs">
+                <span v-if="task.due_date" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
+                  📅 {{ new Date(task.due_date).toLocaleDateString() }}
+                </span>
+                <span v-if="task.assigned_to_id" class="text-blue-500">
+                  👤 {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
+                </span>
+                <span v-if="task.watcher_ids?.length" class="text-gray-400 dark:text-gray-500">
+                  🔔 {{ task.watcher_ids.length }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
