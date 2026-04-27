@@ -148,8 +148,8 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     assigned_to = None
     assign_to_user_id = action.get("assign_to_user_id", "")
     if assign_to_user_id == "inherit":
-        # Inherit from the triggering context
-        inherit_id = context.get("assignee_id") or context.get("assign_to_id")
+        # Inherit from the triggering context (use assignee_id standardized key)
+        inherit_id = context.get("assignee_id")
         if inherit_id:
             from django.contrib.auth import get_user_model
             User = get_user_model()
@@ -185,8 +185,9 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
         parent_task=parent_task,
     )
     logger.info(
-        "automation create_task: created task '%s' (id=%s)%s",
-        title, task.id, f" on lead {lead_id}" if lead_id else "",
+        "automation create_task: rule=%s created task '%s' (id=%s)%s",
+        getattr(rule, 'id', 'unknown'), title, task.id,
+        f" on lead {lead_id}" if lead_id else "",
     )
 
 

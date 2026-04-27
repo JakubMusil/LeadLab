@@ -150,8 +150,21 @@ const ruleFormActions = ref<AutomationAction[]>([])
 const ruleSaving = ref(false)
 
 // ---------------------------------------------------------------------------
-// Data loading
+// Default action factory
 // ---------------------------------------------------------------------------
+
+function defaultAction(type: string): AutomationAction {
+  const defaults: Record<string, AutomationAction> = {
+    send_email: { type: 'send_email', to: 'owner', subject: '', body: '' },
+    create_task: { type: 'create_task', title_template: '', due_days_offset: 0, priority: 'medium', assign_to_user_id: 'inherit', tags: [] },
+    update_field: { type: 'update_field', field: 'status', value: '' },
+    call_webhook: { type: 'call_webhook', url: '', method: 'POST' },
+    run_plugin_action: { type: 'run_plugin_action', plugin_name: '', action: '' },
+    set_task_status: { type: 'set_task_status', status: 'done' },
+    assign_tag: { type: 'assign_tag', tag: '', target_type: 'task' },
+  }
+  return defaults[type] ?? { type }
+}
 
 async function loadAutomations() {
   automationsLoading.value = true
@@ -187,7 +200,7 @@ function openNewRuleForm() {
   ruleFormTrigger.value = 'task_created'
   ruleFormTriggerConfig.value = {}
   ruleFormConditions.value = []
-  ruleFormActions.value = [{ type: 'create_task', title_template: '', due_days_offset: 0, priority: 'medium', assign_to_user_id: 'inherit', tags: [] }]
+  ruleFormActions.value = [defaultAction('create_task')]
   showRuleForm.value = true
   showTemplates.value = false
 }
@@ -218,7 +231,7 @@ function removeCondition(i: number) {
 }
 
 function addAction() {
-  ruleFormActions.value.push({ type: 'create_task', title_template: '', due_days_offset: 0, priority: 'medium', assign_to_user_id: 'inherit' })
+  ruleFormActions.value.push(defaultAction('create_task'))
 }
 
 function removeAction(i: number) {
@@ -226,16 +239,7 @@ function removeAction(i: number) {
 }
 
 function onActionTypeChange(i: number, newType: string) {
-  const defaults: Record<string, AutomationAction> = {
-    send_email: { type: 'send_email', to: 'owner', subject: '', body: '' },
-    create_task: { type: 'create_task', title_template: '', due_days_offset: 0, priority: 'medium', assign_to_user_id: 'inherit', tags: [] },
-    update_field: { type: 'update_field', field: 'status', value: '' },
-    call_webhook: { type: 'call_webhook', url: '', method: 'POST' },
-    run_plugin_action: { type: 'run_plugin_action', plugin_name: '', action: '' },
-    set_task_status: { type: 'set_task_status', status: 'done' },
-    assign_tag: { type: 'assign_tag', tag: '', target_type: 'task' },
-  }
-  ruleFormActions.value[i] = defaults[newType] ?? { type: newType }
+  ruleFormActions.value[i] = defaultAction(newType)
 }
 
 function getActionTagsString(action: AutomationAction): string {
@@ -609,7 +613,7 @@ function lastRunLabel(rule: AutomationRule): string {
                 placeholder="e.g. Follow up with {{customer_name}} on {{lead_title}}"
                 class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               />
-              <p class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{lead_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code></p>
+              <p class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{lead_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code> (triggering task's due date)</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>

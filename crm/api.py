@@ -352,7 +352,18 @@ def _build_lead_automation_context(lead: Lead, firm) -> dict:
 
 
 def _build_task_automation_context(task, firm) -> dict:
-    """Build the evaluation context dict for automation rules fired from a Task event."""
+    """Build the evaluation context dict for automation rules fired from a Task event.
+
+    Args:
+        task: A Task model instance (should have lead, customer, assigned_to pre-fetched).
+        firm: The Firm instance that owns the task.
+
+    Returns:
+        A dict with string values suitable for condition evaluation and template rendering.
+        Keys: task_id, task_title, task_status, task_priority, lead_id, lead_title,
+              firm_id, assignee_id, assignee_email, assignee_name,
+              customer_name, customer_email, owner_email, due_date.
+    """
     from firms.models import Membership
 
     lead_id = str(task.lead_id) if task.lead_id else ""
