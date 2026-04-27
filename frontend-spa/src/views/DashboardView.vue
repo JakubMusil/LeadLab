@@ -324,7 +324,7 @@ const showSetupBanner = computed(() => {
                   <span class="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{{ activityIcon(act.type) }}</span>
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/leads/${act.lead_id}`" class="font-medium hover:text-red-600">
+                      <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
                         {{ (act as ActivityItem & { lead_title?: string }).lead_title ?? 'Lead' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>
@@ -358,7 +358,7 @@ const showSetupBanner = computed(() => {
                   <span class="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{{ activityIcon(act.type) }}</span>
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/leads/${act.lead_id}`" class="font-medium hover:text-red-600">
+                      <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
                         {{ act.lead_title ?? 'Lead' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>

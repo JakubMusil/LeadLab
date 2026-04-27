@@ -104,7 +104,7 @@ async function confirmDelete(id: string) {
 }
 
 function goToDetail(id: string) {
-  router.push(`/app/customers/${id}`)
+  router.push(`/app/directory/${id}`)
 }
 
 function fullName(c: CustomerOut) {
@@ -178,9 +178,9 @@ function exportCsv() {
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('customers.title') }}</h2>
 
       <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('customers').length > 0" class="flex items-center gap-1 flex-wrap">
+      <div v-if="savedViewsStore.viewsForEntity('directory').length > 0" class="flex items-center gap-1 flex-wrap">
         <button
-          v-for="view in savedViewsStore.viewsForEntity('customers')"
+          v-for="view in savedViewsStore.viewsForEntity('directory')"
           :key="view.id"
           class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           :title="view.name"

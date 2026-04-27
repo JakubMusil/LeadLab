@@ -46,29 +46,29 @@ const router = createRouter({
           meta: { title: 'Dashboard' },
         },
         {
-          path: 'leads',
+          path: 'opportunities',
           component: () => import('@/views/LeadsView.vue'),
-          meta: { title: 'Leads' },
+          meta: { title: 'Příležitosti' },
         },
         {
-          path: 'leads/:id',
+          path: 'opportunities/:id',
           component: () => import('@/views/LeadDetailView.vue'),
-          meta: { title: 'Lead Detail' },
+          meta: { title: 'Příležitost Detail' },
         },
         {
-          path: 'leads/:id/proposals/:pid?',
+          path: 'opportunities/:id/proposals/:pid?',
           component: () => import('@/views/ProposalBuilderView.vue'),
           meta: { title: 'Proposal Builder' },
         },
         {
-          path: 'customers',
+          path: 'directory',
           component: () => import('@/views/CustomersView.vue'),
-          meta: { title: 'Customers' },
+          meta: { title: 'Adresář' },
         },
         {
-          path: 'customers/:id',
+          path: 'directory/:id',
           component: () => import('@/views/CustomerDetailView.vue'),
-          meta: { title: 'Customer Detail' },
+          meta: { title: 'Adresář Detail' },
         },
         {
           path: 'tasks',

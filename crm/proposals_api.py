@@ -349,7 +349,7 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
 # ---------------------------------------------------------------------------
 
 @proposals_router.get(
-    "/leads/{lead_id}/proposals",
+    "/opportunities/{lead_id}/proposals",
     auth=django_auth,
     response={200: List[ProposalOut], 403: ErrorOut, 404: ErrorOut},
 )
@@ -373,7 +373,7 @@ def list_proposals(request, lead_id: str):
 
 
 @proposals_router.post(
-    "/leads/{lead_id}/proposals",
+    "/opportunities/{lead_id}/proposals",
     auth=django_auth,
     response={201: ProposalOut, 403: ErrorOut, 404: ErrorOut},
 )

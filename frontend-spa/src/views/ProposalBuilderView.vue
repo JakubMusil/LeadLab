@@ -138,7 +138,7 @@ const previewTotal = computed(() =>
 async function loadProposals() {
   loading.value = true
   try {
-    const res = await api.get<Proposal[]>(`/api/v1/crm/leads/${leadId.value}/proposals`)
+    const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${leadId.value}/proposals`)
     if (res.ok) proposals.value = res.data
   } finally {
     loading.value = false
@@ -181,7 +181,7 @@ function populateForm(p: Proposal) {
 // -----------------------------------------------------------------------
 async function createProposal() {
   saving.value = true
-  const res = await api.post<Proposal>(`/api/v1/crm/leads/${leadId.value}/proposals`, {
+  const res = await api.post<Proposal>(`/api/v1/crm/opportunities/${leadId.value}/proposals`, {
     title: editTitle.value || 'New Proposal',
     currency: editCurrency.value,
   })
@@ -191,7 +191,7 @@ async function createProposal() {
     currentProposal.value = res.data
     populateForm(res.data)
     items.value = []
-    router.replace(`/app/leads/${leadId.value}/proposals/${res.data.id}`)
+    router.replace(`/app/opportunities/${leadId.value}/proposals/${res.data.id}`)
     toast.success('Proposal created.')
   } else {
     toast.error('Failed to create proposal.')
@@ -228,7 +228,7 @@ async function deleteProposal(id: string) {
     proposals.value = proposals.value.filter((p) => p.id !== id)
     if (currentProposal.value?.id === id) {
       currentProposal.value = null
-      router.replace(`/app/leads/${leadId.value}/proposals`)
+      router.replace(`/app/opportunities/${leadId.value}/proposals`)
     }
     toast.success('Proposal deleted.')
   } else {
@@ -237,7 +237,7 @@ async function deleteProposal(id: string) {
 }
 
 function selectProposal(p: Proposal) {
-  router.push(`/app/leads/${leadId.value}/proposals/${p.id}`)
+  router.push(`/app/opportunities/${leadId.value}/proposals/${p.id}`)
 }
 
 // -----------------------------------------------------------------------
@@ -414,7 +414,7 @@ onMounted(async () => {
     const first = proposals.value[0]
     if (first) {
       await loadProposal(first.id)
-      router.replace(`/app/leads/${leadId.value}/proposals/${first.id}`)
+      router.replace(`/app/opportunities/${leadId.value}/proposals/${first.id}`)
     }
   } else {
     // Pre-populate create form
@@ -437,7 +437,7 @@ watch(
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Back -->
     <RouterLink
-      :to="`/app/leads/${leadId}`"
+      :to="`/app/opportunities/${leadId}`"
       class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4"
     >
       ← Back to Lead

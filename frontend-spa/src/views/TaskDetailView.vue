@@ -251,7 +251,7 @@ interface LeadOption { id: string; title: string }
 const leads = ref<LeadOption[]>([])
 
 async function loadLeads() {
-  const res = await api.get<LeadOption[]>('/api/v1/crm/leads?page_size=200')
+  const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
   if (res.ok) leads.value = res.data as LeadOption[]
 }
 
@@ -322,7 +322,7 @@ const moveSubmitting = ref(false)
 const customers = ref<{ id: string; display: string }[]>([])
 
 async function loadCustomers() {
-  const res = await api.get<{ id: string; first_name: string; last_name: string; company_name: string }[]>('/api/v1/crm/customers?page_size=200')
+  const res = await api.get<{ id: string; first_name: string; last_name: string; company_name: string }[]>('/api/v1/crm/directory?page_size=200')
   if (res.ok) {
     customers.value = (res.data as any[]).map((c) => ({
       id: c.id,
@@ -1402,13 +1402,13 @@ onUnmounted(() => {
           <span>{{ t('tasks.title') }}</span>
           <span>›</span>
           <template v-if="task.lead_id">
-            <RouterLink :to="`/app/leads/${task.lead_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+            <RouterLink :to="`/app/opportunities/${task.lead_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
               {{ task.lead_title || task.lead_id }}
             </RouterLink>
             <span>›</span>
           </template>
           <template v-else-if="task.customer_id">
-            <RouterLink :to="`/app/customers/${task.customer_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+            <RouterLink :to="`/app/directory/${task.customer_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
               {{ task.customer_name || task.customer_id }}
             </RouterLink>
             <span>›</span>
@@ -1595,7 +1595,7 @@ onUnmounted(() => {
               <div v-if="task.lead_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.lead') }}</span>
                 <RouterLink
-                  :to="`/app/leads/${task.lead_id}`"
+                  :to="`/app/opportunities/${task.lead_id}`"
                   class="text-blue-500 hover:underline truncate"
                 >
                   {{ task.lead_title || task.lead_id }}
@@ -1605,7 +1605,7 @@ onUnmounted(() => {
               <div v-if="task.customer_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.customer') }}</span>
                 <RouterLink
-                  :to="`/app/customers/${task.customer_id}`"
+                  :to="`/app/directory/${task.customer_id}`"
                   class="text-blue-500 hover:underline truncate"
                 >
                   {{ task.customer_name || task.customer_id }}

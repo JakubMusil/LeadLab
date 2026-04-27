@@ -28,8 +28,8 @@ import { api } from '@/api'
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
-    { path: '/app/customers', component: CustomersView },
-    { path: '/app/customers/:id', component: { template: '<div/>' } },
+    { path: '/app/directory', component: CustomersView },
+    { path: '/app/directory/:id', component: { template: '<div/>' } },
   ],
 })
 
@@ -43,7 +43,7 @@ describe('CustomersView', () => {
   beforeEach(async () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    await router.push('/app/customers')
+    await router.push('/app/directory')
     await router.isReady()
   })
 

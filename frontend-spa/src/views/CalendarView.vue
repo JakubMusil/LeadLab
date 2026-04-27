@@ -279,7 +279,7 @@ onMounted(async () => {
   await tasksStore.fetchTasks({})
   const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
   const [leadsRes, membersRes] = await Promise.all([
-    api.get<LeadOption[]>('/api/v1/crm/leads?page_size=100'),
+    api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=100'),
     firmId
       ? api.get<{ id: string; user_id: string; user_full_name: string }[]>(`/api/v1/firms/${firmId}/members`)
       : Promise.resolve({ ok: false as const, data: [] }),

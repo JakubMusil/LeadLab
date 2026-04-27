@@ -48,7 +48,7 @@ interface LeadOption { id: string; title: string }
 const leads = ref<LeadOption[]>([])
 
 async function loadLeads() {
-  const res = await api.get<LeadOption[]>('/api/v1/crm/leads?page_size=200')
+  const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
   if (res.ok) leads.value = (res.data as LeadOption[])
 }
 
@@ -642,7 +642,7 @@ onMounted(async () => {
             <!-- Lead link -->
             <RouterLink
               v-if="task.lead_id"
-              :to="`/app/leads/${task.lead_id}`"
+              :to="`/app/opportunities/${task.lead_id}`"
               class="text-xs text-blue-500 hover:underline truncate max-w-[160px]"
             >
               {{ task.lead_title || task.lead_id }}

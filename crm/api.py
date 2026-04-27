@@ -127,7 +127,7 @@ def _customer_out(c: Customer) -> dict:
     }
 
 
-@router.get("/customers", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut})
+@router.get("/directory", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut})
 def list_customers(request, search: str = "", page: int = 1, page_size: int = 20):
     try:
         require_membership(request)
@@ -147,7 +147,7 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
     return 200, [_customer_out(c) for c in qs[offset:offset + page_size]]
 
 
-@router.post("/customers", auth=django_auth, response={201: CustomerOut, 403: ErrorOut})
+@router.post("/directory", auth=django_auth, response={201: CustomerOut, 403: ErrorOut})
 def create_customer(request, payload: CustomerIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -159,7 +159,7 @@ def create_customer(request, payload: CustomerIn):
     return 201, _customer_out(customer)
 
 
-@router.get("/customers/{customer_id}", auth=django_auth, response={200: CustomerOut, 403: ErrorOut, 404: ErrorOut})
+@router.get("/directory/{customer_id}", auth=django_auth, response={200: CustomerOut, 403: ErrorOut, 404: ErrorOut})
 def get_customer(request, customer_id: str):
     try:
         require_membership(request)
@@ -173,7 +173,7 @@ def get_customer(request, customer_id: str):
     return 200, _customer_out(customer)
 
 
-@router.put("/customers/{customer_id}", auth=django_auth, response={200: CustomerOut, 403: ErrorOut, 404: ErrorOut})
+@router.put("/directory/{customer_id}", auth=django_auth, response={200: CustomerOut, 403: ErrorOut, 404: ErrorOut})
 def update_customer(request, customer_id: str, payload: CustomerIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -191,7 +191,7 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
     return 200, _customer_out(customer)
 
 
-@router.delete("/customers/{customer_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
+@router.delete("/directory/{customer_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
 def delete_customer(request, customer_id: str):
     try:
         require_membership(request, min_role=MembershipRole.ADMIN)
@@ -434,7 +434,7 @@ def _build_task_automation_context(task, firm) -> dict:
 
 
 
-@router.get("/leads", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
+@router.get("/opportunities", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
 def list_leads(
     request,
     status: str = "",
@@ -470,7 +470,7 @@ def list_leads(
     return 200, [_lead_out(lead, rules) for lead in leads]
 
 
-@router.post("/leads", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
+@router.post("/opportunities", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
 def create_lead(request, payload: LeadIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -522,7 +522,7 @@ def create_lead(request, payload: LeadIn):
     return 201, _lead_out(lead)
 
 
-@router.get("/leads/{lead_id}", auth=django_auth, response={200: LeadOut, 403: ErrorOut, 404: ErrorOut})
+@router.get("/opportunities/{lead_id}", auth=django_auth, response={200: LeadOut, 403: ErrorOut, 404: ErrorOut})
 def get_lead(request, lead_id: str):
     try:
         require_membership(request)
@@ -536,7 +536,7 @@ def get_lead(request, lead_id: str):
     return 200, _lead_out(lead)
 
 
-@router.patch("/leads/{lead_id}", auth=django_auth, response={200: LeadOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
+@router.patch("/opportunities/{lead_id}", auth=django_auth, response={200: LeadOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
 def update_lead(request, lead_id: str, payload: LeadUpdateIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -596,7 +596,7 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
     return 200, _lead_out(lead)
 
 
-@router.delete("/leads/{lead_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
+@router.delete("/opportunities/{lead_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
 def delete_lead(request, lead_id: str):
     try:
         require_membership(request, min_role=MembershipRole.ADMIN)
@@ -646,7 +646,7 @@ def _activity_out(a: Activity) -> dict:
     }
 
 
-@router.get("/leads/{lead_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
+@router.get("/opportunities/{lead_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
 def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
     """Return the timeline for a Lead, newest first (paginated)."""
     try:
@@ -4060,7 +4060,7 @@ def _attachment_out(a: LeadAttachment) -> dict:
 
 
 @router.get(
-    "/leads/{lead_id}/attachments",
+    "/opportunities/{lead_id}/attachments",
     auth=django_auth,
     response={200: List[AttachmentOut], 403: ErrorOut, 404: ErrorOut},
 )
@@ -4084,7 +4084,7 @@ def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
 
 
 @router.post(
-    "/leads/{lead_id}/attachments",
+    "/opportunities/{lead_id}/attachments",
     auth=django_auth,
     response={201: AttachmentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
@@ -4138,7 +4138,7 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
 
 
 @router.delete(
-    "/leads/{lead_id}/attachments/{attachment_id}",
+    "/opportunities/{lead_id}/attachments/{attachment_id}",
     auth=django_auth,
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )

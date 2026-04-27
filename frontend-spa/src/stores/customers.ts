@@ -46,7 +46,7 @@ export const useCustomersStore = defineStore('customers', () => {
       const p = opts.page ?? 1
       params.set('page', String(p))
       params.set('page_size', String(pageSize.value))
-      const res = await api.get<CustomerOut[]>(`/api/v1/crm/customers?${params}`)
+      const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory?${params}`)
       if (res.ok) {
         if (opts.append) {
           customers.value = [...customers.value, ...res.data]
@@ -66,7 +66,7 @@ export const useCustomersStore = defineStore('customers', () => {
   async function fetchCustomer(id: string): Promise<{ ok: boolean; error?: string }> {
     loadingDetail.value = true
     try {
-      const res = await api.get<CustomerOut>(`/api/v1/crm/customers/${id}`)
+      const res = await api.get<CustomerOut>(`/api/v1/crm/directory/${id}`)
       if (res.ok) {
         currentCustomer.value = res.data
         return { ok: true }
@@ -78,7 +78,7 @@ export const useCustomersStore = defineStore('customers', () => {
   }
 
   async function createCustomer(payload: CustomerIn): Promise<{ ok: boolean; data?: CustomerOut; error?: string }> {
-    const res = await api.post<CustomerOut>('/api/v1/crm/customers', payload)
+    const res = await api.post<CustomerOut>('/api/v1/crm/directory', payload)
     if (res.ok) {
       customers.value.unshift(res.data)
       return { ok: true, data: res.data }
@@ -87,7 +87,7 @@ export const useCustomersStore = defineStore('customers', () => {
   }
 
   async function updateCustomer(id: string, payload: CustomerIn): Promise<{ ok: boolean; data?: CustomerOut; error?: string }> {
-    const res = await api.put<CustomerOut>(`/api/v1/crm/customers/${id}`, payload)
+    const res = await api.put<CustomerOut>(`/api/v1/crm/directory/${id}`, payload)
     if (res.ok) {
       const idx = customers.value.findIndex((c) => c.id === id)
       if (idx !== -1) customers.value[idx] = res.data
@@ -98,7 +98,7 @@ export const useCustomersStore = defineStore('customers', () => {
   }
 
   async function deleteCustomer(id: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/customers/${id}`)
+    const res = await api.delete(`/api/v1/crm/directory/${id}`)
     if (res.ok || res.status === 204) {
       customers.value = customers.value.filter((c) => c.id !== id)
       return { ok: true }

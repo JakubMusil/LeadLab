@@ -6,10 +6,10 @@ export const commandPaletteOpen = ref(false)
 
 export const SHORTCUTS = [
   { keys: 'Cmd/Ctrl + K', description: 'Open command palette' },
-  { keys: 'G L', description: 'Go to Leads' },
-  { keys: 'G C', description: 'Go to Customers' },
+  { keys: 'G L', description: 'Go to Opportunities' },
+  { keys: 'G C', description: 'Go to Directory' },
   { keys: 'G D', description: 'Go to Dashboard' },
-  { keys: 'N', description: 'New Lead (on Leads page)' },
+  { keys: 'N', description: 'New Opportunity (on Opportunities page)' },
   { keys: '?', description: 'Show this help' },
 ]
 
@@ -41,8 +41,8 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
     if (pendingKey === 'G') {
       if (pendingTimer) clearTimeout(pendingTimer)
       pendingKey = ''
-      if (key === 'L') { router.push('/app/leads'); return }
-      if (key === 'C') { router.push('/app/customers'); return }
+      if (key === 'L') { router.push('/app/opportunities'); return }
+      if (key === 'C') { router.push('/app/directory'); return }
       if (key === 'D') { router.push('/app/dashboard'); return }
       return
     }
@@ -53,7 +53,7 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
       return
     }
 
-    if (key === 'N' && route.path === '/app/leads') {
+    if (key === 'N' && route.path === '/app/opportunities') {
       onNewLead?.()
     }
   }
