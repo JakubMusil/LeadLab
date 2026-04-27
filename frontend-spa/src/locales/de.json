@@ -37,7 +37,7 @@
     "overdue": "{count} überfällig",
     "won": "Gewonnen: {value}",
     "completeSetup": "Einrichtung abschließen",
-    "setupBannerText": "Fast fertig! Schließen Sie die Einrichtungsschritte ab, um ChanceLab optimal zu nutzen.",
+    "setupBannerText": "Fast fertig! Schließen Sie die Einrichtungsschritte ab, um LeadLab optimal zu nutzen.",
     "continueSetup": "Einrichtung fortsetzen",
     "customiseLayout": "Layout anpassen",
     "widgetLayout": "Widget-Layout",
@@ -302,7 +302,7 @@
   },
   "customers": {
     "title": "Adressbuch",
-    "noCustomers": "Noch keine Adressbuch",
+    "noCustomers": "Noch keine Kontakte",
     "newCustomer": "Neuer Kontakt",
     "searchPlaceholder": "Adressbuch suchen…",
     "importCsv": "⬆ CSV importieren",
