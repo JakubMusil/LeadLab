@@ -8,6 +8,7 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
+import { useI18n } from '@/composables/useI18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +16,7 @@ const store = useLeadsStore()
 const savedViewsStore = useSavedViewsStore()
 const customersStore = useCustomersStore()
 const toast = useToast()
+const { t } = useI18n()
 
 type ViewMode = 'table' | 'kanban'
 const viewMode = ref<ViewMode>('table')
@@ -106,9 +108,9 @@ async function createAndSelectCustomer() {
   if (result.ok && result.data) {
     selectCustomer(result.data)
     showNewCustomerForm.value = false
-    toast.success('Customer created.')
+    toast.success(t('leads.customerCreated'))
   } else {
-    toast.error(result.error ?? 'Failed to create customer.')
+    toast.error(result.error ?? t('leads.failedToCreateCustomer'))
   }
 }
 
@@ -116,13 +118,13 @@ async function createAndSelectCustomer() {
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextLead = ref<LeadOut | null>(null)
 
-const LEAD_CONTEXT_ITEMS: ContextMenuItem[] = [
-  { id: 'view', label: 'View detail', icon: '↗' },
-  { id: 'edit', label: 'Edit', icon: '✎' },
-  { id: 'change_status', label: 'Change status', icon: '🔄' },
+const LEAD_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
+  { id: 'view', label: t('leads.viewDetail'), icon: '↗' },
+  { id: 'edit', label: t('leads.edit'), icon: '✎' },
+  { id: 'change_status', label: t('leads.changeStatus'), icon: '🔄' },
   { id: 'divider1', label: '', divider: true },
-  { id: 'delete', label: 'Delete', icon: '🗑', danger: true },
-]
+  { id: 'delete', label: t('leads.delete'), icon: '🗑', danger: true },
+])
 
 function onRowContextMenu(e: MouseEvent, lead: LeadOut) {
   e.preventDefault()
@@ -213,7 +215,7 @@ function openEdit(lead: LeadOut) {
 }
 
 async function submitForm() {
-  if (!formTitle.value.trim()) { formError.value = 'Title is required.'; return }
+  if (!formTitle.value.trim()) { formError.value = t('leads.titleRequired'); return }
   formLoading.value = true
   formError.value = ''
   const payload = {
@@ -234,23 +236,23 @@ async function submitForm() {
   formLoading.value = false
   if (result.ok) {
     showModal.value = false
-    toast.success(editingLead.value ? 'Lead updated.' : 'Lead created.')
+    toast.success(editingLead.value ? t('leads.leadUpdated') : t('leads.leadCreated'))
   } else {
-    formError.value = result.error ?? 'An error occurred.'
+    formError.value = result.error ?? t('leads.errorOccurred')
   }
 }
 
 async function confirmDelete(id: string) {
   const result = await store.deleteLead(id)
   confirmDeleteId.value = null
-  if (result.ok) toast.success('Lead deleted.')
-  else toast.error(result.error ?? 'Failed to delete lead.')
+  if (result.ok) toast.success(t('leads.leadDeleted'))
+  else toast.error(result.error ?? t('leads.failedToDelete'))
 }
 
 async function changeStatus(leadId: string, newStatus: string) {
   statusPopupId.value = null
   const result = await store.patchStatus(leadId, newStatus)
-  if (!result.ok) toast.error(result.error ?? 'Failed to update status.')
+  if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
 }
 
 function goToDetail(id: string) {
@@ -287,6 +289,31 @@ function fmtValue(lead: LeadOut) {
   return new Intl.NumberFormat(undefined, { style: 'decimal', maximumFractionDigits: 0 }).format(lead.value) + ' ' + lead.currency
 }
 
+function statusLabel(value: string): string {
+  const map: Record<string, string> = {
+    new: t('leads.statusNew'),
+    contacted: t('leads.statusContacted'),
+    proposal: t('leads.statusProposal'),
+    negotiation: t('leads.statusNegotiation'),
+    won: t('leads.statusWon'),
+    lost: t('leads.statusLost'),
+    canceled: t('leads.statusCanceled'),
+  }
+  return map[value] ?? value
+}
+
+function sourceLabel(value: string): string {
+  const map: Record<string, string> = {
+    web: t('leads.sourceWeb'),
+    email: t('leads.sourceEmail'),
+    referral: t('leads.sourceReferral'),
+    cold_call: t('leads.sourceColdCall'),
+    social: t('leads.sourceSocial'),
+    other: t('leads.sourceOther'),
+  }
+  return map[value] ?? value
+}
+
 // Fetch lead tasks to check overdue
 const overdueTasks = ref<Set<string>>(new Set())
 async function checkOverdueTasks() {
@@ -296,9 +323,9 @@ async function checkOverdueTasks() {
   if (res.ok) {
     const now = Date.now()
     const set = new Set<string>()
-    for (const t of res.data) {
-      if (t.due_date && new Date(t.due_date).getTime() < now) {
-        set.add(t.lead_id)
+    for (const task of res.data) {
+      if (task.due_date && new Date(task.due_date).getTime() < now) {
+        set.add(task.lead_id)
       }
     }
     overdueTasks.value = set
@@ -320,17 +347,17 @@ async function saveCurrentView() {
   })
   savingView.value = false
   if (result) {
-    toast.success('View saved.')
+    toast.success(t('leads.viewSaved'))
     showSaveViewDialog.value = false
     saveViewName.value = ''
   } else {
-    toast.error('Failed to save view.')
+    toast.error(t('leads.failedToSaveView'))
   }
 }
 
 async function deleteSavedView(id: string) {
   await savedViewsStore.deleteView(id)
-  toast.success('View deleted.')
+  toast.success(t('leads.viewDeleted'))
 }
 
 // CSV Import
@@ -349,10 +376,10 @@ async function onImportFile(e: Event) {
       fd,
     )
     if (res.ok) {
-      toast.success('Import started. Leads will appear shortly.')
+      toast.success(t('leads.importStarted'))
       setTimeout(() => store.fetchLeads({ status: filterStatus.value, source: filterSource.value }), 2000)
     } else {
-      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Import failed.'
+      const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('leads.importFailed')
       toast.error(msg)
     }
   } finally {
@@ -377,7 +404,7 @@ function exportPdf() {
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">Leads</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
 
       <!-- Saved views -->
       <div v-if="savedViewsStore.viewsForEntity('leads').length > 0" class="flex items-center gap-1 flex-wrap">
@@ -408,28 +435,28 @@ function exportPdf() {
           class="px-3 py-1.5 transition-colors"
           :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'table'"
-        >☰ Table</button>
+        >☰ {{ t('leads.table') }}</button>
         <button
           class="px-3 py-1.5 transition-colors"
           :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'kanban'"
-        >⊞ Kanban</button>
+        >⊞ {{ t('leads.kanban') }}</button>
       </div>
 
       <!-- Filters (table only) -->
       <template v-if="viewMode === 'table'">
         <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-          <option value="">All Statuses</option>
-          <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
+          <option value="">{{ t('leads.allStatuses') }}</option>
+          <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
         </select>
         <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-          <option value="">All Sources</option>
-          <option value="web">Web</option>
-          <option value="email">Email</option>
-          <option value="referral">Referral</option>
-          <option value="cold_call">Cold Call</option>
-          <option value="social">Social</option>
-          <option value="other">Other</option>
+          <option value="">{{ t('leads.allSources') }}</option>
+          <option value="web">{{ t('leads.sourceWeb') }}</option>
+          <option value="email">{{ t('leads.sourceEmail') }}</option>
+          <option value="referral">{{ t('leads.sourceReferral') }}</option>
+          <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
+          <option value="social">{{ t('leads.sourceSocial') }}</option>
+          <option value="other">{{ t('leads.sourceOther') }}</option>
         </select>
         <!-- Save current view -->
         <button
@@ -437,14 +464,14 @@ function exportPdf() {
           title="Save current filters as a view"
           @click="showSaveViewDialog = true"
         >
-          🔖 Save view
+          🔖 {{ t('leads.saveView') }}
         </button>
       </template>
 
       <button
         class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
-      >+ New Lead</button>
+      >{{ t('leads.newLead') }}</button>
 
       <!-- Import / Export -->
       <label
@@ -452,19 +479,19 @@ function exportPdf() {
         :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
         title="Import leads from CSV"
       >
-        ⬆ Import CSV
+        {{ t('leads.importCsv') }}
         <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
       </label>
       <button
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         title="Export leads as CSV"
         @click="exportCsv"
-      >⬇ CSV</button>
+      >{{ t('leads.exportCsv') }}</button>
       <button
         class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         title="Export pipeline summary as PDF"
         @click="exportPdf"
-      >⬇ PDF</button>
+      >{{ t('leads.exportPdf') }}</button>
     </div>
 
     <!-- Loading -->
@@ -480,27 +507,27 @@ function exportPdf() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">No leads found</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('leads.noLeadsFound') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
-          <template v-if="filterStatus || filterSource">Try adjusting your filters to see more leads.</template>
-          <template v-else>Start by adding your first lead to the pipeline.</template>
+          <template v-if="filterStatus || filterSource">{{ t('leads.filterSubtitle') }}</template>
+          <template v-else>{{ t('leads.pipelineSubtitle') }}</template>
         </p>
         <button
           v-if="!filterStatus && !filterSource"
           class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
           @click="openCreate"
-        >Create first lead</button>
+        >{{ t('leads.createFirst') }}</button>
       </div>
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Title</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Source</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Value</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">Score</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">Created</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colTitle') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colStatus') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('leads.colSource') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colValue') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">{{ t('leads.colScore') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colCreated') }}</th>
               <th class="px-4 py-3" />
             </tr>
           </thead>
@@ -523,10 +550,10 @@ function exportPdf() {
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
                     :class="getStatusMeta(lead.status).color"
-                    :aria-label="`Status: ${getStatusMeta(lead.status).label}. Click to change.`"
+                    :aria-label="`Status: ${statusLabel(lead.status)}. Click to change.`"
                     @click.stop="statusPopupId = statusPopupId === lead.id ? null : lead.id"
                   >
-                    {{ getStatusMeta(lead.status).label }}
+                    {{ statusLabel(lead.status) }}
                     <span class="text-xs opacity-60" aria-hidden="true">▾</span>
                   </button>
                   <!-- Status popup -->
@@ -547,12 +574,12 @@ function exportPdf() {
                       @click="changeStatus(lead.id, s.value)"
                     >
                       <span class="w-2 h-2 rounded-full flex-shrink-0" :class="s.color.split(' ')[0]" aria-hidden="true" />
-                      {{ s.label }}
+                      {{ statusLabel(s.value) }}
                     </button>
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell capitalize" @click="goToDetail(lead.id)">{{ lead.source.replace('_', ' ') }}</td>
+              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
               <td class="px-4 py-3 text-gray-700 dark:text-gray-300 hidden lg:table-cell" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
               <td class="px-4 py-3 hidden xl:table-cell" @click="goToDetail(lead.id)">
                 <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
@@ -560,8 +587,8 @@ function exportPdf() {
               <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" aria-label="Edit lead" @click.stop="openEdit(lead)">✎</button>
-                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" aria-label="Delete lead" @click.stop="confirmDeleteId = lead.id">🗑</button>
+                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)">✎</button>
+                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = lead.id">🗑</button>
                 </div>
               </td>
             </tr>
@@ -570,18 +597,18 @@ function exportPdf() {
 
         <!-- Pagination -->
         <div class="flex justify-between items-center px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-          <span class="text-xs text-gray-400 dark:text-gray-500">Page {{ store.page }}</span>
+          <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('leads.page', { n: store.page }) }}</span>
           <div class="flex gap-2">
             <button
               v-if="store.page > 1"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page - 1 })"
-            >← Prev</button>
+            >{{ t('leads.prev') }}</button>
             <button
               v-if="store.hasMore"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page + 1 })"
-            >Next →</button>
+            >{{ t('leads.next') }}</button>
           </div>
         </div>
       </div>
@@ -603,7 +630,7 @@ function exportPdf() {
             class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold transition-colors"
             :class="[s.color, dragOverStatus === s.value ? 'ring-2 ring-offset-1 ring-red-400' : '']"
           >
-            {{ s.label }}
+            {{ statusLabel(s.value) }}
             <span class="ml-auto bg-white/60 dark:bg-black/30 rounded px-1.5 py-0.5">{{ leadsByStatus[s.value]?.length ?? 0 }}</span>
           </div>
           <!-- Cards -->
@@ -625,16 +652,16 @@ function exportPdf() {
                   @click="goToDetail(lead.id)"
                 >{{ lead.title }}</button>
                 <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                  <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 text-xs" aria-label="Edit lead" @click.stop="openEdit(lead)">✎</button>
+                  <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 text-xs" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)">✎</button>
                 </div>
               </div>
               <div class="flex items-center gap-2 mt-2 flex-wrap">
                 <span v-if="fmtValue(lead)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(lead) }}</span>
                 <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
-                <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" title="Overdue task">⚠ overdue</span>
+                <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
               </div>
             </div>
-            <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">Drop here</div>
+            <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
           </div>
         </div>
       </div>
@@ -648,14 +675,14 @@ function exportPdf() {
   <Teleport to="body">
     <div v-if="showSaveViewDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showSaveViewDialog = false">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-label="Save view">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Save current view</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('leads.saveCurrentView') }}</h3>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">View name</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.viewName') }}</label>
             <input
               v-model="saveViewName"
               type="text"
-              placeholder="e.g. New Web Leads"
+              :placeholder="t('leads.viewNamePlaceholder')"
               class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
             />
           </div>
@@ -664,9 +691,9 @@ function exportPdf() {
           </p>
         </div>
         <div class="flex gap-3 pt-4">
-          <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showSaveViewDialog = false">Cancel</button>
+          <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showSaveViewDialog = false">{{ t('leads.cancel') }}</button>
           <button type="button" :disabled="savingView || !saveViewName.trim()" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60" @click="saveCurrentView">
-            {{ savingView ? 'Saving…' : 'Save view' }}
+            {{ savingView ? t('leads.saving') : t('leads.saveViewBtn') }}
           </button>
         </div>
       </div>
@@ -676,23 +703,23 @@ function exportPdf() {
   <!-- Create/Edit Modal -->
   <Teleport to="body">
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingLead ? 'Edit Lead' : 'New Lead'">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingLead ? 'Edit Lead' : 'New Lead' }}</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingLead ? t('leads.editTitle') : t('leads.newTitle')">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingLead ? t('leads.editTitle') : t('leads.newTitle') }}</h3>
         <div v-if="formError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ formError }}</div>
         <form class="space-y-3" @submit.prevent="submitForm">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.titleField') }}</label>
             <input v-model="formTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <!-- Customer search/create -->
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.customerField') }}</label>
             <div class="relative">
               <div class="flex gap-1">
                 <input
                   v-model="formCustomerQuery"
                   type="text"
-                  placeholder="Search by name, email or phone…"
+                  :placeholder="t('leads.customerSearchPlaceholder')"
                   autocomplete="off"
                   class="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
                   @input="onCustomerQueryInput"
@@ -711,7 +738,7 @@ function exportPdf() {
                 v-if="showCustomerDropdown && (customerSuggestions.length > 0 || customerSearchLoading)"
                 class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 max-h-48 overflow-y-auto"
               >
-                <div v-if="customerSearchLoading" class="px-3 py-2 text-xs text-gray-400">Searching…</div>
+                <div v-if="customerSearchLoading" class="px-3 py-2 text-xs text-gray-400">{{ t('leads.searching') }}</div>
                 <button
                   v-for="c in customerSuggestions"
                   :key="c.id"
@@ -733,7 +760,7 @@ function exportPdf() {
             </div>
             <!-- Inline new customer form -->
             <div v-if="showNewCustomerForm" class="mt-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 space-y-2">
-              <p class="text-xs font-medium text-gray-700 dark:text-gray-300">New customer</p>
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('leads.newCustomerLabel') }}</p>
               <div class="grid grid-cols-2 gap-2">
                 <input v-model="newCustomerFirstName" type="text" placeholder="First name *" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
                 <input v-model="newCustomerLastName" type="text" placeholder="Last name" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
@@ -741,48 +768,48 @@ function exportPdf() {
               <input v-model="newCustomerEmail" type="email" placeholder="Email" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
               <input v-model="newCustomerPhone" type="tel" placeholder="Phone" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
               <div class="flex gap-2">
-                <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="showNewCustomerForm = false">Cancel</button>
-                <button type="button" class="text-xs text-white bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700" @click="createAndSelectCustomer">Create & select</button>
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="showNewCustomerForm = false">{{ t('leads.cancel') }}</button>
+                <button type="button" class="text-xs text-white bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700" @click="createAndSelectCustomer">{{ t('leads.createAndSelect') }}</button>
               </div>
             </div>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.descriptionField') }}</label>
             <textarea v-model="formDescription" rows="2" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.statusField') }}</label>
               <select v-model="formStatus" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-                <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
+                <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Source</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.sourceField') }}</label>
               <select v-model="formSource" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-                <option value="web">Web</option>
-                <option value="email">Email</option>
-                <option value="referral">Referral</option>
-                <option value="cold_call">Cold Call</option>
-                <option value="social">Social</option>
-                <option value="other">Other</option>
+                <option value="web">{{ t('leads.sourceWeb') }}</option>
+                <option value="email">{{ t('leads.sourceEmail') }}</option>
+                <option value="referral">{{ t('leads.sourceReferral') }}</option>
+                <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
+                <option value="social">{{ t('leads.sourceSocial') }}</option>
+                <option value="other">{{ t('leads.sourceOther') }}</option>
               </select>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.valueField') }}</label>
               <input v-model="formValue" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="0" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.currencyField') }}</label>
               <input v-model="formCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="CZK" />
             </div>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">{{ t('leads.cancel') }}</button>
             <button type="submit" :disabled="formLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ formLoading ? 'Saving…' : (editingLead ? 'Save' : 'Create') }}
+              {{ formLoading ? t('leads.saving') : (editingLead ? t('leads.save') : t('leads.create')) }}
             </button>
           </div>
         </form>
@@ -795,11 +822,11 @@ function exportPdf() {
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete lead confirmation">
         <div class="text-3xl mb-3" aria-hidden="true">🗑</div>
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete this lead?</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">This action cannot be undone.</p>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('leads.deleteTitle') }}</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('leads.deleteText') }}</p>
         <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">Cancel</button>
-          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">Delete</button>
+          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">{{ t('leads.cancel') }}</button>
+          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">{{ t('leads.delete') }}</button>
         </div>
       </div>
     </div>

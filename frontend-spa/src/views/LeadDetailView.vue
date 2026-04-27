@@ -5,6 +5,7 @@ import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import DOMPurify from 'dompurify'
@@ -23,6 +24,7 @@ const store = useLeadsStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const { on, off } = useWebSocket()
+const { t } = useI18n()
 
 const leadId = computed(() => route.params.id as string)
 type Tab = 'overview' | 'activities' | 'tasks' | 'files' | 'proposals'
@@ -128,7 +130,7 @@ async function loadTasks() {
   try {
     const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100`)
     if (res.ok) {
-      tasks.value = res.data.filter((t) => t.lead_id === leadId.value)
+      tasks.value = res.data.filter((task) => task.lead_id === leadId.value)
     }
   } finally {
     tasksLoading.value = false
@@ -162,9 +164,9 @@ async function addActivity() {
   if (res.ok) {
     activities.value.unshift(res.data)
     newActivityText.value = ''
-    toast.success('Activity added.')
+    toast.success(t('leadDetail.activityAdded'))
   } else {
-    toast.error('Failed to add activity.')
+    toast.error(t('leadDetail.activityFailed'))
   }
 }
 
@@ -193,20 +195,20 @@ async function addTask() {
     newTaskDueDate.value = ''
     newTaskDescription.value = ''
     newTaskAssigneeIds.value = []
-    toast.success('Task created.')
+    toast.success(t('leadDetail.taskCreated'))
   } else {
-    toast.error('Failed to create task.')
+    toast.error(t('leadDetail.taskFailed'))
   }
 }
 
 async function completeTask(id: string) {
   const res = await api.post<Task>(`/api/v1/crm/tasks/${id}/complete`)
   if (res.ok) {
-    const idx = tasks.value.findIndex((t) => t.id === id)
+    const idx = tasks.value.findIndex((task) => task.id === id)
     if (idx !== -1) tasks.value[idx] = res.data
-    toast.success('Task completed.')
+    toast.success(t('leadDetail.taskCompleted'))
   } else {
-    toast.error('Failed to complete task.')
+    toast.error(t('leadDetail.taskCompleteFailed'))
   }
 }
 
@@ -245,19 +247,19 @@ async function doUpload(file: File) {
         try {
           const item = JSON.parse(xhr.responseText) as FileItem
           files.value.unshift(item)
-          toast.success('File uploaded.')
+          toast.success(t('leadDetail.fileUploaded'))
         } catch {
           toast.error('Upload response parse error.')
         }
       } else {
-        toast.error('Failed to upload file.')
+        toast.error(t('leadDetail.fileUploadFailed'))
       }
       resolve()
     }
     xhr.onerror = () => {
       uploadingFile.value = false
       uploadProgress.value = 0
-      toast.error('Failed to upload file.')
+      toast.error(t('leadDetail.fileUploadFailed'))
       resolve()
     }
     xhr.send(fd)
@@ -295,7 +297,7 @@ function openEdit() {
 }
 
 async function submitEdit() {
-  if (!editTitle.value.trim()) { editError.value = 'Title is required.'; return }
+  if (!editTitle.value.trim()) { editError.value = t('leadDetail.editTitleRequired'); return }
   editLoading.value = true
   const result = await store.updateLead(leadId.value, {
     title: editTitle.value.trim(),
@@ -308,7 +310,7 @@ async function submitEdit() {
   editLoading.value = false
   if (result.ok) {
     showEditModal.value = false
-    toast.success('Lead updated.')
+    toast.success(t('leadDetail.updated'))
   } else {
     editError.value = result.error ?? 'Failed to update.'
   }
@@ -317,7 +319,7 @@ async function submitEdit() {
 async function deleteLead() {
   const result = await store.deleteLead(leadId.value)
   if (result.ok) {
-    toast.success('Lead deleted.')
+    toast.success(t('leadDetail.deleted'))
     router.push('/app/leads')
   } else {
     toast.error(result.error ?? 'Failed to delete.')
@@ -360,13 +362,24 @@ async function switchTab(tab: Tab) {
   else if (tab === 'files' && files.value.length === 0) await loadFiles()
   else if (tab === 'proposals') router.push(`/app/leads/${leadId.value}/proposals`)
 }
+
+function getTabLabel(tab: string): string {
+  const keyMap: Record<string, string> = {
+    overview: 'leadDetail.tabOverview',
+    activities: 'leadDetail.tabActivities',
+    tasks: 'leadDetail.tabTasks',
+    files: 'leadDetail.tabFiles',
+  }
+  const key = keyMap[tab]
+  return key ? t(key) : tab.charAt(0).toUpperCase() + tab.slice(1)
+}
 </script>
 
 <template>
   <div class="p-6 max-w-5xl mx-auto">
     <!-- Back -->
     <RouterLink to="/app/leads" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
-      ← Leads
+      {{ t('leadDetail.backToLeads') }}
     </RouterLink>
 
     <!-- Loading skeleton -->
@@ -417,9 +430,9 @@ async function switchTab(tab: Tab) {
 
         <!-- Meta -->
         <div class="flex flex-wrap gap-4 mt-4 text-xs text-gray-500">
-          <span><span class="font-medium text-gray-700">Source:</span> {{ store.currentLead.source.replace('_', ' ') }}</span>
-          <span v-if="store.currentLead.value != null"><span class="font-medium text-gray-700">Value:</span> {{ store.currentLead.value }} {{ store.currentLead.currency }}</span>
-          <span><span class="font-medium text-gray-700">Created:</span> {{ new Date(store.currentLead.created_at).toLocaleDateString() }}</span>
+          <span><span class="font-medium text-gray-700">{{ t('leadDetail.overviewSource') }}:</span> {{ store.currentLead.source.replace('_', ' ') }}</span>
+          <span v-if="store.currentLead.value != null"><span class="font-medium text-gray-700">{{ t('leadDetail.overviewValue') }}:</span> {{ store.currentLead.value }} {{ store.currentLead.currency }}</span>
+          <span><span class="font-medium text-gray-700">{{ t('leadDetail.overviewCreated') }}:</span> {{ new Date(store.currentLead.created_at).toLocaleDateString() }}</span>
         </div>
       </div>
 
@@ -431,17 +444,17 @@ async function switchTab(tab: Tab) {
           class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize"
           :class="activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
           @click="switchTab(tab)"
-        >{{ tab }}</button>
+        >{{ getTabLabel(tab) }}</button>
       </div>
 
       <!-- OVERVIEW TAB -->
       <div v-if="activeTab === 'overview'" class="bg-white rounded-2xl border border-gray-100 p-5">
         <h3 class="text-sm font-semibold text-gray-900 mb-3">Lead Details</h3>
         <dl class="grid grid-cols-2 gap-4 text-sm">
-          <div><dt class="text-xs text-gray-500 mb-0.5">Status</dt><dd class="font-medium">{{ getStatusMeta(store.currentLead.status).label }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">Source</dt><dd class="font-medium capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">Value</dt><dd class="font-medium">{{ store.currentLead.value != null ? `${store.currentLead.value} ${store.currentLead.currency}` : '—' }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">Created</dt><dd class="font-medium">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd></div>
+          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewStatus') }}</dt><dd class="font-medium">{{ getStatusMeta(store.currentLead.status).label }}</dd></div>
+          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewSource') }}</dt><dd class="font-medium capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd></div>
+          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewValue') }}</dt><dd class="font-medium">{{ store.currentLead.value != null ? `${store.currentLead.value} ${store.currentLead.currency}` : '—' }}</dd></div>
+          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewCreated') }}</dt><dd class="font-medium">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd></div>
           <div v-if="store.currentLead.description" class="col-span-2"><dt class="text-xs text-gray-500 mb-0.5">Description</dt><dd>{{ store.currentLead.description }}</dd></div>
         </dl>
       </div>
@@ -452,7 +465,7 @@ async function switchTab(tab: Tab) {
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
           <div class="flex gap-2 mb-2">
             <select v-model="newActivityType" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
-              <option v-for="t in activityTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+              <option v-for="actType in activityTypes" :key="actType.value" :value="actType.value">{{ actType.label }}</option>
             </select>
           </div>
           <div class="flex flex-col gap-2">
@@ -468,7 +481,7 @@ async function switchTab(tab: Tab) {
                 :disabled="activitySubmitting || !hasPlainText(newActivityText)"
                 class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                 @click="addActivity"
-              >{{ activitySubmitting ? '…' : 'Add' }}</button>
+              >{{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
             </div>
           </div>
         </div>
@@ -477,7 +490,7 @@ async function switchTab(tab: Tab) {
         <div v-if="activitiesLoading" class="animate-pulse space-y-2">
           <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-xl" />
         </div>
-        <div v-else-if="activities.length === 0" class="text-center py-10 text-gray-400 text-sm">No activities yet.</div>
+        <div v-else-if="activities.length === 0" class="text-center py-10 text-gray-400 text-sm">{{ t('leadDetail.noActivities') }}</div>
         <div v-else class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
           <div v-for="act in activities" :key="act.id" class="flex items-start gap-3 p-4">
             <span class="text-lg mt-0.5 flex-shrink-0">{{ activityIcons[act.type] ?? '📌' }}</span>
@@ -505,7 +518,7 @@ async function switchTab(tab: Tab) {
         <!-- Add task form (rich editor with mentions) -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
           <div class="flex gap-2 flex-wrap">
-            <input v-model="newTaskTitle" type="text" placeholder="Task title…" class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <input v-model="newTaskTitle" type="text" :placeholder="t('leadDetail.taskTitle')" class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             <input v-model="newTaskDueDate" type="date" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <!-- Rich-text description / notes with @mention for assignment -->
@@ -523,7 +536,7 @@ async function switchTab(tab: Tab) {
           </div>
           <div class="flex justify-end">
             <button :disabled="taskSubmitting || !newTaskTitle.trim()" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="addTask">
-              {{ taskSubmitting ? '…' : 'Add Task' }}
+              {{ taskSubmitting ? '…' : t('leadDetail.addTask') }}
             </button>
           </div>
         </div>
@@ -531,7 +544,7 @@ async function switchTab(tab: Tab) {
         <div v-if="tasksLoading" class="animate-pulse space-y-2">
           <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
         </div>
-        <div v-else-if="tasks.length === 0" class="text-center py-10 text-gray-400 text-sm">No tasks yet.</div>
+        <div v-else-if="tasks.length === 0" class="text-center py-10 text-gray-400 text-sm">{{ t('leadDetail.noTasks') }}</div>
         <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
           <div v-for="task in tasks" :key="task.id" class="flex items-start gap-3 p-4">
             <button
@@ -588,7 +601,7 @@ async function switchTab(tab: Tab) {
           <!-- Progress bar -->
           <div v-if="uploadingFile" class="mt-3">
             <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-              <span>Uploading…</span>
+              <span>{{ t('leadDetail.uploading') }}</span>
               <span>{{ uploadProgress }}%</span>
             </div>
             <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -613,8 +626,8 @@ async function switchTab(tab: Tab) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
             </svg>
           </div>
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No files attached</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500">Upload files to keep them with this lead.</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ t('leadDetail.noFiles') }}</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('leadDetail.noFilesHint') }}</p>
         </div>
         <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
           <div v-for="file in files" :key="file.id" class="flex items-center gap-3 p-4 group">
@@ -642,18 +655,18 @@ async function switchTab(tab: Tab) {
       </div>
     </template>
 
-    <div v-else class="text-center py-12 text-gray-400">Lead not found.</div>
+    <div v-else class="text-center py-12 text-gray-400">{{ t('leadDetail.notFound') }}</div>
   </div>
 
   <!-- Edit Modal -->
   <Teleport to="body">
     <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-lead-title">
-        <h3 id="edit-lead-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit Lead</h3>
+        <h3 id="edit-lead-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('leadDetail.editTitle') }}</h3>
         <div v-if="editError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ editError }}</div>
         <form class="space-y-3" @submit.prevent="submitEdit">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormTitle') }}</label>
             <input v-model="editTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
@@ -662,37 +675,37 @@ async function switchTab(tab: Tab) {
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormStatus') }}</label>
               <select v-model="editStatus" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
                 <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Source</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormSource') }}</label>
               <select v-model="editSource" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-                <option value="web">Web</option>
-                <option value="email">Email</option>
-                <option value="referral">Referral</option>
-                <option value="cold_call">Cold Call</option>
-                <option value="social">Social</option>
-                <option value="other">Other</option>
+                <option value="web">{{ t('leads.sourceWeb') }}</option>
+                <option value="email">{{ t('leads.sourceEmail') }}</option>
+                <option value="referral">{{ t('leads.sourceReferral') }}</option>
+                <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
+                <option value="social">{{ t('leads.sourceSocial') }}</option>
+                <option value="other">{{ t('leads.sourceOther') }}</option>
               </select>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormValue') }}</label>
               <input v-model="editValue" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormCurrency') }}</label>
               <input v-model="editCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showEditModal = false">Cancel</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showEditModal = false">{{ t('leadDetail.editCancel') }}</button>
             <button type="submit" :disabled="editLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ editLoading ? 'Saving…' : 'Save' }}
+              {{ editLoading ? t('leadDetail.editSaving') : t('leadDetail.editSave') }}
             </button>
           </div>
         </form>

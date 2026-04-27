@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const { t } = useI18n()
 
 interface Member { id: string; user_email: string; user_full_name: string; role: string; firm_id: string }
 interface Invitation { id: string; email: string; role: string; is_expired: boolean; is_accepted: boolean; expires_at: string }
@@ -56,7 +58,7 @@ async function loadTeam() {
 }
 
 async function sendInvitation() {
-  if (!inviteEmail.value.trim()) { inviteError.value = 'Email is required.'; return }
+  if (!inviteEmail.value.trim()) { inviteError.value = t('team.emailRequired'); return }
   inviteLoading.value = true
   inviteError.value = ''
   const res = await api.post(`/api/v1/firms/${firmId.value}/invitations/`, {
@@ -65,12 +67,12 @@ async function sendInvitation() {
   })
   inviteLoading.value = false
   if (res.ok || res.status === 202) {
-    toast.success('Invitation sent.')
+    toast.success(t('team.invitationSent'))
     inviteEmail.value = ''
     await loadTeam()
   } else {
     const data = res.data as Record<string, string> | null
-    inviteError.value = data?.detail ?? 'Failed to send invitation.'
+    inviteError.value = data?.detail ?? t('team.failedToInvite')
   }
 }
 
@@ -79,9 +81,9 @@ async function removeMember(membershipId: string) {
   const res = await api.delete(`/api/v1/firms/${firmId.value}/members/${membershipId}`)
   if (res.ok || res.status === 204) {
     members.value = members.value.filter((m) => m.id !== membershipId)
-    toast.success('Member removed.')
+    toast.success(t('team.memberRemoved'))
   } else {
-    toast.error('Failed to remove member.')
+    toast.error(t('team.failedToRemove'))
   }
 }
 
@@ -96,16 +98,22 @@ async function saveRole(membershipId: string) {
   if (res.ok) {
     const idx = members.value.findIndex((m) => m.id === membershipId)
     if (idx !== -1) members.value[idx] = res.data
-    toast.success('Role updated.')
+    toast.success(t('team.roleUpdated'))
   } else {
-    toast.error('Failed to update role.')
+    toast.error(t('team.failedToUpdateRole'))
   }
 }
 
-function invitationStatus(inv: Invitation): string {
+function invitationStatusKey(inv: Invitation): 'accepted' | 'expired' | 'pending' {
   if (inv.is_accepted) return 'accepted'
   if (inv.is_expired) return 'expired'
   return 'pending'
+}
+
+function invitationStatus(inv: Invitation): string {
+  if (inv.is_accepted) return t('team.acceptedLabel')
+  if (inv.is_expired) return t('team.expiredLabel')
+  return t('team.pendingLabel')
 }
 
 const pendingInvitations = computed(() => invitations.value.filter((i) => !i.is_accepted))
@@ -118,8 +126,8 @@ onMounted(loadTeam)
     <!-- Members -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Team Members</h2>
-        <span class="text-xs text-gray-400 dark:text-gray-500">{{ members.length }} member{{ members.length !== 1 ? 's' : '' }}</span>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('team.title') }}</h2>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ members.length }} {{ members.length !== 1 ? t('team.membersPlural') : t('team.memberSingular') }}</span>
       </div>
 
       <div v-if="loading" class="animate-pulse p-4 space-y-2">
@@ -131,8 +139,8 @@ onMounted(loadTeam)
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
         </div>
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No team members yet</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500">Invite colleagues to collaborate on leads.</p>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ t('team.noMembers') }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('team.noMembersHint') }}</p>
       </div>
       <div v-else class="divide-y divide-gray-50 dark:divide-gray-700">
         <div v-for="m in members" :key="m.id" class="flex items-center gap-3 px-5 py-3">
@@ -152,8 +160,8 @@ onMounted(loadTeam)
             <select v-model="editingRole" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1 focus:outline-none focus:border-red-400">
               <option v-for="r in ROLES.filter(r => r !== 'owner')" :key="r" :value="r">{{ r }}</option>
             </select>
-            <button class="text-xs bg-red-600 text-white px-2 py-1 rounded-lg" @click="saveRole(m.id)">Save</button>
-            <button class="text-xs border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg" @click="editingRoleId = null">Cancel</button>
+            <button class="text-xs bg-red-600 text-white px-2 py-1 rounded-lg" @click="saveRole(m.id)">{{ t('team.save') }}</button>
+            <button class="text-xs border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg" @click="editingRoleId = null">{{ t('team.cancel') }}</button>
           </div>
           <template v-else>
             <button
@@ -179,44 +187,44 @@ onMounted(loadTeam)
 
     <!-- Invite member -->
     <div v-if="canManage" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Invite Member</h3>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('team.inviteMember') }}</h3>
       <div v-if="inviteError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ inviteError }}</div>
       <div class="flex gap-2 flex-wrap">
         <input
           v-model="inviteEmail"
           type="email"
-          placeholder="Email address…"
+          :placeholder="t('team.emailPlaceholder')"
           class="flex-1 min-w-48 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
         />
         <select v-model="inviteRole" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-          <option value="worker">Worker</option>
-          <option value="admin">Admin</option>
+          <option value="worker">{{ t('team.roleWorker') }}</option>
+          <option value="admin">{{ t('team.roleAdmin') }}</option>
         </select>
         <button
           :disabled="inviteLoading"
           class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
           @click="sendInvitation"
-        >{{ inviteLoading ? 'Sending…' : 'Send Invite' }}</button>
+        >{{ inviteLoading ? t('team.sending') : t('team.sendInvite') }}</button>
       </div>
     </div>
 
     <!-- Pending invitations -->
     <div v-if="canManage && pendingInvitations.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
       <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Pending Invitations</h3>
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('team.pendingInvitations') }}</h3>
       </div>
       <div class="divide-y divide-gray-50 dark:divide-gray-700">
         <div v-for="inv in pendingInvitations" :key="inv.id" class="flex items-center gap-3 px-5 py-3">
           <div class="flex-1 min-w-0">
             <p class="text-sm text-gray-900 dark:text-gray-100 truncate">{{ inv.email }}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Role: {{ inv.role }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('team.role') }}: {{ inv.role }}</p>
           </div>
           <span
             class="text-xs px-2.5 py-1 rounded-full font-medium"
             :class="{
-              'bg-yellow-100 text-yellow-700': invitationStatus(inv) === 'pending',
-              'bg-green-100 text-green-700': invitationStatus(inv) === 'accepted',
-              'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': invitationStatus(inv) === 'expired',
+              'bg-yellow-100 text-yellow-700': invitationStatusKey(inv) === 'pending',
+              'bg-green-100 text-green-700': invitationStatusKey(inv) === 'accepted',
+              'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': invitationStatusKey(inv) === 'expired',
             }"
           >{{ invitationStatus(inv) }}</span>
         </div>
@@ -229,11 +237,11 @@ onMounted(loadTeam)
     <div v-if="confirmRemoveId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmRemoveId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Remove member confirmation">
         <div class="text-3xl mb-3" aria-hidden="true">👤</div>
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Remove this member?</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">They will lose access to this workspace.</p>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('team.removeMemberTitle') }}</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('team.removeMemberDesc') }}</p>
         <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmRemoveId = null">Cancel</button>
-          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="removeMember(confirmRemoveId!)">Remove</button>
+          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmRemoveId = null">{{ t('team.cancel') }}</button>
+          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="removeMember(confirmRemoveId!)">{{ t('team.remove') }}</button>
         </div>
       </div>
     </div>
