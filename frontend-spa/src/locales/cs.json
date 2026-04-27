@@ -461,7 +461,7 @@
     "createdAt": "Vytvořeno:",
     "comments": "Komentáře",
     "noComments": "Zatím žádné komentáře. Buďte první.",
-    "commentPlaceholder": "Napište komentář… (zadejte @ pro zmínění člena týmu)",
+    "commentPlaceholder": "Napište komentář… (zadejte {'@'} pro zmínění člena týmu)",
     "editCommentPlaceholder": "Upravte komentář…",
     "addComment": "Přidat komentář",
     "editComment": "Upravit",
