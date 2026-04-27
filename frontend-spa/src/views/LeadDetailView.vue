@@ -568,7 +568,7 @@ function getTabLabel(tab: string): string {
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                {{ t('leadDetail.descAndAssignees') }}
+                {{ t('leadDetail.descriptionLabel') }}
               </label>
               <RichTextEditor
                 ref="taskEditorRef"
@@ -654,7 +654,7 @@ function getTabLabel(tab: string): string {
           <!-- Rich-text description / notes with @mention -->
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              {{ t('leadDetail.descAndAssignees') }}
+              {{ t('leadDetail.descriptionLabel') }}
             </label>
             <RichTextEditor
               ref="taskEditorRef"
