@@ -41,6 +41,9 @@ from crm.models import (
     TaskChecklistItem,
     TaskComment,
     TaskCommentReaction,
+    TaskCustomField,
+    TaskCustomFieldType,
+    TaskCustomFieldValue,
     TaskDependency,
     TaskDependencyType,
     TaskFavourite,
@@ -824,6 +827,8 @@ class TaskOut(Schema):
     approval_requested_from_id: Optional[str]
     approval_requested_from_name: Optional[str]
     approval_note: str
+    # Phase 8: custom fields
+    custom_fields: List[Dict[str, Any]]
 
 
 class TaskIn(Schema):
@@ -1042,6 +1047,36 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve approval_requested_from for task %s: %s", t.id, exc)
 
+    # Phase 8: custom field values
+    custom_fields = []
+    try:
+        cf_values = {
+            str(v.field_id): v
+            for v in TaskCustomFieldValue.objects.filter(task=t).select_related("field")
+        }
+        all_fields = TaskCustomField.objects.filter(firm=t.firm).order_by("position", "name")
+        for cf in all_fields:
+            val_obj = cf_values.get(str(cf.id))
+            if cf.field_type == "number":
+                value = float(val_obj.value_number) if (val_obj and val_obj.value_number is not None) else None
+            elif cf.field_type == "date":
+                value = val_obj.value_date.isoformat() if (val_obj and val_obj.value_date) else None
+            elif cf.field_type == "checkbox":
+                value = val_obj.value_bool if (val_obj and val_obj.value_bool is not None) else False
+            else:
+                value = val_obj.value_text if val_obj else ""
+            custom_fields.append({
+                "field_id": str(cf.id),
+                "name": cf.name,
+                "field_type": cf.field_type,
+                "options": cf.options if isinstance(cf.options, list) else [],
+                "is_required": cf.is_required,
+                "position": cf.position,
+                "value": value,
+            })
+    except Exception as exc:
+        logger.debug("Could not resolve custom fields for task %s: %s", t.id, exc)
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
@@ -1093,6 +1128,8 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "approval_requested_from_id": str(t.approval_requested_from_id) if t.approval_requested_from_id else None,
         "approval_requested_from_name": approval_requested_from_name,
         "approval_note": t.approval_note,
+        # Phase 8
+        "custom_fields": custom_fields,
     }
 
 
@@ -4965,3 +5002,200 @@ def delete_saved_view(request, view_id: str):
 
     view.delete()
     return 204, None
+
+
+# ===========================================================================
+# PHASE 8 — Custom Fields
+# ===========================================================================
+
+class TaskCustomFieldOut(Schema):
+    id: str
+    firm_id: str
+    name: str
+    field_type: str
+    options: List[str]
+    is_required: bool
+    position: int
+    created_at: datetime
+
+
+class TaskCustomFieldIn(Schema):
+    name: str
+    field_type: str = "text"
+    options: List[str] = []
+    is_required: bool = False
+    position: int = 0
+
+
+class TaskCustomFieldUpdateIn(Schema):
+    name: Optional[str] = None
+    field_type: Optional[str] = None
+    options: Optional[List[str]] = None
+    is_required: Optional[bool] = None
+    position: Optional[int] = None
+
+
+class TaskCustomFieldValueIn(Schema):
+    field_id: str
+    value_text: Optional[str] = None
+    value_number: Optional[float] = None
+    value_date: Optional[str] = None
+    value_bool: Optional[bool] = None
+
+
+class TaskCustomFieldValueBulkIn(Schema):
+    values: List[TaskCustomFieldValueIn]
+
+
+def _custom_field_out(cf: TaskCustomField) -> dict:
+    return {
+        "id": str(cf.id),
+        "firm_id": str(cf.firm_id),
+        "name": cf.name,
+        "field_type": cf.field_type,
+        "options": cf.options if isinstance(cf.options, list) else [],
+        "is_required": cf.is_required,
+        "position": cf.position,
+        "created_at": cf.created_at,
+    }
+
+
+@router.get(
+    "/custom-fields",
+    auth=django_auth,
+    response={200: List[TaskCustomFieldOut], 403: ErrorOut},
+)
+def list_custom_fields(request):
+    """List all custom field definitions for the current firm."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+    qs = TaskCustomField.objects.filter(firm=request.firm).order_by("position", "name")
+    return 200, [_custom_field_out(cf) for cf in qs]
+
+
+@router.post(
+    "/custom-fields",
+    auth=django_auth,
+    response={201: TaskCustomFieldOut, 400: ErrorOut, 403: ErrorOut},
+)
+def create_custom_field(request, payload: TaskCustomFieldIn):
+    """Create a new custom field definition (admin/owner only)."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    valid_types = [c[0] for c in TaskCustomFieldType.choices]
+    if payload.field_type not in valid_types:
+        return 400, {"detail": f"Invalid field_type '{payload.field_type}'. Must be one of: {valid_types}"}
+
+    cf = TaskCustomField.objects.create(
+        firm=request.firm,
+        name=payload.name,
+        field_type=payload.field_type,
+        options=payload.options,
+        is_required=payload.is_required,
+        position=payload.position,
+    )
+    return 201, _custom_field_out(cf)
+
+
+@router.patch(
+    "/custom-fields/{field_id}",
+    auth=django_auth,
+    response={200: TaskCustomFieldOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_custom_field(request, field_id: str, payload: TaskCustomFieldUpdateIn):
+    """Update a custom field definition (admin/owner only)."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        cf = TaskCustomField.objects.get(id=field_id, firm=request.firm)
+    except TaskCustomField.DoesNotExist:
+        return 404, {"detail": "Custom field not found."}
+
+    if payload.name is not None:
+        cf.name = payload.name
+    if payload.field_type is not None:
+        valid_types = [c[0] for c in TaskCustomFieldType.choices]
+        if payload.field_type not in valid_types:
+            return 400, {"detail": f"Invalid field_type '{payload.field_type}'."}
+        cf.field_type = payload.field_type
+    if payload.options is not None:
+        cf.options = payload.options
+    if payload.is_required is not None:
+        cf.is_required = payload.is_required
+    if payload.position is not None:
+        cf.position = payload.position
+    cf.save()
+    return 200, _custom_field_out(cf)
+
+
+@router.delete(
+    "/custom-fields/{field_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_custom_field(request, field_id: str):
+    """Delete a custom field definition and all its values (admin/owner only)."""
+    try:
+        require_membership(request, min_role=MembershipRole.ADMIN)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        cf = TaskCustomField.objects.get(id=field_id, firm=request.firm)
+    except TaskCustomField.DoesNotExist:
+        return 404, {"detail": "Custom field not found."}
+
+    cf.delete()
+    return 204, None
+
+
+@router.patch(
+    "/tasks/{task_id}/custom-fields",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upsert_task_custom_fields(request, task_id: str, payload: TaskCustomFieldValueBulkIn):
+    """Bulk-upsert custom field values for a task."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    for item in payload.values:
+        try:
+            cf = TaskCustomField.objects.get(id=item.field_id, firm=request.firm)
+        except TaskCustomField.DoesNotExist:
+            return 400, {"detail": f"Custom field {item.field_id} not found."}
+
+        defaults: dict = {}
+        if cf.field_type in ("text", "dropdown", "url"):
+            defaults["value_text"] = item.value_text or ""
+        elif cf.field_type == "number":
+            defaults["value_number"] = item.value_number
+        elif cf.field_type == "date":
+            from django.utils.dateparse import parse_date
+            defaults["value_date"] = parse_date(item.value_date) if item.value_date else None
+        elif cf.field_type == "checkbox":
+            defaults["value_bool"] = item.value_bool
+
+        TaskCustomFieldValue.objects.update_or_create(
+            task=task,
+            field=cf,
+            defaults=defaults,
+        )
+
+    return 200, _task_out(task, request.user)

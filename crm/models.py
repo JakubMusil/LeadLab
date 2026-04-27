@@ -1795,6 +1795,85 @@ class TaskTemplate(TenantModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 8 — Custom Fields
+# ---------------------------------------------------------------------------
+
+class TaskCustomFieldType(models.TextChoices):
+    TEXT = "text", "Text"
+    NUMBER = "number", "Number"
+    DATE = "date", "Date"
+    DROPDOWN = "dropdown", "Dropdown"
+    CHECKBOX = "checkbox", "Checkbox"
+    URL = "url", "URL"
+
+
+class TaskCustomField(TenantModel):
+    """
+    A custom field definition scoped to a Firm.  Fields appear in the
+    task-detail sidebar under 'Vlastní pole'.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    field_type = models.CharField(
+        max_length=20,
+        choices=TaskCustomFieldType.choices,
+        default=TaskCustomFieldType.TEXT,
+    )
+    options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of option strings for dropdown type.",
+    )
+    is_required = models.BooleanField(default=False)
+    position = models.PositiveIntegerField(default=0, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "task custom field"
+        verbose_name_plural = "task custom fields"
+        ordering = ["position", "name"]
+        indexes = [
+            models.Index(fields=["firm", "position"], name="crm_taskcf_firm_pos_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.field_type}) [{self.firm}]"
+
+
+class TaskCustomFieldValue(models.Model):
+    """Stores the value of a custom field for a specific task."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name="custom_field_values",
+    )
+    field = models.ForeignKey(
+        TaskCustomField,
+        on_delete=models.CASCADE,
+        related_name="values",
+    )
+    value_text = models.TextField(blank=True)
+    value_number = models.DecimalField(
+        max_digits=20, decimal_places=6, null=True, blank=True
+    )
+    value_date = models.DateField(null=True, blank=True)
+    value_bool = models.BooleanField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "task custom field value"
+        verbose_name_plural = "task custom field values"
+        unique_together = [("task", "field")]
+
+    def __str__(self):
+        return f"Value of {self.field.name} for task {self.task_id}"
+
+
+# ---------------------------------------------------------------------------
 # Task Public Share
 # ---------------------------------------------------------------------------
 
