@@ -108,27 +108,39 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     from django.utils import timezone as tz
     from crm.models import Task
 
-    lead_id = context.get("lead_id")
-    if not lead_id:
-        raise ValueError("create_task: no lead_id in context")
-
-    from crm.models import Lead
-    try:
-        lead = Lead.objects.get(id=lead_id)
-    except Lead.DoesNotExist:
-        raise ValueError(f"create_task: lead {lead_id} not found")
-
     title = _render_template(action.get("title", "Follow-up task"), context)
     days_from_now = int(action.get("days_from_now", 0))
     due_date = tz.now() + datetime.timedelta(days=days_from_now) if days_from_now else None
 
+    lead_id = context.get("lead_id")
+    lead = None
+    firm = None
+
+    if lead_id:
+        from crm.models import Lead
+        try:
+            lead = Lead.objects.get(id=lead_id)
+            firm = lead.firm
+        except Lead.DoesNotExist:
+            raise ValueError(f"create_task: lead {lead_id} not found")
+    else:
+        # Standalone task — resolve firm from context
+        firm_id = context.get("firm_id")
+        if not firm_id:
+            raise ValueError("create_task: no lead_id or firm_id in context")
+        from firms.models import Firm
+        try:
+            firm = Firm.objects.get(id=firm_id)
+        except Firm.DoesNotExist:
+            raise ValueError(f"create_task: firm {firm_id} not found")
+
     Task.objects.create(
-        firm=lead.firm,
+        firm=firm,
         lead=lead,
         title=title,
         due_date=due_date,
     )
-    logger.info("automation create_task: created task '%s' on lead %s", title, lead_id)
+    logger.info("automation create_task: created task '%s'%s", title, f" on lead {lead_id}" if lead_id else "")
 
 
 def _action_update_field(action: dict, context: dict) -> None:

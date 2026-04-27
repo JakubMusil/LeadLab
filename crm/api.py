@@ -33,10 +33,15 @@ from crm.models import (
     LeadStatus,
     LeadStatusHistory,
     Notification,
+    Project,
+    Proposal,
     SavedView,
     Task,
     TaskAttachment,
     TaskComment,
+    TaskFavourite,
+    TaskPriority,
+    TaskStatus,
 )
 from firms.auth import (
     MembershipRole,
@@ -675,37 +680,77 @@ def _trigger_email_task(activity: Activity, lead: Lead):
 class TaskOut(Schema):
     id: str
     firm_id: str
-    lead_id: str
-    lead_title: str
+    # Entity links
+    lead_id: Optional[str]
+    lead_title: Optional[str]
+    proposal_id: Optional[str]
+    proposal_title: Optional[str]
+    customer_id: Optional[str]
+    customer_name: Optional[str]
+    parent_task_id: Optional[str]
+    project_ids: List[str]
+    # Authorship
     assigned_to_id: Optional[str]
     assigned_to_name: Optional[str]
+    completed_by_id: Optional[str]
+    completed_by_name: Optional[str]
     watcher_ids: List[str]
+    # Content
     title: str
     description: str
+    description_html: str
+    description_added_at: Optional[datetime]
+    # Classification
+    priority: str
+    status: str
+    tags: List[str]
+    # Dates
     due_date: Optional[datetime]
+    due_date_end: Optional[datetime]
+    # Flags
     is_completed: bool
     completed_at: Optional[datetime]
+    is_pinned: bool
+    is_archived: bool
+    is_favourite: bool
     created_at: datetime
     created_by_id: Optional[str]
     created_by_name: Optional[str]
 
 
 class TaskIn(Schema):
-    lead_id: str
+    lead_id: Optional[str] = None
+    proposal_id: Optional[str] = None
+    customer_id: Optional[str] = None
     title: str
     description: str = ""
+    description_html: str = ""
     assigned_to_id: Optional[str] = None
     watcher_ids: List[str] = []
     due_date: Optional[datetime] = None
+    due_date_end: Optional[datetime] = None
+    priority: str = TaskPriority.MEDIUM
+    status: str = TaskStatus.TODO
+    tags: List[str] = []
+    project_ids: List[str] = []
 
 
 class TaskUpdateIn(Schema):
     title: Optional[str] = None
     description: Optional[str] = None
+    description_html: Optional[str] = None
     assigned_to_id: Optional[str] = None
     watcher_ids: Optional[List[str]] = None
     due_date: Optional[datetime] = None
+    due_date_end: Optional[datetime] = None
     clear_due_date: bool = False
+    clear_due_date_end: bool = False
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_pinned: Optional[bool] = None
+    is_archived: Optional[bool] = None
+    project_ids: Optional[List[str]] = None
 
 
 class FollowUpTaskIn(Schema):
@@ -714,6 +759,7 @@ class FollowUpTaskIn(Schema):
     assigned_to_id: Optional[str] = None
     watcher_ids: List[str] = []
     due_date: Optional[datetime] = None
+    lead_id: Optional[str] = None
 
 
 class CompleteTaskIn(Schema):
@@ -745,13 +791,37 @@ class TaskAttachmentOut(Schema):
     created_at: datetime
 
 
-def _task_out(t: Task) -> dict:
+def _task_out(t: Task, requesting_user=None) -> dict:
     # Resolve lead title (use cached select_related if available)
-    try:
-        lead_title = t.lead.title
-    except (AttributeError, Exception) as exc:
-        logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
-        lead_title = ""
+    lead_id = None
+    lead_title = None
+    if t.lead_id:
+        lead_id = str(t.lead_id)
+        try:
+            lead_title = t.lead.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
+
+    # Resolve proposal title
+    proposal_id = None
+    proposal_title = None
+    if t.proposal_id:
+        proposal_id = str(t.proposal_id)
+        try:
+            proposal_title = t.proposal.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve proposal title for task %s: %s", t.id, exc)
+
+    # Resolve customer name
+    customer_id = None
+    customer_name = None
+    if t.customer_id:
+        customer_id = str(t.customer_id)
+        try:
+            c = t.customer
+            customer_name = f"{c.first_name} {c.last_name}".strip() or c.company_name or c.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve customer name for task %s: %s", t.id, exc)
 
     # Resolve assigned_to display name
     assigned_to_name: Optional[str] = None
@@ -762,12 +832,28 @@ def _task_out(t: Task) -> dict:
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve assigned_to name for task %s: %s", t.id, exc)
 
+    # Resolve completed_by display name
+    completed_by_name: Optional[str] = None
+    if t.completed_by_id:
+        try:
+            completed_by_user = t.completed_by
+            completed_by_name = f"{completed_by_user.first_name} {completed_by_user.last_name}".strip() or completed_by_user.email
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve completed_by name for task %s: %s", t.id, exc)
+
     # Resolve watcher IDs
     try:
         watcher_ids = [str(uid) for uid in t.watchers.values_list("id", flat=True)]
     except Exception as exc:
         logger.debug("Could not resolve watchers for task %s: %s", t.id, exc)
         watcher_ids = []
+
+    # Resolve project IDs
+    try:
+        project_ids = [str(pid) for pid in t.projects.values_list("id", flat=True)]
+    except Exception as exc:
+        logger.debug("Could not resolve projects for task %s: %s", t.id, exc)
+        project_ids = []
 
     # Resolve created_by display name
     created_by_name: Optional[str] = None
@@ -778,19 +864,44 @@ def _task_out(t: Task) -> dict:
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve created_by name for task %s: %s", t.id, exc)
 
+    # Resolve is_favourite for the requesting user
+    is_favourite = False
+    if requesting_user and requesting_user.is_authenticated:
+        try:
+            is_favourite = TaskFavourite.objects.filter(task=t, user=requesting_user).exists()
+        except Exception:
+            pass
+
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
-        "lead_id": str(t.lead_id),
+        "lead_id": lead_id,
         "lead_title": lead_title,
+        "proposal_id": proposal_id,
+        "proposal_title": proposal_title,
+        "customer_id": customer_id,
+        "customer_name": customer_name,
+        "parent_task_id": str(t.parent_task_id) if t.parent_task_id else None,
+        "project_ids": project_ids,
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "assigned_to_name": assigned_to_name,
+        "completed_by_id": str(t.completed_by_id) if t.completed_by_id else None,
+        "completed_by_name": completed_by_name,
         "watcher_ids": watcher_ids,
         "title": t.title,
         "description": t.description,
+        "description_html": t.description_html,
+        "description_added_at": t.description_added_at,
+        "priority": t.priority,
+        "status": t.status,
+        "tags": t.tags if isinstance(t.tags, list) else [],
         "due_date": t.due_date,
+        "due_date_end": t.due_date_end,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
+        "is_pinned": t.is_pinned,
+        "is_archived": t.is_archived,
+        "is_favourite": is_favourite,
         "created_at": t.created_at,
         "created_by_id": str(t.created_by_id) if t.created_by_id else None,
         "created_by_name": created_by_name,
@@ -847,6 +958,16 @@ def list_tasks(
     request,
     completed: Optional[bool] = None,
     assigned_to_id: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    is_archived: Optional[bool] = None,
+    is_pinned: Optional[bool] = None,
+    is_favourite: Optional[bool] = None,
+    lead_id: Optional[str] = None,
+    proposal_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+    tag: Optional[str] = None,
     page: int = 1,
     page_size: int = 50,
 ):
@@ -866,24 +987,49 @@ def list_tasks(
 
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
-    qs = Task.objects.filter(firm=request.firm).select_related("lead", "assigned_to")
+    qs = Task.objects.filter(firm=request.firm).select_related(
+        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
+    )
 
     if assigned_to_id == "all":
-        # Admins/owners may request all tasks; workers are silently scoped to themselves
         if not is_admin:
             qs = qs.filter(assigned_to=request.user)
     elif assigned_to_id:
         qs = qs.filter(assigned_to_id=assigned_to_id)
     else:
-        # Default: workers see only their own tasks, admins see all
         if not is_admin:
             qs = qs.filter(assigned_to=request.user)
 
     if completed is not None:
         qs = qs.filter(is_completed=completed)
+    if status is not None:
+        qs = qs.filter(status=status)
+    if priority is not None:
+        qs = qs.filter(priority=priority)
+    if is_archived is not None:
+        qs = qs.filter(is_archived=is_archived)
+    else:
+        # By default, exclude archived tasks
+        qs = qs.filter(is_archived=False)
+    if is_pinned is not None:
+        qs = qs.filter(is_pinned=is_pinned)
+    if lead_id is not None:
+        qs = qs.filter(lead_id=lead_id)
+    if proposal_id is not None:
+        qs = qs.filter(proposal_id=proposal_id)
+    if customer_id is not None:
+        qs = qs.filter(customer_id=customer_id)
+    if project_id is not None:
+        qs = qs.filter(projects__id=project_id)
+    if tag is not None:
+        qs = qs.filter(tags__contains=[tag])
+    if is_favourite is not None:
+        if is_favourite:
+            fav_task_ids = TaskFavourite.objects.filter(user=request.user).values_list("task_id", flat=True)
+            qs = qs.filter(id__in=fav_task_ids)
 
     offset = (page - 1) * page_size
-    return 200, [_task_out(t) for t in qs[offset:offset + page_size]]
+    return 200, [_task_out(t, request.user) for t in qs[offset:offset + page_size]]
 
 
 @router.post("/tasks", auth=django_auth, response={201: TaskOut, 400: ErrorOut, 403: ErrorOut})
@@ -893,10 +1039,27 @@ def create_task(request, payload: TaskIn):
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    try:
-        lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 400, {"detail": "Lead not found in this Firm."}
+    # Resolve optional entity links
+    lead = None
+    if payload.lead_id:
+        try:
+            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+        except Lead.DoesNotExist:
+            return 400, {"detail": "Lead not found in this Firm."}
+
+    proposal = None
+    if payload.proposal_id:
+        try:
+            proposal = Proposal.objects.get(id=payload.proposal_id, firm=request.firm)
+        except Proposal.DoesNotExist:
+            return 400, {"detail": "Proposal not found in this Firm."}
+
+    customer = None
+    if payload.customer_id:
+        try:
+            customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Customer not found in this Firm."}
 
     assigned_to = None
     if payload.assigned_to_id:
@@ -904,38 +1067,67 @@ def create_task(request, payload: TaskIn):
         if err:
             return err
 
+    # Validate priority and status
+    valid_priorities = [p.value for p in TaskPriority]
+    if payload.priority not in valid_priorities:
+        return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
+    valid_statuses = [s.value for s in TaskStatus]
+    if payload.status not in valid_statuses:
+        return 400, {"detail": f"Invalid status. Choose from: {valid_statuses}"}
+
     with transaction.atomic():
+        description_added_at = None
+        if payload.description_html:
+            from django.utils import timezone as _tz
+            description_added_at = _tz.now()
+
         task = Task.objects.create(
             firm=request.firm,
             lead=lead,
+            proposal=proposal,
+            customer=customer,
             assigned_to=assigned_to,
             created_by=request.user,
             title=payload.title,
             description=payload.description,
+            description_html=payload.description_html,
+            description_added_at=description_added_at,
             due_date=payload.due_date,
+            due_date_end=payload.due_date_end,
+            priority=payload.priority,
+            status=payload.status,
+            tags=payload.tags,
         )
         watcher_err = _set_task_watchers(task, payload.watcher_ids, request.firm)
         if watcher_err:
             return watcher_err
-        Activity.objects.create(
-            lead=lead,
-            user=request.user,
-            type=ActivityType.TASK_ASSIGNED,
-            metadata={
-                "task_id": str(task.id),
-                "due_date": payload.due_date.isoformat() if payload.due_date else None,
-                "priority": "normal",
-            },
-        )
+
+        # Set projects
+        if payload.project_ids:
+            projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
+            task.projects.set(projects)
+
+        # Log activity on lead if linked
+        if lead:
+            Activity.objects.create(
+                lead=lead,
+                user=request.user,
+                type=ActivityType.TASK_ASSIGNED,
+                metadata={
+                    "task_id": str(task.id),
+                    "due_date": payload.due_date.isoformat() if payload.due_date else None,
+                    "priority": payload.priority,
+                },
+            )
 
     _notify_task_watchers(task, "task.created")
-    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task))
-    return 201, _task_out(task)
+    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))
+    return 201, _task_out(task, request.user)
 
 
 @router.patch("/tasks/{task_id}", auth=django_auth, response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
 def update_task(request, task_id: str, payload: TaskUpdateIn):
-    """Partially update a task (title, description, due date, assignee, watchers)."""
+    """Partially update a task."""
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
@@ -956,12 +1148,52 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
         task.description = payload.description
         update_fields.append("description")
 
+    if payload.description_html is not None:
+        task.description_html = payload.description_html
+        if payload.description_html:
+            task.description_added_at = tz.now()
+            update_fields.append("description_added_at")
+        update_fields.append("description_html")
+
     if payload.clear_due_date:
         task.due_date = None
         update_fields.append("due_date")
     elif payload.due_date is not None:
         task.due_date = payload.due_date
         update_fields.append("due_date")
+
+    if payload.clear_due_date_end:
+        task.due_date_end = None
+        update_fields.append("due_date_end")
+    elif payload.due_date_end is not None:
+        task.due_date_end = payload.due_date_end
+        update_fields.append("due_date_end")
+
+    if payload.priority is not None:
+        valid_priorities = [p.value for p in TaskPriority]
+        if payload.priority not in valid_priorities:
+            return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
+        task.priority = payload.priority
+        update_fields.append("priority")
+
+    if payload.status is not None:
+        valid_statuses = [s.value for s in TaskStatus]
+        if payload.status not in valid_statuses:
+            return 400, {"detail": f"Invalid status. Choose from: {valid_statuses}"}
+        task.status = payload.status
+        update_fields.append("status")
+
+    if payload.tags is not None:
+        task.tags = payload.tags
+        update_fields.append("tags")
+
+    if payload.is_pinned is not None:
+        task.is_pinned = payload.is_pinned
+        update_fields.append("is_pinned")
+
+    if payload.is_archived is not None:
+        task.is_archived = payload.is_archived
+        update_fields.append("is_archived")
 
     if payload.assigned_to_id is not None:
         if payload.assigned_to_id == "":
@@ -982,9 +1214,13 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
         if watcher_err:
             return watcher_err
 
+    if payload.project_ids is not None:
+        projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
+        task.projects.set(projects)
+
     _notify_task_watchers(task, "task.updated")
-    broadcast_event(firm=request.firm, event='task.updated', payload=_task_out(task))
-    return 200, _task_out(task)
+    broadcast_event(firm=request.firm, event='task.updated', payload=_task_out(task, request.user))
+    return 200, _task_out(task, request.user)
 
 
 @router.post("/tasks/{task_id}/complete", auth=django_auth, response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
@@ -1001,7 +1237,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         return 404, {"detail": "Task not found."}
 
     if task.is_completed:
-        return 200, _task_out(task)
+        return 200, _task_out(task, request.user)
 
     follow_up_data = payload.follow_up if payload else None
 
@@ -1015,19 +1251,32 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     with transaction.atomic():
         task.is_completed = True
         task.completed_at = tz.now()
-        task.save(update_fields=["is_completed", "completed_at"])
-        Activity.objects.create(
-            lead=task.lead,
-            user=request.user,
-            type=ActivityType.TASK_COMPLETED,
-            metadata={"task_id": str(task.id), "title": task.title},
-        )
+        task.completed_by = request.user
+        task.status = TaskStatus.DONE
+        task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
+        # Log Activity only when linked to a lead
+        if task.lead_id:
+            Activity.objects.create(
+                lead=task.lead,
+                user=request.user,
+                type=ActivityType.TASK_COMPLETED,
+                metadata={"task_id": str(task.id), "title": task.title},
+            )
 
         follow_up_task = None
         if follow_up_data:
+            follow_up_lead = None
+            if follow_up_data.lead_id:
+                try:
+                    follow_up_lead = Lead.objects.get(id=follow_up_data.lead_id, firm=request.firm)
+                except Lead.DoesNotExist:
+                    pass
+            else:
+                follow_up_lead = task.lead
+
             follow_up_task = Task.objects.create(
                 firm=request.firm,
-                lead=task.lead,
+                lead=follow_up_lead,
                 assigned_to=follow_up_assigned_to,
                 title=follow_up_data.title,
                 description=follow_up_data.description,
@@ -1036,25 +1285,26 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
             watcher_err = _set_task_watchers(follow_up_task, follow_up_data.watcher_ids, request.firm)
             if watcher_err:
                 return watcher_err
-            Activity.objects.create(
-                lead=task.lead,
-                user=request.user,
-                type=ActivityType.TASK_ASSIGNED,
-                metadata={
-                    "task_id": str(follow_up_task.id),
-                    "follow_up_of": str(task.id),
-                    "due_date": follow_up_data.due_date.isoformat() if follow_up_data.due_date else None,
-                    "priority": "normal",
-                },
-            )
+            if follow_up_lead:
+                Activity.objects.create(
+                    lead=follow_up_lead,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata={
+                        "task_id": str(follow_up_task.id),
+                        "follow_up_of": str(task.id),
+                        "due_date": follow_up_data.due_date.isoformat() if follow_up_data.due_date else None,
+                        "priority": "normal",
+                    },
+                )
 
     _notify_task_watchers(task, "task.completed")
-    broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task))
+    broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task, request.user))
     if follow_up_task:
         _notify_task_watchers(follow_up_task, "task.created")
-        broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task))
+        broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task, request.user))
 
-    return 200, _task_out(task)
+    return 200, _task_out(task, request.user)
 
 
 # ---------------------------------------------------------------------------
@@ -1070,13 +1320,13 @@ def get_task(request, task_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        task = Task.objects.select_related("lead", "assigned_to", "created_by").get(
-            id=task_id, firm=request.firm
-        )
+        task = Task.objects.select_related(
+            "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
+        ).get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    return 200, _task_out(task)
+    return 200, _task_out(task, request.user)
 
 
 # ---------------------------------------------------------------------------
@@ -1327,6 +1577,39 @@ def delete_task_attachment(request, task_id: str, attachment_id: str):
     attachment.file.delete(save=False)
     attachment.delete()
     return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Task Favourite (⭐ toggle)
+# ---------------------------------------------------------------------------
+
+class TaskFavouriteOut(Schema):
+    task_id: str
+    is_favourite: bool
+
+
+@router.post(
+    "/tasks/{task_id}/favourite",
+    auth=django_auth,
+    response={200: TaskFavouriteOut, 403: ErrorOut, 404: ErrorOut},
+)
+def toggle_task_favourite(request, task_id: str):
+    """Toggle the current user's favourite status on a task."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    fav, created = TaskFavourite.objects.get_or_create(task=task, user=request.user)
+    if not created:
+        fav.delete()
+        return 200, {"task_id": str(task.id), "is_favourite": False}
+    return 200, {"task_id": str(task.id), "is_favourite": True}
 
 
 # ===========================================================================
@@ -1669,8 +1952,8 @@ def activity_feed(
 class OverdueTaskOut(Schema):
     id: str
     firm_id: str
-    lead_id: str
-    lead_title: str
+    lead_id: Optional[str]
+    lead_title: Optional[str]
     assigned_to_id: Optional[str]
     title: str
     due_date: Optional[datetime]
@@ -1678,11 +1961,17 @@ class OverdueTaskOut(Schema):
 
 
 def _overdue_task_out(t: Task) -> dict:
+    lead_title = None
+    if t.lead_id:
+        try:
+            lead_title = t.lead.title
+        except (AttributeError, Exception):
+            pass
     return {
         "id": str(t.id),
         "firm_id": str(t.firm_id),
-        "lead_id": str(t.lead_id),
-        "lead_title": t.lead.title,
+        "lead_id": str(t.lead_id) if t.lead_id else None,
+        "lead_title": lead_title,
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "title": t.title,
         "due_date": t.due_date,

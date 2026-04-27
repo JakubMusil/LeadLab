@@ -31,6 +31,38 @@ const { t } = useI18n()
 const taskId = computed(() => route.params.id as string)
 
 // ---------------------------------------------------------------------------
+// Priority / Status constants
+// ---------------------------------------------------------------------------
+const PRIORITY_LABELS: Record<string, string> = {
+  none: '—',
+  low: t('tasks.priorityLow'),
+  medium: t('tasks.priorityMedium'),
+  high: t('tasks.priorityHigh'),
+  critical: t('tasks.priorityCritical'),
+}
+const PRIORITY_COLORS: Record<string, string> = {
+  none: 'text-gray-400',
+  low: 'text-blue-500',
+  medium: 'text-yellow-500',
+  high: 'text-orange-500',
+  critical: 'text-red-600',
+}
+const STATUS_LABELS: Record<string, string> = {
+  todo: t('tasks.statusTodo'),
+  in_progress: t('tasks.statusInProgress'),
+  blocked: t('tasks.statusBlocked'),
+  done: t('tasks.statusDone'),
+  cancelled: t('tasks.statusCancelled'),
+}
+const STATUS_COLORS: Record<string, string> = {
+  todo: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  blocked: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  done: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  cancelled: 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400 line-through',
+}
+
+// ---------------------------------------------------------------------------
 // Team members (for @mention and assignee selectors)
 // ---------------------------------------------------------------------------
 interface Member {
@@ -102,14 +134,58 @@ function formatDateTime(ds: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Edit task
+// Inline title editing
+// ---------------------------------------------------------------------------
+const editingTitle = ref(false)
+const inlineTitle = ref('')
+const titleInputRef = ref<HTMLInputElement | null>(null)
+const titleSaving = ref(false)
+
+function startInlineEditTitle() {
+  if (!task.value || task.value.is_completed) return
+  inlineTitle.value = task.value.title
+  editingTitle.value = true
+  setTimeout(() => titleInputRef.value?.focus(), 0)
+}
+
+async function saveInlineTitle() {
+  if (!task.value || !inlineTitle.value.trim()) {
+    editingTitle.value = false
+    return
+  }
+  if (inlineTitle.value.trim() === task.value.title) {
+    editingTitle.value = false
+    return
+  }
+  titleSaving.value = true
+  const result = await tasksStore.updateTask(task.value.id, { title: inlineTitle.value.trim() })
+  titleSaving.value = false
+  editingTitle.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+function cancelInlineEditTitle() {
+  editingTitle.value = false
+}
+
+// ---------------------------------------------------------------------------
+// Edit task modal
 // ---------------------------------------------------------------------------
 const showEditTask = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
+const editDescriptionHtml = ref('')
 const editDueDate = ref('')
+const editDueDateEnd = ref('')
 const editAssigneeId = ref('')
 const editWatcherIds = ref<string[]>([])
+const editPriority = ref('medium')
+const editStatus = ref('todo')
+const editTags = ref('')
 const editSubmitting = ref(false)
 const editError = ref('')
 
@@ -117,9 +193,14 @@ function openEditTask() {
   if (!task.value) return
   editTitle.value = task.value.title
   editDescription.value = task.value.description
+  editDescriptionHtml.value = task.value.description_html
   editDueDate.value = task.value.due_date ? task.value.due_date.split('T')[0] : ''
+  editDueDateEnd.value = task.value.due_date_end ? task.value.due_date_end.split('T')[0] : ''
   editAssigneeId.value = task.value.assigned_to_id ?? ''
   editWatcherIds.value = [...task.value.watcher_ids]
+  editPriority.value = task.value.priority
+  editStatus.value = task.value.status
+  editTags.value = (task.value.tags ?? []).join(', ')
   editError.value = ''
   showEditTask.value = true
 }
@@ -129,13 +210,23 @@ async function submitEditTask() {
   if (!task.value) return
   editSubmitting.value = true
   editError.value = ''
+  const tagsArray = editTags.value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   const result = await tasksStore.updateTask(task.value.id, {
     title: editTitle.value.trim(),
     description: editDescription.value,
+    description_html: editDescriptionHtml.value,
     assigned_to_id: editAssigneeId.value || null,
     watcher_ids: editWatcherIds.value,
     due_date: editDueDate.value ? new Date(editDueDate.value).toISOString() : null,
+    due_date_end: editDueDateEnd.value ? new Date(editDueDateEnd.value).toISOString() : null,
     clear_due_date: !editDueDate.value,
+    clear_due_date_end: !editDueDateEnd.value,
+    priority: editPriority.value,
+    status: editStatus.value,
+    tags: tagsArray,
   })
   editSubmitting.value = false
   if (result.ok && result.data) {
@@ -151,6 +242,53 @@ function toggleWatcher(watcherIds: string[], userId: string) {
   const idx = watcherIds.indexOf(userId)
   if (idx !== -1) watcherIds.splice(idx, 1)
   else watcherIds.push(userId)
+}
+
+// ---------------------------------------------------------------------------
+// Favourite
+// ---------------------------------------------------------------------------
+const togglingFavourite = ref(false)
+
+async function toggleFavourite() {
+  if (!task.value) return
+  togglingFavourite.value = true
+  const result = await tasksStore.toggleFavourite(task.value.id)
+  togglingFavourite.value = false
+  if (result.ok) {
+    task.value = { ...task.value, is_favourite: result.is_favourite ?? false }
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Description HTML inline editor
+// ---------------------------------------------------------------------------
+const editingDescription = ref(false)
+const editDescHtml = ref('')
+const descSaving = ref(false)
+
+function startEditDescription() {
+  if (!task.value) return
+  editDescHtml.value = task.value.description_html
+  editingDescription.value = true
+}
+
+async function saveDescription() {
+  if (!task.value) return
+  descSaving.value = true
+  const result = await tasksStore.updateTask(task.value.id, { description_html: editDescHtml.value })
+  descSaving.value = false
+  if (result.ok && result.data) {
+    task.value = result.data
+    editingDescription.value = false
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+function cancelEditDescription() {
+  editingDescription.value = false
 }
 
 // ---------------------------------------------------------------------------
@@ -330,13 +468,56 @@ onMounted(async () => {
     <template v-else-if="task">
       <!-- ===================== TASK HEADER ===================== -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
+          <span>{{ t('tasks.title') }}</span>
+          <span>›</span>
+          <template v-if="task.lead_id">
+            <RouterLink :to="`/app/leads/${task.lead_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+              {{ task.lead_title || task.lead_id }}
+            </RouterLink>
+            <span>›</span>
+          </template>
+          <template v-else-if="task.customer_id">
+            <RouterLink :to="`/app/customers/${task.customer_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+              {{ task.customer_name || task.customer_id }}
+            </RouterLink>
+            <span>›</span>
+          </template>
+          <template v-else-if="task.proposal_id">
+            <span class="truncate max-w-[160px]">{{ task.proposal_title || task.proposal_id }}</span>
+            <span>›</span>
+          </template>
+          <template v-else>
+            <span>{{ t('tasks.standalone') }}</span>
+            <span>›</span>
+          </template>
+          <span class="text-gray-600 dark:text-gray-300 truncate max-w-[200px]">{{ task.title }}</span>
+        </nav>
+
+        <!-- Metadata bar -->
+        <div class="flex flex-wrap gap-3 text-xs text-gray-400 dark:text-gray-500 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+          <span v-if="task.created_by_name">
+            {{ t('tasks.createdBy') }} <span class="font-medium text-gray-600 dark:text-gray-300">{{ task.created_by_name }}</span>
+            {{ formatDate(task.created_at) }}
+          </span>
+          <span v-if="task.is_completed && task.completed_by_name" class="flex items-center gap-1">
+            <span class="text-green-500">✓</span>
+            {{ t('tasks.completedBy') }} <span class="font-medium text-gray-600 dark:text-gray-300">{{ task.completed_by_name }}</span>
+            {{ formatDate(task.completed_at) }}
+          </span>
+          <span v-if="task.is_pinned" class="text-yellow-500">📌 {{ t('tasks.pinned') }}</span>
+          <span v-if="task.is_archived" class="text-gray-400">🗄 {{ t('tasks.archived') }}</span>
+        </div>
+
         <div class="flex items-start gap-4">
           <!-- Completion checkbox -->
           <button
             class="w-6 h-6 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
             :class="task.is_completed
-              ? 'bg-green-500 border-green-500 text-white cursor-default'
-              : 'border-gray-300 hover:border-green-400'"
+              ? 'bg-blue-500 border-blue-500 text-white cursor-default'
+              : 'border-gray-300 hover:border-blue-400'"
             :disabled="task.is_completed || completing"
             :title="task.is_completed ? '' : t('tasks.complete')"
             @click="!task.is_completed && completeTask()"
@@ -345,15 +526,44 @@ onMounted(async () => {
           </button>
 
           <div class="flex-1 min-w-0">
-            <!-- Title row -->
+            <!-- Title row (inline editable) -->
             <div class="flex items-start justify-between gap-3">
-              <h1
-                class="text-xl font-bold text-gray-900 dark:text-gray-100"
-                :class="task.is_completed ? 'line-through text-gray-400' : ''"
-              >
-                {{ task.title }}
-              </h1>
-              <div class="flex gap-2 flex-shrink-0">
+              <!-- Inline title edit -->
+              <div class="flex-1 min-w-0">
+                <div v-if="editingTitle" class="flex items-center gap-2">
+                  <input
+                    ref="titleInputRef"
+                    v-model="inlineTitle"
+                    type="text"
+                    class="flex-1 text-xl font-bold bg-transparent border-b-2 border-blue-400 outline-none text-gray-900 dark:text-gray-100 py-0.5"
+                    @keydown.enter="saveInlineTitle"
+                    @keydown.escape="cancelInlineEditTitle"
+                    @blur="saveInlineTitle"
+                  />
+                  <span v-if="titleSaving" class="text-xs text-gray-400">…</span>
+                </div>
+                <h1
+                  v-else
+                  class="text-xl font-bold text-gray-900 dark:text-gray-100 cursor-text"
+                  :class="task.is_completed ? 'line-through text-gray-400' : ''"
+                  :title="task.is_completed ? '' : t('tasks.clickToEdit')"
+                  @click="startInlineEditTitle"
+                >
+                  {{ task.title }}
+                </h1>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="flex gap-2 flex-shrink-0 items-center">
+                <!-- Favourite -->
+                <button
+                  class="text-lg leading-none transition-colors"
+                  :class="task.is_favourite ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'"
+                  :title="task.is_favourite ? t('tasks.unfavourite') : t('tasks.favourite')"
+                  :disabled="togglingFavourite"
+                  @click="toggleFavourite"
+                >⭐</button>
+
                 <button
                   v-if="!task.is_completed"
                   class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -375,15 +585,37 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Description -->
-            <p v-if="task.description" class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-              {{ task.description }}
-            </p>
+            <!-- Status / Priority / Tags row -->
+            <div class="flex flex-wrap items-center gap-2 mt-2">
+              <!-- Status badge -->
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                :class="STATUS_COLORS[task.status] ?? STATUS_COLORS['todo']"
+              >
+                {{ STATUS_LABELS[task.status] ?? task.status }}
+              </span>
+              <!-- Priority badge -->
+              <span
+                v-if="task.priority && task.priority !== 'none'"
+                class="inline-flex items-center gap-0.5 text-xs font-medium"
+                :class="PRIORITY_COLORS[task.priority] ?? ''"
+              >
+                ⚠ {{ PRIORITY_LABELS[task.priority] ?? task.priority }}
+              </span>
+              <!-- Tags -->
+              <span
+                v-for="tag in task.tags"
+                :key="tag"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+              >
+                🏷 {{ tag }}
+              </span>
+            </div>
 
             <!-- Meta grid -->
             <div class="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
-              <!-- Lead -->
-              <div class="flex items-center gap-1.5">
+              <!-- Lead (if linked) -->
+              <div v-if="task.lead_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.lead') }}</span>
                 <RouterLink
                   :to="`/app/leads/${task.lead_id}`"
@@ -391,6 +623,21 @@ onMounted(async () => {
                 >
                   {{ task.lead_title || task.lead_id }}
                 </RouterLink>
+              </div>
+              <!-- Customer (if linked) -->
+              <div v-if="task.customer_id" class="flex items-center gap-1.5">
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.customer') }}</span>
+                <RouterLink
+                  :to="`/app/customers/${task.customer_id}`"
+                  class="text-blue-500 hover:underline truncate"
+                >
+                  {{ task.customer_name || task.customer_id }}
+                </RouterLink>
+              </div>
+              <!-- Proposal (if linked) -->
+              <div v-if="task.proposal_id" class="flex items-center gap-1.5">
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.proposal') }}</span>
+                <span class="truncate">{{ task.proposal_title || task.proposal_id }}</span>
               </div>
               <!-- Assignee -->
               <div class="flex items-center gap-1.5">
@@ -402,18 +649,9 @@ onMounted(async () => {
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.deadline') }}</span>
                 <span :class="isOverdue(task) ? 'text-red-500 font-semibold' : ''">
                   {{ formatDate(task.due_date) }}
+                  <template v-if="task.due_date_end"> – {{ formatDate(task.due_date_end) }}</template>
                   <span v-if="isOverdue(task)">({{ t('tasks.overdue') }})</span>
                 </span>
-              </div>
-              <!-- Created by -->
-              <div class="flex items-center gap-1.5">
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.createdBy') }}</span>
-                <span>{{ task.created_by_name || '—' }}</span>
-              </div>
-              <!-- Created at -->
-              <div class="flex items-center gap-1.5">
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.createdAt') }}</span>
-                <span>{{ formatDateTime(task.created_at) }}</span>
               </div>
               <!-- Watchers -->
               <div v-if="task.watcher_ids.length" class="flex items-center gap-1.5">
@@ -421,6 +659,59 @@ onMounted(async () => {
                 <span>🔔 {{ task.watcher_ids.length }}</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== POPIS ÚKOLU ===================== -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+            📝 {{ t('tasks.descriptionSection') }}
+          </h2>
+          <button
+            v-if="!editingDescription"
+            class="text-xs text-gray-400 hover:text-blue-500"
+            @click="startEditDescription"
+          >{{ t('tasks.edit') }}</button>
+        </div>
+
+        <!-- View mode -->
+        <template v-if="!editingDescription">
+          <div
+            v-if="task.description_html"
+            class="prose prose-sm dark:prose-invert max-w-none"
+            v-html="sanitizeHtml(task.description_html)"
+          />
+          <p
+            v-else-if="task.description"
+            class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap"
+          >{{ task.description }}</p>
+          <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
+            {{ t('tasks.noDescription') }}
+          </p>
+          <p v-if="task.description_added_at" class="text-xs text-gray-400 mt-2">
+            {{ t('tasks.descriptionAddedAt') }} {{ formatDateTime(task.description_added_at) }}
+          </p>
+        </template>
+
+        <!-- Edit mode -->
+        <div v-else class="space-y-2">
+          <RichTextEditor
+            v-model="editDescHtml"
+            :members="teamMembers"
+            :placeholder="t('tasks.descriptionPlaceholder')"
+          />
+          <div class="flex justify-end gap-2">
+            <button
+              class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+              @click="cancelEditDescription"
+            >{{ t('tasks.cancel') }}</button>
+            <button
+              :disabled="descSaving"
+              class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+              @click="saveDescription"
+            >{{ descSaving ? '…' : t('tasks.save') }}</button>
           </div>
         </div>
       </div>
@@ -603,7 +894,7 @@ onMounted(async () => {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         @click.self="showEditTask = false"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 overflow-y-auto max-h-[90vh]">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.editTask') }}</h2>
 
           <div v-if="editError" class="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-xl px-3 py-2">
@@ -620,17 +911,58 @@ onMounted(async () => {
             />
           </div>
 
-          <!-- Description -->
+          <!-- Description (plain) -->
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.description') }}</label>
             <textarea
               v-model="editDescription"
-              rows="3"
+              rows="2"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
             />
           </div>
 
-          <!-- Due date + Assignee row -->
+          <!-- Priority + Status row -->
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.priority') }}</label>
+              <select
+                v-model="editPriority"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="none">{{ t('tasks.priorityNone') }}</option>
+                <option value="low">{{ t('tasks.priorityLow') }}</option>
+                <option value="medium">{{ t('tasks.priorityMedium') }}</option>
+                <option value="high">{{ t('tasks.priorityHigh') }}</option>
+                <option value="critical">{{ t('tasks.priorityCritical') }}</option>
+              </select>
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.status') }}</label>
+              <select
+                v-model="editStatus"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="todo">{{ t('tasks.statusTodo') }}</option>
+                <option value="in_progress">{{ t('tasks.statusInProgress') }}</option>
+                <option value="blocked">{{ t('tasks.statusBlocked') }}</option>
+                <option value="done">{{ t('tasks.statusDone') }}</option>
+                <option value="cancelled">{{ t('tasks.statusCancelled') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.tags') }} <span class="text-gray-400">({{ t('tasks.tagsHint') }})</span></label>
+            <input
+              v-model="editTags"
+              type="text"
+              :placeholder="t('tasks.tagsPlaceholder')"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+            />
+          </div>
+
+          <!-- Due date range row -->
           <div class="flex gap-3">
             <div class="flex-1">
               <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.deadline') }}</label>
@@ -641,17 +973,27 @@ onMounted(async () => {
               />
             </div>
             <div class="flex-1">
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
-              <select
-                v-model="editAssigneeId"
-                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-              >
-                <option value="">{{ t('tasks.noAssignee') }}</option>
-                <option v-for="m in members" :key="m.user_id" :value="m.user_id">
-                  {{ memberLabel(m) }}
-                </option>
-              </select>
+              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.deadlineEnd') }}</label>
+              <input
+                v-model="editDueDateEnd"
+                type="date"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              />
             </div>
+          </div>
+
+          <!-- Assignee -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
+            <select
+              v-model="editAssigneeId"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+            >
+              <option value="">{{ t('tasks.noAssignee') }}</option>
+              <option v-for="m in members" :key="m.user_id" :value="m.user_id">
+                {{ memberLabel(m) }}
+              </option>
+            </select>
           </div>
 
           <!-- Watchers -->
