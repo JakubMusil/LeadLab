@@ -7,6 +7,7 @@
     "team": "Tým",
     "settings": "Nastavení",
     "analytics": "Analytika",
+    "sequences": "Sekvence",
     "superAdmin": "Super Admin"
   },
   "auth": {
@@ -35,7 +36,16 @@
     "won": "Vyhráno: {value}",
     "completeSetup": "Dokončete nastavení",
     "setupBannerText": "Jste téměř připraveni! Dokončete kroky nastavení a využijte LeadLab naplno.",
-    "continueSetup": "Pokračovat v nastavení"
+    "continueSetup": "Pokračovat v nastavení",
+    "customiseLayout": "Přizpůsobit rozložení",
+    "widgetLayout": "Rozvržení widgetů",
+    "dragToReorder": "Přetáhněte pro změnu pořadí · přepínačem zobrazit/skrýt",
+    "save": "Uložit",
+    "saving": "Ukládání…",
+    "noStatusHistory": "Zatím žádná data o přechodech stavů",
+    "noClosedLeads": "Zatím žádné uzavřené leady",
+    "noTrendData": "Zatím žádná trendová data",
+    "failedToLoad": "Nepodařilo se načíst data dashboardu."
   },
   "leads": {
     "title": "Leady",

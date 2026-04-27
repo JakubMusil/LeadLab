@@ -91,6 +91,11 @@ const router = createRouter({
           meta: { title: 'Analytics' },
         },
         {
+          path: 'sequences',
+          component: () => import('@/views/SequencesView.vue'),
+          meta: { title: 'Sequences' },
+        },
+        {
           path: 'superadmin',
           component: () => import('@/views/SuperAdminView.vue'),
           meta: { title: 'Super Admin' },

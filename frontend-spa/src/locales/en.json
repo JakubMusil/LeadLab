@@ -7,6 +7,7 @@
     "team": "Team",
     "settings": "Settings",
     "analytics": "Analytics",
+    "sequences": "Sequences",
     "superAdmin": "Super Admin"
   },
   "auth": {
@@ -35,7 +36,16 @@
     "won": "Won: {value}",
     "completeSetup": "Complete your setup",
     "setupBannerText": "You're almost ready! Complete the onboarding steps to get the most out of LeadLab.",
-    "continueSetup": "Continue setup"
+    "continueSetup": "Continue setup",
+    "customiseLayout": "Customise layout",
+    "widgetLayout": "Widget Layout",
+    "dragToReorder": "Drag to reorder · toggle to show/hide",
+    "save": "Save",
+    "saving": "Saving…",
+    "noStatusHistory": "No status history data yet",
+    "noClosedLeads": "No closed leads yet",
+    "noTrendData": "No trend data yet",
+    "failedToLoad": "Failed to load dashboard data."
   },
   "leads": {
     "title": "Leads",

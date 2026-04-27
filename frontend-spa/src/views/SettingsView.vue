@@ -287,6 +287,12 @@ onMounted(() => {
     profileLastName.value = authStore.user.last_name
     profileTimezone.value = authStore.user.timezone
   }
+  // Always re-fetch the firm so subscription_tier/active reflects the latest server state
+  firmStore.fetchFirms().then(() => {
+    if (firmStore.activeFirm) {
+      workspaceName.value = firmStore.activeFirm.name
+    }
+  })
   if (firmStore.activeFirm) {
     workspaceName.value = firmStore.activeFirm.name
     loadTokens()

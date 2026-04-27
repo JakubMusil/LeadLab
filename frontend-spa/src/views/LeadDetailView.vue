@@ -54,11 +54,14 @@ const newActivityText = ref('')
 const activitySubmitting = ref(false)
 
 // Tasks
-interface Task { id: string; lead_id: string; title: string; due_date: string | null; is_completed: boolean; created_at: string }
+interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null }
 const tasks = ref<Task[]>([])
 const tasksLoading = ref(false)
 const newTaskTitle = ref('')
 const newTaskDueDate = ref('')
+const newTaskDescription = ref('')
+const newTaskAssigneeIds = ref<string[]>([])
+const taskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const taskSubmitting = ref(false)
 
 // Files
@@ -168,7 +171,17 @@ async function addActivity() {
 async function addTask() {
   if (!newTaskTitle.value.trim()) return
   taskSubmitting.value = true
-  const payload: Record<string, unknown> = { lead_id: leadId.value, title: newTaskTitle.value.trim() }
+  // Collect mentioned user IDs from the task description editor
+  const mentionedIds = taskEditorRef.value?.getMentionedIds() ?? []
+  // Assignees = all explicitly @mentioned users in the description
+  const assigneeIds = mentionedIds.length > 0 ? mentionedIds : newTaskAssigneeIds.value
+  const payload: Record<string, unknown> = {
+    lead_id: leadId.value,
+    title: newTaskTitle.value.trim(),
+    description: newTaskDescription.value,
+    assigned_to_id: assigneeIds.length > 0 ? assigneeIds[0] : null,
+    metadata: assigneeIds.length > 0 ? { assignees: assigneeIds } : {},
+  }
   if (newTaskDueDate.value) payload.due_date = new Date(newTaskDueDate.value).toISOString()
   const res = await api.post<Task>('/api/v1/crm/tasks', payload)
   taskSubmitting.value = false
@@ -176,6 +189,8 @@ async function addTask() {
     tasks.value.push(res.data)
     newTaskTitle.value = ''
     newTaskDueDate.value = ''
+    newTaskDescription.value = ''
+    newTaskAssigneeIds.value = []
     toast.success('Task created.')
   } else {
     toast.error('Failed to create task.')
@@ -485,11 +500,26 @@ async function switchTab(tab: Tab) {
 
       <!-- TASKS TAB -->
       <div v-else-if="activeTab === 'tasks'" class="space-y-4">
-        <!-- Add task form -->
-        <div class="bg-white rounded-2xl border border-gray-100 p-4">
+        <!-- Add task form (rich editor with mentions) -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
           <div class="flex gap-2 flex-wrap">
-            <input v-model="newTaskTitle" type="text" placeholder="Task title…" class="flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
-            <input v-model="newTaskDueDate" type="date" class="rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <input v-model="newTaskTitle" type="text" placeholder="Task title…" class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <input v-model="newTaskDueDate" type="date" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <!-- Rich-text description / notes with @mention for assignment -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Description &amp; assignees — use <kbd class="px-1 rounded bg-gray-100 dark:bg-gray-700 text-xs font-mono">@</kbd> to mention &amp; assign team members
+            </label>
+            <RichTextEditor
+              ref="taskEditorRef"
+              v-model="newTaskDescription"
+              :mention-users="teamMembers"
+              placeholder="Add details or @mention assignees…"
+              class="min-h-[72px]"
+            />
+          </div>
+          <div class="flex justify-end">
             <button :disabled="taskSubmitting || !newTaskTitle.trim()" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="addTask">
               {{ taskSubmitting ? '…' : 'Add Task' }}
             </button>
@@ -497,13 +527,13 @@ async function switchTab(tab: Tab) {
         </div>
 
         <div v-if="tasksLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
+          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
         </div>
         <div v-else-if="tasks.length === 0" class="text-center py-10 text-gray-400 text-sm">No tasks yet.</div>
-        <div v-else class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-          <div v-for="task in tasks" :key="task.id" class="flex items-center gap-3 p-4">
+        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
+          <div v-for="task in tasks" :key="task.id" class="flex items-start gap-3 p-4">
             <button
-              class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
+              class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
               :class="task.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
               :disabled="task.is_completed"
               @click="completeTask(task.id)"
@@ -511,9 +541,14 @@ async function switchTab(tab: Tab) {
               <span v-if="task.is_completed" class="text-xs">✓</span>
             </button>
             <div class="flex-1 min-w-0">
-              <p class="text-sm text-gray-900" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
+              <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
               <p v-if="task.due_date" class="text-xs mt-0.5" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500' : 'text-gray-400'">
                 Due: {{ new Date(task.due_date).toLocaleDateString() }}
+              </p>
+              <p v-if="task.assigned_to_id" class="text-xs text-blue-500 mt-0.5">
+                Assigned: {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
               </p>
             </div>
           </div>

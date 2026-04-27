@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
 import { useSavedViewsStore } from '@/stores/savedViews'
+import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
@@ -12,6 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
 const savedViewsStore = useSavedViewsStore()
+const customersStore = useCustomersStore()
 const toast = useToast()
 
 type ViewMode = 'table' | 'kanban'
@@ -37,6 +39,78 @@ const formValue = ref<string>('')
 const formCurrency = ref('CZK')
 const formError = ref('')
 const formLoading = ref(false)
+
+// Customer typeahead inside lead form
+const formCustomerId = ref<string | null>(null)
+const formCustomerQuery = ref('')
+const customerSuggestions = ref<CustomerOut[]>([])
+const customerSearchLoading = ref(false)
+const showCustomerDropdown = ref(false)
+const showNewCustomerForm = ref(false)
+const newCustomerFirstName = ref('')
+const newCustomerLastName = ref('')
+const newCustomerEmail = ref('')
+const newCustomerPhone = ref('')
+const selectedCustomerLabel = ref('')
+
+let customerSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchCustomers(query: string) {
+  if (!query.trim()) { customerSuggestions.value = []; return }
+  customerSearchLoading.value = true
+  const res = await api.get<CustomerOut[]>(`/api/v1/crm/customers?search=${encodeURIComponent(query)}&page_size=10`)
+  customerSearchLoading.value = false
+  if (res.ok) customerSuggestions.value = res.data
+}
+
+function onCustomerQueryInput() {
+  showCustomerDropdown.value = true
+  showNewCustomerForm.value = false
+  if (customerSearchTimer) clearTimeout(customerSearchTimer)
+  customerSearchTimer = setTimeout(() => searchCustomers(formCustomerQuery.value), 280)
+}
+
+function selectCustomer(c: CustomerOut) {
+  formCustomerId.value = c.id
+  selectedCustomerLabel.value = [c.first_name, c.last_name].filter(Boolean).join(' ') + (c.email ? ` (${c.email})` : '')
+  formCustomerQuery.value = selectedCustomerLabel.value
+  showCustomerDropdown.value = false
+  customerSuggestions.value = []
+}
+
+function clearCustomer() {
+  formCustomerId.value = null
+  formCustomerQuery.value = ''
+  selectedCustomerLabel.value = ''
+  customerSuggestions.value = []
+  showCustomerDropdown.value = false
+}
+
+function openNewCustomerInline() {
+  showCustomerDropdown.value = false
+  showNewCustomerForm.value = true
+  newCustomerFirstName.value = formCustomerQuery.value.split(' ')[0] ?? ''
+  newCustomerLastName.value = formCustomerQuery.value.split(' ').slice(1).join(' ')
+  newCustomerEmail.value = ''
+  newCustomerPhone.value = ''
+}
+
+async function createAndSelectCustomer() {
+  if (!newCustomerFirstName.value.trim()) return
+  const result = await customersStore.createCustomer({
+    first_name: newCustomerFirstName.value.trim(),
+    last_name: newCustomerLastName.value.trim(),
+    email: newCustomerEmail.value.trim(),
+    phone: newCustomerPhone.value.trim(),
+  })
+  if (result.ok && result.data) {
+    selectCustomer(result.data)
+    showNewCustomerForm.value = false
+    toast.success('Customer created.')
+  } else {
+    toast.error(result.error ?? 'Failed to create customer.')
+  }
+}
 
 // Context menu
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
@@ -111,6 +185,8 @@ function openCreate() {
   formValue.value = ''
   formCurrency.value = 'CZK'
   formError.value = ''
+  clearCustomer()
+  showNewCustomerForm.value = false
   showModal.value = true
 }
 
@@ -123,6 +199,16 @@ function openEdit(lead: LeadOut) {
   formValue.value = lead.value != null ? String(lead.value) : ''
   formCurrency.value = lead.currency
   formError.value = ''
+  // Restore customer if already linked
+  formCustomerId.value = lead.customer_id ?? null
+  const extLead = lead as LeadOut & { customer_name?: string; customer_email?: string }
+  if (lead.customer_id && extLead.customer_name) {
+    selectedCustomerLabel.value = extLead.customer_name + (extLead.customer_email ? ` (${extLead.customer_email})` : '')
+    formCustomerQuery.value = selectedCustomerLabel.value
+  } else {
+    clearCustomer()
+  }
+  showNewCustomerForm.value = false
   showModal.value = true
 }
 
@@ -137,6 +223,7 @@ async function submitForm() {
     source: formSource.value,
     value: formValue.value ? parseFloat(formValue.value) : null,
     currency: formCurrency.value,
+    customer_id: formCustomerId.value ?? null,
   }
   let result
   if (editingLead.value) {
@@ -294,15 +381,25 @@ function exportPdf() {
 
       <!-- Saved views -->
       <div v-if="savedViewsStore.viewsForEntity('leads').length > 0" class="flex items-center gap-1 flex-wrap">
-        <button
+        <div
           v-for="view in savedViewsStore.viewsForEntity('leads')"
           :key="view.id"
-          class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          :title="view.name"
-          @click="router.push(`/app/leads?view=${view.id}`)"
+          class="flex items-center gap-0.5"
         >
-          🔖 {{ view.name }}
-        </button>
+          <button
+            class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-l-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          :title="view.name"
+            @click="router.push(`/app/leads?view=${view.id}`)"
+          >
+            🔖 {{ view.name }}
+          </button>
+          <button
+            class="px-1.5 py-1 text-xs font-medium rounded-r-xl border border-l-0 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            :title="`Delete view: ${view.name}`"
+            :aria-label="`Delete saved view ${view.name}`"
+            @click="deleteSavedView(view.id)"
+          >✕</button>
+        </div>
       </div>
 
       <!-- View toggle -->
@@ -586,6 +683,68 @@ function exportPdf() {
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
             <input v-model="formTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <!-- Customer search/create -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
+            <div class="relative">
+              <div class="flex gap-1">
+                <input
+                  v-model="formCustomerQuery"
+                  type="text"
+                  placeholder="Search by name, email or phone…"
+                  autocomplete="off"
+                  class="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  @input="onCustomerQueryInput"
+                  @focus="if (formCustomerQuery && !formCustomerId) { showCustomerDropdown = true; searchCustomers(formCustomerQuery) }"
+                />
+                <button
+                  v-if="formCustomerId"
+                  type="button"
+                  class="px-2 text-gray-400 hover:text-red-500"
+                  title="Clear customer"
+                  @click="clearCustomer"
+                >✕</button>
+              </div>
+              <!-- Suggestions dropdown -->
+              <div
+                v-if="showCustomerDropdown && (customerSuggestions.length > 0 || customerSearchLoading)"
+                class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 max-h-48 overflow-y-auto"
+              >
+                <div v-if="customerSearchLoading" class="px-3 py-2 text-xs text-gray-400">Searching…</div>
+                <button
+                  v-for="c in customerSuggestions"
+                  :key="c.id"
+                  type="button"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  @click="selectCustomer(c)"
+                >
+                  <span class="font-medium">{{ [c.first_name, c.last_name].filter(Boolean).join(' ') }}</span>
+                  <span v-if="c.email" class="text-xs text-gray-400 ml-2">{{ c.email }}</span>
+                  <span v-if="c.phone" class="text-xs text-gray-400 ml-2">{{ c.phone }}</span>
+                </button>
+              </div>
+              <!-- Create new customer link -->
+              <div v-if="showCustomerDropdown && !customerSearchLoading && customerSuggestions.length === 0 && formCustomerQuery.trim()" class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1">
+                <button type="button" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" @click="openNewCustomerInline">
+                  + Create new customer "{{ formCustomerQuery }}"
+                </button>
+              </div>
+            </div>
+            <!-- Inline new customer form -->
+            <div v-if="showNewCustomerForm" class="mt-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 space-y-2">
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-300">New customer</p>
+              <div class="grid grid-cols-2 gap-2">
+                <input v-model="newCustomerFirstName" type="text" placeholder="First name *" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+                <input v-model="newCustomerLastName" type="text" placeholder="Last name" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              </div>
+              <input v-model="newCustomerEmail" type="email" placeholder="Email" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              <input v-model="newCustomerPhone" type="tel" placeholder="Phone" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              <div class="flex gap-2">
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="showNewCustomerForm = false">Cancel</button>
+                <button type="button" class="text-xs text-white bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700" @click="createAndSelectCustomer">Create & select</button>
+              </div>
+            </div>
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>

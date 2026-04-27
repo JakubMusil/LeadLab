@@ -99,17 +99,36 @@ const userInitials = computed(() => {
   return `${u.first_name?.[0] ?? ''}${u.last_name?.[0] ?? ''}`.toUpperCase() || (u.email[0]?.toUpperCase() ?? '?')
 })
 
-const navItems = computed(() => [
-  { label: t('nav.overview'), icon: '⊞', path: '/app/dashboard' },
-  { label: t('nav.leads'), icon: '◎', path: '/app/leads' },
-  { label: t('nav.customers'), icon: '👥', path: '/app/customers' },
-  { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
-  { label: t('nav.team'), icon: '🤝', path: '/app/team' },
-  { label: t('nav.analytics'), icon: '📊', path: '/app/analytics' },
-  ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
-  ...pluginRegistry.flatMap((p) => p.navItems ?? []),
-  { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
+const navSections = computed(() => [
+  {
+    label: 'CRM',
+    items: [
+      { label: t('nav.overview'), icon: '⊞', path: '/app/dashboard' },
+      { label: t('nav.leads'), icon: '◎', path: '/app/leads' },
+      { label: t('nav.customers'), icon: '👥', path: '/app/customers' },
+      { label: t('nav.calendar'), icon: '📅', path: '/app/calendar' },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { label: t('nav.analytics'), icon: '📊', path: '/app/analytics' },
+      { label: t('nav.sequences'), icon: '📧', path: '/app/sequences' },
+      ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
+    ],
+  },
+  {
+    label: 'Workspace',
+    items: [
+      { label: t('nav.team'), icon: '🤝', path: '/app/team' },
+      { label: t('nav.settings'), icon: '⚙', path: '/app/settings' },
+      ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: '🛡', path: '/app/superadmin' }] : []),
+    ],
+  },
 ])
+
+// Keep for mobile menu and other consumers
+const navItems = computed(() => navSections.value.flatMap((s) => s.items))
 
 function isActive(path: string) {
   return route.path === path || route.path.startsWith(path + '/')
@@ -236,51 +255,59 @@ function formatNotifTime(ts: string): string {
         </button>
       </div>
 
-      <!-- Nav items -->
-      <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto" aria-label="Main navigation">
-        <template v-for="item in navItems" :key="item.path">
-          <RouterLink
-            :to="item.path"
-            class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors group"
-            :class="
-              isActive(item.path)
-                ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
-            "
-            :aria-current="isActive(item.path) ? 'page' : undefined"
-            @click="mobileMenuOpen = false"
-          >
-            <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
-            <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
-          </RouterLink>
+      <!-- Nav sections -->
+      <nav class="flex-1 px-2 py-4 overflow-y-auto" aria-label="Main navigation">
+        <template v-for="section in navSections" :key="section.label">
+          <!-- Section label (only when expanded) -->
+          <div v-if="sidebarOpen" class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider select-none">
+            {{ section.label }}
+          </div>
+          <div :class="sidebarOpen ? 'mb-2 space-y-0.5' : 'mb-3 space-y-1'">
+            <template v-for="item in section.items" :key="item.path">
+              <RouterLink
+                :to="item.path"
+                class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors group"
+                :class="
+                  isActive(item.path)
+                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+                "
+                :aria-current="isActive(item.path) ? 'page' : undefined"
+                @click="mobileMenuOpen = false"
+              >
+                <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ item.icon }}</span>
+                <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
+              </RouterLink>
 
-          <!-- Saved views for Leads -->
-          <template v-if="sidebarOpen && item.path === '/app/leads' && savedViewsStore.viewsForEntity('leads').length > 0">
-            <RouterLink
-              v-for="view in savedViewsStore.viewsForEntity('leads')"
-              :key="view.id"
-              :to="`/app/leads?view=${view.id}`"
-              class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
-              @click="mobileMenuOpen = false"
-            >
-              <span aria-hidden="true">🔖</span>
-              <span class="truncate">{{ view.name }}</span>
-            </RouterLink>
-          </template>
+              <!-- Saved views for Leads -->
+              <template v-if="sidebarOpen && item.path === '/app/leads' && savedViewsStore.viewsForEntity('leads').length > 0">
+                <RouterLink
+                  v-for="view in savedViewsStore.viewsForEntity('leads')"
+                  :key="view.id"
+                  :to="`/app/leads?view=${view.id}`"
+                  class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+                  @click="mobileMenuOpen = false"
+                >
+                  <span aria-hidden="true">🔖</span>
+                  <span class="truncate">{{ view.name }}</span>
+                </RouterLink>
+              </template>
 
-          <!-- Saved views for Customers -->
-          <template v-if="sidebarOpen && item.path === '/app/customers' && savedViewsStore.viewsForEntity('customers').length > 0">
-            <RouterLink
-              v-for="view in savedViewsStore.viewsForEntity('customers')"
-              :key="view.id"
-              :to="`/app/customers?view=${view.id}`"
-              class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
-              @click="mobileMenuOpen = false"
-            >
-              <span aria-hidden="true">🔖</span>
-              <span class="truncate">{{ view.name }}</span>
-            </RouterLink>
-          </template>
+              <!-- Saved views for Customers -->
+              <template v-if="sidebarOpen && item.path === '/app/customers' && savedViewsStore.viewsForEntity('customers').length > 0">
+                <RouterLink
+                  v-for="view in savedViewsStore.viewsForEntity('customers')"
+                  :key="view.id"
+                  :to="`/app/customers?view=${view.id}`"
+                  class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+                  @click="mobileMenuOpen = false"
+                >
+                  <span aria-hidden="true">🔖</span>
+                  <span class="truncate">{{ view.name }}</span>
+                </RouterLink>
+              </template>
+            </template>
+          </div>
         </template>
       </nav>
 
