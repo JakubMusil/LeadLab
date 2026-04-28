@@ -8,6 +8,7 @@ import {
   getManagementStatusMeta,
 } from '@/stores/management'
 import { useToast } from '@/composables/useToast'
+import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,15 +17,40 @@ const toast = useToast()
 
 const recordId = computed(() => route.params.id as string)
 
-type Tab = 'overview' | 'tasks' | 'activities'
+type Tab = 'overview' | 'tasks' | 'activities' | 'proposals'
 const activeTab = ref<Tab>('overview')
 
 const editingTitle = ref(false)
 const titleDraft = ref('')
 const savingTitle = ref(false)
 
+// Linked proposals
+interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
+const linkedProposals = ref<ProposalOut[]>([])
+const proposalsLoading = ref(false)
+
+async function loadLinkedProposals() {
+  proposalsLoading.value = true
+  try {
+    const res = await api.get<ProposalOut[]>(`/api/v1/crm/proposals?management_id=${recordId.value}`)
+    if (res.ok) linkedProposals.value = res.data
+  } finally {
+    proposalsLoading.value = false
+  }
+}
+
+function proposalStatusColor(status: string) {
+  const map: Record<string, string> = {
+    draft: 'bg-gray-100 text-gray-700', sent: 'bg-blue-100 text-blue-700',
+    viewed: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700', expired: 'bg-orange-100 text-orange-700',
+  }
+  return map[status] ?? 'bg-gray-100 text-gray-700'
+}
+
 onMounted(async () => {
   await store.fetchRecord(recordId.value)
+  await loadLinkedProposals()
 })
 
 const record = computed(() => store.currentRecord)
@@ -160,7 +186,7 @@ function formatDateTime(dt: string | null) {
           <!-- Tab bar -->
           <div class="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4">
             <button
-              v-for="tab in (['overview', 'tasks', 'activities'] as Tab[])"
+              v-for="tab in (['overview', 'tasks', 'activities', 'proposals'] as Tab[])"
               :key="tab"
               @click="activeTab = tab"
               :class="activeTab === tab
@@ -168,7 +194,7 @@ function formatDateTime(dt: string | null) {
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
               class="px-4 py-2 text-sm font-medium capitalize transition-colors"
             >
-              {{ tab === 'overview' ? 'Přehled' : tab === 'tasks' ? 'Úkoly' : 'Aktivity' }}
+              {{ tab === 'overview' ? 'Přehled' : tab === 'tasks' ? 'Úkoly' : tab === 'activities' ? 'Aktivity' : 'Nabídky' }}
             </button>
           </div>
 
@@ -196,6 +222,32 @@ function formatDateTime(dt: string | null) {
           <!-- Activities tab placeholder -->
           <div v-else-if="activeTab === 'activities'" class="text-center py-12 text-gray-400 dark:text-gray-500">
             <p class="text-sm">Aktivity propojené s tímto záznamem budou zobrazeny zde.</p>
+          </div>
+
+          <!-- Proposals tab -->
+          <div v-else-if="activeTab === 'proposals'" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Nabídky</h3>
+              <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">Všechny nabídky</RouterLink>
+            </div>
+            <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+              <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
+            </div>
+            <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">
+              Žádné nabídky pro tento záznam.
+            </div>
+            <div v-else class="space-y-2">
+              <RouterLink
+                v-for="p in linkedProposals"
+                :key="p.id"
+                :to="`/app/proposals/${p.id}`"
+                class="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+                <span class="text-xs text-gray-500 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
+              </RouterLink>
+            </div>
           </div>
         </div>
 

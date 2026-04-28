@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
+import { useI18n } from '@/composables/useI18n'
+
+const router = useRouter()
+const { t } = useI18n()
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -217,6 +222,21 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// ─── Create proposal from report ─────────────────────────────────────────────
+
+async function createProposalFromReport() {
+  const dateRange = [filterDateFrom.value, filterDateTo.value].filter(Boolean).join(' – ')
+  const res = await api.post<{ id: string }>('/api/v1/crm/proposals', {
+    title: dateRange ? `${t('proposals.createFromReport')} ${dateRange}` : t('proposals.createFromReport'),
+    currency: 'CZK',
+  })
+  if (res.ok) {
+    router.push(`/app/proposals/${res.data.id}`)
+  } else {
+    showToast(t('proposals.errorCreate'))
+  }
+}
 </script>
 
 <template>
@@ -227,6 +247,12 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">P&amp;L overview, costs and revenues</p>
       </div>
+      <button
+        class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+        @click="createProposalFromReport"
+      >
+        {{ t('proposals.createFromReport') }}
+      </button>
     </div>
 
     <!-- Toast -->

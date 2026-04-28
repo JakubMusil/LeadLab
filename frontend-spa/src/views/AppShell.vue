@@ -161,6 +161,7 @@ const navSections = computed(() => [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
+      { label: t('nav.proposals'), icon: DocumentDuplicateIcon, path: '/app/proposals' },
       { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
       { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },

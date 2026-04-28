@@ -61,6 +61,16 @@ const router = createRouter({
           meta: { title: 'Proposal Builder' },
         },
         {
+          path: 'proposals',
+          component: () => import('@/views/ProposalsView.vue'),
+          meta: { title: 'Nabídky' },
+        },
+        {
+          path: 'proposals/:id',
+          component: () => import('@/views/ProposalBuilderView.vue'),
+          meta: { title: 'Nabídka Detail' },
+        },
+        {
           path: 'directory',
           component: () => import('@/views/CustomersView.vue'),
           meta: { title: 'Adresář' },

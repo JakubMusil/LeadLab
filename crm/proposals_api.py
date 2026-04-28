@@ -47,12 +47,16 @@ from ninja.security import django_auth
 from crm.models import (
     Activity,
     ActivityType,
+    Customer,
+    FirmProposalItem,
     Lead,
+    Management,
     Proposal,
     ProposalItem,
     ProposalStatus,
     ProposalTemplate,
     ProposalTemplateItem,
+    Realization,
 )
 from firms.auth import (
     MembershipRole,
@@ -98,7 +102,10 @@ class ProposalItemIn(Schema):
 
 class ProposalOut(Schema):
     id: str
-    lead_id: str
+    lead_id: Optional[str]
+    customer_id: Optional[str]
+    realization_id: Optional[str]
+    management_id: Optional[str]
     firm_id: str
     title: str
     status: str
@@ -121,6 +128,10 @@ class ProposalOut(Schema):
 
 class ProposalIn(Schema):
     title: str
+    lead_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    realization_id: Optional[str] = None
+    management_id: Optional[str] = None
     status: str = ProposalStatus.DRAFT
     expiry_date: Optional[str] = None
     currency: str = "CZK"
@@ -220,12 +231,37 @@ class ProposalAnalyticsOut(Schema):
     template_stats: List[Dict]
 
 
+class FirmProposalItemOut(Schema):
+    id: str
+    firm_id: str
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    discount: Decimal
+    vat_rate: Decimal
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class FirmProposalItemIn(Schema):
+    description: str
+    quantity: Decimal = Decimal("1")
+    unit_price: Decimal = Decimal("0")
+    discount: Decimal = Decimal("0")
+    vat_rate: Decimal = Decimal("0")
+    position: int = 0
+
+
+class AddFromCatalogIn(Schema):
+    item_ids: List[str]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 _PUBLIC_LINK_TTL_DAYS = 30
-
 
 def _item_out(item: ProposalItem) -> dict:
     return {
@@ -250,7 +286,10 @@ def _proposal_out(proposal: Proposal) -> dict:
     items = list(proposal.items.all())
     return {
         "id": str(proposal.id),
-        "lead_id": str(proposal.lead_id),
+        "lead_id": str(proposal.lead_id) if proposal.lead_id else None,
+        "customer_id": str(proposal.customer_id) if proposal.customer_id else None,
+        "realization_id": str(proposal.realization_id) if proposal.realization_id else None,
+        "management_id": str(proposal.management_id) if proposal.management_id else None,
         "firm_id": str(proposal.firm_id),
         "title": proposal.title,
         "status": proposal.status,
@@ -298,6 +337,33 @@ def _template_out(tmpl: ProposalTemplate) -> dict:
     }
 
 
+def _firm_proposal_item_out(item: FirmProposalItem) -> dict:
+    return {
+        "id": str(item.id),
+        "firm_id": str(item.firm_id),
+        "description": item.description,
+        "quantity": item.quantity,
+        "unit_price": item.unit_price,
+        "discount": item.discount,
+        "vat_rate": item.vat_rate,
+        "position": item.position,
+        "created_at": item.created_at,
+        "updated_at": item.updated_at,
+    }
+
+
+def _log_proposal_created_activity(proposal: Proposal, user) -> None:
+    """Log a PROPOSAL_CREATED activity on every linked entity's lead (if any)."""
+    if proposal.lead_id:
+        Activity.objects.create(
+            lead_id=proposal.lead_id,
+            user=user,
+            type=ActivityType.PROPOSAL_CREATED,
+            content_text=proposal.title,
+            metadata={"proposal_id": str(proposal.id)},
+        )
+
+
 def _get_proposal(proposal_id: str, firm) -> Optional[Proposal]:
     try:
         return Proposal.objects.prefetch_related("items").get(
@@ -314,9 +380,18 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
     lead = proposal.lead
     customer_name = ""
     customer_email = ""
-    if lead.customer_id:
+
+    # Try to get customer info from lead first, then from direct customer link
+    if lead and lead.customer_id:
         try:
             c = lead.customer
+            customer_name = f"{c.first_name} {c.last_name}".strip()
+            customer_email = c.email or ""
+        except Exception:  # noqa: BLE001
+            pass
+    elif proposal.customer_id:
+        try:
+            c = proposal.customer
             customer_name = f"{c.first_name} {c.last_name}".strip()
             customer_email = c.email or ""
         except Exception:  # noqa: BLE001
@@ -334,9 +409,9 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
         "proposal_id": str(proposal.id),
         "proposal_title": proposal.title,
         "proposal_status": proposal.status,
-        "lead_id": str(lead.id),
-        "lead_title": lead.title,
-        "lead_status": lead.status,
+        "lead_id": str(lead.id) if lead else "",
+        "lead_title": lead.title if lead else "",
+        "lead_status": lead.status if lead else "",
         "firm_id": str(proposal.firm_id),
         "customer_name": customer_name,
         "customer_email": customer_email,
@@ -345,7 +420,100 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Proposal CRUD
+# Proposal CRUD — standalone (firm-wide)
+# ---------------------------------------------------------------------------
+
+@proposals_router.get(
+    "/proposals",
+    auth=django_auth,
+    response={200: List[ProposalOut], 403: ErrorOut},
+)
+def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[str] = None,
+                       customer_id: Optional[str] = None, realization_id: Optional[str] = None,
+                       management_id: Optional[str] = None):
+    """List all proposals for the active firm, with optional filters."""
+    try:
+        require_membership(request)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = Proposal.objects.filter(firm=request.firm).prefetch_related("items").order_by("-created_at")
+    if status:
+        qs = qs.filter(status=status)
+    if lead_id:
+        qs = qs.filter(lead_id=lead_id)
+    if customer_id:
+        qs = qs.filter(customer_id=customer_id)
+    if realization_id:
+        qs = qs.filter(realization_id=realization_id)
+    if management_id:
+        qs = qs.filter(management_id=management_id)
+    return 200, [_proposal_out(p) for p in qs]
+
+
+@proposals_router.post(
+    "/proposals",
+    auth=django_auth,
+    response={201: ProposalOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_standalone_proposal(request, payload: ProposalIn):
+    """Create a proposal, optionally linked to any CRM entity."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    import uuid as _uuid
+
+    # Resolve optional entity links
+    lead = None
+    customer = None
+    realization = None
+    management = None
+
+    if payload.lead_id:
+        try:
+            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+        except Lead.DoesNotExist:
+            return 404, {"detail": "Lead not found."}
+    if payload.customer_id:
+        try:
+            customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return 404, {"detail": "Customer not found."}
+    if payload.realization_id:
+        try:
+            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
+        except Realization.DoesNotExist:
+            return 404, {"detail": "Realization not found."}
+    if payload.management_id:
+        try:
+            management = Management.objects.get(id=payload.management_id, firm=request.firm)
+        except Management.DoesNotExist:
+            return 404, {"detail": "Management record not found."}
+
+    proposal = Proposal.objects.create(
+        firm=request.firm,
+        lead=lead,
+        customer=customer,
+        realization=realization,
+        management=management,
+        title=payload.title,
+        status=payload.status,
+        expiry_date=payload.expiry_date or None,
+        currency=payload.currency,
+        notes=payload.notes,
+        intro_text=payload.intro_text,
+        closing_text=payload.closing_text,
+        public_token=_uuid.uuid4(),
+        token_expires_at=tz.now() + timedelta(days=_PUBLIC_LINK_TTL_DAYS),
+    )
+    _log_proposal_created_activity(proposal, request.user)
+    return 201, _proposal_out(proposal)
+
+
+# ---------------------------------------------------------------------------
+# Proposal CRUD — scoped to a Lead (backward-compatible)
 # ---------------------------------------------------------------------------
 
 @proposals_router.get(
@@ -402,7 +570,9 @@ def create_proposal(request, lead_id: str, payload: ProposalIn):
         public_token=_uuid.uuid4(),
         token_expires_at=tz.now() + timedelta(days=_PUBLIC_LINK_TTL_DAYS),
     )
+    _log_proposal_created_activity(proposal, request.user)
     return 201, _proposal_out(proposal)
+
 
 
 @proposals_router.get(
@@ -1141,12 +1311,13 @@ def public_respond_proposal(request, token: str, payload: PublicProposalRespondI
     proposal.responded_at = now
     proposal.save(update_fields=["status", "responded_at", "updated_at"])
 
-    Activity.objects.create(
-        lead=proposal.lead,
-        type=activity_type,
-        content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
-        metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},
-    )
+    if proposal.lead_id:
+        Activity.objects.create(
+            lead=proposal.lead,
+            type=activity_type,
+            content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
+            metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},
+        )
 
     # Fire workflow automation trigger: proposal_accepted
     if payload.action == "accept":
@@ -1254,3 +1425,138 @@ def proposal_analytics(request):
         "avg_time_to_open_hours": avg_time_to_open_hours,
         "template_stats": template_stats,
     }
+
+
+# ---------------------------------------------------------------------------
+# Proposal Items — add from catalog
+# ---------------------------------------------------------------------------
+
+@proposals_router.post(
+    "/proposals/{proposal_id}/items/from-catalog",
+    auth=django_auth,
+    response={200: List[ProposalItemOut], 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def add_items_from_catalog(request, proposal_id: str, payload: AddFromCatalogIn):
+    """
+    Append one or more FirmProposalItem catalog entries as new ProposalItems.
+    Payload: { "item_ids": ["<uuid>", ...] }
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    proposal = _get_proposal(proposal_id, request.firm)
+    if not proposal:
+        return 404, {"detail": "Proposal not found."}
+
+    if not payload.item_ids:
+        return 400, {"detail": "item_ids must not be empty."}
+
+    catalog_items = FirmProposalItem.objects.filter(
+        firm=request.firm, id__in=payload.item_ids
+    )
+    if not catalog_items.exists():
+        return 404, {"detail": "No matching catalog items found."}
+
+    existing_max = (
+        proposal.items.order_by("-position")
+        .values_list("position", flat=True)
+        .first()
+    )
+    offset = (existing_max + 1) if existing_max is not None else 0
+
+    created = []
+    for idx, ci in enumerate(catalog_items.order_by("position")):
+        item = ProposalItem.objects.create(
+            proposal=proposal,
+            description=ci.description,
+            quantity=ci.quantity,
+            unit_price=ci.unit_price,
+            discount=ci.discount,
+            vat_rate=ci.vat_rate,
+            position=offset + idx,
+        )
+        created.append(item)
+
+    return 200, [_item_out(i) for i in created]
+
+
+# ---------------------------------------------------------------------------
+# Firm Proposal Item Catalog CRUD
+# ---------------------------------------------------------------------------
+
+@proposals_router.get(
+    "/firm-proposal-items",
+    auth=django_auth,
+    response={200: List[FirmProposalItemOut], 403: ErrorOut},
+)
+def list_firm_proposal_items(request):
+    """List the firm's proposal item catalog."""
+    try:
+        require_membership(request)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    items = FirmProposalItem.objects.filter(firm=request.firm).order_by("position", "description")
+    return 200, [_firm_proposal_item_out(i) for i in items]
+
+
+@proposals_router.post(
+    "/firm-proposal-items",
+    auth=django_auth,
+    response={201: FirmProposalItemOut, 403: ErrorOut},
+)
+def create_firm_proposal_item(request, payload: FirmProposalItemIn):
+    """Add a new item to the firm's proposal catalog."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    item = FirmProposalItem.objects.create(firm=request.firm, **payload.dict())
+    return 201, _firm_proposal_item_out(item)
+
+
+@proposals_router.put(
+    "/firm-proposal-items/{item_id}",
+    auth=django_auth,
+    response={200: FirmProposalItemOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_firm_proposal_item(request, item_id: str, payload: FirmProposalItemIn):
+    """Update an existing catalog item."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        item = FirmProposalItem.objects.get(id=item_id, firm=request.firm)
+    except FirmProposalItem.DoesNotExist:
+        return 404, {"detail": "Catalog item not found."}
+
+    for field, value in payload.dict().items():
+        setattr(item, field, value)
+    item.save()
+    return 200, _firm_proposal_item_out(item)
+
+
+@proposals_router.delete(
+    "/firm-proposal-items/{item_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_firm_proposal_item(request, item_id: str):
+    """Delete a catalog item."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        item = FirmProposalItem.objects.get(id=item_id, firm=request.firm)
+    except FirmProposalItem.DoesNotExist:
+        return 404, {"detail": "Catalog item not found."}
+
+    item.delete()
+    return 204, None
