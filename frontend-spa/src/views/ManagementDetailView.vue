@@ -10,6 +10,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
+import ActivityTimeline from '@/components/ActivityTimeline.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -263,9 +264,9 @@ async function deleteDocument() {
             <p class="text-sm">Úkoly propojené s tímto záznamem budou zobrazeny zde.</p>
           </div>
 
-          <!-- Activities tab placeholder -->
-          <div v-else-if="activeTab === 'activities'" class="text-center py-12 text-gray-400 dark:text-gray-500">
-            <p class="text-sm">Aktivity propojené s tímto záznamem budou zobrazeny zde.</p>
+          <!-- Activities tab -->
+          <div v-else-if="activeTab === 'activities'">
+            <ActivityTimeline entity-type="management" :entity-id="recordId" />
           </div>
 
           <!-- Proposals tab -->
