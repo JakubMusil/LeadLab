@@ -317,6 +317,70 @@ def _action_run_plugin(action: dict, context: dict, rule) -> None:
     logger.info("automation run_plugin_action: %s.%s executed", plugin_name, action_name)
 
 
+def _action_create_realization(action: dict, context: dict, rule) -> None:
+    """Create a Realization record when a lead is won."""
+    import re
+
+    lead_id = context.get("lead_id")
+    firm_id = context.get("firm_id")
+
+    from crm.models import Lead, Realization
+    from firms.models import Firm
+
+    if not firm_id:
+        raise ValueError("create_realization: no firm_id in context")
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        raise ValueError(f"create_realization: firm {firm_id} not found")
+
+    lead = None
+    customer = None
+    if lead_id:
+        try:
+            lead = Lead.objects.get(id=lead_id)
+            customer = lead.customer
+        except Lead.DoesNotExist:
+            pass
+
+    title_template = action.get("title_template", "Realization: {{lead_title}}")
+    lead_title = (lead.title if lead else "") or ""
+    customer_name = ""
+    if customer:
+        customer_name = f"{customer.first_name} {customer.last_name}".strip() or customer.company_name
+    title = title_template.replace("{{lead_title}}", lead_title).replace("{{customer_name}}", customer_name)
+
+    assigned_to = None
+    assign_to_user_id = action.get("assign_to_user_id")
+    if assign_to_user_id == "inherit" and lead and lead.assigned_to_id:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            assigned_to = User.objects.get(id=lead.assigned_to_id)
+        except User.DoesNotExist:
+            pass
+    elif assign_to_user_id and assign_to_user_id != "inherit":
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            assigned_to = User.objects.get(id=assign_to_user_id)
+        except User.DoesNotExist:
+            logger.warning("create_realization: assign_to_user_id %s not found", assign_to_user_id)
+
+    realization = Realization.objects.create(
+        firm=firm,
+        lead=lead,
+        customer=customer,
+        title=title,
+        assigned_to=assigned_to,
+    )
+    logger.info(
+        "automation create_realization: rule=%s created realization '%s' (id=%s)",
+        rule.id, realization.title, realization.id,
+    )
+
+
 def _execute_rule(rule, context: dict) -> None:
     """Evaluate conditions and execute actions for a single AutomationRule."""
     from crm.models import AutomationRun, AutomationRunStatus
@@ -348,6 +412,8 @@ def _execute_rule(rule, context: dict) -> None:
                     _action_set_task_status(action, context)
                 elif action_type == "assign_tag":
                     _action_assign_tag(action, context)
+                elif action_type == "create_realization":
+                    _action_create_realization(action, context, rule)
                 else:
                     errors.append(f"Unknown action type: {action_type!r}")
             except Exception as exc:  # noqa: BLE001

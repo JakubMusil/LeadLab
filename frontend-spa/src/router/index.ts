@@ -71,6 +71,16 @@ const router = createRouter({
           meta: { title: 'Adresář Detail' },
         },
         {
+          path: 'realizations',
+          component: () => import('@/views/RealizationsView.vue'),
+          meta: { title: 'Realizace' },
+        },
+        {
+          path: 'realizations/:id',
+          component: () => import('@/views/RealizationDetailView.vue'),
+          meta: { title: 'Realizace Detail' },
+        },
+        {
           path: 'tasks',
           component: () => import('@/views/TasksView.vue'),
           meta: { title: 'Tasks' },

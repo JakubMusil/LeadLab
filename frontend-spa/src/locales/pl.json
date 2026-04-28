@@ -12,7 +12,8 @@
     "sequences": "Sekwencje",
     "taskTemplates": "Szablony zadań",
     "timesheets": "Ewidencja czasu",
-    "reports": "Raporty"
+    "reports": "Raporty",
+    "realizations": "Realizacje"
   },
   "auth": {
     "welcomeBack": "Witaj ponownie",

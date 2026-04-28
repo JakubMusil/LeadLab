@@ -12,7 +12,8 @@
     "sequences": "Sequenzen",
     "taskTemplates": "Aufgabenvorlagen",
     "timesheets": "Zeiterfassung",
-    "reports": "Berichte"
+    "reports": "Berichte",
+    "realizations": "Realisierungen"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",

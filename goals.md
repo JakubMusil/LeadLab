@@ -214,16 +214,16 @@ Engine pro workflow — bez nutnosti kódu.
 
 Sitewide časovač a finanční mezivrstva.
 
-- [ ] **TimeEntry model** — nový Django model se vazbou na volitelnou entitu (GenericForeignKey nebo nullable FK na Lead/Customer/…)
-- [ ] **REST API pro TimeEntry** — CRUD (`/api/v1/erp/time-entries`), filtry po uživateli, entitě, datu
-- [ ] **Sitewide časovač** — Vue 3 composable `useTimer` (start/stop/reset); stav persistován v Pinia; plovoucí UI widget v AppShell (viditelný přes router-view)
-- [ ] **Výběr kontextu** — modal/popover při spuštění časovače: vybrat typ entity + konkrétní záznam (search dropdown); lze spustit bez kontextu
-- [ ] **Manuální zadání záznamu** — formulář pro ruční timesheet záznam s výběrem entity
-- [ ] **Timesheet view** — nová stránka `/app/timesheets`; tabulka záznamů s filtry; inline editace a mazání
-- [ ] **ExpenseItem a RevenueItem modely** — jednorázové i opakované položky s vazbou na entitu
-- [ ] **Výkazy view** — `/app/reports`; P&L přehled, položkový rozpad, exporty CSV/PDF
+- [x] **TimeEntry model** — nový Django model se vazbou na volitelnou entitu (GenericForeignKey nebo nullable FK na Lead/Customer/…)
+- [x] **REST API pro TimeEntry** — CRUD (`/api/v1/erp/time-entries`), filtry po uživateli, entitě, datu
+- [x] **Sitewide časovač** — Vue 3 composable `useTimer` (start/stop/reset); stav persistován v Pinia; plovoucí UI widget v AppShell (viditelný přes router-view)
+- [x] **Výběr kontextu** — modal/popover při spuštění časovače: vybrat typ entity + konkrétní záznam (search dropdown); lze spustit bez kontextu
+- [x] **Manuální zadání záznamu** — formulář pro ruční timesheet záznam s výběrem entity
+- [x] **Timesheet view** — nová stránka `/app/timesheets`; tabulka záznamů s filtry; inline editace a mazání
+- [x] **ExpenseItem a RevenueItem modely** — jednorázové i opakované položky s vazbou na entitu
+- [x] **Výkazy view** — `/app/reports`; P&L přehled, položkový rozpad, exporty CSV/PDF
 - [ ] **Fakturoid integrace** — API klíč v Nastavení; tvorba nabídek/faktur z agregovaných dat Výkazů
-- [ ] Navigace — přidat „Výkazy" a „Čas" do ERP sekce sidebaru
+- [x] Navigace — přidat „Výkazy" a „Čas" do ERP sekce sidebaru
 - [ ] Testy — Vitest pro `useTimer`, Pinia store; Django testy pro nová API
 
 ---
@@ -232,15 +232,15 @@ Sitewide časovač a finanční mezivrstva.
 
 Výrobní Kanban aktivovaný po vyhraní Příležitosti.
 
-- [ ] **Realization model** — Django model s vazbou na `Lead` (origin, nullable), `Customer`, přiřazenou osobou, fázemi a milníky
-- [ ] **Milestone model** — milníky Realizace (název, datum, splněno T/F); vazba na Kalendář
-- [ ] **REST API** — CRUD pro Realizace a Milníky (`/api/v1/crm/realizations`, `/milestones`)
-- [ ] **Automatizace trigger** — „Při Won v Příležitosti → vytvořit Realizaci" jako built-in automation template
-- [ ] **Realizace view** — `/app/realizations`; Kanban board (stejný pattern jako Příležitosti); drag-and-drop fáze
-- [ ] **Detail Realizace** — záložky: Přehled / Úkoly / Aktivity / Dokumenty / Výkazy / Milníky
-- [ ] **Měření času** — rozšíření `useTimer` o kontext Realizace
-- [ ] **Navigace** — přidat „Realizace" do CRM sekce sidebaru; aktualizovat i18n (cs/en/de/pl)
-- [ ] WebSocket eventy — `realization.created/updated/deleted`
+- [x] **Realization model** — Django model s vazbou na `Lead` (origin, nullable), `Customer`, přiřazenou osobou, fázemi a milníky
+- [x] **Milestone model** — milníky Realizace (název, datum, splněno T/F); vazba na Kalendář
+- [x] **REST API** — CRUD pro Realizace a Milníky (`/api/v1/crm/realizations`, `/milestones`)
+- [x] **Automatizace trigger** — „Při Won v Příležitosti → vytvořit Realizaci" jako built-in automation template
+- [x] **Realizace view** — `/app/realizations`; Kanban board (stejný pattern jako Příležitosti); drag-and-drop fáze
+- [x] **Detail Realizace** — záložky: Přehled / Úkoly / Aktivity / Dokumenty / Výkazy / Milníky
+- [x] **Měření času** — rozšíření `useTimer` o kontext Realizace
+- [x] **Navigace** — přidat „Realizace" do CRM sekce sidebaru; aktualizovat i18n (cs/en/de/pl)
+- [x] WebSocket eventy — `realization.created/updated/deleted`
 - [ ] Testy — Django + Vitest + Playwright smoke test
 
 ---

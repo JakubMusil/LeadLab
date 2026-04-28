@@ -195,6 +195,26 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
             }
         ],
     },
+    {
+        "id": "create_realization_lead_won",
+        "name": "Create Realization when lead is Won",
+        "description": (
+            "Automatically creates a Realization (delivery Kanban) "
+            "whenever an opportunity is marked as Won."
+        ),
+        "trigger": AutomationTrigger.LEAD_STATUS_CHANGE,
+        "trigger_config": {},
+        "conditions": [
+            {"field": "to_status", "operator": "eq", "value": "won"},
+        ],
+        "actions": [
+            {
+                "type": "create_realization",
+                "title_template": "Realization: {{lead_title}}",
+                "assign_to_user_id": "inherit",
+            }
+        ],
+    },
 ]
 
 _TEMPLATE_MAP: Dict[str, Dict[str, Any]] = {t["id"]: t for t in AUTOMATION_TEMPLATES}

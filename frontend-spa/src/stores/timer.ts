@@ -12,7 +12,7 @@ import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 
 export interface TimerContext {
-  entityType: 'lead' | 'customer' | 'task' | null
+  entityType: 'lead' | 'customer' | 'task' | 'realization' | null
   entityId: string | null
   entityLabel: string | null
 }
@@ -46,6 +46,7 @@ export interface TimeEntryIn {
   lead_id?: string | null
   customer_id?: string | null
   task_id?: string | null
+  realization_id?: string | null
 }
 
 const STORAGE_KEY = 'll_timer'
@@ -157,6 +158,7 @@ export const useTimerStore = defineStore('timer', () => {
       lead_id: context.value.entityType === 'lead' ? context.value.entityId : null,
       customer_id: context.value.entityType === 'customer' ? context.value.entityId : null,
       task_id: context.value.entityType === 'task' ? context.value.entityId : null,
+      realization_id: context.value.entityType === 'realization' ? context.value.entityId : null,
     }
 
     const res = await api.post<TimeEntryOut>('/api/v1/erp/time-entries', payload)
