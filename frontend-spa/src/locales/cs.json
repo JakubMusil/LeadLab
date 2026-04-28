@@ -15,7 +15,8 @@
     "timesheets": "Výkaz času",
     "reports": "Výkazy",
     "realizations": "Realizace",
-    "management": "Správa"
+    "management": "Správa",
+    "documents": "Dokumenty"
   },
   "auth": {
     "welcomeBack": "Vítejte zpět",
@@ -909,5 +910,33 @@
     "cancel": "Zrušit",
     "cancel2": "Zrušit",
     "noProposalsForEntity": "Žádné nabídky pro tuto entitu."
+  },
+  "documents": {
+    "title": "Dokumenty",
+    "subtitle": "Centrální správa souborů — dokumenty navázané na jakoukoliv CRM entitu.",
+    "upload": "Nahrát",
+    "uploading": "Nahrávám…",
+    "uploadSuccess": "Nahráno {count} soubor(ů)",
+    "download": "Stáhnout",
+    "delete": "Smazat",
+    "deleteConfirm": "Opravdu chcete smazat tento dokument? Tuto akci nelze vrátit zpět.",
+    "deleteSuccess": "Dokument smazán",
+    "searchPlaceholder": "Hledat dokumenty…",
+    "loading": "Načítám dokumenty…",
+    "empty": "Zatím žádné dokumenty",
+    "emptyHint": "Nahrajte soubory kliknutím na tlačítko Nahrát výše.",
+    "noResults": "Žádné dokumenty nenalezeny",
+    "noEntity": "Bez vazby",
+    "colName": "Název",
+    "colEntity": "Entita",
+    "colSize": "Velikost",
+    "colUploadedBy": "Nahrál(a)",
+    "colDate": "Datum",
+    "tab": "Dokumenty"
+  },
+  "common": {
+    "cancel": "Zrušit",
+    "delete": "Smazat",
+    "save": "Uložit"
   }
 }

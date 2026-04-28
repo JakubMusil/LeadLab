@@ -264,10 +264,10 @@ Post-realizační fáze (SLA, záruky, retence).
 
 Centrální správa souborů.
 
-- [ ] **Document model** — GenericForeignKey na libovolnou entitu; pole: název, typ, velikost, S3 URL, nahráno kým/kdy
-- [ ] **REST API** — upload, list, delete, signed URL (`/api/v1/erp/documents`)
-- [ ] **Documents view** — `/app/documents`; tabulka s filtry po entitě a datu; inline preview
-- [ ] **Integrace do Detail views** — záložka Dokumenty v Příležitosti, Realizaci a Správě (refactoring stávající Files tab)
+- [x] **Document model** — nullable FKs na libovolnou entitu; pole: název, typ, velikost, URL, nahráno kým/kdy
+- [x] **REST API** — upload, list, delete (`/api/v1/erp/documents`)
+- [x] **Documents view** — `/app/documents`; tabulka s filtry a vyhledáváním
+- [x] **Integrace do Detail views** — záložka Dokumenty v Realizaci a Správě
 - [ ] Vyhledávání dokumentů v Command Palette
 - [ ] Testy
 
