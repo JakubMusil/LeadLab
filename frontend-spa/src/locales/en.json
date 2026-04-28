@@ -316,6 +316,7 @@
     "firstName": "First Name *",
     "lastName": "Last Name",
     "phone": "Phone",
+    "email": "Email",
     "company": "Company",
     "tagsLabel": "Tags (comma-separated)",
     "cancel": "Cancel",

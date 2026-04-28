@@ -317,6 +317,7 @@
     "firstName": "Jméno *",
     "lastName": "Příjmení",
     "phone": "Telefon",
+    "email": "E-mail",
     "company": "Společnost",
     "tagsLabel": "Štítky (oddělené čárkou)",
     "cancel": "Zrušit",
