@@ -62,6 +62,7 @@ class ActivityType(models.TextChoices):
     FILE_UPLOAD = "file_upload", "File Upload"
     TASK_ASSIGNED = "task_assigned", "Task Assigned"
     TASK_COMPLETED = "task_completed", "Task Completed"
+    PROPOSAL_CREATED = "proposal_created", "Proposal Created"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     PROPOSAL_REJECTED = "proposal_rejected", "Proposal Rejected"
 
@@ -1351,12 +1352,50 @@ class ProposalTemplateItem(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Proposal (scoped to a Lead)
+# FirmProposalItem (firm-wide catalog of pre-defined proposal line items)
+# ---------------------------------------------------------------------------
+
+class FirmProposalItem(TenantModel):
+    """
+    A pre-defined line item belonging to a Firm's proposal catalog.
+
+    Team members can quickly add these catalog items to any Proposal via the
+    "Add from catalog" action, saving time on frequently used services/products.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    description = models.CharField(max_length=500)
+    quantity = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal("1"))
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="Discount percentage (0–100).",
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0"),
+        help_text="VAT rate percentage (e.g. 21 for 21%).",
+    )
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "firm proposal item"
+        verbose_name_plural = "firm proposal items"
+        ordering = ["position", "description"]
+
+    def __str__(self):
+        return f"{self.description} [{self.firm}]"
+
+
+# ---------------------------------------------------------------------------
+# Proposal (standalone entity — can link to Lead, Customer, Realization or Management)
 # ---------------------------------------------------------------------------
 
 class Proposal(TenantModel):
     """
-    A business proposal attached to a Lead.
+    A business proposal.  It can be linked to any combination of CRM entities
+    (Lead, Customer, Realization, Management) — or exist completely standalone.
 
     ``public_token`` is a UUID used to construct the signed public URL;
     it is regenerated each time the proposal is re-sent so that old links expire.
@@ -1364,11 +1403,37 @@ class Proposal(TenantModel):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Entity links — all optional
     lead = models.ForeignKey(
         Lead,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="proposals",
     )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="proposals",
+    )
+    realization = models.ForeignKey(
+        "Realization",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="proposals",
+    )
+    management = models.ForeignKey(
+        "Management",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="proposals",
+    )
+
     title = models.CharField(max_length=255)
     status = models.CharField(
         max_length=20,
@@ -1409,7 +1474,10 @@ class Proposal(TenantModel):
         verbose_name_plural = "proposals"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["lead", "-created_at"]),
+            models.Index(fields=["firm", "lead", "-created_at"]),
+            models.Index(fields=["firm", "customer"]),
+            models.Index(fields=["firm", "realization"]),
+            models.Index(fields=["firm", "management"]),
             models.Index(fields=["firm", "status"]),
         ]
 
