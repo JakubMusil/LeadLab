@@ -24,6 +24,7 @@ from ninja.security import django_auth
 from crm.models import (
     Activity,
     ActivityType,
+    ContactType,
     Customer,
     DashboardLayout,
     Lead,
@@ -90,11 +91,20 @@ class ErrorOut(Schema):
 class CustomerOut(Schema):
     id: str
     firm_id: str
+    type: str
     first_name: str
     last_name: str
     email: str
     phone: str
     company_name: str
+    company_id: Optional[str]
+    ico: str
+    dic: str
+    address_street: str
+    address_city: str
+    address_zip: str
+    address_country: str
+    website: str
     tags: List[str]
     metadata: Dict[str, Any]
     created_at: datetime
@@ -102,11 +112,20 @@ class CustomerOut(Schema):
 
 
 class CustomerIn(Schema):
+    type: str = ContactType.PERSON
     first_name: str
     last_name: str = ""
     email: str = ""
     phone: str = ""
     company_name: str = ""
+    company_id: Optional[str] = None
+    ico: str = ""
+    dic: str = ""
+    address_street: str = ""
+    address_city: str = ""
+    address_zip: str = ""
+    address_country: str = ""
+    website: str = ""
     tags: List[str] = []
     metadata: Dict[str, Any] = {}
 
@@ -115,11 +134,20 @@ def _customer_out(c: Customer) -> dict:
     return {
         "id": str(c.id),
         "firm_id": str(c.firm_id),
+        "type": c.type,
         "first_name": c.first_name,
         "last_name": c.last_name,
         "email": c.email,
         "phone": c.phone,
         "company_name": c.company_name,
+        "company_id": str(c.company_id) if c.company_id else None,
+        "ico": c.ico,
+        "dic": c.dic,
+        "address_street": c.address_street,
+        "address_city": c.address_city,
+        "address_zip": c.address_zip,
+        "address_country": c.address_country,
+        "website": c.website,
         "tags": c.tags,
         "metadata": c.metadata,
         "created_at": c.created_at,
@@ -128,13 +156,15 @@ def _customer_out(c: Customer) -> dict:
 
 
 @router.get("/directory", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut})
-def list_customers(request, search: str = "", page: int = 1, page_size: int = 20):
+def list_customers(request, search: str = "", page: int = 1, page_size: int = 20, type: str = ""):
     try:
         require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     qs = Customer.objects.filter(firm=request.firm)
+    if type in (ContactType.PERSON, ContactType.COMPANY):
+        qs = qs.filter(type=type)
     if search:
         qs = qs.filter(
             Q(first_name__icontains=search)
@@ -142,6 +172,7 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
             | Q(email__icontains=search)
             | Q(company_name__icontains=search)
             | Q(phone__icontains=search)
+            | Q(ico__icontains=search)
         )
     offset = (page - 1) * page_size
     return 200, [_customer_out(c) for c in qs[offset:offset + page_size]]
@@ -155,7 +186,15 @@ def create_customer(request, payload: CustomerIn):
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
 
-    customer = Customer.objects.create(firm=request.firm, **payload.dict())
+    data = payload.dict()
+    company_id = data.pop("company_id", None)
+    company = None
+    if company_id:
+        try:
+            company = Customer.objects.get(id=company_id, firm=request.firm, type=ContactType.COMPANY)
+        except Customer.DoesNotExist:
+            pass
+    customer = Customer.objects.create(firm=request.firm, company=company, **data)
     return 201, _customer_out(customer)
 
 
@@ -185,7 +224,16 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
     except Customer.DoesNotExist:
         return 404, {"detail": "Customer not found."}
 
-    for field, value in payload.dict().items():
+    data = payload.dict()
+    company_id = data.pop("company_id", None)
+    company = None
+    if company_id:
+        try:
+            company = Customer.objects.get(id=company_id, firm=request.firm, type=ContactType.COMPANY)
+        except Customer.DoesNotExist:
+            pass
+    customer.company = company
+    for field, value in data.items():
         setattr(customer, field, value)
     customer.save()
     return 200, _customer_out(customer)
@@ -205,6 +253,23 @@ def delete_customer(request, customer_id: str):
 
     customer.delete()
     return 204, None
+
+
+@router.get("/directory/{customer_id}/employees", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut, 404: ErrorOut})
+def list_company_employees(request, customer_id: str):
+    """Return all person contacts that reference the given company contact."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Customer.objects.get(id=customer_id, firm=request.firm, type=ContactType.COMPANY)
+    except Customer.DoesNotExist:
+        return 404, {"detail": "Company not found."}
+
+    employees = Customer.objects.filter(company_id=customer_id, firm=request.firm)
+    return 200, [_customer_out(e) for e in employees]
 
 
 # ===========================================================================

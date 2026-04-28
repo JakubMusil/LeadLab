@@ -268,7 +268,7 @@ Centrální správa souborů.
 - [x] **REST API** — upload, list, delete (`/api/v1/erp/documents`)
 - [x] **Documents view** — `/app/documents`; tabulka s filtry a vyhledáváním
 - [x] **Integrace do Detail views** — záložka Dokumenty v Realizaci a Správě
-- [ ] Vyhledávání dokumentů v Command Palette
+- [x] Vyhledávání dokumentů v Command Palette
 - [ ] Testy
 
 ---
@@ -277,10 +277,10 @@ Centrální správa souborů.
 
 Rozšíření stávajícího Customer modelu na plnohodnotný Adresář.
 
-- [ ] **Unifikovaný Contact model** — přidat `type` pole (`person` / `company`); přidat pole IČO, DIČ, adresa, web; přidat relaci „zaměstnanec firmy" (self-referential FK)
-- [ ] **Migrace** — DataMigration: stávající Customer záznamy → Contact type=person (nebo company dle přítomnosti company_name)
-- [ ] **Adresář view** — přidání přepínače Firmy / Lidé; zobrazení hierarchie (firma → kontaktní osoby)
-- [ ] **Detail kontaktu** — záložky: Info / Příležitosti / Realizace / Správa / Úkoly / Dokumenty / Aktivity
+- [x] **Unifikovaný Contact model** — přidat `type` pole (`person` / `company`); přidat pole IČO, DIČ, adresa, web; přidat relaci „zaměstnanec firmy" (self-referential FK)
+- [x] **Migrace** — DataMigration: stávající Customer záznamy → Contact type=person (nebo company dle přítomnosti company_name)
+- [x] **Adresář view** — přidání přepínače Firmy / Lidé; zobrazení hierarchie (firma → kontaktní osoby)
+- [x] **Detail kontaktu** — záložky: Info / Příležitosti / Realizace / Správa / Úkoly / Dokumenty / Aktivity
 - [ ] **Enrichment plugin** — LinkedIn/Clearbit napojení (dobrovolné)
 - [ ] Testy
 
