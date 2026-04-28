@@ -16,7 +16,7 @@ const toast = useToast()
 
 const realizationId = computed(() => route.params.id as string)
 
-type Tab = 'overview' | 'tasks' | 'milestones'
+type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals'
 const activeTab = ref<Tab>('overview')
 
 const editingTitle = ref(false)
@@ -30,13 +30,14 @@ const milestoneFormDate = ref('')
 const milestoneFormDesc = ref('')
 const milestoneFormLoading = ref(false)
 
+// Linked proposals
+interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
+const linkedProposals = ref<ProposalOut[]>([])
+const proposalsLoading = ref(false)
+
 function firmHeader() {
   return firmStore.activeFirm ? { 'X-Firm-ID': String(firmStore.activeFirm.id) } : {}
 }
-
-onMounted(async () => {
-  await store.fetchRealization(realizationId.value)
-})
 
 const realization = computed(() => store.currentRealization)
 
@@ -120,7 +121,30 @@ async function deleteMilestone(m: MilestoneOut) {
 
 const completedMilestones = computed(() => realization.value?.milestones.filter((m) => m.is_completed).length ?? 0)
 const totalMilestones = computed(() => realization.value?.milestones.length ?? 0)
-</script>
+
+async function loadLinkedProposals() {
+  proposalsLoading.value = true
+  try {
+    const res = await api.get<ProposalOut[]>(`/api/v1/crm/proposals?realization_id=${realizationId.value}`)
+    if (res.ok) linkedProposals.value = res.data
+  } finally {
+    proposalsLoading.value = false
+  }
+}
+
+function proposalStatusColor(status: string) {
+  const map: Record<string, string> = {
+    draft: 'bg-gray-100 text-gray-700', sent: 'bg-blue-100 text-blue-700',
+    viewed: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700', expired: 'bg-orange-100 text-orange-700',
+  }
+  return map[status] ?? 'bg-gray-100 text-gray-700'
+}
+
+onMounted(async () => {
+  await store.fetchRealization(realizationId.value)
+  await loadLinkedProposals()
+})</script>
 
 <template>
   <div v-if="store.loadingDetail" class="p-6 text-center text-gray-500">Načítání…</div>
@@ -200,6 +224,7 @@ const totalMilestones = computed(() => realization.value?.milestones.length ?? 0
           { id: 'overview', label: 'Přehled' },
           { id: 'milestones', label: `Milníky (${totalMilestones})` },
           { id: 'tasks', label: 'Úkoly' },
+          { id: 'proposals', label: 'Nabídky' },
         ]"
         :key="tab.id"
         @click="activeTab = tab.id as Tab"
@@ -327,6 +352,32 @@ const totalMilestones = computed(() => realization.value?.milestones.length ?? 0
     <!-- Tasks tab -->
     <div v-if="activeTab === 'tasks'">
       <p class="text-sm text-gray-500">Propojení úkolů s realizací bude dostupné v další verzi.</p>
+    </div>
+
+    <!-- Proposals tab -->
+    <div v-if="activeTab === 'proposals'" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Nabídky</h2>
+        <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">Všechny nabídky</RouterLink>
+      </div>
+      <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+        <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
+      </div>
+      <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">
+        Žádné nabídky pro tuto realizaci.
+      </div>
+      <div v-else class="space-y-2">
+        <RouterLink
+          v-for="p in linkedProposals"
+          :key="p.id"
+          :to="`/app/proposals/${p.id}`"
+          class="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+          <span class="text-xs text-gray-500 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
+        </RouterLink>
+      </div>
     </div>
   </div>
 </template>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
+
+const router = useRouter()
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -217,6 +220,21 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// ─── Create proposal from report ─────────────────────────────────────────────
+
+async function createProposalFromReport() {
+  // Create a blank proposal and navigate to it (items can be added manually)
+  const res = await api.post<{ id: string }>('/api/v1/crm/proposals', {
+    title: `Výkaz ${filterDateFrom.value || ''} – ${filterDateTo.value || ''}`.trim() || 'Výkaz',
+    currency: 'CZK',
+  })
+  if (res.ok) {
+    router.push(`/app/proposals/${res.data.id}`)
+  } else {
+    showToast('Nepodařilo se vytvořit nabídku')
+  }
+}
 </script>
 
 <template>
@@ -227,6 +245,12 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">P&amp;L overview, costs and revenues</p>
       </div>
+      <button
+        class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+        @click="createProposalFromReport"
+      >
+        Vytvořit nabídku z výkazu
+      </button>
     </div>
 
     <!-- Toast -->

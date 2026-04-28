@@ -296,6 +296,7 @@ onMounted(() => {
       loadDigestPreference()
       leadScoringStore.fetchRules()
       loadPropTemplates()
+      loadCatalogItems()
       loadPluginConfigs()
       loadAutomations()
       loadAutomationTemplates()
@@ -620,8 +621,87 @@ async function deleteTmplItem(template: ProposalTemplate, itemId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Plugins (v2.4)
+// Firm Proposal Item Catalog
 // ---------------------------------------------------------------------------
+
+interface FirmProposalItem {
+  id: string
+  description: string
+  quantity: string | number
+  unit_price: string | number
+  discount: string | number
+  vat_rate: string | number
+  position: number
+}
+
+const catalogItems = ref<FirmProposalItem[]>([])
+const catalogLoading = ref(false)
+const newCatalogDesc = ref('')
+const newCatalogQty = ref(1)
+const newCatalogPrice = ref(0)
+const newCatalogDiscount = ref(0)
+const newCatalogVat = ref(0)
+const addingCatalogItem = ref(false)
+const editingCatalogId = ref<string | null>(null)
+
+async function loadCatalogItems() {
+  catalogLoading.value = true
+  const res = await api.get<FirmProposalItem[]>('/api/v1/crm/firm-proposal-items')
+  catalogLoading.value = false
+  if (res.ok && Array.isArray(res.data)) catalogItems.value = res.data
+}
+
+async function createCatalogItem() {
+  if (!newCatalogDesc.value.trim()) return
+  addingCatalogItem.value = true
+  const res = await api.post<FirmProposalItem>('/api/v1/crm/firm-proposal-items', {
+    description: newCatalogDesc.value.trim(),
+    quantity: newCatalogQty.value,
+    unit_price: newCatalogPrice.value,
+    discount: newCatalogDiscount.value,
+    vat_rate: newCatalogVat.value,
+    position: catalogItems.value.length,
+  })
+  addingCatalogItem.value = false
+  if (res.ok) {
+    catalogItems.value.push(res.data)
+    newCatalogDesc.value = ''
+    newCatalogQty.value = 1
+    newCatalogPrice.value = 0
+    newCatalogDiscount.value = 0
+    newCatalogVat.value = 0
+  } else {
+    toast.error('Nepodařilo se přidat položku.')
+  }
+}
+
+async function updateCatalogItem(item: FirmProposalItem) {
+  const res = await api.put<FirmProposalItem>(`/api/v1/crm/firm-proposal-items/${item.id}`, {
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    discount: item.discount,
+    vat_rate: item.vat_rate,
+    position: item.position,
+  })
+  if (res.ok) {
+    const idx = catalogItems.value.findIndex((i) => i.id === item.id)
+    if (idx !== -1) catalogItems.value[idx] = res.data
+    editingCatalogId.value = null
+  } else {
+    toast.error('Nepodařilo se uložit položku.')
+  }
+}
+
+async function deleteCatalogItem(id: string) {
+  if (!confirm('Smazat tuto položku z katalogu?')) return
+  const res = await api.delete(`/api/v1/crm/firm-proposal-items/${id}`)
+  if (res.ok || res.status === 204) {
+    catalogItems.value = catalogItems.value.filter((i) => i.id !== id)
+  } else {
+    toast.error('Nepodařilo se smazat položku.')
+  }
+}
 
 interface PluginConfigEntry {
   plugin_name: string
@@ -1690,6 +1770,84 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="createPropTemplate"
         >{{ newTemplateCreating ? 'Creating…' : '+ Create Template' }}</button>
+      </div>
+    </div>
+
+    <!-- ===== FIRM PROPOSAL CATALOG ===== -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('proposals.catalogItems') }}</h2>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ catalogItems.length }} položek</span>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ t('proposals.catalogItemsHint') }}</p>
+
+      <!-- Loading -->
+      <div v-if="catalogLoading" class="animate-pulse space-y-2 mb-4">
+        <div v-for="i in 3" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="catalogItems.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">
+        Katalog je prázdný.
+      </div>
+
+      <!-- Table -->
+      <div v-else class="mb-4 overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+              <th class="text-left pb-1.5">Popis</th>
+              <th class="text-right pb-1.5 w-14">Množství</th>
+              <th class="text-right pb-1.5 w-20">Cena/j.</th>
+              <th class="text-right pb-1.5 w-14">Sleva %</th>
+              <th class="text-right pb-1.5 w-14">DPH %</th>
+              <th class="w-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="item in catalogItems" :key="item.id">
+              <tr v-if="editingCatalogId === item.id" class="border-b border-gray-50 dark:border-gray-700">
+                <td class="py-1 pr-2"><input v-model="item.description" type="text" class="w-full rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 px-2 py-0.5 text-xs focus:outline-none focus:border-red-400" /></td>
+                <td class="py-1 px-1"><input v-model.number="item.quantity" type="number" min="0.001" step="0.001" class="w-14 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 px-1 py-0.5 text-xs text-right focus:outline-none focus:border-red-400" /></td>
+                <td class="py-1 px-1"><input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="w-20 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 px-1 py-0.5 text-xs text-right focus:outline-none focus:border-red-400" /></td>
+                <td class="py-1 px-1"><input v-model.number="item.discount" type="number" min="0" max="100" step="0.01" class="w-14 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 px-1 py-0.5 text-xs text-right focus:outline-none focus:border-red-400" /></td>
+                <td class="py-1 px-1"><input v-model.number="item.vat_rate" type="number" min="0" max="100" step="0.01" class="w-14 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 px-1 py-0.5 text-xs text-right focus:outline-none focus:border-red-400" /></td>
+                <td class="py-1 pl-1 flex gap-1">
+                  <button class="text-xs text-green-600 hover:text-green-700 px-1" @click="updateCatalogItem(item)">✓</button>
+                  <button class="text-xs text-gray-400 hover:text-gray-600 px-1" @click="editingCatalogId = null">✕</button>
+                </td>
+              </tr>
+              <tr v-else class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="py-1.5 pr-2 text-gray-800 dark:text-gray-200">{{ item.description }}</td>
+                <td class="py-1.5 px-1 text-right text-gray-500 dark:text-gray-400">{{ item.quantity }}</td>
+                <td class="py-1.5 px-1 text-right text-gray-500 dark:text-gray-400">{{ Number(item.unit_price).toFixed(2) }}</td>
+                <td class="py-1.5 px-1 text-right text-gray-500 dark:text-gray-400">{{ item.discount }}%</td>
+                <td class="py-1.5 px-1 text-right text-gray-500 dark:text-gray-400">{{ item.vat_rate }}%</td>
+                <td class="py-1.5 pl-1 flex gap-1">
+                  <button class="text-xs text-gray-400 hover:text-blue-500 px-1" @click="editingCatalogId = item.id" title="Edit">✏</button>
+                  <button class="text-xs text-gray-300 hover:text-red-500 px-1" @click="deleteCatalogItem(item.id)" title="Delete">🗑</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add new catalog item -->
+      <div class="border border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4">
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{{ t('proposals.addCatalogItem') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <input v-model="newCatalogDesc" type="text" placeholder="Popis *" class="flex-1 min-w-48 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+          <input v-model.number="newCatalogQty" type="number" min="0.001" step="0.001" placeholder="Množství" class="w-16 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 px-2 py-1.5 text-xs text-right focus:outline-none focus:border-red-400" />
+          <input v-model.number="newCatalogPrice" type="number" min="0" step="0.01" placeholder="Cena" class="w-20 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 px-2 py-1.5 text-xs text-right focus:outline-none focus:border-red-400" />
+          <input v-model.number="newCatalogDiscount" type="number" min="0" max="100" step="0.01" placeholder="Sleva %" class="w-16 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 px-2 py-1.5 text-xs text-right focus:outline-none focus:border-red-400" />
+          <input v-model.number="newCatalogVat" type="number" min="0" max="100" step="0.01" placeholder="DPH %" class="w-16 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 px-2 py-1.5 text-xs text-right focus:outline-none focus:border-red-400" />
+          <button
+            :disabled="addingCatalogItem || !newCatalogDesc.trim()"
+            class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+            @click="createCatalogItem"
+          >{{ addingCatalogItem ? 'Přidávám…' : '+ Přidat' }}</button>
+        </div>
       </div>
     </div>
 

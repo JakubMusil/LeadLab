@@ -3,6 +3,7 @@
     "overview": "Overview",
     "leads": "Opportunities",
     "customers": "Directory",
+    "proposals": "Proposals",
     "tasks": "Tasks",
     "calendar": "Calendar",
     "team": "Team",
@@ -871,5 +872,30 @@
     "edit": "Edit",
     "delete": "Delete",
     "templateName": "Template name"
+  },
+  "proposals": {
+    "title": "Proposals",
+    "newProposal": "+ New Proposal",
+    "allProposals": "All Proposals",
+    "noProposals": "No proposals",
+    "noProposalsHint": "Create your first proposal using the button above.",
+    "createProposal": "Create Proposal",
+    "createFromReport": "Create Proposal from Report",
+    "selectContext": "Select proposal context",
+    "contextLead": "Opportunity",
+    "contextCustomer": "Contact",
+    "contextRealization": "Realization",
+    "contextManagement": "Management",
+    "contextNone": "No link",
+    "catalogItems": "Catalog Items",
+    "catalogItemsHint": "Pre-defined items for quick addition to proposals.",
+    "addCatalogItem": "+ Add catalog item",
+    "addFromCatalog": "Add from catalog",
+    "linkedTo": "Linked to",
+    "status": "Status",
+    "total": "Total",
+    "currency": "Currency",
+    "expiryDate": "Expiry date",
+    "backToProposals": "← Proposals"
   }
 }

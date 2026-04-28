@@ -38,6 +38,11 @@ interface LeadOut { id: string; title: string; status: string; value: number | n
 const linkedLeads = ref<LeadOut[]>([])
 const leadsLoading = ref(false)
 
+// Linked proposals
+interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
+const linkedProposals = ref<ProposalOut[]>([])
+const proposalsLoading = ref(false)
+
 function startEdit() {
   const c = store.currentCustomer
   if (!c) return
@@ -166,9 +171,29 @@ function statusColor(status: string) {
   return map[status] ?? 'bg-gray-100 text-gray-700'
 }
 
+function proposalStatusColor(status: string) {
+  const map: Record<string, string> = {
+    draft: 'bg-gray-100 text-gray-700', sent: 'bg-blue-100 text-blue-700',
+    viewed: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700', expired: 'bg-orange-100 text-orange-700',
+  }
+  return map[status] ?? 'bg-gray-100 text-gray-700'
+}
+
+async function loadLinkedProposals() {
+  proposalsLoading.value = true
+  try {
+    const res = await api.get<ProposalOut[]>(`/api/v1/crm/proposals?customer_id=${customerId.value}`)
+    if (res.ok) linkedProposals.value = res.data
+  } finally {
+    proposalsLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await store.fetchCustomer(customerId.value)
   await loadLinkedLeads()
+  await loadLinkedProposals()
 })
 </script>
 
@@ -287,6 +312,32 @@ onMounted(async () => {
             <span class="flex-1 text-sm font-medium text-gray-900 truncate">{{ lead.title }}</span>
             <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(lead.status)">{{ lead.status }}</span>
             <span v-if="lead.value != null" class="text-xs text-gray-500">{{ lead.value }} {{ lead.currency }}</span>
+          </RouterLink>
+        </div>
+      </div>
+      <!-- Linked Proposals -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-gray-900">{{ t('proposals.title') }}</h3>
+          <RouterLink
+            :to="`/app/proposals`"
+            class="text-xs text-red-600 hover:text-red-700"
+          >{{ t('proposals.allProposals') }}</RouterLink>
+        </div>
+        <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+          <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 rounded-xl" />
+        </div>
+        <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400">{{ t('proposals.noProposals') }}</div>
+        <div v-else class="space-y-2">
+          <RouterLink
+            v-for="p in linkedProposals"
+            :key="p.id"
+            :to="`/app/proposals/${p.id}`"
+            class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            <span class="flex-1 text-sm font-medium text-gray-900 truncate">{{ p.title }}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+            <span class="text-xs text-gray-500 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
           </RouterLink>
         </div>
       </div>

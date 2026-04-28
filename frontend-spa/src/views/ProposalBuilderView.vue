@@ -3,15 +3,26 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const firmStore = useFirmStore()
+const { t } = useI18n()
 
-const leadId = computed(() => route.params.id as string)
-const proposalId = computed(() => route.params.pid as string | undefined)
+// Route support:
+// 1) /app/opportunities/:id/proposals/:pid? — lead-scoped (legacy)
+// 2) /app/proposals/:id                     — standalone
+const leadId = computed(() => route.params.id as string | undefined)
+const proposalId = computed(() => {
+  // standalone route: /app/proposals/:id
+  if (route.path.startsWith('/app/proposals/')) return route.params.id as string
+  // legacy route: /app/opportunities/:id/proposals/:pid
+  return route.params.pid as string | undefined
+})
+const isStandalone = computed(() => route.path.startsWith('/app/proposals/') || route.path === '/app/proposals')
 
 // -----------------------------------------------------------------------
 // Types
@@ -35,7 +46,10 @@ interface ProposalItem {
 
 interface Proposal {
   id: string
-  lead_id: string
+  lead_id: string | null
+  customer_id: string | null
+  realization_id: string | null
+  management_id: string | null
   firm_id: string
   title: string
   status: string
@@ -61,6 +75,16 @@ interface ProposalTemplate {
   intro_text: string
   closing_text: string
   items: Array<{ description: string; quantity: number; unit_price: number; discount: number; vat_rate: number; position: number }>
+}
+
+interface CatalogItem {
+  id: string
+  description: string
+  quantity: number
+  unit_price: number
+  discount: number
+  vat_rate: number
+  position: number
 }
 
 // -----------------------------------------------------------------------
@@ -94,6 +118,12 @@ const editingItemId = ref<string | null>(null)
 const templates = ref<ProposalTemplate[]>([])
 const showApplyTemplate = ref(false)
 const applyingTemplate = ref(false)
+
+// Catalog
+const catalogItems = ref<CatalogItem[]>([])
+const showCatalog = ref(false)
+const addingFromCatalog = ref(false)
+const selectedCatalogIds = ref<string[]>([])
 
 // Public link
 const publicLinkCopied = ref(false)
@@ -138,8 +168,12 @@ const previewTotal = computed(() =>
 async function loadProposals() {
   loading.value = true
   try {
-    const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${leadId.value}/proposals`)
-    if (res.ok) proposals.value = res.data
+    if (isStandalone.value) {
+      // standalone: no proposal list sidebar in this view, nothing to load
+    } else if (leadId.value) {
+      const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${leadId.value}/proposals`)
+      if (res.ok) proposals.value = res.data
+    }
   } finally {
     loading.value = false
   }
@@ -166,6 +200,11 @@ async function loadTemplates() {
   if (res.ok) templates.value = res.data
 }
 
+async function loadCatalogItems() {
+  const res = await api.get<CatalogItem[]>('/api/v1/crm/firm-proposal-items')
+  if (res.ok) catalogItems.value = res.data
+}
+
 function populateForm(p: Proposal) {
   editTitle.value = p.title
   editStatus.value = p.status
@@ -181,17 +220,29 @@ function populateForm(p: Proposal) {
 // -----------------------------------------------------------------------
 async function createProposal() {
   saving.value = true
-  const res = await api.post<Proposal>(`/api/v1/crm/opportunities/${leadId.value}/proposals`, {
-    title: editTitle.value || 'New Proposal',
-    currency: editCurrency.value,
-  })
+  let res
+  if (leadId.value && !isStandalone.value) {
+    res = await api.post<Proposal>(`/api/v1/crm/opportunities/${leadId.value}/proposals`, {
+      title: editTitle.value || 'New Proposal',
+      currency: editCurrency.value,
+    })
+  } else {
+    res = await api.post<Proposal>('/api/v1/crm/proposals', {
+      title: editTitle.value || 'New Proposal',
+      currency: editCurrency.value,
+    })
+  }
   saving.value = false
   if (res.ok) {
     proposals.value.unshift(res.data)
     currentProposal.value = res.data
     populateForm(res.data)
     items.value = []
-    router.replace(`/app/opportunities/${leadId.value}/proposals/${res.data.id}`)
+    if (isStandalone.value) {
+      router.replace(`/app/proposals/${res.data.id}`)
+    } else {
+      router.replace(`/app/opportunities/${leadId.value}/proposals/${res.data.id}`)
+    }
     toast.success('Proposal created.')
   } else {
     toast.error('Failed to create proposal.')
@@ -228,7 +279,11 @@ async function deleteProposal(id: string) {
     proposals.value = proposals.value.filter((p) => p.id !== id)
     if (currentProposal.value?.id === id) {
       currentProposal.value = null
-      router.replace(`/app/opportunities/${leadId.value}/proposals`)
+      if (isStandalone.value) {
+        router.replace('/app/proposals')
+      } else {
+        router.replace(`/app/opportunities/${leadId.value}/proposals`)
+      }
     }
     toast.success('Proposal deleted.')
   } else {
@@ -237,7 +292,11 @@ async function deleteProposal(id: string) {
 }
 
 function selectProposal(p: Proposal) {
-  router.push(`/app/opportunities/${leadId.value}/proposals/${p.id}`)
+  if (isStandalone.value) {
+    router.push(`/app/proposals/${p.id}`)
+  } else {
+    router.push(`/app/opportunities/${leadId.value}/proposals/${p.id}`)
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -355,6 +414,44 @@ async function applyTemplate(templateId: string) {
 }
 
 // -----------------------------------------------------------------------
+// Add from catalog
+// -----------------------------------------------------------------------
+async function addFromCatalog() {
+  if (!currentProposal.value || selectedCatalogIds.value.length === 0) return
+  addingFromCatalog.value = true
+  const res = await api.post<ProposalItem[]>(
+    `/api/v1/crm/proposals/${currentProposal.value.id}/items/from-catalog`,
+    { item_ids: selectedCatalogIds.value }
+  )
+  addingFromCatalog.value = false
+  if (res.ok) {
+    items.value.push(...res.data)
+    selectedCatalogIds.value = []
+    showCatalog.value = false
+    toast.success('Položky přidány z katalogu.')
+  } else {
+    toast.error('Nepodařilo se přidat položky z katalogu.')
+  }
+}
+
+function toggleCatalogItem(id: string) {
+  const idx = selectedCatalogIds.value.indexOf(id)
+  if (idx === -1) selectedCatalogIds.value.push(id)
+  else selectedCatalogIds.value.splice(idx, 1)
+}
+
+// -----------------------------------------------------------------------
+// Proposal context label
+// -----------------------------------------------------------------------
+function contextLabel(p: Proposal): string {
+  if (p.lead_id) return `Příležitost`
+  if (p.customer_id) return `Kontakt`
+  if (p.realization_id) return `Realizace`
+  if (p.management_id) return `Správa`
+  return '—'
+}
+
+// -----------------------------------------------------------------------
 // Send & public link
 // -----------------------------------------------------------------------
 async function sendProposal() {
@@ -407,10 +504,11 @@ function formatDate(d: string) {
 onMounted(async () => {
   await loadProposals()
   await loadTemplates()
+  await loadCatalogItems()
   const pid = proposalId.value
   if (pid) {
     await loadProposal(pid)
-  } else if (proposals.value.length > 0) {
+  } else if (!isStandalone.value && proposals.value.length > 0) {
     const first = proposals.value[0]
     if (first) {
       await loadProposal(first.id)
@@ -437,17 +535,33 @@ watch(
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Back -->
     <RouterLink
+      v-if="isStandalone"
+      to="/app/proposals"
+      class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4"
+    >
+      {{ t('proposals.backToProposals') }}
+    </RouterLink>
+    <RouterLink
+      v-else
       :to="`/app/opportunities/${leadId}`"
       class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4"
     >
       ← Back to Lead
     </RouterLink>
 
+    <!-- Context badge for standalone proposals -->
+    <div v-if="isStandalone && currentProposal" class="mb-4">
+      <span class="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full">
+        <span>{{ t('proposals.linkedTo') }}:</span>
+        <strong>{{ contextLabel(currentProposal) }}</strong>
+      </span>
+    </div>
+
     <div class="flex gap-6">
       <!-- ----------------------------------------------------------------
-           LEFT SIDEBAR: proposal list
+           LEFT SIDEBAR: proposal list (only for lead-scoped view)
       ---------------------------------------------------------------- -->
-      <aside class="w-64 flex-shrink-0">
+      <aside v-if="!isStandalone" class="w-64 flex-shrink-0">
         <div class="bg-white rounded-2xl border border-gray-100 p-3">
           <div class="flex items-center justify-between mb-2 px-1">
             <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Proposals</h2>
@@ -599,10 +713,49 @@ watch(
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Line Items</h3>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      @click="showCatalog = !showCatalog; showApplyTemplate = false"
+                    >{{ t('proposals.addFromCatalog') }}</button>
+                    <button
+                      class="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      @click="showApplyTemplate = !showApplyTemplate; showCatalog = false"
+                    >Apply Template</button>
+                  </div>
+                </div>
+
+                <!-- Catalog panel -->
+                <div v-if="showCatalog" class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                  <p class="text-xs text-gray-500 mb-2">{{ t('proposals.catalogItemsHint') }}</p>
+                  <div v-if="catalogItems.length === 0" class="text-xs text-gray-400">
+                    Katalog je prázdný. Přidejte položky v Nastavení → Katalog nabídek.
+                  </div>
+                  <div v-else class="space-y-1 mb-3">
+                    <label
+                      v-for="ci in catalogItems"
+                      :key="ci.id"
+                      class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        :value="ci.id"
+                        :checked="selectedCatalogIds.includes(ci.id)"
+                        class="rounded"
+                        @change="toggleCatalogItem(ci.id)"
+                      />
+                      <span class="text-sm flex-1">{{ ci.description }}</span>
+                      <span class="text-xs text-gray-400">{{ fmt(ci.unit_price) }} / {{ ci.quantity }}</span>
+                    </label>
+                  </div>
                   <button
-                    class="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                    @click="showApplyTemplate = !showApplyTemplate"
-                  >Apply Template</button>
+                    v-if="catalogItems.length > 0"
+                    class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                    :disabled="addingFromCatalog || selectedCatalogIds.length === 0"
+                    @click="addFromCatalog"
+                  >
+                    {{ addingFromCatalog ? 'Přidávám…' : 'Přidat vybrané' }}
+                  </button>
                 </div>
 
                 <!-- Apply template panel -->

@@ -93,6 +93,7 @@ const activityIcons: Record<string, string> = {
   comment: '💬', email_out: '📧', email_in: '📥', call: '📞',
   meeting: '🤝', status_change: '🔄', file_upload: '📎',
   task_assigned: '📋', task_completed: '✅', task: '📋',
+  proposal_created: '📄', proposal_accepted: '✅', proposal_rejected: '❌',
 }
 
 // All action types shown in the unified picker (activity types + task creation)
@@ -605,6 +606,13 @@ function getTabLabel(tab: string): string {
               <p v-if="act.type === 'status_change'" class="text-sm text-gray-500 mt-0.5">
                 {{ (act.metadata as Record<string, string>).old_status }} → {{ (act.metadata as Record<string, string>).new_status }}
               </p>
+              <RouterLink
+                v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
+                :to="`/app/proposals/${act.metadata.proposal_id}`"
+                class="text-xs text-red-600 hover:text-red-700 mt-0.5 inline-block"
+              >
+                Zobrazit nabídku →
+              </RouterLink>
             </div>
           </div>
         </div>

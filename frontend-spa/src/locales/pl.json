@@ -3,6 +3,7 @@
     "overview": "Przegląd",
     "leads": "Szanse",
     "customers": "Książka adresowa",
+    "proposals": "Oferty",
     "tasks": "Zadania",
     "calendar": "Kalendarz",
     "team": "Zespół",
@@ -801,5 +802,30 @@
     "edit": "Edytuj",
     "delete": "Usuń",
     "templateName": "Nazwa szablonu"
+  },
+  "proposals": {
+    "title": "Oferty",
+    "newProposal": "+ Nowa oferta",
+    "allProposals": "Wszystkie oferty",
+    "noProposals": "Brak ofert",
+    "noProposalsHint": "Utwórz pierwszą ofertę za pomocą przycisku powyżej.",
+    "createProposal": "Utwórz ofertę",
+    "createFromReport": "Utwórz ofertę z raportu",
+    "selectContext": "Wybierz kontekst oferty",
+    "contextLead": "Szansa",
+    "contextCustomer": "Kontakt",
+    "contextRealization": "Realizacja",
+    "contextManagement": "Zarządzanie",
+    "contextNone": "Bez powiązania",
+    "catalogItems": "Pozycje katalogu",
+    "catalogItemsHint": "Predefiniowane pozycje do szybkiego dodawania do ofert.",
+    "addCatalogItem": "+ Dodaj pozycję do katalogu",
+    "addFromCatalog": "Dodaj z katalogu",
+    "linkedTo": "Powiązane z",
+    "status": "Status",
+    "total": "Łącznie",
+    "currency": "Waluta",
+    "expiryDate": "Data ważności",
+    "backToProposals": "← Oferty"
   }
 }
