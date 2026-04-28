@@ -9,6 +9,7 @@ import {
 } from '@/stores/management'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
+import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,10 +104,6 @@ function formatDateTime(dt: string | null) {
 // ---------------------------------------------------------------------------
 // Documents
 // ---------------------------------------------------------------------------
-interface DocumentOut {
-  id: string; name: string; content_type: string; size_bytes: number
-  uploaded_by_name: string | null; file_url: string; created_at: string
-}
 const documents = ref<DocumentOut[]>([])
 const docsLoading = ref(false)
 const docsUploading = ref(false)
@@ -145,21 +142,6 @@ async function deleteDocument() {
   deleteDocId.value = null
   const res = await api.delete(`/api/v1/erp/documents/${id}`)
   if (res.ok) documents.value = documents.value.filter(d => d.id !== id)
-}
-
-function docFileIcon(ct: string): string {
-  if (ct.startsWith('image/')) return '🖼️'
-  if (ct === 'application/pdf') return '📄'
-  if (ct.includes('word') || ct.includes('document')) return '📝'
-  if (ct.includes('excel') || ct.includes('spreadsheet')) return '📊'
-  return '📎'
-}
-
-function fmtDocBytes(b: number): string {
-  if (b === 0) return '0 B'
-  const k = 1024; const sz = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(b) / Math.log(k))
-  return `${parseFloat((b / Math.pow(k, i)).toFixed(1))} ${sz[i]}`
 }
 </script>
 

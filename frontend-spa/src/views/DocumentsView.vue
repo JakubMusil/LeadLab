@@ -1,40 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
-
-const authStore = useAuthStore()
+import { type DocumentOut, docFileIcon, docFileIconColor, fmtDocBytes } from '@/types/documents'
 const toast = useToast()
 const { t } = useI18n()
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-interface DocumentOut {
-  id: string
-  firm_id: string
-  name: string
-  content_type: string
-  size_bytes: number
-  lead_id: string | null
-  lead_title: string | null
-  customer_id: string | null
-  customer_name: string | null
-  realization_id: string | null
-  realization_title: string | null
-  management_id: string | null
-  management_title: string | null
-  task_id: string | null
-  task_title: string | null
-  proposal_id: string | null
-  proposal_title: string | null
-  uploaded_by_id: string | null
-  uploaded_by_name: string | null
-  file_url: string
-  created_at: string
-}
 
 // ---------------------------------------------------------------------------
 // State
@@ -58,14 +29,6 @@ const filtered = computed(() => {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('cs-CZ', {
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -80,26 +43,6 @@ function entityLabel(doc: DocumentOut): string {
   if (doc.task_title) return doc.task_title
   if (doc.proposal_title) return doc.proposal_title
   return t('documents.noEntity')
-}
-
-function fileIcon(contentType: string): string {
-  if (contentType.startsWith('image/')) return '🖼️'
-  if (contentType === 'application/pdf') return '📄'
-  if (contentType.includes('word') || contentType.includes('document')) return '📝'
-  if (contentType.includes('excel') || contentType.includes('spreadsheet')) return '📊'
-  if (contentType.includes('powerpoint') || contentType.includes('presentation')) return '📋'
-  if (contentType.includes('zip') || contentType.includes('archive')) return '🗜️'
-  return '📎'
-}
-
-function fileIconColor(contentType: string): string {
-  if (contentType.startsWith('image/')) return 'text-purple-500'
-  if (contentType === 'application/pdf') return 'text-red-500'
-  if (contentType.includes('word') || contentType.includes('document')) return 'text-blue-600'
-  if (contentType.includes('excel') || contentType.includes('spreadsheet')) return 'text-green-600'
-  if (contentType.includes('powerpoint') || contentType.includes('presentation')) return 'text-orange-500'
-  if (contentType.includes('zip') || contentType.includes('archive')) return 'text-yellow-600'
-  return 'text-gray-500'
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +187,7 @@ onMounted(loadDocuments)
             <!-- Name + icon -->
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
-                <span :class="['text-xl', fileIconColor(doc.content_type)]">{{ fileIcon(doc.content_type) }}</span>
+                <span :class="['text-xl', docFileIconColor(doc.content_type)]">{{ docFileIcon(doc.content_type) }}</span>
                 <a
                   :href="doc.file_url"
                   target="_blank"
@@ -259,7 +202,7 @@ onMounted(loadDocuments)
             </td>
             <!-- Size -->
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
-              {{ formatBytes(doc.size_bytes) }}
+              {{ fmtDocBytes(doc.size_bytes) }}
             </td>
             <!-- Uploaded by -->
             <td class="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
