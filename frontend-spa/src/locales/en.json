@@ -15,7 +15,8 @@
     "timesheets": "Timesheet",
     "reports": "Reports",
     "realizations": "Realizations",
-    "management": "Management"
+    "management": "Management",
+    "documents": "Documents"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -908,5 +909,33 @@
     "create": "Create",
     "cancel": "Cancel",
     "noProposalsForEntity": "No proposals for this entity."
+  },
+  "documents": {
+    "title": "Documents",
+    "subtitle": "Central file management — documents linked to any CRM entity.",
+    "upload": "Upload",
+    "uploading": "Uploading…",
+    "uploadSuccess": "Uploaded {count} file(s)",
+    "download": "Download",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this document? This action cannot be undone.",
+    "deleteSuccess": "Document deleted",
+    "searchPlaceholder": "Search documents…",
+    "loading": "Loading documents…",
+    "empty": "No documents yet",
+    "emptyHint": "Upload files by clicking the Upload button above.",
+    "noResults": "No documents found",
+    "noEntity": "Standalone",
+    "colName": "Name",
+    "colEntity": "Entity",
+    "colSize": "Size",
+    "colUploadedBy": "Uploaded by",
+    "colDate": "Date",
+    "tab": "Documents"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save"
   }
 }

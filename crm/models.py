@@ -2531,3 +2531,109 @@ class Management(TenantModel):
 
     def __str__(self):
         return f"{self.title} [{self.get_status_display()}]"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.3 — Documents (centralised file management)
+# ---------------------------------------------------------------------------
+
+def _document_upload_to(instance, filename):
+    """Store documents under media/documents/<firm_id>/<filename>."""
+    return f"documents/{instance.firm_id}/{filename}"
+
+
+class Document(TenantModel):
+    """
+    A file attached to any CRM entity or existing standalone.
+
+    A Document can be linked to any combination of Lead, Customer, Realization,
+    Management, Task, or Proposal — or exist as a standalone firm document.
+
+    ``name``          — display name (defaults to original filename)
+    ``file``          — the uploaded file (stored in MEDIA_ROOT/documents/)
+    ``content_type``  — MIME type detected at upload time
+    ``size_bytes``    — file size in bytes
+    ``uploaded_by``   — the team member who uploaded the file
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Optional entity links — a document may be linked to any combination
+    lead = models.ForeignKey(
+        Lead,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+    realization = models.ForeignKey(
+        Realization,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+    management = models.ForeignKey(
+        Management,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+    task = models.ForeignKey(
+        Task,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+    proposal = models.ForeignKey(
+        "Proposal",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="documents",
+    )
+
+    # Authorship
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="uploaded_documents",
+    )
+
+    # File data
+    name = models.CharField(
+        max_length=255,
+        help_text="Display name for the document (defaults to original filename).",
+    )
+    file = models.FileField(upload_to=_document_upload_to)
+    content_type = models.CharField(max_length=100, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "document"
+        verbose_name_plural = "documents"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "-created_at"]),
+            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "customer"]),
+            models.Index(fields=["firm", "realization"]),
+            models.Index(fields=["firm", "management"]),
+            models.Index(fields=["firm", "task"]),
+        ]
+
+    def __str__(self):
+        return self.name

@@ -156,6 +156,11 @@ const router = createRouter({
           meta: { title: 'Reports' },
         },
         {
+          path: 'documents',
+          component: () => import('@/views/DocumentsView.vue'),
+          meta: { title: 'Documents' },
+        },
+        {
           path: 'superadmin',
           component: () => import('@/views/SuperAdminView.vue'),
           meta: { title: 'Super Admin' },

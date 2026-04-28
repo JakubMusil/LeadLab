@@ -30,6 +30,7 @@ import {
   DocumentChartBarIcon,
   WrenchScrewdriverIcon,
   ShieldExclamationIcon,
+  FolderOpenIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -174,6 +175,7 @@ const navSections = computed(() => [
     items: [
       { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
       { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
+      { label: t('nav.documents'), icon: FolderOpenIcon, path: '/app/documents' },
     ],
   },
   {
