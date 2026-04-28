@@ -179,7 +179,7 @@ def list_realizations(
     customer_id: Optional[str] = None,
 ):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     qs = (
         Realization.objects.filter(firm=firm)
@@ -201,7 +201,7 @@ def list_realizations(
 @realization_router.post("/realizations", response=RealizationOut, auth=django_auth)
 def create_realization(request, payload: RealizationIn):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
     require_active_subscription(firm)
 
     lead = None
@@ -238,7 +238,7 @@ def create_realization(request, payload: RealizationIn):
 @realization_router.get("/realizations/{realization_id}", response=RealizationOut, auth=django_auth)
 def get_realization(request, realization_id: str):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).select_related(
         "lead", "customer", "assigned_to"
@@ -253,7 +253,7 @@ def get_realization(request, realization_id: str):
 @realization_router.patch("/realizations/{realization_id}", response=RealizationOut, auth=django_auth)
 def update_realization(request, realization_id: str, payload: RealizationPatch):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).select_related(
         "lead", "customer", "assigned_to"
@@ -303,7 +303,7 @@ def update_realization(request, realization_id: str, payload: RealizationPatch):
 @realization_router.delete("/realizations/{realization_id}", response={204: None}, auth=django_auth)
 def delete_realization(request, realization_id: str):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).first()
     if not realization:
@@ -326,7 +326,7 @@ def delete_realization(request, realization_id: str):
 )
 def list_milestones(request, realization_id: str):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).first()
     if not realization:
@@ -355,7 +355,7 @@ def list_milestones(request, realization_id: str):
 )
 def create_milestone(request, realization_id: str, payload: MilestoneIn):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).first()
     if not realization:
@@ -388,7 +388,7 @@ def create_milestone(request, realization_id: str, payload: MilestoneIn):
 )
 def update_milestone(request, realization_id: str, milestone_id: str, payload: MilestonePatch):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).first()
     if not realization:
@@ -428,7 +428,7 @@ def update_milestone(request, realization_id: str, milestone_id: str, payload: M
 )
 def delete_milestone(request, realization_id: str, milestone_id: str):
     firm = _firm(request)
-    require_membership(request.user, firm)
+    require_membership(request)
 
     realization = Realization.objects.filter(firm=firm, id=realization_id).first()
     if not realization:
