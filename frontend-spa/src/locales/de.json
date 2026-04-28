@@ -13,7 +13,8 @@
     "taskTemplates": "Aufgabenvorlagen",
     "timesheets": "Zeiterfassung",
     "reports": "Berichte",
-    "realizations": "Realisierungen"
+    "realizations": "Realisierungen",
+    "management": "Verwaltung"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",

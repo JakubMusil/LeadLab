@@ -29,6 +29,7 @@ import {
   ClockIcon,
   DocumentChartBarIcon,
   WrenchScrewdriverIcon,
+  ShieldExclamationIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -99,6 +100,18 @@ function onRealizationDeleted(payload: Record<string, unknown>) {
   notifStore.pushNotification('realization.deleted', payload)
 }
 
+function onManagementCreated(payload: Record<string, unknown>) {
+  notifStore.pushNotification('management.created', payload)
+}
+
+function onManagementUpdated(payload: Record<string, unknown>) {
+  notifStore.pushNotification('management.updated', payload)
+}
+
+function onManagementDeleted(payload: Record<string, unknown>) {
+  notifStore.pushNotification('management.deleted', payload)
+}
+
 onMounted(async () => {
   if (!authStore.user) await authStore.fetchMe()
   if (firmStore.firms.length === 0) await firmStore.fetchFirms()
@@ -113,6 +126,9 @@ onMounted(async () => {
   on('realization.created', onRealizationCreated)
   on('realization.updated', onRealizationUpdated)
   on('realization.deleted', onRealizationDeleted)
+  on('management.created', onManagementCreated)
+  on('management.updated', onManagementUpdated)
+  on('management.deleted', onManagementDeleted)
 })
 
 onUnmounted(() => {
@@ -124,6 +140,9 @@ onUnmounted(() => {
   off('realization.created', onRealizationCreated)
   off('realization.updated', onRealizationUpdated)
   off('realization.deleted', onRealizationDeleted)
+  off('management.created', onManagementCreated)
+  off('management.updated', onManagementUpdated)
+  off('management.deleted', onManagementDeleted)
 })
 
 // Keyboard shortcuts (no "new opportunity" trigger here – LeadsView handles that)
@@ -143,6 +162,7 @@ const navSections = computed(() => [
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
       { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
+      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
       { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },

@@ -249,13 +249,13 @@ Výrobní Kanban aktivovaný po vyhraní Příležitosti.
 
 Post-realizační fáze (SLA, záruky, retence).
 
-- [ ] **Management model** — Django model s vazbou na `Realization` (origin), `Customer`, typem (SLA/Záruka/Retence/Péče), stavem a termínem expirace
-- [ ] **REST API** — CRUD (`/api/v1/crm/management`)
-- [ ] **SLA tracking** — výpočet zbývajícího času; barevné indikátory (zelená/žlutá/červená)
+- [x] **Management model** — Django model s vazbou na `Realization` (origin), `Customer`, typem (SLA/Záruka/Retence/Péče), stavem a termínem expirace
+- [x] **REST API** — CRUD (`/api/v1/crm/management`)
+- [x] **SLA tracking** — výpočet zbývajícího času; barevné indikátory (zelená/žlutá/červená)
 - [ ] **Automatizace** — trigger „SLA expiruje za N dní → eskaluj / pošli notifikaci"
-- [ ] **Service Kanban view** — `/app/management`; 4-stavový kanban
-- [ ] **Detail Správy** — záložky: Přehled / Úkoly / Aktivity / Dokumenty
-- [ ] **Navigace** — přidat „Správa" do CRM sekce sidebaru; aktualizovat i18n
+- [x] **Service Kanban view** — `/app/management`; 4-stavový kanban
+- [x] **Detail Správy** — záložky: Přehled / Úkoly / Aktivity
+- [x] **Navigace** — přidat „Správa" do CRM sekce sidebaru; aktualizovat i18n
 - [ ] Testy
 
 ---

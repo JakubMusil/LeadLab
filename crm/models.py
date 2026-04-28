@@ -2367,3 +2367,99 @@ class Milestone(models.Model):
     def __str__(self):
         done = "✓" if self.is_completed else "○"
         return f"{done} {self.name} ({self.date})"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.2 — Management (post-realization service/SLA tracking)
+# ---------------------------------------------------------------------------
+
+class ManagementType(models.TextChoices):
+    SLA = "sla", "SLA"
+    WARRANTY = "warranty", "Záruka"
+    RETENTION = "retention", "Retence"
+    CARE = "care", "Péče"
+
+
+class ManagementStatus(models.TextChoices):
+    OPEN = "open", "Otevřeno"
+    IN_PROGRESS = "in_progress", "Řeší se"
+    WAITING = "waiting", "Čeká na zákazníka"
+    CLOSED = "closed", "Uzavřeno"
+
+
+class Management(TenantModel):
+    """
+    Post-realization service entity.  Tracks SLA, warranties, retention and
+    ongoing customer care after a Realization completes.
+    Realization → Management.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Origin — completed realization (nullable for manually created records)
+    realization = models.ForeignKey(
+        Realization,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="management_records",
+        help_text="The realization that spawned this management record.",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="management_records",
+    )
+
+    # Content
+    title = models.CharField(max_length=255)
+    notes = models.TextField(blank=True)
+
+    # Type and workflow state
+    type = models.CharField(
+        max_length=20,
+        choices=ManagementType.choices,
+        default=ManagementType.CARE,
+        db_index=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ManagementStatus.choices,
+        default=ManagementStatus.OPEN,
+        db_index=True,
+    )
+
+    # Team
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_management",
+    )
+
+    # SLA / expiry tracking
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="SLA or warranty expiry date/time.  Used for colour indicators and escalation triggers.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "management"
+        verbose_name_plural = "management records"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "status"]),
+            models.Index(fields=["firm", "type"]),
+            models.Index(fields=["firm", "assigned_to"]),
+            models.Index(fields=["firm", "realization"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} [{self.get_status_display()}]"
