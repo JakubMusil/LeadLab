@@ -7,6 +7,7 @@
  */
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from '@/composables/useI18n'
 import { useLeadsStore } from '@/stores/leads'
 import { useCustomersStore } from '@/stores/customers'
 import { api } from '@/api'
@@ -32,6 +33,7 @@ interface DocumentOut {
 const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
+const { t } = useI18n()
 const leadsStore = useLeadsStore()
 const customersStore = useCustomersStore()
 
@@ -40,16 +42,16 @@ const inputRef = ref<HTMLInputElement | null>(null)
 const selectedIndex = ref(0)
 const documents = ref<DocumentOut[]>([])
 
-const NAV_COMMANDS: CommandItem[] = [
-  { id: 'nav-dashboard', label: 'Dashboard', icon: '⊞', category: 'navigation', action: () => router.push('/app/dashboard') },
-  { id: 'nav-opportunities', label: 'Opportunities', icon: '◎', category: 'navigation', action: () => router.push('/app/opportunities') },
-  { id: 'nav-directory', label: 'Directory', icon: '👥', category: 'navigation', action: () => router.push('/app/directory') },
-  { id: 'nav-calendar', label: 'Calendar', icon: '📅', category: 'navigation', action: () => router.push('/app/calendar') },
-  { id: 'nav-team', label: 'Team', icon: '🤝', category: 'navigation', action: () => router.push('/app/team') },
-  { id: 'nav-analytics', label: 'Analytics', icon: '📊', category: 'navigation', action: () => router.push('/app/analytics') },
-  { id: 'nav-settings', label: 'Settings', icon: '⚙', category: 'navigation', action: () => router.push('/app/settings') },
-  { id: 'nav-documents', label: 'Documents', icon: '📁', category: 'navigation', action: () => router.push('/app/documents') },
-]
+const navCommands = computed<CommandItem[]>(() => [
+  { id: 'nav-dashboard', label: t('nav.overview'), icon: '⊞', category: 'navigation', action: () => router.push('/app/dashboard') },
+  { id: 'nav-opportunities', label: t('nav.leads'), icon: '◎', category: 'navigation', action: () => router.push('/app/opportunities') },
+  { id: 'nav-directory', label: t('nav.customers'), icon: '👥', category: 'navigation', action: () => router.push('/app/directory') },
+  { id: 'nav-calendar', label: t('nav.calendar'), icon: '📅', category: 'navigation', action: () => router.push('/app/calendar') },
+  { id: 'nav-team', label: t('nav.team'), icon: '🤝', category: 'navigation', action: () => router.push('/app/team') },
+  { id: 'nav-analytics', label: t('nav.analytics'), icon: '📊', category: 'navigation', action: () => router.push('/app/analytics') },
+  { id: 'nav-settings', label: t('nav.settings'), icon: '⚙', category: 'navigation', action: () => router.push('/app/settings') },
+  { id: 'nav-documents', label: t('nav.documents'), icon: '📁', category: 'navigation', action: () => router.push('/app/documents') },
+])
 
 const leadItems = computed<CommandItem[]>(() =>
   leadsStore.leads.slice(0, 50).map((l) => ({
@@ -66,7 +68,7 @@ const customerItems = computed<CommandItem[]>(() =>
   customersStore.customers.slice(0, 50).map((c) => ({
     id: `customer-${c.id}`,
     label: `${c.first_name} ${c.last_name}`.trim(),
-    description: c.company_name || (c.type === 'company' ? 'Company' : 'Contact'),
+    description: c.company_name || (c.type === 'company' ? t('commandPalette.company') : t('commandPalette.contact')),
     icon: c.type === 'company' ? '🏢' : '👤',
     category: 'customer' as const,
     action: () => router.push(`/app/directory/${c.id}`),
@@ -77,7 +79,7 @@ const documentItems = computed<CommandItem[]>(() =>
   documents.value.slice(0, 30).map((doc) => ({
     id: `doc-${doc.id}`,
     label: doc.name,
-    description: `Document · ${doc.lead_title ?? doc.customer_name ?? doc.realization_title ?? 'Unlinked'}`,
+    description: `Document · ${doc.lead_title ?? doc.customer_name ?? doc.realization_title ?? t('commandPalette.unlinked')}`,
     icon: '📄',
     category: 'document' as const,
     action: () => router.push('/app/documents'),
@@ -100,7 +102,7 @@ function getRecent(): CommandItem[] {
     const raw = localStorage.getItem(RECENT_KEY)
     if (!raw) return []
     const ids: string[] = JSON.parse(raw)
-    const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value, ...documentItems.value]
+    const all = [...navCommands.value, ...leadItems.value, ...customerItems.value, ...documentItems.value]
     return ids
       .map((id) => all.find((i) => i.id === id))
       .filter((i): i is CommandItem => !!i)
@@ -137,9 +139,9 @@ const filteredItems = computed<CommandItem[]>(() => {
   if (!q) {
     const recent = getRecent()
     if (recent.length) return recent
-    return NAV_COMMANDS.slice(0, 7)
+    return navCommands.value.slice(0, 7)
   }
-  const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value, ...documentItems.value]
+  const all = [...navCommands.value, ...leadItems.value, ...customerItems.value, ...documentItems.value]
   return all.filter((item) => fuzzyMatch(q, item.label) || fuzzyMatch(q, item.description ?? '')).slice(0, 12)
 })
 
@@ -194,7 +196,7 @@ onMounted(async () => {
           ref="inputRef"
           v-model="searchQuery"
           type="text"
-          placeholder="Search leads, customers, or navigate…"
+          :placeholder="t('commandPalette.placeholder')"
           class="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-gray-400 text-sm"
           @keydown="onKeydown"
           aria-autocomplete="list"
@@ -212,7 +214,7 @@ onMounted(async () => {
         class="max-h-80 overflow-y-auto py-1"
       >
         <li v-if="filteredItems.length === 0" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          No results for "{{ searchQuery }}"
+          {{ t('commandPalette.noResults', { query: searchQuery }) }}
         </li>
 
         <li

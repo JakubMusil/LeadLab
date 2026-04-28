@@ -916,5 +916,42 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "save": "Save"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Please try again.",
+    "retry": "Try again"
+  },
+  "timerModal": {
+    "title": "Start timer",
+    "linkTo": "Link to (optional)",
+    "none": "None",
+    "opportunity": "Opportunity",
+    "contact": "Contact",
+    "taskEntity": "Task",
+    "searchLabel": "Search {type}",
+    "searchPlaceholder": "Search {type}…",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "What are you working on?",
+    "billable": "Billable",
+    "cancel": "Cancel",
+    "start": "Start timer"
+  },
+  "timerWidget": {
+    "saved": "Time entry saved",
+    "saveFailed": "Failed to save time entry",
+    "stopAndSave": "Stop and save",
+    "stopTimer": "Stop timer",
+    "discard": "Discard",
+    "discardTimer": "Discard timer",
+    "trackTime": "Track time",
+    "startTimer": "Start timer"
+  },
+  "commandPalette": {
+    "placeholder": "Search leads, customers, or navigate…",
+    "noResults": "No results for \"{query}\"",
+    "company": "Company",
+    "contact": "Contact",
+    "unlinked": "Unlinked"
   }
 }

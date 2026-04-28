@@ -916,5 +916,42 @@
     "cancel": "Abbrechen",
     "delete": "Löschen",
     "save": "Speichern"
+  },
+  "errorBoundary": {
+    "title": "Etwas ist schiefgelaufen",
+    "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "retry": "Erneut versuchen"
+  },
+  "timerModal": {
+    "title": "Timer starten",
+    "linkTo": "Verknüpfen mit (optional)",
+    "none": "Keine Verknüpfung",
+    "opportunity": "Chance",
+    "contact": "Kontakt",
+    "taskEntity": "Aufgabe",
+    "searchLabel": "{type} suchen",
+    "searchPlaceholder": "{type} suchen…",
+    "description": "Beschreibung (optional)",
+    "descriptionPlaceholder": "Woran arbeiten Sie?",
+    "billable": "Abrechenbar",
+    "cancel": "Abbrechen",
+    "start": "Timer starten"
+  },
+  "timerWidget": {
+    "saved": "Zeiteintrag gespeichert",
+    "saveFailed": "Zeiteintrag konnte nicht gespeichert werden",
+    "stopAndSave": "Stoppen und speichern",
+    "stopTimer": "Timer stoppen",
+    "discard": "Verwerfen",
+    "discardTimer": "Timer verwerfen",
+    "trackTime": "Zeit erfassen",
+    "startTimer": "Timer starten"
+  },
+  "commandPalette": {
+    "placeholder": "Chancen, Kontakte suchen oder navigieren…",
+    "noResults": "Keine Ergebnisse für „{query}\u201d",
+    "company": "Unternehmen",
+    "contact": "Kontakt",
+    "unlinked": "Ohne Verknüpfung"
   }
 }

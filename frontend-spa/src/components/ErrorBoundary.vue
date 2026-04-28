@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onErrorCaptured } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 
 const error = ref<Error | null>(null)
+
+const { t } = useI18n()
 
 const props = defineProps<{ retry?: () => void }>()
 
@@ -23,14 +26,14 @@ function handleRetry() {
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
       </svg>
     </div>
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Something went wrong</h2>
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('errorBoundary.title') }}</h2>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1 max-w-sm">{{ error.message }}</p>
-    <p class="text-xs text-gray-400 dark:text-gray-500 mb-6 max-w-sm">An unexpected error occurred. Please try again.</p>
+    <p class="text-xs text-gray-400 dark:text-gray-500 mb-6 max-w-sm">{{ t('errorBoundary.message') }}</p>
     <button
       class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
       @click="handleRetry"
     >
-      Try again
+      {{ t('errorBoundary.retry') }}
     </button>
   </div>
   <slot v-else />

@@ -917,5 +917,42 @@
     "cancel": "Zrušit",
     "delete": "Smazat",
     "save": "Uložit"
+  },
+  "errorBoundary": {
+    "title": "Něco se pokazilo",
+    "message": "Nastala neočekávaná chyba. Zkuste to prosím znovu.",
+    "retry": "Zkusit znovu"
+  },
+  "timerModal": {
+    "title": "Spustit časovač",
+    "linkTo": "Propojit s (volitelné)",
+    "none": "Bez propojení",
+    "opportunity": "Příležitost",
+    "contact": "Kontakt",
+    "taskEntity": "Úkol",
+    "searchLabel": "Hledat {type}",
+    "searchPlaceholder": "Hledat {type}…",
+    "description": "Popis (volitelné)",
+    "descriptionPlaceholder": "Na čem pracujete?",
+    "billable": "Fakturovatelné",
+    "cancel": "Zrušit",
+    "start": "Spustit časovač"
+  },
+  "timerWidget": {
+    "saved": "Časový záznam uložen",
+    "saveFailed": "Nepodařilo se uložit časový záznam",
+    "stopAndSave": "Zastavit a uložit",
+    "stopTimer": "Zastavit časovač",
+    "discard": "Zahodit",
+    "discardTimer": "Zahodit časovač",
+    "trackTime": "Sledovat čas",
+    "startTimer": "Spustit časovač"
+  },
+  "commandPalette": {
+    "placeholder": "Hledat příležitosti, kontakty nebo navigovat…",
+    "noResults": "Žádné výsledky pro „{query}\u201d",
+    "company": "Společnost",
+    "contact": "Kontakt",
+    "unlinked": "Bez vazby"
   }
 }

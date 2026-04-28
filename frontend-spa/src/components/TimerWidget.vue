@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useTimerStore } from '@/stores/timer'
+import { useI18n } from '@/composables/useI18n'
 import TimerContextModal from '@/components/TimerContextModal.vue'
 import type { TimerContext } from '@/stores/timer'
 
 const timerStore = useTimerStore()
+const { t } = useI18n()
 const modalOpen = ref(false)
 const stopLoading = ref(false)
 const toast = ref<string | null>(null)
@@ -29,9 +31,9 @@ async function onStop() {
   const result = await timerStore.stop()
   stopLoading.value = false
   if (result.ok) {
-    showToast('Time entry saved')
+    showToast(t('timerWidget.saved'))
   } else {
-    showToast(result.error ?? 'Failed to save time entry')
+    showToast(result.error ?? t('timerWidget.saveFailed'))
   }
 }
 
@@ -84,9 +86,9 @@ function onReset() {
         <button
           class="p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition-colors"
           :disabled="stopLoading"
-          title="Stop and save"
+          :title="t('timerWidget.stopAndSave')"
           @click="onStop"
-          aria-label="Stop timer"
+          :aria-label="t('timerWidget.stopTimer')"
         >
           <svg v-if="!stopLoading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <rect x="5" y="5" width="10" height="10" rx="1" />
@@ -99,9 +101,9 @@ function onReset() {
         <!-- Discard -->
         <button
           class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Discard"
+          :title="t('timerWidget.discard')"
           @click="onReset"
-          aria-label="Discard timer"
+          :aria-label="t('timerWidget.discardTimer')"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -115,12 +117,12 @@ function onReset() {
       v-else
       class="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
       @click="onStartClick"
-      aria-label="Start timer"
+      :aria-label="t('timerWidget.startTimer')"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
       </svg>
-      Track time
+      {{ t('timerWidget.trackTime') }}
     </button>
   </div>
 
