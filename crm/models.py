@@ -33,6 +33,11 @@ class TenantModel(models.Model):
 # Enumerations
 # ---------------------------------------------------------------------------
 
+class ContactType(models.TextChoices):
+    PERSON = "person", "Person"
+    COMPANY = "company", "Company"
+
+
 class LeadStatus(models.TextChoices):
     NEW = "new", "New"
     CONTACTED = "contacted", "Contacted"
@@ -88,14 +93,42 @@ class Customer(TenantModel):
     ``tags`` is stored as a JSONField (list of strings) for maximum database
     compatibility while still supporting PostgreSQL's native array operators
     when accessed via the Django ORM.
+
+    ``type`` distinguishes between individual persons and companies.
+    A person contact can optionally reference their employer via ``company``.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(
+        max_length=10,
+        choices=ContactType.choices,
+        default=ContactType.PERSON,
+        db_index=True,
+    )
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150, blank=True)
     email = models.EmailField(blank=True, db_index=True)
     phone = models.CharField(max_length=50, blank=True)
     company_name = models.CharField(max_length=255, blank=True)
+    # For person contacts — links them to a company contact within the same firm
+    company = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="employees",
+        help_text="For person contacts: the company they work at.",
+    )
+    # Business identifiers (primarily for company contacts)
+    ico = models.CharField(max_length=20, blank=True, help_text="IČO — company registration number")
+    dic = models.CharField(max_length=20, blank=True, help_text="DIČ — tax identification number")
+    # Address
+    address_street = models.CharField(max_length=255, blank=True)
+    address_city = models.CharField(max_length=100, blank=True)
+    address_zip = models.CharField(max_length=20, blank=True)
+    address_country = models.CharField(max_length=100, blank=True)
+    # Web presence
+    website = models.URLField(max_length=500, blank=True)
     tags = models.JSONField(
         default=list,
         blank=True,

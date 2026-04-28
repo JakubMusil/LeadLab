@@ -6,11 +6,20 @@ import { extractErrorMessage } from '@/api/errors'
 export interface CustomerOut {
   id: string
   firm_id: string
+  type: 'person' | 'company'
   first_name: string
   last_name: string
   email: string
   phone: string
   company_name: string
+  company_id: string | null
+  ico: string
+  dic: string
+  address_street: string
+  address_city: string
+  address_zip: string
+  address_country: string
+  website: string
   tags: string[]
   metadata: Record<string, string>
   created_at: string
@@ -18,11 +27,20 @@ export interface CustomerOut {
 }
 
 export interface CustomerIn {
+  type?: 'person' | 'company'
   first_name: string
   last_name?: string
   email?: string
   phone?: string
   company_name?: string
+  company_id?: string | null
+  ico?: string
+  dic?: string
+  address_street?: string
+  address_city?: string
+  address_zip?: string
+  address_country?: string
+  website?: string
   tags?: string[]
   metadata?: Record<string, string>
 }
@@ -37,12 +55,13 @@ export const useCustomersStore = defineStore('customers', () => {
   const pageSize = ref(20)
   const hasMore = ref(true)
 
-  async function fetchCustomers(opts: { search?: string; page?: number; append?: boolean } = {}) {
+  async function fetchCustomers(opts: { search?: string; page?: number; append?: boolean; type?: string } = {}) {
     loading.value = true
     try {
       const params = new URLSearchParams()
       if (opts.search !== undefined) params.set('search', opts.search)
       else if (search.value) params.set('search', search.value)
+      if (opts.type) params.set('type', opts.type)
       const p = opts.page ?? 1
       params.set('page', String(p))
       params.set('page_size', String(pageSize.value))
@@ -77,6 +96,12 @@ export const useCustomersStore = defineStore('customers', () => {
     }
   }
 
+  async function fetchCompanyEmployees(companyId: string): Promise<{ ok: boolean; data?: CustomerOut[]; error?: string }> {
+    const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory/${companyId}/employees`)
+    if (res.ok) return { ok: true, data: res.data }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load employees.') }
+  }
+
   async function createCustomer(payload: CustomerIn): Promise<{ ok: boolean; data?: CustomerOut; error?: string }> {
     const res = await api.post<CustomerOut>('/api/v1/crm/directory', payload)
     if (res.ok) {
@@ -108,6 +133,6 @@ export const useCustomersStore = defineStore('customers', () => {
 
   return {
     customers, currentCustomer, loading, loadingDetail, search, page, pageSize, hasMore,
-    fetchCustomers, fetchCustomer, createCustomer, updateCustomer, deleteCustomer,
+    fetchCustomers, fetchCustomer, fetchCompanyEmployees, createCustomer, updateCustomer, deleteCustomer,
   }
 })

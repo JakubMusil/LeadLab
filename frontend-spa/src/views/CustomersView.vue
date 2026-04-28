@@ -18,17 +18,30 @@ const showModal = ref(false)
 const editingCustomer = ref<CustomerOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const searchInput = ref('')
+const activeTab = ref<'all' | 'company' | 'person'>('all')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-// Form
+// Form fields
+const formType = ref<'person' | 'company'>('person')
 const formFirstName = ref('')
 const formLastName = ref('')
 const formEmail = ref('')
 const formPhone = ref('')
 const formCompany = ref('')
+const formCompanyId = ref<string>('')
+const formIco = ref('')
+const formDic = ref('')
+const formWebsite = ref('')
+const formAddressStreet = ref('')
+const formAddressCity = ref('')
+const formAddressZip = ref('')
+const formAddressCountry = ref('')
 const formTagsInput = ref('')
 const formError = ref('')
 const formLoading = ref(false)
+
+// Available companies for person→company link
+const availableCompanies = computed(() => store.customers.filter((c) => c.type === 'company'))
 
 onMounted(() => {
   store.fetchCustomers()
@@ -39,17 +52,30 @@ watch(searchInput, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     store.search = val
-    store.fetchCustomers({ search: val, page: 1 })
+    store.fetchCustomers({ search: val, page: 1, type: activeTab.value === 'all' ? '' : activeTab.value })
   }, 300)
+})
+
+watch(activeTab, (val) => {
+  store.fetchCustomers({ search: searchInput.value, page: 1, type: val === 'all' ? '' : val })
 })
 
 function openCreate() {
   editingCustomer.value = null
+  formType.value = 'person'
   formFirstName.value = ''
   formLastName.value = ''
   formEmail.value = ''
   formPhone.value = ''
   formCompany.value = ''
+  formCompanyId.value = ''
+  formIco.value = ''
+  formDic.value = ''
+  formWebsite.value = ''
+  formAddressStreet.value = ''
+  formAddressCity.value = ''
+  formAddressZip.value = ''
+  formAddressCountry.value = ''
   formTagsInput.value = ''
   formError.value = ''
   showModal.value = true
@@ -57,27 +83,50 @@ function openCreate() {
 
 function openEdit(c: CustomerOut) {
   editingCustomer.value = c
+  formType.value = c.type
   formFirstName.value = c.first_name
   formLastName.value = c.last_name
   formEmail.value = c.email
   formPhone.value = c.phone
   formCompany.value = c.company_name
+  formCompanyId.value = c.company_id ?? ''
+  formIco.value = c.ico
+  formDic.value = c.dic
+  formWebsite.value = c.website
+  formAddressStreet.value = c.address_street
+  formAddressCity.value = c.address_city
+  formAddressZip.value = c.address_zip
+  formAddressCountry.value = c.address_country
   formTagsInput.value = c.tags.join(', ')
   formError.value = ''
   showModal.value = true
 }
 
 async function submitForm() {
-  if (!formFirstName.value.trim()) { formError.value = t('customers.firstNameRequired'); return }
+  if (formType.value === 'person' && !formFirstName.value.trim()) {
+    formError.value = t('customers.firstNameRequired'); return
+  }
+  if (formType.value === 'company' && !formFirstName.value.trim()) {
+    formError.value = t('customers.companyNameRequired'); return
+  }
   formLoading.value = true
   formError.value = ''
   const tags = formTagsInput.value.split(',').map((tag) => tag.trim()).filter(Boolean)
   const payload = {
+    type: formType.value,
     first_name: formFirstName.value.trim(),
     last_name: formLastName.value.trim(),
     email: formEmail.value.trim(),
     phone: formPhone.value.trim(),
     company_name: formCompany.value.trim(),
+    company_id: formType.value === 'person' && formCompanyId.value ? formCompanyId.value : null,
+    ico: formIco.value.trim(),
+    dic: formDic.value.trim(),
+    website: formWebsite.value.trim(),
+    address_street: formAddressStreet.value.trim(),
+    address_city: formAddressCity.value.trim(),
+    address_zip: formAddressZip.value.trim(),
+    address_country: formAddressCountry.value.trim(),
     tags,
     metadata: editingCustomer.value?.metadata ?? {},
   }
@@ -109,6 +158,16 @@ function goToDetail(id: string) {
 
 function fullName(c: CustomerOut) {
   return [c.first_name, c.last_name].filter(Boolean).join(' ')
+}
+
+function contactTypeClass(type: string) {
+  return type === 'company'
+    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+}
+
+function contactTypeLabel(type: string) {
+  return type === 'company' ? t('customers.typeCompany') : t('customers.typePerson')
 }
 
 // Context menu
@@ -174,7 +233,7 @@ function exportCsv() {
 <template>
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="flex items-center gap-3 mb-5 flex-wrap">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('customers.title') }}</h2>
 
       <!-- Saved views -->
@@ -219,6 +278,19 @@ function exportCsv() {
       >⬇ {{ t('customers.exportCsv') }}</button>
     </div>
 
+    <!-- Type tabs -->
+    <div class="flex gap-1 mb-4">
+      <button
+        v-for="tab in [{ key: 'all', label: t('customers.tabAll') }, { key: 'company', label: t('customers.tabCompanies') }, { key: 'person', label: t('customers.tabPeople') }]"
+        :key="tab.key"
+        class="px-4 py-1.5 rounded-xl text-sm font-medium transition-colors"
+        :class="activeTab === tab.key
+          ? 'bg-red-600 text-white'
+          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+        @click="activeTab = tab.key as 'all' | 'company' | 'person'"
+      >{{ tab.label }}</button>
+    </div>
+
     <!-- Skeleton -->
     <div v-if="store.loading && store.customers.length === 0" class="animate-pulse space-y-2">
       <div v-for="i in 6" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" />
@@ -252,6 +324,7 @@ function exportCsv() {
         <thead>
           <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
             <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('customers.colName') }}</th>
+            <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">{{ t('customers.colType') }}</th>
             <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell">{{ t('customers.colCompany') }}</th>
             <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('customers.colEmail') }}</th>
             <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('customers.colTags') }}</th>
@@ -269,6 +342,11 @@ function exportCsv() {
             <td class="px-4 py-3" @click="goToDetail(c.id)">
               <div class="font-medium text-gray-900 dark:text-gray-100">{{ fullName(c) }}</div>
               <div v-if="c.phone" class="text-xs text-gray-400 dark:text-gray-500">{{ c.phone }}</div>
+            </td>
+            <td class="px-4 py-3 hidden sm:table-cell" @click="goToDetail(c.id)">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" :class="contactTypeClass(c.type)">
+                {{ contactTypeLabel(c.type) }}
+              </span>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell" @click="goToDetail(c.id)">{{ c.company_name || '—' }}</td>
             <td class="px-4 py-3 hidden md:table-cell" @click="goToDetail(c.id)">
@@ -296,12 +374,12 @@ function exportCsv() {
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page - 1 })"
+            @click="store.fetchCustomers({ page: store.page - 1, type: activeTab === 'all' ? '' : activeTab })"
           >{{ t('customers.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page + 1 })"
+            @click="store.fetchCustomers({ page: store.page + 1, type: activeTab === 'all' ? '' : activeTab })"
           >{{ t('customers.next') }}</button>
         </div>
       </div>
@@ -311,36 +389,114 @@ function exportCsv() {
   <!-- Modal -->
   <Teleport to="body">
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingCustomer ? t('customers.editTitle') : t('customers.newTitle')">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" :aria-label="editingCustomer ? t('customers.editTitle') : t('customers.newTitle')">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingCustomer ? t('customers.editTitle') : t('customers.newTitle') }}</h3>
         <div v-if="formError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ formError }}</div>
         <form class="space-y-3" @submit.prevent="submitForm">
+          <!-- Type selector -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.typeLabel') }}</label>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="flex-1 py-2 rounded-xl text-sm font-medium border transition-colors"
+                :class="formType === 'person' ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                @click="formType = 'person'"
+              >👤 {{ t('customers.typePerson') }}</button>
+              <button
+                type="button"
+                class="flex-1 py-2 rounded-xl text-sm font-medium border transition-colors"
+                :class="formType === 'company' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                @click="formType = 'company'"
+              >🏢 {{ t('customers.typeCompany') }}</button>
+            </div>
+          </div>
+
+          <!-- Name -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.firstName') }}</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ formType === 'company' ? t('customers.companyNameLabel') : t('customers.firstName') }}
+              </label>
               <input v-model="formFirstName" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
-            <div>
+            <div v-if="formType === 'person'">
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.lastName') }}</label>
               <input v-model="formLastName" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.email') }}</label>
-            <input v-model="formEmail" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+
+          <!-- Contact info -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.email') }}</label>
+              <input v-model="formEmail" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.phone') }}</label>
+              <input v-model="formPhone" type="tel" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.phone') }}</label>
-            <input v-model="formPhone" type="tel" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+
+          <!-- Person: link to company -->
+          <div v-if="formType === 'person'">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.employerCompany') }}</label>
+            <select v-model="formCompanyId" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
+              <option value="">— {{ t('customers.noCompany') }} —</option>
+              <option v-for="comp in availableCompanies" :key="comp.id" :value="comp.id">{{ comp.first_name }}</option>
+            </select>
           </div>
-          <div>
+
+          <!-- Company name (display field for persons) -->
+          <div v-if="formType === 'person'">
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.company') }}</label>
-            <input v-model="formCompany" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            <input v-model="formCompany" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" :placeholder="t('customers.companyPlaceholder')" />
           </div>
+
+          <!-- Business identifiers (for companies) -->
+          <div v-if="formType === 'company'" class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.ico') }}</label>
+              <input v-model="formIco" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.dic') }}</label>
+              <input v-model="formDic" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+          </div>
+
+          <!-- Website -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.website') }}</label>
+            <input v-model="formWebsite" type="url" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="https://" />
+          </div>
+
+          <!-- Address -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressStreet') }}</label>
+            <input v-model="formAddressStreet" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressCity') }}</label>
+              <input v-model="formAddressCity" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressZip') }}</label>
+              <input v-model="formAddressZip" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressCountry') }}</label>
+            <input v-model="formAddressCountry" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
+          </div>
+
+          <!-- Tags -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.tags') }}</label>
             <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" :placeholder="t('customers.tagsPlaceholder')" />
           </div>
+
           <div class="flex gap-3 pt-2">
             <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">{{ t('customers.cancel') }}</button>
             <button type="submit" :disabled="formLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">

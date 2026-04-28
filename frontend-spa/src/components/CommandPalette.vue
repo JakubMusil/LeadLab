@@ -2,13 +2,14 @@
 /**
  * Global Command Palette — Cmd/Ctrl + K
  *
- * Fuzzy-searches leads, customers, and navigation targets.
+ * Fuzzy-searches leads, customers, navigation targets, and documents.
  * Triggered by the keyboard shortcut; closed with Escape or click-outside.
  */
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLeadsStore } from '@/stores/leads'
 import { useCustomersStore } from '@/stores/customers'
+import { api } from '@/api'
 
 interface CommandItem {
   id: string
@@ -16,7 +17,16 @@ interface CommandItem {
   description?: string
   icon: string
   action: () => void
-  category: 'navigation' | 'lead' | 'customer' | 'recent'
+  category: 'navigation' | 'lead' | 'customer' | 'document' | 'recent'
+}
+
+interface DocumentOut {
+  id: string
+  name: string
+  content_type: string
+  lead_title?: string
+  customer_name?: string
+  realization_title?: string
 }
 
 const emit = defineEmits<{ close: [] }>()
@@ -28,6 +38,7 @@ const customersStore = useCustomersStore()
 const searchQuery = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const selectedIndex = ref(0)
+const documents = ref<DocumentOut[]>([])
 
 const NAV_COMMANDS: CommandItem[] = [
   { id: 'nav-dashboard', label: 'Dashboard', icon: '⊞', category: 'navigation', action: () => router.push('/app/dashboard') },
@@ -37,6 +48,7 @@ const NAV_COMMANDS: CommandItem[] = [
   { id: 'nav-team', label: 'Team', icon: '🤝', category: 'navigation', action: () => router.push('/app/team') },
   { id: 'nav-analytics', label: 'Analytics', icon: '📊', category: 'navigation', action: () => router.push('/app/analytics') },
   { id: 'nav-settings', label: 'Settings', icon: '⚙', category: 'navigation', action: () => router.push('/app/settings') },
+  { id: 'nav-documents', label: 'Documents', icon: '📁', category: 'navigation', action: () => router.push('/app/documents') },
 ]
 
 const leadItems = computed<CommandItem[]>(() =>
@@ -54,12 +66,32 @@ const customerItems = computed<CommandItem[]>(() =>
   customersStore.customers.slice(0, 50).map((c) => ({
     id: `customer-${c.id}`,
     label: `${c.first_name} ${c.last_name}`.trim(),
-    description: c.company_name || 'Customer',
-    icon: '👤',
+    description: c.company_name || (c.type === 'company' ? 'Company' : 'Contact'),
+    icon: c.type === 'company' ? '🏢' : '👤',
     category: 'customer' as const,
     action: () => router.push(`/app/directory/${c.id}`),
   })),
 )
+
+const documentItems = computed<CommandItem[]>(() =>
+  documents.value.slice(0, 30).map((doc) => ({
+    id: `doc-${doc.id}`,
+    label: doc.name,
+    description: `Document · ${doc.lead_title ?? doc.customer_name ?? doc.realization_title ?? 'Unlinked'}`,
+    icon: '📄',
+    category: 'document' as const,
+    action: () => router.push('/app/documents'),
+  })),
+)
+
+async function loadDocuments() {
+  try {
+    const res = await api.get<DocumentOut[]>('/api/v1/erp/documents?page_size=100')
+    if (res.ok) documents.value = res.data
+  } catch {
+    // ignore
+  }
+}
 
 const RECENT_KEY = 'commandPaletteRecent'
 
@@ -68,7 +100,7 @@ function getRecent(): CommandItem[] {
     const raw = localStorage.getItem(RECENT_KEY)
     if (!raw) return []
     const ids: string[] = JSON.parse(raw)
-    const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value]
+    const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value, ...documentItems.value]
     return ids
       .map((id) => all.find((i) => i.id === id))
       .filter((i): i is CommandItem => !!i)
@@ -107,7 +139,7 @@ const filteredItems = computed<CommandItem[]>(() => {
     if (recent.length) return recent
     return NAV_COMMANDS.slice(0, 7)
   }
-  const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value]
+  const all = [...NAV_COMMANDS, ...leadItems.value, ...customerItems.value, ...documentItems.value]
   return all.filter((item) => fuzzyMatch(q, item.label) || fuzzyMatch(q, item.description ?? '')).slice(0, 12)
 })
 
@@ -139,6 +171,7 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(async () => {
   await nextTick()
   inputRef.value?.focus()
+  loadDocuments()
 })
 </script>
 
@@ -208,7 +241,8 @@ onMounted(async () => {
             {{
               item.category === 'navigation' ? 'Page' :
               item.category === 'lead' ? 'Lead' :
-              item.category === 'customer' ? 'Customer' : 'Recent'
+              item.category === 'customer' ? 'Customer' :
+              item.category === 'document' ? 'Document' : 'Recent'
             }}
           </span>
         </li>
