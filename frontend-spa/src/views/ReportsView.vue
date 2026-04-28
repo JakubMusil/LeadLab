@@ -237,6 +237,46 @@ async function createProposalFromReport() {
     showToast(t('proposals.errorCreate'))
   }
 }
+
+// ─── Fakturoid export ─────────────────────────────────────────────────────────
+
+const fakturoidExporting = ref(false)
+
+async function exportToFakturoid() {
+  if (!revenues.value.length) {
+    showToast('No revenue items to export.')
+    return
+  }
+  // Validate that all items share the same currency
+  const currencies = [...new Set(revenues.value.map(r => r.currency))]
+  if (currencies.length > 1) {
+    showToast(`Cannot export: revenue items have mixed currencies (${currencies.join(', ')}). Filter to a single currency first.`)
+    return
+  }
+  fakturoidExporting.value = true
+  try {
+    const lines = revenues.value.map(r => ({
+      name: r.title,
+      quantity: 1,
+      unit_name: 'ks',
+      unit_price: Number(r.amount),
+      vat_rate: 0,
+    }))
+    const currency = currencies[0] ?? 'CZK'
+    const res = await api.post<{ ok: boolean; invoice?: { id: number; number: string; html_url: string }; error?: string }>(
+      '/api/v1/integrations/fakturoid/invoices',
+      { lines, currency, due: 14 },
+    )
+    if (res.ok && res.data?.ok && res.data.invoice) {
+      showToast(`Invoice ${res.data.invoice.number} created in Fakturoid.`)
+    } else {
+      const err = res.data?.error ?? 'Failed to create invoice in Fakturoid.'
+      showToast(err)
+    }
+  } finally {
+    fakturoidExporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -444,6 +484,12 @@ async function createProposalFromReport() {
           <div class="flex gap-2">
             <button class="text-sm px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               @click="exportCSV('revenues')">⬇ CSV</button>
+            <button
+              class="text-sm px-3 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
+              :disabled="fakturoidExporting || !revenues.length"
+              @click="exportToFakturoid"
+              title="Create invoice in Fakturoid from all visible revenue items"
+            >{{ fakturoidExporting ? 'Exporting…' : '📄 Fakturoid invoice' }}</button>
             <button class="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               @click="showRevenueForm = !showRevenueForm">+ Add revenue</button>
           </div>
