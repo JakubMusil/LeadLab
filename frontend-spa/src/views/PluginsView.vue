@@ -5,9 +5,11 @@ import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { pluginRegistry } from '@/plugins'
 import type { ConfigSchemaProperty } from '@/plugins'
+import { useI18n } from '@/composables/useI18n'
 
 const toast = useToast()
 const firmStore = useFirmStore()
+const { t } = useI18n()
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,9 +77,9 @@ async function togglePlugin(pc: PluginConfigEntry) {
   if (res.ok && res.data) {
     const idx = pluginConfigs.value.findIndex((p) => p.plugin_name === pc.plugin_name)
     if (idx !== -1) pluginConfigs.value.splice(idx, 1, res.data)
-    toast.success(res.data.enabled ? `${pc.plugin_name} enabled.` : `${pc.plugin_name} disabled.`)
+    toast.success(res.data.enabled ? t('plugins.pluginEnabled', { name: pc.plugin_name }) : t('plugins.pluginDisabled', { name: pc.plugin_name }))
   } else {
-    toast.error('Failed to update plugin.')
+    toast.error(t('plugins.failedToUpdatePlugin'))
   }
 }
 
@@ -93,10 +95,10 @@ async function savePluginConfig(pc: PluginConfigEntry) {
   if (res.ok && res.data) {
     const idx = pluginConfigs.value.findIndex((p) => p.plugin_name === pc.plugin_name)
     if (idx !== -1) pluginConfigs.value.splice(idx, 1, res.data)
-    toast.success('Plugin settings saved.')
+    toast.success(t('plugins.pluginSettingsSaved'))
     expandedPlugin.value = null
   } else {
-    toast.error('Failed to save plugin settings.')
+    toast.error(t('plugins.failedToSavePluginSettings'))
   }
 }
 
@@ -181,16 +183,16 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Plugins</h1>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('plugins.title') }}</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Manage first-party and third-party plugins, or browse the marketplace.
+          {{ t('plugins.subtitle') }}
         </p>
       </div>
       <a
         href="/docs/plugins/"
         target="_blank"
         class="text-xs text-red-600 hover:underline"
-      >Authoring guide →</a>
+      >{{ t('plugins.authoringGuide') }}</a>
     </div>
 
     <!-- Tabs -->
@@ -200,7 +202,7 @@ onMounted(() => {
         class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
         @click="activeTab = 'installed'"
       >
-        Installed
+        {{ t('plugins.tabInstalled') }}
         <span class="ml-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full px-1.5 py-0.5">{{ localPluginCount }}</span>
       </button>
       <button
@@ -208,7 +210,7 @@ onMounted(() => {
         class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
         @click="activeTab = 'marketplace'"
       >
-        Marketplace
+        {{ t('plugins.tabMarketplace') }}
       </button>
     </div>
 
@@ -221,9 +223,9 @@ onMounted(() => {
 
       <!-- Plugin list -->
       <div v-else-if="pluginConfigs.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">
-        No plugins installed.
+        {{ t('plugins.noInstalled') }}
         <button class="block mx-auto mt-2 text-red-600 hover:underline text-xs" @click="activeTab = 'marketplace'">
-          Browse the marketplace →
+          {{ t('plugins.browseMarketplace') }}
         </button>
       </div>
 
@@ -263,7 +265,7 @@ onMounted(() => {
                 class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1"
                 @click="expandedPlugin = expandedPlugin === pc.plugin_name ? null : pc.plugin_name"
               >
-                {{ expandedPlugin === pc.plugin_name ? 'Close' : 'Configure' }}
+                {{ expandedPlugin === pc.plugin_name ? t('plugins.close') : t('plugins.configure') }}
               </button>
 
               <button
@@ -356,7 +358,7 @@ onMounted(() => {
               :disabled="pluginSaving[pc.plugin_name]"
               class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               @click="savePluginConfig(pc)"
-            >{{ pluginSaving[pc.plugin_name] ? 'Saving…' : 'Save settings' }}</button>
+            >{{ pluginSaving[pc.plugin_name] ? t('plugins.saving') : t('plugins.saveSettings') }}</button>
           </div>
         </div>
       </div>
@@ -372,7 +374,7 @@ onMounted(() => {
         <input
           v-model="marketplaceSearch"
           type="text"
-          placeholder="Search plugins…"
+          :placeholder="t('plugins.searchPlaceholder')"
           class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:border-red-400"
         />
       </div>
@@ -389,15 +391,15 @@ onMounted(() => {
 
       <!-- Empty search result -->
       <div v-else-if="filteredMarketplacePlugins.length === 0 && marketplaceSearch" class="text-center py-12 text-gray-400 dark:text-gray-500">
-        <p class="text-sm">No plugins match "{{ marketplaceSearch }}"</p>
-        <button class="mt-2 text-xs text-red-600 hover:underline" @click="marketplaceSearch = ''">Clear search</button>
+        <p class="text-sm">{{ t('plugins.noMatch') }}</p>
+        <button class="mt-2 text-xs text-red-600 hover:underline" @click="marketplaceSearch = ''">{{ t('plugins.clearSearch') }}</button>
       </div>
 
       <!-- Empty state -->
       <div v-else-if="filteredMarketplacePlugins.length === 0" class="text-center py-12 text-gray-400 dark:text-gray-500">
         <p class="text-lg mb-2">🧩</p>
-        <p class="text-sm">No plugins in the marketplace yet.</p>
-        <a href="/docs/plugins/" target="_blank" class="mt-2 block text-xs text-red-600 hover:underline">Build your own plugin →</a>
+        <p class="text-sm">{{ t('plugins.noMarketplace') }}</p>
+        <a href="/docs/plugins/" target="_blank" class="mt-2 block text-xs text-red-600 hover:underline">{{ t('plugins.buildOwn') }}</a>
       </div>
 
       <!-- Plugin grid -->
@@ -423,7 +425,7 @@ onMounted(() => {
                 <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ plugin.name }}</span>
                 <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">v{{ plugin.version }}</span>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">by {{ plugin.author }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t('plugins.by', { author: plugin.author }) }}</p>
             </div>
           </div>
           <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed flex-1">{{ plugin.description }}</p>
@@ -439,9 +441,9 @@ onMounted(() => {
             :href="plugin.install_url"
             target="_blank"
             class="text-xs text-center bg-red-600 text-white rounded-xl px-3 py-1.5 hover:bg-red-700 transition-colors"
-          >Install</a>
+          >{{ t('plugins.install') }}</a>
           <span v-else class="text-xs text-center text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-1.5">
-            {{ pluginConfigs.some((pc) => pc.plugin_name === plugin.name) ? '✓ Installed' : 'Available' }}
+            {{ pluginConfigs.some((pc) => pc.plugin_name === plugin.name) ? t('plugins.installed') : t('plugins.available') }}
           </span>
         </div>
       </div>
