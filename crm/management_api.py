@@ -337,7 +337,7 @@ def list_management_activities(
             "id": str(a.id),
             "entity_type": a.entity_type,
             "entity_id": a.entity_id,
-            "lead_id": None,
+            "lead_id": str(a.lead_id) if a.lead_id else None,
             "user_id": str(a.user_id) if a.user_id else None,
             "type": a.type,
             "content_text": a.content_text,

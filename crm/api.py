@@ -774,8 +774,7 @@ def create_activity(request, payload: ActivityIn):
         return 403, {"detail": str(exc)}
 
     # --- resolve entity ---
-    provided = [x for x in [payload.lead_id, payload.realization_id, payload.management_id] if x]
-    if len(provided) != 1:
+    if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id)]) != 1:
         return 400, {"detail": "Exactly one of lead_id, realization_id, management_id must be provided."}
 
     lead = realization = management = None

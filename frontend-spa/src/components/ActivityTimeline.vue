@@ -45,11 +45,6 @@ interface Activity {
   created_at: string
 }
 
-interface TeamMember {
-  id: string
-  label: string
-}
-
 // ---------------------------------------------------------------------------
 // Team members for @mentions
 // ---------------------------------------------------------------------------
