@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
+import { useI18n } from '@/composables/useI18n'
+
+const { t } = useI18n()
 
 interface InvitationOut {
   email: string
@@ -30,7 +33,7 @@ onMounted(async () => {
     invitation.value = res.data
     state.value = 'form'
   } else {
-    errorMsg.value = 'This invitation link is invalid or has expired.'
+    errorMsg.value = t('acceptInvite.invalidLink')
     state.value = 'error'
   }
 })
@@ -38,7 +41,7 @@ onMounted(async () => {
 async function handleSubmit() {
   formError.value = ''
   if (password.value.length < 8) {
-    formError.value = 'Password must be at least 8 characters.'
+    formError.value = t('acceptInvite.passwordTooShort')
     return
   }
   isLoading.value = true
@@ -54,7 +57,7 @@ async function handleSubmit() {
     setTimeout(() => router.push('/app/login'), 2500)
   } else {
     const errData = res.data as unknown as Record<string, unknown>
-    formError.value = (errData?.detail as string) ?? 'Failed to accept invitation.'
+    formError.value = (errData?.detail as string) ?? t('acceptInvite.acceptFailed')
   }
 }
 </script>
@@ -78,25 +81,25 @@ async function handleSubmit() {
         <!-- Error -->
         <div v-else-if="state === 'error'" class="text-center">
           <div class="text-4xl mb-4">⚠️</div>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">Invalid invitation</h2>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ t('acceptInvite.invalidInvitationTitle') }}</h2>
           <p class="text-gray-500 text-sm mb-6">{{ errorMsg }}</p>
           <RouterLink to="/app/login" class="text-red-600 font-medium text-sm hover:text-red-700">
-            Back to sign in
+            {{ t('acceptInvite.backToSignIn') }}
           </RouterLink>
         </div>
 
         <!-- Success -->
         <div v-else-if="state === 'success'" class="text-center">
           <div class="text-4xl mb-4">🎉</div>
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">You're in!</h2>
-          <p class="text-gray-500 text-sm">Redirecting to sign in…</p>
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ t('acceptInvite.joinedTitle') }}</h2>
+          <p class="text-gray-500 text-sm">{{ t('acceptInvite.redirectingToSignIn') }}</p>
         </div>
 
         <!-- Form -->
         <div v-else>
-          <h1 class="text-2xl font-semibold text-gray-900 mb-1">Accept invitation</h1>
+          <h1 class="text-2xl font-semibold text-gray-900 mb-1">{{ t('acceptInvite.title') }}</h1>
           <p v-if="invitation?.firm_name" class="text-gray-500 mb-1 text-sm">
-            You've been invited to join <strong>{{ invitation.firm_name }}</strong>.
+            {{ t('acceptInvite.invitedToJoin') }} <strong>{{ invitation.firm_name }}</strong>.
           </p>
           <p v-if="invitation?.email" class="text-gray-400 text-xs mb-6">{{ invitation.email }}</p>
 
@@ -107,7 +110,7 @@ async function handleSubmit() {
           <form @submit.prevent="handleSubmit" class="space-y-4">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">First name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('acceptInvite.firstName') }}</label>
                 <input
                   v-model="firstName"
                   type="text"
@@ -117,7 +120,7 @@ async function handleSubmit() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('acceptInvite.lastName') }}</label>
                 <input
                   v-model="lastName"
                   type="text"
@@ -129,7 +132,7 @@ async function handleSubmit() {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('acceptInvite.password') }}</label>
               <input
                 v-model="password"
                 type="password"
@@ -149,7 +152,7 @@ async function handleSubmit() {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
-              {{ isLoading ? 'Joining…' : 'Join workspace' }}
+              {{ isLoading ? t('acceptInvite.submitting') : t('acceptInvite.submit') }}
             </button>
           </form>
         </div>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { api } from '@/api'
+import { useI18n } from '@/composables/useI18n'
 
+const { t } = useI18n()
 const email = ref('')
 const isLoading = ref(false)
 const submitted = ref(false)
@@ -22,19 +24,20 @@ async function handleSubmit() {
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h1 class="text-2xl font-semibold text-gray-900 mb-2">Forgot password?</h1>
-        <p class="text-gray-500 mb-6 text-sm">Enter your email and we'll send you a reset link.</p>
+        <h1 class="text-2xl font-semibold text-gray-900 mb-2">{{ t('forgotPassword.title') }}</h1>
+        <p class="text-gray-500 mb-6 text-sm">{{ t('forgotPassword.subtitle') }}</p>
 
         <div
           v-if="submitted"
           class="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 mb-4"
         >
-          If an account exists with that email, you'll receive a password reset link shortly.
+          <p class="font-medium mb-1">{{ t('forgotPassword.successTitle') }}</p>
+          {{ t('forgotPassword.successMessage') }}
         </div>
 
         <form v-if="!submitted" @submit.prevent="handleSubmit" class="space-y-4">
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">{{ t('forgotPassword.email') }}</label>
             <input
               id="email"
               v-model="email"
@@ -55,13 +58,13 @@ async function handleSubmit() {
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            {{ isLoading ? 'Sending…' : 'Send reset link' }}
+            {{ isLoading ? t('forgotPassword.sending') : t('forgotPassword.send') }}
           </button>
         </form>
       </div>
 
       <p class="text-center mt-6 text-sm text-gray-600">
-        <RouterLink to="/app/login" class="text-red-600 font-medium hover:text-red-700">← Back to sign in</RouterLink>
+        <RouterLink to="/app/login" class="text-red-600 font-medium hover:text-red-700">← {{ t('forgotPassword.backToLogin') }}</RouterLink>
       </p>
     </div>
   </div>

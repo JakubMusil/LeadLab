@@ -8,6 +8,7 @@ import {
   getManagementStatusMeta,
 } from '@/stores/management'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
@@ -16,6 +17,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useManagementStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const recordId = computed(() => route.params.id as string)
 
@@ -63,7 +65,7 @@ async function saveTitle() {
   savingTitle.value = true
   try {
     await store.updateRecord(record.value.id, { title: titleDraft.value.trim() })
-    toast.success('Název uložen')
+    toast.success(t('management.titleSaved'))
   } finally {
     savingTitle.value = false
     editingTitle.value = false
@@ -78,7 +80,7 @@ function startEditTitle() {
 async function updateStatus(status: string) {
   if (!record.value) return
   await store.updateRecord(record.value.id, { status })
-  toast.success('Stav aktualizován')
+  toast.success(t('management.statusUpdated'))
 }
 
 function slaBadgeClass(color: string | null | undefined) {
@@ -92,9 +94,9 @@ function slaLabel(expiresAt: string | null, slaColor: string | null) {
   if (!expiresAt) return null
   const diff = new Date(expiresAt).getTime() - Date.now()
   const days = Math.ceil(diff / 86400000)
-  if (days < 0) return `Expirováno před ${Math.abs(days)} dní`
-  if (days === 0) return 'Expiruje dnes'
-  return `Vyprší za ${days} dní`
+  if (days < 0) return t('management.slaExpired', { days: Math.abs(days) })
+  if (days === 0) return t('management.slaToday')
+  return t('management.slaIn', { days })
 }
 
 function formatDateTime(dt: string | null) {
@@ -153,16 +155,16 @@ async function deleteDocument() {
       @click="router.push('/app/management')"
       class="mb-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1"
     >
-      ← Zpět na Správu
+      ← {{ t('management.backToManagement') }}
     </button>
 
     <!-- Loading -->
     <div v-if="store.loadingDetail" class="text-center py-16 text-gray-500 dark:text-gray-400">
-      Načítání…
+      {{ t('management.loading') }}
     </div>
 
     <div v-else-if="!record" class="text-center py-16 text-gray-500 dark:text-gray-400">
-      Záznam nenalezen.
+      {{ t('management.recordNotFound') }}
     </div>
 
     <template v-else>
@@ -179,14 +181,14 @@ async function deleteDocument() {
               autofocus
             />
             <button @click="saveTitle" :disabled="savingTitle" class="text-sm text-red-600 hover:text-red-700 font-medium">
-              {{ savingTitle ? '…' : 'Uložit' }}
+              {{ savingTitle ? '…' : t('management.save') }}
             </button>
           </div>
           <h1
             v-else
             @click="startEditTitle"
             class="text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:opacity-80 transition-opacity"
-            title="Klikněte pro editaci"
+            :title="t('management.clickToEdit')"
           >
             {{ record.title }}
           </h1>
@@ -239,7 +241,7 @@ async function deleteDocument() {
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
               class="px-4 py-2 text-sm font-medium capitalize transition-colors"
             >
-              {{ tab === 'overview' ? 'Přehled' : tab === 'tasks' ? 'Úkoly' : tab === 'activities' ? 'Aktivity' : tab === 'proposals' ? 'Nabídky' : `Dokumenty (${documents.length})` }}
+              {{ tab === 'overview' ? t('management.tabOverview') : tab === 'tasks' ? t('management.tabTasks') : tab === 'activities' ? t('management.tabActivities') : tab === 'proposals' ? t('management.tabProposals') : `${t('management.tabDocuments')} (${documents.length})` }}
             </button>
           </div>
 
@@ -247,21 +249,21 @@ async function deleteDocument() {
           <div v-if="activeTab === 'overview'" class="space-y-4">
             <!-- Notes -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Poznámky</h3>
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('management.notes') }}</h3>
               <p v-if="record.notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ record.notes }}</p>
-              <p v-else class="text-sm text-gray-400 italic">Žádné poznámky</p>
+              <p v-else class="text-sm text-gray-400 italic">{{ t('management.noNotes') }}</p>
             </div>
 
             <!-- Created / Updated -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-              <div>Vytvořeno: {{ formatDateTime(record.created_at) }}</div>
-              <div>Aktualizováno: {{ formatDateTime(record.updated_at) }}</div>
+              <div>{{ t('management.created') }}: {{ formatDateTime(record.created_at) }}</div>
+              <div>{{ t('management.updated') }}: {{ formatDateTime(record.updated_at) }}</div>
             </div>
           </div>
 
           <!-- Tasks tab placeholder -->
           <div v-else-if="activeTab === 'tasks'" class="text-center py-12 text-gray-400 dark:text-gray-500">
-            <p class="text-sm">Úkoly propojené s tímto záznamem budou zobrazeny zde.</p>
+            <p class="text-sm">{{ t('management.tasksPlaceholder') }}</p>
           </div>
 
           <!-- Activities tab -->
@@ -272,14 +274,14 @@ async function deleteDocument() {
           <!-- Proposals tab -->
           <div v-else-if="activeTab === 'proposals'" class="space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Nabídky</h3>
-              <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">Všechny nabídky</RouterLink>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('management.proposals') }}</h3>
+              <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">{{ t('management.allProposals') }}</RouterLink>
             </div>
             <div v-if="proposalsLoading" class="animate-pulse space-y-2">
               <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
             </div>
             <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">
-              Žádné nabídky pro tento záznam.
+              {{ t('management.noProposals') }}
             </div>
             <div v-else class="space-y-2">
               <RouterLink

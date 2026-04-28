@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { api } from '@/api'
+import { useI18n } from '@/composables/useI18n'
 import type { TimerContext } from '@/stores/timer'
+
+const { t } = useI18n()
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{
@@ -98,21 +101,21 @@ function close() {
       @click.self="close"
       role="dialog"
       aria-modal="true"
-      aria-label="Start timer"
+      :aria-label="t('timerModal.title')"
     >
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Start timer</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('timerModal.title') }}</h2>
 
         <!-- Entity type selector -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link to (optional)</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('timerModal.linkTo') }}</label>
           <div class="flex gap-2 flex-wrap">
             <button
               v-for="opt in [
-                { value: null, label: 'None' },
-                { value: 'lead', label: 'Opportunity' },
-                { value: 'customer', label: 'Contact' },
-                { value: 'task', label: 'Task' },
+                { value: null, label: t('timerModal.none') },
+                { value: 'lead', label: t('timerModal.opportunity') },
+                { value: 'customer', label: t('timerModal.contact') },
+                { value: 'task', label: t('timerModal.taskEntity') },
               ]"
               :key="String(opt.value)"
               class="px-3 py-1 rounded-full text-sm border transition-colors"
@@ -129,13 +132,13 @@ function close() {
         <!-- Search for entity -->
         <div v-if="entityType" class="mb-4 relative">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Search {{ entityType }}
+            {{ t('timerModal.searchLabel', { type: entityType }) }}
           </label>
           <input
             v-model="searchQuery"
             type="text"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-            :placeholder="`Search ${entityType}…`"
+            :placeholder="t('timerModal.searchPlaceholder', { type: entityType })"
           />
           <div
             v-if="searchResults.length"
@@ -154,12 +157,12 @@ function close() {
 
         <!-- Description -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (optional)</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('timerModal.description') }}</label>
           <input
             v-model="description"
             type="text"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-            placeholder="What are you working on?"
+            :placeholder="t('timerModal.descriptionPlaceholder')"
           />
         </div>
 
@@ -178,7 +181,7 @@ function close() {
               :class="isBillable ? 'translate-x-4' : 'translate-x-0.5'"
             />
           </button>
-          <span class="text-sm text-gray-700 dark:text-gray-300">Billable</span>
+          <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('timerModal.billable') }}</span>
         </div>
 
         <!-- Actions -->
@@ -187,13 +190,13 @@ function close() {
             class="px-4 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
             @click="close"
           >
-            Cancel
+            {{ t('timerModal.cancel') }}
           </button>
           <button
             class="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
             @click="confirm"
           >
-            Start timer
+            {{ t('timerModal.start') }}
           </button>
         </div>
       </div>

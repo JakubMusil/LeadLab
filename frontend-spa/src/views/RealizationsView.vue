@@ -12,6 +12,7 @@ import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 
 const router = useRouter()

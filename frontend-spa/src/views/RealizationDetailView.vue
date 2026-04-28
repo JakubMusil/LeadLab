@@ -5,6 +5,7 @@ import { useRealizationsStore, REALIZATION_STATUSES, getRealizationStatusMeta, t
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'

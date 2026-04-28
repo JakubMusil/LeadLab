@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// 404 Not Found view
+import { useI18n } from '@/composables/useI18n'
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -10,15 +12,15 @@
       </svg>
     </div>
     <h1 class="text-6xl font-bold text-gray-200 dark:text-gray-700 mb-2">404</h1>
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Page not found</h2>
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('notFound.title') }}</h2>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-sm">
-      The page you're looking for doesn't exist or has been moved.
+      {{ t('notFound.message') }}
     </p>
     <RouterLink
       to="/app/dashboard"
       class="px-6 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
     >
-      Back to Dashboard
+      {{ t('notFound.backToDashboard') }}
     </RouterLink>
   </div>
 </template>

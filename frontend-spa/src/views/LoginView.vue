@@ -3,7 +3,9 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Button as UiButton, Input as UiInput } from '@/components/ui'
+import { useI18n } from '@/composables/useI18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -20,7 +22,7 @@ async function handleSubmit() {
   if (result.ok) {
     await router.push('/app/dashboard')
   } else {
-    errorMsg.value = result.error ?? 'Login failed.'
+    errorMsg.value = result.error ?? t('auth.loginFailed')
   }
 }
 </script>
@@ -31,8 +33,8 @@ async function handleSubmit() {
     <div class="hidden lg:flex lg:w-1/2 bg-red-600 flex-col justify-center items-center p-12 text-white">
       <div class="max-w-md text-center">
         <div class="text-5xl font-bold mb-4">LeadLab</div>
-        <p class="text-xl text-red-100">Your CRM for modern sales teams.</p>
-        <p class="mt-4 text-red-200 text-sm">Manage leads, track deals, grow your business.</p>
+        <p class="text-xl text-red-100">{{ t('auth.brandingTagline') }}</p>
+        <p class="mt-4 text-red-200 text-sm">{{ t('auth.brandingDescription') }}</p>
       </div>
     </div>
 
@@ -44,8 +46,8 @@ async function handleSubmit() {
         </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Welcome back</h1>
-          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Sign in to your account</p>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('auth.welcomeBack') }}</h1>
+          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">{{ t('auth.signInSubtitle') }}</p>
 
           <div v-if="errorMsg" class="mb-4 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400" role="alert">
             {{ errorMsg }}
@@ -56,7 +58,7 @@ async function handleSubmit() {
               id="email"
               v-model="email"
               type="email"
-              label="Email"
+              :label="t('auth.email')"
               placeholder="you@example.com"
               autocomplete="email"
               required
@@ -66,7 +68,7 @@ async function handleSubmit() {
               id="password"
               v-model="password"
               type="password"
-              label="Password"
+              :label="t('auth.password')"
               placeholder="••••••••"
               autocomplete="current-password"
               required
@@ -74,19 +76,19 @@ async function handleSubmit() {
 
             <div class="flex justify-end">
               <RouterLink to="/app/forgot-password" class="text-sm text-red-600 hover:text-red-700">
-                Forgot password?
+                {{ t('auth.forgotPassword') }}
               </RouterLink>
             </div>
 
             <UiButton type="submit" :loading="isLoading" :disabled="isLoading" class="w-full">
-              {{ isLoading ? 'Signing in…' : 'Sign in' }}
+              {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
             </UiButton>
           </form>
         </div>
 
         <p class="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
-          Don't have an account?
-          <RouterLink to="/app/register" class="text-red-600 font-medium hover:text-red-700">Sign up</RouterLink>
+          {{ t('auth.noAccount') }}
+          <RouterLink to="/app/register" class="text-red-600 font-medium hover:text-red-700">{{ t('auth.signUp') }}</RouterLink>
         </p>
       </div>
     </div>

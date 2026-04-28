@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from '@/composables/useI18n'
 
 const toast = useToast()
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,22 +69,21 @@ interface FirmMember {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TRIGGER_LABELS: Record<string, string> = {
-  lead_created: 'Lead Created',
-  lead_status_change: 'Lead Status Changed',
-  task_overdue: 'Task Overdue',
-  task_created: 'Task Created',
-  task_completed: 'Task Completed',
-  proposal_sent: 'Proposal Sent',
-  proposal_accepted: 'Proposal Accepted',
-  lead_inactive: 'Lead Inactive (N days)',
-  webhook_received: 'Custom Webhook Received',
-  // Phase 4.6
-  realization_status_change: 'Realization Status Changed',
-  sla_expiring: 'SLA / Warranty Expiring (N days)',
-  contact_created: 'Contact Created',
-  milestone_completed: 'Milestone Completed',
-}
+const TRIGGER_LABELS = computed<Record<string, string>>(() => ({
+  lead_created: t('automations.triggerLeadCreated'),
+  lead_status_change: t('automations.triggerLeadStatusChanged'),
+  task_overdue: t('automations.triggerTaskOverdue'),
+  task_created: t('automations.triggerTaskCreated'),
+  task_completed: t('automations.triggerTaskCompleted'),
+  proposal_sent: t('automations.triggerProposalSent'),
+  proposal_accepted: t('automations.triggerProposalAccepted'),
+  lead_inactive: t('automations.triggerInactiveLead'),
+  webhook_received: t('automations.triggerWebhookReceived'),
+  realization_status_change: t('automations.triggerRealizationStatusChange'),
+  sla_expiring: t('automations.triggerSlaExpiring'),
+  contact_created: t('automations.triggerContactCreated'),
+  milestone_completed: t('automations.triggerMilestoneCompleted'),
+}))
 
 const TRIGGER_DESCRIPTIONS: Record<string, string> = {
   lead_created: 'Fires when a new lead is created in the CRM.',
@@ -101,17 +102,17 @@ const TRIGGER_DESCRIPTIONS: Record<string, string> = {
   milestone_completed: 'Fires when a milestone is marked as completed in a realization.',
 }
 
-const ACTION_TYPE_LABELS: Record<string, string> = {
-  send_email: 'Send email',
-  create_task: 'Create task',
-  update_field: 'Update field',
-  call_webhook: 'Call webhook',
-  run_plugin_action: 'Run plugin action',
-  set_task_status: 'Set task status',
-  assign_tag: 'Assign tag',
-  create_realization: 'Create realization',
-  create_management: 'Create management record',
-}
+const ACTION_TYPE_LABELS = computed<Record<string, string>>(() => ({
+  send_email: t('automations.actionSendEmail'),
+  create_task: t('automations.actionCreateTask'),
+  update_field: t('automations.actionUpdateField'),
+  call_webhook: t('automations.actionWebhook'),
+  run_plugin_action: t('automations.actionRunPluginAction'),
+  set_task_status: t('automations.actionUpdateTaskStatus'),
+  assign_tag: t('automations.actionAddTag'),
+  create_realization: t('automations.actionCreateRealization'),
+  create_management: t('automations.actionCreateManagement'),
+}))
 
 const OPERATOR_LABELS: Record<string, string> = {
   eq: '=',
@@ -275,7 +276,7 @@ function setActionTagsFromString(i: number, value: string) {
 
 async function saveRule() {
   if (!ruleFormName.value.trim()) {
-    toast.error('Rule name is required.')
+    toast.error(t('automations.ruleNameRequired'))
     return
   }
   ruleSaving.value = true
@@ -298,10 +299,10 @@ async function saveRule() {
     } else {
       automationRules.value.unshift(res.data)
     }
-    toast.success(editingRule.value ? 'Rule updated.' : 'Automation rule created.')
+    toast.success(editingRule.value ? t('automations.ruleUpdated') : t('automations.ruleCreated'))
     cancelRuleForm()
   } else {
-    toast.error('Failed to save rule.')
+    toast.error(t('automations.failedToSaveRule'))
   }
 }
 
@@ -312,21 +313,21 @@ async function toggleRule(rule: AutomationRule) {
   if (res.ok && res.data) {
     const idx = automationRules.value.findIndex((r) => r.id === rule.id)
     if (idx !== -1) automationRules.value.splice(idx, 1, res.data)
-    toast.success(res.data.is_active ? 'Rule enabled.' : 'Rule disabled.')
+    toast.success(res.data.is_active ? t('automations.ruleEnabled') : t('automations.ruleDisabled'))
   } else {
-    toast.error('Failed to update rule.')
+    toast.error(t('automations.failedToUpdateRule'))
   }
 }
 
 async function deleteRule(rule: AutomationRule) {
-  if (!confirm(`Delete automation rule "${rule.name}"? This cannot be undone.`)) return
+  if (!confirm(t('automations.deleteConfirm', { name: rule.name }))) return
   const res = await api.delete(`/api/v1/crm/automations/${rule.id}`)
   if (res.ok || res.status === 204) {
     automationRules.value = automationRules.value.filter((r) => r.id !== rule.id)
     if (expandedRuleRuns.value === rule.id) expandedRuleRuns.value = null
-    toast.success('Rule deleted.')
+    toast.success(t('automations.ruleDeleted'))
   } else {
-    toast.error('Failed to delete rule.')
+    toast.error(t('automations.failedToDeleteRule'))
   }
 }
 
@@ -365,10 +366,10 @@ async function createFromTemplate(tmpl: AutomationTemplate) {
   )
   if (res.ok && res.data) {
     automationRules.value.unshift(res.data)
-    toast.success(`Rule "${res.data.name}" created from template.`)
+    toast.success(t('automations.ruleCreatedFromTemplate', { name: res.data.name }))
     showTemplates.value = false
   } else {
-    toast.error('Failed to create rule from template.')
+    toast.error(t('automations.failedToCreateFromTemplate'))
   }
 }
 
@@ -377,7 +378,7 @@ async function createFromTemplate(tmpl: AutomationTemplate) {
 // ---------------------------------------------------------------------------
 
 function ruleReadableSummary(rule: AutomationRule): string {
-  const triggerLabel = TRIGGER_LABELS[rule.trigger] ?? rule.trigger
+  const triggerLabel = TRIGGER_LABELS.value[rule.trigger] ?? rule.trigger
   const condCount = rule.conditions.length
   const actCount = rule.actions.length
   const logic = rule.condition_logic === 'or' ? 'OR' : 'AND'
@@ -389,7 +390,7 @@ function ruleReadableSummary(rule: AutomationRule): string {
 }
 
 function actionSummary(action: AutomationAction): string {
-  const label = ACTION_TYPE_LABELS[action.type] ?? action.type
+  const label = ACTION_TYPE_LABELS.value[action.type] ?? action.type
   if (action.type === 'send_email') return `${label} to ${action.to}`
   if (action.type === 'create_task') {
     const title = action.title_template || action.title || '…'
@@ -423,20 +424,20 @@ function lastRunLabel(rule: AutomationRule): string {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Automations</h1>
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ t('automations.title') }}</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Define trigger → condition → action rules that run automatically. No code required.
+          {{ t('automations.subtitle') }}
         </p>
       </div>
       <div class="flex gap-2">
         <button
           class="text-sm text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           @click="showTemplates = !showTemplates; showRuleForm = false"
-        >{{ showTemplates ? 'Hide templates' : '📋 Templates' }}</button>
+        >{{ showTemplates ? t('automations.hideTemplates') : t('automations.templates') }}</button>
         <button
           class="text-sm bg-red-600 text-white rounded-xl px-4 py-2 hover:bg-red-700 transition-colors font-medium"
           @click="openNewRuleForm"
-        >+ New rule</button>
+        >{{ t('automations.newRule') }}</button>
       </div>
     </div>
 
@@ -446,9 +447,9 @@ function lastRunLabel(rule: AutomationRule): string {
       class="bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-600 p-5 space-y-3"
     >
       <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        Ready-to-use templates
+        {{ t('automations.readyToUseTemplates') }}
       </p>
-      <div v-if="automationTemplates.length === 0" class="text-sm text-gray-400 py-2 text-center">Loading templates…</div>
+      <div v-if="automationTemplates.length === 0" class="text-sm text-gray-400 py-2 text-center">{{ t('automations.loadingTemplates') }}</div>
       <div
         v-for="tmpl in automationTemplates"
         :key="tmpl.id"
@@ -458,13 +459,13 @@ function lastRunLabel(rule: AutomationRule): string {
           <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ tmpl.name }}</p>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ tmpl.description }}</p>
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono">
-            Trigger: {{ TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger }}
+            {{ t('automations.trigger') }} {{ TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger }}
           </p>
         </div>
         <button
           class="flex-shrink-0 text-xs bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700"
           @click="createFromTemplate(tmpl)"
-        >Use</button>
+        >{{ t('automations.useTemplate') }}</button>
       </div>
     </div>
 
@@ -474,23 +475,23 @@ function lastRunLabel(rule: AutomationRule): string {
       class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-600 p-5 space-y-5"
     >
       <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-        {{ editingRule ? 'Edit rule' : 'New automation rule' }}
+        {{ editingRule ? t('automations.editRuleTitle') : t('automations.newRuleTitle') }}
       </p>
 
       <!-- Name -->
       <div>
-        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Rule name *</label>
+        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('automations.ruleName') }}</label>
         <input
           v-model="ruleFormName"
           type="text"
-          placeholder="e.g. Create onboarding task when proposal accepted"
+          :placeholder="t('automations.ruleNamePlaceholder')"
           class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
         />
       </div>
 
       <!-- Trigger -->
       <div>
-        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Trigger</label>
+        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('automations.triggerLabel') }}</label>
         <select
           v-model="ruleFormTrigger"
           class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
@@ -504,7 +505,7 @@ function lastRunLabel(rule: AutomationRule): string {
 
       <!-- Trigger config: inactive_days / warning_days -->
       <div v-if="ruleFormTrigger === 'lead_inactive'" class="flex items-center gap-3">
-        <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-36">Inactive days</label>
+        <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-36">{{ t('automations.inactiveDays') }}</label>
         <input
           :value="(ruleFormTriggerConfig['inactive_days'] as string | number) ?? 30"
           type="number"
@@ -512,10 +513,10 @@ function lastRunLabel(rule: AutomationRule): string {
           class="w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
           @input="ruleFormTriggerConfig['inactive_days'] = Number(($event.target as HTMLInputElement).value)"
         />
-        <span class="text-xs text-gray-400">days without activity</span>
+        <span class="text-xs text-gray-400">{{ t('automations.daysWithoutActivity') }}</span>
       </div>
       <div v-else-if="ruleFormTrigger === 'task_overdue'" class="flex items-center gap-3">
-        <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-36">Warning window</label>
+        <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-36">{{ t('automations.warningWindow') }}</label>
         <input
           :value="(ruleFormTriggerConfig['warning_days'] as string | number) ?? 1"
           type="number"
@@ -523,14 +524,14 @@ function lastRunLabel(rule: AutomationRule): string {
           class="w-24 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
           @input="ruleFormTriggerConfig['warning_days'] = Number(($event.target as HTMLInputElement).value)"
         />
-        <span class="text-xs text-gray-400">days before due date (0 = overdue only)</span>
+        <span class="text-xs text-gray-400">{{ t('automations.daysBeforeDue') }}</span>
       </div>
 
       <!-- Conditions -->
       <div>
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-3">
-            <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Conditions</label>
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('automations.conditions') }}</label>
             <!-- AND / OR toggle -->
             <div v-if="ruleFormConditions.length > 1" class="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden text-xs">
               <button
@@ -544,15 +545,15 @@ function lastRunLabel(rule: AutomationRule): string {
                 @click="ruleFormConditionLogic = 'or'"
               >OR</button>
             </div>
-            <span v-else class="text-xs text-gray-400">(leave empty to always run)</span>
+            <span v-else class="text-xs text-gray-400">{{ t('automations.conditionsHint') }}</span>
           </div>
           <button
             class="text-xs text-red-600 hover:text-red-700 font-medium"
             @click="addCondition"
-          >+ Add condition</button>
+          >{{ t('automations.addCondition') }}</button>
         </div>
         <div v-if="ruleFormConditions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic py-1">
-          No conditions — rule fires on every trigger event.
+          {{ t('automations.noConditions') }}
         </div>
         <div
           v-for="(cond, i) in ruleFormConditions"
@@ -592,14 +593,14 @@ function lastRunLabel(rule: AutomationRule): string {
       <!-- Actions -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Actions <span class="font-normal text-gray-400">(run in order)</span></label>
+          <label class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('automations.actionsLabel') }} <span class="font-normal text-gray-400">{{ t('automations.actionsRunInOrder') }}</span></label>
           <button
             class="text-xs text-red-600 hover:text-red-700 font-medium"
             @click="addAction"
-          >+ Add action</button>
+          >{{ t('automations.addAction') }}</button>
         </div>
         <div v-if="ruleFormActions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic py-1">
-          No actions — add at least one action.
+          {{ t('automations.noActions') }}
         </div>
         <div
           v-for="(action, i) in ruleFormActions"
@@ -621,14 +622,14 @@ function lastRunLabel(rule: AutomationRule): string {
           <!-- send_email fields -->
           <template v-if="action.type === 'send_email'">
             <div class="flex gap-2 items-center">
-              <label class="text-xs text-gray-500 dark:text-gray-400 w-12">To</label>
+              <label class="text-xs text-gray-500 dark:text-gray-400 w-12">{{ t('automations.emailTo') }}</label>
               <select
                 v-model="action.to"
                 class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               >
-                <option value="owner">Owner</option>
-                <option value="assignee">Assignee</option>
-                <option value="customer">Customer</option>
+                <option value="owner">{{ t('automations.emailOwner') }}</option>
+                <option value="assignee">{{ t('automations.emailAssignee') }}</option>
+                <option value="customer">{{ t('automations.emailCustomer') }}</option>
               </select>
             </div>
             <input
@@ -648,7 +649,7 @@ function lastRunLabel(rule: AutomationRule): string {
           <!-- create_task fields (Phase 4 extended) -->
           <template v-else-if="action.type === 'create_task'">
             <div>
-              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Task title template *</label>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.taskTitleTemplate') }}</label>
               <input
                 v-model="action.title_template"
                 type="text"
@@ -659,7 +660,7 @@ function lastRunLabel(rule: AutomationRule): string {
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Due in (days from trigger)</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.dueInDays') }}</label>
                 <input
                   v-model.number="action.due_days_offset"
                   type="number"
@@ -669,7 +670,7 @@ function lastRunLabel(rule: AutomationRule): string {
                 />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Priority</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.priority') }}</label>
                 <select
                   v-model="action.priority"
                   class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
@@ -679,13 +680,13 @@ function lastRunLabel(rule: AutomationRule): string {
               </div>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Assign to</label>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.assignTo') }}</label>
               <select
                 v-model="action.assign_to_user_id"
                 class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               >
-                <option value="inherit">Inherit from trigger (same assignee)</option>
-                <option value="">Unassigned</option>
+                <option value="inherit">{{ t('automations.inheritAssignee') }}</option>
+                <option value="">{{ t('automations.unassigned') }}</option>
                 <option
                   v-for="m in firmMembers"
                   :key="m.user_id"
@@ -694,7 +695,7 @@ function lastRunLabel(rule: AutomationRule): string {
               </select>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tags (comma-separated)</label>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.tagsComma') }}</label>
               <input
                 :value="getActionTagsString(action)"
                 type="text"
@@ -708,10 +709,10 @@ function lastRunLabel(rule: AutomationRule): string {
           <!-- set_task_status fields -->
           <template v-else-if="action.type === 'set_task_status'">
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Sets the status of the task that triggered this rule (task_id from context).
+              {{ t('automations.setsTaskStatus') }}
             </p>
             <div>
-              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">New status</label>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.newStatus') }}</label>
               <select
                 v-model="action.status"
                 class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
@@ -725,7 +726,7 @@ function lastRunLabel(rule: AutomationRule): string {
           <template v-else-if="action.type === 'assign_tag'">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tag</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.tag') }}</label>
                 <input
                   v-model="action.tag"
                   type="text"
@@ -734,13 +735,13 @@ function lastRunLabel(rule: AutomationRule): string {
                 />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Apply to</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('automations.applyTo') }}</label>
                 <select
                   v-model="action.target_type"
                   class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
                 >
-                  <option value="task">Task (from trigger)</option>
-                  <option value="lead">Lead (from trigger)</option>
+                  <option value="task">{{ t('automations.taskFromTrigger') }}</option>
+                  <option value="lead">{{ t('automations.leadFromTrigger') }}</option>
                 </select>
               </div>
             </div>
@@ -753,15 +754,15 @@ function lastRunLabel(rule: AutomationRule): string {
                 v-model="action.field"
                 class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               >
-                <option value="status">Lead status</option>
-                <option value="source">Lead source</option>
-                <option value="currency">Currency</option>
-                <option value="description">Description</option>
+                <option value="status">{{ t('automations.leadStatus') }}</option>
+                <option value="source">{{ t('automations.leadSource') }}</option>
+                <option value="currency">{{ t('automations.currency') }}</option>
+                <option value="description">{{ t('automations.description') }}</option>
               </select>
               <input
                 v-model="action.value"
                 type="text"
-                placeholder="New value"
+                :placeholder="t('automations.newValue')"
                 class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               />
             </div>
@@ -803,11 +804,11 @@ function lastRunLabel(rule: AutomationRule): string {
           :disabled="ruleSaving || !ruleFormName.trim()"
           class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
           @click="saveRule"
-        >{{ ruleSaving ? 'Saving…' : (editingRule ? 'Update rule' : 'Create rule') }}</button>
+        >{{ ruleSaving ? t('automations.saving') : (editingRule ? t('automations.updateRule') : t('automations.createRule')) }}</button>
         <button
           class="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           @click="cancelRuleForm"
-        >Cancel</button>
+        >{{ t('automations.cancel') }}</button>
       </div>
     </div>
 
@@ -823,19 +824,19 @@ function lastRunLabel(rule: AutomationRule): string {
       <div class="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center mb-4">
         <span class="text-2xl" aria-hidden="true">⚡</span>
       </div>
-      <p class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">No automation rules yet</p>
+      <p class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{ t('automations.noRules') }}</p>
       <p class="text-xs text-gray-400 dark:text-gray-500 max-w-xs mb-5">
-        Create your first rule or pick one of the ready-to-use templates to get started.
+        {{ t('automations.noRulesHint') }}
       </p>
       <div class="flex gap-3">
         <button
           class="text-sm bg-red-600 text-white rounded-xl px-4 py-2 hover:bg-red-700 font-medium transition-colors"
           @click="openNewRuleForm"
-        >+ New rule</button>
+        >{{ t('automations.newRuleBtn') }}</button>
         <button
           class="text-sm border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-xl px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           @click="showTemplates = true"
-        >📋 Browse templates</button>
+        >{{ t('automations.browseTemplates') }}</button>
       </div>
     </div>
 
@@ -855,7 +856,7 @@ function lastRunLabel(rule: AutomationRule): string {
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                   : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
                 class="text-xs px-2 py-0.5 rounded-full font-medium"
-              >{{ rule.is_active ? 'Active' : 'Disabled' }}</span>
+              >{{ rule.is_active ? t('automations.active') : t('automations.disabled') }}</span>
             </div>
             <!-- Readable summary -->
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ ruleReadableSummary(rule) }}</p>
@@ -876,11 +877,11 @@ function lastRunLabel(rule: AutomationRule): string {
             <button
               class="text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               @click="toggleRuleRuns(rule)"
-            >{{ expandedRuleRuns === rule.id ? 'Hide log' : 'Log' }}</button>
+            >{{ expandedRuleRuns === rule.id ? t('automations.hideLog') : t('automations.log') }}</button>
             <button
               class="text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               @click="openEditRuleForm(rule)"
-            >Edit</button>
+            >{{ t('automations.edit') }}</button>
             <!-- On/off toggle -->
             <button
               :class="rule.is_active ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'"
