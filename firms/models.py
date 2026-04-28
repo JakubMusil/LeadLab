@@ -33,22 +33,6 @@ class Firm(models.Model):
     logo = models.ImageField(upload_to='firm_logos/', blank=True, null=True)
     primary_color = models.CharField(max_length=7, blank=True, default='#dc2626')
 
-    # Fakturoid integration (Phase 4.0)
-    fakturoid_slug = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Fakturoid account slug (e.g. 'my-company'). Found in your Fakturoid URL.",
-    )
-    fakturoid_email = models.EmailField(
-        blank=True,
-        help_text="Email address used to log in to Fakturoid.",
-    )
-    fakturoid_token = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Fakturoid API token (found in Fakturoid → Settings → API).",
-    )
-
     class Meta:
         verbose_name = "firm"
         verbose_name_plural = "firms"
