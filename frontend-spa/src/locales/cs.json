@@ -27,7 +27,10 @@
     "signIn": "Přihlásit se",
     "signingIn": "Přihlašování…",
     "noAccount": "Nemáte účet?",
-    "signUp": "Zaregistrovat se"
+    "signUp": "Zaregistrovat se",
+    "brandingTagline": "Váš CRM pro moderní prodejní týmy.",
+    "brandingDescription": "Spravujte příležitosti, sledujte obchody a uzavírejte více s LeadLabem.",
+    "loginFailed": "Přihlášení se nezdařilo."
   },
   "dashboard": {
     "totalLeads": "Celkem příležitostí",
@@ -950,9 +953,72 @@
   },
   "commandPalette": {
     "placeholder": "Hledat příležitosti, kontakty nebo navigovat…",
-    "noResults": "Žádné výsledky pro „{query}\u201d",
+    "noResults": "Žádné výsledky pro „{query}”",
     "company": "Společnost",
     "contact": "Kontakt",
     "unlinked": "Bez vazby"
+  },
+  "register": {
+    "title": "Vytvořit účet",
+    "subtitle": "Začněte svůj bezplatný zkušební provoz",
+    "firstName": "Jméno",
+    "lastName": "Příjmení",
+    "email": "E-mail",
+    "password": "Heslo",
+    "confirmPassword": "Potvrdit heslo",
+    "createAccount": "Vytvořit účet",
+    "creating": "Vytváření…",
+    "alreadyHaveAccount": "Již máte účet?",
+    "signIn": "Přihlásit se",
+    "passwordTooShort": "Heslo musí mít alespoň 8 znaků.",
+    "passwordMismatch": "Hesla se neshodují.",
+    "registrationFailed": "Registrace se nezdařila.",
+    "brandingTagline": "Začněte svůj bezplatný účet ještě dnes.",
+    "brandingDescription": "Přidejte se k tisícům prodejních týmů používajících LeadLab."
+  },
+  "forgotPassword": {
+    "title": "Zapomenuté heslo?",
+    "subtitle": "Zadejte e-mail a my vám pošleme odkaz pro reset.",
+    "email": "E-mail",
+    "send": "Odeslat odkaz pro reset",
+    "sending": "Odesílání…",
+    "successTitle": "Zkontrolujte e-mail",
+    "successMessage": "Pokud je tento e-mail registrován, brzy obdržíte odkaz pro reset.",
+    "backToLogin": "Zpět na přihlášení"
+  },
+  "resetPassword": {
+    "title": "Nastavit nové heslo",
+    "subtitle": "Zadejte a potvrďte své nové heslo.",
+    "password": "Nové heslo",
+    "confirm": "Potvrdit heslo",
+    "submit": "Nastavit heslo",
+    "submitting": "Ukládání…",
+    "successMessage": "Heslo resetováno! Přesměrování na přihlášení…",
+    "invalidToken": "Neplatný nebo prošlý odkaz pro reset.",
+    "passwordTooShort": "Heslo musí mít alespoň 8 znaků.",
+    "passwordMismatch": "Hesla se neshodují."
+  },
+  "acceptInvite": {
+    "title": "Přijmout pozvánku",
+    "subtitle": "Nastavte heslo pro připojení k pracovnímu prostoru.",
+    "firstName": "Jméno",
+    "lastName": "Příjmení",
+    "password": "Heslo",
+    "submit": "Připojit se k pracovnímu prostoru",
+    "submitting": "Připojování…",
+    "invalidLink": "Neplatný nebo prošlý odkaz pozvánky.",
+    "loading": "Načítání…",
+    "invalidInvitationTitle": "Neplatná pozvánka",
+    "invitedToJoin": "Byli jste pozváni k připojení",
+    "joinedTitle": "Jste součástí!",
+    "redirectingToSignIn": "Přesměrování na přihlášení…",
+    "backToSignIn": "Zpět na přihlášení",
+    "passwordTooShort": "Heslo musí mít alespoň 8 znaků.",
+    "acceptFailed": "Přijetí pozvánky se nezdařilo."
+  },
+  "notFound": {
+    "title": "Stránka nenalezena",
+    "message": "Hledaná stránka neexistuje nebo byla přesunuta.",
+    "backToDashboard": "Zpět na přehled"
   }
 }

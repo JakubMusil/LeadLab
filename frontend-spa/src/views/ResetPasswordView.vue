@@ -3,7 +3,9 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
+import { useI18n } from '@/composables/useI18n'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -17,11 +19,11 @@ async function handleSubmit() {
   errorMsg.value = ''
 
   if (newPassword.value.length < 8) {
-    errorMsg.value = 'Password must be at least 8 characters.'
+    errorMsg.value = t('resetPassword.passwordTooShort')
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    errorMsg.value = 'Passwords do not match.'
+    errorMsg.value = t('resetPassword.passwordMismatch')
     return
   }
 
@@ -34,10 +36,10 @@ async function handleSubmit() {
   isLoading.value = false
 
   if (res.ok) {
-    successMsg.value = 'Password reset successfully! Redirecting to login…'
+    successMsg.value = t('resetPassword.successMessage')
     setTimeout(() => router.push('/app/login'), 2000)
   } else {
-    errorMsg.value = extractErrorMessage(res.data, 'Reset failed. The link may have expired.')
+    errorMsg.value = extractErrorMessage(res.data, t('resetPassword.invalidToken'))
   }
 }
 </script>
@@ -50,8 +52,8 @@ async function handleSubmit() {
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h1 class="text-2xl font-semibold text-gray-900 mb-2">Reset password</h1>
-        <p class="text-gray-500 mb-6 text-sm">Choose a new password for your account.</p>
+        <h1 class="text-2xl font-semibold text-gray-900 mb-2">{{ t('resetPassword.title') }}</h1>
+        <p class="text-gray-500 mb-6 text-sm">{{ t('resetPassword.subtitle') }}</p>
 
         <div v-if="successMsg" class="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
           {{ successMsg }}
@@ -63,7 +65,7 @@ async function handleSubmit() {
 
         <form v-if="!successMsg" @submit.prevent="handleSubmit" class="space-y-4">
           <div>
-            <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">New password</label>
+            <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">{{ t('resetPassword.password') }}</label>
             <input
               id="newPassword"
               v-model="newPassword"
@@ -76,7 +78,7 @@ async function handleSubmit() {
           </div>
 
           <div>
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">{{ t('resetPassword.confirm') }}</label>
             <input
               id="confirmPassword"
               v-model="confirmPassword"
@@ -97,7 +99,7 @@ async function handleSubmit() {
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            {{ isLoading ? 'Resetting…' : 'Reset password' }}
+            {{ isLoading ? t('resetPassword.submitting') : t('resetPassword.submit') }}
           </button>
         </form>
       </div>

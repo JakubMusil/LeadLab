@@ -27,7 +27,10 @@
     "signIn": "Sign in",
     "signingIn": "Signing in…",
     "noAccount": "Don't have an account?",
-    "signUp": "Sign up"
+    "signUp": "Sign up",
+    "brandingTagline": "Your CRM for modern sales teams.",
+    "brandingDescription": "Manage leads, track deals, and close more with LeadLab.",
+    "loginFailed": "Login failed."
   },
   "dashboard": {
     "totalLeads": "Total Opportunities",
@@ -953,5 +956,68 @@
     "company": "Company",
     "contact": "Contact",
     "unlinked": "Unlinked"
+  },
+  "register": {
+    "title": "Create your account",
+    "subtitle": "Start your free trial",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "createAccount": "Create Account",
+    "creating": "Creating…",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "registrationFailed": "Registration failed.",
+    "brandingTagline": "Start your free account today.",
+    "brandingDescription": "Join thousands of sales teams using LeadLab."
+  },
+  "forgotPassword": {
+    "title": "Forgot your password?",
+    "subtitle": "Enter your email and we'll send you a reset link.",
+    "email": "Email",
+    "send": "Send reset link",
+    "sending": "Sending…",
+    "successTitle": "Check your email",
+    "successMessage": "If that email is registered, you'll receive a reset link shortly.",
+    "backToLogin": "Back to sign in"
+  },
+  "resetPassword": {
+    "title": "Set new password",
+    "subtitle": "Enter and confirm your new password.",
+    "password": "New Password",
+    "confirm": "Confirm Password",
+    "submit": "Set Password",
+    "submitting": "Saving…",
+    "successMessage": "Password reset! Redirecting to login…",
+    "invalidToken": "Invalid or expired reset link.",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordMismatch": "Passwords do not match."
+  },
+  "acceptInvite": {
+    "title": "Accept invitation",
+    "subtitle": "Set your password to join the workspace.",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "password": "Password",
+    "submit": "Join Workspace",
+    "submitting": "Joining…",
+    "invalidLink": "Invalid or expired invitation link.",
+    "loading": "Loading…",
+    "invalidInvitationTitle": "Invalid invitation",
+    "invitedToJoin": "You've been invited to join",
+    "joinedTitle": "You're in!",
+    "redirectingToSignIn": "Redirecting to sign in…",
+    "backToSignIn": "Back to sign in",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "acceptFailed": "Failed to accept invitation."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "The page you're looking for doesn't exist or has been moved.",
+    "backToDashboard": "Back to Dashboard"
   }
 }

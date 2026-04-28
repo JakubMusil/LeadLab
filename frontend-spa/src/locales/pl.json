@@ -27,7 +27,10 @@
     "signIn": "Zaloguj się",
     "signingIn": "Logowanie…",
     "noAccount": "Nie masz konta?",
-    "signUp": "Zarejestruj się"
+    "signUp": "Zarejestruj się",
+    "brandingTagline": "Twój CRM dla nowoczesnych zespołów sprzedaży.",
+    "brandingDescription": "Zarządzaj szansami, śledź transakcje i zamykaj więcej z LeadLab.",
+    "loginFailed": "Logowanie nie powiodło się."
   },
   "dashboard": {
     "totalLeads": "Łączna liczba szans",
@@ -949,9 +952,72 @@
   },
   "commandPalette": {
     "placeholder": "Szukaj szans, kontaktów lub nawiguj…",
-    "noResults": "Brak wyników dla „{query}\u201d",
+    "noResults": "Brak wyników dla „{query}”",
     "company": "Firma",
     "contact": "Kontakt",
     "unlinked": "Bez powiązania"
+  },
+  "register": {
+    "title": "Utwórz konto",
+    "subtitle": "Rozpocznij bezpłatny okres próbny",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "email": "E-mail",
+    "password": "Hasło",
+    "confirmPassword": "Potwierdź hasło",
+    "createAccount": "Utwórz konto",
+    "creating": "Tworzenie…",
+    "alreadyHaveAccount": "Masz już konto?",
+    "signIn": "Zaloguj się",
+    "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+    "passwordMismatch": "Hasła nie są zgodne.",
+    "registrationFailed": "Rejestracja nie powiodła się.",
+    "brandingTagline": "Zacznij swoje bezpłatne konto już dziś.",
+    "brandingDescription": "Dołącz do tysięcy zespołów sprzedaży korzystających z LeadLab."
+  },
+  "forgotPassword": {
+    "title": "Zapomniałeś hasła?",
+    "subtitle": "Podaj swój e-mail, a wyślemy Ci link do resetowania.",
+    "email": "E-mail",
+    "send": "Wyślij link resetujący",
+    "sending": "Wysyłanie…",
+    "successTitle": "Sprawdź e-mail",
+    "successMessage": "Jeśli ten e-mail jest zarejestrowany, wkrótce otrzymasz link do resetowania.",
+    "backToLogin": "Powrót do logowania"
+  },
+  "resetPassword": {
+    "title": "Ustaw nowe hasło",
+    "subtitle": "Wpisz i potwierdź swoje nowe hasło.",
+    "password": "Nowe hasło",
+    "confirm": "Potwierdź hasło",
+    "submit": "Ustaw hasło",
+    "submitting": "Zapisywanie…",
+    "successMessage": "Hasło zresetowane! Przekierowanie do logowania…",
+    "invalidToken": "Nieprawidłowy lub wygasły link resetujący.",
+    "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+    "passwordMismatch": "Hasła nie są zgodne."
+  },
+  "acceptInvite": {
+    "title": "Przyjmij zaproszenie",
+    "subtitle": "Ustaw hasło, aby dołączyć do obszaru roboczego.",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "password": "Hasło",
+    "submit": "Dołącz do obszaru roboczego",
+    "submitting": "Dołączanie…",
+    "invalidLink": "Nieprawidłowy lub wygasły link zaproszenia.",
+    "loading": "Ładowanie…",
+    "invalidInvitationTitle": "Nieprawidłowe zaproszenie",
+    "invitedToJoin": "Zostałeś zaproszony do dołączenia",
+    "joinedTitle": "Jesteś w środku!",
+    "redirectingToSignIn": "Przekierowanie do logowania…",
+    "backToSignIn": "Powrót do logowania",
+    "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+    "acceptFailed": "Nie udało się przyjąć zaproszenia."
+  },
+  "notFound": {
+    "title": "Strona nie znaleziona",
+    "message": "Szukana strona nie istnieje lub została przeniesiona.",
+    "backToDashboard": "Powrót do panelu"
   }
 }
