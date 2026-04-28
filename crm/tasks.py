@@ -317,10 +317,8 @@ def _action_run_plugin(action: dict, context: dict, rule) -> None:
     logger.info("automation run_plugin_action: %s.%s executed", plugin_name, action_name)
 
 
-def _action_create_realization(action: dict, context: dict, rule) -> None:
+def _action_create_realization(action: dict, context: dict, rule: "AutomationRule") -> None:
     """Create a Realization record when a lead is won."""
-    import re
-
     lead_id = context.get("lead_id")
     firm_id = context.get("firm_id")
 
