@@ -1461,6 +1461,9 @@ class FirmProposalItem(TenantModel):
         help_text="VAT rate percentage (e.g. 21 for 21%).",
     )
     position = models.PositiveSmallIntegerField(default=0)
+    sku = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='', help_text="Rich text notes / detailed description (HTML).")
+    image_url = models.URLField(max_length=1000, blank=True, default='', help_text="Product/service image URL.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

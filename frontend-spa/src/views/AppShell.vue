@@ -31,6 +31,9 @@ import {
   WrenchScrewdriverIcon,
   ShieldExclamationIcon,
   FolderOpenIcon,
+  PuzzlePieceIcon,
+  ArchiveBoxIcon,
+  RectangleStackIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -183,7 +186,6 @@ const navSections = computed(() => [
     items: [
       { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
       { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
-      { label: 'Automations', icon: BoltIcon, path: '/app/automations' },
       ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
     ],
   },
@@ -191,6 +193,10 @@ const navSections = computed(() => [
     label: 'Workspace',
     items: [
       { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
+      { label: 'Plugins', icon: PuzzlePieceIcon, path: '/app/plugins' },
+      { label: 'Proposal Templates', icon: RectangleStackIcon, path: '/app/proposal-templates' },
+      { label: 'Katalog položek', icon: ArchiveBoxIcon, path: '/app/catalog' },
+      { label: 'Automations', icon: BoltIcon, path: '/app/automations' },
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
       ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: ShieldCheckIcon, path: '/app/superadmin' }] : []),
     ],
