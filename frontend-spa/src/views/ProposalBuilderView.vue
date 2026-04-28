@@ -133,17 +133,17 @@ const sendingProposal = ref(false)
 const showPreview = ref(false)
 
 const CURRENCIES = ['CZK', 'EUR', 'USD', 'GBP', 'PLN']
-const STATUSES = [
-  { value: 'draft', label: 'Draft', color: 'bg-gray-100 text-gray-700' },
-  { value: 'sent', label: 'Sent', color: 'bg-blue-100 text-blue-700' },
-  { value: 'viewed', label: 'Viewed', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'accepted', label: 'Accepted', color: 'bg-green-100 text-green-700' },
-  { value: 'rejected', label: 'Rejected', color: 'bg-red-100 text-red-700' },
-  { value: 'expired', label: 'Expired', color: 'bg-orange-100 text-orange-700' },
-]
+const STATUSES = computed(() => [
+  { value: 'draft', label: t('proposals.statusDraft'), color: 'bg-gray-100 text-gray-700' },
+  { value: 'sent', label: t('proposals.statusSent'), color: 'bg-blue-100 text-blue-700' },
+  { value: 'viewed', label: t('proposals.statusViewed'), color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'accepted', label: t('proposals.statusAccepted'), color: 'bg-green-100 text-green-700' },
+  { value: 'rejected', label: t('proposals.statusRejected'), color: 'bg-red-100 text-red-700' },
+  { value: 'expired', label: t('proposals.statusExpired'), color: 'bg-orange-100 text-orange-700' },
+])
 
 function statusMeta(status: string) {
-  return STATUSES.find((s) => s.value === status) ?? { value: status, label: status, color: 'bg-gray-100 text-gray-700' }
+  return STATUSES.value.find((s) => s.value === status) ?? { value: status, label: status, color: 'bg-gray-100 text-gray-700' }
 }
 
 // -----------------------------------------------------------------------
@@ -188,7 +188,7 @@ async function loadProposal(id: string) {
       populateForm(res.data)
       items.value = [...res.data.items].sort((a, b) => a.position - b.position)
     } else {
-      toast.error('Failed to load proposal.')
+      toast.error(t('builder.failedToLoad'))
     }
   } finally {
     loading.value = false
@@ -223,12 +223,12 @@ async function createProposal() {
   let res
   if (leadId.value && !isStandalone.value) {
     res = await api.post<Proposal>(`/api/v1/crm/opportunities/${leadId.value}/proposals`, {
-      title: editTitle.value || 'New Proposal',
+      title: editTitle.value || t('builder.newProposal'),
       currency: editCurrency.value,
     })
   } else {
     res = await api.post<Proposal>('/api/v1/crm/proposals', {
-      title: editTitle.value || 'New Proposal',
+      title: editTitle.value || t('builder.newProposal'),
       currency: editCurrency.value,
     })
   }
@@ -243,9 +243,9 @@ async function createProposal() {
     } else {
       router.replace(`/app/opportunities/${leadId.value}/proposals/${res.data.id}`)
     }
-    toast.success('Proposal created.')
+    toast.success(t('builder.proposalCreated'))
   } else {
-    toast.error('Failed to create proposal.')
+    toast.error(t('builder.failedToCreate'))
   }
 }
 
@@ -266,14 +266,14 @@ async function saveProposal() {
     currentProposal.value = res.data
     const idx = proposals.value.findIndex((p) => p.id === res.data.id)
     if (idx !== -1) proposals.value[idx] = res.data
-    toast.success('Proposal saved.')
+    toast.success(t('builder.proposalSaved'))
   } else {
-    toast.error('Failed to save proposal.')
+    toast.error(t('builder.failedToSave'))
   }
 }
 
 async function deleteProposal(id: string) {
-  if (!confirm('Delete this proposal?')) return
+  if (!confirm(t('builder.confirmDelete'))) return
   const res = await api.delete(`/api/v1/crm/proposals/${id}`)
   if (res.ok || res.status === 204) {
     proposals.value = proposals.value.filter((p) => p.id !== id)
@@ -285,9 +285,9 @@ async function deleteProposal(id: string) {
         router.replace(`/app/opportunities/${leadId.value}/proposals`)
       }
     }
-    toast.success('Proposal deleted.')
+    toast.success(t('builder.proposalDeleted'))
   } else {
-    toast.error('Failed to delete proposal.')
+    toast.error(t('builder.failedToDelete'))
   }
 }
 
@@ -322,7 +322,7 @@ async function addItem() {
     newItemDiscount.value = 0
     newItemVat.value = 0
   } else {
-    toast.error('Failed to add item.')
+    toast.error(t('builder.failedToAddItem'))
   }
 }
 
@@ -344,7 +344,7 @@ async function updateItem(item: ProposalItem) {
     if (idx !== -1) items.value[idx] = res.data
     editingItemId.value = null
   } else {
-    toast.error('Failed to update item.')
+    toast.error(t('builder.failedToUpdateItem'))
   }
 }
 
@@ -356,7 +356,7 @@ async function deleteItem(itemId: string) {
   if (res.ok || res.status === 204) {
     items.value = items.value.filter((i) => i.id !== itemId)
   } else {
-    toast.error('Failed to delete item.')
+    toast.error(t('builder.failedToDeleteItem'))
   }
 }
 
@@ -407,9 +407,9 @@ async function applyTemplate(templateId: string) {
     populateForm(res.data)
     items.value = [...res.data.items].sort((a, b) => a.position - b.position)
     showApplyTemplate.value = false
-    toast.success('Template applied.')
+    toast.success(t('builder.templateApplied'))
   } else {
-    toast.error('Failed to apply template.')
+    toast.error(t('builder.failedToApplyTemplate'))
   }
 }
 
@@ -428,9 +428,9 @@ async function addFromCatalog() {
     items.value.push(...res.data)
     selectedCatalogIds.value = []
     showCatalog.value = false
-    toast.success('Položky přidány z katalogu.')
+    toast.success(t('builder.itemsFromCatalog'))
   } else {
-    toast.error('Nepodařilo se přidat položky z katalogu.')
+    toast.error(t('builder.failedFromCatalog'))
   }
 }
 
@@ -465,9 +465,9 @@ async function sendProposal() {
     editStatus.value = res.data.status
     const idx = proposals.value.findIndex((p) => p.id === res.data.id)
     if (idx !== -1) proposals.value[idx] = res.data
-    toast.success('Proposal marked as Sent. Copy the public link to share it.')
+    toast.success(t('builder.proposalSent'))
   } else {
-    toast.error('Failed to send proposal.')
+    toast.error(t('builder.failedToSend'))
   }
 }
 
@@ -516,7 +516,7 @@ onMounted(async () => {
     }
   } else {
     // Pre-populate create form
-    editTitle.value = 'New Proposal'
+    editTitle.value = ''
     editCurrency.value = 'CZK'
   }
 })
@@ -608,11 +608,11 @@ watch(
       <div class="flex-1 min-w-0 space-y-4">
         <!-- If no proposal selected, show create prompt -->
         <div v-if="!currentProposal && !loading" class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400">
-          <p class="text-sm mb-3">Select a proposal from the sidebar or create a new one.</p>
+          <p class="text-sm mb-3">{{ t('builder.selectOrCreate') }}</p>
           <button
             class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
             @click="createProposal"
-          >+ Create Proposal</button>
+          >+ {{ t('builder.createProposal') }}</button>
         </div>
 
         <template v-else-if="currentProposal">
@@ -623,7 +623,7 @@ watch(
                 v-model="editTitle"
                 type="text"
                 class="w-full text-lg font-semibold bg-transparent border-b border-transparent focus:border-gray-300 focus:outline-none text-gray-900 pb-0.5"
-                placeholder="Proposal title…"
+:placeholder="t('builder.proposalTitlePlaceholder')"
               />
             </div>
 
@@ -640,13 +640,13 @@ watch(
               class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               :disabled="saving"
               @click="saveProposal"
-            >{{ saving ? 'Saving…' : 'Save' }}</button>
+            >{{ saving ? t('common.saving') : t('common.save') }}</button>
 
             <button
               class="px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
               :disabled="sendingProposal"
               @click="sendProposal"
-            >{{ sendingProposal ? '…' : '📤 Send' }}</button>
+            >{{ sendingProposal ? '…' : t('builder.send') }}</button>
 
             <button
               class="px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
@@ -657,17 +657,17 @@ watch(
               class="px-3 py-1.5 rounded-xl border border-gray-200 text-sm hover:bg-gray-50"
               :class="publicLinkCopied ? 'text-green-600' : 'text-gray-600'"
               @click="copyPublicLink"
-            >{{ publicLinkCopied ? '✓ Copied!' : '🔗 Copy Link' }}</button>
+            >{{ publicLinkCopied ? t('common.copied') : t('builder.copyLink') }}</button>
 
             <button
               class="px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
               @click="showPreview = !showPreview"
-            >{{ showPreview ? 'Hide Preview' : 'Preview' }}</button>
+            >{{ showPreview ? t('builder.hidePreview') : t('builder.preview') }}</button>
 
             <button
               class="px-3 py-1.5 rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50"
               @click="deleteProposal(currentProposal.id)"
-            >Delete</button>
+            >{{ t('common.delete') }}</button>
           </div>
 
           <!-- Two-panel layout: editor + live preview -->
@@ -677,42 +677,42 @@ watch(
 
               <!-- Meta fields -->
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Details</h3>
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ t('builder.details') }}</h3>
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-xs text-gray-500 mb-1">Currency</label>
+                    <label class="block text-xs text-gray-500 mb-1">{{ t('proposals.currency') }}</label>
                     <select v-model="editCurrency" class="w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
                       <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
                     </select>
                   </div>
                   <div>
-                    <label class="block text-xs text-gray-500 mb-1">Valid Until</label>
+                    <label class="block text-xs text-gray-500 mb-1">{{ t('builder.validUntil') }}</label>
                     <input v-model="editExpiry" type="date" class="w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" />
                   </div>
                 </div>
 
                 <!-- View stats -->
                 <div v-if="currentProposal.view_count > 0" class="mt-3 flex gap-4 text-xs text-gray-400">
-                  <span>👁 {{ currentProposal.view_count }} view{{ currentProposal.view_count !== 1 ? 's' : '' }}</span>
-                  <span v-if="currentProposal.first_viewed_at">First opened: {{ formatDate(currentProposal.first_viewed_at) }}</span>
+                  <span>👁 {{ t('builder.views', { count: currentProposal.view_count }) }}</span>
+                  <span v-if="currentProposal.first_viewed_at">{{ t('builder.firstOpened') }}: {{ formatDate(currentProposal.first_viewed_at) }}</span>
                 </div>
               </div>
 
               <!-- Intro text -->
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Introduction</h3>
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ t('builder.introduction') }}</h3>
                 <textarea
                   v-model="editIntro"
                   rows="3"
                   class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
-                  placeholder="Write an introduction for your proposal…"
+:placeholder="t('builder.introPlaceholder')"
                 />
               </div>
 
               <!-- Line items -->
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
                 <div class="flex items-center justify-between mb-3">
-                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Line Items</h3>
+                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ t('builder.lineItems') }}</h3>
                   <div class="flex items-center gap-2">
                     <button
                       class="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -721,7 +721,7 @@ watch(
                     <button
                       class="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                       @click="showApplyTemplate = !showApplyTemplate; showCatalog = false"
-                    >Apply Template</button>
+                    >{{ t('builder.applyTemplate') }}</button>
                   </div>
                 </div>
 
@@ -760,8 +760,8 @@ watch(
 
                 <!-- Apply template panel -->
                 <div v-if="showApplyTemplate" class="mb-3 p-3 bg-gray-50 rounded-xl">
-                  <p class="text-xs text-gray-500 mb-2">Select a template to apply:</p>
-                  <div v-if="templates.length === 0" class="text-xs text-gray-400">No templates yet. Create one in Settings → Proposal Templates.</div>
+                  <p class="text-xs text-gray-500 mb-2">{{ t('builder.selectTemplateHint') }}</p>
+                  <div v-if="templates.length === 0" class="text-xs text-gray-400">{{ t('builder.noTemplates') }}</div>
                   <div v-else class="space-y-1">
                     <button
                       v-for="tmpl in templates"
@@ -782,12 +782,12 @@ watch(
                     <thead>
                       <tr class="border-b border-gray-100">
                         <th class="text-left py-1.5 pr-2 text-xs font-medium text-gray-500 w-6"></th>
-                        <th class="text-left py-1.5 pr-2 text-xs font-medium text-gray-500">Description</th>
-                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">Qty</th>
-                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-24">Unit Price</th>
-                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">Disc %</th>
-                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">VAT %</th>
-                        <th class="text-right py-1.5 pl-2 text-xs font-medium text-gray-500 w-24">Total</th>
+                        <th class="text-left py-1.5 pr-2 text-xs font-medium text-gray-500">{{ t('catalog.colDescription') }}</th>
+                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">{{ t('builder.qty') }}</th>
+                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-24">{{ t('catalog.unitPrice') }}</th>
+                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">{{ t('catalog.discountPct') }}</th>
+                        <th class="text-right py-1.5 px-2 text-xs font-medium text-gray-500 w-16">{{ t('catalog.vatPct') }}</th>
+                        <th class="text-right py-1.5 pl-2 text-xs font-medium text-gray-500 w-24">{{ t('builder.total') }}</th>
                         <th class="w-8"></th>
                       </tr>
                     </thead>
@@ -841,7 +841,7 @@ watch(
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colspan="6" class="py-2 text-right text-xs font-semibold text-gray-700 pr-2">Total:</td>
+                        <td colspan="6" class="py-2 text-right text-xs font-semibold text-gray-700 pr-2">{{ t('builder.total') }}:</td>
                         <td class="py-2 pl-2 text-right text-sm font-bold text-gray-900">{{ fmt(previewTotal) }} {{ editCurrency }}</td>
                         <td></td>
                       </tr>
@@ -851,12 +851,12 @@ watch(
 
                 <!-- Add item form -->
                 <div class="border border-dashed border-gray-200 rounded-xl p-3">
-                  <p class="text-xs text-gray-400 mb-2 font-medium">Add line item</p>
+                  <p class="text-xs text-gray-400 mb-2 font-medium">{{ t('builder.addLineItem') }}</p>
                   <div class="flex flex-wrap gap-2">
                     <input
                       v-model="newItemDesc"
                       type="text"
-                      placeholder="Description *"
+:placeholder="t('catalog.descriptionLabel')"
                       class="flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
                     />
                     <input v-model.number="newItemQty" type="number" min="0.001" step="0.001" placeholder="Qty" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
@@ -867,30 +867,30 @@ watch(
                       :disabled="addingItem || !newItemDesc.trim()"
                       class="px-4 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                       @click="addItem"
-                    >{{ addingItem ? '…' : '+ Add' }}</button>
+                    >{{ addingItem ? '…' : ('+ ' + t('common.adding')) }}</button>
                   </div>
                 </div>
               </div>
 
               <!-- Notes -->
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notes</h3>
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ t('builder.notes') }}</h3>
                 <textarea
                   v-model="editNotes"
                   rows="2"
                   class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
-                  placeholder="Internal notes (not shown to recipient)…"
+:placeholder="t('builder.notesPlaceholder')"
                 />
               </div>
 
               <!-- Closing text -->
               <div class="bg-white rounded-2xl border border-gray-100 p-4">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Closing Text</h3>
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{{ t('builder.closingText') }}</h3>
                 <textarea
                   v-model="editClosing"
                   rows="3"
                   class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
-                  placeholder="Write a closing message (e.g. terms, next steps)…"
+:placeholder="t('builder.closingPlaceholder')"
                 />
               </div>
             </div>
@@ -901,7 +901,7 @@ watch(
               class="w-96 flex-shrink-0"
             >
               <div class="bg-white rounded-2xl border border-gray-100 p-5 sticky top-4">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Preview</h3>
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">{{ t('builder.preview') }}</h3>
 
                 <div
                   class="border-b-4 pb-3 mb-4"
@@ -911,7 +911,7 @@ watch(
                     class="text-base font-bold"
                     :style="{ color: firmStore.activeFirm?.primary_color || '#dc2626' }"
                   >{{ firmStore.activeFirm?.name }}</div>
-                  <div class="text-lg font-semibold text-gray-900 mt-1">{{ editTitle || 'Proposal Title' }}</div>
+                  <div class="text-lg font-semibold text-gray-900 mt-1">{{ editTitle || t('builder.proposalTitle') }}</div>
                   <span
                     class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium"
                     :class="statusMeta(editStatus).color"
@@ -919,7 +919,7 @@ watch(
                 </div>
 
                 <div class="flex gap-4 text-xs text-gray-400 mb-4">
-                  <span v-if="editExpiry">Valid until: {{ editExpiry }}</span>
+                  <span v-if="editExpiry">{{ t('builder.validUntil') }}: {{ editExpiry }}</span>
                   <span>{{ editCurrency }}</span>
                 </div>
 
@@ -928,8 +928,8 @@ watch(
                 <table class="w-full text-xs mb-4" v-if="items.length > 0">
                   <thead>
                     <tr class="text-gray-500 border-b border-gray-100">
-                      <th class="text-left pb-1">Item</th>
-                      <th class="text-right pb-1">Total</th>
+                      <th class="text-left pb-1">{{ t('builder.item') }}</th>
+                      <th class="text-right pb-1">{{ t('builder.total') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -941,10 +941,10 @@ watch(
                 </table>
 
                 <div class="border-t border-gray-100 pt-2 text-xs space-y-0.5">
-                  <div class="flex justify-between text-gray-500"><span>Subtotal</span><span>{{ fmt(previewSubtotal) }}</span></div>
-                  <div v-if="previewDiscount > 0" class="flex justify-between text-gray-500"><span>Discount</span><span>-{{ fmt(previewDiscount) }}</span></div>
-                  <div v-if="previewTax > 0" class="flex justify-between text-gray-500"><span>Tax / VAT</span><span>{{ fmt(previewTax) }}</span></div>
-                  <div class="flex justify-between font-bold text-sm text-gray-900 pt-1"><span>Total</span><span>{{ fmt(previewTotal) }} {{ editCurrency }}</span></div>
+                  <div class="flex justify-between text-gray-500"><span>{{ t('builder.subtotal') }}</span><span>{{ fmt(previewSubtotal) }}</span></div>
+                  <div v-if="previewDiscount > 0" class="flex justify-between text-gray-500"><span>{{ t('builder.discount') }}</span><span>-{{ fmt(previewDiscount) }}</span></div>
+                  <div v-if="previewTax > 0" class="flex justify-between text-gray-500"><span>{{ t('builder.taxVat') }}</span><span>{{ fmt(previewTax) }}</span></div>
+                  <div class="flex justify-between font-bold text-sm text-gray-900 pt-1"><span>{{ t('builder.total') }}</span><span>{{ fmt(previewTotal) }} {{ editCurrency }}</span></div>
                 </div>
 
                 <div v-if="editClosing" class="mt-4 text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">{{ editClosing }}</div>

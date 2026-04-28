@@ -16,6 +16,7 @@ const store = useRealizationsStore()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const realizationId = computed(() => route.params.id as string)
 
@@ -50,7 +51,7 @@ async function saveTitle() {
   savingTitle.value = true
   try {
     await store.updateRealization(realization.value.id, { title: titleDraft.value.trim() })
-    toast.success('Název uložen')
+    toast.success(t('realizations.titleSaved'))
   } finally {
     savingTitle.value = false
     editingTitle.value = false
@@ -82,13 +83,13 @@ async function createMilestone() {
       { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
-    toast.success('Milník přidán')
+    toast.success(t('realizations.milestoneAdded'))
     milestoneFormName.value = ''
     milestoneFormDate.value = ''
     milestoneFormDesc.value = ''
     showMilestoneForm.value = false
   } catch {
-    toast.error('Nepodařilo se přidat milník')
+    toast.error(t('realizations.failedToAddMilestone'))
   } finally {
     milestoneFormLoading.value = false
   }
@@ -104,7 +105,7 @@ async function toggleMilestone(m: MilestoneOut) {
     )
     await store.fetchRealization(realization.value.id)
   } catch {
-    toast.error('Chyba')
+    toast.error(t('common.error'))
   }
 }
 
@@ -116,9 +117,9 @@ async function deleteMilestone(m: MilestoneOut) {
       { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
-    toast.success('Milník smazán')
+    toast.success(t('realizations.milestoneDeleted'))
   } catch {
-    toast.error('Chyba')
+    toast.error(t('common.error'))
   }
 }
 
@@ -193,17 +194,17 @@ onMounted(async () => {
 })</script>
 
 <template>
-  <div v-if="store.loadingDetail" class="p-6 text-center text-gray-500">Načítání…</div>
+  <div v-if="store.loadingDetail" class="p-6 text-center text-gray-500">{{ t('common.loading') }}</div>
 
   <div v-else-if="!realization" class="p-6">
-    <p class="text-gray-500">Realizace nenalezena.</p>
+    <p class="text-gray-500">{{ t('realizations.notFound') }}</p>
     <button @click="router.push('/app/realizations')" class="mt-4 text-sm text-red-600 hover:underline">← Zpět</button>
   </div>
 
   <div v-else class="p-6 max-w-5xl mx-auto space-y-6">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1 text-sm text-gray-500">
-      <button @click="router.push('/app/realizations')" class="hover:text-gray-700 dark:hover:text-gray-300">Realizace</button>
+      <button @click="router.push('/app/realizations')" class="hover:text-gray-700 dark:hover:text-gray-300">{{ t('realizations.title') }}</button>
       <span class="mx-1">›</span>
       <span class="text-gray-700 dark:text-gray-300 truncate max-w-xs">{{ realization.title }}</span>
     </nav>
@@ -219,8 +220,8 @@ onMounted(async () => {
             class="text-2xl font-bold border-b-2 border-red-500 bg-transparent outline-none text-gray-900 dark:text-white w-full"
             autofocus
           />
-          <button @click="saveTitle" :disabled="savingTitle" class="text-sm text-red-600 hover:underline">Uložit</button>
-          <button @click="editingTitle = false" class="text-sm text-gray-500 hover:underline">Zrušit</button>
+          <button @click="saveTitle" :disabled="savingTitle" class="text-sm text-red-600 hover:underline">{{ t('common.save') }}</button>
+          <button @click="editingTitle = false" class="text-sm text-gray-500 hover:underline">{{ t('common.cancel') }}</button>
         </div>
         <h1
           v-else
@@ -233,7 +234,7 @@ onMounted(async () => {
         <!-- Meta line -->
         <div class="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
           <span v-if="realization.customer_name">
-            <span class="text-gray-400">Zákazník:</span> {{ realization.customer_name }}
+            <span class="text-gray-400">{{ t('realizations.colCustomer') }}:</span> {{ realization.customer_name }}
           </span>
           <span v-if="realization.lead_title">
             <span class="text-gray-400">Příležitost:</span> {{ realization.lead_title }}
@@ -267,12 +268,12 @@ onMounted(async () => {
     <div class="flex border-b border-gray-200 dark:border-gray-700">
       <button
         v-for="tab in [
-          { id: 'overview', label: 'Přehled' },
-          { id: 'activities', label: 'Aktivity' },
-          { id: 'milestones', label: `Milníky (${totalMilestones})` },
-          { id: 'tasks', label: 'Úkoly' },
-          { id: 'proposals', label: 'Nabídky' },
-          { id: 'documents', label: `Dokumenty (${documents.length})` },
+          { id: 'overview', label: t('realizations.tabOverview') },
+          { id: 'activities', label: t('realizations.tabActivities') },
+          { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
+          { id: 'tasks', label: t('realizations.tabTasks') },
+          { id: 'proposals', label: t('realizations.tabProposals') },
+          { id: 'documents', label: `${t('realizations.tabDocuments')} (${documents.length})` },
         ]"
         :key="tab.id"
         @click="activeTab = tab.id as Tab; if (tab.id === 'documents' && documents.length === 0) loadDocuments()"
@@ -289,12 +290,12 @@ onMounted(async () => {
     <div v-if="activeTab === 'overview'" class="space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Popis</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('realizations.descLabel') }}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ realization.description || '—' }}</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Milníky</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('realizations.milestonesTitle') }}</h3>
           <div v-if="totalMilestones > 0">
             <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
               <span>{{ completedMilestones }} / {{ totalMilestones }} splněno</span>
@@ -307,7 +308,7 @@ onMounted(async () => {
               />
             </div>
           </div>
-          <p v-else class="text-sm text-gray-400">Žádné milníky</p>
+          <p v-else class="text-sm text-gray-400">{{ t('realizations.noMilestones') }}</p>
         </div>
       </div>
     </div>
@@ -320,12 +321,12 @@ onMounted(async () => {
     <!-- Milestones tab -->
     <div v-if="activeTab === 'milestones'" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Milníky</h2>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('realizations.milestonesTitle') }}</h2>
         <button
           @click="showMilestoneForm = !showMilestoneForm"
           class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg"
         >
-          + Přidat milník
+          + {{ t('realizations.addMilestone') }}
         </button>
       </div>
 
@@ -342,7 +343,7 @@ onMounted(async () => {
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Datum *</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.dateLabel') }}</label>
             <input
               v-model="milestoneFormDate"
               type="date"
@@ -353,7 +354,7 @@ onMounted(async () => {
         <input
           v-model="milestoneFormDesc"
           type="text"
-          placeholder="Popis (volitelné)"
+:placeholder="t('realizations.optionalDesc')"
           class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
         />
         <div class="flex gap-2">
@@ -416,9 +417,7 @@ onMounted(async () => {
       <div v-if="proposalsLoading" class="animate-pulse space-y-2">
         <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
       </div>
-      <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">
-        Žádné nabídky pro tuto realizaci.
-      </div>
+      <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">{{ t('realizations.noProposals') }}</div>
       <div v-else class="space-y-2">
         <RouterLink
           v-for="p in linkedProposals"
@@ -442,7 +441,7 @@ onMounted(async () => {
           :disabled="docsUploading"
           class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
         >
-          {{ docsUploading ? 'Nahrávám…' : '⬆ Nahrát' }}
+          {{ docsUploading ? t('common.uploading') : t('common.upload') }}
         </button>
         <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
       </div>
@@ -453,8 +452,8 @@ onMounted(async () => {
 
       <div v-else-if="documents.length === 0" class="text-center py-12">
         <div class="text-4xl mb-3">📁</div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Žádné dokumenty</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Nahrajte soubory kliknutím na Nahrát výše.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('realizations.noDocs') }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('realizations.uploadHint') }}</p>
       </div>
 
       <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
@@ -477,10 +476,10 @@ onMounted(async () => {
       <!-- Delete confirm -->
       <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-          <p class="text-gray-800 dark:text-white font-medium mb-4">Opravdu chcete smazat tento dokument?</p>
+          <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('realizations.confirmDeleteDoc') }}</p>
           <div class="flex gap-3 justify-end">
-            <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Zrušit</button>
-            <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">Smazat</button>
+            <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('common.cancel') }}</button>
+            <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('common.delete') }}</button>
           </div>
         </div>
       </div>

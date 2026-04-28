@@ -160,7 +160,7 @@ const userInitials = computed(() => {
 
 const navSections = computed(() => [
   {
-    label: 'CRM',
+    label: t('appShell.sectionCrm'),
     items: [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
@@ -174,7 +174,7 @@ const navSections = computed(() => [
     ],
   },
   {
-    label: 'ERP',
+    label: t('appShell.sectionErp'),
     items: [
       { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
       { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
@@ -182,7 +182,7 @@ const navSections = computed(() => [
     ],
   },
   {
-    label: 'Insights',
+    label: t('appShell.sectionInsights'),
     items: [
       { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
       { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
@@ -190,13 +190,13 @@ const navSections = computed(() => [
     ],
   },
   {
-    label: 'Workspace',
+    label: t('appShell.sectionWorkspace'),
     items: [
       { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
-      { label: 'Plugins', icon: PuzzlePieceIcon, path: '/app/plugins' },
-      { label: 'Proposal Templates', icon: RectangleStackIcon, path: '/app/proposal-templates' },
-      { label: 'Katalog položek', icon: ArchiveBoxIcon, path: '/app/catalog' },
-      { label: 'Automations', icon: BoltIcon, path: '/app/automations' },
+      { label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' },
+      { label: t('appShell.sectionProposalTemplates'), icon: RectangleStackIcon, path: '/app/proposal-templates' },
+      { label: t('appShell.sectionCatalog'), icon: ArchiveBoxIcon, path: '/app/catalog' },
+      { label: t('appShell.sectionAutomations'), icon: BoltIcon, path: '/app/automations' },
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
       ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: ShieldCheckIcon, path: '/app/superadmin' }] : []),
     ],
@@ -232,11 +232,11 @@ function toggleNotifPanel() {
 
 function eventLabel(event: string): string {
   const map: Record<string, string> = {
-    'lead.created': 'New opportunity created',
-    'lead.updated': 'Opportunity updated',
-    'lead.deleted': 'Opportunity deleted',
-    'activity.created': 'New activity logged',
-    'task.completed': 'Task completed',
+    'lead.created': t('appShell.eventLeadCreated'),
+    'lead.updated': t('appShell.eventLeadUpdated'),
+    'lead.deleted': t('appShell.eventLeadDeleted'),
+    'activity.created': t('appShell.eventActivityCreated'),
+    'task.completed': t('appShell.eventTaskCompleted'),
   }
   return map[event] ?? event
 }
@@ -257,13 +257,13 @@ function notifTitle(n: { event: string; payload: Record<string, unknown> }): str
     return (n.payload.title as string) || eventLabel(n.event)
   }
   if (n.event === 'activity.created') {
-    return (n.payload.content_text as string) || (n.payload.type as string) || 'Activity'
+    return (n.payload.content_text as string) || (n.payload.type as string) || t('appShell.notifActivity')
   }
   if (n.event === 'task.completed') {
-    return (n.payload.title as string) || 'Task completed'
+    return (n.payload.title as string) || t('appShell.notifTaskCompleted')
   }
   if (n.event === 'lead.deleted') {
-    return `Lead ${n.payload.id as string} deleted`
+    return t('appShell.notifLeadDeleted', { id: n.payload.id as string })
   }
   return eventLabel(n.event)
 }
@@ -279,7 +279,7 @@ function formatNotifTime(ts: string): string {
     href="#main-content"
     class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-red-600 focus:text-white focus:rounded-xl focus:text-sm focus:font-medium"
   >
-    Skip to content
+    {{ t('appShell.skipToContent') }}
   </a>
 
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -319,7 +319,7 @@ function formatNotifTime(ts: string): string {
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
             {{ firmStore.activeFirm?.name ?? 'LeadLab' }}
           </div>
-          <div class="text-xs text-gray-400 dark:text-gray-500 truncate">Workspace</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ t('appShell.workspace') }}</div>
         </div>
         <button
           class="hidden lg:flex ml-auto items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
@@ -398,7 +398,7 @@ function formatNotifTime(ts: string): string {
           @click="toggleDark"
         >
           <span class="text-base flex-shrink-0 w-5 text-center" aria-hidden="true">{{ isDark ? '☀' : '🌙' }}</span>
-          <span v-if="sidebarOpen" class="truncate text-xs">{{ isDark ? 'Light mode' : 'Dark mode' }}</span>
+          <span v-if="sidebarOpen" class="truncate text-xs">{{ isDark ? t('appShell.lightMode') : t('appShell.darkMode') }}</span>
         </button>
 
         <div class="flex items-center gap-3 min-w-0">
@@ -495,12 +495,12 @@ function formatNotifTime(ts: string): string {
               >
                 <!-- Panel header -->
                 <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                  <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1">Notifications</h2>
+                  <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('appShell.notifications') }}</h2>
                   <button
                     v-if="notifStore.unreadCount > 0"
                     class="text-xs text-red-600 hover:underline"
                     @click="notifStore.markAllRead()"
-                  >Mark all read</button>
+                  >{{ t('appShell.markAllRead') }}</button>
                   <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none" aria-label="Close notifications" @click="notifOpen = false">✕</button>
                 </div>
 
@@ -511,7 +511,7 @@ function formatNotifTime(ts: string): string {
                   </div>
                   <div v-else-if="notifStore.notifications.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
                     <div class="text-4xl mb-3" aria-hidden="true">🔔</div>
-                    <p class="text-sm">No notifications yet.</p>
+                    <p class="text-sm">{{ t('appShell.noNotifications') }}</p>
                   </div>
                   <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700" role="list">
                     <li
@@ -591,7 +591,7 @@ function formatNotifTime(ts: string): string {
         aria-labelledby="shortcuts-title"
       >
         <div class="flex items-center justify-between mb-4">
-          <h3 id="shortcuts-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">Keyboard Shortcuts</h3>
+          <h3 id="shortcuts-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('appShell.keyboardShortcuts') }}</h3>
           <button
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             aria-label="Close shortcuts help"

@@ -21,6 +21,7 @@ const customersStore = useCustomersStore()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const toast = useToast()
+const { t } = useI18n()
 
 type ViewMode = 'kanban' | 'table'
 const viewMode = ref<ViewMode>('kanban')
@@ -79,7 +80,7 @@ function openEdit(r: RealizationOut) {
 
 async function submitForm() {
   if (!formTitle.value.trim()) {
-    formError.value = 'Title is required'
+    formError.value = t('realizations.titleRequired')
     return
   }
   formLoading.value = true
@@ -94,13 +95,13 @@ async function submitForm() {
     if (editingRealization.value) {
       const updated = await store.updateRealization(editingRealization.value.id, payload)
       if (updated) {
-        toast.success('Realization updated')
+        toast.success(t('realizations.updated'))
         showModal.value = false
       }
     } else {
       const created = await store.createRealization(payload)
       if (created) {
-        toast.success('Realization created')
+        toast.success(t('realizations.created'))
         showModal.value = false
       }
     }
@@ -112,7 +113,7 @@ async function submitForm() {
 async function handleDelete(id: string) {
   const ok = await store.deleteRealization(id)
   if (ok) {
-    toast.success('Realization deleted')
+    toast.success(t('realizations.deleted'))
     confirmDeleteId.value = null
   }
 }
@@ -147,7 +148,7 @@ function selectCustomer(c: CustomerOut) {
   <div class="p-6 space-y-4">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Realizace</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('realizations.title') }}</h1>
       <div class="flex items-center gap-2">
         <!-- View toggle -->
         <div class="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -156,28 +157,28 @@ function selectCustomer(c: CustomerOut) {
             :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'"
             class="px-3 py-1.5 text-sm font-medium"
           >
-            Kanban
+            {{ t('realizations.kanban') }}
           </button>
           <button
             @click="viewMode = 'table'"
             :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'"
             class="px-3 py-1.5 text-sm font-medium"
           >
-            Tabulka
+            {{ t('realizations.tableView') }}
           </button>
         </div>
         <button
           @click="openCreate"
           class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
         >
-          + Nová realizace
+          + {{ t('realizations.new') }}
         </button>
       </div>
     </div>
 
     <!-- Loading -->
     <div v-if="store.loading" class="text-center py-12 text-gray-500">
-      Načítání…
+      {{ t('common.loading') }}
     </div>
 
     <!-- Kanban board -->
@@ -226,10 +227,10 @@ function selectCustomer(c: CustomerOut) {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
-            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Název</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Stav</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Zákazník</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Termín</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">{{ t('realizations.colName') }}</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">{{ t('realizations.colStatus') }}</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">{{ t('realizations.colCustomer') }}</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700 dark:text-gray-300">{{ t('realizations.colDeadline') }}</th>
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
@@ -254,7 +255,7 @@ function selectCustomer(c: CustomerOut) {
             </td>
           </tr>
           <tr v-if="store.realizations.length === 0">
-            <td colspan="5" class="px-4 py-12 text-center text-gray-400">Žádné realizace</td>
+            <td colspan="5" class="px-4 py-12 text-center text-gray-400">{{ t('realizations.none') }}</td>
           </tr>
         </tbody>
       </table>
@@ -264,34 +265,34 @@ function selectCustomer(c: CustomerOut) {
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {{ editingRealization ? 'Upravit realizaci' : 'Nová realizace' }}
+          {{ editingRealization ? t('realizations.editTitle') : t('realizations.newTitle') }}
         </h2>
 
         <div v-if="formError" class="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{{ formError }}</div>
 
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Název *</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.nameLabel') }}</label>
             <input
               v-model="formTitle"
               type="text"
-              placeholder="Název realizace"
+              :placeholder="t('realizations.namePlaceholder')"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Popis</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.descLabel') }}</label>
             <textarea
               v-model="formDescription"
               rows="3"
-              placeholder="Popis…"
+              :placeholder="t('realizations.descPlaceholder')"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stav</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.statusLabel') }}</label>
             <select
               v-model="formStatus"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
@@ -302,12 +303,12 @@ function selectCustomer(c: CustomerOut) {
 
           <!-- Customer typeahead -->
           <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zákazník</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.customerLabel') }}</label>
             <input
               v-model="formCustomerQuery"
               @input="onCustomerInput"
               type="text"
-              placeholder="Hledat zákazníka…"
+              :placeholder="t('realizations.customerSearch')"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
             />
             <div v-if="showCustomerDropdown" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 shadow-lg z-10 max-h-48 overflow-y-auto">
@@ -328,14 +329,14 @@ function selectCustomer(c: CustomerOut) {
             @click="showModal = false"
             class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
           >
-            Zrušit
+            {{ t('common.cancel') }}
           </button>
           <button
             @click="submitForm"
             :disabled="formLoading"
             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
           >
-            {{ formLoading ? 'Ukládám…' : (editingRealization ? 'Uložit' : 'Vytvořit') }}
+            {{ formLoading ? t('common.saving') : (editingRealization ? t('common.save') : t('common.create')) }}
           </button>
         </div>
       </div>
@@ -344,20 +345,20 @@ function selectCustomer(c: CustomerOut) {
     <!-- Delete confirmation -->
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Smazat realizaci?</h2>
-        <p class="text-sm text-gray-500 mb-6">Tato akce je nevratná.</p>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{{ t('realizations.confirmDeleteTitle') }}</h2>
+        <p class="text-sm text-gray-500 mb-6">{{ t('common.irreversible') }}</p>
         <div class="flex justify-end gap-2">
           <button
             @click="confirmDeleteId = null"
             class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
           >
-            Zrušit
+            {{ t('common.cancel') }}
           </button>
           <button
             @click="handleDelete(confirmDeleteId!)"
             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
           >
-            Smazat
+            {{ t('common.delete') }}
           </button>
         </div>
       </div>

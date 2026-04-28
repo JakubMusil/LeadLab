@@ -2,11 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { useFirmStore } from '@/stores/firm'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import DOMPurify from 'dompurify'
 
 const toast = useToast()
+const { t } = useI18n()
 const firmStore = useFirmStore()
 
 // ---------------------------------------------------------------------------
@@ -141,7 +143,7 @@ async function loadItems() {
 
 async function createItem() {
   if (!newItem.value.description.trim()) {
-    toast.error('Description is required.')
+    toast.error(t('catalog.descriptionRequired'))
     return
   }
   addingItem.value = true
@@ -161,9 +163,9 @@ async function createItem() {
     allItems.value.unshift(res.data)
     resetNewItem()
     showAddForm.value = false
-    toast.success('Item added to catalog.')
+    toast.success(t('catalog.itemAdded'))
   } else {
-    toast.error('Failed to create item.')
+    toast.error(t('catalog.failedToCreate'))
   }
 }
 
@@ -201,20 +203,20 @@ async function saveEdit() {
     const idx = allItems.value.findIndex((i) => i.id === editItem.value!.id)
     if (idx !== -1) allItems.value[idx] = res.data
     cancelEdit()
-    toast.success('Item updated.')
+    toast.success(t('catalog.itemUpdated'))
   } else {
-    toast.error('Failed to update item.')
+    toast.error(t('catalog.failedToUpdate'))
   }
 }
 
 async function deleteItem(id: string) {
-  if (!confirm('Delete this catalog item? This cannot be undone.')) return
+  if (!confirm(t('catalog.confirmDelete'))) return
   const res = await api.delete(`/api/v1/crm/firm-proposal-items/${id}`)
   if (res.ok || res.status === 204) {
     allItems.value = allItems.value.filter((i) => i.id !== id)
-    toast.success('Item deleted.')
+    toast.success(t('catalog.itemDeleted'))
   } else {
-    toast.error('Failed to delete item.')
+    toast.error(t('catalog.failedToDelete'))
   }
 }
 
@@ -246,7 +248,7 @@ function exportCSV() {
   a.download = `catalog-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
-  toast.success(`Exported ${allItems.value.length} items.`)
+  toast.success(t('catalog.exported', { count: allItems.value.length }))
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +268,7 @@ async function onImportFile(event: Event) {
   const lines = text.split(/\r?\n/).filter(Boolean)
 
   if (lines.length < 2) {
-    toast.error('CSV file must have a header row and at least one data row.')
+    toast.error(t('catalog.csvMustHaveHeader'))
     importing.value = false
     ;(event.target as HTMLInputElement).value = ''
     return
@@ -283,7 +285,7 @@ async function onImportFile(event: Event) {
   const notesIdx = headers.findIndex((h) => h.includes('notes') || h.includes('description_long'))
 
   if (descIdx === -1) {
-    toast.error('CSV must have a "description" or "name" column.')
+    toast.error(t('catalog.csvMustHaveDesc'))
     importing.value = false
     ;(event.target as HTMLInputElement).value = ''
     return
@@ -322,9 +324,9 @@ async function onImportFile(event: Event) {
   ;(event.target as HTMLInputElement).value = ''
 
   if (created > 0) {
-    toast.success(`Imported ${created} item${created !== 1 ? 's' : ''}.${failed ? ` ${failed} failed.` : ''}`)
+    toast.success(t('catalog.importedItems', { count: created }))
   } else {
-    toast.error('No items were imported. Check the CSV format.')
+    toast.error(t('catalog.noItemsImported'))
   }
 }
 
@@ -352,11 +354,8 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Katalog položek</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Products &amp; services catalog — {{ allItems.length }} items total.
-          Quickly add catalog items to any proposal.
-        </p>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('catalog.title') }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ t('catalog.subtitle') }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <!-- Import -->
@@ -375,7 +374,7 @@ onMounted(() => {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
           </svg>
-          {{ importing ? 'Importing…' : 'Import CSV' }}
+          {{ importing ? t('catalog.importing') : t('catalog.importCsv') }}
         </button>
         <!-- Export -->
         <button
@@ -386,7 +385,7 @@ onMounted(() => {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          Export CSV
+          {{ t('catalog.exportCsv') }}
         </button>
         <!-- Add item -->
         <button
@@ -396,28 +395,28 @@ onMounted(() => {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Add item
+          {{ t('catalog.addItem') }}
         </button>
       </div>
     </div>
 
     <!-- Add item form -->
     <div v-if="showAddForm" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
-      <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">New catalog item</h2>
+      <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ t('catalog.newItem') }}</h2>
 
       <!-- Row 1: description + SKU -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div class="sm:col-span-2">
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description *</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.descriptionLabel') }}</label>
           <input
             v-model="newItem.description"
             type="text"
-            placeholder="Product / service name"
+            :placeholder="t('catalog.descriptionPlaceholder')"
             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
           />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">SKU</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.sku') }}</label>
           <input
             v-model="newItem.sku"
             type="text"
@@ -430,26 +429,26 @@ onMounted(() => {
       <!-- Row 2: numeric fields -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Unit price</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.unitPrice') }}</label>
           <input v-model.number="newItem.unit_price" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm text-right focus:outline-none focus:border-red-400" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Quantity</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.quantity') }}</label>
           <input v-model.number="newItem.quantity" type="number" min="0.001" step="0.001" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm text-right focus:outline-none focus:border-red-400" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Discount %</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.discountPct') }}</label>
           <input v-model.number="newItem.discount" type="number" min="0" max="100" step="0.01" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm text-right focus:outline-none focus:border-red-400" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">VAT %</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.vatPct') }}</label>
           <input v-model.number="newItem.vat_rate" type="number" min="0" max="100" step="0.01" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm text-right focus:outline-none focus:border-red-400" />
         </div>
       </div>
 
       <!-- Image URL -->
       <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Image URL</label>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.imageUrl') }}</label>
         <div class="flex items-center gap-3">
           <input
             v-model="newItem.image_url"
@@ -469,7 +468,7 @@ onMounted(() => {
 
       <!-- Rich text notes -->
       <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Notes / detailed description</label>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.notes') }}</label>
         <RichTextEditor
           v-model="newItem.notes"
           placeholder="Add detailed description, features, specifications…"
@@ -481,7 +480,7 @@ onMounted(() => {
           :disabled="addingItem || !newItem.description.trim()"
           class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="createItem"
-        >{{ addingItem ? 'Adding…' : 'Add to catalog' }}</button>
+        >{{ addingItem ? t('catalog.addingItem') : t('catalog.addToCatalog') }}</button>
         <button
           class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
           @click="showAddForm = false; resetNewItem()"
@@ -497,7 +496,7 @@ onMounted(() => {
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search by name, SKU, notes…"
+  :placeholder="t('catalog.searchPlaceholder')"
         class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:border-red-400"
         @input="onSearchChange"
       />
@@ -516,7 +515,7 @@ onMounted(() => {
     <!-- Empty state -->
     <div v-else-if="allItems.length === 0" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-12 text-center">
       <p class="text-4xl mb-3">📦</p>
-      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Your catalog is empty</p>
+      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('catalog.empty') }}</p>
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Add products and services to quickly include them in proposals.</p>
       <div class="flex justify-center gap-3 mt-4">
         <button class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700" @click="showAddForm = true">+ Add first item</button>
@@ -526,7 +525,7 @@ onMounted(() => {
 
     <!-- No search results -->
     <div v-else-if="filteredItems.length === 0" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-10 text-center">
-      <p class="text-sm text-gray-500 dark:text-gray-400">No items match "{{ searchQuery }}"</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('catalog.noMatch', { query: searchQuery }) }}</p>
       <button class="mt-2 text-xs text-red-600 hover:underline" @click="searchQuery = ''">Clear search</button>
     </div>
 
@@ -544,13 +543,13 @@ onMounted(() => {
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">Image</th>
-              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Description</th>
-              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-28">SKU</th>
+              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">{{ t('catalog.colImage') }}</th>
+              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{{ t('catalog.colDescription') }}</th>
+              <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-28">{{ t('catalog.colSku') }}</th>
               <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-24">Price</th>
               <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">Qty</th>
               <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">Disc. %</th>
-              <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">VAT %</th>
+              <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">{{ t('catalog.colVat') }}</th>
               <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-28">Actions</th>
             </tr>
           </thead>
@@ -645,7 +644,7 @@ onMounted(() => {
                   <button
                     class="ml-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     @click="showEditNotes = !showEditNotes"
-                  >{{ showEditNotes ? 'Hide notes' : 'Edit notes' }}</button>
+                  >{{ showEditNotes ? t('catalog.hideNotes') : t('catalog.editNotes') }}</button>
                 </td>
                 <td class="px-2 py-2">
                   <input
@@ -718,7 +717,7 @@ onMounted(() => {
               <tr v-if="editingId === item.id && showEditNotes && editItem" class="bg-blue-50/50 dark:bg-blue-900/5 border-b border-blue-100 dark:border-blue-800">
                 <td colspan="8" class="px-4 pb-3 space-y-3">
                   <div>
-                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Image URL</label>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('catalog.imageUrl') }}</label>
                     <div class="flex items-center gap-3">
                       <input
                         v-model="editItem.image_url"
@@ -755,13 +754,13 @@ onMounted(() => {
           :disabled="currentPage === 1"
           class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           @click="goToPage(currentPage - 1)"
-        >← Previous</button>
-        <span class="text-sm text-gray-500 dark:text-gray-400">Page {{ currentPage }} of {{ totalPages }}</span>
+        >{{ t('catalog.prevPage') }}</button>
+<span class="text-sm text-gray-500 dark:text-gray-400">{{ t('catalog.page', { current: currentPage, total: totalPages }) }}</span>
         <button
           :disabled="currentPage === totalPages"
           class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40"
           @click="goToPage(currentPage + 1)"
-        >Next →</button>
+        >{{ t('catalog.nextPage') }}</button>
       </div>
     </div>
 
