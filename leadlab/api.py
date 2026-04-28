@@ -12,6 +12,7 @@ from crm.erp_api import router as erp_router
 from crm.integrations_api import router as integrations_router
 from crm.proposals_api import proposals_router
 from crm.realization_api import realization_router
+from crm.management_api import management_router
 from crm.push_api import router as push_router
 from firms.api import router as firms_router
 from firms.billing_api import billing_router
@@ -42,6 +43,7 @@ api.add_router("/crm/", crm_router)
 api.add_router("/crm/", proposals_router)
 api.add_router("/crm/", automations_router)
 api.add_router("/crm/", realization_router)
+api.add_router("/crm/", management_router)
 api.add_router("/erp/", erp_router)
 api.add_router("/integrations/", integrations_router)
 api.add_router("/push/", push_router)

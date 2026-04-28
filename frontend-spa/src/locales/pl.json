@@ -13,7 +13,8 @@
     "taskTemplates": "Szablony zadań",
     "timesheets": "Ewidencja czasu",
     "reports": "Raporty",
-    "realizations": "Realizacje"
+    "realizations": "Realizacje",
+    "management": "Zarządzanie"
   },
   "auth": {
     "welcomeBack": "Witaj ponownie",

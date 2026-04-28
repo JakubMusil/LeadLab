@@ -13,7 +13,8 @@
     "taskTemplates": "Šablony úkolů",
     "timesheets": "Výkaz času",
     "reports": "Výkazy",
-    "realizations": "Realizace"
+    "realizations": "Realizace",
+    "management": "Správa"
   },
   "auth": {
     "welcomeBack": "Vítejte zpět",

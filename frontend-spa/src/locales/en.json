@@ -13,7 +13,8 @@
     "taskTemplates": "Task Templates",
     "timesheets": "Timesheet",
     "reports": "Reports",
-    "realizations": "Realizations"
+    "realizations": "Realizations",
+    "management": "Management"
   },
   "auth": {
     "welcomeBack": "Welcome back",
