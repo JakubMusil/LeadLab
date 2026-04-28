@@ -123,7 +123,7 @@ async function createProposal() {
     showCreateModal.value = false
     router.push(`/app/proposals/${res.data.id}`)
   } else {
-    toast.error('Nepodařilo se vytvořit nabídku.')
+    toast.error(t('proposals.errorCreate'))
   }
 }
 
@@ -292,14 +292,14 @@ onMounted(loadProposals)
               class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               @click="showCreateModal = false"
             >
-              Zrušit
+              {{ t('proposals.cancel') }}
             </button>
             <button
               class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               :disabled="creating || !createTitle.trim()"
               @click="createProposal"
             >
-              {{ creating ? 'Vytváření…' : 'Vytvořit' }}
+              {{ creating ? t('proposals.creating') : t('proposals.create') }}
             </button>
           </div>
         </div>

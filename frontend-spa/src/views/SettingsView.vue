@@ -671,7 +671,7 @@ async function createCatalogItem() {
     newCatalogDiscount.value = 0
     newCatalogVat.value = 0
   } else {
-    toast.error('Nepodařilo se přidat položku.')
+    toast.error(t('proposals.errorCreate'))
   }
 }
 
@@ -689,7 +689,7 @@ async function updateCatalogItem(item: FirmProposalItem) {
     if (idx !== -1) catalogItems.value[idx] = res.data
     editingCatalogId.value = null
   } else {
-    toast.error('Nepodařilo se uložit položku.')
+    toast.error(t('proposals.errorSave'))
   }
 }
 
@@ -699,7 +699,7 @@ async function deleteCatalogItem(id: string) {
   if (res.ok || res.status === 204) {
     catalogItems.value = catalogItems.value.filter((i) => i.id !== id)
   } else {
-    toast.error('Nepodařilo se smazat položku.')
+    toast.error(t('proposals.errorDelete'))
   }
 }
 
@@ -1788,7 +1788,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
       <!-- Empty -->
       <div v-else-if="catalogItems.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">
-        Katalog je prázdný.
+        {{ t('proposals.catalogEmpty') }}
       </div>
 
       <!-- Table -->
@@ -1846,7 +1846,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
             :disabled="addingCatalogItem || !newCatalogDesc.trim()"
             class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
             @click="createCatalogItem"
-          >{{ addingCatalogItem ? 'Přidávám…' : '+ Přidat' }}</button>
+          >{{ addingCatalogItem ? t('proposals.adding') : t('proposals.addCatalogItem') }}</button>
         </div>
       </div>
     </div>

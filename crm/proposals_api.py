@@ -1311,12 +1311,13 @@ def public_respond_proposal(request, token: str, payload: PublicProposalRespondI
     proposal.responded_at = now
     proposal.save(update_fields=["status", "responded_at", "updated_at"])
 
-    Activity.objects.create(
-        lead=proposal.lead,
-        type=activity_type,
-        content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
-        metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},
-    ) if proposal.lead_id else None
+    if proposal.lead_id:
+        Activity.objects.create(
+            lead=proposal.lead,
+            type=activity_type,
+            content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
+            metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},
+        )
 
     # Fire workflow automation trigger: proposal_accepted
     if payload.action == "accept":

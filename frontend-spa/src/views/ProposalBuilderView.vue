@@ -729,7 +729,7 @@ watch(
                 <div v-if="showCatalog" class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                   <p class="text-xs text-gray-500 mb-2">{{ t('proposals.catalogItemsHint') }}</p>
                   <div v-if="catalogItems.length === 0" class="text-xs text-gray-400">
-                    Katalog je prázdný. Přidejte položky v Nastavení → Katalog nabídek.
+                    {{ t('proposals.catalogEmpty') }} {{ t('proposals.catalogEmptyHint') }}
                   </div>
                   <div v-else class="space-y-1 mb-3">
                     <label
@@ -754,7 +754,7 @@ watch(
                     :disabled="addingFromCatalog || selectedCatalogIds.length === 0"
                     @click="addFromCatalog"
                   >
-                    {{ addingFromCatalog ? 'Přidávám…' : 'Přidat vybrané' }}
+                    {{ addingFromCatalog ? t('proposals.adding') : t('proposals.addSelected') }}
                   </button>
                 </div>
 

@@ -896,6 +896,18 @@
     "total": "Celkem",
     "currency": "Měna",
     "expiryDate": "Platnost do",
-    "backToProposals": "← Nabídky"
+    "backToProposals": "← Nabídky",
+    "errorCreate": "Nepodařilo se vytvořit nabídku.",
+    "errorSave": "Nepodařilo se uložit položku.",
+    "errorDelete": "Nepodařilo se smazat položku.",
+    "catalogEmpty": "Katalog je prázdný.",
+    "catalogEmptyHint": "Přidejte položky v Nastavení → Katalog nabídek.",
+    "addSelected": "Přidat vybrané",
+    "adding": "Přidávám…",
+    "creating": "Vytváření…",
+    "create": "Vytvořit",
+    "cancel": "Zrušit",
+    "cancel2": "Zrušit",
+    "noProposalsForEntity": "Žádné nabídky pro tuto entitu."
   }
 }

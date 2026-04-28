@@ -826,6 +826,17 @@
     "total": "Łącznie",
     "currency": "Waluta",
     "expiryDate": "Data ważności",
-    "backToProposals": "← Oferty"
+    "backToProposals": "← Oferty",
+    "errorCreate": "Nie udało się utworzyć oferty.",
+    "errorSave": "Nie udało się zapisać pozycji.",
+    "errorDelete": "Nie udało się usunąć pozycji.",
+    "catalogEmpty": "Katalog jest pusty.",
+    "catalogEmptyHint": "Dodaj pozycje w Ustawieniach → Katalog ofert.",
+    "addSelected": "Dodaj wybrane",
+    "adding": "Dodawanie…",
+    "creating": "Tworzenie…",
+    "create": "Utwórz",
+    "cancel": "Anuluj",
+    "noProposalsForEntity": "Brak ofert dla tego rekordu."
   }
 }

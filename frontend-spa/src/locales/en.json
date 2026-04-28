@@ -896,6 +896,17 @@
     "total": "Total",
     "currency": "Currency",
     "expiryDate": "Expiry date",
-    "backToProposals": "← Proposals"
+    "backToProposals": "← Proposals",
+    "errorCreate": "Failed to create proposal.",
+    "errorSave": "Failed to save item.",
+    "errorDelete": "Failed to delete item.",
+    "catalogEmpty": "Catalog is empty.",
+    "catalogEmptyHint": "Add items in Settings → Proposal Catalog.",
+    "addSelected": "Add selected",
+    "adding": "Adding…",
+    "creating": "Creating…",
+    "create": "Create",
+    "cancel": "Cancel",
+    "noProposalsForEntity": "No proposals for this entity."
   }
 }

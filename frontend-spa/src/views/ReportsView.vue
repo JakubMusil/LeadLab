@@ -3,8 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
+import { useI18n } from '@/composables/useI18n'
 
 const router = useRouter()
+const { t } = useI18n()
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -224,15 +226,15 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
 // ─── Create proposal from report ─────────────────────────────────────────────
 
 async function createProposalFromReport() {
-  // Create a blank proposal and navigate to it (items can be added manually)
+  const dateRange = [filterDateFrom.value, filterDateTo.value].filter(Boolean).join(' – ')
   const res = await api.post<{ id: string }>('/api/v1/crm/proposals', {
-    title: `Výkaz ${filterDateFrom.value || ''} – ${filterDateTo.value || ''}`.trim() || 'Výkaz',
+    title: dateRange ? `${t('proposals.createFromReport')} ${dateRange}` : t('proposals.createFromReport'),
     currency: 'CZK',
   })
   if (res.ok) {
     router.push(`/app/proposals/${res.data.id}`)
   } else {
-    showToast('Nepodařilo se vytvořit nabídku')
+    showToast(t('proposals.errorCreate'))
   }
 }
 </script>
@@ -249,7 +251,7 @@ async function createProposalFromReport() {
         class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
         @click="createProposalFromReport"
       >
-        Vytvořit nabídku z výkazu
+        {{ t('proposals.createFromReport') }}
       </button>
     </div>
 

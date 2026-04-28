@@ -826,6 +826,17 @@
     "total": "Gesamt",
     "currency": "Währung",
     "expiryDate": "Ablaufdatum",
-    "backToProposals": "← Angebote"
+    "backToProposals": "← Angebote",
+    "errorCreate": "Angebot konnte nicht erstellt werden.",
+    "errorSave": "Artikel konnte nicht gespeichert werden.",
+    "errorDelete": "Artikel konnte nicht gelöscht werden.",
+    "catalogEmpty": "Katalog ist leer.",
+    "catalogEmptyHint": "Fügen Sie Artikel in Einstellungen → Angebotskatalog hinzu.",
+    "addSelected": "Ausgewählte hinzufügen",
+    "adding": "Wird hinzugefügt…",
+    "creating": "Wird erstellt…",
+    "create": "Erstellen",
+    "cancel": "Abbrechen",
+    "noProposalsForEntity": "Keine Angebote für diesen Eintrag."
   }
 }
