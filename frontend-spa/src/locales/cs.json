@@ -10,7 +10,9 @@
     "analytics": "Analytika",
     "sequences": "Sekvence",
     "superAdmin": "Super Admin",
-    "taskTemplates": "Šablony úkolů"
+    "taskTemplates": "Šablony úkolů",
+    "timesheets": "Výkaz času",
+    "reports": "Výkazy"
   },
   "auth": {
     "welcomeBack": "Vítejte zpět",

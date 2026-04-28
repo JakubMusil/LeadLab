@@ -12,6 +12,7 @@ import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS }
 import { useI18n } from '@/composables/useI18n'
 import { pluginRegistry } from '@/plugins'
 import CommandPalette from '@/components/CommandPalette.vue'
+import TimerWidget from '@/components/TimerWidget.vue'
 import {
   Squares2X2Icon,
   FunnelIcon,
@@ -25,6 +26,8 @@ import {
   Cog6ToothIcon,
   ShieldCheckIcon,
   DocumentDuplicateIcon,
+  ClockIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -123,6 +126,13 @@ const navSections = computed(() => [
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
       { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
+    ],
+  },
+  {
+    label: 'ERP',
+    items: [
+      { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
+      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
     ],
   },
   {
@@ -514,6 +524,9 @@ function formatNotifTime(ts: string): string {
       </main>
     </div>
   </div>
+
+  <!-- Sitewide Timer Widget -->
+  <TimerWidget />
 
   <!-- Keyboard shortcuts help modal -->
   <Teleport to="body">

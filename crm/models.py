@@ -1994,3 +1994,256 @@ class TaskTimer(models.Model):
     def __str__(self):
         state = "running" if self.stopped_at is None else "stopped"
         return f"Timer({state}) on Task#{self.task_id} by {self.user_id}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.0 — Sitewide Time Tracking (TimeEntry)
+# ---------------------------------------------------------------------------
+
+class TimeEntry(TenantModel):
+    """
+    A sitewide time-tracking record that can be linked to any CRM entity.
+
+    Unlike ``TaskTimeLog`` (which is scoped to a Task), ``TimeEntry`` is a
+    first-class ERP record that may reference a Lead, Customer, or Task —
+    or exist independently (standalone timer / manual entry).
+
+    ``started_at`` / ``ended_at`` are set when the entry was created from the
+    sitewide timer.  For manual entries both may be null and only
+    ``duration_minutes`` is required.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Author
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="time_entries",
+    )
+
+    # Optional entity links (all nullable — entry may be standalone)
+    lead = models.ForeignKey(
+        Lead,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="time_entries",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="time_entries",
+    )
+    task = models.ForeignKey(
+        Task,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="time_entries",
+    )
+
+    # Time data
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Start of the work session (from timer); null for manual entries.",
+    )
+    ended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="End of the work session (from timer); null while timer is running or for manual entries.",
+    )
+    duration_minutes = models.PositiveIntegerField(
+        help_text="Total worked time in minutes.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional note about the work performed.",
+    )
+
+    # Billing flag
+    is_billable = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this time should be included in billing/invoicing.",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "time entry"
+        verbose_name_plural = "time entries"
+        ordering = ["-started_at", "-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "user", "-created_at"]),
+            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "customer"]),
+            models.Index(fields=["firm", "task"]),
+        ]
+
+    def __str__(self):
+        return f"{self.duration_minutes}min by {self.user_id} [{self.firm}]"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.0 — ERP Expense Items
+# ---------------------------------------------------------------------------
+
+class ExpenseItemRecurrence(models.TextChoices):
+    ONCE = "once", "Once"
+    MONTHLY = "monthly", "Monthly"
+    YEARLY = "yearly", "Yearly"
+
+
+class ExpenseItem(TenantModel):
+    """
+    A cost item linked to any CRM entity or standing alone.
+
+    ``recurrence`` drives whether the item is one-off or repeating.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Author
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="expense_items",
+    )
+
+    # Optional entity links
+    lead = models.ForeignKey(
+        Lead,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="expense_items",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="expense_items",
+    )
+    task = models.ForeignKey(
+        Task,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="expense_items",
+    )
+
+    # Financial data
+    title = models.CharField(max_length=255)
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Amount in the firm's default currency.",
+    )
+    currency = models.CharField(max_length=3, default="CZK")
+    date = models.DateField(db_index=True, help_text="Date the expense was incurred.")
+    recurrence = models.CharField(
+        max_length=20,
+        choices=ExpenseItemRecurrence.choices,
+        default=ExpenseItemRecurrence.ONCE,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "expense item"
+        verbose_name_plural = "expense items"
+        ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "-date"]),
+            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "customer"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title}: {self.amount} {self.currency} [{self.firm}]"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.0 — ERP Revenue Items
+# ---------------------------------------------------------------------------
+
+class RevenueItem(TenantModel):
+    """
+    A revenue item linked to any CRM entity or standing alone.
+
+    Examples: approved proposal, milestone payment, retainer.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Author
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="revenue_items",
+    )
+
+    # Optional entity links
+    lead = models.ForeignKey(
+        Lead,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="revenue_items",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="revenue_items",
+    )
+
+    # Financial data
+    title = models.CharField(max_length=255)
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Amount in the firm's default currency.",
+    )
+    currency = models.CharField(max_length=3, default="CZK")
+    date = models.DateField(db_index=True, help_text="Date the revenue was recognised.")
+    recurrence = models.CharField(
+        max_length=20,
+        choices=ExpenseItemRecurrence.choices,
+        default=ExpenseItemRecurrence.ONCE,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "revenue item"
+        verbose_name_plural = "revenue items"
+        ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "-date"]),
+            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "customer"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title}: {self.amount} {self.currency} [{self.firm}]"
