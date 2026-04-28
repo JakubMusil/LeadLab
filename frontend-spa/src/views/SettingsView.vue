@@ -301,7 +301,6 @@ onMounted(() => {
       loadAutomations()
       loadAutomationTemplates()
       loadCustomFields()
-      loadFakturoidSettings()
     }
   })
   // Seed the workspace name from the cached store value immediately so the input is not blank
@@ -1163,90 +1162,8 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Fakturoid Integration
+// (Fakturoid credentials are managed via the generic Plugins settings panel)
 // ---------------------------------------------------------------------------
-
-interface FakturoidSettings {
-  configured: boolean
-  slug: string
-  email: string
-  token_masked: string
-}
-
-const fakturoidSettings = ref<FakturoidSettings | null>(null)
-const fakturoidSlug = ref('')
-const fakturoidEmail = ref('')
-const fakturoidToken = ref('')
-const fakturoidSaving = ref(false)
-const fakturoidTesting = ref(false)
-const fakturoidTestResult = ref<{ ok: boolean; message: string } | null>(null)
-const showFakturoidTokenInput = ref(false)
-
-async function loadFakturoidSettings() {
-  const res = await api.get<FakturoidSettings>('/api/v1/integrations/fakturoid/settings')
-  if (res.ok && res.data) {
-    fakturoidSettings.value = res.data
-    fakturoidSlug.value = res.data.slug
-    fakturoidEmail.value = res.data.email
-  }
-}
-
-async function saveFakturoidSettings() {
-  if (!fakturoidSlug.value.trim() || !fakturoidEmail.value.trim() || !fakturoidToken.value.trim()) {
-    toast.error('Please provide account slug, email, and API token.')
-    return
-  }
-  fakturoidSaving.value = true
-  fakturoidTestResult.value = null
-  const res = await api.post('/api/v1/integrations/fakturoid/settings', {
-    slug: fakturoidSlug.value.trim(),
-    email: fakturoidEmail.value.trim(),
-    token: fakturoidToken.value.trim(),
-  })
-  fakturoidSaving.value = false
-  if (res.ok) {
-    toast.success('Fakturoid credentials saved.')
-    fakturoidToken.value = ''
-    showFakturoidTokenInput.value = false
-    await loadFakturoidSettings()
-  } else {
-    toast.error('Failed to save Fakturoid settings.')
-  }
-}
-
-async function testFakturoidConnection() {
-  fakturoidTesting.value = true
-  fakturoidTestResult.value = null
-  const res = await api.post<{ ok: boolean; name?: string; error?: string }>(
-    '/api/v1/integrations/fakturoid/test',
-    {},
-  )
-  fakturoidTesting.value = false
-  if (res.ok && res.data) {
-    if (res.data.ok) {
-      fakturoidTestResult.value = { ok: true, message: `Connected to Fakturoid account: ${res.data.name}` }
-    } else {
-      fakturoidTestResult.value = { ok: false, message: res.data.error ?? 'Connection failed.' }
-    }
-  } else {
-    fakturoidTestResult.value = { ok: false, message: 'Request failed. Check network connection.' }
-  }
-}
-
-async function removeFakturoidCredentials() {
-  if (!confirm('Remove Fakturoid credentials? This will disconnect LeadLab from Fakturoid.')) return
-  const res = await api.delete('/api/v1/integrations/fakturoid/settings')
-  if (res.ok || res.status === 204) {
-    fakturoidSettings.value = null
-    fakturoidSlug.value = ''
-    fakturoidEmail.value = ''
-    fakturoidToken.value = ''
-    fakturoidTestResult.value = null
-    toast.success('Fakturoid credentials removed.')
-  } else {
-    toast.error('Failed to remove Fakturoid credentials.')
-  }
-}
 </script>
 
 <template>
@@ -2597,103 +2514,6 @@ async function removeFakturoidCredentials() {
           </div>
         </div>
       </Teleport>
-    </div>
-
-    <!-- Fakturoid Integration -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
-      <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Fakturoid Integration</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Connect LeadLab to your Fakturoid account to create invoices directly from Reports.
-        </p>
-      </div>
-
-      <!-- Currently configured -->
-      <div v-if="fakturoidSettings?.configured && !showFakturoidTokenInput" class="space-y-3">
-        <div class="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-xl text-xs text-green-700 dark:text-green-400">
-          <span>✓ Connected</span>
-          <span class="font-mono text-gray-500 dark:text-gray-400">{{ fakturoidSettings.email }}</span>
-          <span class="text-gray-400">·</span>
-          <span class="font-mono text-gray-500 dark:text-gray-400">{{ fakturoidSettings.slug }}</span>
-        </div>
-
-        <div v-if="fakturoidTestResult" :class="fakturoidTestResult.ok ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'" class="px-3 py-2 rounded-xl text-xs">
-          {{ fakturoidTestResult.message }}
-        </div>
-
-        <div class="flex gap-2 flex-wrap">
-          <button
-            :disabled="fakturoidTesting"
-            class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            @click="testFakturoidConnection"
-          >
-            {{ fakturoidTesting ? 'Testing…' : '⚡ Test connection' }}
-          </button>
-          <button
-            class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            @click="showFakturoidTokenInput = true"
-          >
-            ✎ Update credentials
-          </button>
-          <button
-            class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-            @click="removeFakturoidCredentials"
-          >
-            ✕ Disconnect
-          </button>
-        </div>
-      </div>
-
-      <!-- Setup form -->
-      <div v-else class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Account slug</label>
-          <input
-            v-model="fakturoidSlug"
-            type="text"
-            placeholder="my-company"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-          />
-          <p class="text-xs text-gray-400 mt-1">
-            Found in your Fakturoid URL: <span class="font-mono">app.fakturoid.cz/api/v2/accounts/<strong>slug</strong>/</span>
-          </p>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Fakturoid email</label>
-          <input
-            v-model="fakturoidEmail"
-            type="email"
-            placeholder="you@example.com"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">API token</label>
-          <input
-            v-model="fakturoidToken"
-            type="password"
-            placeholder="Your Fakturoid API token"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-          />
-          <p class="text-xs text-gray-400 mt-1">Found in Fakturoid → Settings → API.</p>
-        </div>
-        <div class="flex gap-2">
-          <button
-            v-if="showFakturoidTokenInput"
-            class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            @click="showFakturoidTokenInput = false; fakturoidToken = ''"
-          >
-            Cancel
-          </button>
-          <button
-            :disabled="fakturoidSaving"
-            class="px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-            @click="saveFakturoidSettings"
-          >
-            {{ fakturoidSaving ? 'Saving…' : 'Save credentials' }}
-          </button>
-        </div>
-      </div>
     </div>
 
   </div>

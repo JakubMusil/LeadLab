@@ -333,6 +333,7 @@ def _load_builtin_plugins():
         "plugins.linkedin_enrichment",
         "plugins.voip",
         "plugins.email_sequences",
+        "plugins.fakturoid",
     ]
     for module_path in _BUILTIN_PLUGINS:
         try:
