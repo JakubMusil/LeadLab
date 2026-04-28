@@ -222,7 +222,7 @@ Sitewide časovač a finanční mezivrstva.
 - [x] **Timesheet view** — nová stránka `/app/timesheets`; tabulka záznamů s filtry; inline editace a mazání
 - [x] **ExpenseItem a RevenueItem modely** — jednorázové i opakované položky s vazbou na entitu
 - [x] **Výkazy view** — `/app/reports`; P&L přehled, položkový rozpad, exporty CSV/PDF
-- [ ] **Fakturoid integrace** — API klíč v Nastavení; tvorba nabídek/faktur z agregovaných dat Výkazů
+- [x] **Fakturoid integrace** — API klíč v Nastavení; tvorba faktur z agregovaných dat Výkazů
 - [x] Navigace — přidat „Výkazy" a „Čas" do ERP sekce sidebaru
 - [ ] Testy — Vitest pro `useTimer`, Pinia store; Django testy pro nová API
 
@@ -252,7 +252,7 @@ Post-realizační fáze (SLA, záruky, retence).
 - [x] **Management model** — Django model s vazbou na `Realization` (origin), `Customer`, typem (SLA/Záruka/Retence/Péče), stavem a termínem expirace
 - [x] **REST API** — CRUD (`/api/v1/crm/management`)
 - [x] **SLA tracking** — výpočet zbývajícího času; barevné indikátory (zelená/žlutá/červená)
-- [ ] **Automatizace** — trigger „SLA expiruje za N dní → eskaluj / pošli notifikaci"
+- [x] **Automatizace** — trigger „SLA expiruje za N dní → eskaluj / pošli notifikaci" (SLA_EXPIRING trigger + template v automations_api.py)
 - [x] **Service Kanban view** — `/app/management`; 4-stavový kanban
 - [x] **Detail Správy** — záložky: Přehled / Úkoly / Aktivity
 - [x] **Navigace** — přidat „Správa" do CRM sekce sidebaru; aktualizovat i18n
@@ -290,11 +290,11 @@ Rozšíření stávajícího Customer modelu na plnohodnotný Adresář.
 
 Rozšíření analytického modulu o nové entity.
 
-- [ ] Přidat metriky Realizací do pipeline reportů
-- [ ] Výkonnostní report: čas → ziskovost (z Výkazů + Realizací)
-- [ ] Přehled SLA plnění (Správa)
-- [ ] Konfigurovatelný dashboard — drag-and-drop widget layout (vue-grid-layout), uložení per-user
-- [ ] Plánované reporty — týdenní e-mailový digest (Celery beat)
+- [x] Přidat metriky Realizací do pipeline reportů
+- [x] Výkonnostní report: čas → ziskovost (z Výkazů + Realizací)
+- [x] Přehled SLA plnění (Správa)
+- [x] Konfigurovatelný dashboard — drag-and-drop widget layout (vue-draggable-plus), uložení per-user
+- [x] Plánované reporty — týdenní e-mailový digest (Celery beat)
 
 ---
 
@@ -302,10 +302,10 @@ Rozšíření analytického modulu o nové entity.
 
 Rozšíření automation engine o nové triggery a akce.
 
-- [ ] Nové triggery: změna fáze Realizace, SLA expiry, nový kontakt v Adresáři, dokončení Milníku
-- [ ] Nové akce: vytvoření Správy po dokončení Realizace, přiřazení záznamu Adresáře, spuštění Fakturoid akce
-- [ ] Výchozí automation templates pro celý CRM lifecycle (Příležitost → Realizace → Správa)
-- [ ] Vizuální editor podmínek (AND/OR builder)
+- [x] Nové triggery: změna fáze Realizace, SLA expiry, nový kontakt v Adresáři, dokončení Milníku
+- [x] Nové akce: vytvoření Správy po dokončení Realizace (create_management), spuštění Fakturoid akce (přes run_plugin_action)
+- [x] Výchozí automation templates pro celý CRM lifecycle (Příležitost → Realizace → Správa)
+- [x] Vizuální editor podmínek (AND/OR builder)
 
 ---
 
@@ -315,7 +315,7 @@ Rozšíření automation engine o nové triggery a akce.
 - [ ] Security audit — externí penetrační test; vyřešení všech kritických nálezů
 - [ ] SLA & uptime — public status page; PagerDuty alerting
 - [ ] Aktualizace marketingové stránky a dokumentace (MkDocs) o nové funkce
-- [ ] Demo data — seed script pro celý CRM lifecycle (Adresář → Příležitost → Realizace → Správa)
+- [x] Demo data — seed script pro celý CRM lifecycle (`python manage.py load_demo_data`)
 - [ ] Veřejné oznámení a changelog
 
 ---
