@@ -126,6 +126,21 @@ const router = createRouter({
           meta: { title: 'Team' },
         },
         {
+          path: 'plugins',
+          component: () => import('@/views/PluginsView.vue'),
+          meta: { title: 'Plugins' },
+        },
+        {
+          path: 'proposal-templates',
+          component: () => import('@/views/ProposalTemplatesView.vue'),
+          meta: { title: 'Proposal Templates' },
+        },
+        {
+          path: 'catalog',
+          component: () => import('@/views/CatalogView.vue'),
+          meta: { title: 'Katalog položek' },
+        },
+        {
           path: 'settings',
           component: () => import('@/views/SettingsView.vue'),
           meta: { title: 'Settings' },

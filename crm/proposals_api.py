@@ -240,6 +240,9 @@ class FirmProposalItemOut(Schema):
     discount: Decimal
     vat_rate: Decimal
     position: int
+    sku: str = ''
+    notes: str = ''
+    image_url: str = ''
     created_at: datetime
     updated_at: datetime
 
@@ -251,6 +254,9 @@ class FirmProposalItemIn(Schema):
     discount: Decimal = Decimal("0")
     vat_rate: Decimal = Decimal("0")
     position: int = 0
+    sku: str = ''
+    notes: str = ''
+    image_url: str = ''
 
 
 class AddFromCatalogIn(Schema):
@@ -347,6 +353,9 @@ def _firm_proposal_item_out(item: FirmProposalItem) -> dict:
         "discount": item.discount,
         "vat_rate": item.vat_rate,
         "position": item.position,
+        "sku": item.sku,
+        "notes": item.notes,
+        "image_url": item.image_url,
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
