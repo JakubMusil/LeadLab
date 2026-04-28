@@ -25,17 +25,75 @@ const form = ref<{
   is_billable: boolean
   started_at: string
   lead_id: string
+  lead_label: string
   customer_id: string
+  customer_label: string
   task_id: string
+  task_label: string
 }>({
   duration_minutes: 60,
   description: '',
   is_billable: true,
   started_at: new Date().toISOString().substring(0, 16),
   lead_id: '',
+  lead_label: '',
   customer_id: '',
+  customer_label: '',
   task_id: '',
+  task_label: '',
 })
+
+// Entity search helpers
+const leadSearch = ref('')
+const leadResults = ref<{ id: string; label: string }[]>([])
+const customerSearch = ref('')
+const customerResults = ref<{ id: string; label: string }[]>([])
+
+async function searchLeads(q: string) {
+  if (!q) { leadResults.value = []; return }
+  const res = await api.get<Record<string, string>[]>(`/api/v1/crm/leads?search=${encodeURIComponent(q)}&page_size=10`)
+  if (res.ok) {
+    leadResults.value = (Array.isArray(res.data) ? res.data : (res.data as { results?: Record<string, string>[] }).results ?? [])
+      .map((l) => ({ id: l.id as string, label: l.title as string }))
+  }
+}
+
+async function searchCustomers(q: string) {
+  if (!q) { customerResults.value = []; return }
+  const res = await api.get<Record<string, string>[]>(`/api/v1/crm/customers?search=${encodeURIComponent(q)}&page_size=10`)
+  if (res.ok) {
+    customerResults.value = (Array.isArray(res.data) ? res.data : (res.data as { results?: Record<string, string>[] }).results ?? [])
+      .map((c) => ({ id: c.id as string, label: `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.email as string }))
+  }
+}
+
+function pickLead(item: { id: string; label: string }) {
+  form.value.lead_id = item.id
+  form.value.lead_label = item.label
+  leadSearch.value = item.label
+  leadResults.value = []
+}
+
+function pickCustomer(item: { id: string; label: string }) {
+  form.value.customer_id = item.id
+  form.value.customer_label = item.label
+  customerSearch.value = item.label
+  customerResults.value = []
+}
+
+function clearLead() {
+  form.value.lead_id = ''
+  form.value.lead_label = ''
+  leadSearch.value = ''
+  leadResults.value = []
+}
+
+function clearCustomer() {
+  form.value.customer_id = ''
+  form.value.customer_label = ''
+  customerSearch.value = ''
+  customerResults.value = []
+}
 
 // Editing
 const editingId = ref<string | null>(null)
@@ -118,9 +176,14 @@ async function submitManualEntry() {
         is_billable: true,
         started_at: new Date().toISOString().substring(0, 16),
         lead_id: '',
+        lead_label: '',
         customer_id: '',
+        customer_label: '',
         task_id: '',
+        task_label: '',
       }
+      leadSearch.value = ''
+      customerSearch.value = ''
     } else {
       showToast(extractErrorMessage(res.data, 'Failed to add entry'))
     }
@@ -226,15 +289,29 @@ async function deleteEntry(id: string) {
           <input v-model="form.description" type="text" placeholder="What did you work on?"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Opportunity ID (optional)</label>
-          <input v-model="form.lead_id" type="text" placeholder="UUID"
+        <div class="relative">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Opportunity (optional)</label>
+          <input v-model="leadSearch" type="text" placeholder="Search opportunities…"
+            @input="searchLeads(leadSearch)"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          <button v-if="form.lead_id" class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs" @click="clearLead">✕</button>
+          <div v-if="leadResults.length" class="absolute z-10 w-full mt-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            <button v-for="r in leadResults" :key="r.id"
+              class="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
+              @click="pickLead(r)">{{ r.label }}</button>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Contact ID (optional)</label>
-          <input v-model="form.customer_id" type="text" placeholder="UUID"
+        <div class="relative">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Contact (optional)</label>
+          <input v-model="customerSearch" type="text" placeholder="Search contacts…"
+            @input="searchCustomers(customerSearch)"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          <button v-if="form.customer_id" class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs" @click="clearCustomer">✕</button>
+          <div v-if="customerResults.length" class="absolute z-10 w-full mt-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            <button v-for="r in customerResults" :key="r.id"
+              class="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
+              @click="pickCustomer(r)">{{ r.label }}</button>
+          </div>
         </div>
         <div class="flex items-center gap-2 sm:col-span-2">
           <button
