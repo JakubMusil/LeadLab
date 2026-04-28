@@ -123,7 +123,7 @@ class FakturoidPlugin(LeadLabPlugin):
         ``{"ok": False, "error": ...}`` on failure.
         """
         try:
-            import requests as http_requests
+            import requests
         except ImportError:
             return {"ok": False, "error": "requests library not installed."}
 
@@ -133,7 +133,7 @@ class FakturoidPlugin(LeadLabPlugin):
 
         url = FakturoidPlugin._api_url(cfg["slug"], "account.json")
         try:
-            resp = http_requests.get(
+            resp = requests.get(
                 url,
                 headers=FakturoidPlugin._auth_header(cfg["email"], cfg["api_token"]),
                 timeout=10,
@@ -170,7 +170,7 @@ class FakturoidPlugin(LeadLabPlugin):
         ``{"ok": False, "error": ...}`` on failure.
         """
         try:
-            import requests as http_requests
+            import requests
         except ImportError:
             return {"ok": False, "error": "requests library not installed."}
 
@@ -186,7 +186,7 @@ class FakturoidPlugin(LeadLabPlugin):
         if not subject_id and subject_custom_id:
             subjects_url = FakturoidPlugin._api_url(cfg["slug"], "subjects.json")
             try:
-                resp = http_requests.get(
+                resp = requests.get(
                     subjects_url,
                     headers=headers,
                     params={"custom_id": subject_custom_id},
@@ -212,7 +212,7 @@ class FakturoidPlugin(LeadLabPlugin):
 
         url = FakturoidPlugin._api_url(cfg["slug"], "invoices.json")
         try:
-            resp = http_requests.post(url, headers=headers, json=payload, timeout=15)
+            resp = requests.post(url, headers=headers, json=payload, timeout=15)
         except Exception as exc:
             logger.error("Fakturoid create invoice error: %s", exc)
             return {"ok": False, "error": "Network error — could not reach Fakturoid API."}
@@ -232,11 +232,12 @@ class FakturoidPlugin(LeadLabPlugin):
         else:
             try:
                 err_body = resp.json()
-                errors = err_body.get("errors", [resp.text])
+                errors = err_body.get("errors", [])
             except Exception:
-                errors = [resp.text]
-            logger.error("Fakturoid invoice creation failed: %s %s", resp.status_code, errors)
-            return {"ok": False, "error": f"Fakturoid returned HTTP {resp.status_code}: {errors}"}
+                errors = []
+            logger.error("Fakturoid invoice creation failed with HTTP %s", resp.status_code)
+            error_detail = ", ".join(str(e) for e in errors) if errors else f"HTTP {resp.status_code}"
+            return {"ok": False, "error": f"Fakturoid returned HTTP {resp.status_code}: {error_detail}"}
 
 
 plugin = FakturoidPlugin()
