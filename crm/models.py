@@ -1723,6 +1723,11 @@ class AutomationTrigger(models.TextChoices):
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     LEAD_INACTIVE = "lead_inactive", "Lead Inactive (N days)"
     WEBHOOK_RECEIVED = "webhook_received", "Custom Webhook Received"
+    # Phase 4.6 — new triggers
+    REALIZATION_STATUS_CHANGE = "realization_status_change", "Realization Status Changed"
+    SLA_EXPIRING = "sla_expiring", "SLA / Warranty Expiring (N days)"
+    CONTACT_CREATED = "contact_created", "Contact Created"
+    MILESTONE_COMPLETED = "milestone_completed", "Milestone Completed"
 
 
 class AutomationRunStatus(models.TextChoices):
@@ -1766,8 +1771,13 @@ class AutomationRule(TenantModel):
         help_text=(
             "List of {field, operator, value} condition objects. "
             "Supported operators: eq, neq, gt, gte, lt, lte, contains. "
-            "All conditions must match (AND)."
+            "All conditions must match (AND) unless condition_logic is 'or'."
         ),
+    )
+    condition_logic = models.CharField(
+        max_length=3,
+        default="and",
+        help_text="'and' — all conditions must match; 'or' — any condition must match.",
     )
     actions = models.JSONField(
         default=list,

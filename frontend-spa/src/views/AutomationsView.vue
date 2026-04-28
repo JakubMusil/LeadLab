@@ -31,6 +31,7 @@ interface AutomationRule {
   trigger: string
   trigger_config: Record<string, unknown>
   conditions: AutomationCondition[]
+  condition_logic: 'and' | 'or'
   actions: AutomationAction[]
   created_at: string
   updated_at: string
@@ -76,6 +77,11 @@ const TRIGGER_LABELS: Record<string, string> = {
   proposal_accepted: 'Proposal Accepted',
   lead_inactive: 'Lead Inactive (N days)',
   webhook_received: 'Custom Webhook Received',
+  // Phase 4.6
+  realization_status_change: 'Realization Status Changed',
+  sla_expiring: 'SLA / Warranty Expiring (N days)',
+  contact_created: 'Contact Created',
+  milestone_completed: 'Milestone Completed',
 }
 
 const TRIGGER_DESCRIPTIONS: Record<string, string> = {
@@ -88,6 +94,11 @@ const TRIGGER_DESCRIPTIONS: Record<string, string> = {
   proposal_accepted: 'Fires when a customer accepts a proposal.',
   lead_inactive: 'Fires for leads with no activity for a configurable number of days.',
   webhook_received: 'Fires when a custom webhook event is received.',
+  // Phase 4.6
+  realization_status_change: 'Fires when a realization\'s status changes (e.g. planned → done).',
+  sla_expiring: 'Fires periodically for management records whose SLA/warranty is expiring within the configured number of days.',
+  contact_created: 'Fires when a new contact (person or company) is added to the directory.',
+  milestone_completed: 'Fires when a milestone is marked as completed in a realization.',
 }
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
@@ -98,6 +109,8 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   run_plugin_action: 'Run plugin action',
   set_task_status: 'Set task status',
   assign_tag: 'Assign tag',
+  create_realization: 'Create realization',
+  create_management: 'Create management record',
 }
 
 const OPERATOR_LABELS: Record<string, string> = {
@@ -146,6 +159,7 @@ const ruleFormName = ref('')
 const ruleFormTrigger = ref('task_created')
 const ruleFormTriggerConfig = ref<Record<string, unknown>>({})
 const ruleFormConditions = ref<AutomationCondition[]>([])
+const ruleFormConditionLogic = ref<'and' | 'or'>('and')
 const ruleFormActions = ref<AutomationAction[]>([])
 const ruleSaving = ref(false)
 
@@ -200,6 +214,7 @@ function openNewRuleForm() {
   ruleFormTrigger.value = 'task_created'
   ruleFormTriggerConfig.value = {}
   ruleFormConditions.value = []
+  ruleFormConditionLogic.value = 'and'
   ruleFormActions.value = [defaultAction('create_task')]
   showRuleForm.value = true
   showTemplates.value = false
@@ -211,6 +226,7 @@ function openEditRuleForm(rule: AutomationRule) {
   ruleFormTrigger.value = rule.trigger
   ruleFormTriggerConfig.value = { ...rule.trigger_config }
   ruleFormConditions.value = rule.conditions.map((c) => ({ ...c }))
+  ruleFormConditionLogic.value = rule.condition_logic ?? 'and'
   ruleFormActions.value = rule.actions.map((a) => ({ ...a }))
   showRuleForm.value = true
   showTemplates.value = false
@@ -268,6 +284,7 @@ async function saveRule() {
     trigger: ruleFormTrigger.value,
     trigger_config: ruleFormTriggerConfig.value,
     conditions: ruleFormConditions.value,
+    condition_logic: ruleFormConditionLogic.value,
     actions: ruleFormActions.value,
   }
   const res = editingRule.value
@@ -363,7 +380,10 @@ function ruleReadableSummary(rule: AutomationRule): string {
   const triggerLabel = TRIGGER_LABELS[rule.trigger] ?? rule.trigger
   const condCount = rule.conditions.length
   const actCount = rule.actions.length
-  const condPart = condCount ? ` + ${condCount} condition${condCount > 1 ? 's' : ''}` : ''
+  const logic = rule.condition_logic === 'or' ? 'OR' : 'AND'
+  const condPart = condCount > 1
+    ? ` + ${condCount} conditions (${logic})`
+    : condCount === 1 ? ' + 1 condition' : ''
   const actPart = `${actCount} action${actCount !== 1 ? 's' : ''}`
   return `${triggerLabel}${condPart} → ${actPart}`
 }
@@ -509,9 +529,23 @@ function lastRunLabel(rule: AutomationRule): string {
       <!-- Conditions -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <label class="text-xs font-medium text-gray-700 dark:text-gray-300">
-            Conditions <span class="font-normal text-gray-400">(all must match — leave empty to always run)</span>
-          </label>
+          <div class="flex items-center gap-3">
+            <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Conditions</label>
+            <!-- AND / OR toggle -->
+            <div v-if="ruleFormConditions.length > 1" class="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden text-xs">
+              <button
+                :class="ruleFormConditionLogic === 'and' ? 'bg-red-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'"
+                class="px-2.5 py-1 font-medium transition-colors"
+                @click="ruleFormConditionLogic = 'and'"
+              >AND</button>
+              <button
+                :class="ruleFormConditionLogic === 'or' ? 'bg-red-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'"
+                class="px-2.5 py-1 font-medium transition-colors"
+                @click="ruleFormConditionLogic = 'or'"
+              >OR</button>
+            </div>
+            <span v-else class="text-xs text-gray-400">(leave empty to always run)</span>
+          </div>
           <button
             class="text-xs text-red-600 hover:text-red-700 font-medium"
             @click="addCondition"
@@ -525,6 +559,14 @@ function lastRunLabel(rule: AutomationRule): string {
           :key="i"
           class="flex gap-2 mb-2 items-center flex-wrap"
         >
+          <!-- AND/OR badge between conditions -->
+          <div v-if="i > 0" class="w-full flex items-center gap-2 -mt-1 mb-1">
+            <div class="h-px flex-1 bg-gray-100 dark:bg-gray-700" />
+            <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="ruleFormConditionLogic === 'or' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'">
+              {{ ruleFormConditionLogic.toUpperCase() }}
+            </span>
+            <div class="h-px flex-1 bg-gray-100 dark:bg-gray-700" />
+          </div>
           <input
             v-model="cond.field"
             type="text"

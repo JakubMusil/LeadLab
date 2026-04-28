@@ -195,6 +195,21 @@ def create_customer(request, payload: CustomerIn):
         except Customer.DoesNotExist:
             pass
     customer = Customer.objects.create(firm=request.firm, company=company, **data)
+
+    # Fire contact_created automation
+    _auto_ctx = {
+        "customer_id": str(customer.id),
+        "customer_name": f"{customer.first_name} {customer.last_name}".strip() or getattr(customer, "company_name", ""),
+        "customer_email": customer.email or "",
+        "customer_type": customer.type,
+        "firm_id": str(request.firm.id),
+    }
+    from crm.tasks import evaluate_automation_rules
+    from django.db import transaction as db_tx
+    db_tx.on_commit(
+        lambda ctx=_auto_ctx: evaluate_automation_rules.delay("contact_created", str(request.firm.id), ctx)
+    )
+
     return 201, _customer_out(customer)
 
 
@@ -4785,6 +4800,291 @@ def trends(request):
     result = {"weekly": weekly_rows, "conversion_rate_30d": round(conversion_rate, 2)}
     cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
     return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.5 — Realization metrics
+# ---------------------------------------------------------------------------
+
+class RealizationStatusRow(Schema):
+    status: str
+    count: int
+    avg_days: float
+
+
+class RealizationTrendRow(Schema):
+    week_start: str
+    created: int
+    completed: int
+
+
+class RealizationMetricsOut(Schema):
+    by_status: List[RealizationStatusRow]
+    trend: List[RealizationTrendRow]
+    total: int
+    completed_total: int
+
+
+@router.get(
+    "/reports/realization-metrics",
+    auth=django_auth,
+    response={200: RealizationMetricsOut, 403: ErrorOut},
+)
+def realization_metrics(request):
+    """
+    Realization pipeline metrics: count by status, average days in each status,
+    and a 12-week trend (created vs. completed).  Cached 5 minutes.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    from crm.models import Realization, RealizationStatus
+
+    cache_key = f"analytics:realization_metrics:{request.firm.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    now = tz.now()
+    qs = Realization.objects.filter(firm=request.firm)
+
+    # Prefetch created_at and updated_at for all realizations once
+    all_items = list(qs.only("id", "status", "created_at", "updated_at"))
+
+    # Build per-status buckets
+    from collections import defaultdict
+    buckets: Dict[str, list] = defaultdict(list)
+    for item in all_items:
+        buckets[item.status].append(item)
+
+    completed_statuses = {RealizationStatus.DONE.value, RealizationStatus.CANCELLED.value}
+
+    # Count and average days per status
+    status_rows = []
+    for s in RealizationStatus:
+        items_in_status = buckets.get(s.value, [])
+        count = len(items_in_status)
+        if count == 0:
+            avg_days = 0.0
+        elif s.value in completed_statuses:
+            # avg time from creation to last update (approximation for completed duration)
+            total_days = sum(
+                (item.updated_at - item.created_at).total_seconds() / 86400
+                for item in items_in_status
+            )
+            avg_days = total_days / count
+        else:
+            # Active: time since creation until now
+            total_days = sum(
+                (now - item.created_at).total_seconds() / 86400
+                for item in items_in_status
+            )
+            avg_days = total_days / count
+        status_rows.append({"status": s.value, "count": count, "avg_days": round(avg_days, 1)})
+
+    # 12-week trend
+    twelve_weeks_ago = now - dt.timedelta(weeks=12)
+    trend = []
+    for week in range(12):
+        week_start = twelve_weeks_ago + dt.timedelta(weeks=week)
+        week_end = week_start + dt.timedelta(weeks=1)
+        created = qs.filter(created_at__gte=week_start, created_at__lt=week_end).count()
+        completed = qs.filter(
+            status=RealizationStatus.DONE,
+            updated_at__gte=week_start,
+            updated_at__lt=week_end,
+        ).count()
+        trend.append({
+            "week_start": week_start.date().isoformat(),
+            "created": created,
+            "completed": completed,
+        })
+
+    total = qs.count()
+    completed_total = qs.filter(status=RealizationStatus.DONE).count()
+
+    result = {
+        "by_status": status_rows,
+        "trend": trend,
+        "total": total,
+        "completed_total": completed_total,
+    }
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.5 — SLA compliance
+# ---------------------------------------------------------------------------
+
+class SlaComplianceOut(Schema):
+    total: int
+    green: int    # expires_at > now + 7 days (or no expiry)
+    yellow: int   # expires_at in next 7 days
+    red: int      # already expired
+    no_expiry: int
+
+
+@router.get(
+    "/reports/sla-compliance",
+    auth=django_auth,
+    response={200: SlaComplianceOut, 403: ErrorOut},
+)
+def sla_compliance(request):
+    """
+    SLA compliance summary for Management records in the active firm.
+    Green = > 7 days remaining, Yellow = 1–7 days, Red = expired.
+    Cached 5 minutes.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    from crm.models import Management, ManagementStatus
+
+    cache_key = f"analytics:sla_compliance:{request.firm.id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return 200, cached
+
+    now = tz.now()
+    seven_days = now + dt.timedelta(days=7)
+
+    qs = Management.objects.filter(firm=request.firm).exclude(status=ManagementStatus.CLOSED)
+
+    total = qs.count()
+    no_expiry = qs.filter(expires_at__isnull=True).count()
+    with_expiry = qs.filter(expires_at__isnull=False)
+
+    red = with_expiry.filter(expires_at__lt=now).count()
+    yellow = with_expiry.filter(expires_at__gte=now, expires_at__lte=seven_days).count()
+    green = with_expiry.filter(expires_at__gt=seven_days).count()
+
+    result = {
+        "total": total,
+        "green": green,
+        "yellow": yellow,
+        "red": red,
+        "no_expiry": no_expiry,
+    }
+    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
+    return 200, result
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.5 — Profitability report
+# ---------------------------------------------------------------------------
+
+class ProfitabilityRow(Schema):
+    entity_id: str
+    entity_type: str   # "realization" | "lead" | "customer"
+    entity_title: str
+    total_minutes: int
+    total_expenses: float
+    total_revenues: float
+    profit_loss: float
+
+
+class ProfitabilityOut(Schema):
+    rows: List[ProfitabilityRow]
+    totals: ProfitabilityRow
+
+
+@router.get(
+    "/reports/profitability",
+    auth=django_auth,
+    response={200: ProfitabilityOut, 403: ErrorOut},
+)
+def profitability_report(
+    request,
+    date_from: Optional[dt.date] = None,
+    date_to: Optional[dt.date] = None,
+):
+    """
+    Profitability breakdown per Realization (and top-level per Lead / Customer
+    where no Realization exists).  Aggregates TimeEntry, ExpenseItem and
+    RevenueItem data.  Results are NOT cached (supports date filters).
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    from crm.models import Realization, TimeEntry, ExpenseItem, RevenueItem
+
+    firm = request.firm
+
+    def _filter_dates(qs, date_field_prefix=""):
+        if date_from:
+            qs = qs.filter(**{f"{date_field_prefix}__gte": date_from})
+        if date_to:
+            qs = qs.filter(**{f"{date_field_prefix}__lte": date_to})
+        return qs
+
+    # Aggregate per realization
+    realizationqs = Realization.objects.filter(firm=firm).order_by("-created_at")[:50]
+    rows = []
+
+    for r in realizationqs:
+        te = TimeEntry.objects.filter(firm=firm, realization=r)
+        ex = ExpenseItem.objects.filter(firm=firm, realization=r)
+        rev = RevenueItem.objects.filter(firm=firm, realization=r)
+
+        if date_from:
+            te = te.filter(started_at__date__gte=date_from)
+            ex = ex.filter(date__gte=date_from)
+            rev = rev.filter(date__gte=date_from)
+        if date_to:
+            te = te.filter(started_at__date__lte=date_to)
+            ex = ex.filter(date__lte=date_to)
+            rev = rev.filter(date__lte=date_to)
+
+        mins = te.aggregate(s=Sum("duration_minutes"))["s"] or 0
+        expenses = float(ex.aggregate(s=Sum("amount"))["s"] or 0)
+        revenues = float(rev.aggregate(s=Sum("amount"))["s"] or 0)
+
+        rows.append({
+            "entity_id": str(r.id),
+            "entity_type": "realization",
+            "entity_title": r.title,
+            "total_minutes": mins,
+            "total_expenses": expenses,
+            "total_revenues": revenues,
+            "profit_loss": revenues - expenses,
+        })
+
+    # Totals
+    all_te = TimeEntry.objects.filter(firm=firm)
+    all_ex = ExpenseItem.objects.filter(firm=firm)
+    all_rev = RevenueItem.objects.filter(firm=firm)
+
+    if date_from:
+        all_te = all_te.filter(started_at__date__gte=date_from)
+        all_ex = all_ex.filter(date__gte=date_from)
+        all_rev = all_rev.filter(date__gte=date_from)
+    if date_to:
+        all_te = all_te.filter(started_at__date__lte=date_to)
+        all_ex = all_ex.filter(date__lte=date_to)
+        all_rev = all_rev.filter(date__lte=date_to)
+
+    total_mins = all_te.aggregate(s=Sum("duration_minutes"))["s"] or 0
+    total_expenses = float(all_ex.aggregate(s=Sum("amount"))["s"] or 0)
+    total_revenues = float(all_rev.aggregate(s=Sum("amount"))["s"] or 0)
+
+    totals = {
+        "entity_id": "total",
+        "entity_type": "total",
+        "entity_title": "Total",
+        "total_minutes": total_mins,
+        "total_expenses": total_expenses,
+        "total_revenues": total_revenues,
+        "profit_loss": total_revenues - total_expenses,
+    }
+
+    return 200, {"rows": rows, "totals": totals}
 
 
 # ---------------------------------------------------------------------------
