@@ -72,6 +72,7 @@ class ManagementPatch(Schema):
     customer_id: Optional[str] = None
     assigned_to_id: Optional[str] = None
     expires_at: Optional[dt.datetime] = None
+    clear_expires_at: bool = False
 
 
 class ManagementOut(Schema):
@@ -245,6 +246,8 @@ def update_management(request, management_id: str, payload: ManagementPatch):
         record.status = payload.status
     if payload.expires_at is not None:
         record.expires_at = payload.expires_at
+    elif payload.clear_expires_at:
+        record.expires_at = None
 
     if payload.realization_id is not None:
         if payload.realization_id == "":

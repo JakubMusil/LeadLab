@@ -64,7 +64,7 @@ function slaLabel(expiresAt: string | null, slaColor: string | null) {
   if (!expiresAt) return null
   const diff = new Date(expiresAt).getTime() - Date.now()
   const days = Math.ceil(diff / 86400000)
-  if (days < 0) return `Expirováno před ${Math.abs(days)} dny`
+  if (days < 0) return `Expirováno před ${Math.abs(days)} dní`
   if (days === 0) return 'Expiruje dnes'
   return `Vyprší za ${days} dní`
 }
