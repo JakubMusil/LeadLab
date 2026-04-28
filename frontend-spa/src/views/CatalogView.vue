@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import DOMPurify from 'dompurify'
 
 const toast = useToast()
 const firmStore = useFirmStore()
@@ -36,6 +37,42 @@ const loading = ref(false)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const PAGE_SIZE = 50
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html)
+}
+
+function htmlToPlainText(html: string): string {
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  result.push(current.trim())
+  return result
+}
 
 // New item form
 const showAddForm = ref(false)
@@ -195,7 +232,7 @@ function exportCSV() {
     item.discount,
     item.vat_rate,
     item.image_url ?? '',
-    (item.notes ?? '').replace(/<[^>]+>/g, '').replace(/\n/g, ' '), // strip HTML tags for CSV
+    htmlToPlainText(item.notes ?? '').replace(/\n/g, ' '), // convert HTML to plain text for CSV
   ])
 
   const csv = [headers, ...rows]
@@ -233,30 +270,6 @@ async function onImportFile(event: Event) {
     importing.value = false
     ;(event.target as HTMLInputElement).value = ''
     return
-  }
-
-  function parseCSVLine(line: string): string[] {
-    const result: string[] = []
-    let current = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = !inQuotes
-        }
-      } else if (ch === ',' && !inQuotes) {
-        result.push(current.trim())
-        current = ''
-      } else {
-        current += ch
-      }
-    }
-    result.push(current.trim())
-    return result
   }
 
   const headers = parseCSVLine(lines[0]!).map((h) => h.toLowerCase().replace(/\s+/g, '_'))
@@ -565,7 +578,7 @@ onMounted(() => {
                   <div
                     v-if="item.notes"
                     class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1"
-                    v-html="item.notes"
+                    v-html="sanitizeHtml(item.notes)"
                   />
                 </td>
                 <td class="px-4 py-3">
