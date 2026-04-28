@@ -8,14 +8,11 @@ import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
+import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import DOMPurify from 'dompurify'
 
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
-}
-
-function hasPlainText(html: string): boolean {
-  return Boolean(html.replace(/<[^>]*>/g, '').trim())
 }
 
 const route = useRoute()
@@ -30,9 +27,8 @@ const leadId = computed(() => route.params.id as string)
 type Tab = 'overview' | 'activities' | 'tasks' | 'files' | 'proposals'
 const activeTab = ref<Tab>('overview')
 
-// Team members (for @mention in activity composer)
+// Team members (for @mention in task composer on the Tasks tab)
 const teamMembers = ref<MentionUser[]>([])
-const richTextEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 async function loadTeamMembers() {
   const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
@@ -44,17 +40,6 @@ async function loadTeamMembers() {
     teamMembers.value = res.data.map((m) => ({ id: m.user_id, label: m.user_full_name || m.user_id }))
   }
 }
-
-// Activities
-interface Activity { id: string; lead_id: string; type: string; content_text: string; metadata: Record<string, unknown>; created_at: string; user_id: string | null }
-const activities = ref<Activity[]>([])
-const activitiesLoading = ref(false)
-const activitiesPage = ref(1)
-const activitiesHasMore = ref(true)
-// Unified action picker state (empty string = picker visible, otherwise the selected type)
-const selectedActionType = ref('')
-const newActivityText = ref('')
-const activitySubmitting = ref(false)
 
 // Tasks
 interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null; watcher_ids?: string[] }
@@ -89,45 +74,10 @@ const editError = ref('')
 const editLoading = ref(false)
 const statusPopupOpen = ref(false)
 
-const activityIcons: Record<string, string> = {
-  comment: '💬', email_out: '📧', email_in: '📥', call: '📞',
-  meeting: '🤝', status_change: '🔄', file_upload: '📎',
-  task_assigned: '📋', task_completed: '✅', task: '📋',
-  proposal_created: '📄', proposal_accepted: '✅', proposal_rejected: '❌',
-}
-
-// All action types shown in the unified picker (activity types + task creation)
-const actionPickerItems = computed(() => [
-  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: '💬' },
-  { value: 'call',      label: t('leadDetail.typeCall'),     icon: '📞' },
-  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: '🤝' },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: '📧' },
-  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: '📥' },
-  { value: 'task',      label: t('leadDetail.typeTask'),     icon: '📋' },
-])
-
-function formatTime(ts: string) {
-  return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
   return `${(b / (1024 * 1024)).toFixed(1)} MB`
-}
-
-async function loadActivities(page = 1) {
-  activitiesLoading.value = true
-  try {
-    const res = await api.get<Activity[]>(`/api/v1/crm/opportunities/${leadId.value}/activities?page=${page}&page_size=20`)
-    if (res.ok) {
-      if (page === 1) activities.value = res.data
-      else activities.value = [...activities.value, ...res.data]
-      activitiesPage.value = page
-      activitiesHasMore.value = res.data.length === 20
-    }
-  } finally {
-    activitiesLoading.value = false
-  }
 }
 
 async function loadTasks() {
@@ -149,30 +99,6 @@ async function loadFiles() {
     if (res.ok) files.value = res.data
   } finally {
     filesLoading.value = false
-  }
-}
-
-async function addActivity() {
-  if (!hasPlainText(newActivityText.value) && selectedActionType.value === 'comment') return
-  activitySubmitting.value = true
-  const mentionedIds = selectedActionType.value === 'comment'
-    ? (richTextEditorRef.value?.getMentionedIds() ?? [])
-    : []
-  const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
-  const res = await api.post<Activity>('/api/v1/crm/activities', {
-    lead_id: leadId.value,
-    type: selectedActionType.value,
-    content_text: newActivityText.value,
-    metadata,
-  })
-  activitySubmitting.value = false
-  if (res.ok) {
-    activities.value.unshift(res.data)
-    newActivityText.value = ''
-    selectedActionType.value = ''
-    toast.success(t('leadDetail.activityAdded'))
-  } else {
-    toast.error(t('leadDetail.activityFailed'))
   }
 }
 
@@ -199,7 +125,6 @@ async function addTask() {
     newTaskDescription.value = ''
     newTaskAssigneeId.value = ''
     newTaskWatcherIds.value = []
-    selectedActionType.value = ''
     toast.success(t('leadDetail.taskCreated'))
   } else {
     toast.error(t('leadDetail.taskFailed'))
@@ -340,26 +265,15 @@ async function deleteLead() {
 onMounted(async () => {
   await store.fetchLead(leadId.value)
   loadTeamMembers()
-  if (activeTab.value === 'activities') await loadActivities()
-  else if (activeTab.value === 'tasks') await loadTasks()
+  if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
 
-  on('activity.created', onWsActivityCreated)
   on('lead.updated', onWsLeadUpdated)
 })
 
 onUnmounted(() => {
-  off('activity.created', onWsActivityCreated)
   off('lead.updated', onWsLeadUpdated)
 })
-
-function onWsActivityCreated(payload: Record<string, unknown>) {
-  const act = payload as unknown as Activity
-  // Only react if this activity belongs to the lead currently open
-  if (act.lead_id !== leadId.value) return
-  if (activities.value.find((a) => a.id === act.id)) return
-  activities.value.unshift(act)
-}
 
 function onWsLeadUpdated(_payload: Record<string, unknown>) {
   // The leads store is already updated by AppShell's WS handler; currentLead
@@ -368,8 +282,7 @@ function onWsLeadUpdated(_payload: Record<string, unknown>) {
 
 async function switchTab(tab: Tab) {
   activeTab.value = tab
-  if (tab === 'activities' && activities.value.length === 0) await loadActivities()
-  else if (tab === 'tasks' && tasks.value.length === 0) await loadTasks()
+  if (tab === 'tasks' && tasks.value.length === 0) await loadTasks()
   else if (tab === 'files' && files.value.length === 0) await loadFiles()
   else if (tab === 'proposals') router.push(`/app/opportunities/${leadId.value}/proposals`)
 }
@@ -471,156 +384,8 @@ function getTabLabel(tab: string): string {
       </div>
 
       <!-- ACTIVITIES TAB -->
-      <div v-else-if="activeTab === 'activities'" class="space-y-4">
-        <!-- Unified action composer -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-          <!-- Step 1: Action type picker -->
-          <div v-if="!selectedActionType">
-            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2.5">{{ t('leadDetail.chooseActionType') }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="item in actionPickerItems"
-                :key="item.value"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                @click="selectedActionType = item.value; newActivityText = ''"
-              >
-                <span>{{ item.icon }}</span>
-                {{ item.label }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Step 2a: Activity form (comment / call / meeting / email) -->
-          <div v-else-if="selectedActionType !== 'task'" class="flex flex-col gap-2">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-base">{{ activityIcons[selectedActionType] ?? '📌' }}</span>
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {{ actionPickerItems.find(i => i.value === selectedActionType)?.label }}
-              </span>
-              <button
-                class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                @click="selectedActionType = ''"
-              >← {{ t('leadDetail.changeType') }}</button>
-            </div>
-            <RichTextEditor
-              ref="richTextEditorRef"
-              v-model="newActivityText"
-              :placeholder="selectedActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
-              :disabled="activitySubmitting"
-              :members="selectedActionType === 'comment' ? teamMembers : []"
-            />
-            <div class="flex justify-end">
-              <button
-                :disabled="activitySubmitting || !hasPlainText(newActivityText)"
-                class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-                @click="addActivity"
-              >{{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
-            </div>
-          </div>
-
-          <!-- Step 2b: Task creation form -->
-          <div v-else class="space-y-3">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-base">📋</span>
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
-              <button
-                class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                @click="selectedActionType = ''"
-              >← {{ t('leadDetail.changeType') }}</button>
-            </div>
-            <div class="flex gap-2 flex-wrap">
-              <input
-                v-model="newTaskTitle"
-                type="text"
-                :placeholder="t('leadDetail.taskTitle')"
-                class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-              />
-              <input
-                v-model="newTaskDueDate"
-                type="date"
-                class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-              />
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
-              <select
-                v-model="newTaskAssigneeId"
-                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-              >
-                <option value="">{{ t('tasks.noAssignee') }}</option>
-                <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
-              </select>
-            </div>
-            <div v-if="teamMembers.length">
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.watchers') }}</label>
-              <div class="flex flex-wrap gap-2">
-                <label
-                  v-for="m in teamMembers"
-                  :key="m.id"
-                  class="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-lg border transition-colors"
-                  :class="newTaskWatcherIds.includes(m.id)
-                    ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
-                >
-                  <input type="checkbox" class="hidden" :checked="newTaskWatcherIds.includes(m.id)" @change="toggleTaskWatcher(m.id)" />
-                  🔔 {{ m.label }}
-                </label>
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                {{ t('leadDetail.descriptionLabel') }}
-              </label>
-              <RichTextEditor
-                ref="taskEditorRef"
-                v-model="newTaskDescription"
-                :mention-users="teamMembers"
-                :placeholder="t('leadDetail.addMentionPlaceholder')"
-                class="min-h-[72px]"
-              />
-            </div>
-            <div class="flex justify-end">
-              <button
-                :disabled="taskSubmitting || !newTaskTitle.trim()"
-                class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-                @click="addTask"
-              >{{ taskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Activity list -->
-        <div v-if="activitiesLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-xl" />
-        </div>
-        <div v-else-if="activities.length === 0" class="text-center py-10 text-gray-400 text-sm">{{ t('leadDetail.noActivities') }}</div>
-        <div v-else class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-          <div v-for="act in activities" :key="act.id" class="flex items-start gap-3 p-4">
-            <span class="text-lg mt-0.5 flex-shrink-0">{{ activityIcons[act.type] ?? '📌' }}</span>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-xs font-semibold text-gray-700 capitalize">{{ act.type.replace(/_/g, ' ') }}</span>
-                <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
-              </div>
-              <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
-              <p v-if="act.type === 'status_change'" class="text-sm text-gray-500 mt-0.5">
-                {{ (act.metadata as Record<string, string>).old_status }} → {{ (act.metadata as Record<string, string>).new_status }}
-              </p>
-              <RouterLink
-                v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
-                :to="`/app/proposals/${act.metadata.proposal_id}`"
-                class="text-xs text-red-600 hover:text-red-700 mt-0.5 inline-block"
-              >
-                Zobrazit nabídku →
-              </RouterLink>
-            </div>
-          </div>
-        </div>
-        <button
-          v-if="activitiesHasMore"
-          class="w-full py-2 text-sm text-gray-500 hover:text-red-600 border border-gray-200 rounded-xl"
-          @click="loadActivities(activitiesPage + 1)"
-        >Load more</button>
+      <div v-else-if="activeTab === 'activities'">
+        <ActivityTimeline entity-type="lead" :entity-id="leadId" />
       </div>
 
       <!-- TASKS TAB -->
@@ -667,7 +432,7 @@ function getTabLabel(tab: string): string {
             <RichTextEditor
               ref="taskEditorRef"
               v-model="newTaskDescription"
-              :mention-users="teamMembers"
+              :members="teamMembers"
               :placeholder="t('leadDetail.addMentionPlaceholder')"
               class="min-h-[72px]"
             />

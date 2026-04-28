@@ -4,6 +4,7 @@ Management API — Phase 4.2
 Endpoints:
   /api/v1/crm/management          LIST + CREATE
   /api/v1/crm/management/{id}     GET / PATCH / DELETE
+  /api/v1/crm/management/{id}/activities  LIST (timeline)
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from ninja import Router, Schema
 from ninja.security import django_auth
 
 from crm.models import (
+    Activity,
     Customer,
     Management,
     ManagementStatus,
@@ -289,3 +291,58 @@ def delete_management(request, management_id: str):
     broadcast_event(firm=firm, event="management.deleted", payload={"id": management_id})
     record.delete()
     return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Activity timeline endpoint
+# ---------------------------------------------------------------------------
+
+class _ActivityOut(Schema):
+    id: str
+    entity_type: str
+    entity_id: str
+    lead_id: Optional[str]
+    user_id: Optional[str]
+    type: str
+    content_text: str
+    metadata: dict
+    created_at: dt.datetime
+
+
+@management_router.get(
+    "/management/{management_id}/activities",
+    response=List[_ActivityOut],
+    auth=django_auth,
+)
+def list_management_activities(
+    request,
+    management_id: str,
+    page: int = 1,
+    page_size: int = 20,
+):
+    """Return the activity timeline for a Management record, newest first (paginated)."""
+    firm = _firm(request)
+    require_membership(request)
+
+    record = Management.objects.filter(firm=firm, id=management_id).first()
+    if not record:
+        from ninja import errors
+        raise errors.HttpError(404, "Management record not found")
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(management=record).order_by("-created_at")[offset:offset + page_size]
+
+    return [
+        {
+            "id": str(a.id),
+            "entity_type": a.entity_type,
+            "entity_id": a.entity_id,
+            "lead_id": str(a.lead_id) if a.lead_id else None,
+            "user_id": str(a.user_id) if a.user_id else None,
+            "type": a.type,
+            "content_text": a.content_text,
+            "metadata": a.metadata,
+            "created_at": a.created_at,
+        }
+        for a in activities
+    ]

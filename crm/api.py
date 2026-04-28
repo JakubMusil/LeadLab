@@ -33,9 +33,11 @@ from crm.models import (
     LeadSource,
     LeadStatus,
     LeadStatusHistory,
+    Management,
     Notification,
     Project,
     Proposal,
+    Realization,
     SavedView,
     Task,
     TaskAttachment,
@@ -699,7 +701,10 @@ def delete_lead(request, lead_id: str):
 
 class ActivityOut(Schema):
     id: str
-    lead_id: str
+    entity_type: str
+    entity_id: str
+    # Kept for backwards-compatibility — None for realization/management activities
+    lead_id: Optional[str]
     user_id: Optional[str]
     type: str
     content_text: str
@@ -708,7 +713,10 @@ class ActivityOut(Schema):
 
 
 class ActivityIn(Schema):
-    lead_id: str
+    # Exactly one of the three entity IDs must be provided.
+    lead_id: Optional[str] = None
+    realization_id: Optional[str] = None
+    management_id: Optional[str] = None
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
@@ -717,7 +725,9 @@ class ActivityIn(Schema):
 def _activity_out(a: Activity) -> dict:
     return {
         "id": str(a.id),
-        "lead_id": str(a.lead_id),
+        "entity_type": a.entity_type,
+        "entity_id": a.entity_id,
+        "lead_id": str(a.lead_id) if a.lead_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
         "type": a.type,
         "content_text": a.content_text,
@@ -747,12 +757,13 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
-    Unified Action Hub endpoint.
+    Unified Action Hub endpoint — works for Lead, Realization and Management.
 
-    Handles all activity types:
+    Exactly one of ``lead_id``, ``realization_id``, ``management_id`` must be
+    provided.  Handles all activity types:
     - COMMENT / CALL / MEETING: stores content_text.
-    - EMAIL_OUT: triggers async SMTP send via Celery.
-    - STATUS_CHANGE: updates Lead.status atomically.
+    - EMAIL_OUT: triggers async SMTP send via Celery (Lead only).
+    - STATUS_CHANGE: updates Lead.status atomically (Lead only).
     - FILE_UPLOAD: expects metadata.url to be pre-signed/uploaded separately.
     - TASK_ASSIGNED / TASK_COMPLETED: mirrors Task state changes.
     """
@@ -762,10 +773,31 @@ def create_activity(request, payload: ActivityIn):
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
 
-    try:
-        lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 400, {"detail": "Lead not found in this Firm."}
+    # --- resolve entity ---
+    if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id)]) != 1:
+        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id must be provided."}
+
+    lead = realization = management = None
+    entity_title = ""
+
+    if payload.lead_id:
+        try:
+            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+            entity_title = lead.title
+        except Lead.DoesNotExist:
+            return 400, {"detail": "Lead not found in this Firm."}
+    elif payload.realization_id:
+        try:
+            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
+            entity_title = realization.title
+        except Realization.DoesNotExist:
+            return 400, {"detail": "Realization not found in this Firm."}
+    elif payload.management_id:
+        try:
+            management = Management.objects.get(id=payload.management_id, firm=request.firm)
+            entity_title = management.title
+        except Management.DoesNotExist:
+            return 400, {"detail": "Management record not found in this Firm."}
 
     if payload.type not in [t.value for t in ActivityType]:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
@@ -773,32 +805,34 @@ def create_activity(request, payload: ActivityIn):
     with transaction.atomic():
         activity = Activity.objects.create(
             lead=lead,
+            realization=realization,
+            management=management,
             user=request.user,
             type=payload.type,
             content_text=payload.content_text,
             metadata=payload.metadata,
         )
 
-        # -- Side effects per activity type --
-        if payload.type == ActivityType.STATUS_CHANGE:
-            new_status = payload.metadata.get("new_status")
-            if new_status and new_status in [s.value for s in LeadStatus]:
-                old_status = lead.status
-                lead.status = new_status
-                lead.save(update_fields=["status", "updated_at"])
-                activity.metadata = {**activity.metadata, "old_status": old_status}
-                activity.save(update_fields=["metadata"])
-                LeadStatusHistory.objects.create(
-                    lead=lead,
-                    from_status=old_status,
-                    to_status=new_status,
-                    changed_at=activity.created_at,
-                    changed_by=request.user,
-                )
+        # -- Side effects per activity type (Lead only) --
+        if lead is not None:
+            if payload.type == ActivityType.STATUS_CHANGE:
+                new_status = payload.metadata.get("new_status")
+                if new_status and new_status in [s.value for s in LeadStatus]:
+                    old_status = lead.status
+                    lead.status = new_status
+                    lead.save(update_fields=["status", "updated_at"])
+                    activity.metadata = {**activity.metadata, "old_status": old_status}
+                    activity.save(update_fields=["metadata"])
+                    LeadStatusHistory.objects.create(
+                        lead=lead,
+                        from_status=old_status,
+                        to_status=new_status,
+                        changed_at=activity.created_at,
+                        changed_by=request.user,
+                    )
 
-        elif payload.type == ActivityType.EMAIL_OUT:
-            # Trigger async Celery task (gracefully degrade if Celery not available)
-            _trigger_email_task(activity, lead)
+            elif payload.type == ActivityType.EMAIL_OUT:
+                _trigger_email_task(activity, lead)
 
         # -- @mention notifications (COMMENT activities only) --
         if payload.type == ActivityType.COMMENT:
@@ -812,18 +846,23 @@ def create_activity(request, payload: ActivityIn):
                     .exclude(id=request.user.id)
                     .distinct()
                 )
+                notification_payload = {
+                    'activity_id': str(activity.id),
+                    'entity_type': activity.entity_type,
+                    'entity_id': activity.entity_id,
+                    'entity_title': entity_title,
+                    # Backwards-compatible key for existing lead mention notifications
+                    'lead_id': str(lead.id) if lead else None,
+                    'lead_title': lead.title if lead else None,
+                    'by_user': request.user.full_name or request.user.email,
+                    'content_preview': activity.content_text[:_MENTION_PREVIEW_LENGTH],
+                }
                 for mentioned_user in mentioned_users:
                     Notification.objects.create(
                         firm=request.firm,
                         user=mentioned_user,
                         event='activity.mention',
-                        payload={
-                            'activity_id': str(activity.id),
-                            'lead_id': str(lead.id),
-                            'lead_title': lead.title,
-                            'by_user': request.user.full_name or request.user.email,
-                            'content_preview': activity.content_text[:_MENTION_PREVIEW_LENGTH],
-                        },
+                        payload=notification_payload,
                     )
 
     broadcast_event(

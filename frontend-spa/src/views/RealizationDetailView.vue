@@ -7,6 +7,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
+import ActivityTimeline from '@/components/ActivityTimeline.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,7 +18,7 @@ const toast = useToast()
 
 const realizationId = computed(() => route.params.id as string)
 
-type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals' | 'documents'
+type Tab = 'overview' | 'activities' | 'tasks' | 'milestones' | 'proposals' | 'documents'
 const activeTab = ref<Tab>('overview')
 
 const editingTitle = ref(false)
@@ -266,6 +267,7 @@ onMounted(async () => {
       <button
         v-for="tab in [
           { id: 'overview', label: 'Přehled' },
+          { id: 'activities', label: 'Aktivity' },
           { id: 'milestones', label: `Milníky (${totalMilestones})` },
           { id: 'tasks', label: 'Úkoly' },
           { id: 'proposals', label: 'Nabídky' },
@@ -307,6 +309,11 @@ onMounted(async () => {
           <p v-else class="text-sm text-gray-400">Žádné milníky</p>
         </div>
       </div>
+    </div>
+
+    <!-- Activities tab -->
+    <div v-if="activeTab === 'activities'">
+      <ActivityTimeline entity-type="realization" :entity-id="realizationId" />
     </div>
 
     <!-- Milestones tab -->

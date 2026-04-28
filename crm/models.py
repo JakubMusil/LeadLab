@@ -225,7 +225,12 @@ class Lead(TenantModel):
 
 class Activity(models.Model):
     """
-    An immutable event on the lead's timeline.
+    A timeline event linked to exactly one CRM entity
+    (Lead / Realization / Management).
+
+    Exactly one of ``lead``, ``realization``, ``management`` must be set.
+    The ``entity_type`` property returns a canonical string so callers do not
+    need to check all three FKs.
 
     The ``metadata`` JSONField carries type-specific payload:
 
@@ -238,11 +243,30 @@ class Activity(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Polymorphic entity reference — exactly one must be non-null.
     lead = models.ForeignKey(
         Lead,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="activities",
     )
+    realization = models.ForeignKey(
+        "Realization",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+    management = models.ForeignKey(
+        "Management",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -271,11 +295,39 @@ class Activity(models.Model):
         indexes = [
             models.Index(fields=["lead", "-created_at"]),
             models.Index(fields=["lead", "type"]),
+            models.Index(fields=["realization", "-created_at"], name="crm_activit_realiz_created_idx"),
+            models.Index(fields=["management", "-created_at"], name="crm_activit_mgmt_created_idx"),
         ]
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @property
+    def entity_type(self) -> str:
+        """Return the canonical entity type string for this activity."""
+        if self.lead_id:
+            return "lead"
+        if self.realization_id:
+            return "realization"
+        if self.management_id:
+            return "management"
+        return "unknown"
+
+    @property
+    def entity_id(self) -> str:
+        """Return the UUID string of the linked entity."""
+        if self.lead_id:
+            return str(self.lead_id)
+        if self.realization_id:
+            return str(self.realization_id)
+        if self.management_id:
+            return str(self.management_id)
+        return ""
 
     def __str__(self):
         return (
-            f"{self.get_type_display()} on Lead#{self.lead_id} "
+            f"{self.get_type_display()} on {self.entity_type}#{self.entity_id} "
             f"at {self.created_at:%Y-%m-%d %H:%M}"
         )
 

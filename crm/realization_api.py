@@ -6,6 +6,7 @@ Endpoints:
   /api/v1/crm/realizations/{id}     GET / PATCH / DELETE
   /api/v1/crm/realizations/{id}/milestones          LIST + CREATE
   /api/v1/crm/realizations/{id}/milestones/{mid}    PATCH / DELETE
+  /api/v1/crm/realizations/{id}/activities          LIST (timeline)
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from ninja import Router, Schema
 from ninja.security import django_auth
 
 from crm.models import (
+    Activity,
     Customer,
     Lead,
     Milestone,
@@ -494,3 +496,58 @@ def delete_milestone(request, realization_id: str, milestone_id: str):
 
     milestone.delete()
     return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Activity timeline endpoint
+# ---------------------------------------------------------------------------
+
+class _ActivityOut(Schema):
+    id: str
+    entity_type: str
+    entity_id: str
+    lead_id: Optional[str]
+    user_id: Optional[str]
+    type: str
+    content_text: str
+    metadata: dict
+    created_at: dt.datetime
+
+
+@realization_router.get(
+    "/realizations/{realization_id}/activities",
+    response=List[_ActivityOut],
+    auth=django_auth,
+)
+def list_realization_activities(
+    request,
+    realization_id: str,
+    page: int = 1,
+    page_size: int = 20,
+):
+    """Return the activity timeline for a Realization, newest first (paginated)."""
+    firm = _firm(request)
+    require_membership(request)
+
+    realization = Realization.objects.filter(firm=firm, id=realization_id).first()
+    if not realization:
+        from ninja import errors
+        raise errors.HttpError(404, "Realization not found")
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(realization=realization).order_by("-created_at")[offset:offset + page_size]
+
+    return [
+        {
+            "id": str(a.id),
+            "entity_type": a.entity_type,
+            "entity_id": a.entity_id,
+            "lead_id": str(a.lead_id) if a.lead_id else None,
+            "user_id": str(a.user_id) if a.user_id else None,
+            "type": a.type,
+            "content_text": a.content_text,
+            "metadata": a.metadata,
+            "created_at": a.created_at,
+        }
+        for a in activities
+    ]
