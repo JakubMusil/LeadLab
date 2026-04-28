@@ -1193,7 +1193,7 @@ async function loadFakturoidSettings() {
 
 async function saveFakturoidSettings() {
   if (!fakturoidSlug.value.trim() || !fakturoidEmail.value.trim() || !fakturoidToken.value.trim()) {
-    toast.error('All Fakturoid fields are required.')
+    toast.error('Please provide account slug, email, and API token.')
     return
   }
   fakturoidSaving.value = true

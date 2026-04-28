@@ -220,9 +220,14 @@ def create_fakturoid_invoice(request, payload: FakturoidInvoiceIn):
     # Resolve subject_id from custom_id if needed
     subject_id = payload.subject_id
     if not subject_id and payload.subject_custom_id:
-        subjects_url = _api_url(firm.fakturoid_slug, f"subjects.json?custom_id={payload.subject_custom_id}")
+        subjects_url = _api_url(firm.fakturoid_slug, "subjects.json")
         try:
-            resp = http_requests.get(subjects_url, headers=headers, timeout=10)
+            resp = http_requests.get(
+                subjects_url,
+                headers=headers,
+                params={"custom_id": payload.subject_custom_id},
+                timeout=10,
+            )
             if resp.status_code == 200:
                 subjects = resp.json()
                 if subjects:
@@ -241,7 +246,7 @@ def create_fakturoid_invoice(request, payload: FakturoidInvoiceIn):
                 "name": line.name,
                 "quantity": line.quantity,
                 "unit_name": line.unit_name,
-                "unit_price": str(line.unit_price),
+                "unit_price": f"{line.unit_price:.2f}",
                 "vat_rate": line.vat_rate,
             }
             for line in payload.lines

@@ -247,6 +247,12 @@ async function exportToFakturoid() {
     showToast('No revenue items to export.')
     return
   }
+  // Validate that all items share the same currency
+  const currencies = [...new Set(revenues.value.map(r => r.currency))]
+  if (currencies.length > 1) {
+    showToast(`Cannot export: revenue items have mixed currencies (${currencies.join(', ')}). Filter to a single currency first.`)
+    return
+  }
   fakturoidExporting.value = true
   try {
     const lines = revenues.value.map(r => ({
@@ -256,7 +262,7 @@ async function exportToFakturoid() {
       unit_price: Number(r.amount),
       vat_rate: 0,
     }))
-    const currency = revenues.value[0]?.currency ?? 'CZK'
+    const currency = currencies[0] ?? 'CZK'
     const res = await api.post<{ ok: boolean; invoice?: { id: number; number: string; html_url: string }; error?: string }>(
       '/api/v1/integrations/fakturoid/invoices',
       { lines, currency, due: 14 },
