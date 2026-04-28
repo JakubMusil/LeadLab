@@ -12,7 +12,8 @@
     "superAdmin": "Super Admin",
     "taskTemplates": "Šablony úkolů",
     "timesheets": "Výkaz času",
-    "reports": "Výkazy"
+    "reports": "Výkazy",
+    "realizations": "Realizace"
   },
   "auth": {
     "welcomeBack": "Vítejte zpět",

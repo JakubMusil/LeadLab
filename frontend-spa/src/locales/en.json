@@ -12,7 +12,8 @@
     "superAdmin": "Super Admin",
     "taskTemplates": "Task Templates",
     "timesheets": "Timesheet",
-    "reports": "Reports"
+    "reports": "Reports",
+    "realizations": "Realizations"
   },
   "auth": {
     "welcomeBack": "Welcome back",

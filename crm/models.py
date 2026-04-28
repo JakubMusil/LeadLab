@@ -2046,6 +2046,14 @@ class TimeEntry(TenantModel):
         on_delete=models.SET_NULL,
         related_name="time_entries",
     )
+    realization = models.ForeignKey(
+        "Realization",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="time_entries",
+        help_text="Optional Realization this entry is linked to.",
+    )
 
     # Time data
     started_at = models.DateTimeField(
@@ -2086,6 +2094,7 @@ class TimeEntry(TenantModel):
             models.Index(fields=["firm", "lead"]),
             models.Index(fields=["firm", "customer"]),
             models.Index(fields=["firm", "task"]),
+            models.Index(fields=["firm", "realization"]),
         ]
 
     def __str__(self):
@@ -2247,3 +2256,114 @@ class RevenueItem(TenantModel):
 
     def __str__(self):
         return f"{self.title}: {self.amount} {self.currency} [{self.firm}]"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.1 — Realization
+# ---------------------------------------------------------------------------
+
+class RealizationStatus(models.TextChoices):
+    PLANNED = "planned", "Naplánováno"
+    IN_PROGRESS = "in_progress", "Probíhá"
+    ON_HOLD = "on_hold", "Pozastaveno"
+    DONE = "done", "Dokončeno"
+    CANCELLED = "cancelled", "Zrušeno"
+
+
+class Realization(TenantModel):
+    """
+    A production/service Kanban entity automatically created when a Lead
+    transitions to "Won".  Models the delivery phase:
+    Opportunity → Realization → Management.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Origin — the won opportunity (nullable for manually created realizations)
+    lead = models.ForeignKey(
+        Lead,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="realizations",
+        help_text="The winning opportunity that spawned this realization.",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="realizations",
+    )
+
+    # Content
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    # Workflow state
+    status = models.CharField(
+        max_length=20,
+        choices=RealizationStatus.choices,
+        default=RealizationStatus.PLANNED,
+        db_index=True,
+    )
+
+    # Team
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assigned_realizations",
+    )
+
+    # Dates
+    start_date = models.DateField(null=True, blank=True, help_text="Planned or actual start date.")
+    end_date = models.DateField(null=True, blank=True, help_text="Planned or actual end date.")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "realization"
+        verbose_name_plural = "realizations"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "status"]),
+            models.Index(fields=["firm", "assigned_to"]),
+            models.Index(fields=["firm", "lead"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} [{self.get_status_display()}]"
+
+
+class Milestone(models.Model):
+    """
+    A key checkpoint within a Realization.  Milestones are surfaced in the
+    Calendar view (via their ``date`` field).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    realization = models.ForeignKey(
+        Realization,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+    name = models.CharField(max_length=255)
+    date = models.DateField(db_index=True)
+    is_completed = models.BooleanField(default=False, db_index=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "milestone"
+        verbose_name_plural = "milestones"
+        ordering = ["date", "created_at"]
+        indexes = [
+            models.Index(fields=["realization", "date"]),
+        ]
+
+    def __str__(self):
+        done = "✓" if self.is_completed else "○"
+        return f"{done} {self.name} ({self.date})"

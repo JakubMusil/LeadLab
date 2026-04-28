@@ -16,7 +16,7 @@ from typing import List, Optional
 from ninja import Router, Schema
 from ninja.security import django_auth
 
-from crm.models import Customer, ExpenseItem, Lead, RevenueItem, Task, TimeEntry
+from crm.models import Customer, ExpenseItem, Lead, Realization, RevenueItem, Task, TimeEntry
 from firms.auth import require_active_subscription, require_membership
 
 router = Router(tags=["erp"])
@@ -43,6 +43,7 @@ class TimeEntryIn(Schema):
     lead_id: Optional[str] = None
     customer_id: Optional[str] = None
     task_id: Optional[str] = None
+    realization_id: Optional[str] = None
 
 
 class TimeEntryPatch(Schema):
@@ -54,6 +55,7 @@ class TimeEntryPatch(Schema):
     lead_id: Optional[str] = None
     customer_id: Optional[str] = None
     task_id: Optional[str] = None
+    realization_id: Optional[str] = None
 
 
 class TimeEntryOut(Schema):
@@ -67,6 +69,8 @@ class TimeEntryOut(Schema):
     customer_name: Optional[str]
     task_id: Optional[str]
     task_title: Optional[str]
+    realization_id: Optional[str]
+    realization_title: Optional[str]
     duration_minutes: int
     description: str
     is_billable: bool
@@ -98,6 +102,8 @@ class TimeEntryOut(Schema):
             ),
             task_id=str(obj.task_id) if obj.task_id else None,
             task_title=obj.task.title if obj.task_id else None,
+            realization_id=str(obj.realization_id) if obj.realization_id else None,
+            realization_title=obj.realization.title if obj.realization_id else None,
             duration_minutes=obj.duration_minutes,
             description=obj.description,
             is_billable=obj.is_billable,
@@ -119,12 +125,13 @@ def list_time_entries(
     lead_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     task_id: Optional[str] = None,
+    realization_id: Optional[str] = None,
     date_from: Optional[dt.date] = None,
     date_to: Optional[dt.date] = None,
 ):
     require_membership(request)
     firm = _firm(request)
-    qs = TimeEntry.objects.filter(firm=firm).select_related("user", "lead", "customer", "task")
+    qs = TimeEntry.objects.filter(firm=firm).select_related("user", "lead", "customer", "task", "realization")
     if user_id:
         qs = qs.filter(user_id=user_id)
     if lead_id:
@@ -133,6 +140,8 @@ def list_time_entries(
         qs = qs.filter(customer_id=customer_id)
     if task_id:
         qs = qs.filter(task_id=task_id)
+    if realization_id:
+        qs = qs.filter(realization_id=realization_id)
     if date_from:
         qs = qs.filter(started_at__date__gte=date_from)
     if date_to:
@@ -144,6 +153,9 @@ def list_time_entries(
 def create_time_entry(request, payload: TimeEntryIn):
     require_membership(request)
     firm = _firm(request)
+    realization = None
+    if payload.realization_id:
+        realization = Realization.objects.filter(firm=firm, id=payload.realization_id).first()
     entry = TimeEntry.objects.create(
         firm=firm,
         user=request.user,
@@ -155,10 +167,11 @@ def create_time_entry(request, payload: TimeEntryIn):
         lead_id=payload.lead_id,
         customer_id=payload.customer_id,
         task_id=payload.task_id,
+        realization=realization,
     )
     entry.refresh_from_db()
     return TimeEntryOut.from_obj(
-        TimeEntry.objects.select_related("user", "lead", "customer", "task").get(pk=entry.pk)
+        TimeEntry.objects.select_related("user", "lead", "customer", "task", "realization").get(pk=entry.pk)
     )
 
 
@@ -167,7 +180,7 @@ def get_time_entry(request, entry_id: str):
     require_membership(request)
     firm = _firm(request)
     try:
-        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task").get(
+        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task", "realization").get(
             pk=entry_id, firm=firm
         )
     except TimeEntry.DoesNotExist:
@@ -181,18 +194,22 @@ def update_time_entry(request, entry_id: str, payload: TimeEntryPatch):
     require_membership(request)
     firm = _firm(request)
     try:
-        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task").get(
+        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task", "realization").get(
             pk=entry_id, firm=firm
         )
     except TimeEntry.DoesNotExist:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
-    for field, value in payload.dict(exclude_unset=True).items():
+    update_data = payload.dict(exclude_unset=True)
+    if "realization_id" in update_data:
+        rid = update_data.pop("realization_id")
+        entry.realization = Realization.objects.filter(firm=firm, id=rid).first() if rid else None
+    for field, value in update_data.items():
         setattr(entry, field, value)
     entry.save()
     entry.refresh_from_db()
     return TimeEntryOut.from_obj(
-        TimeEntry.objects.select_related("user", "lead", "customer", "task").get(pk=entry.pk)
+        TimeEntry.objects.select_related("user", "lead", "customer", "task", "realization").get(pk=entry.pk)
     )
 
 
