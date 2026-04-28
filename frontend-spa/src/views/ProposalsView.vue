@@ -33,7 +33,7 @@ const filterContext = ref('')
 
 // Create modal
 const showCreateModal = ref(false)
-const createTitle = ref('Nová nabídka')
+const createTitle = ref('')
 const createCurrency = ref('CZK')
 const createContext = ref<'lead' | 'customer' | 'realization' | 'management' | 'none'>('none')
 const createLeadId = ref('')
@@ -42,25 +42,25 @@ const createRealizationId = ref('')
 const createManagementId = ref('')
 const creating = ref(false)
 
-const STATUSES = [
-  { value: '', label: 'Všechny stavy' },
-  { value: 'draft', label: 'Koncept', color: 'bg-gray-100 text-gray-700' },
-  { value: 'sent', label: 'Odesláno', color: 'bg-blue-100 text-blue-700' },
-  { value: 'viewed', label: 'Zobrazeno', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'accepted', label: 'Přijato', color: 'bg-green-100 text-green-700' },
-  { value: 'rejected', label: 'Odmítnuto', color: 'bg-red-100 text-red-700' },
-  { value: 'expired', label: 'Prošlé', color: 'bg-orange-100 text-orange-700' },
-]
+const STATUSES = computed(() => [
+  { value: '', label: t('proposals.statusAll') },
+  { value: 'draft', label: t('proposals.statusDraft'), color: 'bg-gray-100 text-gray-700' },
+  { value: 'sent', label: t('proposals.statusSent'), color: 'bg-blue-100 text-blue-700' },
+  { value: 'viewed', label: t('proposals.statusViewed'), color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'accepted', label: t('proposals.statusAccepted'), color: 'bg-green-100 text-green-700' },
+  { value: 'rejected', label: t('proposals.statusRejected'), color: 'bg-red-100 text-red-700' },
+  { value: 'expired', label: t('proposals.statusExpired'), color: 'bg-orange-100 text-orange-700' },
+])
 
 function statusMeta(status: string) {
-  return STATUSES.find(s => s.value === status) ?? { value: status, label: status, color: 'bg-gray-100 text-gray-700' }
+  return STATUSES.value.find(s => s.value === status) ?? { value: status, label: status, color: 'bg-gray-100 text-gray-700' }
 }
 
 function contextLabel(p: Proposal): string {
-  if (p.lead_id) return `Příležitost`
-  if (p.customer_id) return `Kontakt`
-  if (p.realization_id) return `Realizace`
-  if (p.management_id) return `Správa`
+  if (p.lead_id) return t('proposals.contextLead')
+  if (p.customer_id) return t('proposals.contextCustomer')
+  if (p.realization_id) return t('proposals.contextRealization')
+  if (p.management_id) return t('proposals.contextManagement')
   return '—'
 }
 
@@ -90,7 +90,7 @@ function openProposal(p: Proposal) {
 }
 
 function openCreateModal() {
-  createTitle.value = 'Nová nabídka'
+  createTitle.value = ''
   createCurrency.value = 'CZK'
   createContext.value = 'none'
   createLeadId.value = ''
@@ -166,12 +166,12 @@ onMounted(loadProposals)
         v-model="filterContext"
         class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-700 dark:text-gray-300"
       >
-        <option value="">Vše</option>
-        <option value="lead">Příležitosti</option>
-        <option value="customer">Kontakty</option>
-        <option value="realization">Realizace</option>
-        <option value="management">Správa</option>
-        <option value="none">Bez vazby</option>
+        <option value="">{{ t('proposals.filterAll') }}</option>
+        <option value="lead">{{ t('proposals.filterLeads') }}</option>
+        <option value="customer">{{ t('proposals.filterCustomers') }}</option>
+        <option value="realization">{{ t('proposals.filterRealizations') }}</option>
+        <option value="management">{{ t('proposals.filterManagement') }}</option>
+        <option value="none">{{ t('proposals.filterNone') }}</option>
       </select>
     </div>
 
@@ -191,11 +191,11 @@ onMounted(loadProposals)
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-            <th class="text-left px-4 py-3">Název</th>
+            <th class="text-left px-4 py-3">{{ t('proposals.colTitle') }}</th>
             <th class="text-left px-4 py-3">{{ t('proposals.status') }}</th>
             <th class="text-left px-4 py-3">{{ t('proposals.linkedTo') }}</th>
             <th class="text-right px-4 py-3">{{ t('proposals.total') }}</th>
-            <th class="text-left px-4 py-3">Vytvořeno</th>
+            <th class="text-left px-4 py-3">{{ t('proposals.colCreated') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -230,12 +230,12 @@ onMounted(loadProposals)
           <div class="space-y-4">
             <!-- Title -->
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Název</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.nameLabel') }}</label>
               <input
                 v-model="createTitle"
                 type="text"
                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100"
-                placeholder="Název nabídky"
+                :placeholder="t('proposals.namePlaceholder')"
               />
             </div>
 
@@ -270,20 +270,20 @@ onMounted(loadProposals)
             </div>
 
             <div v-if="createContext === 'lead'">
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ID Příležitosti</label>
-              <input v-model="createLeadId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" placeholder="UUID příležitosti" />
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextLead') }} ID</label>
+              <input v-model="createLeadId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextLead') + ' UUID'" />
             </div>
             <div v-else-if="createContext === 'customer'">
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ID Kontaktu</label>
-              <input v-model="createCustomerId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" placeholder="UUID kontaktu" />
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextCustomer') }} ID</label>
+              <input v-model="createCustomerId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextCustomer') + ' UUID'" />
             </div>
             <div v-else-if="createContext === 'realization'">
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ID Realizace</label>
-              <input v-model="createRealizationId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" placeholder="UUID realizace" />
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextRealization') }} ID</label>
+              <input v-model="createRealizationId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextRealization') + ' UUID'" />
             </div>
             <div v-else-if="createContext === 'management'">
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ID Správy</label>
-              <input v-model="createManagementId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" placeholder="UUID správy" />
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextManagement') }} ID</label>
+              <input v-model="createManagementId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextManagement') + ' UUID'" />
             </div>
           </div>
 

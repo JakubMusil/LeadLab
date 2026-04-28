@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFirmStore } from '@/stores/firm'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UpgradePrompt from '@/components/UpgradePrompt.vue'
@@ -22,6 +23,7 @@ ChartJS.register(BarElement, LineElement, PointElement, CategoryScale, LinearSca
 
 const firmStore = useFirmStore()
 const { isPro } = storeToRefs(firmStore)
+const { t } = useI18n()
 const loading = ref(false)
 
 // -- Pipeline Velocity --
@@ -226,7 +228,7 @@ const velocityChartData = computed(() => {
     labels: sorted.map((r) => STATUS_LABELS[r.status] ?? r.status),
     datasets: [
       {
-        label: 'Avg hours in status',
+        label: t('analytics.avgHoursInStatus'),
         data: sorted.map((r) => r.avg_hours),
         backgroundColor: sorted.map((r) => STATUS_COLORS[r.status] ?? '#6b7280'),
         borderRadius: 4,
@@ -266,14 +268,14 @@ const wonLostChartData = computed(() => ({
   labels: wonLost.value.map((r) => SOURCE_LABELS[r.source] ?? r.source),
   datasets: [
     {
-      label: 'Won',
+      label: t('analytics.won'),
       data: wonLost.value.map((r) => r.won),
       backgroundColor: '#22c55e',
       borderRadius: 4,
       maxBarThickness: 48,
     },
     {
-      label: 'Lost',
+      label: t('analytics.lost'),
       data: wonLost.value.map((r) => r.lost),
       backgroundColor: '#ef4444',
       borderRadius: 4,
@@ -298,7 +300,7 @@ const trendsChartData = computed(() => {
     }),
     datasets: [
       {
-        label: 'Created',
+        label: t('analytics.created'),
         data: trends.value.weekly.map((r) => r.created),
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59,130,246,0.1)',
@@ -306,7 +308,7 @@ const trendsChartData = computed(() => {
         fill: true,
       },
       {
-        label: 'Closed',
+        label: t('analytics.closed'),
         data: trends.value.weekly.map((r) => r.closed),
         borderColor: '#9ca3af',
         backgroundColor: 'rgba(156,163,175,0.1)',
@@ -328,7 +330,7 @@ const trendsChartOptions = {
 <template>
   <UpgradePrompt
     v-if="!isPro"
-    description="Advanced analytics are available on the Pro plan."
+    :description="t('analytics.proDescription')"
   />
   <div v-else class="p-6 max-w-7xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
@@ -339,7 +341,7 @@ const trendsChartOptions = {
         :disabled="loading"
         aria-label="Refresh analytics"
       >
-        {{ loading ? 'Loading…' : '↻ Refresh' }}
+        {{ loading ? t('analytics.loading') : t('analytics.refresh') }}
       </button>
     </div>
 
@@ -353,10 +355,10 @@ const trendsChartOptions = {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Pipeline velocity funnel -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Pipeline Velocity</h2>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">Avg. hours a lead spends in each status</p>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('analytics.pipelineVelocity') }}</h2>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">{{ t('analytics.pipelineVelocityDesc') }}</p>
           <div v-if="velocity.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
-            No status history data yet
+            {{ t('analytics.noStatusHistory') }}
           </div>
           <div v-else style="height: 260px; position: relative">
             <Bar :data="velocityChartData" :options="velocityChartOptions" />
@@ -367,8 +369,8 @@ const trendsChartOptions = {
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
           <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
             <div>
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Won / Lost by Source</h2>
-              <p class="text-xs text-gray-400 dark:text-gray-500">Filterable by date range</p>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('analytics.wonLostBySource') }}</h2>
+              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('analytics.wonLostBySourceDesc') }}</p>
             </div>
             <DateRangePicker
               v-model:model-value-from="dateFrom"
@@ -377,7 +379,7 @@ const trendsChartOptions = {
             />
           </div>
           <div v-if="wonLost.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
-            No closed leads yet
+            {{ t('analytics.noClosedLeads') }}
           </div>
           <div v-else style="height: 220px; position: relative">
             <Bar :data="wonLostChartData" :options="wonLostChartOptions" />
@@ -389,19 +391,19 @@ const trendsChartOptions = {
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
         <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
           <div>
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Lead Trends — last 12 weeks</h2>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Created vs. closed (won + lost) per week</p>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('analytics.leadTrends') }}</h2>
+            <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('analytics.leadTrendsDesc') }}</p>
           </div>
           <div
             v-if="trends"
             class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
           >
-            <span class="text-xs font-medium">30-day conversion rate:</span>
+            <span class="text-xs font-medium">{{ t('analytics.conversionRate') }}</span>
             <span class="text-sm font-bold">{{ trends.conversion_rate_30d.toFixed(1) }}%</span>
           </div>
         </div>
         <div v-if="!trends || trends.weekly.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
-          No trend data yet
+          {{ t('analytics.noTrendData') }}
         </div>
         <div v-else style="height: 240px; position: relative">
           <Line :data="trendsChartData" :options="trendsChartOptions" />
@@ -410,10 +412,10 @@ const trendsChartOptions = {
 
       <!-- Row 3: Team performance -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Team Performance</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.teamPerformance') }}</h2>
 
         <div v-if="team.length === 0" class="text-sm text-gray-400 text-center py-8">
-          No team members found
+          {{ t('analytics.noTeamMembers') }}
         </div>
 
         <div v-else class="overflow-x-auto">
@@ -426,7 +428,7 @@ const trendsChartOptions = {
                   scope="col"
                   :aria-sort="sortKey === 'full_name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  Member <span aria-hidden="true">{{ sortIcon('full_name') }}</span>
+                  {{ t('analytics.colMember') }} <span aria-hidden="true">{{ sortIcon('full_name') }}</span>
                 </th>
                 <th
                   class="text-right py-2 px-4 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200"
@@ -434,7 +436,7 @@ const trendsChartOptions = {
                   scope="col"
                   :aria-sort="sortKey === 'leads_owned' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  Leads <span aria-hidden="true">{{ sortIcon('leads_owned') }}</span>
+                  {{ t('analytics.colLeads') }} <span aria-hidden="true">{{ sortIcon('leads_owned') }}</span>
                 </th>
                 <th
                   class="text-right py-2 px-4 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200"
@@ -442,7 +444,7 @@ const trendsChartOptions = {
                   scope="col"
                   :aria-sort="sortKey === 'tasks_completed' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  Tasks Done <span aria-hidden="true">{{ sortIcon('tasks_completed') }}</span>
+                  {{ t('analytics.colTasksDone') }} <span aria-hidden="true">{{ sortIcon('tasks_completed') }}</span>
                 </th>
                 <th
                   class="text-right py-2 pl-4 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200"
@@ -450,7 +452,7 @@ const trendsChartOptions = {
                   scope="col"
                   :aria-sort="sortKey === 'activities_logged' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  Activities <span aria-hidden="true">{{ sortIcon('activities_logged') }}</span>
+                  {{ t('analytics.colActivities') }} <span aria-hidden="true">{{ sortIcon('activities_logged') }}</span>
                 </th>
               </tr>
             </thead>
@@ -483,32 +485,32 @@ const trendsChartOptions = {
 
       <!-- Row 4: Proposal Analytics -->
       <div v-if="proposalAnalytics" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Proposal Analytics</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.proposalAnalytics') }}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
             <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ proposalAnalytics.total }}</div>
-            <div class="text-xs text-gray-500 mt-1">Total</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.total') }}</div>
           </div>
           <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
             <div class="text-2xl font-bold text-green-700 dark:text-green-400">{{ proposalAnalytics.accepted }}</div>
-            <div class="text-xs text-gray-500 mt-1">Accepted ({{ proposalAnalytics.acceptance_rate }}%)</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.accepted', { rate: proposalAnalytics.acceptance_rate }) }}</div>
           </div>
           <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
             <div class="text-2xl font-bold text-red-700 dark:text-red-400">{{ proposalAnalytics.rejected }}</div>
-            <div class="text-xs text-gray-500 mt-1">Rejected ({{ proposalAnalytics.rejection_rate }}%)</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.rejected', { rate: proposalAnalytics.rejection_rate }) }}</div>
           </div>
           <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
             <div class="text-2xl font-bold text-blue-700 dark:text-blue-400">
               {{ proposalAnalytics.avg_time_to_open_hours != null ? proposalAnalytics.avg_time_to_open_hours.toFixed(1) + 'h' : '—' }}
             </div>
-            <div class="text-xs text-gray-500 mt-1">Avg. Time to Open</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.avgTimeToOpen') }}</div>
           </div>
         </div>
         <div class="flex flex-wrap gap-3">
-          <span class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Draft: {{ proposalAnalytics.draft }}</span>
-          <span class="px-2.5 py-1 rounded-lg text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Sent: {{ proposalAnalytics.sent }}</span>
-          <span class="px-2.5 py-1 rounded-lg text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">Viewed: {{ proposalAnalytics.viewed }}</span>
-          <span class="px-2.5 py-1 rounded-lg text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">Expired: {{ proposalAnalytics.expired }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{{ t('analytics.draft') }}: {{ proposalAnalytics.draft }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">{{ t('analytics.sent') }}: {{ proposalAnalytics.sent }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">{{ t('analytics.viewed') }}: {{ proposalAnalytics.viewed }}</span>
+          <span class="px-2.5 py-1 rounded-lg text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">{{ t('analytics.expired') }}: {{ proposalAnalytics.expired }}</span>
         </div>
       </div>
     </template>
@@ -516,17 +518,17 @@ const trendsChartOptions = {
     <!-- Row 5: Realization Metrics (Phase 4.5) -->
     <template v-if="!loading && realizationMetrics">
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Realizace — Přehled stavů</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.realizationStatusOverview') }}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <div v-for="row in realizationMetrics.by_status" :key="row.status" class="text-center">
             <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ row.count }}</div>
             <div class="text-xs font-medium text-gray-500 mt-0.5">{{ row.status }}</div>
-            <div class="text-xs text-gray-400">Ø {{ row.avg_days }} dní</div>
+            <div class="text-xs text-gray-400">{{ t('analytics.avgDays', { days: row.avg_days }) }}</div>
           </div>
         </div>
         <div class="mt-4 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-          <span>Celkem: <strong class="text-gray-900 dark:text-gray-100">{{ realizationMetrics.total }}</strong></span>
-          <span>Dokončeno: <strong class="text-green-600 dark:text-green-400">{{ realizationMetrics.completed_total }}</strong></span>
+          <span>{{ t('analytics.totalCount', { count: realizationMetrics.total }) }}</span>
+          <span>{{ t('analytics.completedCount', { count: realizationMetrics.completed_total }) }}</span>
         </div>
       </div>
     </template>
@@ -534,42 +536,42 @@ const trendsChartOptions = {
     <!-- Row 6: SLA Compliance (Phase 4.5) -->
     <template v-if="!loading && slaCompliance">
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">SLA Compliance — Správa</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.slaCompliance') }}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ slaCompliance.green }}</div>
-            <div class="text-xs text-gray-500 mt-1">🟢 V pořádku (&gt;7 dní)</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaOk') }}</div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ slaCompliance.yellow }}</div>
-            <div class="text-xs text-gray-500 mt-1">🟡 Brzy vyprší (1–7 dní)</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaSoon') }}</div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ slaCompliance.red }}</div>
-            <div class="text-xs text-gray-500 mt-1">🔴 Expirováno</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaExpired') }}</div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-gray-400 dark:text-gray-500">{{ slaCompliance.no_expiry }}</div>
-            <div class="text-xs text-gray-500 mt-1">⚪ Bez expiry</div>
+            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaNoExpiry') }}</div>
           </div>
         </div>
-        <div class="mt-3 text-xs text-gray-400 dark:text-gray-500">Zobrazeny pouze otevřené záznamy Správy. Celkem: {{ slaCompliance.total }}</div>
+        <div class="mt-3 text-xs text-gray-400 dark:text-gray-500">{{ t('analytics.slaOnlyOpen', { total: slaCompliance.total }) }}</div>
       </div>
     </template>
 
     <!-- Row 7: Profitability (Phase 4.5) -->
     <template v-if="!loading && profitability">
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Ziskovost — per Realizace</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.profitability') }}</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs text-left">
             <thead>
               <tr class="border-b border-gray-100 dark:border-gray-700">
-                <th class="pb-2 text-gray-500 font-medium">Realizace</th>
-                <th class="pb-2 text-right text-gray-500 font-medium">Čas (hod)</th>
-                <th class="pb-2 text-right text-gray-500 font-medium">Náklady</th>
-                <th class="pb-2 text-right text-gray-500 font-medium">Výnosy</th>
-                <th class="pb-2 text-right text-gray-500 font-medium">Zisk/Ztráta</th>
+                <th class="pb-2 text-gray-500 font-medium">{{ t('analytics.colRealization') }}</th>
+                <th class="pb-2 text-right text-gray-500 font-medium">{{ t('analytics.colTime') }}</th>
+                <th class="pb-2 text-right text-gray-500 font-medium">{{ t('analytics.colCost') }}</th>
+                <th class="pb-2 text-right text-gray-500 font-medium">{{ t('analytics.colRevenue') }}</th>
+                <th class="pb-2 text-right text-gray-500 font-medium">{{ t('analytics.colProfitLoss') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -584,7 +586,7 @@ const trendsChartOptions = {
               </tr>
               <!-- Totals row -->
               <tr class="border-t-2 border-gray-200 dark:border-gray-600 font-semibold">
-                <td class="pt-2 text-gray-900 dark:text-gray-100">Celkem</td>
+                <td class="pt-2 text-gray-900 dark:text-gray-100">{{ t('analytics.colTotal') }}</td>
                 <td class="pt-2 text-right text-gray-800 dark:text-gray-200">{{ Math.round(profitability.totals.total_minutes / 60 * 10) / 10 }}</td>
                 <td class="pt-2 text-right text-gray-800 dark:text-gray-200">{{ profitability.totals.total_expenses.toLocaleString() }}</td>
                 <td class="pt-2 text-right text-gray-800 dark:text-gray-200">{{ profitability.totals.total_revenues.toLocaleString() }}</td>
