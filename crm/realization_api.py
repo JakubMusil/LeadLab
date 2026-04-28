@@ -262,6 +262,8 @@ def update_realization(request, realization_id: str, payload: RealizationPatch):
         from ninja import errors
         raise errors.HttpError(404, "Realization not found")
 
+    old_status = realization.status  # capture before save
+
     if payload.title is not None:
         realization.title = payload.title
     if payload.description is not None:
@@ -297,6 +299,36 @@ def update_realization(request, realization_id: str, payload: RealizationPatch):
 
     out = RealizationOut.from_obj(realization)
     broadcast_event(firm=firm, event="realization.updated", payload=out.dict())
+
+    # Fire realization_status_change automation if status changed
+    if payload.status is not None and payload.status != old_status:
+        customer_name = ""
+        customer_email = ""
+        if realization.customer:
+            customer_name = f"{realization.customer.first_name} {realization.customer.last_name}".strip()
+            customer_email = realization.customer.email or ""
+        _auto_ctx = {
+            "realization_id": str(realization.id),
+            "realization_title": realization.title,
+            "from_status": old_status,
+            "to_status": realization.status,
+            "firm_id": str(firm.id),
+            "assignee_email": realization.assigned_to.email if realization.assigned_to else "",
+            "assignee_name": (
+                f"{realization.assigned_to.first_name} {realization.assigned_to.last_name}".strip()
+                if realization.assigned_to else ""
+            ),
+            "customer_name": customer_name,
+            "customer_email": customer_email,
+        }
+        from crm.tasks import evaluate_automation_rules
+        from django.db import transaction as db_tx
+        db_tx.on_commit(
+            lambda ctx=_auto_ctx: evaluate_automation_rules.delay(
+                "realization_status_change", str(firm.id), ctx
+            )
+        )
+
     return out
 
 
@@ -400,6 +432,8 @@ def update_milestone(request, realization_id: str, milestone_id: str, payload: M
         from ninja import errors
         raise errors.HttpError(404, "Milestone not found")
 
+    was_completed = milestone.is_completed
+
     if payload.name is not None:
         milestone.name = payload.name
     if payload.date is not None:
@@ -409,6 +443,24 @@ def update_milestone(request, realization_id: str, milestone_id: str, payload: M
     if payload.description is not None:
         milestone.description = payload.description
     milestone.save()
+
+    # Fire milestone_completed automation when milestone is just marked done
+    if not was_completed and milestone.is_completed:
+        _auto_ctx = {
+            "milestone_id": str(milestone.id),
+            "milestone_name": milestone.name,
+            "milestone_date": milestone.date.isoformat(),
+            "realization_id": str(realization.id),
+            "realization_title": realization.title,
+            "firm_id": str(firm.id),
+        }
+        from crm.tasks import evaluate_automation_rules
+        from django.db import transaction as db_tx
+        db_tx.on_commit(
+            lambda ctx=_auto_ctx: evaluate_automation_rules.delay(
+                "milestone_completed", str(firm.id), ctx
+            )
+        )
 
     return MilestoneOut(
         id=str(milestone.id),
