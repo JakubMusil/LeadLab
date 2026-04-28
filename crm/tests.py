@@ -1154,3 +1154,191 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         content = b"".join(resp.streaming_content).decode()
         self.assertIn("first_name", content)
         self.assertIn("Jane", content)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.0 — ERP API tests
+# ---------------------------------------------------------------------------
+
+import datetime
+
+from crm.models import ExpenseItem, RevenueItem, TimeEntry
+
+
+class TimeEntryAPITest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_create_time_entry(self):
+        payload = {
+            "duration_minutes": 90,
+            "description": "Design session",
+            "is_billable": True,
+            "lead_id": str(self.lead.id),
+        }
+        resp = self.client.post(
+            "/api/v1/erp/time-entries",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["duration_minutes"], 90)
+        self.assertEqual(data["lead_id"], str(self.lead.id))
+
+    def test_list_time_entries(self):
+        TimeEntry.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            duration_minutes=30,
+            lead=self.lead,
+        )
+        resp = self.client.get("/api/v1/erp/time-entries")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 1)
+
+    def test_update_time_entry(self):
+        entry = TimeEntry.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            duration_minutes=30,
+        )
+        resp = self.client.patch(
+            f"/api/v1/erp/time-entries/{entry.id}",
+            data=json.dumps({"duration_minutes": 60, "description": "Updated"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["duration_minutes"], 60)
+
+    def test_delete_time_entry(self):
+        entry = TimeEntry.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            duration_minutes=15,
+        )
+        resp = self.client.delete(f"/api/v1/erp/time-entries/{entry.id}")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(TimeEntry.objects.filter(pk=entry.pk).exists())
+
+    def test_firm_isolation(self):
+        from firms.models import Firm, Membership, MembershipRole
+        other_firm = Firm.objects.create(name="Other ERP Firm", subscription_tier="pro")
+        other_user = __import__("users.models", fromlist=["User"]).User.objects.create_user(
+            email="erp_other@test.com", password="pass"
+        )
+        Membership.objects.create(user=other_user, firm=other_firm, role=MembershipRole.OWNER)
+        TimeEntry.objects.create(firm=other_firm, user=other_user, duration_minutes=45)
+        resp = self.client.get("/api/v1/erp/time-entries")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 0)
+
+
+class ExpenseAPITest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_create_expense(self):
+        payload = {
+            "title": "Server hosting",
+            "amount": "150.00",
+            "currency": "CZK",
+            "date": "2025-01-15",
+            "recurrence": "monthly",
+        }
+        resp = self.client.post(
+            "/api/v1/erp/expenses",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["title"], "Server hosting")
+        self.assertEqual(data["recurrence"], "monthly")
+
+    def test_list_expenses(self):
+        ExpenseItem.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            title="Test expense",
+            amount="100.00",
+            date=datetime.date.today(),
+        )
+        resp = self.client.get("/api/v1/erp/expenses")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 1)
+
+    def test_delete_expense(self):
+        item = ExpenseItem.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            title="To delete",
+            amount="50.00",
+            date=datetime.date.today(),
+        )
+        resp = self.client.delete(f"/api/v1/erp/expenses/{item.id}")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(ExpenseItem.objects.filter(pk=item.pk).exists())
+
+
+class RevenueAPITest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_create_revenue(self):
+        payload = {
+            "title": "Project payment",
+            "amount": "5000.00",
+            "currency": "CZK",
+            "date": "2025-02-01",
+            "lead_id": str(self.lead.id),
+        }
+        resp = self.client.post(
+            "/api/v1/erp/revenues",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["title"], "Project payment")
+        self.assertEqual(data["lead_id"], str(self.lead.id))
+
+    def test_list_revenues(self):
+        RevenueItem.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            title="Revenue item",
+            amount="200.00",
+            date=datetime.date.today(),
+        )
+        resp = self.client.get("/api/v1/erp/revenues")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 1)
+
+
+class ReportsSummaryAPITest(CRMFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.owner)
+        self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
+
+    def test_reports_summary(self):
+        today = datetime.date.today()
+        TimeEntry.objects.create(firm=self.firm, user=self.owner, duration_minutes=120, is_billable=True)
+        TimeEntry.objects.create(firm=self.firm, user=self.owner, duration_minutes=30, is_billable=False)
+        ExpenseItem.objects.create(firm=self.firm, user=self.owner, title="E1", amount="200.00", date=today)
+        RevenueItem.objects.create(firm=self.firm, user=self.owner, title="R1", amount="500.00", date=today)
+        resp = self.client.get("/api/v1/erp/reports/summary")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["total_minutes"], 150)
+        self.assertEqual(data["billable_minutes"], 120)
+        self.assertAlmostEqual(float(data["total_expenses"]), 200.0)
+        self.assertAlmostEqual(float(data["total_revenues"]), 500.0)
+        self.assertAlmostEqual(float(data["profit_loss"]), 300.0)

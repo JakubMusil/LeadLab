@@ -10,7 +10,9 @@
     "analytics": "Analityka",
     "superAdmin": "Super Admin",
     "sequences": "Sekwencje",
-    "taskTemplates": "Szablony zadań"
+    "taskTemplates": "Szablony zadań",
+    "timesheets": "Ewidencja czasu",
+    "reports": "Raporty"
   },
   "auth": {
     "welcomeBack": "Witaj ponownie",

@@ -10,7 +10,9 @@
     "analytics": "Analytics",
     "sequences": "Sequences",
     "superAdmin": "Super Admin",
-    "taskTemplates": "Task Templates"
+    "taskTemplates": "Task Templates",
+    "timesheets": "Timesheet",
+    "reports": "Reports"
   },
   "auth": {
     "welcomeBack": "Welcome back",
