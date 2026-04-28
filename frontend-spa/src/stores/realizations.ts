@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
-import { useFirmStore } from '@/stores/firm'
 
 export interface MilestoneOut {
   id: string
@@ -66,11 +65,6 @@ export const useRealizationsStore = defineStore('realizations', () => {
   const loading = ref(false)
   const loadingDetail = ref(false)
 
-  function firmHeader() {
-    const firmStore = useFirmStore()
-    return firmStore.activeFirm ? { 'X-Firm-ID': String(firmStore.activeFirm.id) } : {}
-  }
-
   async function fetchRealizations(filters: Record<string, string> = {}) {
     loading.value = true
     try {
@@ -79,10 +73,12 @@ export const useRealizationsStore = defineStore('realizations', () => {
         if (v) params.set(k, v)
       }
       const query = params.toString() ? `?${params.toString()}` : ''
-      const res = await api.get(`/api/v1/crm/realizations${query}`, {
-        headers: firmHeader(),
-      })
-      realizations.value = res.data as RealizationOut[]
+      const res = await api.get<RealizationOut[]>(`/api/v1/crm/realizations${query}`)
+      if (res.ok) {
+        realizations.value = res.data
+      } else {
+        console.error('fetchRealizations:', extractErrorMessage(res.data))
+      }
     } catch (err) {
       console.error('fetchRealizations:', extractErrorMessage(err))
     } finally {
@@ -93,11 +89,13 @@ export const useRealizationsStore = defineStore('realizations', () => {
   async function fetchRealization(id: string) {
     loadingDetail.value = true
     try {
-      const res = await api.get(`/api/v1/crm/realizations/${id}`, {
-        headers: firmHeader(),
-      })
-      currentRealization.value = res.data as RealizationOut
-      return currentRealization.value
+      const res = await api.get<RealizationOut>(`/api/v1/crm/realizations/${id}`)
+      if (res.ok) {
+        currentRealization.value = res.data
+        return currentRealization.value
+      }
+      console.error('fetchRealization:', extractErrorMessage(res.data))
+      return null
     } catch (err) {
       console.error('fetchRealization:', extractErrorMessage(err))
       return null
@@ -108,12 +106,13 @@ export const useRealizationsStore = defineStore('realizations', () => {
 
   async function createRealization(data: RealizationIn): Promise<RealizationOut | null> {
     try {
-      const res = await api.post('/api/v1/crm/realizations', data, {
-        headers: firmHeader(),
-      })
-      const created = res.data as RealizationOut
-      realizations.value.unshift(created)
-      return created
+      const res = await api.post<RealizationOut>('/api/v1/crm/realizations', data)
+      if (res.ok) {
+        realizations.value.unshift(res.data)
+        return res.data
+      }
+      console.error('createRealization:', extractErrorMessage(res.data))
+      return null
     } catch (err) {
       console.error('createRealization:', extractErrorMessage(err))
       return null
@@ -122,14 +121,15 @@ export const useRealizationsStore = defineStore('realizations', () => {
 
   async function updateRealization(id: string, patch: Partial<RealizationIn>): Promise<RealizationOut | null> {
     try {
-      const res = await api.patch(`/api/v1/crm/realizations/${id}`, patch, {
-        headers: firmHeader(),
-      })
-      const updated = res.data as RealizationOut
-      const idx = realizations.value.findIndex((r) => r.id === id)
-      if (idx !== -1) realizations.value[idx] = updated
-      if (currentRealization.value?.id === id) currentRealization.value = updated
-      return updated
+      const res = await api.patch<RealizationOut>(`/api/v1/crm/realizations/${id}`, patch)
+      if (res.ok) {
+        const idx = realizations.value.findIndex((r) => r.id === id)
+        if (idx !== -1) realizations.value[idx] = res.data
+        if (currentRealization.value?.id === id) currentRealization.value = res.data
+        return res.data
+      }
+      console.error('updateRealization:', extractErrorMessage(res.data))
+      return null
     } catch (err) {
       console.error('updateRealization:', extractErrorMessage(err))
       return null
@@ -138,12 +138,14 @@ export const useRealizationsStore = defineStore('realizations', () => {
 
   async function deleteRealization(id: string): Promise<boolean> {
     try {
-      await api.delete(`/api/v1/crm/realizations/${id}`, {
-        headers: firmHeader(),
-      })
-      realizations.value = realizations.value.filter((r) => r.id !== id)
-      if (currentRealization.value?.id === id) currentRealization.value = null
-      return true
+      const res = await api.delete(`/api/v1/crm/realizations/${id}`)
+      if (res.ok || res.status === 204) {
+        realizations.value = realizations.value.filter((r) => r.id !== id)
+        if (currentRealization.value?.id === id) currentRealization.value = null
+        return true
+      }
+      console.error('deleteRealization:', extractErrorMessage(res.data))
+      return false
     } catch (err) {
       console.error('deleteRealization:', extractErrorMessage(err))
       return false
