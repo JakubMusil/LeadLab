@@ -107,6 +107,24 @@ class CallTool(StreamlineTool):
                     "title": "Duration (minutes)",
                     "minimum": 0,
                 },
+                "recording_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "title": "Recording URL",
+                },
+                "recording_filename": {
+                    "type": "string",
+                    "title": "Recording Filename",
+                },
+                "recording_size_bytes": {
+                    "type": "integer",
+                    "title": "Recording Size (bytes)",
+                    "minimum": 0,
+                },
+                "transcript": {
+                    "type": "string",
+                    "title": "Transcript",
+                },
             },
         }
 
@@ -119,6 +137,10 @@ class CallTool(StreamlineTool):
         return {
             "duration_minutes": activity.metadata.get("duration_minutes"),
             "notes": activity.content_text,
+            "recording_url": activity.metadata.get("recording_url"),
+            "recording_filename": activity.metadata.get("recording_filename"),
+            "recording_size_bytes": activity.metadata.get("recording_size_bytes"),
+            "transcript": activity.metadata.get("transcript"),
         }
 
 
