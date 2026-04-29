@@ -235,25 +235,25 @@ async function loadTasks() {
 
 async function toggleExpand(taskId: string) {
   if (expandedTasks.value.has(taskId)) {
-    expandedTasks.value = new Set([...expandedTasks.value].filter((id) => id !== taskId))
+    expandedTasks.value.delete(taskId)
     return
   }
-  expandedTasks.value = new Set([...expandedTasks.value, taskId])
+  expandedTasks.value.add(taskId)
   if (taskDetailsMap.value.has(taskId)) return
-  taskDetailsLoadingSet.value = new Set([...taskDetailsLoadingSet.value, taskId])
+  taskDetailsLoadingSet.value.add(taskId)
   try {
     const [subtasksRes, checklistRes, depsRes] = await Promise.all([
       api.get<Task[]>(`/api/v1/crm/tasks/${taskId}/subtasks`),
       api.get<ChecklistItem[]>(`/api/v1/crm/tasks/${taskId}/checklist`),
       api.get<TaskDependency[]>(`/api/v1/crm/tasks/${taskId}/dependencies`),
     ])
-    taskDetailsMap.value = new Map(taskDetailsMap.value).set(taskId, {
+    taskDetailsMap.value.set(taskId, {
       subtasks: subtasksRes.ok ? subtasksRes.data : [],
       checklist: checklistRes.ok ? checklistRes.data : [],
       dependencies: depsRes.ok ? depsRes.data : [],
     })
   } finally {
-    taskDetailsLoadingSet.value = new Set([...taskDetailsLoadingSet.value].filter((id) => id !== taskId))
+    taskDetailsLoadingSet.value.delete(taskId)
   }
 }
 
