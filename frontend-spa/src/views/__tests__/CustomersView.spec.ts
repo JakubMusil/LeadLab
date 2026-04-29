@@ -34,8 +34,10 @@ const router = createRouter({
 })
 
 const mockCustomer = {
-  id: 'cust-1', firm_id: '1', first_name: 'Alice', last_name: 'Smith',
+  id: 'cust-1', firm_id: '1', type: 'person' as const, first_name: 'Alice', last_name: 'Smith',
   email: 'alice@example.com', phone: '', company_name: 'Acme',
+  company_id: null, ico: '', dic: '',
+  address_street: '', address_city: '', address_zip: '', address_country: '', website: '',
   tags: ['vip'], metadata: {}, created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
 }
 

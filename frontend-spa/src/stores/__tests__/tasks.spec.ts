@@ -56,6 +56,14 @@ const mockTask = {
   estimated_minutes: null,
   total_logged_minutes: 0,
   my_active_timer_started_at: null,
+  recurrence: null,
+  recurrence_parent_id: null,
+  approval_required: false,
+  approval_status: 'none' as const,
+  approval_requested_from_id: null,
+  approval_requested_from_name: null,
+  approval_note: '',
+  custom_fields: [],
 }
 
 describe('useTasksStore', () => {

@@ -33,6 +33,8 @@ const mockLead = {
   currency: 'CZK',
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
+  created_by_id: null,
+  created_by_name: null,
 }
 
 describe('useLeadsStore', () => {

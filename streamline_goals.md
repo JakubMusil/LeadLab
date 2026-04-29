@@ -409,23 +409,38 @@ ale v okolních oblastech:
    - Vitest baseline: 66 failed / 102 passed test count beze změny
      (preexisting failures jsou nezávislé — i18n/messages compile
      errors v testech).
-3. **Pokračování baseline `vue-tsc` cleanup** *(zbývajících 34 errorů)*:
-   - `ActivityTimeline.vue` (7) — `Object is possibly 'undefined'`
-     v lookup operacích, `string | undefined` not assignable to
-     `string`. Vyžaduje narrowing nebo non-null assertion.
-   - `AutomationsView.vue` (6) — `lead_title`/`task_title`/`customer_name`/`due_date`
-     na `$tm` interpolation contextu (chybí v event payload typu).
-   - `TaskDetailView.vue` (4), `TasksView.vue` (1), `TaskTableView.vue` (1) —
-     `Task.due_date` vs `string` (model nullable, UI očekává string).
-   - `RealizationsView.vue` (2), `ManagementView.vue` (2) —
-     `Object is possibly 'undefined'` v sort/filter callbacích.
-   - `GanttView.vue` (2) — `frappe-gantt` chybí TS types
-     (declarable `declare module`).
-   - `EntitySidebarActionPicker.vue` (1), `CalendarView.vue` (1),
-     `ManagementDetailView.vue` (1) — drobné null checks.
-   - `__tests__/*.spec.ts` (~10) — fixture objekty postrádají nově
-     přidaná pole (`Task.recurrence`, `Customer.type`, `Lead.created_by_*`,
-     `User.is_superuser`). Doplnit fixtures.
+3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 29 unikátních errorů)*:
+   - ✅ **`GanttView.vue` ambient module** *(2026-04-29 čtvrtá iterace)* —
+     do `env.d.ts` přidán `declare module 'frappe-gantt'`. Package
+     ships jen ES bundle bez `.d.ts`, importujeme ho jen dynamicky
+     s `as any` cast. Snižuje 1 error (TS7016).
+   - ✅ **Test fixture drift** *(2026-04-29 čtvrtá iterace)* — doplněna
+     chybějící pole do mock objektů ve 4 spec souborech:
+     - `auth.spec.ts`: `is_superuser: false`.
+     - `leads.spec.ts`: `created_by_id: null`, `created_by_name: null`.
+     - `tasks.spec.ts`: `recurrence`, `recurrence_parent_id`,
+       `approval_required`, `approval_status`, `approval_requested_from_id`,
+       `approval_requested_from_name`, `approval_note`, `custom_fields`.
+     - `customers.spec.ts` + `views/__tests__/CustomersView.spec.ts`:
+       `type`, `company_id`, `ico`, `dic`, `address_street`,
+       `address_city`, `address_zip`, `address_country`, `website`.
+     - Snižuje ~12 errorů. Vitest: 36/36 passed pro upravené specs.
+   - **Zbývá ~29 errorů** v 4 kategoriích:
+     - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
+       v lookup operacích + `string | undefined` not assignable.
+       Vyžaduje narrowing nebo non-null assertion.
+     - `AutomationsView.vue` (5) — `lead_title`/`task_title`/`customer_name`/`due_date`
+       na `$tm` interpolation contextu (chybí v event payload typu;
+       errory se ze 4 unikátních lokací duplikují přes 2 contexty,
+       reálně 4 místa k opravě).
+     - `TaskDetailView.vue` (4), `TasksView.vue` (1), `TaskTableView.vue` (1) —
+       `Task.due_date`/`due_date_end` nullable vs UI `string`.
+     - `RealizationsView.vue` (2), `ManagementView.vue` (2) —
+       `Object is possibly 'undefined'` v sort/filter callbacích.
+     - `GanttView.vue` (1), `EntitySidebarActionPicker.vue` (1),
+       `CalendarView.vue` (1), `ManagementDetailView.vue` (1) —
+       drobné null checks (`string | undefined` arg, `unknown` vs
+       `string | number`, `record possibly null`).
 4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
