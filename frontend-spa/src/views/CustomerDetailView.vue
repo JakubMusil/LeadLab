@@ -5,6 +5,7 @@ import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
+import ActivityTimeline from '@/components/ActivityTimeline.vue'
 
 const route = useRoute()
 const store = useCustomersStore()
@@ -438,6 +439,12 @@ onMounted(async () => {
             <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
           </RouterLink>
         </div>
+      </div>
+
+      <!-- Activity Timeline -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
+        <ActivityTimeline entityType="customer" :entityId="customerId" />
       </div>
     </template>
 

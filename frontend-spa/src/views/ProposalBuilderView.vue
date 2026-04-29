@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
+import ActivityTimeline from '@/components/ActivityTimeline.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -950,6 +951,12 @@ watch(
                 <div v-if="editClosing" class="mt-4 text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">{{ editClosing }}</div>
               </div>
             </div>
+          </div>
+
+          <!-- Activity Timeline -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
+            <ActivityTimeline entityType="proposal" :entityId="currentProposal.id" />
           </div>
         </template>
       </div>

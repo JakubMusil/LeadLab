@@ -24,7 +24,7 @@ from crm.models import (
     Realization,
     RealizationStatus,
 )
-from crm.api import _user_display_name
+from crm.api import _user_display_name, _activity_out as _shared_activity_out
 from crm.events import broadcast_event
 from firms.auth import require_active_subscription, require_membership
 
@@ -510,10 +510,12 @@ class _ActivityOut(Schema):
     lead_id: Optional[str]
     user_id: Optional[str]
     user_name: Optional[str]
+    user_avatar_url: Optional[str] = None
     type: str
     content_text: str
     metadata: dict
     created_at: dt.datetime
+    tool_payload: Optional[dict] = None
 
 
 @realization_router.get(
@@ -539,18 +541,4 @@ def list_realization_activities(
     offset = (page - 1) * page_size
     activities = Activity.objects.filter(realization=realization).select_related('user').order_by("-created_at")[offset:offset + page_size]
 
-    return [
-        {
-            "id": str(a.id),
-            "entity_type": a.entity_type,
-            "entity_id": a.entity_id,
-            "lead_id": str(a.lead_id) if a.lead_id else None,
-            "user_id": str(a.user_id) if a.user_id else None,
-            "user_name": _user_display_name(a.user),
-            "type": a.type,
-            "content_text": a.content_text,
-            "metadata": a.metadata,
-            "created_at": a.created_at,
-        }
-        for a in activities
-    ]
+    return [_shared_activity_out(a) for a in activities]

@@ -2,7 +2,7 @@
 /**
  * ActivityTimeline — unified timeline composer + feed.
  *
- * Works identically for Lead, Realization and Management.
+ * Works identically for Lead, Realization, Management, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
@@ -25,6 +25,7 @@ import {
   PaperClipIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
+  PencilSquareIcon,
   QuestionMarkCircleIcon,
   BellIcon,
 } from '@heroicons/vue/24/outline'
@@ -33,7 +34,7 @@ import {
 // Props
 // ---------------------------------------------------------------------------
 const props = defineProps<{
-  entityType: 'lead' | 'realization' | 'management'
+  entityType: 'lead' | 'realization' | 'management' | 'customer' | 'proposal'
   entityId: string
   hideComposer?: boolean
 }>()
@@ -88,6 +89,7 @@ const heroIconMap: Record<string, Component> = {
   CheckCircleIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
+  PencilSquareIcon,
 }
 
 // ---------------------------------------------------------------------------
@@ -116,15 +118,34 @@ const activitiesHasMore = ref(true)
 
 // Filter state
 const filterType = ref('')
+
+// Map of known activity_type → i18n key for the filter labels
+const _filterLabelKey: Record<string, string> = {
+  comment: 'leadDetail.typeComment',
+  call: 'leadDetail.typeCall',
+  meeting: 'leadDetail.typeMeeting',
+  email_out: 'leadDetail.typeEmailOut',
+  email_in: 'leadDetail.typeEmailIn',
+  entity_change: 'leadDetail.typeEntityChange',
+}
+
 const filterOptions = computed(() => [
   { value: '', label: t('leadDetail.filterAll') },
-  { value: 'comment', label: t('leadDetail.typeComment') },
-  { value: 'call', label: t('leadDetail.typeCall') },
-  { value: 'meeting', label: t('leadDetail.typeMeeting') },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut') },
-  { value: 'email_in', label: t('leadDetail.typeEmailIn') },
+  // Composable tools from the registry (those that have a content_text field)
+  ...streamlineTools.value
+    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
+    .map((tool) => ({
+      value: tool.activity_type,
+      label: _filterLabelKey[tool.activity_type]
+        ? t(_filterLabelKey[tool.activity_type])
+        : tool.label,
+    })),
+  // Task group filter (covers task, task_assigned, task_completed)
   { value: 'task', label: t('leadDetail.typeTask') },
+  // Entity change (auto-logged field changes)
+  { value: 'entity_change', label: t('leadDetail.typeEntityChange') },
 ])
+
 const filteredActivities = computed(() => {
   if (!filterType.value) return activities.value
   if (filterType.value === 'task') {
@@ -175,6 +196,7 @@ const activityIconMap: Record<string, Component> = {
   proposal_created: DocumentTextIcon,
   proposal_accepted: DocumentCheckIcon,
   proposal_rejected: DocumentTextIcon,
+  entity_change: PencilSquareIcon,
 }
 
 function activityIcon(type: string): Component {
@@ -198,6 +220,7 @@ function activityTypeLabel(type: string): string {
     proposal_created: t('leadDetail.typeProposalCreated'),
     proposal_accepted: t('leadDetail.typeProposalAccepted'),
     proposal_rejected: t('leadDetail.typeProposalRejected'),
+    entity_change: t('leadDetail.typeEntityChange'),
   }
   if (map[type]) return map[type]
   const tool = streamlineTools.value.find((t) => t.activity_type === type)
@@ -245,12 +268,16 @@ function translateLeadStatus(status: string): string {
 function listUrl(page: number): string {
   if (props.entityType === 'lead') return `/api/v1/crm/opportunities/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'realization') return `/api/v1/crm/realizations/${props.entityId}/activities?page=${page}&page_size=20`
+  if (props.entityType === 'customer') return `/api/v1/crm/directory/${props.entityId}/activities?page=${page}&page_size=20`
+  if (props.entityType === 'proposal') return `/api/v1/crm/proposals/${props.entityId}/activities?page=${page}&page_size=20`
   return `/api/v1/crm/management/${props.entityId}/activities?page=${page}&page_size=20`
 }
 
 function entityIdKey(): string {
   if (props.entityType === 'lead') return 'lead_id'
   if (props.entityType === 'realization') return 'realization_id'
+  if (props.entityType === 'customer') return 'customer_id'
+  if (props.entityType === 'proposal') return 'proposal_id'
   return 'management_id'
 }
 
@@ -572,6 +599,14 @@ defineExpose({ load: () => loadActivities(1) })
           </p>
           <p v-else-if="act.type === 'task_assigned' && (act.metadata as Record<string, string>).task_title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             {{ (act.metadata as Record<string, string>).task_title }}
+          </p>
+          <p v-else-if="act.type === 'entity_change' && act.tool_payload" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            <span class="font-medium">{{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}</span>:
+            <span>{{ t('leadDetail.entityChangeOld') }}</span>
+            <span class="line-through text-red-500 dark:text-red-400">{{ (act.tool_payload as Record<string, string>).old_value || '—' }}</span>
+            →
+            <span>{{ t('leadDetail.entityChangeNew') }}</span>
+            <span class="font-medium text-green-600 dark:text-green-400">{{ (act.tool_payload as Record<string, string>).new_value || '—' }}</span>
           </p>
           <RouterLink
             v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
