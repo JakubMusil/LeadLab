@@ -325,7 +325,7 @@ async function addTask() {
   const payload: Record<string, unknown> = {
     [entityIdKey()]: props.entityId,
     title: newTaskTitle.value.trim(),
-    description: newTaskDescription.value,
+    description_html: newTaskDescription.value,
     assigned_to_id: newTaskAssigneeId.value || null,
     watcher_ids: newTaskWatcherIds.value,
   }
