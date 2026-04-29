@@ -238,6 +238,7 @@ class Lead(TenantModel):
         "call",
         "meeting",
         "email_out",
+        "email_in",
         "task",
     ]
 

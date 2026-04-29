@@ -1130,7 +1130,8 @@
     "typeEntityChange": "Feld geändert",
     "entityChangeOld": "War:",
     "entityChangeNew": "Jetzt:",
-    "descriptionPlaceholder": "Beschreibung hinzufügen…"
+    "descriptionPlaceholder": "Beschreibung hinzufügen…",
+    "selectOption": "Auswählen…"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

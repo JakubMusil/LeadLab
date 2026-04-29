@@ -1130,7 +1130,8 @@
     "typeEntityChange": "Zmiana pola",
     "entityChangeOld": "Było:",
     "entityChangeNew": "Teraz:",
-    "descriptionPlaceholder": "Dodaj opis…"
+    "descriptionPlaceholder": "Dodaj opis…",
+    "selectOption": "Wybierz…"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

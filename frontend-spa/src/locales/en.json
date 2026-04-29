@@ -1130,7 +1130,8 @@
     "typeEntityChange": "Field Changed",
     "entityChangeOld": "Was:",
     "entityChangeNew": "Now:",
-    "descriptionPlaceholder": "Add opportunity description…"
+    "descriptionPlaceholder": "Add opportunity description…",
+    "selectOption": "Select…"
   },
   "sequences": {
     "title": "Email Sequences",

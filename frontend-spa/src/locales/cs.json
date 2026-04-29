@@ -1131,7 +1131,8 @@
     "typeEntityChange": "Změna pole",
     "entityChangeOld": "Bylo:",
     "entityChangeNew": "Nyní:",
-    "descriptionPlaceholder": "Přidejte popis příležitosti…"
+    "descriptionPlaceholder": "Přidejte popis příležitosti…",
+    "selectOption": "Vyberte…"
   },
   "sequences": {
     "title": "E-mailové sekvence",
