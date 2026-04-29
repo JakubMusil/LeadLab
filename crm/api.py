@@ -1221,10 +1221,11 @@ def _task_out(t: Task, requesting_user=None) -> dict:
 
 def _resolve_user_in_firm(user_id: str, firm) -> tuple:
     """Return (user, error_response) where error_response is None on success."""
+    from django.core.exceptions import ValidationError as DjangoValidationError
     from users.models import User
     try:
         user = User.objects.get(id=user_id)
-    except Exception:
+    except (User.DoesNotExist, ValueError, DjangoValidationError):
         return None, (400, {"detail": "User not found."})
     if not Membership.objects.filter(user=user, firm=firm).exists():
         return None, (400, {"detail": "User is not a member of this Firm."})
