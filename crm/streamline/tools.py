@@ -338,7 +338,7 @@ class FileUploadTool(StreamlineTool):
 # Task Assigned
 # ---------------------------------------------------------------------------
 
-class TaskTool(StreamlineTool):
+class TaskAssignedTool(StreamlineTool):
     activity_type = "task_assigned"
     label = "Task Assigned"
     icon = "ClipboardDocumentListIcon"
@@ -437,7 +437,7 @@ class ProposalCreatedTool(StreamlineTool):
 class ProposalAcceptedTool(StreamlineTool):
     activity_type = "proposal_accepted"
     label = "Proposal Accepted"
-    icon = "CheckCircleIcon"
+    icon = "DocumentCheckIcon"
 
     def get_schema(self) -> dict:
         return {
@@ -515,7 +515,7 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     EmailInTool(),
     StatusChangeTool(),
     FileUploadTool(),
-    TaskTool(),
+    TaskAssignedTool(),
     TaskCompletedTool(),
     ProposalCreatedTool(),
     ProposalAcceptedTool(),
