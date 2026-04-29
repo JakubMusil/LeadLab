@@ -752,7 +752,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
     pic = getattr(a.user, "profile_picture", None) if a.user else None
     if pic:
         avatar_url = pic.url
-    # Aggregated emoji reactions — uses the same shape as ReactionSummaryOut.
+    # Aggregated emoji reactions — emoji / count / user_ids / reacted_by_me.
     reactions: list[dict] = []
     try:
         for r in a.reactions.all():
@@ -828,9 +828,8 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
 def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 20):
     """Return the unified Streamline activity timeline for a Task, newest first (paginated).
 
-    This is the canonical task Activity feed endpoint, separate from
-    ``/tasks/{id}/timeline`` which provides the full unified timeline including
-    comment threading, reactions and action toggles.
+    This is the canonical task Activity feed endpoint.  Reactions are toggled
+    via ``POST /api/v1/crm/activities/{id}/reactions``.
     """
     from crm.models import Task as TaskModel
     try:
@@ -962,7 +961,7 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
     management, proposal, task).  If the requesting user has already reacted
     with this emoji the reaction is removed; otherwise it is added.
 
-    Returns the updated aggregate for this emoji (matches ``ReactionSummaryOut``).
+    Returns the updated aggregate for this emoji.
     """
     try:
         require_membership(request)
@@ -2910,76 +2909,21 @@ def batch_task_action(request, payload: TaskBatchIn):
 
 
 # ---------------------------------------------------------------------------
-# Schemas
+# Helpers (task activity logging)
+#
+# The legacy ``GET/POST /tasks/{id}/timeline`` and
+# ``POST /tasks/{id}/timeline/{entry_id}/reactions`` endpoints (along with
+# their schemas ``TaskTimelineEntryOut`` / ``TaskTimelinePostIn`` /
+# ``TimelineReactionIn`` / ``TimelineAttachmentOut`` / ``ReactionSummaryOut``)
+# were removed as part of the Streamline Phase 4 cleanup.  The unified
+# ``Activity`` timeline is now exposed exclusively through
+# ``/api/v1/crm/tasks/{id}/activities`` and
+# ``/api/v1/crm/activities/{id}/reactions``.
+#
+# Only the activity-logging helpers below are still used by other endpoints
+# in this module (task create/update/complete, subtask, batch action, …).
 # ---------------------------------------------------------------------------
 
-class ReactionSummaryOut(Schema):
-    """Aggregated count of a single emoji reaction on an activity."""
-    emoji: str
-    count: int
-    user_ids: List[str]
-    reacted_by_me: bool
-
-
-class TimelineAttachmentOut(Schema):
-    """Inline attachment representation derived from a file_upload Activity."""
-    id: str
-    original_filename: str
-    content_type: str
-    size_bytes: int
-    url: str
-    uploaded_by_id: Optional[str]
-    created_at: datetime
-
-
-class TaskTimelineEntryOut(Schema):
-    """
-    A single item in the unified task timeline, backed by ``Activity``.
-
-    For ``file_upload`` activities the ``attachment`` field is populated
-    from the underlying ``Document`` (via ``metadata.document_id``) so the
-    SPA can render the file inline without an extra request.
-    """
-    id: str
-    source: str  # always "activity"
-    event_type: str
-    author_id: Optional[str]
-    author_name: Optional[str]
-    content_text: str
-    metadata: Dict[str, Any]
-    parent_entry_id: Optional[str]
-    reactions: List[ReactionSummaryOut]
-    reply_count: int
-    attachment: Optional[TimelineAttachmentOut]
-    created_at: datetime
-
-
-class TaskTimelinePostIn(Schema):
-    """
-    Payload for POST /tasks/{id}/timeline.
-
-    Creates an Activity of type ``comment`` (or any other explicit type)
-    linked to the task.  Action toggles allow atomic side-effects:
-      - ``change_assignee_to`` — reassign the task to this user ID
-      - ``log_time_minutes``   — add a time-log entry
-      - ``set_due_date``       — update the task's due_date
-    """
-    content_text: str
-    parent_entry_id: Optional[str] = None
-    # Action toggles
-    change_assignee_to: Optional[str] = None
-    log_time_minutes: Optional[int] = None
-    log_time_description: str = ""
-    set_due_date: Optional[datetime] = None
-
-
-class TimelineReactionIn(Schema):
-    emoji: str
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _author_name_for(user) -> Optional[str]:
     """Return display name for a user object or None."""
@@ -2991,286 +2935,22 @@ def _author_name_for(user) -> Optional[str]:
         return None
 
 
-def _reactions_for_activity(activity: Activity, requesting_user) -> List[dict]:
-    """Build aggregated reaction list for an Activity."""
-    reactions: dict[str, dict] = {}
-    for r in activity.reactions.select_related("user"):
-        if r.emoji not in reactions:
-            reactions[r.emoji] = {"emoji": r.emoji, "count": 0, "user_ids": [], "reacted_by_me": False}
-        reactions[r.emoji]["count"] += 1
-        reactions[r.emoji]["user_ids"].append(str(r.user_id))
-        if requesting_user and requesting_user.is_authenticated and str(r.user_id) == str(requesting_user.id):
-            reactions[r.emoji]["reacted_by_me"] = True
-    return list(reactions.values())
-
-
-def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
-    """Serialise a task-linked Activity to the unified task timeline dict."""
-    author_name = _author_name_for(activity.user) if activity.user_id else None
-    metadata = activity.metadata if isinstance(activity.metadata, dict) else {}
-
-    # For file_upload activities, surface the linked Document as an inline attachment.
-    attachment = None
-    if activity.type == ActivityType.FILE_UPLOAD:
-        document_id = metadata.get("document_id")
-        if document_id:
-            try:
-                doc = Document.objects.get(id=document_id)
-                attachment = {
-                    "id": str(doc.id),
-                    "original_filename": doc.name,
-                    "content_type": doc.content_type or "",
-                    "size_bytes": doc.size_bytes,
-                    "url": doc.file.url if doc.file.name else "",
-                    "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
-                    "created_at": doc.created_at,
-                }
-            except Document.DoesNotExist:
-                # Fall back to metadata-only payload so the row still renders
-                attachment = {
-                    "id": str(document_id),
-                    "original_filename": metadata.get("filename", ""),
-                    "content_type": metadata.get("content_type", ""),
-                    "size_bytes": int(metadata.get("size_bytes") or 0),
-                    "url": metadata.get("url", ""),
-                    "uploaded_by_id": str(activity.user_id) if activity.user_id else None,
-                    "created_at": activity.created_at,
-                }
-
-    return {
-        "id": str(activity.id),
-        "source": "activity",
-        "event_type": activity.type,
-        "author_id": str(activity.user_id) if activity.user_id else None,
-        "author_name": author_name,
-        "content_text": activity.content_text,
-        "metadata": metadata,
-        "parent_entry_id": str(metadata.get("reply_to_id", "")) or None,
-        "reactions": _reactions_for_activity(activity, requesting_user),
-        "reply_count": 0,
-        "attachment": attachment,
-        "created_at": activity.created_at,
-    }
-
-
-def _log_task_activity(task: Task, activity_type: str, author=None, metadata: dict = None, content_text: str = "") -> None:
+def _log_timeline_event(task: Task, event_type: str, author=None, metadata: dict = None) -> None:
     """
-    Create an Activity of the given type linked to the Task.
+    Create an ``Activity`` of the given type linked to the Task.
 
-    Silently swallows any errors so that it never breaks the main request.
+    Silently swallows any errors so it never breaks the main request.
     """
     try:
         Activity.objects.create(
             task=task,
             user=author,
-            type=activity_type,
-            content_text=content_text,
+            type=event_type,
+            content_text="",
             metadata=metadata or {},
         )
     except Exception:
-        logger.exception("Failed to log task activity %s for task %s", activity_type, task.id)
-
-
-# Keep the old name as an alias so all the existing call-sites work without changes.
-def _log_timeline_event(task: Task, event_type: str, author=None, metadata: dict = None) -> None:
-    _log_task_activity(task, event_type, author=author, metadata=metadata)
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
-
-@router.get(
-    "/tasks/{task_id}/timeline",
-    auth=django_auth,
-    response={200: List[TaskTimelineEntryOut], 403: ErrorOut, 404: ErrorOut},
-)
-def get_task_timeline(
-    request,
-    task_id: str,
-    event_type: Optional[str] = None,
-    order: str = "asc",
-    page: int = 1,
-    page_size: int = 100,
-):
-    """
-    Return the unified chronological timeline for a task, backed by Activity.
-
-    Query parameters:
-      - ``event_type`` — filter to ``comment`` or ``system`` (all non-comment) entries
-      - ``order``      — ``asc`` (oldest first, default) or ``desc`` (newest first)
-      - ``page`` / ``page_size`` — pagination
-    """
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    qs = (
-        Activity.objects.filter(task=task)
-        .select_related("user")
-        .prefetch_related("reactions__user")
-    )
-    if event_type == "comment":
-        qs = qs.filter(type=ActivityType.COMMENT)
-    elif event_type == "system":
-        qs = qs.exclude(type=ActivityType.COMMENT)
-
-    ordering = "created_at" if order != "desc" else "-created_at"
-    qs = qs.order_by(ordering)
-
-    offset = (page - 1) * page_size
-    return 200, [_activity_to_timeline_out(a, request.user) for a in qs[offset: offset + page_size]]
-
-
-@router.post(
-    "/tasks/{task_id}/timeline",
-    auth=django_auth,
-    response={201: TaskTimelineEntryOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
-)
-def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostIn):
-    """
-    Add a comment to the task timeline as a Streamline Activity.
-
-    Optionally performs side-effect actions:
-      - ``change_assignee_to`` — reassigns the task
-      - ``set_due_date``       — updates the task due date
-      - ``log_time_minutes``   — records a time entry
-    """
-    try:
-        require_membership(request, min_role=MembershipRole.WORKER)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        task = Task.objects.select_related("assigned_to").get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    if not payload.content_text or not payload.content_text.strip():
-        return 400, {"detail": "Comment content is required."}
-
-    # Validate parent activity if given
-    comment_metadata: dict = {}
-    if payload.parent_entry_id:
-        try:
-            Activity.objects.get(id=payload.parent_entry_id, task=task)
-            comment_metadata["reply_to_id"] = payload.parent_entry_id
-        except Activity.DoesNotExist:
-            return 400, {"detail": "Parent entry not found on this task."}
-
-    with transaction.atomic():
-        activity = Activity.objects.create(
-            task=task,
-            user=request.user,
-            type=ActivityType.COMMENT,
-            content_text=payload.content_text,
-            metadata=comment_metadata,
-        )
-
-        # --- Action toggle: reassign task ---
-        if payload.change_assignee_to:
-            old_name = _author_name_for(task.assigned_to) if task.assigned_to_id else None
-            new_user, err = _resolve_user_in_firm(payload.change_assignee_to, request.firm)
-            if err:
-                return err
-            new_name = _author_name_for(new_user)
-            task.assigned_to = new_user
-            task.save(update_fields=["assigned_to"])
-            _log_task_activity(
-                task, ActivityType.ASSIGNEE_CHANGE, author=request.user,
-                metadata={"from_name": old_name, "to_name": new_name},
-            )
-
-        # --- Action toggle: set due date ---
-        if payload.set_due_date is not None:
-            old_due = task.due_date.isoformat() if task.due_date else None
-            task.due_date = payload.set_due_date
-            task.save(update_fields=["due_date"])
-            _log_task_activity(
-                task, ActivityType.DUE_DATE_CHANGE, author=request.user,
-                metadata={"old": old_due, "new": payload.set_due_date.isoformat()},
-            )
-
-        # --- Action toggle: log time ---
-        if payload.log_time_minutes:
-            time_log = TaskTimeLog.objects.create(
-                task=task,
-                user=request.user,
-                logged_at=tz.now(),
-                duration_minutes=payload.log_time_minutes,
-                description=payload.log_time_description or "",
-            )
-            _log_task_activity(
-                task, ActivityType.TIME_LOGGED, author=request.user,
-                metadata={
-                    "minutes": payload.log_time_minutes,
-                    "description": payload.log_time_description,
-                    "time_log_id": str(time_log.id),
-                },
-            )
-
-    _notify_task_watchers(task, "task.comment_added")
-    activity.refresh_from_db()
-    return 201, _activity_to_timeline_out(activity, request.user)
-
-
-@router.post(
-    "/tasks/{task_id}/timeline/{entry_id}/reactions",
-    auth=django_auth,
-    response={200: ReactionSummaryOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
-)
-def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: TimelineReactionIn):
-    """
-    Toggle an emoji reaction on a comment Activity.
-
-    If the current user has already reacted with this emoji the reaction is
-    removed; otherwise it is added.  Returns the updated aggregate for this emoji.
-    """
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    try:
-        activity = Activity.objects.get(id=entry_id, task_id=task_id)
-    except Activity.DoesNotExist:
-        return 404, {"detail": "Timeline entry not found."}
-
-    if activity.type != ActivityType.COMMENT:
-        return 400, {"detail": "Reactions are only supported on comment entries."}
-
-    emoji = payload.emoji.strip()
-    if not emoji:
-        return 400, {"detail": "Emoji must not be empty."}
-
-    reaction, created = ActivityReaction.objects.get_or_create(
-        activity=activity, user=request.user, emoji=emoji,
-    )
-    if not created:
-        reaction.delete()
-
-    count = ActivityReaction.objects.filter(activity=activity, emoji=emoji).count()
-    user_ids = list(
-        ActivityReaction.objects.filter(activity=activity, emoji=emoji).values_list("user_id", flat=True)
-    )
-    reacted_by_me = ActivityReaction.objects.filter(activity=activity, user=request.user, emoji=emoji).exists()
-    return 200, {
-        "emoji": emoji,
-        "count": count,
-        "user_ids": [str(uid) for uid in user_ids],
-        "reacted_by_me": reacted_by_me,
-    }
+        logger.exception("Failed to log task activity %s for task %s", event_type, task.id)
 
 
 # ===========================================================================

@@ -136,9 +136,6 @@ export interface TaskDocumentOut {
   created_at: string
 }
 
-/** @deprecated Kept as an alias of TaskDocumentOut for backward-compat. */
-export type TaskAttachmentOut = TaskDocumentOut
-
 export interface TaskFetchOpts {
   assignedToId?: string | 'all'
   completed?: boolean
@@ -207,54 +204,6 @@ export interface TaskDependencyOut {
 export interface TaskDependencyIn {
   to_task_id: string
   type?: 'blocks' | 'related_to'
-}
-
-// ---------------------------------------------------------------------------
-// Phase 2: Unified timeline types
-// ---------------------------------------------------------------------------
-
-export interface ReactionSummaryOut {
-  emoji: string
-  count: number
-  user_ids: string[]
-  reacted_by_me: boolean
-}
-
-export interface TimelineAttachmentOut {
-  id: string
-  original_filename: string
-  content_type: string
-  size_bytes: number
-  url: string
-  uploaded_by_id: string | null
-  created_at: string
-}
-
-export interface TaskTimelineEntryOut {
-  id: string
-  /** 'activity' (always — legacy 'timeline_entry'/'legacy_*' sources removed) */
-  source: string
-  /** 'comment' | 'file_upload' | 'status_change' | 'priority_change' | ... */
-  event_type: string
-  author_id: string | null
-  author_name: string | null
-  content_text: string
-  metadata: Record<string, unknown>
-  parent_entry_id: string | null
-  reactions: ReactionSummaryOut[]
-  reply_count: number
-  attachment: TimelineAttachmentOut | null
-  created_at: string
-}
-
-export interface TaskTimelinePostIn {
-  content_text: string
-  parent_entry_id?: string | null
-  // Action toggles
-  change_assignee_to?: string | null
-  log_time_minutes?: number | null
-  log_time_description?: string
-  set_due_date?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -576,46 +525,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   // ---------------------------------------------------------------------------
-  // Phase 2: Unified timeline
-  // ---------------------------------------------------------------------------
-
-  async function fetchTimeline(
-    taskId: string,
-    opts: { eventType?: string; order?: 'asc' | 'desc'; page?: number; pageSize?: number } = {},
-  ): Promise<{ ok: boolean; data?: TaskTimelineEntryOut[]; error?: string }> {
-    const params = new URLSearchParams()
-    if (opts.eventType) params.set('event_type', opts.eventType)
-    if (opts.order) params.set('order', opts.order)
-    params.set('page', String(opts.page ?? 1))
-    params.set('page_size', String(opts.pageSize ?? 100))
-    const res = await api.get<TaskTimelineEntryOut[]>(`/api/v1/crm/tasks/${taskId}/timeline?${params}`)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load timeline.') }
-  }
-
-  async function createTimelineEntry(
-    taskId: string,
-    payload: TaskTimelinePostIn,
-  ): Promise<{ ok: boolean; data?: TaskTimelineEntryOut; error?: string }> {
-    const res = await api.post<TaskTimelineEntryOut>(`/api/v1/crm/tasks/${taskId}/timeline`, payload)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to post comment.') }
-  }
-
-  async function toggleTimelineReaction(
-    taskId: string,
-    entryId: string,
-    emoji: string,
-  ): Promise<{ ok: boolean; data?: ReactionSummaryOut; error?: string }> {
-    const res = await api.post<ReactionSummaryOut>(
-      `/api/v1/crm/tasks/${taskId}/timeline/${entryId}/reactions`,
-      { emoji },
-    )
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to toggle reaction.') }
-  }
-
-  // ---------------------------------------------------------------------------
   // Phase 5: Task operations
   // ---------------------------------------------------------------------------
 
@@ -903,10 +812,6 @@ export const useTasksStore = defineStore('tasks', () => {
     fetchDependencies,
     createDependency,
     deleteDependency,
-    // Phase 2: timeline
-    fetchTimeline,
-    createTimelineEntry,
-    toggleTimelineReaction,
     // Phase 5
     deleteTask,
     archiveTask,

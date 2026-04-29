@@ -240,29 +240,41 @@ Implementační poznámky:
 
 ### A) Dokončit Fázi 4 — smazat legacy task timeline modely *(1 PR)*
 
-Frontend už `TaskTimelineEntry` nepoužívá (Krok B). Backend store-funkce
-(`tasksStore.fetchTimeline` / `createTimelineEntry` / `toggleTimelineReaction`)
-zůstaly z opatrnosti — ověřit a zlikvidovat:
+**Stav:** ✅ Hotovo v session končící 2026-04-29.
 
-1. `crm/models.py`: smazat `TaskTimelineEntry`, `TaskCommentReaction`,
-   `TaskVoiceAttachment`, `TaskComment`. Smazat související signály,
-   admin registrace, manageři.
-2. `crm/api.py` / `crm/tasks_api.py` (nebo wherever timeline endpointy žijí):
-   smazat `GET/POST /tasks/{id}/timeline` + `POST /tasks/{id}/timeline/{eid}/reactions`
-   (nový generický `/activities/{id}/reactions` je už v provozu).
-3. `crm/streamline/tools.py`: zkontrolovat, že žádný tool si nezakládá
-   na `TaskTimelineEntry` (file_upload tool by mohl — projít).
-4. **Frontend:**
-   - `frontend-spa/src/stores/tasks.ts` — smazat typy `TaskTimelineEntryOut`,
-     `TaskTimelinePostIn` a metody `fetchTimeline` / `createTimelineEntry` /
-     `toggleTimelineReaction`. Nahradit jejich e2e callsites za volání
-     `/api/v1/crm/tasks/{id}/activities`.
-   - `e2e/` — projít cypress / playwright testy, které volají task
-     timeline endpoint, a přepsat je na ActivityTimeline.
-   - Zkontrolovat `PublicTaskView` (pokud existuje) — public-link konzument.
-5. Migrace: jediná `RunSQL` / `migrations.DeleteModel` migrace, **bez
-   `RunPython` pro převod dat**. Recreate dev DB v testovacích prostředích.
-6. Aktualizovat dokumentaci (`docs/`, `mkdocs.yml`).
+Co bylo v této session uděláno:
+
+1. ✅ `crm/models.py`: legacy modely (`TaskTimelineEntry`, `TaskCommentReaction`,
+   `TaskVoiceAttachment`, `TaskComment`, `TaskAttachment`, `LeadAttachment`,
+   `LeadStatusHistory`) byly už smazané v dřívější iteraci; migrace
+   `0038_drop_legacy_attachment_comment_timeline_models.py` je v provozu.
+2. ✅ `crm/api.py`: smazány legacy endpointy
+   `GET/POST /api/v1/crm/tasks/{id}/timeline` a
+   `POST /api/v1/crm/tasks/{id}/timeline/{entry_id}/reactions` plus jejich
+   schémata (`TaskTimelineEntryOut`, `TaskTimelinePostIn`, `TimelineReactionIn`,
+   `TimelineAttachmentOut`, `ReactionSummaryOut`) a privátní helpery
+   (`_reactions_for_activity`, `_activity_to_timeline_out`,
+   `_log_task_activity`). Helper `_log_timeline_event` zůstává (široce
+   používaný napříč `tasks_api`) a je nyní self-contained — loguje rovnou
+   `Activity(task=...)`.
+3. ✅ `crm/streamline/tools.py` — kontrola provedena, žádný tool nezávisí
+   na `TaskTimelineEntry` ani příbuzných legacy modelech.
+4. ✅ `frontend-spa/src/stores/tasks.ts`: smazány typy `TaskTimelineEntryOut`,
+   `TaskTimelinePostIn`, `TimelineAttachmentOut`, `ReactionSummaryOut` a
+   deprecated alias `TaskAttachmentOut`; smazány metody `fetchTimeline`,
+   `createTimelineEntry`, `toggleTimelineReaction` plus jejich exporty.
+   `PublicTaskView` legacy timeline endpointy nepoužíval, e2e testy je
+   nereferencují.
+5. ✅ Migrace — `0038_drop_legacy_attachment_comment_timeline_models.py`
+   pokrývá `DeleteModel` pro všechny dotčené legacy modely, žádný
+   `RunPython` (dev fáze, žádná datová migrace nutná).
+6. ✅ Dokumentace — `docs/` ani `mkdocs.yml` legacy timeline endpointy
+   nereferencují; tento dokument aktualizován.
+
+**Validace:** 172/172 backend testů prochází; frontend `vue-tsc` baseline
+errors beze změny (pre-existing strict-null issues v nezměněných views);
+frontend unit testy beze změny (66 fail / 102 pass — všechny failures
+pre-existing v Team / Settings / Customers / Leads / Dashboard).
 
 ### B) Krok C — sjednotit Customer / Realization / Management / Proposal pod design lead detail *(1–4 PR)*
 
