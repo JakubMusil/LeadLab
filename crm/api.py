@@ -710,6 +710,8 @@ class ActivityOut(Schema):
     content_text: str
     metadata: Dict[str, Any]
     created_at: datetime
+    # Tool-specific data; None when the activity type has no registered tool
+    tool_payload: Optional[Dict[str, Any]] = None
 
 
 class ActivityIn(Schema):
@@ -723,6 +725,8 @@ class ActivityIn(Schema):
 
 
 def _activity_out(a: Activity) -> dict:
+    from crm.streamline.registry import get_tool
+    tool = get_tool(a.type)
     return {
         "id": str(a.id),
         "entity_type": a.entity_type,
@@ -733,6 +737,7 @@ def _activity_out(a: Activity) -> dict:
         "content_text": a.content_text,
         "metadata": a.metadata,
         "created_at": a.created_at,
+        "tool_payload": tool.render_payload(a) if tool is not None else None,
     }
 
 
@@ -760,12 +765,8 @@ def create_activity(request, payload: ActivityIn):
     Unified Action Hub endpoint — works for Lead, Realization and Management.
 
     Exactly one of ``lead_id``, ``realization_id``, ``management_id`` must be
-    provided.  Handles all activity types:
-    - COMMENT / CALL / MEETING: stores content_text.
-    - EMAIL_OUT: triggers async SMTP send via Celery (Lead only).
-    - STATUS_CHANGE: updates Lead.status atomically (Lead only).
-    - FILE_UPLOAD: expects metadata.url to be pre-signed/uploaded separately.
-    - TASK_ASSIGNED / TASK_COMPLETED: mirrors Task state changes.
+    provided.  Dispatches to the registered ``StreamlineTool`` for the given
+    activity type, which handles all type-specific side-effects.
     """
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -799,8 +800,17 @@ def create_activity(request, payload: ActivityIn):
         except Management.DoesNotExist:
             return 400, {"detail": "Management record not found in this Firm."}
 
-    if payload.type not in [t.value for t in ActivityType]:
+    from crm.streamline.registry import get_tool
+    tool = get_tool(payload.type)
+    if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
+
+    entity = lead or realization or management
+    context = {
+        "firm": request.firm,
+        "user": request.user,
+        "entity_title": entity_title,
+    }
 
     with transaction.atomic():
         activity = Activity.objects.create(
@@ -812,58 +822,7 @@ def create_activity(request, payload: ActivityIn):
             content_text=payload.content_text,
             metadata=payload.metadata,
         )
-
-        # -- Side effects per activity type (Lead only) --
-        if lead is not None:
-            if payload.type == ActivityType.STATUS_CHANGE:
-                new_status = payload.metadata.get("new_status")
-                if new_status and new_status in [s.value for s in LeadStatus]:
-                    old_status = lead.status
-                    lead.status = new_status
-                    lead.save(update_fields=["status", "updated_at"])
-                    activity.metadata = {**activity.metadata, "old_status": old_status}
-                    activity.save(update_fields=["metadata"])
-                    LeadStatusHistory.objects.create(
-                        lead=lead,
-                        from_status=old_status,
-                        to_status=new_status,
-                        changed_at=activity.created_at,
-                        changed_by=request.user,
-                    )
-
-            elif payload.type == ActivityType.EMAIL_OUT:
-                _trigger_email_task(activity, lead)
-
-        # -- @mention notifications (COMMENT activities only) --
-        if payload.type == ActivityType.COMMENT:
-            mention_ids = payload.metadata.get('mentions', [])
-            if mention_ids:
-                from django.contrib.auth import get_user_model
-                _User = get_user_model()
-                mentioned_users = (
-                    _User.objects.filter(id__in=[str(uid) for uid in mention_ids])
-                    .filter(membership__firm=request.firm)
-                    .exclude(id=request.user.id)
-                    .distinct()
-                )
-                notification_payload = {
-                    'activity_id': str(activity.id),
-                    'entity_type': activity.entity_type,
-                    'entity_id': activity.entity_id,
-                    'entity_title': entity_title,
-                    # Backwards-compatible key for existing lead mention notifications
-                    'lead_id': str(lead.id) if lead else None,
-                    'lead_title': lead.title if lead else None,
-                    'by_user': request.user.full_name or request.user.email,
-                    'content_preview': activity.content_text[:_MENTION_PREVIEW_LENGTH],
-                }
-                for mentioned_user in mentioned_users:
-                    Notification.objects.create(
-                        firm=request.firm,
-                        user=mentioned_user,
-                        event='activity.mention',
-                        payload=notification_payload,
-                    )
+        tool.process_action(activity, entity, payload.dict(), context)
 
     broadcast_event(
         firm=request.firm,
@@ -871,16 +830,6 @@ def create_activity(request, payload: ActivityIn):
         payload=_activity_out(activity),
     )
     return 201, _activity_out(activity)
-
-
-def _trigger_email_task(activity: Activity, lead: Lead):
-    """Fire-and-forget Celery task for sending outbound emails."""
-    try:
-        from crm.tasks import send_activity_email
-        send_activity_email.delay(str(activity.id))
-    except Exception:
-        # If Celery / Redis is not configured, log silently and continue.
-        pass
 
 
 # ===========================================================================

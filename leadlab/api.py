@@ -24,6 +24,7 @@ from firms.token_auth import BearerTokenAuth
 from firms.tokens_api import router as tokens_router
 from firms.webhooks_api import router as webhooks_router
 from firms.plugins_api import router as plugins_router
+from crm.streamline.api import router as streamline_router
 from leadlab.health import health_router
 from users.api import router as users_router
 
@@ -53,4 +54,5 @@ api.add_router("/integrations/", fakturoid_router)
 api.add_router("/push/", push_router)
 api.add_router("/stripe/", webhook_router)
 api.add_router("/plugins/", plugins_router)
+api.add_router("/streamline/", streamline_router)
 api.add_router("/health/", health_router)
