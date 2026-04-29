@@ -287,8 +287,15 @@ AUTHENTICATION_BACKENDS = [
 AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', '10'))
 AXES_COOLOFF_TIME = 1  # hours
 AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
-# Disable axes in testing to avoid interference
-AXES_ENABLED = os.environ.get('AXES_ENABLE', 'True') == 'True'
+# Disable axes in testing to avoid interference. AxesBackend rejects
+# `client.login(username=..., password=...)` calls (which don't pass a request),
+# so we auto-disable when running under the Django test runner.
+import sys as _sys
+_running_tests = 'test' in _sys.argv or 'pytest' in _sys.argv[0]
+AXES_ENABLED = (
+    not _running_tests
+    and os.environ.get('AXES_ENABLE', 'True') == 'True'
+)
 
 # ---------------------------------------------------------------------------
 # Web Push (VAPID) settings (v1.9)

@@ -1060,6 +1060,131 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Task Documents API tests (Phase 6 — /tasks/{id}/documents endpoints)
+# ---------------------------------------------------------------------------
+
+
+class TaskDocumentAPIFixtureMixin(CRMAPIFixtureMixin):
+    """Adds a Task + file-upload helper for /tasks/{id}/documents tests."""
+
+    def setUp(self):
+        super().setUp()
+        self.task = Task.objects.create(
+            firm=self.firm, lead=self.lead, title="Doc test task"
+        )
+
+    def _upload_doc(self, task_id, name="task.txt", content=b"task body"):
+        f = SimpleUploadedFile(name, content, content_type="text/plain")
+        return self.client.post(
+            f"/api/v1/crm/tasks/{task_id}/documents",
+            data={"file": f},
+            **self.firm_headers(),
+        )
+
+
+class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def test_list_empty(self):
+        resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_list_nonexistent_task_returns_404(self):
+        resp = self._get(f"/api/v1/crm/tasks/{uuid_module.uuid4()}/documents")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_list_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Other Firm Task Doc")
+        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_task = Task.objects.create(firm=other_firm, lead=other_lead, title="Other")
+        Document.objects.create(
+            firm=other_firm, task=other_task, name="hidden.pdf",
+            content_type="application/pdf", size_bytes=10,
+        )
+        # Hitting our firm with their task ID must 404 (cross-tenant).
+        resp = self._get(f"/api/v1/crm/tasks/{other_task.id}/documents")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_list_returns_only_task_documents(self):
+        # One doc on our task, one on the lead — only the task one must appear.
+        Document.objects.create(
+            firm=self.firm, task=self.task, name="mine.txt",
+            content_type="text/plain", size_bytes=4,
+        )
+        Document.objects.create(
+            firm=self.firm, lead=self.lead, name="leadonly.txt",
+            content_type="text/plain", size_bytes=8,
+        )
+        resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["original_filename"], "mine.txt")
+
+
+class TaskDocumentUploadAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def tearDown(self):
+        for doc in Document.objects.filter(task=self.task):
+            doc.file.delete(save=False)
+        super().tearDown()
+
+    def test_upload_returns_201(self):
+        resp = self._upload_doc(self.task.id, name="hello.txt", content=b"hi")
+        self.assertEqual(resp.status_code, 201)
+        body = resp.json()
+        self.assertEqual(body["original_filename"], "hello.txt")
+        self.assertEqual(body["task_id"], str(self.task.id))
+        self.assertEqual(body["size_bytes"], 2)
+
+    def test_upload_creates_file_upload_activity(self):
+        resp = self._upload_doc(self.task.id, name="audit.txt", content=b"x")
+        self.assertEqual(resp.status_code, 201)
+        doc_id = resp.json()["id"]
+        activity = Activity.objects.get(task=self.task, type=ActivityType.FILE_UPLOAD)
+        self.assertEqual(activity.metadata.get("document_id"), doc_id)
+        self.assertEqual(activity.metadata.get("filename"), "audit.txt")
+
+    def test_upload_nonexistent_task_returns_404(self):
+        f = SimpleUploadedFile("x.txt", b"x", content_type="text/plain")
+        resp = self.client.post(
+            f"/api/v1/crm/tasks/{uuid_module.uuid4()}/documents",
+            data={"file": f},
+            **self.firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+class TaskDocumentDeleteAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.doc = Document.objects.create(
+            firm=self.firm, task=self.task,
+            uploaded_by=self.owner,
+            name="deleteme.txt", content_type="text/plain", size_bytes=5,
+        )
+
+    def test_delete_owner_succeeds(self):
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{self.doc.id}"
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Document.objects.filter(id=self.doc.id).exists())
+
+    def test_delete_other_user_doc_as_worker_returns_403(self):
+        # Doc was uploaded by owner — worker can't delete it.
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{self.doc.id}"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_nonexistent_doc_returns_404(self):
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{uuid_module.uuid4()}"
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
 # v0.6 Reporting API tests
 # ---------------------------------------------------------------------------
 
