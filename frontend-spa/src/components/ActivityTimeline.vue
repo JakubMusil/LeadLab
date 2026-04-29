@@ -55,6 +55,7 @@ interface Activity {
   entity_id: string
   lead_id: string | null
   user_id: string | null
+  user_name: string | null
   type: string
   content_text: string
   metadata: Record<string, unknown>
@@ -182,8 +183,6 @@ function activityIcon(type: string): Component {
 }
 
 function activityTypeLabel(type: string): string {
-  const tool = streamlineTools.value.find((t) => t.activity_type === type)
-  if (tool) return tool.label
   const map: Record<string, string> = {
     comment: t('leadDetail.typeComment'),
     call: t('leadDetail.typeCall'),
@@ -199,7 +198,10 @@ function activityTypeLabel(type: string): string {
     proposal_accepted: t('leadDetail.typeProposalAccepted'),
     proposal_rejected: t('leadDetail.typeProposalRejected'),
   }
-  return map[type] ?? type.replace(/_/g, ' ')
+  if (map[type]) return map[type]
+  const tool = streamlineTools.value.find((t) => t.activity_type === type)
+  if (tool) return tool.label
+  return type.replace(/_/g, ' ')
 }
 
 // Whether content_text is required for the currently selected action type
@@ -282,6 +284,13 @@ function hasPlainText(html: string): boolean {
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function userInitials(name: string | null): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
 }
 
 async function addActivity() {
@@ -529,6 +538,13 @@ defineExpose({ load: () => loadActivities(1) })
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ activityTypeLabel(act.type) }}</span>
+            <span v-if="act.user_name" class="flex items-center gap-1">
+              <span
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0"
+                :title="act.user_name"
+              >{{ userInitials(act.user_name) }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ act.user_name }}</span>
+            </span>
             <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
           </div>
           <!-- eslint-disable-next-line vue/no-v-html -->
