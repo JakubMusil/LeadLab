@@ -152,6 +152,204 @@ class TaskModelTest(CRMFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Streamline Tools (Phase 0 + 1) — schema / render / side-effects
+# ---------------------------------------------------------------------------
+
+class StreamlineToolsTest(CRMFixtureMixin, TestCase):
+    """Validate every registered StreamlineTool exposes a sane schema and
+    correctly renders its tool_payload.  Phase 0 + 1 unification."""
+
+    def _build_activity(self, type_value, metadata=None, **kwargs):
+        return Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type=type_value,
+            metadata=metadata or {},
+            **kwargs,
+        )
+
+    def test_all_builtin_tools_registered(self):
+        from crm.streamline.registry import all_tools, get_tool
+        registered_types = {t.activity_type for t in all_tools()}
+        expected_new = {
+            "priority_change", "assignee_change", "due_date_change",
+            "sub_task_added", "task_created", "task_archived",
+            "approval_requested", "approval_resolved", "time_logged",
+            "checklist_item_checked", "voice_memo",
+        }
+        self.assertTrue(expected_new.issubset(registered_types))
+        # All registered tools also have a schema
+        for at in registered_types:
+            tool = get_tool(at)
+            self.assertIsNotNone(tool)
+            schema = tool.get_schema()
+            self.assertIsInstance(schema, dict)
+            self.assertEqual(schema.get("type"), "object")
+
+    def test_priority_change_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.PRIORITY_CHANGE,
+            metadata={"old_priority": "low", "new_priority": "high"},
+        )
+        out = get_tool("priority_change").render_payload(a)
+        self.assertEqual(out["new_priority"], "high")
+        self.assertEqual(out["old_priority"], "low")
+
+    def test_due_date_change_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.DUE_DATE_CHANGE,
+            metadata={"old_due_date": "2024-01-01", "new_due_date": "2024-02-01"},
+        )
+        out = get_tool("due_date_change").render_payload(a)
+        self.assertEqual(out["new_due_date"], "2024-02-01")
+
+    def test_sub_task_added_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.SUB_TASK_ADDED,
+            metadata={"subtask_id": "abc", "subtask_title": "Write tests"},
+        )
+        out = get_tool("sub_task_added").render_payload(a)
+        self.assertEqual(out["subtask_title"], "Write tests")
+
+    def test_task_created_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TASK_CREATED,
+            metadata={"task_id": "t1", "task_title": "T"},
+        )
+        out = get_tool("task_created").render_payload(a)
+        self.assertEqual(out["task_title"], "T")
+
+    def test_task_archived_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TASK_ARCHIVED,
+            metadata={"task_id": "t1", "task_title": "T", "archived": True},
+        )
+        out = get_tool("task_archived").render_payload(a)
+        self.assertTrue(out["archived"])
+
+    def test_approval_resolved_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.APPROVAL_RESOLVED,
+            metadata={"decision": "accepted", "approver_name": "Alice"},
+        )
+        out = get_tool("approval_resolved").render_payload(a)
+        self.assertEqual(out["decision"], "accepted")
+
+    def test_time_logged_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TIME_LOGGED,
+            metadata={"minutes": 45, "description": "Pair programming"},
+        )
+        out = get_tool("time_logged").render_payload(a)
+        self.assertEqual(out["minutes"], 45)
+
+    def test_checklist_item_checked_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.CHECKLIST_ITEM_CHECKED,
+            metadata={"item_text": "Buy milk", "is_checked": True},
+        )
+        out = get_tool("checklist_item_checked").render_payload(a)
+        self.assertTrue(out["is_checked"])
+
+    def test_voice_memo_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.VOICE_MEMO,
+            metadata={"url": "/m/v.webm", "duration_seconds": 17, "transcript": "hello"},
+        )
+        out = get_tool("voice_memo").render_payload(a)
+        self.assertEqual(out["duration_seconds"], 17)
+        self.assertEqual(out["url"], "/m/v.webm")
+
+    def test_assignee_change_creates_notification_for_new_assignee(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.ASSIGNEE_CHANGE,
+            metadata={
+                "old_assignee_id": str(self.owner.id),
+                "new_assignee_id": str(self.worker.id),
+            },
+        )
+        tool = get_tool("assignee_change")
+        tool.process_action(
+            activity,
+            self.lead,
+            {"metadata": {
+                "old_assignee_id": str(self.owner.id),
+                "new_assignee_id": str(self.worker.id),
+            }},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                user=self.worker, event="activity.assigned"
+            ).count(),
+            1,
+        )
+
+    def test_assignee_change_does_not_notify_self(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.ASSIGNEE_CHANGE,
+            metadata={"new_assignee_id": str(self.owner.id)},
+        )
+        get_tool("assignee_change").process_action(
+            activity,
+            self.lead,
+            {"metadata": {"new_assignee_id": str(self.owner.id)}},
+            {"firm": self.firm, "user": self.owner, "entity_title": ""},
+        )
+        self.assertEqual(
+            Notification.objects.filter(event="activity.assigned").count(), 0
+        )
+
+
+class ActivityTaskLinkTest(CRMFixtureMixin, TestCase):
+    """Phase 0 — Activity can now be linked to a Task entity."""
+
+    def test_activity_can_be_linked_to_task(self):
+        task = Task.objects.create(firm=self.firm, lead=self.lead, title="T")
+        a = Activity.objects.create(
+            task=task,
+            user=self.owner,
+            type=ActivityType.COMMENT,
+            content_text="Note on task",
+        )
+        self.assertEqual(a.entity_type, "task")
+        self.assertEqual(a.entity_id, str(task.id))
+        self.assertEqual(task.activities.count(), 1)
+
+
+class ActivityReactionModelTest(CRMFixtureMixin, TestCase):
+    def test_create_and_unique_per_user_emoji(self):
+        from crm.models import ActivityReaction
+        a = Activity.objects.create(
+            lead=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="x"
+        )
+        ActivityReaction.objects.create(activity=a, user=self.owner, emoji="👍")
+        # Same user, same emoji → unique constraint should kick in
+        from django.db import IntegrityError, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ActivityReaction.objects.create(activity=a, user=self.owner, emoji="👍")
+        # Different emoji is fine
+        ActivityReaction.objects.create(activity=a, user=self.owner, emoji="❤️")
+        self.assertEqual(a.reactions.count(), 2)
+
+
+# ---------------------------------------------------------------------------
 # CRM API integration tests
 # ---------------------------------------------------------------------------
 
@@ -696,7 +894,7 @@ class TierLimitLeadCreateAPITest(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Lead Attachments API tests
+# Lead Attachments API tests (now backed by Document)
 # ---------------------------------------------------------------------------
 
 import io
@@ -704,7 +902,7 @@ import uuid as uuid_module
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from crm.models import LeadAttachment
+from crm.models import Document
 
 
 class AttachmentAPIFixtureMixin(CRMAPIFixtureMixin):
@@ -736,10 +934,10 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
         other_firm = Firm.objects.create(name="Other Firm Attach")
         other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
         # Upload directly to DB for other firm's lead — should not appear in our list.
-        LeadAttachment.objects.create(
+        Document.objects.create(
             firm=other_firm,
             lead=other_lead,
-            original_filename="secret.pdf",
+            name="secret.pdf",
             content_type="application/pdf",
             size_bytes=100,
         )
@@ -748,10 +946,10 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_list_attachments_pagination(self):
         for i in range(5):
-            LeadAttachment.objects.create(
+            Document.objects.create(
                 firm=self.firm,
                 lead=self.lead,
-                original_filename=f"file{i}.txt",
+                name=f"file{i}.txt",
                 content_type="text/plain",
                 size_bytes=i,
             )
@@ -765,8 +963,8 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
     def tearDown(self):
         # Clean up any files written to MEDIA_ROOT during tests.
-        for attachment in LeadAttachment.objects.filter(lead=self.lead):
-            attachment.file.delete(save=False)
+        for doc in Document.objects.filter(lead=self.lead):
+            doc.file.delete(save=False)
         super().tearDown()
 
     def test_upload_returns_201(self):
@@ -779,7 +977,7 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_upload_creates_db_record(self):
         self._upload(self.lead.id)
-        self.assertEqual(LeadAttachment.objects.filter(lead=self.lead).count(), 1)
+        self.assertEqual(Document.objects.filter(lead=self.lead).count(), 1)
 
     def test_upload_logs_file_upload_activity(self):
         self._upload(self.lead.id)
@@ -818,11 +1016,11 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
     def setUp(self):
         super().setUp()
-        # Create an attachment record without a physical file for delete tests.
-        self.attachment = LeadAttachment.objects.create(
+        # Create a Document record without a physical file for delete tests.
+        self.attachment = Document.objects.create(
             firm=self.firm,
             lead=self.lead,
-            original_filename="deleteme.txt",
+            name="deleteme.txt",
             content_type="text/plain",
             size_bytes=5,
         )
@@ -832,7 +1030,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
             f"/api/v1/crm/opportunities/{self.lead.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 204)
-        self.assertFalse(LeadAttachment.objects.filter(id=self.attachment.id).exists())
+        self.assertFalse(Document.objects.filter(id=self.attachment.id).exists())
 
     def test_delete_attachment_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
@@ -857,6 +1055,131 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
     def test_delete_attachment_nonexistent_lead_returns_404(self):
         resp = self._delete(
             f"/api/v1/crm/opportunities/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# Task Documents API tests (Phase 6 — /tasks/{id}/documents endpoints)
+# ---------------------------------------------------------------------------
+
+
+class TaskDocumentAPIFixtureMixin(CRMAPIFixtureMixin):
+    """Adds a Task + file-upload helper for /tasks/{id}/documents tests."""
+
+    def setUp(self):
+        super().setUp()
+        self.task = Task.objects.create(
+            firm=self.firm, lead=self.lead, title="Doc test task"
+        )
+
+    def _upload_doc(self, task_id, name="task.txt", content=b"task body"):
+        f = SimpleUploadedFile(name, content, content_type="text/plain")
+        return self.client.post(
+            f"/api/v1/crm/tasks/{task_id}/documents",
+            data={"file": f},
+            **self.firm_headers(),
+        )
+
+
+class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def test_list_empty(self):
+        resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_list_nonexistent_task_returns_404(self):
+        resp = self._get(f"/api/v1/crm/tasks/{uuid_module.uuid4()}/documents")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_list_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Other Firm Task Doc")
+        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_task = Task.objects.create(firm=other_firm, lead=other_lead, title="Other")
+        Document.objects.create(
+            firm=other_firm, task=other_task, name="hidden.pdf",
+            content_type="application/pdf", size_bytes=10,
+        )
+        # Hitting our firm with their task ID must 404 (cross-tenant).
+        resp = self._get(f"/api/v1/crm/tasks/{other_task.id}/documents")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_list_returns_only_task_documents(self):
+        # One doc on our task, one on the lead — only the task one must appear.
+        Document.objects.create(
+            firm=self.firm, task=self.task, name="mine.txt",
+            content_type="text/plain", size_bytes=4,
+        )
+        Document.objects.create(
+            firm=self.firm, lead=self.lead, name="leadonly.txt",
+            content_type="text/plain", size_bytes=8,
+        )
+        resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["original_filename"], "mine.txt")
+
+
+class TaskDocumentUploadAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def tearDown(self):
+        for doc in Document.objects.filter(task=self.task):
+            doc.file.delete(save=False)
+        super().tearDown()
+
+    def test_upload_returns_201(self):
+        resp = self._upload_doc(self.task.id, name="hello.txt", content=b"hi")
+        self.assertEqual(resp.status_code, 201)
+        body = resp.json()
+        self.assertEqual(body["original_filename"], "hello.txt")
+        self.assertEqual(body["task_id"], str(self.task.id))
+        self.assertEqual(body["size_bytes"], 2)
+
+    def test_upload_creates_file_upload_activity(self):
+        resp = self._upload_doc(self.task.id, name="audit.txt", content=b"x")
+        self.assertEqual(resp.status_code, 201)
+        doc_id = resp.json()["id"]
+        activity = Activity.objects.get(task=self.task, type=ActivityType.FILE_UPLOAD)
+        self.assertEqual(activity.metadata.get("document_id"), doc_id)
+        self.assertEqual(activity.metadata.get("filename"), "audit.txt")
+
+    def test_upload_nonexistent_task_returns_404(self):
+        f = SimpleUploadedFile("x.txt", b"x", content_type="text/plain")
+        resp = self.client.post(
+            f"/api/v1/crm/tasks/{uuid_module.uuid4()}/documents",
+            data={"file": f},
+            **self.firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+class TaskDocumentDeleteAPITest(TaskDocumentAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.doc = Document.objects.create(
+            firm=self.firm, task=self.task,
+            uploaded_by=self.owner,
+            name="deleteme.txt", content_type="text/plain", size_bytes=5,
+        )
+
+    def test_delete_owner_succeeds(self):
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{self.doc.id}"
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Document.objects.filter(id=self.doc.id).exists())
+
+    def test_delete_other_user_doc_as_worker_returns_403(self):
+        # Doc was uploaded by owner — worker can't delete it.
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{self.doc.id}"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_nonexistent_doc_returns_404(self):
+        resp = self._delete(
+            f"/api/v1/crm/tasks/{self.task.id}/documents/{uuid_module.uuid4()}"
         )
         self.assertEqual(resp.status_code, 404)
 

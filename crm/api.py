@@ -23,16 +23,16 @@ from ninja.security import django_auth
 
 from crm.models import (
     Activity,
+    ActivityReaction,
     ActivityType,
     ContactType,
     Customer,
     DashboardLayout,
+    Document,
     Lead,
-    LeadAttachment,
     LeadScoringRule,
     LeadSource,
     LeadStatus,
-    LeadStatusHistory,
     Management,
     Notification,
     Project,
@@ -40,10 +40,7 @@ from crm.models import (
     Realization,
     SavedView,
     Task,
-    TaskAttachment,
     TaskChecklistItem,
-    TaskComment,
-    TaskCommentReaction,
     TaskCustomField,
     TaskCustomFieldType,
     TaskCustomFieldValue,
@@ -54,11 +51,8 @@ from crm.models import (
     TaskPublicShare,
     TaskStatus,
     TaskTemplate,
-    TaskTimelineEntry,
     TaskTimeLog,
     TaskTimer,
-    TaskVoiceAttachment,
-    TimelineEventType,
 )
 from firms.auth import (
     MembershipRole,
@@ -669,13 +663,6 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
                         "new_status": new_status,
                     },
                 )
-                LeadStatusHistory.objects.create(
-                    lead=lead,
-                    from_status=old_status,
-                    to_status=new_status,
-                    changed_at=tz.now(),
-                    changed_by=request.user,
-                )
                 # Fire workflow automation trigger: lead_status_change
                 from crm.tasks import evaluate_automation_rules
                 _automation_ctx = {
@@ -737,12 +724,13 @@ class ActivityOut(Schema):
 
 
 class ActivityIn(Schema):
-    # Exactly one of the five entity IDs must be provided.
+    # Exactly one of the entity IDs must be provided.
     lead_id: Optional[str] = None
     realization_id: Optional[str] = None
     management_id: Optional[str] = None
     customer_id: Optional[str] = None
     proposal_id: Optional[str] = None
+    task_id: Optional[str] = None
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
@@ -814,6 +802,30 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
     return 200, [_activity_out(a) for a in activities]
 
 
+@router.get("/tasks/{task_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
+def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 20):
+    """Return the unified Streamline activity timeline for a Task, newest first (paginated).
+
+    This is the canonical task Activity feed endpoint, separate from
+    ``/tasks/{id}/timeline`` which provides the full unified timeline including
+    comment threading, reactions and action toggles.
+    """
+    from crm.models import Task as TaskModel
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = TaskModel.objects.get(id=task_id, firm=request.firm)
+    except TaskModel.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(task=task).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a) for a in activities]
+
+
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
@@ -831,10 +843,10 @@ def create_activity(request, payload: ActivityIn):
 
     # --- resolve entity ---
     if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id),
-            bool(payload.customer_id), bool(payload.proposal_id)]) != 1:
-        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id must be provided."}
+            bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
+        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id, task_id must be provided."}
 
-    lead = realization = management = customer = proposal = None
+    lead = realization = management = customer = proposal = task = None
     entity_title = ""
 
     if payload.lead_id:
@@ -868,13 +880,20 @@ def create_activity(request, payload: ActivityIn):
             entity_title = proposal.title
         except ProposalModel.DoesNotExist:
             return 400, {"detail": "Proposal not found in this Firm."}
+    elif payload.task_id:
+        from crm.models import Task as TaskModel
+        try:
+            task = TaskModel.objects.get(id=payload.task_id, firm=request.firm)
+            entity_title = task.title
+        except TaskModel.DoesNotExist:
+            return 400, {"detail": "Task not found in this Firm."}
 
     from crm.streamline.registry import get_tool
     tool = get_tool(payload.type)
     if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
 
-    entity = lead or realization or management or customer or proposal
+    entity = lead or realization or management or customer or proposal or task
     context = {
         "firm": request.firm,
         "user": request.user,
@@ -888,6 +907,7 @@ def create_activity(request, payload: ActivityIn):
             management=management,
             customer=customer,
             proposal=proposal,
+            task=task,
             user=request.user,
             type=payload.type,
             content_text=payload.content_text,
@@ -1023,31 +1043,6 @@ class FollowUpTaskIn(Schema):
 
 class CompleteTaskIn(Schema):
     follow_up: Optional[FollowUpTaskIn] = None
-
-
-class TaskCommentOut(Schema):
-    id: str
-    task_id: str
-    author_id: Optional[str]
-    author_name: Optional[str]
-    content_html: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class TaskCommentIn(Schema):
-    content_html: str
-
-
-class TaskAttachmentOut(Schema):
-    id: str
-    task_id: str
-    uploaded_by_id: Optional[str]
-    original_filename: str
-    content_type: str
-    size_bytes: int
-    url: str
-    created_at: datetime
 
 
 def _task_out(t: Task, requesting_user=None) -> dict:
@@ -1499,7 +1494,7 @@ def create_task(request, payload: TaskIn):
     _notify_task_watchers(task, "task.created")
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))
     # Phase 2: log system timeline event
-    _log_timeline_event(task, TimelineEventType.TASK_CREATED, author=request.user)
+    _log_timeline_event(task, ActivityType.TASK_CREATED, author=request.user)
     # Phase 4: fire task_created automation trigger
     from crm.tasks import evaluate_automation_rules
     _task_auto_ctx = _build_task_automation_context(task, request.firm)
@@ -1642,30 +1637,30 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
     # Phase 2: log system timeline events for significant changes
     if payload.status is not None and task.status != old_status:
         _log_timeline_event(
-            task, TimelineEventType.STATUS_CHANGE, author=request.user,
+            task, ActivityType.STATUS_CHANGE, author=request.user,
             metadata={"from": old_status, "to": task.status},
         )
     if payload.priority is not None and task.priority != old_priority:
         _log_timeline_event(
-            task, TimelineEventType.PRIORITY_CHANGE, author=request.user,
+            task, ActivityType.PRIORITY_CHANGE, author=request.user,
             metadata={"from": old_priority, "to": task.priority},
         )
     if payload.assigned_to_id is not None:
         new_assignee_name = _author_name_for(task.assigned_to) if task.assigned_to_id else None
         if new_assignee_name != old_assignee_name:
             _log_timeline_event(
-                task, TimelineEventType.ASSIGNEE_CHANGE, author=request.user,
+                task, ActivityType.ASSIGNEE_CHANGE, author=request.user,
                 metadata={"from_name": old_assignee_name, "to_name": new_assignee_name},
             )
     due_date_payload_changed = payload.due_date is not None or payload.clear_due_date
     new_due_date_value = task.due_date.isoformat() if task.due_date else None
     if due_date_payload_changed and new_due_date_value != old_due_date:
         _log_timeline_event(
-            task, TimelineEventType.DUE_DATE_CHANGE, author=request.user,
+            task, ActivityType.DUE_DATE_CHANGE, author=request.user,
             metadata={"old": old_due_date, "new": new_due_date_value},
         )
     if payload.is_archived is not None and task.is_archived != old_archived and task.is_archived:
-        _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+        _log_timeline_event(task, ActivityType.TASK_ARCHIVED, author=request.user)
 
     return 200, _task_out(task, request.user)
 
@@ -1748,7 +1743,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     _notify_task_watchers(task, "task.completed")
     broadcast_event(firm=request.firm, event='task.completed', payload=_task_out(task, request.user))
     # Phase 2: log completion event
-    _log_timeline_event(task, TimelineEventType.TASK_COMPLETED, author=request.user)
+    _log_timeline_event(task, ActivityType.TASK_COMPLETED, author=request.user)
     # Phase 4: fire task_completed automation trigger
     from crm.tasks import evaluate_automation_rules
     _task_auto_ctx = _build_task_automation_context(task, request.firm)
@@ -1761,7 +1756,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     if follow_up_task:
         _notify_task_watchers(follow_up_task, "task.created")
         broadcast_event(firm=request.firm, event='task.created', payload=_task_out(follow_up_task, request.user))
-        _log_timeline_event(follow_up_task, TimelineEventType.TASK_CREATED, author=request.user)
+        _log_timeline_event(follow_up_task, ActivityType.TASK_CREATED, author=request.user)
 
     return 200, _task_out(task, request.user)
 
@@ -1789,35 +1784,43 @@ def get_task(request, task_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Task comments
+# Task documents (unified Document model + Activity(file_upload))
 # ---------------------------------------------------------------------------
 
-def _comment_out(c: TaskComment) -> dict:
-    author_name: Optional[str] = None
-    if c.author_id:
-        try:
-            a = c.author
-            author_name = f"{a.first_name} {a.last_name}".strip() or a.email
-        except (AttributeError, Exception):
-            pass
+_MAX_TASK_DOCUMENT_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+class TaskDocumentOut(Schema):
+    id: str
+    task_id: str
+    uploaded_by_id: Optional[str]
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
+
+
+def _task_document_out(doc: Document) -> dict:
     return {
-        "id": str(c.id),
-        "task_id": str(c.task_id),
-        "author_id": str(c.author_id) if c.author_id else None,
-        "author_name": author_name,
-        "content_html": c.content_html,
-        "created_at": c.created_at,
-        "updated_at": c.updated_at,
+        "id": str(doc.id),
+        "task_id": str(doc.task_id) if doc.task_id else "",
+        "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
+        "original_filename": doc.name,
+        "content_type": doc.content_type or "",
+        "size_bytes": doc.size_bytes,
+        "url": doc.file.url if doc.file.name else "",
+        "created_at": doc.created_at,
     }
 
 
 @router.get(
-    "/tasks/{task_id}/comments",
+    "/tasks/{task_id}/documents",
     auth=django_auth,
-    response={200: List[TaskCommentOut], 403: ErrorOut, 404: ErrorOut},
+    response={200: List[TaskDocumentOut], 403: ErrorOut, 404: ErrorOut},
 )
-def list_task_comments(request, task_id: str, page: int = 1, page_size: int = 100):
-    """List all comments for a task, oldest first."""
+def list_task_documents(request, task_id: str, page: int = 1, page_size: int = 50):
+    """List all documents attached to a task, newest first."""
     try:
         require_membership(request)
     except Exception as exc:
@@ -1829,158 +1832,23 @@ def list_task_comments(request, task_id: str, page: int = 1, page_size: int = 10
         return 404, {"detail": "Task not found."}
 
     offset = (page - 1) * page_size
-    comments = (
-        TaskComment.objects.filter(task=task)
-        .select_related("author")
-        .order_by("created_at")[offset: offset + page_size]
-    )
-    return 200, [_comment_out(c) for c in comments]
-
-
-@router.post(
-    "/tasks/{task_id}/comments",
-    auth=django_auth,
-    response={201: TaskCommentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
-)
-def create_task_comment(request, task_id: str, payload: TaskCommentIn):
-    """Add a comment to a task."""
-    try:
-        require_membership(request, min_role=MembershipRole.WORKER)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    if not payload.content_html or not payload.content_html.strip():
-        return 400, {"detail": "Comment content is required."}
-
-    comment = TaskComment.objects.create(
-        task=task,
-        author=request.user,
-        content_html=payload.content_html,
-    )
-    _notify_task_watchers(task, "task.comment_added")
-    return 201, _comment_out(comment)
-
-
-@router.patch(
-    "/tasks/{task_id}/comments/{comment_id}",
-    auth=django_auth,
-    response={200: TaskCommentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
-)
-def update_task_comment(request, task_id: str, comment_id: str, payload: TaskCommentIn):
-    """Edit a comment. Only the original author (or admin/owner) may edit."""
-    try:
-        membership = require_membership(request, min_role=MembershipRole.WORKER)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    try:
-        comment = TaskComment.objects.select_related("author").get(id=comment_id, task_id=task_id)
-    except TaskComment.DoesNotExist:
-        return 404, {"detail": "Comment not found."}
-
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
-    if str(comment.author_id) != str(request.user.id) and not is_admin:
-        return 403, {"detail": "You can only edit your own comments."}
-
-    if not payload.content_html or not payload.content_html.strip():
-        return 400, {"detail": "Comment content is required."}
-
-    comment.content_html = payload.content_html
-    comment.save(update_fields=["content_html", "updated_at"])
-    return 200, _comment_out(comment)
-
-
-@router.delete(
-    "/tasks/{task_id}/comments/{comment_id}",
-    auth=django_auth,
-    response={204: None, 403: ErrorOut, 404: ErrorOut},
-)
-def delete_task_comment(request, task_id: str, comment_id: str):
-    """Delete a comment. Only the original author (or admin/owner) may delete."""
-    try:
-        membership = require_membership(request, min_role=MembershipRole.WORKER)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    try:
-        comment = TaskComment.objects.get(id=comment_id, task_id=task_id)
-    except TaskComment.DoesNotExist:
-        return 404, {"detail": "Comment not found."}
-
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
-    if str(comment.author_id) != str(request.user.id) and not is_admin:
-        return 403, {"detail": "You can only delete your own comments."}
-
-    comment.delete()
-    return 204, None
-
-
-# ---------------------------------------------------------------------------
-# Task attachments
-# ---------------------------------------------------------------------------
-
-_MAX_TASK_ATTACHMENT_BYTES = 20 * 1024 * 1024  # 20 MB
-
-
-def _task_attachment_out(a: TaskAttachment) -> dict:
-    return {
-        "id": str(a.id),
-        "task_id": str(a.task_id),
-        "uploaded_by_id": str(a.uploaded_by_id) if a.uploaded_by_id else None,
-        "original_filename": a.original_filename,
-        "content_type": a.content_type or "",
-        "size_bytes": a.size_bytes,
-        "url": a.file.url,
-        "created_at": a.created_at,
-    }
-
-
-@router.get(
-    "/tasks/{task_id}/attachments",
-    auth=django_auth,
-    response={200: List[TaskAttachmentOut], 403: ErrorOut, 404: ErrorOut},
-)
-def list_task_attachments(request, task_id: str, page: int = 1, page_size: int = 50):
-    """List all file attachments for a task, newest first."""
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    offset = (page - 1) * page_size
-    attachments = TaskAttachment.objects.filter(task=task).order_by("-created_at")[
+    docs = Document.objects.filter(task=task, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
-    return 200, [_task_attachment_out(a) for a in attachments]
+    return 200, [_task_document_out(d) for d in docs]
 
 
 @router.post(
-    "/tasks/{task_id}/attachments",
+    "/tasks/{task_id}/documents",
     auth=django_auth,
-    response={201: TaskAttachmentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    response={201: TaskDocumentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
-def upload_task_attachment(request, task_id: str, file: UploadedFile = File(...)):
-    """Upload a file and attach it to a task."""
+def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
+    """Upload a file and attach it to a task as a Document.
+
+    Creates an ``Activity(type=file_upload)`` so the document appears inline
+    in the unified task timeline.
+    """
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
@@ -1991,29 +1859,45 @@ def upload_task_attachment(request, task_id: str, file: UploadedFile = File(...)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    if file.size > _MAX_TASK_ATTACHMENT_BYTES:
+    if file.size > _MAX_TASK_DOCUMENT_BYTES:
         return 400, {
-            "detail": f"File exceeds the maximum allowed size of {_MAX_TASK_ATTACHMENT_BYTES // (1024 * 1024)} MB."
+            "detail": f"File exceeds the maximum allowed size of {_MAX_TASK_DOCUMENT_BYTES // (1024 * 1024)} MB."
         }
 
-    attachment = TaskAttachment(
-        task=task,
-        uploaded_by=request.user,
-        original_filename=file.name,
-        content_type=file.content_type or "",
-        size_bytes=file.size,
-    )
-    attachment.file.save(file.name, file, save=True)
-    return 201, _task_attachment_out(attachment)
+    with transaction.atomic():
+        doc = Document(
+            firm=request.firm,
+            task=task,
+            uploaded_by=request.user,
+            name=file.name,
+            content_type=file.content_type or "application/octet-stream",
+            size_bytes=file.size,
+        )
+        doc.file.save(file.name, file, save=True)
+
+        Activity.objects.create(
+            task=task,
+            user=request.user,
+            type=ActivityType.FILE_UPLOAD,
+            metadata={
+                "document_id": str(doc.id),
+                "filename": doc.name,
+                "url": doc.file.url,
+                "size_bytes": doc.size_bytes,
+                "content_type": doc.content_type,
+            },
+        )
+
+    return 201, _task_document_out(doc)
 
 
 @router.delete(
-    "/tasks/{task_id}/attachments/{attachment_id}",
+    "/tasks/{task_id}/documents/{document_id}",
     auth=django_auth,
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )
-def delete_task_attachment(request, task_id: str, attachment_id: str):
-    """Delete a task attachment. Only uploader or admin/owner may delete."""
+def delete_task_document(request, task_id: str, document_id: str):
+    """Delete a document attached to a task. Only uploader or admin/owner may delete."""
     try:
         membership = require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
@@ -2025,16 +1909,16 @@ def delete_task_attachment(request, task_id: str, attachment_id: str):
         return 404, {"detail": "Task not found."}
 
     try:
-        attachment = TaskAttachment.objects.get(id=attachment_id, task_id=task_id)
-    except TaskAttachment.DoesNotExist:
-        return 404, {"detail": "Attachment not found."}
+        doc = Document.objects.get(id=document_id, task_id=task_id, firm=request.firm)
+    except Document.DoesNotExist:
+        return 404, {"detail": "Document not found."}
 
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
-    if str(attachment.uploaded_by_id) != str(request.user.id) and not is_admin:
-        return 403, {"detail": "You can only delete your own attachments."}
+    if str(doc.uploaded_by_id) != str(request.user.id) and not is_admin:
+        return 403, {"detail": "You can only delete your own documents."}
 
-    attachment.file.delete(save=False)
-    attachment.delete()
+    doc.file.delete(save=False)
+    doc.delete()
     return 204, None
 
 
@@ -2193,10 +2077,10 @@ def create_subtask(request, task_id: str, payload: SubtaskIn):
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(subtask, request.user))
     # Phase 2: log subtask creation on parent's timeline
     _log_timeline_event(
-        parent, TimelineEventType.SUB_TASK_ADDED, author=request.user,
+        parent, ActivityType.SUB_TASK_ADDED, author=request.user,
         metadata={"subtask_id": str(subtask.id), "title": subtask.title},
     )
-    _log_timeline_event(subtask, TimelineEventType.TASK_CREATED, author=request.user)
+    _log_timeline_event(subtask, ActivityType.TASK_CREATED, author=request.user)
     return 201, _task_out(subtask, request.user)
 
 
@@ -2553,7 +2437,7 @@ def archive_task(request, task_id: str):
 
     task.is_archived = True
     task.save(update_fields=["is_archived"])
-    _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+    _log_timeline_event(task, ActivityType.TASK_ARCHIVED, author=request.user)
     return 200, _task_out(task, request.user)
 
 
@@ -2626,7 +2510,6 @@ def unpin_task(request, task_id: str):
 class TaskCopyIn(Schema):
     include_subtasks: bool = False
     include_checklist: bool = True
-    include_attachments: bool = False
     title: Optional[str] = None
 
 
@@ -2675,7 +2558,7 @@ def _copy_subtasks_recursive(original: Task, new_parent: Task, firm, created_by,
         return
     for sub in Task.objects.filter(parent_task=original):
         new_sub = _copy_task(sub, firm, created_by, title=sub.title, parent_task=new_parent)
-        _log_timeline_event(new_sub, TimelineEventType.TASK_CREATED, author=created_by)
+        _log_timeline_event(new_sub, ActivityType.TASK_CREATED, author=created_by)
         _copy_subtasks_recursive(sub, new_sub, firm, created_by, depth=depth + 1, max_depth=max_depth)
 
 
@@ -2713,23 +2596,10 @@ def copy_task(request, task_id: str, payload: TaskCopyIn):
                     created_by=request.user,
                 )
 
-        if payload.include_attachments:
-            for att in TaskAttachment.objects.filter(task=original):
-                # Metadata record points to the same underlying file; uploaded_by
-                # is set to the user performing the copy to reflect actual ownership.
-                TaskAttachment.objects.create(
-                    task=new_task,
-                    uploaded_by=request.user,
-                    file=att.file,
-                    original_filename=att.original_filename,
-                    content_type=att.content_type,
-                    size_bytes=att.size_bytes,
-                )
-
         if payload.include_subtasks:
             _copy_subtasks_recursive(original, new_task, request.firm, request.user)
 
-        _log_timeline_event(new_task, TimelineEventType.TASK_CREATED, author=request.user)
+        _log_timeline_event(new_task, ActivityType.TASK_CREATED, author=request.user)
 
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(new_task, request.user))
     return 201, _task_out(new_task, request.user)
@@ -2933,11 +2803,11 @@ def batch_task_action(request, payload: TaskBatchIn):
                     task.completed_by = request.user
                     task.status = TaskStatus.DONE
                     task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
-                    _log_timeline_event(task, TimelineEventType.TASK_COMPLETED, author=request.user)
+                    _log_timeline_event(task, ActivityType.TASK_COMPLETED, author=request.user)
             elif payload.action == "archive":
                 task.is_archived = True
                 task.save(update_fields=["is_archived"])
-                _log_timeline_event(task, TimelineEventType.TASK_ARCHIVED, author=request.user)
+                _log_timeline_event(task, ActivityType.TASK_ARCHIVED, author=request.user)
             elif payload.action == "unarchive":
                 task.is_archived = False
                 task.save(update_fields=["is_archived"])
@@ -2961,7 +2831,7 @@ def batch_task_action(request, payload: TaskBatchIn):
 # ---------------------------------------------------------------------------
 
 class ReactionSummaryOut(Schema):
-    """Aggregated count of a single emoji reaction on a timeline entry."""
+    """Aggregated count of a single emoji reaction on an activity."""
     emoji: str
     count: int
     user_ids: List[str]
@@ -2969,7 +2839,7 @@ class ReactionSummaryOut(Schema):
 
 
 class TimelineAttachmentOut(Schema):
-    """Inline attachment metadata embedded in a timeline entry."""
+    """Inline attachment representation derived from a file_upload Activity."""
     id: str
     original_filename: str
     content_type: str
@@ -2981,19 +2851,18 @@ class TimelineAttachmentOut(Schema):
 
 class TaskTimelineEntryOut(Schema):
     """
-    A single item in the unified task timeline.
+    A single item in the unified task timeline, backed by ``Activity``.
 
-    ``source`` distinguishes the backing model:
-      - ``timeline_entry``   — new-style TaskTimelineEntry record
-      - ``legacy_comment``   — TaskComment migrated into the feed
-      - ``legacy_attachment`` — TaskAttachment shown as a file_upload event
+    For ``file_upload`` activities the ``attachment`` field is populated
+    from the underlying ``Document`` (via ``metadata.document_id``) so the
+    SPA can render the file inline without an extra request.
     """
     id: str
-    source: str
+    source: str  # always "activity"
     event_type: str
     author_id: Optional[str]
     author_name: Optional[str]
-    content_html: str
+    content_text: str
     metadata: Dict[str, Any]
     parent_entry_id: Optional[str]
     reactions: List[ReactionSummaryOut]
@@ -3006,13 +2875,13 @@ class TaskTimelinePostIn(Schema):
     """
     Payload for POST /tasks/{id}/timeline.
 
-    ``content_html`` is required when creating a comment entry.
-    Action toggles allow atomic side-effects alongside the comment:
+    Creates an Activity of type ``comment`` (or any other explicit type)
+    linked to the task.  Action toggles allow atomic side-effects:
       - ``change_assignee_to`` — reassign the task to this user ID
-      - ``log_time_minutes``   — add a time-log entry (Phase 6 placeholder)
+      - ``log_time_minutes``   — add a time-log entry
       - ``set_due_date``       — update the task's due_date
     """
-    content_html: str
+    content_text: str
     parent_entry_id: Optional[str] = None
     # Action toggles
     change_assignee_to: Optional[str] = None
@@ -3039,10 +2908,10 @@ def _author_name_for(user) -> Optional[str]:
         return None
 
 
-def _reactions_for_entry(entry: TaskTimelineEntry, requesting_user) -> List[dict]:
-    """Build aggregated reaction list for a TaskTimelineEntry."""
+def _reactions_for_activity(activity: Activity, requesting_user) -> List[dict]:
+    """Build aggregated reaction list for an Activity."""
     reactions: dict[str, dict] = {}
-    for r in entry.reactions.select_related("user"):
+    for r in activity.reactions.select_related("user"):
         if r.emoji not in reactions:
             reactions[r.emoji] = {"emoji": r.emoji, "count": 0, "user_ids": [], "reacted_by_me": False}
         reactions[r.emoji]["count"] += 1
@@ -3052,103 +2921,76 @@ def _reactions_for_entry(entry: TaskTimelineEntry, requesting_user) -> List[dict
     return list(reactions.values())
 
 
-def _timeline_entry_out(entry: TaskTimelineEntry, requesting_user=None) -> dict:
-    """Serialise a TaskTimelineEntry to the common timeline dict."""
-    author_name = None
-    if entry.author_id:
-        try:
-            author_name = _author_name_for(entry.author)
-        except Exception:
-            pass
+def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
+    """Serialise a task-linked Activity to the unified task timeline dict."""
+    author_name = _author_name_for(activity.user) if activity.user_id else None
+    metadata = activity.metadata if isinstance(activity.metadata, dict) else {}
+
+    # For file_upload activities, surface the linked Document as an inline attachment.
+    attachment = None
+    if activity.type == ActivityType.FILE_UPLOAD:
+        document_id = metadata.get("document_id")
+        if document_id:
+            try:
+                doc = Document.objects.get(id=document_id)
+                attachment = {
+                    "id": str(doc.id),
+                    "original_filename": doc.name,
+                    "content_type": doc.content_type or "",
+                    "size_bytes": doc.size_bytes,
+                    "url": doc.file.url if doc.file.name else "",
+                    "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
+                    "created_at": doc.created_at,
+                }
+            except Document.DoesNotExist:
+                # Fall back to metadata-only payload so the row still renders
+                attachment = {
+                    "id": str(document_id),
+                    "original_filename": metadata.get("filename", ""),
+                    "content_type": metadata.get("content_type", ""),
+                    "size_bytes": int(metadata.get("size_bytes") or 0),
+                    "url": metadata.get("url", ""),
+                    "uploaded_by_id": str(activity.user_id) if activity.user_id else None,
+                    "created_at": activity.created_at,
+                }
+
     return {
-        "id": str(entry.id),
-        "source": "timeline_entry",
-        "event_type": entry.event_type,
-        "author_id": str(entry.author_id) if entry.author_id else None,
+        "id": str(activity.id),
+        "source": "activity",
+        "event_type": activity.type,
+        "author_id": str(activity.user_id) if activity.user_id else None,
         "author_name": author_name,
-        "content_html": entry.content_html,
-        "metadata": entry.metadata if isinstance(entry.metadata, dict) else {},
-        "parent_entry_id": str(entry.parent_entry_id) if entry.parent_entry_id else None,
-        "reactions": _reactions_for_entry(entry, requesting_user),
-        "reply_count": entry.replies.count(),
-        "attachment": None,
-        "created_at": entry.created_at,
-    }
-
-
-def _legacy_comment_out(comment: TaskComment) -> dict:
-    """Wrap a legacy TaskComment as a timeline entry dict."""
-    author_name = None
-    if comment.author_id:
-        try:
-            author_name = _author_name_for(comment.author)
-        except Exception:
-            pass
-    return {
-        "id": f"legacy_comment_{comment.id}",
-        "source": "legacy_comment",
-        "event_type": TimelineEventType.COMMENT,
-        "author_id": str(comment.author_id) if comment.author_id else None,
-        "author_name": author_name,
-        "content_html": comment.content_html,
-        "metadata": {},
-        "parent_entry_id": None,
-        "reactions": [],
+        "content_text": activity.content_text,
+        "metadata": metadata,
+        "parent_entry_id": str(metadata.get("reply_to_id", "")) or None,
+        "reactions": _reactions_for_activity(activity, requesting_user),
         "reply_count": 0,
-        "attachment": None,
-        "created_at": comment.created_at,
+        "attachment": attachment,
+        "created_at": activity.created_at,
     }
 
 
-def _legacy_attachment_out(att: TaskAttachment) -> dict:
-    """Wrap a legacy TaskAttachment as a file_upload timeline entry dict."""
-    uploader_name = None
-    if att.uploaded_by_id:
-        try:
-            uploader_name = _author_name_for(att.uploaded_by)
-        except Exception:
-            pass
-    attachment_data = {
-        "id": str(att.id),
-        "original_filename": att.original_filename,
-        "content_type": att.content_type or "",
-        "size_bytes": att.size_bytes,
-        "url": att.file.url,
-        "uploaded_by_id": str(att.uploaded_by_id) if att.uploaded_by_id else None,
-        "created_at": att.created_at,
-    }
-    return {
-        "id": f"legacy_attachment_{att.id}",
-        "source": "legacy_attachment",
-        "event_type": TimelineEventType.FILE_UPLOAD,
-        "author_id": str(att.uploaded_by_id) if att.uploaded_by_id else None,
-        "author_name": uploader_name,
-        "content_html": "",
-        "metadata": {"filename": att.original_filename, "size_bytes": att.size_bytes},
-        "parent_entry_id": None,
-        "reactions": [],
-        "reply_count": 0,
-        "attachment": attachment_data,
-        "created_at": att.created_at,
-    }
-
-
-def _log_timeline_event(task: Task, event_type: str, author=None, metadata: dict = None) -> None:
+def _log_task_activity(task: Task, activity_type: str, author=None, metadata: dict = None, content_text: str = "") -> None:
     """
-    Create a system TaskTimelineEntry for the given event.
+    Create an Activity of the given type linked to the Task.
 
     Silently swallows any errors so that it never breaks the main request.
     """
     try:
-        TaskTimelineEntry.objects.create(
+        Activity.objects.create(
             task=task,
-            author=author,
-            event_type=event_type,
-            content_html="",
+            user=author,
+            type=activity_type,
+            content_text=content_text,
             metadata=metadata or {},
         )
     except Exception:
-        logger.exception("Failed to log timeline event %s for task %s", event_type, task.id)
+        logger.exception("Failed to log task activity %s for task %s", activity_type, task.id)
+
+
+# Keep the old name as an alias so all the existing call-sites work without changes.
+def _log_timeline_event(task: Task, event_type: str, author=None, metadata: dict = None) -> None:
+    _log_task_activity(task, event_type, author=author, metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -3169,10 +3011,7 @@ def get_task_timeline(
     page_size: int = 100,
 ):
     """
-    Return the unified chronological timeline for a task.
-
-    Merges new-style ``TaskTimelineEntry`` records with legacy ``TaskComment``
-    and ``TaskAttachment`` records from older data.
+    Return the unified chronological timeline for a task, backed by Activity.
 
     Query parameters:
       - ``event_type`` — filter to ``comment`` or ``system`` (all non-comment) entries
@@ -3189,40 +3028,21 @@ def get_task_timeline(
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    # --- Collect entries from all sources ---
-    entries: list[dict] = []
-
-    # 1. New-style TaskTimelineEntry records
-    tle_qs = (
-        TaskTimelineEntry.objects.filter(task=task, parent_entry__isnull=True)
-        .select_related("author")
-        .prefetch_related("reactions__user", "replies")
+    qs = (
+        Activity.objects.filter(task=task)
+        .select_related("user")
+        .prefetch_related("reactions__user")
     )
     if event_type == "comment":
-        tle_qs = tle_qs.filter(event_type=TimelineEventType.COMMENT)
+        qs = qs.filter(type=ActivityType.COMMENT)
     elif event_type == "system":
-        tle_qs = tle_qs.exclude(event_type=TimelineEventType.COMMENT)
+        qs = qs.exclude(type=ActivityType.COMMENT)
 
-    for entry in tle_qs:
-        entries.append(_timeline_entry_out(entry, request.user))
+    ordering = "created_at" if order != "desc" else "-created_at"
+    qs = qs.order_by(ordering)
 
-    # 2. Legacy TaskComment records (only if not filtered to system events)
-    if event_type != "system":
-        for comment in TaskComment.objects.filter(task=task).select_related("author"):
-            entries.append(_legacy_comment_out(comment))
-
-    # 3. Legacy TaskAttachment records as file_upload events (only if not filtered to comment)
-    if event_type != "comment":
-        for att in TaskAttachment.objects.filter(task=task).select_related("uploaded_by"):
-            entries.append(_legacy_attachment_out(att))
-
-    # --- Sort merged results ---
-    reverse = order == "desc"
-    entries.sort(key=lambda e: e["created_at"], reverse=reverse)
-
-    # --- Paginate ---
     offset = (page - 1) * page_size
-    return 200, entries[offset: offset + page_size]
+    return 200, [_activity_to_timeline_out(a, request.user) for a in qs[offset: offset + page_size]]
 
 
 @router.post(
@@ -3232,13 +3052,12 @@ def get_task_timeline(
 )
 def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostIn):
     """
-    Add a comment to the task timeline.
+    Add a comment to the task timeline as a Streamline Activity.
 
-    Optionally performs side-effect actions when the action toggles are set:
-      - ``change_assignee_to`` — reassigns the task Řešitel
+    Optionally performs side-effect actions:
+      - ``change_assignee_to`` — reassigns the task
       - ``set_due_date``       — updates the task due date
-      - ``log_time_minutes``   — records a time entry (placeholder; full
-                                 implementation in Phase 6)
+      - ``log_time_minutes``   — records a time entry
     """
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -3250,25 +3069,25 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    if not payload.content_html or not payload.content_html.strip():
+    if not payload.content_text or not payload.content_text.strip():
         return 400, {"detail": "Comment content is required."}
 
-    # Validate parent entry if given
-    parent_entry = None
+    # Validate parent activity if given
+    comment_metadata: dict = {}
     if payload.parent_entry_id:
         try:
-            parent_entry = TaskTimelineEntry.objects.get(id=payload.parent_entry_id, task=task)
-        except TaskTimelineEntry.DoesNotExist:
+            Activity.objects.get(id=payload.parent_entry_id, task=task)
+            comment_metadata["reply_to_id"] = payload.parent_entry_id
+        except Activity.DoesNotExist:
             return 400, {"detail": "Parent entry not found on this task."}
 
     with transaction.atomic():
-        # --- Create the comment timeline entry ---
-        entry = TaskTimelineEntry.objects.create(
+        activity = Activity.objects.create(
             task=task,
-            author=request.user,
-            event_type=TimelineEventType.COMMENT,
-            content_html=payload.content_html,
-            parent_entry=parent_entry,
+            user=request.user,
+            type=ActivityType.COMMENT,
+            content_text=payload.content_text,
+            metadata=comment_metadata,
         )
 
         # --- Action toggle: reassign task ---
@@ -3280,8 +3099,8 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
             new_name = _author_name_for(new_user)
             task.assigned_to = new_user
             task.save(update_fields=["assigned_to"])
-            _log_timeline_event(
-                task, TimelineEventType.ASSIGNEE_CHANGE, author=request.user,
+            _log_task_activity(
+                task, ActivityType.ASSIGNEE_CHANGE, author=request.user,
                 metadata={"from_name": old_name, "to_name": new_name},
             )
 
@@ -3290,12 +3109,12 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
             old_due = task.due_date.isoformat() if task.due_date else None
             task.due_date = payload.set_due_date
             task.save(update_fields=["due_date"])
-            _log_timeline_event(
-                task, TimelineEventType.DUE_DATE_CHANGE, author=request.user,
+            _log_task_activity(
+                task, ActivityType.DUE_DATE_CHANGE, author=request.user,
                 metadata={"old": old_due, "new": payload.set_due_date.isoformat()},
             )
 
-        # --- Action toggle: log time (Phase 6 — creates a real TaskTimeLog) ---
+        # --- Action toggle: log time ---
         if payload.log_time_minutes:
             time_log = TaskTimeLog.objects.create(
                 task=task,
@@ -3304,8 +3123,8 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
                 duration_minutes=payload.log_time_minutes,
                 description=payload.log_time_description or "",
             )
-            _log_timeline_event(
-                task, TimelineEventType.TIME_LOGGED, author=request.user,
+            _log_task_activity(
+                task, ActivityType.TIME_LOGGED, author=request.user,
                 metadata={
                     "minutes": payload.log_time_minutes,
                     "description": payload.log_time_description,
@@ -3314,9 +3133,8 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
             )
 
     _notify_task_watchers(task, "task.comment_added")
-    # Re-fetch to get prefetched reactions
-    entry.refresh_from_db()
-    return 201, _timeline_entry_out(entry, request.user)
+    activity.refresh_from_db()
+    return 201, _activity_to_timeline_out(activity, request.user)
 
 
 @router.post(
@@ -3326,11 +3144,10 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
 )
 def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: TimelineReactionIn):
     """
-    Toggle an emoji reaction on a comment timeline entry.
+    Toggle an emoji reaction on a comment Activity.
 
-    If the current user has already reacted with this emoji, the reaction is
-    removed.  Otherwise it is added.  Returns the updated aggregate for this
-    emoji.
+    If the current user has already reacted with this emoji the reaction is
+    removed; otherwise it is added.  Returns the updated aggregate for this emoji.
     """
     try:
         require_membership(request)
@@ -3338,35 +3155,33 @@ def toggle_timeline_reaction(request, task_id: str, entry_id: str, payload: Time
         return 403, {"detail": str(exc)}
 
     try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
+        Task.objects.get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
     try:
-        entry = TaskTimelineEntry.objects.get(id=entry_id, task=task)
-    except TaskTimelineEntry.DoesNotExist:
+        activity = Activity.objects.get(id=entry_id, task_id=task_id)
+    except Activity.DoesNotExist:
         return 404, {"detail": "Timeline entry not found."}
 
-    if entry.event_type != TimelineEventType.COMMENT:
+    if activity.type != ActivityType.COMMENT:
         return 400, {"detail": "Reactions are only supported on comment entries."}
 
     emoji = payload.emoji.strip()
     if not emoji:
         return 400, {"detail": "Emoji must not be empty."}
 
-    reaction, created = TaskCommentReaction.objects.get_or_create(
-        entry=entry, user=request.user, emoji=emoji,
+    reaction, created = ActivityReaction.objects.get_or_create(
+        activity=activity, user=request.user, emoji=emoji,
     )
     if not created:
         reaction.delete()
 
-    # Return updated aggregate for this emoji
-    count = TaskCommentReaction.objects.filter(entry=entry, emoji=emoji).count()
+    count = ActivityReaction.objects.filter(activity=activity, emoji=emoji).count()
     user_ids = list(
-        TaskCommentReaction.objects.filter(entry=entry, emoji=emoji).values_list("user_id", flat=True)
+        ActivityReaction.objects.filter(activity=activity, emoji=emoji).values_list("user_id", flat=True)
     )
-    # Re-query to get the definitive post-operation state for the requesting user
-    reacted_by_me = TaskCommentReaction.objects.filter(entry=entry, user=request.user, emoji=emoji).exists()
+    reacted_by_me = ActivityReaction.objects.filter(activity=activity, user=request.user, emoji=emoji).exists()
     return 200, {
         "emoji": emoji,
         "count": count,
@@ -3487,7 +3302,7 @@ def create_time_log(request, task_id: str, payload: TaskTimeLogIn):
             description=payload.description,
         )
         _log_timeline_event(
-            task, TimelineEventType.TIME_LOGGED, author=request.user,
+            task, ActivityType.TIME_LOGGED, author=request.user,
             metadata={
                 "minutes": payload.duration_minutes,
                 "description": payload.description,
@@ -3608,7 +3423,7 @@ def stop_timer(request, task_id: str):
             description="",
         )
         _log_timeline_event(
-            task, TimelineEventType.TIME_LOGGED, author=request.user,
+            task, ActivityType.TIME_LOGGED, author=request.user,
             metadata={
                 "minutes": duration_minutes,
                 "description": "Timer stopped",
@@ -3693,7 +3508,7 @@ def request_approval(request, task_id: str, payload: ApprovalRequestIn):
         task.save(update_fields=["approval_required", "approval_requested_from", "approval_status", "approval_note"])
 
         _log_timeline_event(
-            task, TimelineEventType.APPROVAL_REQUESTED, author=request.user,
+            task, ActivityType.APPROVAL_REQUESTED, author=request.user,
             metadata={
                 "approver_id": str(approver.id),
                 "approver_name": _author_name_for(approver),
@@ -3738,7 +3553,7 @@ def approve_task(request, task_id: str):
         task.save(update_fields=["approval_status"])
 
         _log_timeline_event(
-            task, TimelineEventType.APPROVAL_RESOLVED, author=request.user,
+            task, ActivityType.APPROVAL_RESOLVED, author=request.user,
             metadata={"decision": "approved", "approver_name": _author_name_for(request.user)},
         )
 
@@ -3782,7 +3597,7 @@ def reject_task(request, task_id: str, payload: ApprovalRejectIn):
         task.save(update_fields=["approval_status", "approval_note"])
 
         _log_timeline_event(
-            task, TimelineEventType.APPROVAL_RESOLVED, author=request.user,
+            task, ActivityType.APPROVAL_RESOLVED, author=request.user,
             metadata={
                 "decision": "rejected",
                 "note": payload.note,
@@ -4104,7 +3919,7 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
                 )
 
         _log_timeline_event(
-            task, TimelineEventType.TASK_CREATED, author=request.user,
+            task, ActivityType.TASK_CREATED, author=request.user,
             metadata={"from_template_id": str(tmpl.id), "template_name": tmpl.name},
         )
 
@@ -4179,7 +3994,7 @@ def get_stats(request):
 
 
 # ===========================================================================
-# LEAD ATTACHMENTS
+# LEAD ATTACHMENTS  (backed by Document + Activity)
 # ===========================================================================
 
 # Maximum allowed file size (20 MB)
@@ -4198,17 +4013,17 @@ class AttachmentOut(Schema):
     created_at: datetime
 
 
-def _attachment_out(a: LeadAttachment) -> dict:
+def _attachment_out(doc: Document) -> dict:
     return {
-        "id": str(a.id),
-        "lead_id": str(a.lead_id),
-        "firm_id": str(a.firm_id),
-        "uploaded_by_id": str(a.uploaded_by_id) if a.uploaded_by_id else None,
-        "original_filename": a.original_filename,
-        "content_type": a.content_type,
-        "size_bytes": a.size_bytes,
-        "url": a.file.url if a.file.name else "",
-        "created_at": a.created_at,
+        "id": str(doc.id),
+        "lead_id": str(doc.lead_id),
+        "firm_id": str(doc.firm_id),
+        "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
+        "original_filename": doc.name,
+        "content_type": doc.content_type,
+        "size_bytes": doc.size_bytes,
+        "url": doc.file.url if doc.file.name else "",
+        "created_at": doc.created_at,
     }
 
 
@@ -4230,10 +4045,10 @@ def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 404, {"detail": "Lead not found."}
 
     offset = (page - 1) * page_size
-    attachments = LeadAttachment.objects.filter(lead=lead).order_by("-created_at")[
+    docs = Document.objects.filter(lead=lead, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
-    return 200, [_attachment_out(a) for a in attachments]
+    return 200, [_attachment_out(d) for d in docs]
 
 
 @router.post(
@@ -4245,9 +4060,7 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
     """
     Upload a file and attach it to a Lead.
 
-    The file is stored via Django's configured storage backend
-    (local filesystem in development, S3 in production).
-    A ``FILE_UPLOAD`` Activity is created atomically.
+    Creates a ``Document`` record and a ``FILE_UPLOAD`` Activity atomically.
     """
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -4264,30 +4077,29 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
         return 400, {"detail": f"File exceeds the maximum allowed size of {_MAX_ATTACHMENT_BYTES // (1024 * 1024)} MB."}
 
     with transaction.atomic():
-        attachment = LeadAttachment(
-            lead=lead,
+        doc = Document(
             firm=request.firm,
+            lead=lead,
             uploaded_by=request.user,
-            original_filename=file.name,
+            name=file.name,
             content_type=file.content_type or "application/octet-stream",
             size_bytes=file.size,
         )
-        # save=True persists the model record after writing the file to storage.
-        attachment.file.save(file.name, file, save=True)
+        doc.file.save(file.name, file, save=True)
 
         Activity.objects.create(
             lead=lead,
             user=request.user,
             type=ActivityType.FILE_UPLOAD,
             metadata={
-                "attachment_id": str(attachment.id),
-                "filename": attachment.original_filename,
-                "url": attachment.file.url,
-                "size_bytes": attachment.size_bytes,
+                "document_id": str(doc.id),
+                "filename": doc.name,
+                "url": doc.file.url,
+                "size_bytes": doc.size_bytes,
             },
         )
 
-    return 201, _attachment_out(attachment)
+    return 201, _attachment_out(doc)
 
 
 @router.delete(
@@ -4313,13 +4125,12 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
         return 404, {"detail": "Lead not found."}
 
     try:
-        attachment = LeadAttachment.objects.get(id=attachment_id, lead=lead)
-    except LeadAttachment.DoesNotExist:
+        doc = Document.objects.get(id=attachment_id, lead=lead, firm=request.firm)
+    except Document.DoesNotExist:
         return 404, {"detail": "Attachment not found."}
 
-    # Delete the physical file from storage before removing the record.
-    attachment.file.delete(save=False)
-    attachment.delete()
+    doc.file.delete(save=False)
+    doc.delete()
     return 204, None
 
 
@@ -4610,7 +4421,7 @@ class VelocityRow(Schema):
 def pipeline_velocity(request):
     """
     Average time (in hours) a lead spends in each status, computed from
-    ``LeadStatusHistory``.  Results are cached for 5 minutes.
+    ``Activity(type=status_change)`` records.  Results are cached for 5 minutes.
     """
     try:
         require_membership(request)
@@ -4622,37 +4433,35 @@ def pipeline_velocity(request):
     if cached is not None:
         return 200, cached
 
-    rows = list(
-        LeadStatusHistory.objects.filter(lead__firm=request.firm)
-        .values("to_status")
-        .annotate(sample_count=Count("id"))
-        .order_by("to_status")
-    )
-
     # For each status, compute average dwell time:
     # dwell = time from entering a status until next transition (or now if current)
     status_hours: Dict[str, list] = {s.value: [] for s in LeadStatus}
 
     history_qs = (
-        LeadStatusHistory.objects.filter(lead__firm=request.firm)
-        .values("lead_id", "to_status", "changed_at")
-        .order_by("lead_id", "changed_at")
+        Activity.objects.filter(
+            lead__firm=request.firm,
+            type=ActivityType.STATUS_CHANGE,
+            lead__isnull=False,
+        )
+        .values("lead_id", "metadata", "created_at")
+        .order_by("lead_id", "created_at")
     )
 
-    # Group by lead
+    # Group by lead — each row is a status_change Activity with new_status in metadata
     lead_history: Dict[str, list] = {}
     for entry in history_qs:
-        lead_history.setdefault(str(entry["lead_id"]), []).append(entry)
+        new_status = entry["metadata"].get("new_status") if isinstance(entry["metadata"], dict) else None
+        if new_status:
+            lead_history.setdefault(str(entry["lead_id"]), []).append(
+                {"to_status": new_status, "changed_at": entry["created_at"]}
+            )
 
     now = tz.now()
     for lead_id, entries in lead_history.items():
         for i, entry in enumerate(entries):
             status = entry["to_status"]
             entered_at = entry["changed_at"]
-            if i + 1 < len(entries):
-                left_at = entries[i + 1]["changed_at"]
-            else:
-                left_at = now
+            left_at = entries[i + 1]["changed_at"] if i + 1 < len(entries) else now
             hours = (left_at - entered_at).total_seconds() / 3600.0
             if status in status_hours:
                 status_hours[status].append(hours)

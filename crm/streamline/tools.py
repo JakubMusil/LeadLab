@@ -288,7 +288,7 @@ class StatusChangeTool(StreamlineTool):
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
-        from crm.models import LeadStatus, LeadStatusHistory
+        from crm.models import LeadStatus
 
         lead = activity.lead
         if lead is None:
@@ -304,13 +304,6 @@ class StatusChangeTool(StreamlineTool):
         lead.save(update_fields=["status", "updated_at"])
         activity.metadata = {**activity.metadata, "old_status": old_status}
         activity.save(update_fields=["metadata"])
-        LeadStatusHistory.objects.create(
-            lead=lead,
-            from_status=old_status,
-            to_status=new_status,
-            changed_at=activity.created_at,
-            changed_by=context["user"],
-        )
 
     def render_payload(self, activity: "Activity") -> dict:
         return {
@@ -555,6 +548,415 @@ class EntityChangeTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
+# Priority Change
+# ---------------------------------------------------------------------------
+
+class PriorityChangeTool(StreamlineTool):
+    activity_type = "priority_change"
+    label = "Priority Change"
+    icon = "FlagIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "old_priority": {"type": "string", "title": "Old Priority"},
+                "new_priority": {"type": "string", "title": "New Priority"},
+            },
+            "required": ["new_priority"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass  # log only; the priority change itself is performed by the caller
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "old_priority": activity.metadata.get("old_priority", ""),
+            "new_priority": activity.metadata.get("new_priority", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Assignee Change
+# ---------------------------------------------------------------------------
+
+class AssigneeChangeTool(StreamlineTool):
+    activity_type = "assignee_change"
+    label = "Assignee Change"
+    icon = "UserCircleIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "old_assignee_id": {"type": "string", "title": "Old Assignee"},
+                "new_assignee_id": {"type": "string", "title": "New Assignee"},
+                "old_assignee_name": {"type": "string", "title": "Old Assignee Name"},
+                "new_assignee_name": {"type": "string", "title": "New Assignee Name"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        """Notify the new assignee, if any, that they have been assigned."""
+        from crm.models import Notification
+        from django.contrib.auth import get_user_model
+
+        firm = context["firm"]
+        actor = context.get("user")
+        metadata = payload.get("metadata", {}) or {}
+        new_assignee_id = metadata.get("new_assignee_id")
+        if not new_assignee_id:
+            return
+
+        _User = get_user_model()
+        try:
+            new_assignee = _User.objects.filter(
+                id=str(new_assignee_id),
+                memberships__firm=firm,
+            ).distinct().first()
+        except Exception:
+            new_assignee = None
+        if new_assignee is None or (actor and new_assignee.id == actor.id):
+            return
+
+        Notification.objects.create(
+            firm=firm,
+            user=new_assignee,
+            event="activity.assigned",
+            payload={
+                "activity_id": str(activity.id),
+                "entity_type": activity.entity_type,
+                "entity_id": activity.entity_id,
+                "entity_title": context.get("entity_title", ""),
+                "by_user": getattr(actor, "full_name", None) or (actor.email if actor else None),
+            },
+        )
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "old_assignee_id": activity.metadata.get("old_assignee_id", ""),
+            "new_assignee_id": activity.metadata.get("new_assignee_id", ""),
+            "old_assignee_name": activity.metadata.get("old_assignee_name", ""),
+            "new_assignee_name": activity.metadata.get("new_assignee_name", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Due Date Change
+# ---------------------------------------------------------------------------
+
+class DueDateChangeTool(StreamlineTool):
+    activity_type = "due_date_change"
+    label = "Due Date Change"
+    icon = "CalendarIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "old_due_date": {"type": "string", "title": "Old Due Date"},
+                "new_due_date": {"type": "string", "title": "New Due Date"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "old_due_date": activity.metadata.get("old_due_date", ""),
+            "new_due_date": activity.metadata.get("new_due_date", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Sub-task Added
+# ---------------------------------------------------------------------------
+
+class SubTaskAddedTool(StreamlineTool):
+    activity_type = "sub_task_added"
+    label = "Sub-task Added"
+    icon = "Squares2X2Icon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "subtask_id": {"type": "string", "title": "Subtask ID"},
+                "subtask_title": {"type": "string", "title": "Subtask Title"},
+            },
+            "required": ["subtask_title"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "subtask_id": activity.metadata.get("subtask_id", ""),
+            "subtask_title": activity.metadata.get("subtask_title", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Task Created
+# ---------------------------------------------------------------------------
+
+class TaskCreatedTool(StreamlineTool):
+    activity_type = "task_created"
+    label = "Task Created"
+    icon = "PlusCircleIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "title": "Task ID"},
+                "task_title": {"type": "string", "title": "Task Title"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "task_id": activity.metadata.get("task_id", ""),
+            "task_title": activity.metadata.get("task_title", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Task Archived
+# ---------------------------------------------------------------------------
+
+class TaskArchivedTool(StreamlineTool):
+    activity_type = "task_archived"
+    label = "Task Archived"
+    icon = "ArchiveBoxIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "title": "Task ID"},
+                "task_title": {"type": "string", "title": "Task Title"},
+                "archived": {"type": "boolean", "title": "Archived"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "task_id": activity.metadata.get("task_id", ""),
+            "task_title": activity.metadata.get("task_title", ""),
+            "archived": activity.metadata.get("archived", True),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Approval Requested
+# ---------------------------------------------------------------------------
+
+class ApprovalRequestedTool(StreamlineTool):
+    activity_type = "approval_requested"
+    label = "Approval Requested"
+    icon = "ShieldExclamationIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "approver_id": {"type": "string", "title": "Approver"},
+                "approver_name": {"type": "string", "title": "Approver Name"},
+                "note": {"type": "string", "title": "Note"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "approver_id": activity.metadata.get("approver_id", ""),
+            "approver_name": activity.metadata.get("approver_name", ""),
+            "note": activity.metadata.get("note", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Approval Resolved
+# ---------------------------------------------------------------------------
+
+class ApprovalResolvedTool(StreamlineTool):
+    activity_type = "approval_resolved"
+    label = "Approval Resolved"
+    icon = "ShieldCheckIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "approver_id": {"type": "string", "title": "Approver"},
+                "approver_name": {"type": "string", "title": "Approver Name"},
+                "decision": {
+                    "type": "string",
+                    "title": "Decision",
+                    "enum": ["accepted", "rejected"],
+                },
+                "note": {"type": "string", "title": "Note"},
+            },
+            "required": ["decision"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "approver_id": activity.metadata.get("approver_id", ""),
+            "approver_name": activity.metadata.get("approver_name", ""),
+            "decision": activity.metadata.get("decision", ""),
+            "note": activity.metadata.get("note", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Time Logged
+# ---------------------------------------------------------------------------
+
+class TimeLoggedTool(StreamlineTool):
+    activity_type = "time_logged"
+    label = "Time Logged"
+    icon = "ClockIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "minutes": {
+                    "type": "integer",
+                    "title": "Minutes",
+                    "minimum": 0,
+                },
+                "description": {"type": "string", "title": "Description"},
+                "started_at": {"type": "string", "format": "date-time", "title": "Started At"},
+                "ended_at": {"type": "string", "format": "date-time", "title": "Ended At"},
+            },
+            "required": ["minutes"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "minutes": activity.metadata.get("minutes", 0),
+            "description": activity.metadata.get("description", ""),
+            "started_at": activity.metadata.get("started_at"),
+            "ended_at": activity.metadata.get("ended_at"),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Checklist Item Checked
+# ---------------------------------------------------------------------------
+
+class ChecklistItemCheckedTool(StreamlineTool):
+    activity_type = "checklist_item_checked"
+    label = "Checklist Item Checked"
+    icon = "CheckIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string", "title": "Item ID"},
+                "item_text": {"type": "string", "title": "Item Text"},
+                "is_checked": {"type": "boolean", "title": "Checked"},
+            },
+            "required": ["item_text"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "item_id": activity.metadata.get("item_id", ""),
+            "item_text": activity.metadata.get("item_text", ""),
+            "is_checked": activity.metadata.get("is_checked", False),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Voice Memo
+# ---------------------------------------------------------------------------
+
+class VoiceMemoTool(StreamlineTool):
+    activity_type = "voice_memo"
+    label = "Voice Memo"
+    icon = "MicrophoneIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "format": "uri", "title": "Audio URL"},
+                "filename": {"type": "string", "title": "Filename"},
+                "duration_seconds": {
+                    "type": "integer",
+                    "title": "Duration (seconds)",
+                    "minimum": 0,
+                },
+                "size_bytes": {
+                    "type": "integer",
+                    "title": "Size (bytes)",
+                    "minimum": 0,
+                },
+                "transcript": {"type": "string", "title": "Transcript"},
+            },
+            "required": ["url"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "url": activity.metadata.get("url", ""),
+            "filename": activity.metadata.get("filename", ""),
+            "duration_seconds": activity.metadata.get("duration_seconds"),
+            "size_bytes": activity.metadata.get("size_bytes"),
+            "transcript": activity.metadata.get("transcript", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -579,8 +981,19 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     EmailInTool(),
     StatusChangeTool(),
     FileUploadTool(),
+    TaskCreatedTool(),
     TaskAssignedTool(),
     TaskCompletedTool(),
+    TaskArchivedTool(),
+    SubTaskAddedTool(),
+    PriorityChangeTool(),
+    AssigneeChangeTool(),
+    DueDateChangeTool(),
+    ApprovalRequestedTool(),
+    ApprovalResolvedTool(),
+    TimeLoggedTool(),
+    ChecklistItemCheckedTool(),
+    VoiceMemoTool(),
     ProposalCreatedTool(),
     ProposalAcceptedTool(),
     ProposalRejectedTool(),
