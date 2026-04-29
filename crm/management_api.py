@@ -22,6 +22,7 @@ from crm.models import (
     ManagementType,
     Realization,
 )
+from crm.api import _user_display_name
 from crm.events import broadcast_event
 from firms.auth import require_active_subscription, require_membership
 
@@ -340,7 +341,7 @@ def list_management_activities(
             "entity_id": a.entity_id,
             "lead_id": str(a.lead_id) if a.lead_id else None,
             "user_id": str(a.user_id) if a.user_id else None,
-            "user_name": (f"{a.user.first_name} {a.user.last_name}".strip() or a.user.email) if a.user else None,
+            "user_name": _user_display_name(a.user),
             "type": a.type,
             "content_text": a.content_text,
             "metadata": a.metadata,

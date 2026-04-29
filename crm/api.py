@@ -725,20 +725,23 @@ class ActivityIn(Schema):
     metadata: Dict[str, Any] = {}
 
 
+def _user_display_name(user) -> Optional[str]:
+    """Return a human-readable display name for an auth User, or None."""
+    if user is None:
+        return None
+    return f"{user.first_name} {user.last_name}".strip() or user.email
+
+
 def _activity_out(a: Activity) -> dict:
     from crm.streamline.registry import get_tool
     tool = get_tool(a.type)
-    user = a.user
-    user_name = None
-    if user is not None:
-        user_name = f"{user.first_name} {user.last_name}".strip() or user.email
     return {
         "id": str(a.id),
         "entity_type": a.entity_type,
         "entity_id": a.entity_id,
         "lead_id": str(a.lead_id) if a.lead_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
-        "user_name": user_name,
+        "user_name": _user_display_name(a.user),
         "type": a.type,
         "content_text": a.content_text,
         "metadata": a.metadata,
