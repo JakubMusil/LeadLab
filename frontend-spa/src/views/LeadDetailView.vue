@@ -18,11 +18,15 @@ import {
   InboxArrowDownIcon,
   ClipboardDocumentListIcon,
   CheckIcon,
+  CheckCircleIcon,
   CalendarDaysIcon,
   UserIcon,
   BellIcon,
   TrashIcon,
   DocumentIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
+  ArrowsRightLeftIcon,
   CloudArrowUpIcon,
   PaperClipIcon,
   ChevronDownIcon,
@@ -30,6 +34,30 @@ import {
 
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
+}
+
+// Map icon name strings (from the Streamline Tool Registry) to Heroicon components
+const heroIconMap: Record<string, Component> = {
+  ChatBubbleLeftIcon,
+  PhoneIcon,
+  UsersIcon,
+  PaperAirplaneIcon,
+  InboxArrowDownIcon,
+  ArrowsRightLeftIcon,
+  PaperClipIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
+}
+
+// Map activity_type to an i18n translation key (preserves multi-language support)
+const activityTypeLabelKey: Record<string, string> = {
+  comment: 'leadDetail.typeComment',
+  call: 'leadDetail.typeCall',
+  meeting: 'leadDetail.typeMeeting',
+  email_out: 'leadDetail.typeEmailOut',
+  email_in: 'leadDetail.typeEmailIn',
 }
 
 const route = useRoute()
@@ -61,6 +89,24 @@ async function loadTeamMembers() {
   }
 }
 
+// Streamline Tool Registry — loaded from the backend on mount
+interface StreamlineTool {
+  activity_type: string
+  label: string
+  icon: string
+  form_schema: {
+    type: string
+    properties?: Record<string, unknown>
+    required?: string[]
+  }
+}
+const streamlineTools = ref<StreamlineTool[]>([])
+
+async function loadStreamlineTools() {
+  const res = await api.get<StreamlineTool[]>('/api/v1/streamline/tools')
+  if (res.ok) streamlineTools.value = res.data
+}
+
 // Tasks
 interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null; watcher_ids?: string[] }
 const tasks = ref<Task[]>([])
@@ -87,14 +133,23 @@ const sidebarHasPlainText = computed(() =>
   Boolean(sidebarActivityText.value.replace(/<[^>]*>/g, '').trim()),
 )
 
-const sidebarActionItems = computed<{ value: string; label: string; icon: Component }[]>(() => [
-  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: ChatBubbleLeftIcon },
-  { value: 'call',      label: t('leadDetail.typeCall'),     icon: PhoneIcon },
-  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: UsersIcon },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: PaperAirplaneIcon },
-  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: InboxArrowDownIcon },
-  { value: 'task',      label: t('leadDetail.typeTask'),     icon: ClipboardDocumentListIcon },
-])
+// Build action items from the Streamline Tool Registry.
+// Only tools whose form schema includes a content_text field are shown in the
+// sidebar composer (user-composable activity types such as comment, call, etc.).
+// The "task" entry remains a special case since it creates a Task entity, not an Activity.
+const sidebarActionItems = computed<{ value: string; label: string; icon: Component }[]>(() => {
+  const registryItems = streamlineTools.value
+    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
+    .map((tool) => ({
+      value: tool.activity_type,
+      label: activityTypeLabelKey[tool.activity_type] ? t(activityTypeLabelKey[tool.activity_type]) : tool.label,
+      icon: heroIconMap[tool.icon] ?? ClipboardDocumentListIcon,
+    }))
+  return [
+    ...registryItems,
+    { value: 'task', label: t('leadDetail.typeTask'), icon: ClipboardDocumentListIcon },
+  ]
+})
 
 const sidebarActionIcon = computed(
   () => sidebarActionItems.value.find((i) => i.value === sidebarActionType.value)?.icon ?? ClipboardDocumentListIcon,
@@ -359,6 +414,7 @@ async function deleteLead() {
 onMounted(async () => {
   await store.fetchLead(leadId.value)
   loadTeamMembers()
+  await loadStreamlineTools()
   if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
 
