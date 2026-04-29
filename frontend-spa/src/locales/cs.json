@@ -1116,7 +1116,16 @@
     "description": "Popis",
     "quickActions": "Rychlé akce",
     "filterAll": "Vše",
-    "noActivitiesForFilter": "Žádné aktivity neodpovídají tomuto filtru."
+    "noActivitiesForFilter": "Žádné aktivity neodpovídají tomuto filtru.",
+    "typeTaskAssigned": "Úkol přiřazen",
+    "typeTaskCompleted": "Úkol dokončen",
+    "typeStatusChange": "Změna stavu",
+    "typeFileUpload": "Nahrání souboru",
+    "typeProposalCreated": "Nabídka vytvořena",
+    "typeProposalAccepted": "Nabídka přijata",
+    "typeProposalRejected": "Nabídka odmítnuta",
+    "viewProposal": "Zobrazit nabídku",
+    "statusChangedArrow": "{from} → {to}"
   },
   "sequences": {
     "title": "E-mailové sekvence",
