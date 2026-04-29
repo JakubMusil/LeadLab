@@ -290,24 +290,6 @@ def list_company_employees(request, customer_id: str):
     return 200, [_customer_out(e) for e in employees]
 
 
-@router.get("/directory/{customer_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
-def list_customer_activities(request, customer_id: str, page: int = 1, page_size: int = 20):
-    """Return the activity timeline for a Customer, newest first (paginated)."""
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        customer = Customer.objects.get(id=customer_id, firm=request.firm)
-    except Customer.DoesNotExist:
-        return 404, {"detail": "Customer not found."}
-
-    offset = (page - 1) * page_size
-    activities = Activity.objects.filter(customer=customer).select_related('user').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_activity_out(a) for a in activities]
-
-
 # ===========================================================================
 # LEADS
 # ===========================================================================
@@ -777,6 +759,24 @@ def _activity_out(a: Activity) -> dict:
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
     }
+
+
+@router.get("/directory/{customer_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
+def list_customer_activities(request, customer_id: str, page: int = 1, page_size: int = 20):
+    """Return the activity timeline for a Customer, newest first (paginated)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        customer = Customer.objects.get(id=customer_id, firm=request.firm)
+    except Customer.DoesNotExist:
+        return 404, {"detail": "Customer not found."}
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(customer=customer).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a) for a in activities]
 
 
 @router.get("/opportunities/{lead_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
