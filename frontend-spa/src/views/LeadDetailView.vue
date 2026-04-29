@@ -360,6 +360,10 @@ async function sidebarAddActivity() {
   }
 }
 
+function defaultSidebarTaskAssigneeId(): string {
+  return authStore.user ? String(authStore.user.id) : ''
+}
+
 async function sidebarAddTask() {
   if (!sidebarTaskTitle.value.trim()) return
   sidebarTaskSubmitting.value = true
@@ -386,7 +390,7 @@ async function sidebarAddTask() {
     }
     sidebarTaskTitle.value = ''
     sidebarTaskDueDate.value = ''
-    sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
+    sidebarTaskAssigneeId.value = defaultSidebarTaskAssigneeId()
     sidebarTaskWatcherIds.value = []
     sidebarTaskDescription.value = ''
     sidebarActionType.value = ''
@@ -455,9 +459,7 @@ onMounted(async () => {
   else if (activeTab.value === 'files') await loadFiles()
 
   // Default sidebar task assignee = currently logged-in user
-  if (authStore.user) {
-    sidebarTaskAssigneeId.value = String(authStore.user.id)
-  }
+  sidebarTaskAssigneeId.value = defaultSidebarTaskAssigneeId()
 
   on('lead.updated', onWsLeadUpdated)
 })

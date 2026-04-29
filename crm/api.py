@@ -737,8 +737,9 @@ def _activity_out(a: Activity) -> dict:
     from crm.streamline.registry import get_tool
     tool = get_tool(a.type)
     avatar_url = None
-    if a.user and getattr(a.user, "profile_picture", None):
-        avatar_url = a.user.profile_picture.url
+    pic = getattr(a.user, "profile_picture", None) if a.user else None
+    if pic:
+        avatar_url = pic.url
     return {
         "id": str(a.id),
         "entity_type": a.entity_type,
