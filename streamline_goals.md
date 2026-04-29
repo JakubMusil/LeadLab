@@ -281,16 +281,19 @@ pre-existing v Team / Settings / Customers / Leads / Dashboard).
 Plán ze session 2026-04-29 ho odložil jako kosmetiku. Všechny 4 views už
 mají `<ActivityTimeline>` integrovaný; zbývá:
 
-1. **Vyextrahovat `EntitySidebarActionPicker.vue`** ze `LeadDetailView`
-   (řádky 152–275 ve script + sekce `<aside>` v šabloně). Komponenta
-   přijme prop `entityType` + `entityId`, sama si načte
+1. ✅ **`EntitySidebarActionPicker.vue` extrahovaný** — komponenta v
+   `frontend-spa/src/components/EntitySidebarActionPicker.vue` přijímá
+   `entityType` + `entityId`, načítá
    `/api/v1/streamline/entity-toolbar/{type}` a zobrazí action picker
    + form-schema-driven inputy. Submit volá generický
-   `POST /api/v1/crm/activities` se správným `*_id` polem.
+   `POST /api/v1/crm/activities` se správným `*_id` polem. Použito v
+   `LeadDetailView` a `ManagementDetailView`.
 2. **2-sloupcový layout** (timeline vlevo, sidebar vpravo, sticky) v:
    - `CustomerDetailView.vue`
    - `RealizationDetailView.vue`
-   - `ManagementDetailView.vue`
+   - ✅ `ManagementDetailView.vue` *(layout už existoval; přidán
+     `EntitySidebarActionPicker` do toolbox sidebaru, timeline má `ref`
+     pro reload po quick-action submitu)*
    - `ProposalBuilderView.vue` (jen v rámci timeline tabu — builder UI
      zůstává netknutý)
 3. **Sjednotit tabs** — `overview` / `tasks` / `files` / *(entity-specific)*
