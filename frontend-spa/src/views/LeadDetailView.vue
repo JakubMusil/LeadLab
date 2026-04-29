@@ -162,6 +162,53 @@ const sidebarTaskDescription = ref('')
 const sidebarTaskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const sidebarTaskSubmitting = ref(false)
 
+// Extra metadata fields rendered from the tool's form_schema (all props except content_text / mentions)
+const sidebarExtraFields = ref<Record<string, unknown>>({})
+
+// Fields that appear ABOVE the rich-text body (e.g. email subject / recipient)
+const TOP_FIELD_KEYS = new Set(['subject', 'to', 'from_address'])
+// Fields that are auto-populated by integrations and should not appear in the manual form
+const SKIP_FIELD_KEYS = new Set(['content_text', 'mentions', 'recording_filename', 'recording_size_bytes'])
+
+interface SchemaProp {
+  key: string
+  title: string
+  type: string
+  format?: string
+  enum?: string[]
+  minimum?: number
+}
+
+const sidebarSchemaPropsAll = computed<SchemaProp[]>(() => {
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  if (!tool?.form_schema?.properties) return []
+  return Object.entries(tool.form_schema.properties as Record<string, Record<string, unknown>>)
+    .filter(([key]) => !SKIP_FIELD_KEYS.has(key))
+    .map(([key, schema]) => ({
+      key,
+      title: (schema.title as string) || key,
+      type: (schema.type as string) || 'string',
+      format: schema.format as string | undefined,
+      enum: schema.enum as string[] | undefined,
+      minimum: schema.minimum as number | undefined,
+    }))
+})
+
+// Fields shown BEFORE the rich-text editor (email header-like fields)
+const sidebarSchemaPropsTop = computed(() =>
+  sidebarSchemaPropsAll.value.filter((p) => TOP_FIELD_KEYS.has(p.key)),
+)
+// Fields shown AFTER the rich-text editor (call duration, recording URL, transcript, etc.)
+const sidebarSchemaPropsBottom = computed(() =>
+  sidebarSchemaPropsAll.value.filter((p) => !TOP_FIELD_KEYS.has(p.key)),
+)
+
+// Whether the current tool schema includes a content_text field (rendered by RichTextEditor)
+const sidebarToolHasContentText = computed(() => {
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  return !!(tool?.form_schema?.properties as Record<string, unknown> | undefined)?.content_text
+})
+
 const sidebarHasPlainText = computed(() =>
   Boolean(sidebarActivityText.value.replace(/<[^>]*>/g, '').trim()),
 )
@@ -172,9 +219,34 @@ const sidebarToolRequiresText = computed(() => {
   return tool?.form_schema.required?.includes('content_text') ?? false
 })
 
-const sidebarSubmitDisabled = computed(
-  () => sidebarActivitySubmitting.value || (sidebarToolRequiresText.value && !sidebarHasPlainText.value),
-)
+function sidebarRequiresField(key: string): boolean {
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  return tool?.form_schema.required?.includes(key) ?? false
+}
+
+const sidebarSubmitDisabled = computed(() => {
+  if (sidebarActivitySubmitting.value) return true
+  if (sidebarToolRequiresText.value && !sidebarHasPlainText.value) return true
+  // Check that all required non-content_text fields are filled
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  for (const key of (tool?.form_schema.required ?? [])) {
+    if (key === 'content_text') continue
+    const val = sidebarExtraFields.value[key]
+    if (val === undefined || val === null || val === '') return true
+  }
+  return false
+})
+
+function openSidebarAction(type: string) {
+  sidebarActionType.value = type
+  sidebarActivityText.value = ''
+  sidebarExtraFields.value = {}
+}
+
+function closeSidebarAction() {
+  sidebarActionType.value = ''
+  sidebarExtraFields.value = {}
+}
 
 // Build action items directly from the Lead entity-toolbar registry.
 // The backend Lead.TOOLBAR_TOOLS class attribute controls which tools appear
@@ -420,7 +492,10 @@ async function sidebarAddActivity() {
   const mentionedIds = sidebarActionType.value === 'comment'
     ? (sidebarRichEditorRef.value?.getMentionedIds() ?? [])
     : []
-  const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
+  const metadata: Record<string, unknown> = {
+    ...sidebarExtraFields.value,
+    ...(mentionedIds.length ? { mentions: mentionedIds } : {}),
+  }
   const res = await api.post('/api/v1/crm/activities', {
     lead_id: leadId.value,
     type: sidebarActionType.value,
@@ -431,6 +506,7 @@ async function sidebarAddActivity() {
   if (res.ok) {
     sidebarActivityText.value = ''
     sidebarActionType.value = ''
+    sidebarExtraFields.value = {}
     activityTimelineRef.value?.load()
     toast.success(t('leadDetail.activityAdded'))
   } else {
@@ -717,14 +793,14 @@ function getTabLabel(tab: string): string {
                 v-for="item in sidebarActionItems"
                 :key="item.value"
                 class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left"
-                @click="sidebarActionType = item.value; sidebarActivityText = ''"
+                @click="openSidebarAction(item.value)"
               >
                 <component :is="item.icon" class="w-4 h-4 flex-shrink-0" />
                 {{ item.label }}
               </button>
             </div>
 
-            <!-- Step 2a: activity form (comment / call / meeting / email) -->
+            <!-- Step 2a: activity form (comment / call / meeting / email etc.) -->
             <div v-else-if="sidebarActionType !== 'task'" class="space-y-2">
               <div class="flex items-center gap-2 mb-2">
                 <component :is="sidebarActionIcon" class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
@@ -733,10 +809,27 @@ function getTabLabel(tab: string): string {
                 </span>
                 <button
                   class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                  @click="sidebarActionType = ''"
+                  @click="closeSidebarAction"
                 >← {{ t('leadDetail.changeType') }}</button>
               </div>
+
+              <!-- "Header" fields: subject, to, from_address — shown above the message body -->
+              <template v-for="prop in sidebarSchemaPropsTop" :key="prop.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    {{ prop.title }}<span v-if="sidebarRequiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
+                  </label>
+                  <input
+                    v-model="sidebarExtraFields[prop.key]"
+                    :type="prop.format === 'email' ? 'email' : prop.format === 'uri' ? 'url' : 'text'"
+                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  />
+                </div>
+              </template>
+
+              <!-- Message body (rich text) — only when tool schema includes content_text -->
               <RichTextEditor
+                v-if="sidebarToolHasContentText"
                 ref="sidebarRichEditorRef"
                 v-model="sidebarActivityText"
                 :placeholder="sidebarActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
@@ -745,6 +838,47 @@ function getTabLabel(tab: string): string {
                 :upload-url="sidebarActionType === 'comment' ? `/api/v1/crm/opportunities/${leadId}/attachments` : undefined"
                 @file-uploaded="(f) => { files.unshift(f) }"
               />
+
+              <!-- "Footer" fields: duration, recording URL, transcript, etc. — shown below body -->
+              <template v-for="prop in sidebarSchemaPropsBottom" :key="prop.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    {{ prop.title }}<span v-if="sidebarRequiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
+                  </label>
+                  <!-- Numeric field (e.g. duration_minutes) -->
+                  <input
+                    v-if="prop.type === 'integer' || prop.type === 'number'"
+                    v-model.number="sidebarExtraFields[prop.key]"
+                    type="number"
+                    :min="prop.minimum ?? 0"
+                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  />
+                  <!-- Enum select -->
+                  <select
+                    v-else-if="prop.enum"
+                    v-model="sidebarExtraFields[prop.key]"
+                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  >
+                    <option value="">—</option>
+                    <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                  <!-- Long text field (e.g. transcript) -->
+                  <textarea
+                    v-else-if="prop.key === 'transcript'"
+                    v-model="sidebarExtraFields[prop.key]"
+                    rows="3"
+                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
+                  />
+                  <!-- Regular text / url / email input -->
+                  <input
+                    v-else
+                    v-model="sidebarExtraFields[prop.key]"
+                    :type="prop.format === 'email' ? 'email' : prop.format === 'uri' ? 'url' : 'text'"
+                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  />
+                </div>
+              </template>
+
               <div class="flex justify-end">
                 <button
                   :disabled="sidebarSubmitDisabled"
@@ -761,7 +895,7 @@ function getTabLabel(tab: string): string {
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
                 <button
                   class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                  @click="sidebarActionType = ''"
+                  @click="closeSidebarAction"
                 >← {{ t('leadDetail.changeType') }}</button>
               </div>
               <input
