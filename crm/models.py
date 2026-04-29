@@ -65,8 +65,19 @@ class ActivityType(models.TextChoices):
     MEETING = "meeting", "Meeting"
     STATUS_CHANGE = "status_change", "Status Change"
     FILE_UPLOAD = "file_upload", "File Upload"
+    TASK_CREATED = "task_created", "Task Created"
     TASK_ASSIGNED = "task_assigned", "Task Assigned"
     TASK_COMPLETED = "task_completed", "Task Completed"
+    TASK_ARCHIVED = "task_archived", "Task Archived"
+    SUB_TASK_ADDED = "sub_task_added", "Sub-task Added"
+    PRIORITY_CHANGE = "priority_change", "Priority Change"
+    ASSIGNEE_CHANGE = "assignee_change", "Assignee Change"
+    DUE_DATE_CHANGE = "due_date_change", "Due Date Change"
+    APPROVAL_REQUESTED = "approval_requested", "Approval Requested"
+    APPROVAL_RESOLVED = "approval_resolved", "Approval Resolved"
+    TIME_LOGGED = "time_logged", "Time Logged"
+    CHECKLIST_ITEM_CHECKED = "checklist_item_checked", "Checklist Item Checked"
+    VOICE_MEMO = "voice_memo", "Voice Memo"
     PROPOSAL_CREATED = "proposal_created", "Proposal Created"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     PROPOSAL_REJECTED = "proposal_rejected", "Proposal Rejected"
@@ -304,6 +315,13 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
         related_name="activities",
     )
+    task = models.ForeignKey(
+        "Task",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -337,6 +355,8 @@ class Activity(models.Model):
             models.Index(fields=["management", "-created_at"], name="crm_activit_mgmt_created_idx"),
             models.Index(fields=["customer", "-created_at"], name="crm_activit_cust_created_idx"),
             models.Index(fields=["proposal", "-created_at"], name="crm_activit_prop_created_idx"),
+            models.Index(fields=["task", "-created_at"], name="crm_activit_task_created_idx"),
+            models.Index(fields=["task", "type"], name="crm_activit_task_type_idx"),
         ]
 
     # ------------------------------------------------------------------
@@ -356,6 +376,8 @@ class Activity(models.Model):
             return "customer"
         if self.proposal_id:
             return "proposal"
+        if self.task_id:
+            return "task"
         return "unknown"
 
     @property
@@ -371,6 +393,8 @@ class Activity(models.Model):
             return str(self.customer_id)
         if self.proposal_id:
             return str(self.proposal_id)
+        if self.task_id:
+            return str(self.task_id)
         return ""
 
     def __str__(self):
@@ -378,6 +402,49 @@ class Activity(models.Model):
             f"{self.get_type_display()} on {self.entity_type}#{self.entity_id} "
             f"at {self.created_at:%Y-%m-%d %H:%M}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Activity Reaction (generic emoji reactions on any Activity)
+# ---------------------------------------------------------------------------
+
+class ActivityReaction(models.Model):
+    """
+    A generic emoji reaction (e.g. 👍 ❤️ 😂) on an ``Activity``.
+
+    Replaces the task-specific ``TaskCommentReaction`` so that any activity
+    in the unified Streamline timeline (lead / customer / task / realization /
+    management / proposal) can be reacted to.
+
+    The ``unique_together`` constraint ensures a user can add each emoji only
+    once per activity; toggling sends the same request to remove it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    activity = models.ForeignKey(
+        Activity,
+        on_delete=models.CASCADE,
+        related_name="reactions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="activity_reactions",
+    )
+    emoji = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "activity reaction"
+        verbose_name_plural = "activity reactions"
+        unique_together = [("activity", "user", "emoji")]
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["activity", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.emoji} by {self.user_id} on activity {self.activity_id}"
 
 
 # ---------------------------------------------------------------------------

@@ -737,12 +737,13 @@ class ActivityOut(Schema):
 
 
 class ActivityIn(Schema):
-    # Exactly one of the five entity IDs must be provided.
+    # Exactly one of the entity IDs must be provided.
     lead_id: Optional[str] = None
     realization_id: Optional[str] = None
     management_id: Optional[str] = None
     customer_id: Optional[str] = None
     proposal_id: Optional[str] = None
+    task_id: Optional[str] = None
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
@@ -814,6 +815,30 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
     return 200, [_activity_out(a) for a in activities]
 
 
+@router.get("/tasks/{task_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
+def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 20):
+    """Return the unified Streamline activity timeline for a Task, newest first (paginated).
+
+    This endpoint is the read-side of the Streamline unification — once
+    ``TaskTimelineEntry`` is migrated into ``Activity`` (Phase 4), this will be
+    the canonical task timeline endpoint.
+    """
+    from crm.models import Task as TaskModel
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = TaskModel.objects.get(id=task_id, firm=request.firm)
+    except TaskModel.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(task=task).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a) for a in activities]
+
+
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
@@ -831,10 +856,10 @@ def create_activity(request, payload: ActivityIn):
 
     # --- resolve entity ---
     if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id),
-            bool(payload.customer_id), bool(payload.proposal_id)]) != 1:
-        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id must be provided."}
+            bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
+        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id, task_id must be provided."}
 
-    lead = realization = management = customer = proposal = None
+    lead = realization = management = customer = proposal = task = None
     entity_title = ""
 
     if payload.lead_id:
@@ -868,13 +893,20 @@ def create_activity(request, payload: ActivityIn):
             entity_title = proposal.title
         except ProposalModel.DoesNotExist:
             return 400, {"detail": "Proposal not found in this Firm."}
+    elif payload.task_id:
+        from crm.models import Task as TaskModel
+        try:
+            task = TaskModel.objects.get(id=payload.task_id, firm=request.firm)
+            entity_title = task.title
+        except TaskModel.DoesNotExist:
+            return 400, {"detail": "Task not found in this Firm."}
 
     from crm.streamline.registry import get_tool
     tool = get_tool(payload.type)
     if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
 
-    entity = lead or realization or management or customer or proposal
+    entity = lead or realization or management or customer or proposal or task
     context = {
         "firm": request.firm,
         "user": request.user,
@@ -888,6 +920,7 @@ def create_activity(request, payload: ActivityIn):
             management=management,
             customer=customer,
             proposal=proposal,
+            task=task,
             user=request.user,
             type=payload.type,
             content_text=payload.content_text,

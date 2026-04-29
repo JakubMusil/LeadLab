@@ -152,6 +152,204 @@ class TaskModelTest(CRMFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Streamline Tools (Phase 0 + 1) — schema / render / side-effects
+# ---------------------------------------------------------------------------
+
+class StreamlineToolsTest(CRMFixtureMixin, TestCase):
+    """Validate every registered StreamlineTool exposes a sane schema and
+    correctly renders its tool_payload.  Phase 0 + 1 unification."""
+
+    def _build_activity(self, type_value, metadata=None, **kwargs):
+        return Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type=type_value,
+            metadata=metadata or {},
+            **kwargs,
+        )
+
+    def test_all_builtin_tools_registered(self):
+        from crm.streamline.registry import all_tools, get_tool
+        registered_types = {t.activity_type for t in all_tools()}
+        expected_new = {
+            "priority_change", "assignee_change", "due_date_change",
+            "sub_task_added", "task_created", "task_archived",
+            "approval_requested", "approval_resolved", "time_logged",
+            "checklist_item_checked", "voice_memo",
+        }
+        self.assertTrue(expected_new.issubset(registered_types))
+        # All registered tools also have a schema
+        for at in registered_types:
+            tool = get_tool(at)
+            self.assertIsNotNone(tool)
+            schema = tool.get_schema()
+            self.assertIsInstance(schema, dict)
+            self.assertEqual(schema.get("type"), "object")
+
+    def test_priority_change_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.PRIORITY_CHANGE,
+            metadata={"old_priority": "low", "new_priority": "high"},
+        )
+        out = get_tool("priority_change").render_payload(a)
+        self.assertEqual(out["new_priority"], "high")
+        self.assertEqual(out["old_priority"], "low")
+
+    def test_due_date_change_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.DUE_DATE_CHANGE,
+            metadata={"old_due_date": "2024-01-01", "new_due_date": "2024-02-01"},
+        )
+        out = get_tool("due_date_change").render_payload(a)
+        self.assertEqual(out["new_due_date"], "2024-02-01")
+
+    def test_sub_task_added_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.SUB_TASK_ADDED,
+            metadata={"subtask_id": "abc", "subtask_title": "Write tests"},
+        )
+        out = get_tool("sub_task_added").render_payload(a)
+        self.assertEqual(out["subtask_title"], "Write tests")
+
+    def test_task_created_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TASK_CREATED,
+            metadata={"task_id": "t1", "task_title": "T"},
+        )
+        out = get_tool("task_created").render_payload(a)
+        self.assertEqual(out["task_title"], "T")
+
+    def test_task_archived_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TASK_ARCHIVED,
+            metadata={"task_id": "t1", "task_title": "T", "archived": True},
+        )
+        out = get_tool("task_archived").render_payload(a)
+        self.assertTrue(out["archived"])
+
+    def test_approval_resolved_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.APPROVAL_RESOLVED,
+            metadata={"decision": "accepted", "approver_name": "Alice"},
+        )
+        out = get_tool("approval_resolved").render_payload(a)
+        self.assertEqual(out["decision"], "accepted")
+
+    def test_time_logged_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TIME_LOGGED,
+            metadata={"minutes": 45, "description": "Pair programming"},
+        )
+        out = get_tool("time_logged").render_payload(a)
+        self.assertEqual(out["minutes"], 45)
+
+    def test_checklist_item_checked_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.CHECKLIST_ITEM_CHECKED,
+            metadata={"item_text": "Buy milk", "is_checked": True},
+        )
+        out = get_tool("checklist_item_checked").render_payload(a)
+        self.assertTrue(out["is_checked"])
+
+    def test_voice_memo_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.VOICE_MEMO,
+            metadata={"url": "/m/v.webm", "duration_seconds": 17, "transcript": "hello"},
+        )
+        out = get_tool("voice_memo").render_payload(a)
+        self.assertEqual(out["duration_seconds"], 17)
+        self.assertEqual(out["url"], "/m/v.webm")
+
+    def test_assignee_change_creates_notification_for_new_assignee(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.ASSIGNEE_CHANGE,
+            metadata={
+                "old_assignee_id": str(self.owner.id),
+                "new_assignee_id": str(self.worker.id),
+            },
+        )
+        tool = get_tool("assignee_change")
+        tool.process_action(
+            activity,
+            self.lead,
+            {"metadata": {
+                "old_assignee_id": str(self.owner.id),
+                "new_assignee_id": str(self.worker.id),
+            }},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                user=self.worker, event="activity.assigned"
+            ).count(),
+            1,
+        )
+
+    def test_assignee_change_does_not_notify_self(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.ASSIGNEE_CHANGE,
+            metadata={"new_assignee_id": str(self.owner.id)},
+        )
+        get_tool("assignee_change").process_action(
+            activity,
+            self.lead,
+            {"metadata": {"new_assignee_id": str(self.owner.id)}},
+            {"firm": self.firm, "user": self.owner, "entity_title": ""},
+        )
+        self.assertEqual(
+            Notification.objects.filter(event="activity.assigned").count(), 0
+        )
+
+
+class ActivityTaskLinkTest(CRMFixtureMixin, TestCase):
+    """Phase 0 — Activity can now be linked to a Task entity."""
+
+    def test_activity_can_be_linked_to_task(self):
+        task = Task.objects.create(firm=self.firm, lead=self.lead, title="T")
+        a = Activity.objects.create(
+            task=task,
+            user=self.owner,
+            type=ActivityType.COMMENT,
+            content_text="Note on task",
+        )
+        self.assertEqual(a.entity_type, "task")
+        self.assertEqual(a.entity_id, str(task.id))
+        self.assertEqual(task.activities.count(), 1)
+
+
+class ActivityReactionModelTest(CRMFixtureMixin, TestCase):
+    def test_create_and_unique_per_user_emoji(self):
+        from crm.models import ActivityReaction
+        a = Activity.objects.create(
+            lead=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="x"
+        )
+        ActivityReaction.objects.create(activity=a, user=self.owner, emoji="👍")
+        # Same user, same emoji → unique constraint should kick in
+        from django.db import IntegrityError, transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ActivityReaction.objects.create(activity=a, user=self.owner, emoji="👍")
+        # Different emoji is fine
+        ActivityReaction.objects.create(activity=a, user=self.owner, emoji="❤️")
+        self.assertEqual(a.reactions.count(), 2)
+
+
+# ---------------------------------------------------------------------------
 # CRM API integration tests
 # ---------------------------------------------------------------------------
 

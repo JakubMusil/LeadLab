@@ -32,6 +32,14 @@ def _build_entity_toolbar() -> None:
             "management": getattr(Management, "TOOLBAR_TOOLS", ["comment", "task"]),
             "customer": ["comment", "call", "meeting", "email_out", "task"],
             "proposal": ["comment", "task"],
+            "task": [
+                "comment",
+                "file_upload",
+                "voice_memo",
+                "checklist_item_checked",
+                "time_logged",
+                "sub_task_added",
+            ],
         }
     except Exception:
         pass
