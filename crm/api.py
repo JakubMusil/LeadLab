@@ -209,7 +209,8 @@ def create_customer(request, payload: CustomerIn):
     from crm.tasks import evaluate_automation_rules
     from django.db import transaction as db_tx
     db_tx.on_commit(
-        lambda ctx=_auto_ctx: evaluate_automation_rules.delay("contact_created", str(request.firm.id), ctx)
+        lambda ctx=_auto_ctx: evaluate_automation_rules.delay("contact_created", str(request.firm.id), ctx),
+        robust=True,
     )
 
     return 201, _customer_out(customer)
@@ -598,7 +599,8 @@ def create_lead(request, payload: LeadIn):
     _automation_ctx = _build_lead_automation_context(lead, request.firm)
     from django.db import transaction
     transaction.on_commit(
-        lambda: evaluate_automation_rules.delay("lead_created", str(request.firm.pk), _automation_ctx)
+        lambda: evaluate_automation_rules.delay("lead_created", str(request.firm.pk), _automation_ctx),
+        robust=True,
     )
 
     return 201, _lead_out(lead)
@@ -669,7 +671,8 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
             transaction.on_commit(
                 lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
                     "lead_status_change", str(request.firm.pk), ctx
-                )
+                ),
+                robust=True,
             )
         else:
             lead.save()
@@ -1221,7 +1224,7 @@ def _resolve_user_in_firm(user_id: str, firm) -> tuple:
     from users.models import User
     try:
         user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
+    except Exception:
         return None, (400, {"detail": "User not found."})
     if not Membership.objects.filter(user=user, firm=firm).exists():
         return None, (400, {"detail": "User is not a member of this Firm."})
@@ -1449,7 +1452,8 @@ def create_task(request, payload: TaskIn):
     transaction.on_commit(
         lambda ctx=_task_auto_ctx: evaluate_automation_rules.delay(
             "task_created", str(request.firm.pk), ctx
-        )
+        ),
+        robust=True,
     )
     return 201, _task_out(task, request.user)
 
@@ -1697,7 +1701,8 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     transaction.on_commit(
         lambda ctx=_task_auto_ctx: evaluate_automation_rules.delay(
             "task_completed", str(request.firm.pk), ctx
-        )
+        ),
+        robust=True,
     )
     if follow_up_task:
         _notify_task_watchers(follow_up_task, "task.created")
