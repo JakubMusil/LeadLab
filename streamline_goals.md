@@ -340,22 +340,72 @@ mají `<ActivityTimeline>` integrovaný; zbývá:
 
 ### Co dál po Kroku C
 
-Možnosti pro navazující session (od nejlevnější po nejtěžší):
+Stav po session 2026-04-29 (druhá iterace):
 
-1. **Fáze 2 backend úklid** (sekce C níže) — smazat
-   `LeadStatusHistory` model + zápis ze `StatusChangeTool`, přepsat
-   velocity reporty nad `Activity.objects.filter(type="status_change")`.
-   Bez datové migrace, jen `RunSQL DROP TABLE`. Cca 1 PR.
-2. **Fáze 3 backend úklid** (sekce C níže) — smazat `LeadAttachment` +
-   `TaskAttachment` modely + endpointy + frontendové komponenty.
-   `Document` model už pokrývá vše. Cca 1 PR (čistě delete-only).
-3. **Inline `description` edit pro Realization** — nice-to-have,
-   RichTextEditor pattern z `LeadDetailView`. Cca 1 menší PR.
-4. **Fáze 6 — nové tooly nad rámec** (`ProposalViewedTool` aktivní,
-   `AiSummaryTool`, `MentionTool`) — sekce 5.2 níže. Volitelné,
-   produktové rozhodnutí.
+1. ✅ **Fáze 2 backend úklid** (`LeadStatusHistory`) — již proběhlo
+   v migraci `0038_drop_legacy_attachment_comment_timeline_models.py`.
+   Žádné runtime referencie nezbyly; jen historický log v této markdown.
+2. ✅ **Fáze 3 backend úklid** (`LeadAttachment` + `TaskAttachment`) —
+   také proběhlo v migraci `0038`. Pouze legacy upload-path helpers
+   (`_attachment_upload_to`, `_task_attachment_upload_to`,
+   `_voice_attachment_upload_to`) v `crm/models.py` zůstaly s docstring
+   *"kept for migrations"* — historické migrace 0002/0014/0018 je
+   importují, takže smazat nelze.
+3. ✅ **Inline `description` edit pro Realization** *(2026-04-29 session
+   druhá iterace)* — `RealizationDetailView.vue` Description sidebar
+   karta umí inline edit:
+   - State: `editingDescription`, `descriptionDraft`, `savingDescription`
+     + `startEditDescription` / `saveDescription` / `cancelEditDescription`.
+   - Edit button (… vpravo) → textarea (4 rows, resize-y) + Save/Cancel.
+   - Když je `description` prázdný, klik na placeholder spustí editaci.
+   - Plain text (textarea, ne RichTextEditor) — odpovídá datovému modelu
+     (Realization `description` je plain string, ne HTML — na rozdíl od
+     `Lead.description`).
+   - Save přes `store.updateRealization(id, { description })`, success
+     toast `realizations.updated`, error `realizations.failedToUpdate`.
+   - i18n: 2 nové klíče `realizations.edit` + `realizations.failedToUpdate`
+     × 4 lokály (en/cs/de/pl).
+4. ✅ **Frontend dead-code cleanup** *(2026-04-29 session druhá iterace)*
+   — odstraněny nepoužívané `fetchTaskAttachments` /
+   `uploadTaskAttachment` / `deleteTaskAttachment` + interface
+   `TaskDocumentOut` z `frontend-spa/src/stores/tasks.ts`. Šlo o legacy
+   alias k `tasks/{id}/documents` Document API; nikde se nikdy
+   nezavolaly.
+5. ✅ **Fáze 6 — nové tooly nad rámec** — již implementováno v migraci
+   `0039_phase6_streamline_bonus_activity_types`
+   (`ProposalViewedTool`, `AiSummaryTool`, `AiSuggestedActionTool`,
+   `MentionTool`, `SystemNoteTool`, `TagAddedTool`, `TagRemovedTool`,
+   `PinnedTool`, `UnpinnedTool`, `LinkTool`, `PaymentReceivedTool`,
+   `InvoiceSentTool`, `SignatureRequestedTool`, `SignatureCompletedTool`).
+   Viz sekce 5.2 níže.
 
-### C) Pokračovat s úklidem Fáze 2 + 3 backend *(volitelné, ale teď je to levné)*
+### Co dál po této session
+
+Backend i frontend Streamline systému jsou **kompletně sjednocené** —
+všechny entity (lead, customer, realization, management, proposal, task)
+mají jednotný `Activity` log + `EntitySidebarActionPicker` + responzivní
+2-col layout. Reálné navazující práce už nejsou v tématu Streamline,
+ale v okolních oblastech:
+
+1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
+   každou entitní timeline (lead, task, realization, management,
+   customer, proposal) ověřit happy-path s Cypress/Playwright. Zatím
+   pokryté pouze unit testy v `crm/tests.py`.
+2. **Odstranit baseline `vue-tsc` errory** v `RealizationDetailView.vue`
+   (3-arg `api.post`/`patch`/`delete` s `{headers}`) — pre-existing 6
+   errorů, které blokují čistý type-check. Jednoduchá oprava — refaktor
+   na `api.post(url, body, { headers })` → `api.post(url, body)` (firm
+   header se už nastavuje globálně přes interceptor).
+3. **`Task.realization` FK + Tasks tab v Realization detail** —
+   v `RealizationDetailView` je placeholder `tasks` tab; backend
+   `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
+   + `list_tasks` filtr + i18n + UI.
+4. **Sekce 5.3 / 5.4 / 5.5** v `streamline_goals.md` — analytics nad
+   timeline (response time, channel mix, funnel attribution),
+   automatizace (rules over Activity), integrace (e-mail/voicemail
+   import). Produktové rozhodnutí, žádný blokátor.
+
+### C) Pokračovat s úklidem Fáze 2 + 3 backend *(už hotovo — viz výše)*
 
 Když odpadla povinnost migrovat data, dříve odložené úklidové fáze jsou
 triviální:

@@ -67,6 +67,36 @@ function startEditTitle() {
   editingTitle.value = true
 }
 
+// Inline description editing (plain text — Realization.description is a plain string)
+const editingDescription = ref(false)
+const descriptionDraft = ref('')
+const savingDescription = ref(false)
+
+function startEditDescription() {
+  descriptionDraft.value = realization.value?.description ?? ''
+  editingDescription.value = true
+}
+
+async function saveDescription() {
+  if (!realization.value) return
+  savingDescription.value = true
+  try {
+    const result = await store.updateRealization(realization.value.id, { description: descriptionDraft.value })
+    if (result) {
+      toast.success(t('realizations.updated'))
+      editingDescription.value = false
+    } else {
+      toast.error(t('realizations.failedToUpdate'))
+    }
+  } finally {
+    savingDescription.value = false
+  }
+}
+
+function cancelEditDescription() {
+  editingDescription.value = false
+}
+
 async function updateStatus(status: string) {
   if (!realization.value) return
   await store.updateRealization(realization.value.id, { status })
@@ -290,8 +320,43 @@ onMounted(async () => {
 
         <!-- Description -->
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('realizations.descLabel') }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ realization.description || '—' }}</p>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ t('realizations.descLabel') }}</h3>
+            <button
+              v-if="!editingDescription"
+              class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              @click="startEditDescription"
+            >{{ t('realizations.edit') }}</button>
+          </div>
+          <template v-if="editingDescription">
+            <textarea
+              v-model="descriptionDraft"
+              rows="4"
+              class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 dark:focus:border-red-500 resize-y"
+              :placeholder="t('realizations.descPlaceholder')"
+            />
+            <div class="flex justify-end gap-2 mt-1.5">
+              <button
+                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                @click="cancelEditDescription"
+              >{{ t('common.cancel') }}</button>
+              <button
+                :disabled="savingDescription"
+                class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                @click="saveDescription"
+              >{{ savingDescription ? t('realizations.saving') : t('common.save') }}</button>
+            </div>
+          </template>
+          <p
+            v-else-if="realization.description"
+            class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap cursor-pointer"
+            @click="startEditDescription"
+          >{{ realization.description }}</p>
+          <p
+            v-else
+            class="text-sm text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
+            @click="startEditDescription"
+          >{{ t('realizations.descPlaceholder') }}</p>
         </div>
 
         <!-- Milestones progress -->

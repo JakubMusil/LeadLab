@@ -125,17 +125,6 @@ export interface FollowUpTaskIn {
   lead_id?: string | null
 }
 
-export interface TaskDocumentOut {
-  id: string
-  task_id: string
-  uploaded_by_id: string | null
-  original_filename: string
-  content_type: string
-  size_bytes: number
-  url: string
-  created_at: string
-}
-
 export interface TaskFetchOpts {
   assignedToId?: string | 'all'
   completed?: boolean
@@ -432,30 +421,6 @@ export const useTasksStore = defineStore('tasks', () => {
       return { ok: true, is_favourite: res.data.is_favourite }
     }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to toggle favourite.') }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Task documents (replaces legacy /tasks/:id/attachments — Document-backed)
-  // ---------------------------------------------------------------------------
-
-  async function fetchTaskAttachments(taskId: string): Promise<{ ok: boolean; data?: TaskDocumentOut[]; error?: string }> {
-    const res = await api.get<TaskDocumentOut[]>(`/api/v1/crm/tasks/${taskId}/documents`)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load attachments.') }
-  }
-
-  async function uploadTaskAttachment(taskId: string, file: File): Promise<{ ok: boolean; data?: TaskDocumentOut; error?: string }> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await api.postForm<TaskDocumentOut>(`/api/v1/crm/tasks/${taskId}/documents`, formData)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to upload file.') }
-  }
-
-  async function deleteTaskAttachment(taskId: string, attachmentId: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/documents/${attachmentId}`)
-    if (res.ok) return { ok: true }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete attachment.') }
   }
 
   // ---------------------------------------------------------------------------
@@ -799,9 +764,6 @@ export const useTasksStore = defineStore('tasks', () => {
     completeTask,
     completeTaskWithFollowUp,
     toggleFavourite,
-    fetchTaskAttachments,
-    uploadTaskAttachment,
-    deleteTaskAttachment,
     // Phase 3
     fetchSubtasks,
     createSubtask,
