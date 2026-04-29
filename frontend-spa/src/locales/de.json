@@ -1123,7 +1123,8 @@
     "typeProposalCreated": "Angebot erstellt",
     "typeProposalAccepted": "Angebot akzeptiert",
     "typeProposalRejected": "Angebot abgelehnt",
-    "viewProposal": "Angebot anzeigen"
+    "viewProposal": "Angebot anzeigen",
+    "statusChangedArrow": "{from} → {to}"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

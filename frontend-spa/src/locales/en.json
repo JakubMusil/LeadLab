@@ -1123,7 +1123,8 @@
     "typeProposalCreated": "Proposal created",
     "typeProposalAccepted": "Proposal accepted",
     "typeProposalRejected": "Proposal rejected",
-    "viewProposal": "View proposal"
+    "viewProposal": "View proposal",
+    "statusChangedArrow": "{from} → {to}"
   },
   "sequences": {
     "title": "Email Sequences",

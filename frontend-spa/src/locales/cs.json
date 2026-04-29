@@ -1124,7 +1124,8 @@
     "typeProposalCreated": "Nabídka vytvořena",
     "typeProposalAccepted": "Nabídka přijata",
     "typeProposalRejected": "Nabídka odmítnuta",
-    "viewProposal": "Zobrazit nabídku"
+    "viewProposal": "Zobrazit nabídku",
+    "statusChangedArrow": "{from} → {to}"
   },
   "sequences": {
     "title": "E-mailové sekvence",

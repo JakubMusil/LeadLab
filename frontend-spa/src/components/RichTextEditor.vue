@@ -13,6 +13,7 @@
  */
 import { ref, onBeforeUnmount, onMounted, onUnmounted, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { useToast } from '@/composables/useToast'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
@@ -83,6 +84,7 @@ const mentionPopup = ref<MentionPopupState>({
 
 const fileUploadRef = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
+const toast = useToast()
 
 async function handleFileUpload(e: Event) {
   if (!props.uploadUrl) return
@@ -100,7 +102,11 @@ async function handleFileUpload(e: Event) {
       credentials: 'include',
       body: fd,
     })
-    if (!res.ok) return
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null)
+      toast.error(errorData?.detail ?? 'Upload failed.')
+      return
+    }
     const uploaded = (await res.json()) as UploadedFile
     if (file.type.startsWith('image/')) {
       editor.value?.chain().focus().setImage({ src: uploaded.url, alt: uploaded.original_filename }).run()
@@ -110,6 +116,8 @@ async function handleFileUpload(e: Event) {
       ).run()
     }
     emit('fileUploaded', uploaded)
+  } catch {
+    toast.error('Upload failed.')
   } finally {
     isUploading.value = false
   }

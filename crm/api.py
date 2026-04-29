@@ -1459,7 +1459,7 @@ def create_task(request, payload: TaskIn):
                 User = get_user_model()
                 try:
                     assignee = User.objects.get(id=payload.assigned_to_id)
-                    assignee_name = f"{assignee.first_name} {assignee.last_name}".strip() or str(assignee)
+                    assignee_name = assignee.get_full_name() or str(assignee)
                 except User.DoesNotExist:
                     pass
             Activity.objects.create(

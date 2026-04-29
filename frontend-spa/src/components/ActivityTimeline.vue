@@ -480,9 +480,10 @@ defineExpose({ load: () => loadActivities(1) })
           <!-- eslint-disable-next-line vue/no-v-html -->
           <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
           <p v-if="act.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            {{ translateLeadStatus((act.metadata as Record<string, string>).old_status) }}
-            →
-            {{ translateLeadStatus((act.metadata as Record<string, string>).new_status) }}
+            {{ t('leadDetail.statusChangedArrow', {
+              from: translateLeadStatus((act.metadata as Record<string, string>).old_status),
+              to: translateLeadStatus((act.metadata as Record<string, string>).new_status),
+            }) }}
           </p>
           <p v-else-if="act.type === 'task_completed' && (act.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             {{ (act.metadata as Record<string, string>).title }}
