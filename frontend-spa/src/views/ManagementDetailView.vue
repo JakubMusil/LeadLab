@@ -300,13 +300,13 @@ async function deleteDocument() {
           <!-- Documents tab -->
           <div v-else-if="activeTab === 'documents'" class="space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Dokumenty</h3>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('management.documents') }}</h3>
               <button
                 @click="docFileInputRef?.click()"
                 :disabled="docsUploading"
                 class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
               >
-                {{ docsUploading ? 'Nahrávám…' : '⬆ Nahrát' }}
+                {{ docsUploading ? t('management.uploading') : t('management.uploadBtn') }}
               </button>
               <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
             </div>
@@ -317,7 +317,7 @@ async function deleteDocument() {
 
             <div v-else-if="documents.length === 0" class="text-center py-10">
               <div class="text-4xl mb-2">📁</div>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Žádné dokumenty</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('management.noDocuments') }}</p>
             </div>
 
             <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
@@ -337,10 +337,10 @@ async function deleteDocument() {
             <!-- Delete confirm -->
             <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
               <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-                <p class="text-gray-800 dark:text-white font-medium mb-4">Opravdu chcete smazat tento dokument?</p>
+                <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('management.confirmDocDelete') }}</p>
                 <div class="flex gap-3 justify-end">
-                  <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Zrušit</button>
-                  <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">Smazat</button>
+                  <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('management.cancelBtn') }}</button>
+                  <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('management.deleteBtn') }}</button>
                 </div>
               </div>
             </div>
@@ -351,14 +351,14 @@ async function deleteDocument() {
         <div class="w-64 flex-shrink-0 space-y-4">
           <!-- Customer -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Zákazník</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.customer') }}</div>
             <div v-if="record.customer_name" class="text-sm text-gray-900 dark:text-white">{{ record.customer_name }}</div>
-            <div v-else class="text-sm text-gray-400 italic">Nepřiřazen</div>
+            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassigned') }}</div>
           </div>
 
           <!-- Realization -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Realizace</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.realization') }}</div>
             <div v-if="record.realization_title">
               <button
                 @click="router.push(`/app/realizations/${record.realization_id}`)"
@@ -367,26 +367,26 @@ async function deleteDocument() {
                 {{ record.realization_title }}
               </button>
             </div>
-            <div v-else class="text-sm text-gray-400 italic">Nepřiřazena</div>
+            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassignedF') }}</div>
           </div>
 
           <!-- Assigned to -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Přiřazeno</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.assigned') }}</div>
             <div v-if="record.assigned_to_name" class="text-sm text-gray-900 dark:text-white">{{ record.assigned_to_name }}</div>
-            <div v-else class="text-sm text-gray-400 italic">Nepřiřazeno</div>
+            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassignedN') }}</div>
           </div>
 
           <!-- SLA / Expiry -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">SLA / Expiry</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.slaExpiry') }}</div>
             <div v-if="record.expires_at">
               <div class="text-sm text-gray-900 dark:text-white mb-1">{{ formatDateTime(record.expires_at) }}</div>
               <span :class="slaBadgeClass(record.sla_color)" class="text-xs px-2 py-0.5 rounded font-medium">
                 {{ slaLabel(record.expires_at, record.sla_color) }}
               </span>
             </div>
-            <div v-else class="text-sm text-gray-400 italic">Nenastaveno</div>
+            <div v-else class="text-sm text-gray-400 italic">{{ t('management.notSet') }}</div>
           </div>
         </div>
       </div>
