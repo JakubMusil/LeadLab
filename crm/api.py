@@ -707,6 +707,7 @@ class ActivityOut(Schema):
     lead_id: Optional[str]
     user_id: Optional[str]
     user_name: Optional[str]
+    user_avatar_url: Optional[str] = None
     type: str
     content_text: str
     metadata: Dict[str, Any]
@@ -735,6 +736,9 @@ def _user_display_name(user) -> Optional[str]:
 def _activity_out(a: Activity) -> dict:
     from crm.streamline.registry import get_tool
     tool = get_tool(a.type)
+    avatar_url = None
+    if a.user and getattr(a.user, "profile_picture", None):
+        avatar_url = a.user.profile_picture.url
     return {
         "id": str(a.id),
         "entity_type": a.entity_type,
@@ -742,6 +746,7 @@ def _activity_out(a: Activity) -> dict:
         "lead_id": str(a.lead_id) if a.lead_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
         "user_name": _user_display_name(a.user),
+        "user_avatar_url": avatar_url,
         "type": a.type,
         "content_text": a.content_text,
         "metadata": a.metadata,

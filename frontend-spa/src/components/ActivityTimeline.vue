@@ -56,6 +56,7 @@ interface Activity {
   lead_id: string | null
   user_id: string | null
   user_name: string | null
+  user_avatar_url: string | null
   type: string
   content_text: string
   metadata: Record<string, unknown>
@@ -538,12 +539,23 @@ defineExpose({ load: () => loadActivities(1) })
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ activityTypeLabel(act.type) }}</span>
-            <span v-if="act.user_name" class="flex items-center gap-1">
+            <span v-if="act.user_name" class="relative group/avatar flex items-center">
               <span
-                class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"
                 :title="act.user_name"
-              >{{ userInitials(act.user_name) }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ act.user_name }}</span>
+              >
+                <img
+                  v-if="act.user_avatar_url"
+                  :src="act.user_avatar_url"
+                  :alt="act.user_name"
+                  class="w-full h-full object-cover"
+                />
+                <template v-else>{{ userInitials(act.user_name) }}</template>
+              </span>
+              <!-- Tooltip bubble shown on hover -->
+              <span
+                class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
+              >{{ act.user_name }}</span>
             </span>
             <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
           </div>
