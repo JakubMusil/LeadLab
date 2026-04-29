@@ -1095,6 +1095,7 @@
     "editTitleRequired": "Title is required.",
     "noFilesHint": "Upload files to keep them with this opportunity.",
     "overviewCreated": "Created",
+    "overviewCreatedBy": "Created by",
     "overviewSource": "Source",
     "overviewName": "Name",
     "overviewStatus": "Status",
@@ -1128,7 +1129,8 @@
     "statusChangedArrow": "{from} → {to}",
     "typeEntityChange": "Field Changed",
     "entityChangeOld": "Was:",
-    "entityChangeNew": "Now:"
+    "entityChangeNew": "Now:",
+    "descriptionPlaceholder": "Add opportunity description…"
   },
   "sequences": {
     "title": "Email Sequences",

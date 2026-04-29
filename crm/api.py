@@ -308,6 +308,8 @@ class LeadOut(Schema):
     score: Optional[int]
     created_at: datetime
     updated_at: datetime
+    created_by_id: Optional[str]
+    created_by_name: Optional[str]
 
 
 class LeadIn(Schema):
@@ -375,6 +377,13 @@ def _compute_lead_score(lead: Lead, rules: list) -> int:
 
 def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
     score = _compute_lead_score(lead, rules) if rules is not None else None
+    created_by_name: Optional[str] = None
+    if lead.created_by_id:
+        try:
+            cb = lead.created_by
+            created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
+        except Exception:
+            pass
     return {
         "id": str(lead.id),
         "firm_id": str(lead.firm_id),
@@ -389,6 +398,8 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         "score": score,
         "created_at": lead.created_at,
         "updated_at": lead.updated_at,
+        "created_by_id": str(lead.created_by_id) if lead.created_by_id else None,
+        "created_by_name": created_by_name,
     }
 
 
@@ -548,7 +559,7 @@ def list_leads(
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
     offset = (page - 1) * page_size
-    leads = list(qs[offset:offset + page_size])
+    leads = list(qs.select_related('created_by')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))
     return 200, [_lead_out(lead, rules) for lead in leads]
 
@@ -591,6 +602,7 @@ def create_lead(request, payload: LeadIn):
         source=payload.source,
         value=payload.value,
         currency=payload.currency,
+        created_by=request.user,
     )
     broadcast_event(firm=request.firm, event='lead.created', payload=_lead_out(lead))
 
@@ -614,7 +626,7 @@ def get_lead(request, lead_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
+        lead = Lead.objects.select_related('created_by').get(id=lead_id, firm=request.firm)
     except Lead.DoesNotExist:
         return 404, {"detail": "Lead not found."}
     return 200, _lead_out(lead)
@@ -642,40 +654,45 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
         setattr(lead, field, value)
 
     with transaction.atomic():
-        if new_status and new_status != old_status:
-            lead.status = new_status
-            lead.save()
-            Activity.objects.create(
-                lead=lead,
-                user=request.user,
-                type=ActivityType.STATUS_CHANGE,
-                metadata={
-                    "old_status": old_status,
-                    "new_status": new_status,
-                },
-            )
-            LeadStatusHistory.objects.create(
-                lead=lead,
-                from_status=old_status,
-                to_status=new_status,
-                changed_at=tz.now(),
-                changed_by=request.user,
-            )
-            # Fire workflow automation trigger: lead_status_change
-            from crm.tasks import evaluate_automation_rules
-            _automation_ctx = {
-                **_build_lead_automation_context(lead, request.firm),
-                "from_status": old_status,
-                "to_status": new_status,
-            }
-            transaction.on_commit(
-                lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
-                    "lead_status_change", str(request.firm.pk), ctx
-                ),
-                robust=True,
-            )
-        else:
-            lead.save()
+        from crm.apps import set_current_user, clear_current_user
+        set_current_user(request.user)
+        try:
+            if new_status and new_status != old_status:
+                lead.status = new_status
+                lead.save()
+                Activity.objects.create(
+                    lead=lead,
+                    user=request.user,
+                    type=ActivityType.STATUS_CHANGE,
+                    metadata={
+                        "old_status": old_status,
+                        "new_status": new_status,
+                    },
+                )
+                LeadStatusHistory.objects.create(
+                    lead=lead,
+                    from_status=old_status,
+                    to_status=new_status,
+                    changed_at=tz.now(),
+                    changed_by=request.user,
+                )
+                # Fire workflow automation trigger: lead_status_change
+                from crm.tasks import evaluate_automation_rules
+                _automation_ctx = {
+                    **_build_lead_automation_context(lead, request.firm),
+                    "from_status": old_status,
+                    "to_status": new_status,
+                }
+                transaction.on_commit(
+                    lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
+                        "lead_status_change", str(request.firm.pk), ctx
+                    ),
+                    robust=True,
+                )
+            else:
+                lead.save()
+        finally:
+            clear_current_user()
 
     broadcast_event(firm=request.firm, event='lead.updated', payload=_lead_out(lead))
     return 200, _lead_out(lead)

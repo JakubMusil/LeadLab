@@ -204,6 +204,14 @@ class Lead(TenantModel):
         help_text="Estimated deal value.",
     )
     currency = models.CharField(max_length=3, default="CZK")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_leads",
+        help_text="The user who created this lead.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -218,6 +226,20 @@ class Lead(TenantModel):
 
     def __str__(self):
         return f"{self.title} [{self.get_status_display()}]"
+
+    # -----------------------------------------------------------------------
+    # Streamline toolbar registry
+    # -----------------------------------------------------------------------
+    #: Activity types shown in the Lead detail sidebar toolbar, in display order.
+    #: The frontend uses this list (via the streamline API) to build the toolbar
+    #: from pre-registered tool elements — no hardcoding on the frontend side.
+    TOOLBAR_TOOLS: list[str] = [
+        "comment",
+        "call",
+        "meeting",
+        "email_out",
+        "task",
+    ]
 
 
 # ---------------------------------------------------------------------------

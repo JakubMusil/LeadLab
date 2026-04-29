@@ -17,6 +17,8 @@ export interface LeadOut {
   currency: string
   created_at: string
   updated_at: string
+  created_by_id: string | null
+  created_by_name: string | null
 }
 
 export interface LeadIn {

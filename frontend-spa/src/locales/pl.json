@@ -1095,6 +1095,7 @@
     "editTitleRequired": "Tytuł jest wymagany.",
     "noFilesHint": "Prześlij pliki, aby zachować je przy tym szansie.",
     "overviewCreated": "Utworzono",
+    "overviewCreatedBy": "Utworzono przez",
     "overviewSource": "Źródło",
     "overviewName": "Nazwa",
     "overviewStatus": "Status",
@@ -1128,7 +1129,8 @@
     "statusChangedArrow": "{from} → {to}",
     "typeEntityChange": "Zmiana pola",
     "entityChangeOld": "Było:",
-    "entityChangeNew": "Teraz:"
+    "entityChangeNew": "Teraz:",
+    "descriptionPlaceholder": "Dodaj opis…"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

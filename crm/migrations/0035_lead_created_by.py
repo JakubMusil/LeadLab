@@ -1,0 +1,26 @@
+import django.db.models.deletion
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('crm', '0034_activity_customer_proposal'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='lead',
+            name='created_by',
+            field=models.ForeignKey(
+                blank=True,
+                help_text='The user who created this lead.',
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='created_leads',
+                to=settings.AUTH_USER_MODEL,
+            ),
+        ),
+    ]

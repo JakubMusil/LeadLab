@@ -1096,6 +1096,7 @@
     "editTitleRequired": "Název je povinný.",
     "noFilesHint": "Nahrajte soubory pro jejich uložení k tomuto příležitosti.",
     "overviewCreated": "Vytvořeno",
+    "overviewCreatedBy": "Vytvořil/a",
     "overviewSource": "Zdroj",
     "overviewName": "Název",
     "overviewStatus": "Stav",
@@ -1129,7 +1130,8 @@
     "statusChangedArrow": "{from} → {to}",
     "typeEntityChange": "Změna pole",
     "entityChangeOld": "Bylo:",
-    "entityChangeNew": "Nyní:"
+    "entityChangeNew": "Nyní:",
+    "descriptionPlaceholder": "Přidejte popis příležitosti…"
   },
   "sequences": {
     "title": "E-mailové sekvence",

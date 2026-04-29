@@ -103,10 +103,16 @@ interface StreamlineTool {
   }
 }
 const streamlineTools = ref<StreamlineTool[]>([])
+// Toolbar tools for lead entity — loaded from the entity-toolbar registry endpoint
+const leadToolbarTools = ref<StreamlineTool[]>([])
 
 async function loadStreamlineTools() {
-  const res = await api.get<StreamlineTool[]>('/api/v1/streamline/tools')
-  if (res.ok) streamlineTools.value = res.data
+  const [toolsRes, toolbarRes] = await Promise.all([
+    api.get<StreamlineTool[]>('/api/v1/streamline/tools'),
+    api.get<StreamlineTool[]>('/api/v1/streamline/entity-toolbar/lead'),
+  ])
+  if (toolsRes.ok) streamlineTools.value = toolsRes.data
+  if (toolbarRes.ok) leadToolbarTools.value = toolbarRes.data
 }
 
 // Tasks
@@ -162,7 +168,7 @@ const sidebarHasPlainText = computed(() =>
 
 // Whether the currently selected sidebar action type requires content_text
 const sidebarToolRequiresText = computed(() => {
-  const tool = streamlineTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === sidebarActionType.value)
   return tool?.form_schema.required?.includes('content_text') ?? false
 })
 
@@ -170,22 +176,18 @@ const sidebarSubmitDisabled = computed(
   () => sidebarActivitySubmitting.value || (sidebarToolRequiresText.value && !sidebarHasPlainText.value),
 )
 
-// Build action items from the Streamline Tool Registry.
-// Only tools whose form schema includes a content_text field are shown in the
-// sidebar composer (user-composable activity types such as comment, call, etc.).
-// The "task" entry remains a special case since it creates a Task entity, not an Activity.
+// Build action items directly from the Lead entity-toolbar registry.
+// The backend Lead.TOOLBAR_TOOLS class attribute controls which tools appear
+// and in what order — no front-end filtering/hard-coding needed.
 const sidebarActionItems = computed<{ value: string; label: string; icon: Component }[]>(() => {
-  const registryItems = streamlineTools.value
-    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
-    .map((tool) => ({
+  return leadToolbarTools.value.map((tool) => {
+    const i18nKey = activityTypeLabelKey[tool.activity_type]
+    return {
       value: tool.activity_type,
-      label: activityTypeLabelKey[tool.activity_type] ? t(activityTypeLabelKey[tool.activity_type]) : tool.label,
+      label: i18nKey ? t(i18nKey) : tool.label,
       icon: heroIconMap[tool.icon] ?? ClipboardDocumentListIcon,
-    }))
-  return [
-    ...registryItems,
-    { value: 'task', label: t('leadDetail.typeTask'), icon: ClipboardDocumentListIcon },
-  ]
+    }
+  })
 })
 
 const sidebarActionIcon = computed(
@@ -212,6 +214,34 @@ const editCurrency = ref('')
 const editError = ref('')
 const editLoading = ref(false)
 const statusPopupOpen = ref(false)
+
+// Inline description editing
+const editingDescription = ref(false)
+const inlineDescription = ref('')
+const descriptionEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const savingDescription = ref(false)
+
+function startEditDescription() {
+  inlineDescription.value = store.currentLead?.description ?? ''
+  editingDescription.value = true
+}
+
+async function saveDescription() {
+  if (!store.currentLead) return
+  savingDescription.value = true
+  const result = await store.updateLead(leadId.value, { description: inlineDescription.value })
+  savingDescription.value = false
+  if (result.ok) {
+    editingDescription.value = false
+    toast.success(t('leadDetail.updated'))
+  } else {
+    toast.error(result.error ?? t('leadDetail.failedToUpdate'))
+  }
+}
+
+function cancelEditDescription() {
+  editingDescription.value = false
+}
 
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`
@@ -582,14 +612,11 @@ function getTabLabel(tab: string): string {
 
           <!-- Lead details card (shown first) -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-              {{ t('leadDetail.leadDetails') }}
-            </p>
+            <!-- Lead title as prominent heading (replaces "Detaily příležitosti" label) -->
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+              {{ store.currentLead.title }}
+            </h2>
             <dl class="space-y-2">
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewName') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ store.currentLead.title }}</dd>
-              </div>
               <div class="flex justify-between items-center">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
                 <dd class="relative">
@@ -630,9 +657,46 @@ function getTabLabel(tab: string): string {
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
               </div>
-              <div v-if="store.currentLead.description" class="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <dt class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{{ t('leadDetail.description') }}</dt>
-                <dd class="text-xs text-gray-700 dark:text-gray-300">{{ store.currentLead.description }}</dd>
+              <div v-if="store.currentLead.created_by_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreatedBy') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ store.currentLead.created_by_name }}</dd>
+              </div>
+              <!-- Inline-editable description -->
+              <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div class="flex items-center justify-between mb-1">
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.description') }}</dt>
+                  <button
+                    v-if="!editingDescription"
+                    class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    @click="startEditDescription"
+                  >{{ t('leadDetail.edit') }}</button>
+                </div>
+                <template v-if="editingDescription">
+                  <RichTextEditor
+                    ref="descriptionEditorRef"
+                    v-model="inlineDescription"
+                    :members="teamMembers"
+                    :upload-url="`/api/v1/crm/opportunities/${leadId}/attachments`"
+                    :placeholder="t('leadDetail.descriptionPlaceholder')"
+                    @file-uploaded="(f) => { files.unshift(f) }"
+                  />
+                  <div class="flex justify-end gap-2 mt-1.5">
+                    <button
+                      class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      @click="cancelEditDescription"
+                    >{{ t('leadDetail.editCancel') }}</button>
+                    <button
+                      :disabled="savingDescription"
+                      class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                      @click="saveDescription"
+                    >{{ savingDescription ? t('leadDetail.saving') : t('leadDetail.save') }}</button>
+                  </div>
+                </template>
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <dd v-else-if="store.currentLead.description" class="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" v-html="sanitizeHtml(store.currentLead.description)" />
+                <dd v-else class="text-xs text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300" @click="startEditDescription">
+                  {{ t('leadDetail.descriptionPlaceholder') }}
+                </dd>
               </div>
             </dl>
             <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
