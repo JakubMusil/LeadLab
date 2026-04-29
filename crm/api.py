@@ -721,6 +721,8 @@ class ActivityOut(Schema):
     created_at: datetime
     # Tool-specific data; None when the activity type has no registered tool
     tool_payload: Optional[Dict[str, Any]] = None
+    # Aggregated emoji reactions for this activity
+    reactions: List[Dict[str, Any]] = []
 
 
 class ActivityIn(Schema):
@@ -743,13 +745,32 @@ def _user_display_name(user) -> Optional[str]:
     return f"{user.first_name} {user.last_name}".strip() or user.email
 
 
-def _activity_out(a: Activity) -> dict:
+def _activity_out(a: Activity, requesting_user=None) -> dict:
     from crm.streamline.registry import get_tool
     tool = get_tool(a.type)
     avatar_url = None
     pic = getattr(a.user, "profile_picture", None) if a.user else None
     if pic:
         avatar_url = pic.url
+    # Aggregated emoji reactions — uses the same shape as ReactionSummaryOut.
+    reactions: list[dict] = []
+    try:
+        for r in a.reactions.all():
+            existing = next((x for x in reactions if x["emoji"] == r.emoji), None)
+            if existing is None:
+                existing = {"emoji": r.emoji, "count": 0, "user_ids": [], "reacted_by_me": False}
+                reactions.append(existing)
+            existing["count"] += 1
+            existing["user_ids"].append(str(r.user_id))
+            if (
+                requesting_user is not None
+                and getattr(requesting_user, "is_authenticated", False)
+                and str(r.user_id) == str(requesting_user.id)
+            ):
+                existing["reacted_by_me"] = True
+    except Exception:
+        # If the related manager isn't available (e.g. unsaved instance), silently fall back.
+        reactions = []
     return {
         "id": str(a.id),
         "entity_type": a.entity_type,
@@ -763,6 +784,7 @@ def _activity_out(a: Activity) -> dict:
         "metadata": a.metadata,
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
+        "reactions": reactions,
     }
 
 
@@ -780,8 +802,8 @@ def list_customer_activities(request, customer_id: str, page: int = 1, page_size
         return 404, {"detail": "Customer not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(customer=customer).select_related('user').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_activity_out(a) for a in activities]
+    activities = Activity.objects.filter(customer=customer).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a, request.user) for a in activities]
 
 
 @router.get("/opportunities/{lead_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
@@ -798,8 +820,8 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 404, {"detail": "Lead not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(lead=lead).select_related('user').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_activity_out(a) for a in activities]
+    activities = Activity.objects.filter(lead=lead).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a, request.user) for a in activities]
 
 
 @router.get("/tasks/{task_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
@@ -822,8 +844,8 @@ def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 
         return 404, {"detail": "Task not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(task=task).select_related('user').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_activity_out(a) for a in activities]
+    activities = Activity.objects.filter(task=task).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a, request.user) for a in activities]
 
 
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
@@ -920,7 +942,68 @@ def create_activity(request, payload: ActivityIn):
         event='activity.created',
         payload=_activity_out(activity),
     )
-    return 201, _activity_out(activity)
+    return 201, _activity_out(activity, request.user)
+
+
+class _ReactionToggleIn(Schema):
+    emoji: str
+
+
+@router.post(
+    "/activities/{activity_id}/reactions",
+    auth=django_auth,
+    response={200: dict, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggleIn):
+    """
+    Toggle an emoji reaction on any Activity (entity-agnostic).
+
+    Works for activities attached to any entity (lead, customer, realization,
+    management, proposal, task).  If the requesting user has already reacted
+    with this emoji the reaction is removed; otherwise it is added.
+
+    Returns the updated aggregate for this emoji (matches ``ReactionSummaryOut``).
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except Activity.DoesNotExist:
+        return 404, {"detail": "Activity not found."}
+
+    # Verify the activity belongs to a firm the requesting user is a member of.
+    # All entities the activity can reference live within a Firm scope; we
+    # check every possible FK and reject if none match the requesting firm.
+    firm_id = None
+    for related in (activity.lead, activity.realization, activity.management,
+                    activity.customer, activity.proposal, activity.task):
+        if related is not None and getattr(related, "firm_id", None) is not None:
+            firm_id = related.firm_id
+            break
+    if firm_id is None or str(firm_id) != str(request.firm.id):
+        return 404, {"detail": "Activity not found."}
+
+    emoji = (payload.emoji or "").strip()
+    if not emoji:
+        return 400, {"detail": "Emoji must not be empty."}
+
+    reaction, created = ActivityReaction.objects.get_or_create(
+        activity=activity, user=request.user, emoji=emoji,
+    )
+    if not created:
+        reaction.delete()
+
+    qs = ActivityReaction.objects.filter(activity=activity, emoji=emoji)
+    user_ids = list(qs.values_list("user_id", flat=True))
+    return 200, {
+        "emoji": emoji,
+        "count": qs.count(),
+        "user_ids": [str(uid) for uid in user_ids],
+        "reacted_by_me": qs.filter(user=request.user).exists(),
+    }
 
 
 # ===========================================================================

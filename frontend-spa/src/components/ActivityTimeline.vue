@@ -78,6 +78,13 @@ const toast = useToast()
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+interface ReactionSummary {
+  emoji: string
+  count: number
+  user_ids: string[]
+  reacted_by_me: boolean
+}
+
 interface Activity {
   id: string
   entity_type: string
@@ -91,6 +98,7 @@ interface Activity {
   metadata: Record<string, unknown>
   created_at: string
   tool_payload: Record<string, unknown> | null
+  reactions?: ReactionSummary[]
 }
 
 interface StreamlineTool {
@@ -498,6 +506,35 @@ function toggleTaskWatcher(userId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Reactions (emoji)
+// ---------------------------------------------------------------------------
+const COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '👏', '🎉', '🔥', '✅']
+const emojiPickerActivityId = ref<string | null>(null)
+
+function openEmojiPicker(activityId: string) {
+  emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
+}
+
+async function toggleReaction(activityId: string, emoji: string) {
+  const res = await api.post<ReactionSummary>(`/api/v1/crm/activities/${activityId}/reactions`, { emoji })
+  emojiPickerActivityId.value = null
+  if (!res.ok) {
+    toast.error(t('leadDetail.activityFailed'))
+    return
+  }
+  const activity = activities.value.find((a) => a.id === activityId)
+  if (!activity) return
+  if (!activity.reactions) activity.reactions = []
+  const idx = activity.reactions.findIndex((r) => r.emoji === emoji)
+  if (idx === -1) {
+    if (res.data.count > 0) activity.reactions.push(res.data)
+  } else {
+    if (res.data.count === 0) activity.reactions.splice(idx, 1)
+    else activity.reactions[idx] = res.data
+  }
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket real-time update
 // ---------------------------------------------------------------------------
 function onWsActivityCreated(payload: Record<string, unknown>) {
@@ -735,6 +772,45 @@ defineExpose({ load: () => loadActivities(1) })
           >
             {{ t('leadDetail.viewProposal') }} →
           </RouterLink>
+
+          <!-- Reactions row (visible only for comment activities) -->
+          <div
+            v-if="act.type === 'comment'"
+            class="flex flex-wrap items-center gap-1.5 mt-2"
+          >
+            <button
+              v-for="r in (act.reactions ?? [])"
+              :key="r.emoji"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
+              :class="r.reacted_by_me
+                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
+                : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-gray-300'"
+              @click="toggleReaction(act.id, r.emoji)"
+            >
+              <span>{{ r.emoji }}</span>
+              <span class="tabular-nums">{{ r.count }}</span>
+            </button>
+            <div class="relative">
+              <button
+                class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                :title="t('leadDetail.addReaction')"
+                @click="openEmojiPicker(act.id)"
+              >
+                <FaceSmileIcon class="w-3.5 h-3.5" />
+              </button>
+              <div
+                v-if="emojiPickerActivityId === act.id"
+                class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
+              >
+                <button
+                  v-for="emoji in COMMON_EMOJIS"
+                  :key="emoji"
+                  class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
+                  @click="toggleReaction(act.id, emoji)"
+                >{{ emoji }}</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

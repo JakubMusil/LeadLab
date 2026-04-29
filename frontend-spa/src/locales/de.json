@@ -1131,7 +1131,8 @@
     "entityChangeOld": "War:",
     "entityChangeNew": "Jetzt:",
     "descriptionPlaceholder": "Beschreibung hinzufügen…",
-    "selectOption": "Auswählen…"
+    "selectOption": "Auswählen…",
+    "addReaction": "Reaktion hinzufügen"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
