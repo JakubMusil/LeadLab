@@ -24,6 +24,7 @@ import {
   ArrowsRightLeftIcon,
   PaperClipIcon,
   DocumentTextIcon,
+  DocumentCheckIcon,
   QuestionMarkCircleIcon,
   BellIcon,
 } from '@heroicons/vue/24/outline'
@@ -58,6 +59,33 @@ interface Activity {
   content_text: string
   metadata: Record<string, unknown>
   created_at: string
+  tool_payload: Record<string, unknown> | null
+}
+
+interface StreamlineTool {
+  activity_type: string
+  label: string
+  icon: string
+  form_schema: {
+    type: string
+    properties?: Record<string, unknown>
+    required?: string[]
+  }
+}
+
+// Map icon name strings (from the Streamline Tool Registry) to Heroicon components
+const heroIconMap: Record<string, Component> = {
+  ChatBubbleLeftIcon,
+  PhoneIcon,
+  UsersIcon,
+  PaperAirplaneIcon,
+  InboxArrowDownIcon,
+  ArrowsRightLeftIcon,
+  PaperClipIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+  DocumentTextIcon,
+  DocumentCheckIcon,
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +147,16 @@ const taskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const taskSubmitting = ref(false)
 
 // ---------------------------------------------------------------------------
+// Streamline Tool Registry
+// ---------------------------------------------------------------------------
+const streamlineTools = ref<StreamlineTool[]>([])
+
+async function loadStreamlineTools() {
+  const res = await api.get<StreamlineTool[]>('/api/v1/streamline/tools')
+  if (res.ok) streamlineTools.value = res.data
+}
+
+// ---------------------------------------------------------------------------
 // Config maps
 // ---------------------------------------------------------------------------
 const activityIconMap: Record<string, Component> = {
@@ -133,15 +171,19 @@ const activityIconMap: Record<string, Component> = {
   task_completed: CheckCircleIcon,
   task: ClipboardDocumentListIcon,
   proposal_created: DocumentTextIcon,
-  proposal_accepted: CheckCircleIcon,
+  proposal_accepted: DocumentCheckIcon,
   proposal_rejected: DocumentTextIcon,
 }
 
 function activityIcon(type: string): Component {
+  const tool = streamlineTools.value.find((t) => t.activity_type === type)
+  if (tool) return heroIconMap[tool.icon] ?? QuestionMarkCircleIcon
   return activityIconMap[type] ?? QuestionMarkCircleIcon
 }
 
 function activityTypeLabel(type: string): string {
+  const tool = streamlineTools.value.find((t) => t.activity_type === type)
+  if (tool) return tool.label
   const map: Record<string, string> = {
     comment: t('leadDetail.typeComment'),
     call: t('leadDetail.typeCall'),
@@ -160,6 +202,27 @@ function activityTypeLabel(type: string): string {
   return map[type] ?? type.replace(/_/g, ' ')
 }
 
+// Whether content_text is required for the currently selected action type
+const activityTextRequired = computed(() => {
+  const tool = streamlineTools.value.find((t) => t.activity_type === selectedActionType.value)
+  // Default to required if the tool is not yet loaded or has no schema info
+  return tool?.form_schema.required?.includes('content_text') ?? true
+})
+
+const actionPickerItems = computed<{ value: string; label: string; icon: Component }[]>(() => {
+  const registryItems = streamlineTools.value
+    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
+    .map((tool) => ({
+      value: tool.activity_type,
+      label: tool.label,
+      icon: heroIconMap[tool.icon] ?? QuestionMarkCircleIcon,
+    }))
+  return [
+    ...registryItems,
+    { value: 'task', label: t('leadDetail.typeTask'), icon: ClipboardDocumentListIcon },
+  ]
+})
+
 function translateLeadStatus(status: string): string {
   const map: Record<string, string> = {
     new: t('leads.statusNew'),
@@ -172,15 +235,6 @@ function translateLeadStatus(status: string): string {
   }
   return map[status] ?? status
 }
-
-const actionPickerItems = computed<{ value: string; label: string; icon: Component }[]>(() => [
-  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: ChatBubbleLeftIcon },
-  { value: 'call',      label: t('leadDetail.typeCall'),     icon: PhoneIcon },
-  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: UsersIcon },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: PaperAirplaneIcon },
-  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: InboxArrowDownIcon },
-  { value: 'task',      label: t('leadDetail.typeTask'),     icon: ClipboardDocumentListIcon },
-])
 
 // ---------------------------------------------------------------------------
 // API helpers
@@ -231,7 +285,7 @@ function formatTime(ts: string) {
 }
 
 async function addActivity() {
-  if (selectedActionType.value === 'comment' && !hasPlainText(newActivityText.value)) return
+  if (activityTextRequired.value && !hasPlainText(newActivityText.value)) return
   activitySubmitting.value = true
   const mentionedIds = selectedActionType.value === 'comment'
     ? (richTextEditorRef.value?.getMentionedIds() ?? [])
@@ -303,7 +357,7 @@ function onWsActivityCreated(payload: Record<string, unknown>) {
 // Lifecycle
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadActivities(), loadTeamMembers()])
+  await Promise.all([loadActivities(), loadTeamMembers(), loadStreamlineTools()])
   on('activity.created', onWsActivityCreated)
 })
 
@@ -359,7 +413,7 @@ defineExpose({ load: () => loadActivities(1) })
         />
         <div class="flex justify-end">
           <button
-            :disabled="activitySubmitting || !hasPlainText(newActivityText)"
+            :disabled="activitySubmitting || (activityTextRequired && !hasPlainText(newActivityText))"
             class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
             @click="addActivity"
           >{{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
