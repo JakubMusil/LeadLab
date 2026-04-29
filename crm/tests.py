@@ -894,7 +894,7 @@ class TierLimitLeadCreateAPITest(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Lead Attachments API tests  (now backed by Document)
+# Lead Attachments API tests (now backed by Document)
 # ---------------------------------------------------------------------------
 
 import io
