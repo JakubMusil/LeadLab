@@ -2708,7 +2708,7 @@ class TaskTimelineEntryOut(Schema):
     event_type: str
     author_id: Optional[str]
     author_name: Optional[str]
-    content_html: str
+    content_text: str
     metadata: Dict[str, Any]
     parent_entry_id: Optional[str]
     reactions: List[ReactionSummaryOut]
@@ -2726,7 +2726,7 @@ class TaskTimelinePostIn(Schema):
       - ``log_time_minutes``   — add a time-log entry
       - ``set_due_date``       — update the task's due_date
     """
-    content_html: str
+    content_text: str
     parent_entry_id: Optional[str] = None
     # Action toggles
     change_assignee_to: Optional[str] = None
@@ -2775,7 +2775,7 @@ def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
         "event_type": activity.type,
         "author_id": str(activity.user_id) if activity.user_id else None,
         "author_name": author_name,
-        "content_html": activity.content_text,
+        "content_text": activity.content_text,
         "metadata": activity.metadata if isinstance(activity.metadata, dict) else {},
         "parent_entry_id": str(activity.metadata.get("reply_to_id", "")) or None,
         "reactions": _reactions_for_activity(activity, requesting_user),
@@ -2784,7 +2784,7 @@ def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
     }
 
 
-def _log_task_activity(task: Task, activity_type: str, author=None, metadata: dict = None, content_html: str = "") -> None:
+def _log_task_activity(task: Task, activity_type: str, author=None, metadata: dict = None, content_text: str = "") -> None:
     """
     Create an Activity of the given type linked to the Task.
 
@@ -2795,7 +2795,7 @@ def _log_task_activity(task: Task, activity_type: str, author=None, metadata: di
             task=task,
             user=author,
             type=activity_type,
-            content_text=content_html,
+            content_text=content_text,
             metadata=metadata or {},
         )
     except Exception:
@@ -2883,7 +2883,7 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    if not payload.content_html or not payload.content_html.strip():
+    if not payload.content_text or not payload.content_text.strip():
         return 400, {"detail": "Comment content is required."}
 
     # Validate parent activity if given
@@ -2900,7 +2900,7 @@ def create_task_timeline_entry(request, task_id: str, payload: TaskTimelinePostI
             task=task,
             user=request.user,
             type=ActivityType.COMMENT,
-            content_text=payload.content_html,
+            content_text=payload.content_text,
             metadata=comment_metadata,
         )
 
