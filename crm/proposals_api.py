@@ -63,6 +63,7 @@ from firms.auth import (
     PermissionDenied,
     require_membership,
 )
+from crm.api import _activity_out as _shared_activity_out
 
 proposals_router = Router(tags=["proposals"])
 
@@ -641,6 +642,27 @@ def delete_proposal(request, proposal_id: str):
 
     proposal.delete()
     return 204, None
+
+
+@proposals_router.get(
+    "/proposals/{proposal_id}/activities",
+    auth=django_auth,
+    response={200: List[dict], 403: ErrorOut, 404: ErrorOut},
+)
+def list_proposal_activities(request, proposal_id: str, page: int = 1, page_size: int = 20):
+    """Return the activity timeline for a Proposal, newest first (paginated)."""
+    try:
+        require_membership(request)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    proposal = _get_proposal(proposal_id, request.firm)
+    if not proposal:
+        return 404, {"detail": "Proposal not found."}
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(proposal=proposal).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_shared_activity_out(a) for a in activities]
 
 
 @proposals_router.post(

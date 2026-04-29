@@ -70,6 +70,7 @@ class ActivityType(models.TextChoices):
     PROPOSAL_CREATED = "proposal_created", "Proposal Created"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     PROPOSAL_REJECTED = "proposal_rejected", "Proposal Rejected"
+    ENTITY_CHANGE = "entity_change", "Field Changed"
 
 
 class ProposalStatus(models.TextChoices):
@@ -266,6 +267,20 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
         related_name="activities",
     )
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+    proposal = models.ForeignKey(
+        "Proposal",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -297,6 +312,8 @@ class Activity(models.Model):
             models.Index(fields=["lead", "type"]),
             models.Index(fields=["realization", "-created_at"], name="crm_activit_realiz_created_idx"),
             models.Index(fields=["management", "-created_at"], name="crm_activit_mgmt_created_idx"),
+            models.Index(fields=["customer", "-created_at"], name="crm_activit_cust_created_idx"),
+            models.Index(fields=["proposal", "-created_at"], name="crm_activit_prop_created_idx"),
         ]
 
     # ------------------------------------------------------------------
@@ -312,6 +329,10 @@ class Activity(models.Model):
             return "realization"
         if self.management_id:
             return "management"
+        if self.customer_id:
+            return "customer"
+        if self.proposal_id:
+            return "proposal"
         return "unknown"
 
     @property
@@ -323,6 +344,10 @@ class Activity(models.Model):
             return str(self.realization_id)
         if self.management_id:
             return str(self.management_id)
+        if self.customer_id:
+            return str(self.customer_id)
+        if self.proposal_id:
+            return str(self.proposal_id)
         return ""
 
     def __str__(self):

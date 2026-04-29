@@ -491,6 +491,48 @@ class ProposalRejectedTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
+# Entity Change (auto-logged by signals — not user-composable)
+# ---------------------------------------------------------------------------
+
+class EntityChangeTool(StreamlineTool):
+    """
+    Records an automatic field-level change on any CRM entity.
+
+    Created by Django ``pre_save``/``post_save`` signals — not via user
+    action, so ``process_action`` is a no-op and the schema intentionally
+    omits ``content_text`` to keep it out of the composer action picker.
+    """
+
+    activity_type = "entity_change"
+    label = "Field Changed"
+    icon = "PencilSquareIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "field": {"type": "string", "title": "Field"},
+                "field_label": {"type": "string", "title": "Field Label"},
+                "old_value": {"type": "string", "title": "Old Value"},
+                "new_value": {"type": "string", "title": "New Value"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass  # auto-logged; no side-effects needed
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "field": activity.metadata.get("field", ""),
+            "field_label": activity.metadata.get("field_label", ""),
+            "old_value": activity.metadata.get("old_value", ""),
+            "new_value": activity.metadata.get("new_value", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -520,4 +562,5 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     ProposalCreatedTool(),
     ProposalAcceptedTool(),
     ProposalRejectedTool(),
+    EntityChangeTool(),
 ]

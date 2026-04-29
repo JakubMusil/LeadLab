@@ -290,6 +290,24 @@ def list_company_employees(request, customer_id: str):
     return 200, [_customer_out(e) for e in employees]
 
 
+@router.get("/directory/{customer_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
+def list_customer_activities(request, customer_id: str, page: int = 1, page_size: int = 20):
+    """Return the activity timeline for a Customer, newest first (paginated)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        customer = Customer.objects.get(id=customer_id, firm=request.firm)
+    except Customer.DoesNotExist:
+        return 404, {"detail": "Customer not found."}
+
+    offset = (page - 1) * page_size
+    activities = Activity.objects.filter(customer=customer).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_activity_out(a) for a in activities]
+
+
 # ===========================================================================
 # LEADS
 # ===========================================================================
@@ -720,10 +738,12 @@ class ActivityOut(Schema):
 
 
 class ActivityIn(Schema):
-    # Exactly one of the three entity IDs must be provided.
+    # Exactly one of the five entity IDs must be provided.
     lead_id: Optional[str] = None
     realization_id: Optional[str] = None
     management_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    proposal_id: Optional[str] = None
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
@@ -780,11 +800,11 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
-    Unified Action Hub endpoint — works for Lead, Realization and Management.
+    Unified Action Hub endpoint — works for Lead, Realization, Management, Customer, and Proposal.
 
-    Exactly one of ``lead_id``, ``realization_id``, ``management_id`` must be
-    provided.  Dispatches to the registered ``StreamlineTool`` for the given
-    activity type, which handles all type-specific side-effects.
+    Exactly one of ``lead_id``, ``realization_id``, ``management_id``, ``customer_id``,
+    or ``proposal_id`` must be provided.  Dispatches to the registered ``StreamlineTool``
+    for the given activity type, which handles all type-specific side-effects.
     """
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
@@ -793,10 +813,11 @@ def create_activity(request, payload: ActivityIn):
         return 403, {"detail": str(exc)}
 
     # --- resolve entity ---
-    if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id)]) != 1:
-        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id must be provided."}
+    if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id),
+            bool(payload.customer_id), bool(payload.proposal_id)]) != 1:
+        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id must be provided."}
 
-    lead = realization = management = None
+    lead = realization = management = customer = proposal = None
     entity_title = ""
 
     if payload.lead_id:
@@ -817,13 +838,26 @@ def create_activity(request, payload: ActivityIn):
             entity_title = management.title
         except Management.DoesNotExist:
             return 400, {"detail": "Management record not found in this Firm."}
+    elif payload.customer_id:
+        try:
+            customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
+            entity_title = f"{customer.first_name} {customer.last_name}".strip() or customer.company_name
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Customer not found in this Firm."}
+    elif payload.proposal_id:
+        from crm.models import Proposal as ProposalModel
+        try:
+            proposal = ProposalModel.objects.get(id=payload.proposal_id, firm=request.firm)
+            entity_title = proposal.title
+        except ProposalModel.DoesNotExist:
+            return 400, {"detail": "Proposal not found in this Firm."}
 
     from crm.streamline.registry import get_tool
     tool = get_tool(payload.type)
     if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
 
-    entity = lead or realization or management
+    entity = lead or realization or management or customer or proposal
     context = {
         "firm": request.firm,
         "user": request.user,
@@ -835,6 +869,8 @@ def create_activity(request, payload: ActivityIn):
             lead=lead,
             realization=realization,
             management=management,
+            customer=customer,
+            proposal=proposal,
             user=request.user,
             type=payload.type,
             content_text=payload.content_text,

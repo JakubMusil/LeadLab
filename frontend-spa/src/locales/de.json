@@ -1124,7 +1124,8 @@
     "typeProposalAccepted": "Angebot akzeptiert",
     "typeProposalRejected": "Angebot abgelehnt",
     "viewProposal": "Angebot anzeigen",
-    "statusChangedArrow": "{from} → {to}"
+    "statusChangedArrow": "{from} → {to}",
+    "typeEntityChange": "Feld geändert"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
