@@ -316,6 +316,207 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         )
 
 
+class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
+    """Phase 6 — bonus Streamline tools (SMS / WhatsApp / Chat / Meeting
+    Scheduled / Link / Payment / Invoice / Signature / Proposal Viewed /
+    AI / System Note / Tag / Mention / Pin)."""
+
+    def _build_activity(self, type_value, metadata=None, **kwargs):
+        return Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type=type_value,
+            metadata=metadata or {},
+            **kwargs,
+        )
+
+    def test_phase6_tools_registered(self):
+        from crm.streamline.registry import all_tools
+        registered = {t.activity_type for t in all_tools()}
+        expected = {
+            "sms_out", "sms_in", "whatsapp_out", "whatsapp_in", "chat",
+            "meeting_scheduled", "link",
+            "payment_received", "invoice_sent",
+            "signature_requested", "signature_completed",
+            "proposal_viewed",
+            "ai_summary", "ai_suggested_action",
+            "system_note",
+            "tag_added", "tag_removed",
+            "mention",
+            "pinned", "unpinned",
+        }
+        self.assertTrue(expected.issubset(registered))
+
+    def test_phase6_schemas_are_well_formed(self):
+        from crm.streamline.registry import get_tool
+        for at in [
+            "sms_out", "sms_in", "whatsapp_out", "whatsapp_in", "chat",
+            "meeting_scheduled", "link", "payment_received", "invoice_sent",
+            "signature_requested", "signature_completed", "proposal_viewed",
+            "ai_summary", "ai_suggested_action", "system_note",
+            "tag_added", "tag_removed", "mention", "pinned", "unpinned",
+        ]:
+            tool = get_tool(at)
+            self.assertIsNotNone(tool, f"{at} not registered")
+            schema = tool.get_schema()
+            self.assertEqual(schema.get("type"), "object")
+            self.assertIn("properties", schema)
+
+    def test_sms_out_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.SMS_OUT,
+            metadata={
+                "to": "+420777111222",
+                "from_number": "+420555000111",
+                "provider_message_id": "twilio_abc",
+            },
+        )
+        out = get_tool("sms_out").render_payload(a)
+        self.assertEqual(out["to"], "+420777111222")
+        self.assertEqual(out["provider_message_id"], "twilio_abc")
+
+    def test_link_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.LINK,
+            metadata={
+                "url": "https://example.com",
+                "title": "Example",
+                "description": "An example link",
+                "thumbnail_url": "https://example.com/og.png",
+            },
+        )
+        out = get_tool("link").render_payload(a)
+        self.assertEqual(out["url"], "https://example.com")
+        self.assertEqual(out["title"], "Example")
+
+    def test_invoice_sent_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.INVOICE_SENT,
+            metadata={
+                "invoice_id": "inv_42",
+                "invoice_number": "2026-001",
+                "amount": 1500,
+                "currency": "CZK",
+                "due_date": "2026-05-15",
+            },
+        )
+        out = get_tool("invoice_sent").render_payload(a)
+        self.assertEqual(out["invoice_id"], "inv_42")
+        self.assertEqual(out["amount"], 1500)
+        self.assertEqual(out["currency"], "CZK")
+
+    def test_system_note_render_filters_to_metadata_keys(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.SYSTEM_NOTE,
+            metadata={"source": "csv_import", "code": "imported"},
+        )
+        out = get_tool("system_note").render_payload(a)
+        self.assertEqual(out, {"source": "csv_import", "code": "imported"})
+
+    def test_tag_added_render(self):
+        from crm.streamline.registry import get_tool
+        a = self._build_activity(
+            ActivityType.TAG_ADDED, metadata={"tag": "vip"}
+        )
+        self.assertEqual(get_tool("tag_added").render_payload(a)["tag"], "vip")
+
+    def test_proposal_viewed_stamps_first_viewed_at(self):
+        from crm.models import Proposal
+        from crm.streamline.registry import get_tool
+
+        proposal = Proposal.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Test Proposal",
+        )
+        self.assertIsNone(proposal.first_viewed_at)
+        previous_count = proposal.view_count or 0
+
+        activity = Activity.objects.create(
+            proposal=proposal,
+            type=ActivityType.PROPOSAL_VIEWED,
+            metadata={"proposal_id": str(proposal.id)},
+        )
+        get_tool("proposal_viewed").process_action(
+            activity, proposal, {"metadata": {}},
+            {"firm": self.firm, "user": self.owner, "entity_title": proposal.title},
+        )
+        proposal.refresh_from_db()
+        self.assertIsNotNone(proposal.first_viewed_at)
+        self.assertEqual(proposal.view_count, previous_count + 1)
+
+    def test_proposal_viewed_does_not_overwrite_first_viewed_at(self):
+        from crm.models import Proposal
+        from crm.streamline.registry import get_tool
+        from django.utils import timezone
+        from datetime import timedelta
+
+        original = timezone.now() - timedelta(days=3)
+        proposal = Proposal.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Test",
+            first_viewed_at=original,
+            view_count=5,
+        )
+        activity = Activity.objects.create(
+            proposal=proposal,
+            type=ActivityType.PROPOSAL_VIEWED,
+            metadata={},
+        )
+        get_tool("proposal_viewed").process_action(
+            activity, proposal, {"metadata": {}},
+            {"firm": self.firm, "user": self.owner, "entity_title": ""},
+        )
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.first_viewed_at, original)
+        self.assertEqual(proposal.view_count, 6)
+
+    def test_mention_tool_creates_notification(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.MENTION,
+            metadata={"mentioned_user_id": str(self.worker.id)},
+            content_text="Hey @worker — please look at this",
+        )
+        get_tool("mention").process_action(
+            activity,
+            self.lead,
+            {"metadata": {"mentioned_user_id": str(self.worker.id)}},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                user=self.worker, event="activity.mention"
+            ).count(),
+            1,
+        )
+
+    def test_mention_tool_does_not_notify_self(self):
+        from crm.models import Notification
+        from crm.streamline.registry import get_tool
+
+        activity = self._build_activity(
+            ActivityType.MENTION,
+            metadata={"mentioned_user_id": str(self.owner.id)},
+        )
+        get_tool("mention").process_action(
+            activity,
+            self.lead,
+            {"metadata": {"mentioned_user_id": str(self.owner.id)}},
+            {"firm": self.firm, "user": self.owner, "entity_title": ""},
+        )
+        self.assertEqual(
+            Notification.objects.filter(event="activity.mention").count(), 0
+        )
+
+
 class ActivityTaskLinkTest(CRMFixtureMixin, TestCase):
     """Phase 0 — Activity can now be linked to a Task entity."""
 

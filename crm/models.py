@@ -81,7 +81,28 @@ class ActivityType(models.TextChoices):
     PROPOSAL_CREATED = "proposal_created", "Proposal Created"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     PROPOSAL_REJECTED = "proposal_rejected", "Proposal Rejected"
+    PROPOSAL_VIEWED = "proposal_viewed", "Proposal Viewed"
     ENTITY_CHANGE = "entity_change", "Field Changed"
+    # Phase 6 — bonus communication / workflow tools
+    SMS_OUT = "sms_out", "SMS (Outbound)"
+    SMS_IN = "sms_in", "SMS (Inbound)"
+    WHATSAPP_OUT = "whatsapp_out", "WhatsApp (Outbound)"
+    WHATSAPP_IN = "whatsapp_in", "WhatsApp (Inbound)"
+    CHAT = "chat", "Chat Message"
+    MEETING_SCHEDULED = "meeting_scheduled", "Meeting Scheduled"
+    LINK = "link", "Link"
+    PAYMENT_RECEIVED = "payment_received", "Payment Received"
+    INVOICE_SENT = "invoice_sent", "Invoice Sent"
+    SIGNATURE_REQUESTED = "signature_requested", "Signature Requested"
+    SIGNATURE_COMPLETED = "signature_completed", "Signature Completed"
+    AI_SUMMARY = "ai_summary", "AI Summary"
+    AI_SUGGESTED_ACTION = "ai_suggested_action", "AI Suggested Action"
+    SYSTEM_NOTE = "system_note", "System Note"
+    TAG_ADDED = "tag_added", "Tag Added"
+    TAG_REMOVED = "tag_removed", "Tag Removed"
+    MENTION = "mention", "Mention"
+    PINNED = "pinned", "Pinned"
+    UNPINNED = "unpinned", "Unpinned"
 
 
 class ProposalStatus(models.TextChoices):

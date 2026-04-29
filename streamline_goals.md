@@ -139,9 +139,40 @@ deprecation cycle).
 
 ### Fáze 6 *(volitelná)* — Nové tooly nad rámec sjednocení
 
-- SMS, WhatsApp, MeetingScheduled, Link, Payment/Invoice, Signature, ProposalViewed, AiSummary,
-  SystemNote, Tag…
-- Každý jako samostatný malý PR; není nutné dělat všechny najednou.
+**Stav:** ✅ Implementováno (viz `crm/streamline/tools.py` + migrace
+`0039_phase6_streamline_bonus_activity_types`).
+
+Nové `ActivityType` choices a registrované `StreamlineTool` třídy:
+
+| Tool | `activity_type` | Side-effect |
+| --- | --- | --- |
+| `SmsOutTool` / `SmsInTool` | `sms_out` / `sms_in` | — |
+| `WhatsAppOutTool` / `WhatsAppInTool` | `whatsapp_out` / `whatsapp_in` | — |
+| `ChatTool` | `chat` (s `metadata.channel`) | — |
+| `MeetingScheduledTool` | `meeting_scheduled` | — |
+| `LinkTool` | `link` | — |
+| `PaymentReceivedTool` | `payment_received` | — |
+| `InvoiceSentTool` | `invoice_sent` | — |
+| `SignatureRequestedTool` / `SignatureCompletedTool` | `signature_requested` / `signature_completed` | — |
+| `ProposalViewedTool` | `proposal_viewed` | stamp `Proposal.first_viewed_at` (jen poprvé) + bump `view_count` |
+| `AiSummaryTool` / `AiSuggestedActionTool` | `ai_summary` / `ai_suggested_action` | — |
+| `SystemNoteTool` | `system_note` | — |
+| `TagAddedTool` / `TagRemovedTool` | `tag_added` / `tag_removed` | — |
+| `MentionTool` | `mention` | vytvoří `Notification` pro zmíněného uživatele (event `activity.mention`) |
+| `PinnedTool` / `UnpinnedTool` | `pinned` / `unpinned` | — |
+
+Implementační poznámky:
+
+- Většina toolů sdílí `_SimpleLogTool` helper (DRY pro `get_schema` /
+  `process_action` / `render_payload` u tooltů, které jsou jen log).
+- `ProposalViewedTool` je idempotentní vůči `first_viewed_at` (přepíše jen
+  pokud je `NULL`), takže opakované otevření klientem přidává jen do
+  `view_count`.
+- `MentionTool` neposílá notifikaci, pokud je zmíněný uživatel autorem
+  aktivity (stejné chování jako u `CommentTool` mention side-effectu a
+  `AssigneeChangeTool`).
+- Unit testy: `crm.tests.StreamlinePhase6ToolsTest` (registrace, schémata,
+  render, side-effecty pro `proposal_viewed` a `mention`).
 
 ---
 
@@ -183,3 +214,121 @@ deprecation cycle).
 - **Bonus tooly k zvážení:** SMS, WhatsApp, MeetingScheduled, Link, Payment/Invoice, Signature,
   ProposalViewed, AiSummary, SystemNote, Tag.
 - **6 fází**, každá samostatný PR, bez breaking changes mezi nimi.
+
+---
+
+## 5. Future improvements *(parking lot — návrhy nad rámec současných 6 fází)*
+
+> Nápady pro další iterace, jakmile bude Phase 0–6 v provozu. Žádný z nich není naléhavý,
+> ale stojí za to je mít sepsané, ať na ně můžeme v budoucnu mrknout.
+
+### 5.1 Datový model `Activity`
+
+- **Threading přes `parent_activity` FK** — místo dnešního `metadata.reply_to_id` udělat
+  fyzický self-FK `Activity.parent_activity`. Umožní `prefetch_related("replies")`,
+  serverový tree-render a indexované dotazy „kolik odpovědí má tato aktivita".
+- **`is_pinned` / `pinned_at` / `pinned_by` přímo na `Activity`** — dnes řešíme přes
+  `PinnedTool` / `UnpinnedTool`, což je hezký audit, ale dotaz „dej mi pinnuté aktivity
+  pro tento lead" je drahý. Boolean na `Activity` + zachování pin/unpin logu jako
+  doplňkový audit trail.
+- **`is_internal` flag** — odlišit interní poznámky / komentáře, které nesmí vidět
+  klient (např. v public proposal view nebo v exportu).
+- **`visibility` enum** (`public` / `firm` / `team` / `private`) — granulárnější než
+  `is_internal`, hodí se až systém poroste.
+- **Soft delete (`deleted_at`)** — místo hard `DELETE` aktivity; uživatel uvidí
+  „komentář byl smazán", historie zůstane.
+- **Editace + edit history** — `edited_at`, `edit_count` + vedlejší `ActivityEdit`
+  model s diffy. Dnes je `Activity` immutable.
+- **Polymorfní entitní reference přes generic FK / dedikovanou pivot tabulku** — místo
+  N nullable FK (`lead`, `realization`, `management`, `customer`, `proposal`, `task`)
+  zvážit jednu `entity_type` + `entity_id` dvojici. Snižuje počet sloupců, ale ztrácí
+  cizí klíčovou integritu — netrhat zatím, jen mít na radaru.
+- **Partitioning / archivace** — pro firmy s milióny aktivit zvážit Postgres native
+  partitioning po `created_at` nebo cold-storage do BigQuery / S3.
+
+### 5.2 Streamline framework
+
+- **`StreamlineTool.permissions`** — deklarativní permission scope per tool
+  (např. `requires=["task.assign"]`), aby `streamline/api.py` mohl uniformně
+  validovat oprávnění před `process_action`. Dnes to řešíme ad-hoc v jednotlivých
+  toolech.
+- **`StreamlineTool.validate_payload(payload)`** — JSON Schema validace pomocí
+  `jsonschema` knihovny zapnutá centrálně před `process_action`. Dnes schéma jen
+  popisuje SPA renderer, ale neenforceuje.
+- **Webhook trigger per tool** — každá aktivita po `process_action` může volat
+  registered webhook (pro Zapier / Make / vlastní backend klienta). Vázat na
+  `tool.activity_type`.
+- **Async `process_action` přes Celery** — některé tooly (AI summary, signature
+  webhook) jsou pomalé. Podpora flagu `tool.async = True`, který pošle
+  `process_action` do queue.
+- **`StreamlineTool.undo()`** — reverzibilita pro idempotentní side-effecty
+  (zruš notifikaci, reverzní pin). Užitečné pro „undo" v UI.
+- **i18n labels / icons** — `label` a `icon` aktuálně hardkódované anglicky.
+  Zavést `gettext_lazy` / per-locale slovník.
+
+### 5.3 UX / Frontend
+
+- **Filtr v timeline po `activity_type`** — multi-select chips: „skrýt
+  `entity_change`", „jen e-maily a SMS". Dnes UI ukazuje vše.
+- **Pinned section nad feedem** — sticky horní sekce s `is_pinned=True` aktivitami
+  (po implementaci 5.1 `is_pinned`).
+- **Saved views** — uložit kombinaci filtrů jako pojmenovaný view (např.
+  „Klientská komunikace" = `email_*` + `sms_*` + `whatsapp_*` + `call`).
+- **Inline reply (threading UI)** — po implementaci `parent_activity` umožnit
+  odpovídat přímo pod komentářem, render jako tree.
+- **Drafts** — autosave rozepsaného komentáře / e-mailu do localStorage + per-user
+  draft endpoint.
+- **Slash commands v komposeru** — `/task`, `/meeting`, `/link` přepne komposer
+  na příslušný tool bez kliku do toolbaru.
+
+### 5.4 Reporting / Analytics
+
+- **Activity heatmap** — kalendářní heatmap aktivit per uživatel / per lead.
+- **Response-time SLA** — time-to-first-response na inbound aktivitě (`email_in`,
+  `sms_in`, `whatsapp_in`); upozornění při překročení SLA.
+- **Channel mix dashboard** — kolik komunikace teče přes který kanál
+  (e-mail vs. SMS vs. WhatsApp vs. call). Velocity per kanál.
+- **Funnel attribution** — který typ aktivity nejčastěji předchází `status_change`
+  na *won*. Insight do toho, co reálně uzavírá obchod.
+- **AI insights nad timeline** — `AiSummaryTool` jako automatický job: každý týden
+  agreguj timeline leadu a navrhni next-best-action.
+
+### 5.5 Integrace
+
+- **Inbound webhook router** — generický endpoint `/inbound/{provider}/{kind}`,
+  který podle providera (Twilio, Postmark, WhatsApp Cloud, DocuSign, Stripe…)
+  routuje na správný `StreamlineTool` a vytvoří `Activity`. Sjednotí dnes
+  roztříštěné webhook handlery.
+- **Outbound provider abstraction** — jednotné rozhraní `MessageProvider` pro
+  e-mail / SMS / WhatsApp / chat. `EmailOutTool` / `SmsOutTool` / `WhatsAppOutTool`
+  by jen řekly „pošli", provider rozhodne podle config firmy.
+- **Calendar two-way sync** — `MeetingScheduledTool` ↔ Google / Outlook
+  Calendar (pull i push, přes ICS / CalDAV).
+- **E-sign provider plugin** — `SignatureRequestedTool` jako adapter (DocuSign /
+  SignWell / vlastní); `SignatureCompletedTool` se zaloguje webhook callbackem.
+
+### 5.6 Performance / DX
+
+- **`select_related` / `prefetch_related` audit** — jakmile timeline poroste,
+  zkontrolovat N+1 dotazy v `ActivityOut` serializaci (zejména `user`, `tool_payload`,
+  `reactions`).
+- **Materialized view pro timeline** — pro velmi rušné entity (firmy s 10k+
+  aktivit per lead) zvážit cache vrstvu / materializovaný feed v Redisu.
+- **Retention policy per tool** — některé tooly (`entity_change`,
+  `system_note`) lze po 6 měsících archivovat / agregovat. Konfigurovatelné
+  per firma.
+- **Bulk activity import API** — endpoint pro import historie z jiných CRM
+  (Pipedrive, HubSpot) v batch módu, s explicit `created_at` override
+  (dnes `auto_now_add`).
+
+### 5.7 Bezpečnost / Compliance
+
+- **GDPR export per entitní timeline** — endpoint, který pro daného `Customer`
+  vrátí všechny aktivity (komentáře, e-maily, hovory, SMS…) v ZIPu.
+- **GDPR delete / pseudonymizace** — bulk operace, která u kompletní timeline
+  zákazníka přepíše PII (`user.email`, `metadata.to`, …) hashem nebo placeholderem.
+- **Audit trail viewer** — admin UI nad `Activity` s filtrem na actor + date range
+  (kdo co kdy v systému udělal).
+- **Field-level encryption** pro citlivý `metadata` (např. `signer_email`,
+  `provider_message_id`) — pgcrypto / `django-cryptography`.
+
