@@ -1112,7 +1112,10 @@
     "failedToDeleteFile": "Datei konnte nicht gelöscht werden.",
     "parseError": "Fehler beim Verarbeiten der Upload-Antwort.",
     "leadDetails": "Lead-Details",
-    "description": "Beschreibung"
+    "description": "Beschreibung",
+    "quickActions": "Schnellaktionen",
+    "filterAll": "Alle",
+    "noActivitiesForFilter": "Keine Aktivitäten entsprechen diesem Filter."
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
