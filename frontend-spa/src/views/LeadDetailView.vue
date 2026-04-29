@@ -110,9 +110,31 @@ async function loadStreamlineTools() {
 }
 
 // Tasks
-interface Task { id: string; lead_id: string; title: string; description?: string; due_date: string | null; is_completed: boolean; created_at: string; assigned_to_id?: string | null; watcher_ids?: string[] }
+interface Task {
+  id: string
+  lead_id: string
+  title: string
+  description?: string
+  due_date: string | null
+  is_completed: boolean
+  created_at: string
+  assigned_to_id?: string | null
+  watcher_ids?: string[]
+  parent_task_id?: string | null
+  subtask_count?: number
+  subtasks_completed?: number
+  checklist_count?: number
+  checklist_checked?: number
+}
+interface ChecklistItem { id: string; text: string; is_checked: boolean; position: number }
+interface TaskDependency { id: string; from_task_id: string; from_task_title: string; to_task_id: string; to_task_title: string; type: 'blocks' | 'related_to' }
+interface TaskDetails { subtasks: Task[]; checklist: ChecklistItem[]; dependencies: TaskDependency[] }
+
 const tasks = ref<Task[]>([])
 const tasksLoading = ref(false)
+const expandedTasks = ref<Set<string>>(new Set())
+const taskDetailsMap = ref<Map<string, TaskDetails>>(new Map())
+const taskDetailsLoadingSet = ref<Set<string>>(new Set())
 const newTaskTitle = ref('')
 const newTaskDueDate = ref('')
 const newTaskDescription = ref('')
@@ -202,10 +224,36 @@ async function loadTasks() {
   try {
     const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100`)
     if (res.ok) {
-      tasks.value = res.data.filter((task) => task.lead_id === leadId.value)
+      tasks.value = res.data.filter(
+        (task) => task.lead_id === leadId.value && !task.parent_task_id,
+      )
     }
   } finally {
     tasksLoading.value = false
+  }
+}
+
+async function toggleExpand(taskId: string) {
+  if (expandedTasks.value.has(taskId)) {
+    expandedTasks.value = new Set([...expandedTasks.value].filter((id) => id !== taskId))
+    return
+  }
+  expandedTasks.value = new Set([...expandedTasks.value, taskId])
+  if (taskDetailsMap.value.has(taskId)) return
+  taskDetailsLoadingSet.value = new Set([...taskDetailsLoadingSet.value, taskId])
+  try {
+    const [subtasksRes, checklistRes, depsRes] = await Promise.all([
+      api.get<Task[]>(`/api/v1/crm/tasks/${taskId}/subtasks`),
+      api.get<ChecklistItem[]>(`/api/v1/crm/tasks/${taskId}/checklist`),
+      api.get<TaskDependency[]>(`/api/v1/crm/tasks/${taskId}/dependencies`),
+    ])
+    taskDetailsMap.value = new Map(taskDetailsMap.value).set(taskId, {
+      subtasks: subtasksRes.ok ? subtasksRes.data : [],
+      checklist: checklistRes.ok ? checklistRes.data : [],
+      dependencies: depsRes.ok ? depsRes.data : [],
+    })
+  } finally {
+    taskDetailsLoadingSet.value = new Set([...taskDetailsLoadingSet.value].filter((id) => id !== taskId))
   }
 }
 
@@ -717,33 +765,119 @@ function getTabLabel(tab: string): string {
         </div>
         <div v-else-if="tasks.length === 0" class="text-center py-10 text-gray-400 text-sm">{{ t('leadDetail.noTasks') }}</div>
         <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-          <div v-for="task in tasks" :key="task.id" class="flex items-start gap-3 p-4">
-            <button
-              class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
-              :class="task.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
-              :disabled="task.is_completed"
-              @click="completeTask(task.id)"
-            >
-              <CheckIcon v-if="task.is_completed" class="w-3 h-3" />
-            </button>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
-              <!-- eslint-disable-next-line vue/no-v-html -->
-              <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
-              <div class="flex flex-wrap gap-3 mt-1 text-xs">
-                <span v-if="task.due_date" class="inline-flex items-center gap-1" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
-                  <CalendarDaysIcon class="w-3.5 h-3.5" />
-                  {{ new Date(task.due_date).toLocaleDateString() }}
-                </span>
-                <span v-if="task.assigned_to_id" class="inline-flex items-center gap-1 text-blue-500">
-                  <UserIcon class="w-3.5 h-3.5" />
-                  {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
-                </span>
-                <span v-if="task.watcher_ids?.length" class="inline-flex items-center gap-1 text-gray-400 dark:text-gray-500">
-                  <BellIcon class="w-3.5 h-3.5" />
-                  {{ task.watcher_ids.length }}
-                </span>
+          <div v-for="task in tasks" :key="task.id">
+            <!-- Root task row -->
+            <div class="flex items-start gap-3 p-4">
+              <button
+                class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
+                :class="task.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
+                :disabled="task.is_completed"
+                @click="completeTask(task.id)"
+              >
+                <CheckIcon v-if="task.is_completed" class="w-3 h-3" />
+              </button>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
+                <div class="flex flex-wrap gap-3 mt-1 text-xs">
+                  <span v-if="task.due_date" class="inline-flex items-center gap-1" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
+                    <CalendarDaysIcon class="w-3.5 h-3.5" />
+                    {{ new Date(task.due_date).toLocaleDateString() }}
+                  </span>
+                  <span v-if="task.assigned_to_id" class="inline-flex items-center gap-1 text-blue-500">
+                    <UserIcon class="w-3.5 h-3.5" />
+                    {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
+                  </span>
+                  <span v-if="task.watcher_ids?.length" class="inline-flex items-center gap-1 text-gray-400 dark:text-gray-500">
+                    <BellIcon class="w-3.5 h-3.5" />
+                    {{ task.watcher_ids.length }}
+                  </span>
+                </div>
               </div>
+              <!-- Expand/collapse button for tasks with subtasks or checklist -->
+              <button
+                v-if="(task.subtask_count ?? 0) > 0 || (task.checklist_count ?? 0) > 0"
+                class="flex-shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                @click="toggleExpand(task.id)"
+              >
+                <ChevronDownIcon
+                  class="w-3.5 h-3.5 transition-transform"
+                  :class="expandedTasks.has(task.id) ? 'rotate-180' : ''"
+                />
+                <span v-if="(task.subtask_count ?? 0) > 0" class="tabular-nums">{{ task.subtasks_completed ?? 0 }}/{{ task.subtask_count }}</span>
+                <span v-if="(task.checklist_count ?? 0) > 0 && (task.subtask_count ?? 0) > 0" class="text-gray-300">·</span>
+                <span v-if="(task.checklist_count ?? 0) > 0" class="tabular-nums">{{ task.checklist_checked ?? 0 }}/{{ task.checklist_count }} ✓</span>
+              </button>
+            </div>
+
+            <!-- Tree details (expanded) -->
+            <div
+              v-if="expandedTasks.has(task.id)"
+              class="ml-8 mr-4 mb-3 border-l-2 border-gray-100 dark:border-gray-700 pl-4 space-y-3"
+            >
+              <div v-if="taskDetailsLoadingSet.has(task.id)" class="animate-pulse h-8 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+              <template v-else-if="taskDetailsMap.has(task.id)">
+                <!-- Subtasks -->
+                <div v-if="taskDetailsMap.get(task.id)!.subtasks.length > 0">
+                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.subtasks') }}</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="sub in taskDetailsMap.get(task.id)!.subtasks"
+                      :key="sub.id"
+                      class="flex items-center gap-2 text-sm"
+                    >
+                      <span
+                        class="w-3.5 h-3.5 rounded-full border flex-shrink-0"
+                        :class="sub.is_completed ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
+                      />
+                      <span :class="sub.is_completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'">{{ sub.title }}</span>
+                      <span v-if="sub.due_date" class="text-xs text-gray-400 ml-auto flex-shrink-0">{{ new Date(sub.due_date).toLocaleDateString() }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Checklist -->
+                <div v-if="taskDetailsMap.get(task.id)!.checklist.length > 0">
+                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.checklist') }}</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="item in taskDetailsMap.get(task.id)!.checklist.slice().sort((a, b) => a.position - b.position)"
+                      :key="item.id"
+                      class="flex items-center gap-2 text-sm"
+                    >
+                      <span
+                        class="w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-white text-xs"
+                        :class="item.is_checked ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
+                      >{{ item.is_checked ? '✓' : '' }}</span>
+                      <span :class="item.is_checked ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'">{{ item.text }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dependencies -->
+                <div v-if="taskDetailsMap.get(task.id)!.dependencies.length > 0">
+                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.dependencies') }}</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="dep in taskDetailsMap.get(task.id)!.dependencies"
+                      :key="dep.id"
+                      class="flex items-center gap-2 text-sm"
+                    >
+                      <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        :class="dep.type === 'blocks'
+                          ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                      >
+                        {{ dep.type === 'blocks' ? t('tasks.dependencyBlocks') : t('tasks.dependencyRelatedTo') }}
+                      </span>
+                      <span class="text-gray-700 dark:text-gray-300 truncate">
+                        {{ dep.from_task_id === task.id ? dep.to_task_title : dep.from_task_title }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
