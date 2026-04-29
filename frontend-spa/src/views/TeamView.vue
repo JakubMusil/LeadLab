@@ -122,7 +122,7 @@ onMounted(loadTeam)
 </script>
 
 <template>
-  <div class="p-6 max-w-4xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
     <!-- Members -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">

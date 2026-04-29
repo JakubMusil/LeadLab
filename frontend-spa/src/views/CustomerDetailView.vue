@@ -230,7 +230,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-6 max-w-4xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
     <RouterLink to="/app/directory" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600">
       ← {{ t('customers.title') }}
     </RouterLink>

@@ -532,7 +532,7 @@ watch(
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="p-6">
     <!-- Back -->
     <RouterLink
       v-if="isStandalone"

@@ -624,7 +624,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 </script>
 
 <template>
-  <div class="p-6 max-w-2xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
 
     <!-- Profile -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">

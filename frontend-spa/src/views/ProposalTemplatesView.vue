@@ -129,7 +129,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 max-w-3xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
     <!-- Header -->
     <div>
       <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Proposal Templates</h1>

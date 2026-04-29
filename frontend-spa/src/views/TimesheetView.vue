@@ -232,7 +232,7 @@ async function deleteEntry(id: string) {
 </script>
 
 <template>
-  <div class="p-6 max-w-6xl mx-auto">
+  <div class="p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>

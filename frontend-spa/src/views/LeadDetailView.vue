@@ -300,7 +300,7 @@ function getTabLabel(tab: string): string {
 </script>
 
 <template>
-  <div class="p-6 max-w-5xl mx-auto">
+  <div class="p-6">
     <!-- Back -->
     <RouterLink to="/app/opportunities" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
       {{ t('leadDetail.backToLeads') }}

@@ -4,7 +4,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="p-6 max-w-2xl mx-auto flex flex-col items-center justify-center py-24 text-center">
+  <div class="p-6 flex flex-col items-center justify-center py-24 text-center">
     <div class="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
       <span class="text-3xl" aria-hidden="true">📧</span>
     </div>

@@ -332,7 +332,7 @@ const trendsChartOptions = {
     v-if="!isPro"
     :description="t('analytics.proDescription')"
   />
-  <div v-else class="p-6 max-w-7xl mx-auto space-y-6">
+  <div v-else class="p-6 space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Analytics &amp; Reporting</h1>
       <button

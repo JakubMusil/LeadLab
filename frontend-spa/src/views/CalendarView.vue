@@ -294,7 +294,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-4 lg:p-6 max-w-7xl mx-auto">
+  <div class="p-4 lg:p-6">
     <!-- Header row: title + Add Task button -->
     <div class="flex items-center justify-between mb-5">
       <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('calendar.title') }}</h1>

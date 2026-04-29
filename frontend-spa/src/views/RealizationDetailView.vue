@@ -201,7 +201,7 @@ onMounted(async () => {
     <button @click="router.push('/app/realizations')" class="mt-4 text-sm text-red-600 hover:underline">← Zpět</button>
   </div>
 
-  <div v-else class="p-6 max-w-5xl mx-auto space-y-6">
+  <div v-else class="p-6 space-y-6">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1 text-sm text-gray-500">
       <button @click="router.push('/app/realizations')" class="hover:text-gray-700 dark:hover:text-gray-300">{{ t('realizations.title') }}</button>
