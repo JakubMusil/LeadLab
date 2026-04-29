@@ -6,9 +6,7 @@ from crm.models import (
     DashboardLayout,
     ImportJob,
     Lead,
-    LeadAttachment,
     LeadScoringRule,
-    LeadStatusHistory,
     Notification,
     Proposal,
     ProposalItem,
@@ -38,13 +36,6 @@ class TaskInline(admin.TabularInline):
     readonly_fields = ("completed_at",)
 
 
-class AttachmentInline(admin.TabularInline):
-    model = LeadAttachment
-    extra = 0
-    fields = ("original_filename", "content_type", "size_bytes", "uploaded_by", "created_at")
-    readonly_fields = ("created_at",)
-
-
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ("first_name", "last_name", "email", "company_name", "firm")
@@ -65,15 +56,7 @@ class LeadAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     autocomplete_fields = ["customer", "assigned_to"]
     readonly_fields = ("created_at", "updated_at")
-    inlines = [ActivityInline, TaskInline, AttachmentInline]
-
-
-@admin.register(LeadAttachment)
-class LeadAttachmentAdmin(admin.ModelAdmin):
-    list_display = ("original_filename", "lead", "uploaded_by", "size_bytes", "content_type", "created_at")
-    list_filter = ("firm",)
-    search_fields = ("original_filename", "lead__title")
-    readonly_fields = ("created_at",)
+    inlines = [ActivityInline, TaskInline]
 
 
 @admin.register(Activity)
@@ -98,14 +81,6 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ("firm", "is_read", "event")
     search_fields = ("event", "user__email")
     readonly_fields = ("created_at",)
-
-
-@admin.register(LeadStatusHistory)
-class LeadStatusHistoryAdmin(admin.ModelAdmin):
-    list_display = ("lead", "from_status", "to_status", "changed_by", "changed_at")
-    list_filter = ("to_status", "from_status")
-    search_fields = ("lead__title",)
-    readonly_fields = ("changed_at",)
 
 
 @admin.register(ImportJob)

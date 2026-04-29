@@ -288,7 +288,7 @@ class StatusChangeTool(StreamlineTool):
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
-        from crm.models import LeadStatus, LeadStatusHistory
+        from crm.models import LeadStatus
 
         lead = activity.lead
         if lead is None:
@@ -304,13 +304,6 @@ class StatusChangeTool(StreamlineTool):
         lead.save(update_fields=["status", "updated_at"])
         activity.metadata = {**activity.metadata, "old_status": old_status}
         activity.save(update_fields=["metadata"])
-        LeadStatusHistory.objects.create(
-            lead=lead,
-            from_status=old_status,
-            to_status=new_status,
-            changed_at=activity.created_at,
-            changed_by=context["user"],
-        )
 
     def render_payload(self, activity: "Activity") -> dict:
         return {

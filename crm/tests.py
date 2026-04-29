@@ -894,7 +894,7 @@ class TierLimitLeadCreateAPITest(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Lead Attachments API tests
+# Lead Attachments API tests  (now backed by Document)
 # ---------------------------------------------------------------------------
 
 import io
@@ -902,7 +902,7 @@ import uuid as uuid_module
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from crm.models import LeadAttachment
+from crm.models import Document
 
 
 class AttachmentAPIFixtureMixin(CRMAPIFixtureMixin):
@@ -934,10 +934,10 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
         other_firm = Firm.objects.create(name="Other Firm Attach")
         other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
         # Upload directly to DB for other firm's lead — should not appear in our list.
-        LeadAttachment.objects.create(
+        Document.objects.create(
             firm=other_firm,
             lead=other_lead,
-            original_filename="secret.pdf",
+            name="secret.pdf",
             content_type="application/pdf",
             size_bytes=100,
         )
@@ -946,10 +946,10 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_list_attachments_pagination(self):
         for i in range(5):
-            LeadAttachment.objects.create(
+            Document.objects.create(
                 firm=self.firm,
                 lead=self.lead,
-                original_filename=f"file{i}.txt",
+                name=f"file{i}.txt",
                 content_type="text/plain",
                 size_bytes=i,
             )
@@ -963,8 +963,8 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
     def tearDown(self):
         # Clean up any files written to MEDIA_ROOT during tests.
-        for attachment in LeadAttachment.objects.filter(lead=self.lead):
-            attachment.file.delete(save=False)
+        for doc in Document.objects.filter(lead=self.lead):
+            doc.file.delete(save=False)
         super().tearDown()
 
     def test_upload_returns_201(self):
@@ -977,7 +977,7 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_upload_creates_db_record(self):
         self._upload(self.lead.id)
-        self.assertEqual(LeadAttachment.objects.filter(lead=self.lead).count(), 1)
+        self.assertEqual(Document.objects.filter(lead=self.lead).count(), 1)
 
     def test_upload_logs_file_upload_activity(self):
         self._upload(self.lead.id)
@@ -1016,11 +1016,11 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
     def setUp(self):
         super().setUp()
-        # Create an attachment record without a physical file for delete tests.
-        self.attachment = LeadAttachment.objects.create(
+        # Create a Document record without a physical file for delete tests.
+        self.attachment = Document.objects.create(
             firm=self.firm,
             lead=self.lead,
-            original_filename="deleteme.txt",
+            name="deleteme.txt",
             content_type="text/plain",
             size_bytes=5,
         )
@@ -1030,7 +1030,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
             f"/api/v1/crm/opportunities/{self.lead.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 204)
-        self.assertFalse(LeadAttachment.objects.filter(id=self.attachment.id).exists())
+        self.assertFalse(Document.objects.filter(id=self.attachment.id).exists())
 
     def test_delete_attachment_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
