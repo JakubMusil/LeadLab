@@ -125,17 +125,7 @@ export interface FollowUpTaskIn {
   lead_id?: string | null
 }
 
-export interface TaskCommentOut {
-  id: string
-  task_id: string
-  author_id: string | null
-  author_name: string | null
-  content_html: string
-  created_at: string
-  updated_at: string
-}
-
-export interface TaskAttachmentOut {
+export interface TaskDocumentOut {
   id: string
   task_id: string
   uploaded_by_id: string | null
@@ -145,6 +135,9 @@ export interface TaskAttachmentOut {
   url: string
   created_at: string
 }
+
+/** @deprecated Kept as an alias of TaskDocumentOut for backward-compat. */
+export type TaskAttachmentOut = TaskDocumentOut
 
 export interface TaskFetchOpts {
   assignedToId?: string | 'all'
@@ -239,13 +232,13 @@ export interface TimelineAttachmentOut {
 
 export interface TaskTimelineEntryOut {
   id: string
-  /** 'timeline_entry' | 'legacy_comment' | 'legacy_attachment' */
+  /** 'activity' (always — legacy 'timeline_entry'/'legacy_*' sources removed) */
   source: string
   /** 'comment' | 'file_upload' | 'status_change' | 'priority_change' | ... */
   event_type: string
   author_id: string | null
   author_name: string | null
-  content_html: string
+  content_text: string
   metadata: Record<string, unknown>
   parent_entry_id: string | null
   reactions: ReactionSummaryOut[]
@@ -255,7 +248,7 @@ export interface TaskTimelineEntryOut {
 }
 
 export interface TaskTimelinePostIn {
-  content_html: string
+  content_text: string
   parent_entry_id?: string | null
   // Action toggles
   change_assignee_to?: string | null
@@ -493,53 +486,25 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   // ---------------------------------------------------------------------------
-  // Task comments
+  // Task documents (replaces legacy /tasks/:id/attachments — Document-backed)
   // ---------------------------------------------------------------------------
 
-  async function fetchTaskComments(taskId: string): Promise<{ ok: boolean; data?: TaskCommentOut[]; error?: string }> {
-    const res = await api.get<TaskCommentOut[]>(`/api/v1/crm/tasks/${taskId}/comments`)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load comments.') }
-  }
-
-  async function createTaskComment(taskId: string, contentHtml: string): Promise<{ ok: boolean; data?: TaskCommentOut; error?: string }> {
-    const res = await api.post<TaskCommentOut>(`/api/v1/crm/tasks/${taskId}/comments`, { content_html: contentHtml })
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to post comment.') }
-  }
-
-  async function updateTaskComment(taskId: string, commentId: string, contentHtml: string): Promise<{ ok: boolean; data?: TaskCommentOut; error?: string }> {
-    const res = await api.patch<TaskCommentOut>(`/api/v1/crm/tasks/${taskId}/comments/${commentId}`, { content_html: contentHtml })
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update comment.') }
-  }
-
-  async function deleteTaskComment(taskId: string, commentId: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/comments/${commentId}`)
-    if (res.ok) return { ok: true }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete comment.') }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Task attachments
-  // ---------------------------------------------------------------------------
-
-  async function fetchTaskAttachments(taskId: string): Promise<{ ok: boolean; data?: TaskAttachmentOut[]; error?: string }> {
-    const res = await api.get<TaskAttachmentOut[]>(`/api/v1/crm/tasks/${taskId}/attachments`)
+  async function fetchTaskAttachments(taskId: string): Promise<{ ok: boolean; data?: TaskDocumentOut[]; error?: string }> {
+    const res = await api.get<TaskDocumentOut[]>(`/api/v1/crm/tasks/${taskId}/documents`)
     if (res.ok) return { ok: true, data: res.data }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to load attachments.') }
   }
 
-  async function uploadTaskAttachment(taskId: string, file: File): Promise<{ ok: boolean; data?: TaskAttachmentOut; error?: string }> {
+  async function uploadTaskAttachment(taskId: string, file: File): Promise<{ ok: boolean; data?: TaskDocumentOut; error?: string }> {
     const formData = new FormData()
     formData.append('file', file)
-    const res = await api.postForm<TaskAttachmentOut>(`/api/v1/crm/tasks/${taskId}/attachments`, formData)
+    const res = await api.postForm<TaskDocumentOut>(`/api/v1/crm/tasks/${taskId}/documents`, formData)
     if (res.ok) return { ok: true, data: res.data }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to upload file.') }
   }
 
   async function deleteTaskAttachment(taskId: string, attachmentId: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/attachments/${attachmentId}`)
+    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/documents/${attachmentId}`)
     if (res.ok) return { ok: true }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete attachment.') }
   }
@@ -705,7 +670,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
   async function copyTask(
     id: string,
-    opts: { title?: string; include_subtasks?: boolean; include_checklist?: boolean; include_attachments?: boolean },
+    opts: { title?: string; include_subtasks?: boolean; include_checklist?: boolean },
   ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
     const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/copy`, opts)
     if (res.ok) return { ok: true, data: res.data }
@@ -925,10 +890,6 @@ export const useTasksStore = defineStore('tasks', () => {
     completeTask,
     completeTaskWithFollowUp,
     toggleFavourite,
-    fetchTaskComments,
-    createTaskComment,
-    updateTaskComment,
-    deleteTaskComment,
     fetchTaskAttachments,
     uploadTaskAttachment,
     deleteTaskAttachment,

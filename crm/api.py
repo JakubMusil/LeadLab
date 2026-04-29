@@ -1784,6 +1784,145 @@ def get_task(request, task_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Task documents (unified Document model + Activity(file_upload))
+# ---------------------------------------------------------------------------
+
+_MAX_TASK_DOCUMENT_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+class TaskDocumentOut(Schema):
+    id: str
+    task_id: str
+    uploaded_by_id: Optional[str]
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
+
+
+def _task_document_out(doc: Document) -> dict:
+    return {
+        "id": str(doc.id),
+        "task_id": str(doc.task_id) if doc.task_id else "",
+        "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
+        "original_filename": doc.name,
+        "content_type": doc.content_type or "",
+        "size_bytes": doc.size_bytes,
+        "url": doc.file.url if doc.file.name else "",
+        "created_at": doc.created_at,
+    }
+
+
+@router.get(
+    "/tasks/{task_id}/documents",
+    auth=django_auth,
+    response={200: List[TaskDocumentOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_task_documents(request, task_id: str, page: int = 1, page_size: int = 50):
+    """List all documents attached to a task, newest first."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    offset = (page - 1) * page_size
+    docs = Document.objects.filter(task=task, firm=request.firm).order_by("-created_at")[
+        offset: offset + page_size
+    ]
+    return 200, [_task_document_out(d) for d in docs]
+
+
+@router.post(
+    "/tasks/{task_id}/documents",
+    auth=django_auth,
+    response={201: TaskDocumentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
+    """Upload a file and attach it to a task as a Document.
+
+    Creates an ``Activity(type=file_upload)`` so the document appears inline
+    in the unified task timeline.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if file.size > _MAX_TASK_DOCUMENT_BYTES:
+        return 400, {
+            "detail": f"File exceeds the maximum allowed size of {_MAX_TASK_DOCUMENT_BYTES // (1024 * 1024)} MB."
+        }
+
+    with transaction.atomic():
+        doc = Document(
+            firm=request.firm,
+            task=task,
+            uploaded_by=request.user,
+            name=file.name,
+            content_type=file.content_type or "application/octet-stream",
+            size_bytes=file.size,
+        )
+        doc.file.save(file.name, file, save=True)
+
+        Activity.objects.create(
+            task=task,
+            user=request.user,
+            type=ActivityType.FILE_UPLOAD,
+            metadata={
+                "document_id": str(doc.id),
+                "filename": doc.name,
+                "url": doc.file.url,
+                "size_bytes": doc.size_bytes,
+                "content_type": doc.content_type,
+            },
+        )
+
+    return 201, _task_document_out(doc)
+
+
+@router.delete(
+    "/tasks/{task_id}/documents/{document_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_task_document(request, task_id: str, document_id: str):
+    """Delete a document attached to a task. Only uploader or admin/owner may delete."""
+    try:
+        membership = require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    try:
+        doc = Document.objects.get(id=document_id, task_id=task_id, firm=request.firm)
+    except Document.DoesNotExist:
+        return 404, {"detail": "Document not found."}
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    if str(doc.uploaded_by_id) != str(request.user.id) and not is_admin:
+        return 403, {"detail": "You can only delete your own documents."}
+
+    doc.file.delete(save=False)
+    doc.delete()
+    return 204, None
+
+
+# ---------------------------------------------------------------------------
 # Task Favourite (⭐ toggle)
 # ---------------------------------------------------------------------------
 
@@ -2699,9 +2838,24 @@ class ReactionSummaryOut(Schema):
     reacted_by_me: bool
 
 
+class TimelineAttachmentOut(Schema):
+    """Inline attachment representation derived from a file_upload Activity."""
+    id: str
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    uploaded_by_id: Optional[str]
+    created_at: datetime
+
+
 class TaskTimelineEntryOut(Schema):
     """
     A single item in the unified task timeline, backed by ``Activity``.
+
+    For ``file_upload`` activities the ``attachment`` field is populated
+    from the underlying ``Document`` (via ``metadata.document_id``) so the
+    SPA can render the file inline without an extra request.
     """
     id: str
     source: str  # always "activity"
@@ -2713,6 +2867,7 @@ class TaskTimelineEntryOut(Schema):
     parent_entry_id: Optional[str]
     reactions: List[ReactionSummaryOut]
     reply_count: int
+    attachment: Optional[TimelineAttachmentOut]
     created_at: datetime
 
 
@@ -2769,6 +2924,36 @@ def _reactions_for_activity(activity: Activity, requesting_user) -> List[dict]:
 def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
     """Serialise a task-linked Activity to the unified task timeline dict."""
     author_name = _author_name_for(activity.user) if activity.user_id else None
+    metadata = activity.metadata if isinstance(activity.metadata, dict) else {}
+
+    # For file_upload activities, surface the linked Document as an inline attachment.
+    attachment = None
+    if activity.type == ActivityType.FILE_UPLOAD:
+        document_id = metadata.get("document_id")
+        if document_id:
+            try:
+                doc = Document.objects.get(id=document_id)
+                attachment = {
+                    "id": str(doc.id),
+                    "original_filename": doc.name,
+                    "content_type": doc.content_type or "",
+                    "size_bytes": doc.size_bytes,
+                    "url": doc.file.url if doc.file.name else "",
+                    "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
+                    "created_at": doc.created_at,
+                }
+            except Document.DoesNotExist:
+                # Fall back to metadata-only payload so the row still renders
+                attachment = {
+                    "id": str(document_id),
+                    "original_filename": metadata.get("filename", ""),
+                    "content_type": metadata.get("content_type", ""),
+                    "size_bytes": int(metadata.get("size_bytes") or 0),
+                    "url": metadata.get("url", ""),
+                    "uploaded_by_id": str(activity.user_id) if activity.user_id else None,
+                    "created_at": activity.created_at,
+                }
+
     return {
         "id": str(activity.id),
         "source": "activity",
@@ -2776,10 +2961,11 @@ def _activity_to_timeline_out(activity: Activity, requesting_user=None) -> dict:
         "author_id": str(activity.user_id) if activity.user_id else None,
         "author_name": author_name,
         "content_text": activity.content_text,
-        "metadata": activity.metadata if isinstance(activity.metadata, dict) else {},
-        "parent_entry_id": str(activity.metadata.get("reply_to_id", "")) or None,
+        "metadata": metadata,
+        "parent_entry_id": str(metadata.get("reply_to_id", "")) or None,
         "reactions": _reactions_for_activity(activity, requesting_user),
         "reply_count": 0,
+        "attachment": attachment,
         "created_at": activity.created_at,
     }
 

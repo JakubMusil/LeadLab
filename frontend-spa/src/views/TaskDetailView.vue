@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useTasksStore, type TaskOut, type TaskCommentOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut, type TaskTimeLogOut, type TaskTimerOut, type TaskCustomFieldValueIn } from '@/stores/tasks'
+import { useTasksStore, type TaskOut, type TaskAttachmentOut, type ChecklistItemOut, type TaskDependencyOut, type TaskTimelineEntryOut, type TaskTimelinePostIn, type ReactionSummaryOut, type TaskTimeLogOut, type TaskTimerOut, type TaskCustomFieldValueIn } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -282,7 +282,6 @@ const showCopyModal = ref(false)
 const copyTitle = ref('')
 const copyIncludeSubtasks = ref(false)
 const copyIncludeChecklist = ref(true)
-const copyIncludeAttachments = ref(false)
 const copySubmitting = ref(false)
 
 async function submitCopyTask() {
@@ -292,7 +291,6 @@ async function submitCopyTask() {
     title: copyTitle.value || undefined,
     include_subtasks: copyIncludeSubtasks.value,
     include_checklist: copyIncludeChecklist.value,
-    include_attachments: copyIncludeAttachments.value,
   })
   copySubmitting.value = false
   if (result.ok && result.data) {
@@ -309,7 +307,6 @@ function openCopyModal() {
   copyTitle.value = task.value.title + ' ' + t('tasks.copySuffix')
   copyIncludeSubtasks.value = false
   copyIncludeChecklist.value = true
-  copyIncludeAttachments.value = false
   showCopyModal.value = true
   showActionMenu.value = false
 }
@@ -485,101 +482,22 @@ async function completeTask() {
 }
 
 // ---------------------------------------------------------------------------
-// Comments
+// Task documents (file uploads).  Listing is driven by the unified timeline —
+// each upload creates an Activity(file_upload) which renders inline as an
+// attachment row.  These helpers only handle the upload/delete actions.
 // ---------------------------------------------------------------------------
-const comments = ref<TaskCommentOut[]>([])
-const commentsLoading = ref(false)
-const commentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
-const newCommentHtml = ref('')
-const commentSubmitting = ref(false)
-
-// Per-comment editing state
-const editingCommentId = ref<string | null>(null)
-const editCommentHtml = ref('')
-const editCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
-const editCommentSubmitting = ref(false)
-
-async function loadComments() {
-  commentsLoading.value = true
-  const result = await tasksStore.fetchTaskComments(taskId.value)
-  commentsLoading.value = false
-  if (result.ok && result.data) comments.value = result.data
-}
-
-async function submitComment() {
-  if (!hasPlainText(newCommentHtml.value)) return
-  commentSubmitting.value = true
-  const result = await tasksStore.createTaskComment(taskId.value, newCommentHtml.value)
-  commentSubmitting.value = false
-  if (result.ok && result.data) {
-    comments.value.push(result.data)
-    newCommentHtml.value = ''
-  } else {
-    toast.error(result.error ?? t('tasks.commentFailed'))
-  }
-}
-
-function startEditComment(comment: TaskCommentOut) {
-  editingCommentId.value = comment.id
-  editCommentHtml.value = comment.content_html
-}
-
-function cancelEditComment() {
-  editingCommentId.value = null
-  editCommentHtml.value = ''
-}
-
-async function submitEditComment(commentId: string) {
-  if (!hasPlainText(editCommentHtml.value)) return
-  editCommentSubmitting.value = true
-  const result = await tasksStore.updateTaskComment(taskId.value, commentId, editCommentHtml.value)
-  editCommentSubmitting.value = false
-  if (result.ok && result.data) {
-    const idx = comments.value.findIndex((c) => c.id === commentId)
-    if (idx !== -1) comments.value[idx] = result.data
-    editingCommentId.value = null
-    editCommentHtml.value = ''
-  } else {
-    toast.error(result.error ?? t('tasks.commentUpdateFailed'))
-  }
-}
-
-async function deleteComment(commentId: string) {
-  const result = await tasksStore.deleteTaskComment(taskId.value, commentId)
-  if (result.ok) {
-    comments.value = comments.value.filter((c) => c.id !== commentId)
-  } else {
-    toast.error(result.error ?? t('tasks.commentDeleteFailed'))
-  }
-}
-
-function canEditComment(comment: TaskCommentOut): boolean {
-  return isAdmin.value || String(comment.author_id) === String(authStore.user?.id)
-}
-
-// ---------------------------------------------------------------------------
-// Attachments
-// ---------------------------------------------------------------------------
-const attachments = ref<TaskAttachmentOut[]>([])
-const attachmentsLoading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadingFile = ref(false)
 const isDraggingOver = ref(false)
-
-async function loadAttachments() {
-  attachmentsLoading.value = true
-  const result = await tasksStore.fetchTaskAttachments(taskId.value)
-  attachmentsLoading.value = false
-  if (result.ok && result.data) attachments.value = result.data
-}
 
 async function uploadFile(file: File) {
   uploadingFile.value = true
   const result = await tasksStore.uploadTaskAttachment(taskId.value, file)
   uploadingFile.value = false
-  if (result.ok && result.data) {
-    attachments.value.unshift(result.data)
+  if (result.ok) {
     toast.success(t('tasks.fileUploaded'))
+    // Refresh timeline so the new file_upload entry appears.
+    await loadTimeline()
   } else {
     toast.error(result.error ?? t('tasks.fileUploadFailed'))
   }
@@ -588,8 +506,8 @@ async function uploadFile(file: File) {
 async function deleteAttachment(attachmentId: string) {
   const result = await tasksStore.deleteTaskAttachment(taskId.value, attachmentId)
   if (result.ok) {
-    attachments.value = attachments.value.filter((a) => a.id !== attachmentId)
     toast.success(t('tasks.fileDeleted'))
+    await loadTimeline()
   } else {
     toast.error(result.error ?? t('tasks.fileDeleteFailed'))
   }
@@ -848,7 +766,7 @@ async function submitTimelineComment() {
   commentTimelineSubmitting.value = true
 
   const payload: TaskTimelinePostIn = {
-    content_html: newCommentHtmlTimeline.value,
+    content_text: newCommentHtmlTimeline.value,
   }
   if (toggleChangeAssignee.value && actionAssigneeId.value) {
     payload.change_assignee_to = actionAssigneeId.value
@@ -2551,7 +2469,7 @@ onUnmounted(() => {
 
               <!-- Content -->
               <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(entry.content_html)" />
+              <div class="prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(entry.content_text)" />
 
               <!-- Reactions bar -->
               <div class="mt-2 flex flex-wrap items-center gap-1.5 relative">
@@ -2990,10 +2908,6 @@ onUnmounted(() => {
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input type="checkbox" v-model="copyIncludeSubtasks" class="rounded" />
               {{ t('tasks.copySubtasks') }}
-            </label>
-            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-              <input type="checkbox" v-model="copyIncludeAttachments" class="rounded" />
-              {{ t('tasks.copyAttachments') }}
             </label>
           </div>
           <div class="flex gap-3 justify-end pt-2">
