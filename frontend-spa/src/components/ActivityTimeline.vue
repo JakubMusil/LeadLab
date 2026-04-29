@@ -602,9 +602,11 @@ defineExpose({ load: () => loadActivities(1) })
           </p>
           <p v-else-if="act.type === 'entity_change' && act.tool_payload" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             <span class="font-medium">{{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}</span>:
+            <span>{{ t('leadDetail.entityChangeOld') }}</span>
             <span class="line-through text-red-500 dark:text-red-400">{{ (act.tool_payload as Record<string, string>).old_value || '—' }}</span>
             →
-            <span class="text-green-600 dark:text-green-400">{{ (act.tool_payload as Record<string, string>).new_value || '—' }}</span>
+            <span>{{ t('leadDetail.entityChangeNew') }}</span>
+            <span class="font-medium text-green-600 dark:text-green-400">{{ (act.tool_payload as Record<string, string>).new_value || '—' }}</span>
           </p>
           <RouterLink
             v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"

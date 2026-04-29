@@ -1126,7 +1126,9 @@
     "typeProposalRejected": "Nabídka odmítnuta",
     "viewProposal": "Zobrazit nabídku",
     "statusChangedArrow": "{from} → {to}",
-    "typeEntityChange": "Změna pole"
+    "typeEntityChange": "Změna pole",
+    "entityChangeOld": "Bylo:",
+    "entityChangeNew": "Nyní:"
   },
   "sequences": {
     "title": "E-mailové sekvence",

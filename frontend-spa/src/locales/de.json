@@ -1125,7 +1125,9 @@
     "typeProposalRejected": "Angebot abgelehnt",
     "viewProposal": "Angebot anzeigen",
     "statusChangedArrow": "{from} → {to}",
-    "typeEntityChange": "Feld geändert"
+    "typeEntityChange": "Feld geändert",
+    "entityChangeOld": "War:",
+    "entityChangeNew": "Jetzt:"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

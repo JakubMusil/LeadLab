@@ -57,10 +57,15 @@ _PROPOSAL_FIELDS = [
 
 
 def _normalize(value) -> str:
-    """Convert any field value to a stable string for comparison."""
+    """Convert any field value to a stable string for comparison.
+
+    Includes the type name to distinguish between falsy values of different
+    types (e.g. 0 vs False vs None vs "").
+    """
     if value is None:
         return ""
-    return str(value)
+    # For numeric types include the type so 0 != False != ""
+    return f"{type(value).__name__}:{value}"
 
 
 def _make_pre_save(tracked_fields):
