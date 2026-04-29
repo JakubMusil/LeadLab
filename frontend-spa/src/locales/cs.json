@@ -1097,6 +1097,7 @@
     "noFilesHint": "Nahrajte soubory pro jejich uložení k tomuto příležitosti.",
     "overviewCreated": "Vytvořeno",
     "overviewSource": "Zdroj",
+    "overviewName": "Název",
     "overviewStatus": "Stav",
     "overviewValue": "Hodnota",
     "taskCompleteFailed": "Nepodařilo se dokončit úkol.",

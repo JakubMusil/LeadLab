@@ -1096,6 +1096,7 @@
     "noFilesHint": "Upload files to keep them with this opportunity.",
     "overviewCreated": "Created",
     "overviewSource": "Source",
+    "overviewName": "Name",
     "overviewStatus": "Status",
     "overviewValue": "Value",
     "taskCompleteFailed": "Failed to complete task.",

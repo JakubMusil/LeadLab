@@ -586,6 +586,10 @@ function getTabLabel(tab: string): string {
               {{ t('leadDetail.leadDetails') }}
             </p>
             <dl class="space-y-2">
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewName') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ store.currentLead.title }}</dd>
+              </div>
               <div class="flex justify-between items-center">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
                 <dd class="relative">

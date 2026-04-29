@@ -1096,6 +1096,7 @@
     "noFilesHint": "Laden Sie Dateien hoch, um sie bei diesem Chance zu speichern.",
     "overviewCreated": "Erstellt",
     "overviewSource": "Quelle",
+    "overviewName": "Name",
     "overviewStatus": "Status",
     "overviewValue": "Wert",
     "taskCompleteFailed": "Aufgabe konnte nicht abgeschlossen werden.",
