@@ -1429,9 +1429,9 @@
     "skipToContent": "Přejít na obsah",
     "workspace": "Workspace",
     "sectionCrm": "CRM",
-    "sectionErp": "ERP",
+    "sectionErp": "Projekty",
     "sectionInsights": "Přehledy",
-    "sectionWorkspace": "Workspace",
+    "sectionWorkspace": "Konfigurace",
     "sectionPlugins": "Pluginy",
     "sectionProposalTemplates": "Šablony nabídek",
     "sectionCatalog": "Katalog položek",
@@ -1449,7 +1449,9 @@
     "eventTaskCompleted": "Úkol splněn",
     "notifActivity": "Aktivita",
     "notifTaskCompleted": "Úkol splněn",
-    "notifLeadDeleted": "Příležitost {id} smazána"
+    "notifLeadDeleted": "Příležitost {id} smazána",
+    "sectionProjects": "Projekty",
+    "sectionConfig": "Konfigurace"
   },
   "catalog": {
     "title": "Katalog položek",

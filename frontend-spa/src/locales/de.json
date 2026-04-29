@@ -1428,9 +1428,9 @@
     "skipToContent": "Zum Inhalt springen",
     "workspace": "Workspace",
     "sectionCrm": "CRM",
-    "sectionErp": "ERP",
+    "sectionErp": "Projekte",
     "sectionInsights": "Erkenntnisse",
-    "sectionWorkspace": "Workspace",
+    "sectionWorkspace": "Konfiguration",
     "sectionPlugins": "Plugins",
     "sectionProposalTemplates": "Angebotsvorlagen",
     "sectionCatalog": "Artikelkatalog",
@@ -1448,7 +1448,9 @@
     "eventTaskCompleted": "Aufgabe abgeschlossen",
     "notifActivity": "Aktivität",
     "notifTaskCompleted": "Aufgabe abgeschlossen",
-    "notifLeadDeleted": "Chance {id} gelöscht"
+    "notifLeadDeleted": "Chance {id} gelöscht",
+    "sectionProjects": "Projekte",
+    "sectionConfig": "Konfiguration"
   },
   "catalog": {
     "title": "Artikelkatalog",
