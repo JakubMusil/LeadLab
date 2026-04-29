@@ -16,11 +16,22 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
+import Image from '@tiptap/extension-image'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
+import { PaperClipIcon } from '@heroicons/vue/24/outline'
 
 export interface MentionUser {
   id: string
   label: string
+}
+
+export interface UploadedFile {
+  id: string
+  original_filename: string
+  content_type: string
+  size_bytes: number
+  url: string
+  created_at: string
 }
 
 const props = withDefaults(
@@ -29,16 +40,19 @@ const props = withDefaults(
     placeholder?: string
     disabled?: boolean
     members?: MentionUser[]
+    uploadUrl?: string
   }>(),
   {
     placeholder: 'Write a comment…',
     disabled: false,
     members: () => [],
+    uploadUrl: undefined,
   },
 )
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'fileUploaded': [file: UploadedFile]
 }>()
 
 // ---------------------------------------------------------------------------
@@ -62,6 +76,44 @@ const mentionPopup = ref<MentionPopupState>({
   selectedIndex: 0,
   selectItem: null,
 })
+
+// ---------------------------------------------------------------------------
+// File upload state
+// ---------------------------------------------------------------------------
+
+const fileUploadRef = ref<HTMLInputElement | null>(null)
+const isUploading = ref(false)
+
+async function handleFileUpload(e: Event) {
+  if (!props.uploadUrl) return
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  input.value = ''
+
+  isUploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch(props.uploadUrl, {
+      method: 'POST',
+      credentials: 'include',
+      body: fd,
+    })
+    if (!res.ok) return
+    const uploaded = (await res.json()) as UploadedFile
+    if (file.type.startsWith('image/')) {
+      editor.value?.chain().focus().setImage({ src: uploaded.url, alt: uploaded.original_filename }).run()
+    } else {
+      editor.value?.chain().focus().insertContent(
+        `<a href="${uploaded.url}" target="_blank" rel="noopener noreferrer">${uploaded.original_filename}</a>`
+      ).run()
+    }
+    emit('fileUploaded', uploaded)
+  } finally {
+    isUploading.value = false
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Emoji picker state
@@ -100,6 +152,7 @@ const editor = useEditor({
   editable: !props.disabled,
   extensions: [
     StarterKit,
+    Image.configure({ inline: true, allowBase64: false }),
     Placeholder.configure({ placeholder: props.placeholder }),
     Mention.configure({
       HTMLAttributes: { class: 'mention' },
@@ -319,6 +372,28 @@ defineExpose({ getMentionedIds })
           </button>
         </div>
       </div>
+      <!-- File / image upload (only when uploadUrl is provided) -->
+      <template v-if="uploadUrl">
+        <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
+        <button
+          type="button"
+          class="p-1 rounded w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400"
+          :class="{ 'opacity-50 cursor-not-allowed': isUploading }"
+          :disabled="disabled || isUploading"
+          title="Attach file or image"
+          aria-label="Attach file or image"
+          @click="fileUploadRef?.click()"
+        >
+          <PaperClipIcon class="w-3.5 h-3.5" />
+        </button>
+        <input
+          ref="fileUploadRef"
+          type="file"
+          class="hidden"
+          aria-hidden="true"
+          @change="handleFileUpload"
+        />
+      </template>
     </div>
 
     <!-- Editor area -->

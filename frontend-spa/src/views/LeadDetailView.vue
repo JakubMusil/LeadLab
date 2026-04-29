@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
@@ -10,6 +10,23 @@ import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import DOMPurify from 'dompurify'
+import {
+  ChatBubbleLeftIcon,
+  PhoneIcon,
+  UsersIcon,
+  PaperAirplaneIcon,
+  InboxArrowDownIcon,
+  ClipboardDocumentListIcon,
+  CheckIcon,
+  CalendarDaysIcon,
+  UserIcon,
+  BellIcon,
+  TrashIcon,
+  DocumentIcon,
+  CloudArrowUpIcon,
+  PaperClipIcon,
+  ChevronDownIcon,
+} from '@heroicons/vue/24/outline'
 
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
@@ -70,17 +87,17 @@ const sidebarHasPlainText = computed(() =>
   Boolean(sidebarActivityText.value.replace(/<[^>]*>/g, '').trim()),
 )
 
-const sidebarActionItems = computed(() => [
-  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: '💬' },
-  { value: 'call',      label: t('leadDetail.typeCall'),     icon: '📞' },
-  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: '🤝' },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: '📧' },
-  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: '📥' },
-  { value: 'task',      label: t('leadDetail.typeTask'),     icon: '📋' },
+const sidebarActionItems = computed<{ value: string; label: string; icon: Component }[]>(() => [
+  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: ChatBubbleLeftIcon },
+  { value: 'call',      label: t('leadDetail.typeCall'),     icon: PhoneIcon },
+  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: UsersIcon },
+  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: PaperAirplaneIcon },
+  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: InboxArrowDownIcon },
+  { value: 'task',      label: t('leadDetail.typeTask'),     icon: ClipboardDocumentListIcon },
 ])
 
 const sidebarActionIcon = computed(
-  () => sidebarActionItems.value.find((i) => i.value === sidebarActionType.value)?.icon ?? '📌',
+  () => sidebarActionItems.value.find((i) => i.value === sidebarActionType.value)?.icon ?? ClipboardDocumentListIcon,
 )
 
 // Files
@@ -389,53 +406,6 @@ function getTabLabel(tab: string): string {
     </div>
 
     <template v-else-if="store.currentLead">
-      <!-- Lead header -->
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
-        <div class="flex items-start gap-4 flex-wrap">
-          <div class="flex-1 min-w-0">
-            <h2 class="text-xl font-semibold text-gray-900">{{ store.currentLead.title }}</h2>
-            <p v-if="store.currentLead.description" class="text-sm text-gray-500 mt-1">{{ store.currentLead.description }}</p>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <!-- Status badge (inline editor) -->
-            <div class="relative">
-              <button
-                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
-                :class="getStatusMeta(store.currentLead.status).color"
-                @click="statusPopupOpen = !statusPopupOpen"
-              >
-                {{ getStatusMeta(store.currentLead.status).label }}
-                <span class="text-xs opacity-60">▾</span>
-              </button>
-              <div
-                v-if="statusPopupOpen"
-                class="absolute right-0 top-9 z-10 w-40 bg-white rounded-xl border border-gray-200 shadow-lg py-1"
-              >
-                <button
-                  v-for="s in LEAD_STATUSES"
-                  :key="s.value"
-                  class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2"
-                  :class="s.value === store.currentLead.status ? 'font-semibold' : ''"
-                  @click="changeStatus(s.value)"
-                >
-                  <span class="w-2 h-2 rounded-full" :class="s.color.split(' ')[0]" />
-                  {{ s.label }}
-                </button>
-              </div>
-            </div>
-            <button class="px-3 py-1.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50" @click="openEdit">Edit</button>
-            <button class="px-3 py-1.5 rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50" @click="deleteLead">Delete</button>
-          </div>
-        </div>
-
-        <!-- Meta -->
-        <div class="flex flex-wrap gap-4 mt-4 text-xs text-gray-500">
-          <span><span class="font-medium text-gray-700">{{ t('leadDetail.overviewSource') }}:</span> {{ store.currentLead.source.replace('_', ' ') }}</span>
-          <span v-if="store.currentLead.value != null"><span class="font-medium text-gray-700">{{ t('leadDetail.overviewValue') }}:</span> {{ store.currentLead.value }} {{ store.currentLead.currency }}</span>
-          <span><span class="font-medium text-gray-700">{{ t('leadDetail.overviewCreated') }}:</span> {{ new Date(store.currentLead.created_at).toLocaleDateString() }}</span>
-        </div>
-      </div>
-
       <!-- Tabs -->
       <div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
         <button
@@ -460,8 +430,65 @@ function getTabLabel(tab: string): string {
           />
         </div>
 
-        <!-- Sidebar: quick actions + lead details -->
+        <!-- Sidebar: lead details + quick actions -->
         <div class="space-y-4">
+
+          <!-- Lead details card (shown first) -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              {{ t('leadDetail.leadDetails') }}
+            </p>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-center">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
+                <dd class="relative">
+                  <button
+                    class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                    :class="getStatusMeta(store.currentLead.status).color"
+                    @click="statusPopupOpen = !statusPopupOpen"
+                  >
+                    {{ getStatusMeta(store.currentLead.status).label }}
+                    <ChevronDownIcon class="w-3 h-3 opacity-60" />
+                  </button>
+                  <div
+                    v-if="statusPopupOpen"
+                    class="absolute right-0 top-8 z-10 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1"
+                  >
+                    <button
+                      v-for="s in LEAD_STATUSES"
+                      :key="s.value"
+                      class="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                      :class="s.value === store.currentLead.status ? 'font-semibold' : ''"
+                      @click="changeStatus(s.value)"
+                    >
+                      <span class="w-2 h-2 rounded-full flex-shrink-0" :class="s.color.split(' ')[0]" />
+                      {{ s.label }}
+                    </button>
+                  </div>
+                </dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewSource') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd>
+              </div>
+              <div v-if="store.currentLead.value != null" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewValue') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentLead.value }} {{ store.currentLead.currency }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
+              </div>
+              <div v-if="store.currentLead.description" class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <dt class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{{ t('leadDetail.description') }}</dt>
+                <dd class="text-xs text-gray-700 dark:text-gray-300">{{ store.currentLead.description }}</dd>
+              </div>
+            </dl>
+            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('leadDetail.edit') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteLead">{{ t('leadDetail.delete') }}</button>
+            </div>
+          </div>
 
           <!-- Quick actions card -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
@@ -477,7 +504,7 @@ function getTabLabel(tab: string): string {
                 class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left"
                 @click="sidebarActionType = item.value; sidebarActivityText = ''"
               >
-                <span>{{ item.icon }}</span>
+                <component :is="item.icon" class="w-4 h-4 flex-shrink-0" />
                 {{ item.label }}
               </button>
             </div>
@@ -485,7 +512,7 @@ function getTabLabel(tab: string): string {
             <!-- Step 2a: activity form (comment / call / meeting / email) -->
             <div v-else-if="sidebarActionType !== 'task'" class="space-y-2">
               <div class="flex items-center gap-2 mb-2">
-                <span>{{ sidebarActionIcon }}</span>
+                <component :is="sidebarActionIcon" class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ sidebarActionItems.find(i => i.value === sidebarActionType)?.label }}
                 </span>
@@ -500,6 +527,8 @@ function getTabLabel(tab: string): string {
                 :placeholder="sidebarActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
                 :disabled="sidebarActivitySubmitting"
                 :members="sidebarActionType === 'comment' ? teamMembers : []"
+                :upload-url="sidebarActionType === 'comment' ? `/api/v1/crm/opportunities/${leadId}/attachments` : undefined"
+                @file-uploaded="(f) => { files.unshift(f) }"
               />
               <div class="flex justify-end">
                 <button
@@ -513,7 +542,7 @@ function getTabLabel(tab: string): string {
             <!-- Step 2b: task quick-create form -->
             <div v-else class="space-y-2">
               <div class="flex items-center gap-2 mb-2">
-                <span>📋</span>
+                <ClipboardDocumentListIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
                 <button
                   class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -548,94 +577,11 @@ function getTabLabel(tab: string): string {
             </div>
           </div>
 
-          <!-- Lead details card -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-              {{ t('leadDetail.leadDetails') }}
-            </p>
-            <dl class="space-y-2">
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getStatusMeta(store.currentLead.status).label }}</dd>
-              </div>
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewSource') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd>
-              </div>
-              <div v-if="store.currentLead.value != null" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewValue') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentLead.value }} {{ store.currentLead.currency }}</dd>
-              </div>
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
-              </div>
-              <div v-if="store.currentLead.description" class="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <dt class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{{ t('leadDetail.description') }}</dt>
-                <dd class="text-xs text-gray-700 dark:text-gray-300">{{ store.currentLead.description }}</dd>
-              </div>
-            </dl>
-          </div>
-
         </div>
       </div>
 
       <!-- TASKS TAB -->
       <div v-else-if="activeTab === 'tasks'" class="space-y-4">
-        <!-- Add task form (assignee, watchers, rich editor with mentions) -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
-          <div class="flex gap-2 flex-wrap">
-            <input v-model="newTaskTitle" type="text" :placeholder="t('leadDetail.taskTitle')" class="flex-1 min-w-40 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
-            <input v-model="newTaskDueDate" type="date" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
-          </div>
-          <!-- Assignee selector -->
-          <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
-            <select
-              v-model="newTaskAssigneeId"
-              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-            >
-              <option value="">{{ t('tasks.noAssignee') }}</option>
-              <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
-            </select>
-          </div>
-          <!-- Watchers / notification recipients -->
-          <div v-if="teamMembers.length">
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.watchers') }}</label>
-            <div class="flex flex-wrap gap-2">
-              <label
-                v-for="m in teamMembers"
-                :key="m.id"
-                class="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-lg border transition-colors"
-                :class="newTaskWatcherIds.includes(m.id)
-                  ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
-              >
-                <input type="checkbox" class="hidden" :checked="newTaskWatcherIds.includes(m.id)" @change="toggleTaskWatcher(m.id)" />
-                🔔 {{ m.label }}
-              </label>
-            </div>
-          </div>
-          <!-- Rich-text description / notes with @mention -->
-          <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              {{ t('leadDetail.descriptionLabel') }}
-            </label>
-            <RichTextEditor
-              ref="taskEditorRef"
-              v-model="newTaskDescription"
-              :members="teamMembers"
-              :placeholder="t('leadDetail.addMentionPlaceholder')"
-              class="min-h-[72px]"
-            />
-          </div>
-          <div class="flex justify-end">
-            <button :disabled="taskSubmitting || !newTaskTitle.trim()" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="addTask">
-              {{ taskSubmitting ? '…' : t('leadDetail.addTask') }}
-            </button>
-          </div>
-        </div>
-
         <div v-if="tasksLoading" class="animate-pulse space-y-2">
           <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
         </div>
@@ -648,21 +594,24 @@ function getTabLabel(tab: string): string {
               :disabled="task.is_completed"
               @click="completeTask(task.id)"
             >
-              <span v-if="task.is_completed" class="text-xs">✓</span>
+              <CheckIcon v-if="task.is_completed" class="w-3 h-3" />
             </button>
             <div class="flex-1 min-w-0">
               <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
               <!-- eslint-disable-next-line vue/no-v-html -->
               <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
               <div class="flex flex-wrap gap-3 mt-1 text-xs">
-                <span v-if="task.due_date" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
-                  📅 {{ new Date(task.due_date).toLocaleDateString() }}
+                <span v-if="task.due_date" class="inline-flex items-center gap-1" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
+                  <CalendarDaysIcon class="w-3.5 h-3.5" />
+                  {{ new Date(task.due_date).toLocaleDateString() }}
                 </span>
-                <span v-if="task.assigned_to_id" class="text-blue-500">
-                  👤 {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
+                <span v-if="task.assigned_to_id" class="inline-flex items-center gap-1 text-blue-500">
+                  <UserIcon class="w-3.5 h-3.5" />
+                  {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
                 </span>
-                <span v-if="task.watcher_ids?.length" class="text-gray-400 dark:text-gray-500">
-                  🔔 {{ task.watcher_ids.length }}
+                <span v-if="task.watcher_ids?.length" class="inline-flex items-center gap-1 text-gray-400 dark:text-gray-500">
+                  <BellIcon class="w-3.5 h-3.5" />
+                  {{ task.watcher_ids.length }}
                 </span>
               </div>
             </div>
@@ -688,13 +637,11 @@ function getTabLabel(tab: string): string {
             @dragleave.prevent="isDraggingOver = false"
             @drop.prevent="onFileDrop"
           >
-            <svg class="w-10 h-10 mb-3" :class="isDraggingOver ? 'text-red-400' : 'text-gray-300 dark:text-gray-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
+            <CloudArrowUpIcon class="w-10 h-10 mb-3" :class="isDraggingOver ? 'text-red-400' : 'text-gray-300 dark:text-gray-600'" aria-hidden="true" />
             <span class="text-sm font-medium" :class="isDraggingOver ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
-              {{ isDraggingOver ? 'Drop to upload' : 'Click or drag & drop a file' }}
+              {{ isDraggingOver ? t('leadDetail.dropToUpload') : t('leadDetail.clickOrDrop') }}
             </span>
-            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1">Max 20 MB</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('leadDetail.maxSize') }}</span>
             <input ref="fileInput" type="file" class="hidden" aria-hidden="true" @change="uploadFile" />
           </div>
 
@@ -722,9 +669,7 @@ function getTabLabel(tab: string): string {
         </div>
         <div v-else-if="files.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
           <div class="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
-            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-            </svg>
+            <PaperClipIcon class="w-6 h-6 text-gray-400" aria-hidden="true" />
           </div>
           <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ t('leadDetail.noFiles') }}</p>
           <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('leadDetail.noFilesHint') }}</p>
@@ -739,7 +684,7 @@ function getTabLabel(tab: string): string {
                 :alt="file.original_filename"
                 class="w-full h-full object-cover"
               />
-              <span v-else class="text-xl" aria-hidden="true">📄</span>
+              <DocumentIcon v-else class="w-5 h-5 text-gray-400" aria-hidden="true" />
             </div>
             <div class="flex-1 min-w-0">
               <a :href="file.url" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">{{ file.original_filename }}</a>
@@ -749,7 +694,9 @@ function getTabLabel(tab: string): string {
               class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 transition-opacity"
               :aria-label="`Delete ${file.original_filename}`"
               @click="deleteFile(file.id)"
-            >🗑</button>
+            >
+              <TrashIcon class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

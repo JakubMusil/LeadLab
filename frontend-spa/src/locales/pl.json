@@ -1045,7 +1045,7 @@
     "assignedLabel": "Przypisano:",
     "dropToUpload": "Upuść, aby przesłać",
     "clickOrDrop": "Kliknij lub przeciągnij plik",
-    "maxSize": "Maks. 20 MB",
+    "maxSize": "Max 20 MB",
     "uploading": "Przesyłanie…",
     "noFiles": "Brak załączonych plików",
     "uploadFilesHint": "Prześlij pliki, aby zachować je przy tym szansie.",
@@ -1115,7 +1115,15 @@
     "description": "Opis",
     "quickActions": "Szybkie akcje",
     "filterAll": "Wszystkie",
-    "noActivitiesForFilter": "Brak aktywności pasujących do tego filtra."
+    "noActivitiesForFilter": "Brak aktywności pasujących do tego filtra.",
+    "typeTaskAssigned": "Zadanie przypisane",
+    "typeTaskCompleted": "Zadanie ukończone",
+    "typeStatusChange": "Zmiana statusu",
+    "typeFileUpload": "Przesyłanie pliku",
+    "typeProposalCreated": "Oferta utworzona",
+    "typeProposalAccepted": "Oferta zaakceptowana",
+    "typeProposalRejected": "Oferta odrzucona",
+    "viewProposal": "Zobacz ofertę"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

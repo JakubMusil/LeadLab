@@ -1115,7 +1115,15 @@
     "description": "Description",
     "quickActions": "Quick Actions",
     "filterAll": "All",
-    "noActivitiesForFilter": "No activities match this filter."
+    "noActivitiesForFilter": "No activities match this filter.",
+    "typeTaskAssigned": "Task assigned",
+    "typeTaskCompleted": "Task completed",
+    "typeStatusChange": "Status change",
+    "typeFileUpload": "File upload",
+    "typeProposalCreated": "Proposal created",
+    "typeProposalAccepted": "Proposal accepted",
+    "typeProposalRejected": "Proposal rejected",
+    "viewProposal": "View proposal"
   },
   "sequences": {
     "title": "Email Sequences",

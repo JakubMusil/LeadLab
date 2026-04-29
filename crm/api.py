@@ -1453,14 +1453,25 @@ def create_task(request, payload: TaskIn):
 
         # Log activity on lead if linked
         if lead:
+            assignee_name = ""
+            if payload.assigned_to_id:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    assignee = User.objects.get(id=payload.assigned_to_id)
+                    assignee_name = f"{assignee.first_name} {assignee.last_name}".strip() or str(assignee)
+                except User.DoesNotExist:
+                    pass
             Activity.objects.create(
                 lead=lead,
                 user=request.user,
                 type=ActivityType.TASK_ASSIGNED,
                 metadata={
                     "task_id": str(task.id),
+                    "task_title": task.title,
                     "due_date": payload.due_date.isoformat() if payload.due_date else None,
                     "priority": payload.priority,
+                    "assigned_to_name": assignee_name,
                 },
             )
 

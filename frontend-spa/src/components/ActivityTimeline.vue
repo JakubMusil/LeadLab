@@ -5,7 +5,7 @@
  * Works identically for Lead, Realization and Management.
  * The consumer just passes entityType + entityId.
  */
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -13,6 +13,20 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import DOMPurify from 'dompurify'
+import {
+  ChatBubbleLeftIcon,
+  PhoneIcon,
+  UsersIcon,
+  PaperAirplaneIcon,
+  InboxArrowDownIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+  ArrowsRightLeftIcon,
+  PaperClipIcon,
+  DocumentTextIcon,
+  QuestionMarkCircleIcon,
+  BellIcon,
+} from '@heroicons/vue/24/outline'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -81,9 +95,13 @@ const filterOptions = computed(() => [
   { value: 'email_in', label: t('leadDetail.typeEmailIn') },
   { value: 'task', label: t('leadDetail.typeTask') },
 ])
-const filteredActivities = computed(() =>
-  filterType.value ? activities.value.filter((a) => a.type === filterType.value) : activities.value,
-)
+const filteredActivities = computed(() => {
+  if (!filterType.value) return activities.value
+  if (filterType.value === 'task') {
+    return activities.value.filter((a) => ['task', 'task_assigned', 'task_completed'].includes(a.type))
+  }
+  return activities.value.filter((a) => a.type === filterType.value)
+})
 
 // Composer state
 const selectedActionType = ref('')
@@ -103,21 +121,66 @@ const taskSubmitting = ref(false)
 // ---------------------------------------------------------------------------
 // Config maps
 // ---------------------------------------------------------------------------
-const activityIcons: Record<string, string> = {
-  comment: '💬', email_out: '📧', email_in: '📥', call: '📞',
-  meeting: '🤝', status_change: '🔄', file_upload: '📎',
-  task_assigned: '📋', task_completed: '✅', task: '📋',
-  proposal_created: '📄', proposal_accepted: '✅', proposal_rejected: '❌',
+const activityIconMap: Record<string, Component> = {
+  comment: ChatBubbleLeftIcon,
+  email_out: PaperAirplaneIcon,
+  email_in: InboxArrowDownIcon,
+  call: PhoneIcon,
+  meeting: UsersIcon,
+  status_change: ArrowsRightLeftIcon,
+  file_upload: PaperClipIcon,
+  task_assigned: ClipboardDocumentListIcon,
+  task_completed: CheckCircleIcon,
+  task: ClipboardDocumentListIcon,
+  proposal_created: DocumentTextIcon,
+  proposal_accepted: CheckCircleIcon,
+  proposal_rejected: DocumentTextIcon,
 }
 
-const actionPickerItems = [
-  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: '💬' },
-  { value: 'call',      label: t('leadDetail.typeCall'),     icon: '📞' },
-  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: '🤝' },
-  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: '📧' },
-  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: '📥' },
-  { value: 'task',      label: t('leadDetail.typeTask'),     icon: '📋' },
-]
+function activityIcon(type: string): Component {
+  return activityIconMap[type] ?? QuestionMarkCircleIcon
+}
+
+function activityTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    comment: t('leadDetail.typeComment'),
+    call: t('leadDetail.typeCall'),
+    meeting: t('leadDetail.typeMeeting'),
+    email_out: t('leadDetail.typeEmailOut'),
+    email_in: t('leadDetail.typeEmailIn'),
+    task: t('leadDetail.typeTask'),
+    task_assigned: t('leadDetail.typeTaskAssigned'),
+    task_completed: t('leadDetail.typeTaskCompleted'),
+    status_change: t('leadDetail.typeStatusChange'),
+    file_upload: t('leadDetail.typeFileUpload'),
+    proposal_created: t('leadDetail.typeProposalCreated'),
+    proposal_accepted: t('leadDetail.typeProposalAccepted'),
+    proposal_rejected: t('leadDetail.typeProposalRejected'),
+  }
+  return map[type] ?? type.replace(/_/g, ' ')
+}
+
+function translateLeadStatus(status: string): string {
+  const map: Record<string, string> = {
+    new: t('leads.statusNew'),
+    contacted: t('leads.statusContacted'),
+    proposal: t('leads.statusProposal'),
+    negotiation: t('leads.statusNegotiation'),
+    won: t('leads.statusWon'),
+    lost: t('leads.statusLost'),
+    canceled: t('leads.statusCanceled'),
+  }
+  return map[status] ?? status
+}
+
+const actionPickerItems = computed<{ value: string; label: string; icon: Component }[]>(() => [
+  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: ChatBubbleLeftIcon },
+  { value: 'call',      label: t('leadDetail.typeCall'),     icon: PhoneIcon },
+  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: UsersIcon },
+  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: PaperAirplaneIcon },
+  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: InboxArrowDownIcon },
+  { value: 'task',      label: t('leadDetail.typeTask'),     icon: ClipboardDocumentListIcon },
+])
 
 // ---------------------------------------------------------------------------
 // API helpers
@@ -269,7 +332,7 @@ defineExpose({ load: () => loadActivities(1) })
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             @click="selectedActionType = item.value; newActivityText = ''"
           >
-            <span>{{ item.icon }}</span>
+            <component :is="item.icon" class="w-4 h-4 flex-shrink-0" />
             {{ item.label }}
           </button>
         </div>
@@ -278,7 +341,7 @@ defineExpose({ load: () => loadActivities(1) })
       <!-- Step 2a: Activity form (comment / call / meeting / email) -->
       <div v-else-if="selectedActionType !== 'task'" class="flex flex-col gap-2">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">{{ activityIcons[selectedActionType] ?? '📌' }}</span>
+          <component :is="activityIcon(selectedActionType)" class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ actionPickerItems.find(i => i.value === selectedActionType)?.label }}
           </span>
@@ -306,7 +369,7 @@ defineExpose({ load: () => loadActivities(1) })
       <!-- Step 2b: Task creation form -->
       <div v-else class="space-y-3">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">📋</span>
+          <ClipboardDocumentListIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
           <button
             class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -348,7 +411,7 @@ defineExpose({ load: () => loadActivities(1) })
                 : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
             >
               <input type="checkbox" class="hidden" :checked="newTaskWatcherIds.includes(m.id)" @change="toggleTaskWatcher(m.id)" />
-              🔔 {{ m.label }}
+              <BellIcon class="w-3.5 h-3.5" /> {{ m.label }}
             </label>
           </div>
         </div>
@@ -401,23 +464,38 @@ defineExpose({ load: () => loadActivities(1) })
 
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
       <div v-for="act in filteredActivities" :key="act.id" class="flex items-start gap-3 p-4">
-        <span class="text-lg mt-0.5 flex-shrink-0">{{ activityIcons[act.type] ?? '📌' }}</span>
+        <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+          :class="act.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+            : act.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+            : act.type === 'comment' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
+        >
+          <component :is="activityIcon(act.type)" class="w-4 h-4" />
+        </div>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize">{{ act.type.replace(/_/g, ' ') }}</span>
+            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ activityTypeLabel(act.type) }}</span>
             <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
           </div>
           <!-- eslint-disable-next-line vue/no-v-html -->
           <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
-          <p v-if="act.type === 'status_change'" class="text-sm text-gray-500 mt-0.5">
-            {{ (act.metadata as Record<string, string>).old_status }} → {{ (act.metadata as Record<string, string>).new_status }}
+          <p v-if="act.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            {{ translateLeadStatus((act.metadata as Record<string, string>).old_status) }}
+            →
+            {{ translateLeadStatus((act.metadata as Record<string, string>).new_status) }}
+          </p>
+          <p v-else-if="act.type === 'task_completed' && (act.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            {{ (act.metadata as Record<string, string>).title }}
+          </p>
+          <p v-else-if="act.type === 'task_assigned' && (act.metadata as Record<string, string>).task_title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            {{ (act.metadata as Record<string, string>).task_title }}
           </p>
           <RouterLink
             v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
             :to="`/app/proposals/${act.metadata.proposal_id}`"
             class="text-xs text-red-600 hover:text-red-700 mt-0.5 inline-block"
           >
-            Zobrazit nabídku →
+            {{ t('leadDetail.viewProposal') }} →
           </RouterLink>
         </div>
       </div>
