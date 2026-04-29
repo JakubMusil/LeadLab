@@ -822,7 +822,7 @@ def create_activity(request, payload: ActivityIn):
             content_text=payload.content_text,
             metadata=payload.metadata,
         )
-        tool.process_action(activity, entity, payload.dict(), context)
+        tool.process_action(activity, entity, payload.model_dump(), context)
 
     broadcast_event(
         firm=request.firm,

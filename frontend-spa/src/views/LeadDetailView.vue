@@ -133,6 +133,16 @@ const sidebarHasPlainText = computed(() =>
   Boolean(sidebarActivityText.value.replace(/<[^>]*>/g, '').trim()),
 )
 
+// Whether the currently selected sidebar action type requires content_text
+const sidebarToolRequiresText = computed(() => {
+  const tool = streamlineTools.value.find((t) => t.activity_type === sidebarActionType.value)
+  return tool?.form_schema.required?.includes('content_text') ?? false
+})
+
+const sidebarSubmitDisabled = computed(
+  () => sidebarActivitySubmitting.value || (sidebarToolRequiresText.value && !sidebarHasPlainText.value),
+)
+
 // Build action items from the Streamline Tool Registry.
 // Only tools whose form schema includes a content_text field are shown in the
 // sidebar composer (user-composable activity types such as comment, call, etc.).
@@ -322,7 +332,7 @@ async function changeStatus(newStatus: string) {
 }
 
 async function sidebarAddActivity() {
-  if (!sidebarHasPlainText.value) return
+  if (sidebarToolRequiresText.value && !sidebarHasPlainText.value) return
   sidebarActivitySubmitting.value = true
   const mentionedIds = sidebarActionType.value === 'comment'
     ? (sidebarRichEditorRef.value?.getMentionedIds() ?? [])
@@ -588,7 +598,7 @@ function getTabLabel(tab: string): string {
               />
               <div class="flex justify-end">
                 <button
-                  :disabled="sidebarActivitySubmitting || !sidebarHasPlainText"
+                  :disabled="sidebarSubmitDisabled"
                   class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                   @click="sidebarAddActivity"
                 >{{ sidebarActivitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
