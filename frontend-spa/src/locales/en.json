@@ -1131,7 +1131,8 @@
     "entityChangeOld": "Was:",
     "entityChangeNew": "Now:",
     "descriptionPlaceholder": "Add opportunity description…",
-    "selectOption": "Select…"
+    "selectOption": "Select…",
+    "addReaction": "Add reaction"
   },
   "sequences": {
     "title": "Email Sequences",

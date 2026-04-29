@@ -114,21 +114,64 @@ deprecation cycle).
 
 > Toto je největší krok, dělej ho samostatně.
 
-- Datová migrace `TaskTimelineEntry` → `Activity`:
-  - `event_type` → `Activity.type`
-  - `content_html` → `Activity.content_text`
-  - `metadata` → `Activity.metadata`
-  - `author` → `Activity.user`
-  - `parent_entry` → uložit jako `metadata.reply_to_id` (`Activity` nemá threading; rozhodni:
-    buď přidej `parent_activity` FK, nebo řeš threading přes `metadata`).
-- Migrovat `TaskCommentReaction` → nový
-  `ActivityReaction(activity, user, emoji, unique_together=(activity, user, emoji))`.
-- Migrovat `TaskVoiceAttachment` → `Activity voice_memo` s `metadata.duration_seconds` +
-  `Document` pro samotný soubor.
-- Přepsat `tasks_api.py` (timeline endpointy) tak, aby četlo `task.activities.all()`.
-- Frontend: sjednotit komponenty `TaskTimeline` a `EntityActivityFeed` do jediné.
-- Smazat `TaskTimelineEntry`, `TaskCommentReaction`, `TaskVoiceAttachment`, `TaskComment`
-  (`TaskComment` byl už dříve nahrazený `TimelineEntry`, takže ten může spadnout v této fázi taky).
+**Stav backend:** ✅ Hotovo v dřívějších PR (Activity má `task` FK, tooly Phase 1
+zaregistrované, `/api/v1/crm/tasks/{id}/activities` endpoint, `ActivityReaction`
+model + endpoint).
+
+**Stav frontend:** ✅ Kroky A + B hotovy v session končící 2026-04-29.
+
+Co bylo v této session uděláno (Krok A + B z plánu „sjednocení frontendu pod
+design lead detail"):
+
+- **Krok A** — `frontend-spa/src/components/ActivityTimeline.vue`:
+  - `props.entityType` rozšířen o `'task'`
+  - `listUrl()` má větev `task → /api/v1/crm/tasks/{id}/activities`
+  - `entityIdKey()` vrací `task_id` pro task entitu
+  - filtr `task` a action-picker entry pro `task` se skryjí, když
+    `entityType === 'task'` (otevřený task nemůže sám sebe vytvořit)
+  - `heroIconMap` + `activityIconMap` rozšířené o všechny Phase 1 + Phase 6
+    bonus tooly (priority/assignee/due-date/sub-task, time-logged,
+    checklist-item-checked, voice-memo, SMS, WhatsApp, link, payment,
+    invoice, signature, AI, system-note, tag, mention, pin)
+- **Krok B** — `frontend-spa/src/views/TaskDetailView.vue`:
+  - smazána ~390řádková legacy timeline sekce (vlastní komposer s
+    `change_assignee_to` / `log_time_minutes` / `set_due_date` toggles,
+    file-upload dropzone, attachment renderer, `systemEventLabel`,
+    `fileTypeIcon`, `downloadAll`, sort toggle, per-entry emoji picker,
+    sticky description-as-first-entry)
+  - nahrazena jediným `<ActivityTimeline ref entity-type="task" :entity-id="taskId" />`
+  - description editor je samostatná karta nad timeline (RichTextEditor
+    pattern z `LeadDetailView`)
+  - odstraněny importy `TaskTimelineEntryOut` / `TaskTimelinePostIn` /
+    `TaskAttachmentOut` / `ReactionSummaryOut`; `tasksStore.fetchTimeline` /
+    `createTimelineEntry` / `toggleTimelineReaction` zůstávají ve store
+    (e2e testy + public link), view je nepoužívá
+  - side-actions (assignee / due date) běží přes existující Edit Task
+    modal; time logging přes existující stopwatch widget. Streamline tooly
+    události zalogují samy přes signály
+  - zachováno: subtasks, checklist, dependencies, time tracking,
+    watchers, custom fields, recurrence, approval
+- **Backend (potřeba pro reakce v unified ActivityTimeline):**
+  - `ActivityOut` schémata (v `crm/api.py`, `realization_api.py`,
+    `management_api.py`, `proposals_api.py`) mají pole `reactions: List[dict]`
+  - `_activity_out(activity, requesting_user=None)` agreguje emoji reakce
+    do tvaru `ReactionSummaryOut`; všechna call sites posílají `request.user`
+    a queryset má `prefetch_related('reactions')` proti N+1
+  - **nový endpoint** `POST /api/v1/crm/activities/{id}/reactions` (toggle,
+    entity-agnostic, firm-scoped přes ownership entity v aktivitě) —
+    vyřazuje potřebu per-entity reaction routes
+- **`ActivityTimeline.vue` — reaction UI:**
+  - inline emoji picker (👍 ❤️ 😂 😮 👏 🎉 🔥 ✅) + agregované reakce
+    chip-y pod každou comment aktivitou; optimistický update z toggle
+    response
+  - i18n klíč `leadDetail.addReaction` ve 4 lokálech (en/cs/de/pl)
+
+**Validace:** 48/48 activity testů + 24/24 task testů prochází; CodeQL +
+code review bez nálezů.
+
+**Co zbývá ve Fázi 4:** smazat legacy modely `TaskTimelineEntry`,
+`TaskCommentReaction`, `TaskVoiceAttachment`, `TaskComment` (viz sekce
+„Další kroky" níže).
 
 ### Fáze 5 — Úklid
 
@@ -176,11 +219,116 @@ Implementační poznámky:
 
 ---
 
+## Další kroky pro příští session
+
+> **Důležitý kontext:** aplikace je stále čistě ve fázi vývoje, **nejsou
+> v provozu žádná produkční data ani externí klienti**. To znamená:
+>
+> - **Žádná datová migrace není potřeba** — modely lze rovnou smazat / zahodit
+>   sloupce, není třeba `RunPython` převádět záznamy ze starých tabulek do
+>   `Activity`. Pokud existující dev data v databázi po DROPu vadí, stačí
+>   `python manage.py migrate crm zero && python manage.py migrate` nebo
+>   recreate DB.
+> - **Žádná zpětná kompatibilita API** — endpointy lze odstranit, ne držet
+>   `410 Gone` aliasy přes release. Frontend (vlastní SPA + e2e) je jediný
+>   konzument; aktualizujeme oboje synchronně v jednom PR.
+> - **Žádné deprecation cycles** — v plánu výše (sekce 3) jsou zmiňované „1
+>   release deprecated, pak smazat" — pro nás stačí jeden PR, který smaže
+>   model, endpoint, frontendovou referenci a starou migraci najednou.
+>
+> Tohle radikálně zjednodušuje zbývající fáze 2/3/5 i Krok C níže.
+
+### A) Dokončit Fázi 4 — smazat legacy task timeline modely *(1 PR)*
+
+Frontend už `TaskTimelineEntry` nepoužívá (Krok B). Backend store-funkce
+(`tasksStore.fetchTimeline` / `createTimelineEntry` / `toggleTimelineReaction`)
+zůstaly z opatrnosti — ověřit a zlikvidovat:
+
+1. `crm/models.py`: smazat `TaskTimelineEntry`, `TaskCommentReaction`,
+   `TaskVoiceAttachment`, `TaskComment`. Smazat související signály,
+   admin registrace, manageři.
+2. `crm/api.py` / `crm/tasks_api.py` (nebo wherever timeline endpointy žijí):
+   smazat `GET/POST /tasks/{id}/timeline` + `POST /tasks/{id}/timeline/{eid}/reactions`
+   (nový generický `/activities/{id}/reactions` je už v provozu).
+3. `crm/streamline/tools.py`: zkontrolovat, že žádný tool si nezakládá
+   na `TaskTimelineEntry` (file_upload tool by mohl — projít).
+4. **Frontend:**
+   - `frontend-spa/src/stores/tasks.ts` — smazat typy `TaskTimelineEntryOut`,
+     `TaskTimelinePostIn` a metody `fetchTimeline` / `createTimelineEntry` /
+     `toggleTimelineReaction`. Nahradit jejich e2e callsites za volání
+     `/api/v1/crm/tasks/{id}/activities`.
+   - `e2e/` — projít cypress / playwright testy, které volají task
+     timeline endpoint, a přepsat je na ActivityTimeline.
+   - Zkontrolovat `PublicTaskView` (pokud existuje) — public-link konzument.
+5. Migrace: jediná `RunSQL` / `migrations.DeleteModel` migrace, **bez
+   `RunPython` pro převod dat**. Recreate dev DB v testovacích prostředích.
+6. Aktualizovat dokumentaci (`docs/`, `mkdocs.yml`).
+
+### B) Krok C — sjednotit Customer / Realization / Management / Proposal pod design lead detail *(1–4 PR)*
+
+Plán ze session 2026-04-29 ho odložil jako kosmetiku. Všechny 4 views už
+mají `<ActivityTimeline>` integrovaný; zbývá:
+
+1. **Vyextrahovat `EntitySidebarActionPicker.vue`** ze `LeadDetailView`
+   (řádky 152–275 ve script + sekce `<aside>` v šabloně). Komponenta
+   přijme prop `entityType` + `entityId`, sama si načte
+   `/api/v1/streamline/entity-toolbar/{type}` a zobrazí action picker
+   + form-schema-driven inputy. Submit volá generický
+   `POST /api/v1/crm/activities` se správným `*_id` polem.
+2. **2-sloupcový layout** (timeline vlevo, sidebar vpravo, sticky) v:
+   - `CustomerDetailView.vue`
+   - `RealizationDetailView.vue`
+   - `ManagementDetailView.vue`
+   - `ProposalBuilderView.vue` (jen v rámci timeline tabu — builder UI
+     zůstává netknutý)
+3. **Sjednotit tabs** — `overview` / `tasks` / `files` / *(entity-specific)*
+   tam, kde dnes nejsou. `Files` přepnout na `DocumentsView`-style
+   komponenty místo per-entity custom uploaderu.
+4. **Inline editaci popisku** — RichTextEditor + `startEdit/save/cancel`
+   pattern z `LeadDetailView` aplikovat na entity, které mají
+   `description` / `description_html`.
+5. **i18n** — průchod nově použitými klíči, doplnit chybějící do
+   en/cs/de/pl, ověřit `node scripts/check-locales.mjs`.
+
+Doporučuji rozdělit na 4 menší PR (po jedné entitě), aby code review byl
+čitelný; `EntitySidebarActionPicker.vue` extrakce je první (samostatný PR),
+pak Customer / Realization / Management / Proposal po jednom.
+
+### C) Pokračovat s úklidem Fáze 2 + 3 backend *(volitelné, ale teď je to levné)*
+
+Když odpadla povinnost migrovat data, dříve odložené úklidové fáze jsou
+triviální:
+
+- **Fáze 2 (`LeadStatusHistory`)**: smazat model + zápis ze
+  `StatusChangeTool.process_action`. Reporty velocity přepsat nad
+  `Activity.objects.filter(type="status_change")`. `RunSQL DROP TABLE`
+  bez `RunPython`.
+- **Fáze 3 (`LeadAttachment` / `TaskAttachment`)**: smazat modely +
+  endpointy + frontendové komponenty. `Document` pokrývá vše. Migrační
+  `migrations.DeleteModel`, žádný převod souborů (dev data se zahodí).
+
+### D) Co opravdu necháme stranou *(nezměněno)*
+
+- Threading přes `parent_activity` FK
+- Pinned section, saved views, drafts, slash commands
+- Inbound webhook router, calendar 2-way sync, e-sign provider plugin
+- Soft delete + edit history
+- Performance audit (materialized view, partitioning)
+
+Tyto body jsou v sekci 5 níže — pořád future work, jen už ne blokátor pro
+uzavření Fáze 4 + 5.
+
+---
+
 ## 4. Rizika a na co dát pozor
 
-- **Migrace dat je nevratná** — všechny tři velké migrace (status history, attachments, task
-  timeline) musí mít backup snapshot a idempotentní `RunPython` (s `reverse_code = noop` nebo
-  opravdovým reverzem).
+> **Aktualizace 2026-04-29:** body zmiňující datovou migraci, deprecation
+> cycle a zpětnou kompatibilitu jsou pro nás bezpředmětné — aplikace je
+> pořád v ranné dev fázi, žádná produkční data ani externí klienti zatím
+> nejsou.
+
+- ~~**Migrace dat je nevratná**~~ — *neaplikuje se*; modely lze smazat
+  rovnou bez `RunPython` převodu, dev DB se v případě potřeby recreatuje.
 - **`TaskTimelineEntry.parent_entry` (threading)** — v `Activity` dnes není ekvivalent. Buď přidat
   `parent_activity` FK (jednoduché), nebo vědomě threading zrušit; doporučuji přidat FK.
 - **`Activity` má `firm` jen přes entitu** — Task má `firm` napřímo, takže to je OK, ale ujisti se,
@@ -188,8 +336,8 @@ Implementační poznámky:
 - **`StatusChangeTool` dnes v `process_action` přepisuje `lead.status`** — když smažeme
   `LeadStatusHistory`, samotná logika status změny zůstává, jen vypadne ten druhý zápis.
   Bez problémů.
-- **API zpětná kompatibilita** — externí klienti (mobil, Zapier, atd.) můžou volat staré
-  endpointy. Drž je naživu jako `410 Gone` alias / proxy minimálně 1 release.
+- ~~**API zpětná kompatibilita**~~ — *neaplikuje se*; SPA je jediný
+  konzument, endpointy lze odstranit synchronně s frontendem v jednom PR.
 - **Permissions** — `StreamlineTool` API má `auth=django_auth`; ujisti se, že tooly s
   side-effecty (např. `AssigneeChangeTool`) mají stejné kontroly oprávnění, jaké dnes mají
   dedikované endpointy v `tasks_api.py`.

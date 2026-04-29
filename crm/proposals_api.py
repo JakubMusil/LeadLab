@@ -661,8 +661,8 @@ def list_proposal_activities(request, proposal_id: str, page: int = 1, page_size
         return 404, {"detail": "Proposal not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(proposal=proposal).select_related('user').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_shared_activity_out(a) for a in activities]
+    activities = Activity.objects.filter(proposal=proposal).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    return 200, [_shared_activity_out(a, request.user) for a in activities]
 
 
 @proposals_router.post(

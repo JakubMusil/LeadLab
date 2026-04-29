@@ -1132,7 +1132,8 @@
     "entityChangeOld": "Bylo:",
     "entityChangeNew": "Nyní:",
     "descriptionPlaceholder": "Přidejte popis příležitosti…",
-    "selectOption": "Vyberte…"
+    "selectOption": "Vyberte…",
+    "addReaction": "Přidat reakci"
   },
   "sequences": {
     "title": "E-mailové sekvence",

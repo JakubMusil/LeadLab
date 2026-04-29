@@ -1131,7 +1131,8 @@
     "entityChangeOld": "Było:",
     "entityChangeNew": "Teraz:",
     "descriptionPlaceholder": "Dodaj opis…",
-    "selectOption": "Wybierz…"
+    "selectOption": "Wybierz…",
+    "addReaction": "Dodaj reakcję"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

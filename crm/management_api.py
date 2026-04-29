@@ -311,6 +311,7 @@ class _ActivityOut(Schema):
     metadata: dict
     created_at: dt.datetime
     tool_payload: Optional[dict] = None
+    reactions: List[dict] = []
 
 
 @management_router.get(
@@ -334,6 +335,6 @@ def list_management_activities(
         raise errors.HttpError(404, "Management record not found")
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(management=record).select_related('user').order_by("-created_at")[offset:offset + page_size]
+    activities = Activity.objects.filter(management=record).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
 
-    return [_shared_activity_out(a) for a in activities]
+    return [_shared_activity_out(a, request.user) for a in activities]
