@@ -391,16 +391,46 @@ ale v okolních oblastech:
    každou entitní timeline (lead, task, realization, management,
    customer, proposal) ověřit happy-path s Cypress/Playwright. Zatím
    pokryté pouze unit testy v `crm/tests.py`.
-2. **Odstranit baseline `vue-tsc` errory** v `RealizationDetailView.vue`
-   (3-arg `api.post`/`patch`/`delete` s `{headers}`) — pre-existing 6
-   errorů, které blokují čistý type-check. Jednoduchá oprava — refaktor
-   na `api.post(url, body, { headers })` → `api.post(url, body)` (firm
-   header se už nastavuje globálně přes interceptor).
-3. **`Task.realization` FK + Tasks tab v Realization detail** —
+2. ✅ **Odstranit baseline `vue-tsc` errory** *(2026-04-29 session třetí
+   iterace)* — `RealizationDetailView.vue` 3 errory + `stores/realizations.ts`
+   10 errorů + `stores/management.ts` 10 errorů. Celkem **−23 errorů**
+   (z 57 unikátních na 34). Konkrétně:
+   - `RealizationDetailView.vue`: odstraněn redundantní 3. arg
+     `{ headers: firmHeader() }` z `api.post`/`api.patch`/`api.delete`
+     volání (řádky 110, 135, 149). Odstraněn nepoužitý `firmHeader()`
+     helper, `firmStore` ref a import `useFirmStore`. Firm header se
+     nastavuje globálně přes interceptor v `src/api/index.ts` —
+     `getFirmId()` čte z `localStorage` a přidává `X-Firm-ID` ke všem
+     `request<T>()` voláním. Žádná runtime regrese.
+   - `stores/realizations.ts` + `stores/management.ts`:
+     `extractErrorMessage(x)` calls (jen 1 arg) v `console.error`
+     blocích → přidán fallback `''` jako 2. arg podle konvence
+     ze `stores/customers.ts`. Jen log statements, žádná runtime změna.
+   - Vitest baseline: 66 failed / 102 passed test count beze změny
+     (preexisting failures jsou nezávislé — i18n/messages compile
+     errors v testech).
+3. **Pokračování baseline `vue-tsc` cleanup** *(zbývajících 34 errorů)*:
+   - `ActivityTimeline.vue` (7) — `Object is possibly 'undefined'`
+     v lookup operacích, `string | undefined` not assignable to
+     `string`. Vyžaduje narrowing nebo non-null assertion.
+   - `AutomationsView.vue` (6) — `lead_title`/`task_title`/`customer_name`/`due_date`
+     na `$tm` interpolation contextu (chybí v event payload typu).
+   - `TaskDetailView.vue` (4), `TasksView.vue` (1), `TaskTableView.vue` (1) —
+     `Task.due_date` vs `string` (model nullable, UI očekává string).
+   - `RealizationsView.vue` (2), `ManagementView.vue` (2) —
+     `Object is possibly 'undefined'` v sort/filter callbacích.
+   - `GanttView.vue` (2) — `frappe-gantt` chybí TS types
+     (declarable `declare module`).
+   - `EntitySidebarActionPicker.vue` (1), `CalendarView.vue` (1),
+     `ManagementDetailView.vue` (1) — drobné null checks.
+   - `__tests__/*.spec.ts` (~10) — fixture objekty postrádají nově
+     přidaná pole (`Task.recurrence`, `Customer.type`, `Lead.created_by_*`,
+     `User.is_superuser`). Doplnit fixtures.
+4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
    + `list_tasks` filtr + i18n + UI.
-4. **Sekce 5.3 / 5.4 / 5.5** v `streamline_goals.md` — analytics nad
+5. **Sekce 5.3 / 5.4 / 5.5** v `streamline_goals.md` — analytics nad
    timeline (response time, channel mix, funnel attribution),
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.

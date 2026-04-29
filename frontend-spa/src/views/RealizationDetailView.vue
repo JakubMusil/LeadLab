@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRealizationsStore, REALIZATION_STATUSES, getRealizationStatusMeta, type MilestoneOut } from '@/stores/realizations'
 import { useAuthStore } from '@/stores/auth'
-import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -15,7 +14,6 @@ const route = useRoute()
 const router = useRouter()
 const store = useRealizationsStore()
 const authStore = useAuthStore()
-const firmStore = useFirmStore()
 const toast = useToast()
 const { t } = useI18n()
 
@@ -42,10 +40,6 @@ const milestoneFormLoading = ref(false)
 interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
 const linkedProposals = ref<ProposalOut[]>([])
 const proposalsLoading = ref(false)
-
-function firmHeader() {
-  return firmStore.activeFirm ? { 'X-Firm-ID': String(firmStore.activeFirm.id) } : {}
-}
 
 const realization = computed(() => store.currentRealization)
 
@@ -114,7 +108,6 @@ async function createMilestone() {
         date: milestoneFormDate.value,
         description: milestoneFormDesc.value,
       },
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
     toast.success(t('realizations.milestoneAdded'))
@@ -135,7 +128,6 @@ async function toggleMilestone(m: MilestoneOut) {
     await api.patch(
       `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
       { is_completed: !m.is_completed },
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
   } catch {
@@ -148,7 +140,6 @@ async function deleteMilestone(m: MilestoneOut) {
   try {
     await api.delete(
       `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
     toast.success(t('realizations.milestoneDeleted'))
