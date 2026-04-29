@@ -167,7 +167,9 @@ const sidebarExtraFields = ref<Record<string, unknown>>({})
 
 // Fields that appear ABOVE the rich-text body (e.g. email subject / recipient)
 const TOP_FIELD_KEYS = new Set(['subject', 'to', 'from_address'])
-// Fields that are auto-populated by integrations and should not appear in the manual form
+// Fields that are auto-populated by integrations (e.g. webhook callbacks) and
+// should not appear in the manual-entry form. Users cannot meaningfully provide
+// a raw byte-count or filename — those are set programmatically on upload.
 const SKIP_FIELD_KEYS = new Set(['content_text', 'mentions', 'recording_filename', 'recording_size_bytes'])
 
 interface SchemaProp {
@@ -240,7 +242,16 @@ const sidebarSubmitDisabled = computed(() => {
 function openSidebarAction(type: string) {
   sidebarActionType.value = type
   sidebarActivityText.value = ''
-  sidebarExtraFields.value = {}
+  // Pre-initialise all schema keys so Vue's Proxy-based reactivity tracks them
+  // from the start rather than picking them up lazily via v-model.
+  const tool = leadToolbarTools.value.find((t) => t.activity_type === type)
+  const fields: Record<string, unknown> = {}
+  if (tool?.form_schema?.properties) {
+    for (const key of Object.keys(tool.form_schema.properties as object)) {
+      if (!SKIP_FIELD_KEYS.has(key)) fields[key] = ''
+    }
+  }
+  sidebarExtraFields.value = fields
 }
 
 function closeSidebarAction() {
@@ -859,10 +870,10 @@ function getTabLabel(tab: string): string {
                     v-model="sidebarExtraFields[prop.key]"
                     class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
                   >
-                    <option value="">—</option>
+                    <option value="">{{ t('leadDetail.selectOption') }}</option>
                     <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
                   </select>
-                  <!-- Long text field (e.g. transcript) -->
+                  <!-- Long-text field (transcript and any future multiline strings) -->
                   <textarea
                     v-else-if="prop.key === 'transcript'"
                     v-model="sidebarExtraFields[prop.key]"
