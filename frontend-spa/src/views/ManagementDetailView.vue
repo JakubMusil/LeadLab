@@ -94,9 +94,9 @@ function slaLabel(expiresAt: string | null, slaColor: string | null) {
   if (!expiresAt) return null
   const diff = new Date(expiresAt).getTime() - Date.now()
   const days = Math.ceil(diff / 86400000)
-  if (days < 0) return t('management.slaExpired', { days: Math.abs(days) })
-  if (days === 0) return t('management.slaToday')
-  return t('management.slaIn', { days })
+  if (days < 0) return t('management.expiredDaysAgo', { days: Math.abs(days) })
+  if (days === 0) return t('management.expiresToday')
+  return t('management.expiresInDays', { days })
 }
 
 function formatDateTime(dt: string | null) {
