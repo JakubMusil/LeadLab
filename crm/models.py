@@ -2408,6 +2408,29 @@ def _document_upload_to(instance, filename):
     return f"documents/{instance.firm_id}/{filename}"
 
 
+# Legacy upload_to helpers kept for backwards-compat with historical migrations
+# (0002, 0014, 0018) that still reference them by import.  The models that used
+# these helpers were removed in migration 0038, so the functions are never
+# called at runtime — they only need to be importable so the migration graph
+# can build.
+def _attachment_upload_to(instance, filename):  # noqa: D401 — legacy
+    """Legacy LeadAttachment upload path. No longer called; kept for migrations."""
+    firm_id = getattr(instance, "firm_id", "unknown")
+    return f"attachments/{firm_id}/{filename}"
+
+
+def _task_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
+    """Legacy TaskAttachment upload path. No longer called; kept for migrations."""
+    firm_id = getattr(instance, "firm_id", "unknown")
+    return f"task_attachments/{firm_id}/{filename}"
+
+
+def _voice_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
+    """Legacy TaskVoiceAttachment upload path. No longer called; kept for migrations."""
+    firm_id = getattr(instance, "firm_id", "unknown")
+    return f"voice_attachments/{firm_id}/{filename}"
+
+
 class Document(TenantModel):
     """
     A file attached to any CRM entity or existing standalone.
