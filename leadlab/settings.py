@@ -291,7 +291,10 @@ AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
 # `client.login(username=..., password=...)` calls (which don't pass a request),
 # so we auto-disable when running under the Django test runner.
 import sys as _sys
-_running_tests = 'test' in _sys.argv or 'pytest' in _sys.argv[0]
+_running_tests = (
+    'test' in _sys.argv
+    or any('pytest' in str(arg) for arg in _sys.argv)
+)
 AXES_ENABLED = (
     not _running_tests
     and os.environ.get('AXES_ENABLE', 'True') == 'True'

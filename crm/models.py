@@ -2412,23 +2412,20 @@ def _document_upload_to(instance, filename):
 # (0002, 0014, 0018) that still reference them by import.  The models that used
 # these helpers were removed in migration 0038, so the functions are never
 # called at runtime — they only need to be importable so the migration graph
-# can build.
+# can build.  Path expressions mirror the original implementations.
 def _attachment_upload_to(instance, filename):  # noqa: D401 — legacy
     """Legacy LeadAttachment upload path. No longer called; kept for migrations."""
-    firm_id = getattr(instance, "firm_id", "unknown")
-    return f"attachments/{firm_id}/{filename}"
+    return f"attachments/{getattr(instance, 'lead_id', 'unknown')}/{filename}"
 
 
 def _task_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
     """Legacy TaskAttachment upload path. No longer called; kept for migrations."""
-    firm_id = getattr(instance, "firm_id", "unknown")
-    return f"task_attachments/{firm_id}/{filename}"
+    return f"task_attachments/{getattr(instance, 'task_id', 'unknown')}/{filename}"
 
 
 def _voice_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
     """Legacy TaskVoiceAttachment upload path. No longer called; kept for migrations."""
-    firm_id = getattr(instance, "firm_id", "unknown")
-    return f"voice_attachments/{firm_id}/{filename}"
+    return f"task_voice/{getattr(instance, 'timeline_entry_id', 'unknown')}/{filename}"
 
 
 class Document(TenantModel):
