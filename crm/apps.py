@@ -1,4 +1,28 @@
+import threading
+
 from django.apps import AppConfig
+
+# ---------------------------------------------------------------------------
+# Thread-local user context — set by API endpoints before model saves so that
+# auto-generated entity_change Activity records can capture the acting user.
+# ---------------------------------------------------------------------------
+
+_local = threading.local()
+
+
+def set_current_user(user) -> None:
+    """Store *user* in thread-local storage for the duration of the request."""
+    _local.user = user
+
+
+def clear_current_user() -> None:
+    """Remove the thread-local user (called after the save completes)."""
+    _local.user = None
+
+
+def get_current_user():
+    """Return the user stored for the current thread, or ``None``."""
+    return getattr(_local, "user", None)
 
 
 # ---------------------------------------------------------------------------
@@ -57,15 +81,24 @@ _PROPOSAL_FIELDS = [
 
 
 def _normalize(value) -> str:
-    """Convert any field value to a stable string for comparison.
+    """Convert any field value to a stable string for comparison and storage.
 
-    Includes the type name to distinguish between falsy values of different
-    types (e.g. 0 vs False vs None vs "").
+    Returns a clean string representation suitable for display.
+    ``None`` is stored as an empty string; ``Decimal`` values drop trailing
+    zeros; all other types use their natural ``str()`` representation.
     """
+    from decimal import Decimal
     if value is None:
         return ""
-    # For numeric types include the type so 0 != False != ""
-    return f"{type(value).__name__}:{value}"
+    if isinstance(value, Decimal):
+        # Remove unnecessary trailing zeros: Decimal('50000.00') → '50000'
+        normalized = value.normalize()
+        # If the result uses scientific notation (e.g. '5E+4'), convert back
+        try:
+            return format(normalized, 'f')
+        except Exception:
+            return str(value)
+    return str(value)
 
 
 def _make_pre_save(tracked_fields):
@@ -98,6 +131,10 @@ def _make_post_save(tracked_fields, entity_kwarg):
         if firm is None:
             return
 
+        # Capture the acting user from thread-local context (set by API endpoints)
+        from crm.apps import get_current_user
+        acting_user = get_current_user()
+
         from crm.models import Activity, ActivityType
         activities_to_create = []
         for field, label in tracked_fields:
@@ -108,7 +145,7 @@ def _make_post_save(tracked_fields, entity_kwarg):
             activities_to_create.append(
                 Activity(
                     **{entity_kwarg: instance},
-                    user=None,  # system-generated; no request context in signals
+                    user=acting_user,
                     type=ActivityType.ENTITY_CHANGE,
                     content_text="",
                     metadata={

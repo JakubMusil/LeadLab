@@ -321,6 +321,30 @@ function userInitials(name: string | null): string {
   return (name[0] ?? '?').toUpperCase()
 }
 
+/**
+ * Strip legacy ``TypeName:value`` prefix written by the old _normalize() helper.
+ * New values are already clean strings; old values in the DB may still carry
+ * the prefix (e.g. "Decimal:50000.00" → "50000.00", "str:hello" → "hello").
+ * Also removes unnecessary trailing zeros from numeric strings.
+ */
+function cleanFieldValue(raw: string | undefined | null): string {
+  if (!raw) return '—'
+  // Strip "TypeName:" prefix (e.g. "Decimal:", "int:", "str:", "NoneType:", etc.)
+  const colonIdx = raw.indexOf(':')
+  if (colonIdx > 0) {
+    const typePart = raw.substring(0, colonIdx)
+    // Only strip if the prefix looks like a Python type name (no spaces, all word chars)
+    if (/^\w+$/.test(typePart)) {
+      raw = raw.substring(colonIdx + 1)
+    }
+  }
+  // Remove trailing zeros from decimal-looking strings (e.g. "50000.00" → "50000")
+  if (/^\d+\.\d+$/.test(raw)) {
+    raw = parseFloat(raw).toString()
+  }
+  return raw || '—'
+}
+
 async function addActivity() {
   if (activityTextRequired.value && !hasPlainText(newActivityText.value)) return
   activitySubmitting.value = true
@@ -565,7 +589,12 @@ defineExpose({ load: () => loadActivities(1) })
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ activityTypeLabel(act.type) }}</span>
+            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+              {{ activityTypeLabel(act.type) }}
+              <template v-if="act.type === 'entity_change' && act.tool_payload && ((act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field)">
+                {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
+              </template>
+            </span>
             <span v-if="act.user_name" class="relative group/avatar flex items-center">
               <span
                 class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"
@@ -601,12 +630,9 @@ defineExpose({ load: () => loadActivities(1) })
             {{ (act.metadata as Record<string, string>).task_title }}
           </p>
           <p v-else-if="act.type === 'entity_change' && act.tool_payload" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            <span class="font-medium">{{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}</span>:
-            <span>{{ t('leadDetail.entityChangeOld') }}</span>
-            <span class="line-through text-red-500 dark:text-red-400">{{ (act.tool_payload as Record<string, string>).old_value || '—' }}</span>
+            <span class="line-through text-red-500 dark:text-red-400">{{ cleanFieldValue((act.tool_payload as Record<string, string>).old_value) }}</span>
             →
-            <span>{{ t('leadDetail.entityChangeNew') }}</span>
-            <span class="font-medium text-green-600 dark:text-green-400">{{ (act.tool_payload as Record<string, string>).new_value || '—' }}</span>
+            <span class="font-medium text-green-600 dark:text-green-400">{{ cleanFieldValue((act.tool_payload as Record<string, string>).new_value) }}</span>
           </p>
           <RouterLink
             v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
