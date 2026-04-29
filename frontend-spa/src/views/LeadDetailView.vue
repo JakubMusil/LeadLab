@@ -24,11 +24,14 @@ const { on, off } = useWebSocket()
 const { t } = useI18n()
 
 const leadId = computed(() => route.params.id as string)
-type Tab = 'overview' | 'activities' | 'tasks' | 'files' | 'proposals'
+type Tab = 'overview' | 'tasks' | 'files' | 'proposals'
 const activeTab = ref<Tab>('overview')
 
 // Team members (for @mention in task composer on the Tasks tab)
 const teamMembers = ref<MentionUser[]>([])
+
+// ActivityTimeline ref (used to reload feed after sidebar actions)
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 async function loadTeamMembers() {
   const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
@@ -52,6 +55,33 @@ const newTaskAssigneeId = ref('')
 const newTaskWatcherIds = ref<string[]>([])
 const taskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const taskSubmitting = ref(false)
+
+// Sidebar quick-action composer
+const sidebarActionType = ref('')
+const sidebarActivityText = ref('')
+const sidebarActivitySubmitting = ref(false)
+const sidebarRichEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const sidebarTaskTitle = ref('')
+const sidebarTaskDueDate = ref('')
+const sidebarTaskAssigneeId = ref('')
+const sidebarTaskSubmitting = ref(false)
+
+const sidebarHasPlainText = computed(() =>
+  Boolean(sidebarActivityText.value.replace(/<[^>]*>/g, '').trim()),
+)
+
+const sidebarActionItems = computed(() => [
+  { value: 'comment',   label: t('leadDetail.typeComment'),  icon: '💬' },
+  { value: 'call',      label: t('leadDetail.typeCall'),     icon: '📞' },
+  { value: 'meeting',   label: t('leadDetail.typeMeeting'),  icon: '🤝' },
+  { value: 'email_out', label: t('leadDetail.typeEmailOut'), icon: '📧' },
+  { value: 'email_in',  label: t('leadDetail.typeEmailIn'),  icon: '📥' },
+  { value: 'task',      label: t('leadDetail.typeTask'),     icon: '📋' },
+])
+
+const sidebarActionIcon = computed(
+  () => sidebarActionItems.value.find((i) => i.value === sidebarActionType.value)?.icon ?? '📌',
+)
 
 // Files
 interface FileItem { id: string; original_filename: string; content_type: string; size_bytes: number; url: string; created_at: string }
@@ -216,7 +246,54 @@ async function changeStatus(newStatus: string) {
   statusPopupOpen.value = false
   const result = await store.patchStatus(leadId.value, newStatus)
   if (!result.ok) toast.error(result.error ?? 'Failed to update status.')
-  else await loadActivities(1)
+  else activityTimelineRef.value?.load()
+}
+
+async function sidebarAddActivity() {
+  if (!sidebarHasPlainText.value) return
+  sidebarActivitySubmitting.value = true
+  const mentionedIds = sidebarActionType.value === 'comment'
+    ? (sidebarRichEditorRef.value?.getMentionedIds() ?? [])
+    : []
+  const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
+  const res = await api.post('/api/v1/crm/activities', {
+    lead_id: leadId.value,
+    type: sidebarActionType.value,
+    content_text: sidebarActivityText.value,
+    metadata,
+  })
+  sidebarActivitySubmitting.value = false
+  if (res.ok) {
+    sidebarActivityText.value = ''
+    sidebarActionType.value = ''
+    activityTimelineRef.value?.load()
+    toast.success(t('leadDetail.activityAdded'))
+  } else {
+    toast.error(t('leadDetail.activityFailed'))
+  }
+}
+
+async function sidebarAddTask() {
+  if (!sidebarTaskTitle.value.trim()) return
+  sidebarTaskSubmitting.value = true
+  const payload: Record<string, unknown> = {
+    lead_id: leadId.value,
+    title: sidebarTaskTitle.value.trim(),
+    assigned_to_id: sidebarTaskAssigneeId.value || null,
+  }
+  if (sidebarTaskDueDate.value) payload.due_date = new Date(sidebarTaskDueDate.value).toISOString()
+  const res = await api.post('/api/v1/crm/tasks', payload)
+  sidebarTaskSubmitting.value = false
+  if (res.ok) {
+    sidebarTaskTitle.value = ''
+    sidebarTaskDueDate.value = ''
+    sidebarTaskAssigneeId.value = ''
+    sidebarActionType.value = ''
+    activityTimelineRef.value?.load()
+    toast.success(t('leadDetail.taskCreated'))
+  } else {
+    toast.error(t('leadDetail.taskFailed'))
+  }
 }
 
 function openEdit() {
@@ -290,7 +367,6 @@ async function switchTab(tab: Tab) {
 function getTabLabel(tab: string): string {
   const keyMap: Record<string, string> = {
     overview: 'leadDetail.tabOverview',
-    activities: 'leadDetail.tabActivities',
     tasks: 'leadDetail.tabTasks',
     files: 'leadDetail.tabFiles',
   }
@@ -363,7 +439,7 @@ function getTabLabel(tab: string): string {
       <!-- Tabs -->
       <div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
         <button
-          v-for="tab in (['overview', 'activities', 'tasks', 'files', 'proposals'] as Tab[])"
+          v-for="tab in (['overview', 'tasks', 'files', 'proposals'] as Tab[])"
           :key="tab"
           class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize"
           :class="activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
@@ -371,21 +447,137 @@ function getTabLabel(tab: string): string {
         >{{ getTabLabel(tab) }}</button>
       </div>
 
-      <!-- OVERVIEW TAB -->
-      <div v-if="activeTab === 'overview'" class="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Lead Details</h3>
-        <dl class="grid grid-cols-2 gap-4 text-sm">
-          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewStatus') }}</dt><dd class="font-medium">{{ getStatusMeta(store.currentLead.status).label }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewSource') }}</dt><dd class="font-medium capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewValue') }}</dt><dd class="font-medium">{{ store.currentLead.value != null ? `${store.currentLead.value} ${store.currentLead.currency}` : '—' }}</dd></div>
-          <div><dt class="text-xs text-gray-500 mb-0.5">{{ t('leadDetail.overviewCreated') }}</dt><dd class="font-medium">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd></div>
-          <div v-if="store.currentLead.description" class="col-span-2"><dt class="text-xs text-gray-500 mb-0.5">Description</dt><dd>{{ store.currentLead.description }}</dd></div>
-        </dl>
-      </div>
+      <!-- OVERVIEW TAB: 2-column layout (stream + sidebar) -->
+      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- ACTIVITIES TAB -->
-      <div v-else-if="activeTab === 'activities'">
-        <ActivityTimeline entity-type="lead" :entity-id="leadId" />
+        <!-- Main: chronological activity stream with filter -->
+        <div class="lg:col-span-2">
+          <ActivityTimeline
+            ref="activityTimelineRef"
+            :hide-composer="true"
+            entity-type="lead"
+            :entity-id="leadId"
+          />
+        </div>
+
+        <!-- Sidebar: quick actions + lead details -->
+        <div class="space-y-4">
+
+          <!-- Quick actions card -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              {{ t('leadDetail.quickActions') }}
+            </p>
+
+            <!-- Step 1: action type picker -->
+            <div v-if="!sidebarActionType" class="flex flex-col gap-1.5">
+              <button
+                v-for="item in sidebarActionItems"
+                :key="item.value"
+                class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left"
+                @click="sidebarActionType = item.value; sidebarActivityText = ''"
+              >
+                <span>{{ item.icon }}</span>
+                {{ item.label }}
+              </button>
+            </div>
+
+            <!-- Step 2a: activity form (comment / call / meeting / email) -->
+            <div v-else-if="sidebarActionType !== 'task'" class="space-y-2">
+              <div class="flex items-center gap-2 mb-2">
+                <span>{{ sidebarActionIcon }}</span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ sidebarActionItems.find(i => i.value === sidebarActionType)?.label }}
+                </span>
+                <button
+                  class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  @click="sidebarActionType = ''"
+                >← {{ t('leadDetail.changeType') }}</button>
+              </div>
+              <RichTextEditor
+                ref="sidebarRichEditorRef"
+                v-model="sidebarActivityText"
+                :placeholder="sidebarActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
+                :disabled="sidebarActivitySubmitting"
+                :members="sidebarActionType === 'comment' ? teamMembers : []"
+              />
+              <div class="flex justify-end">
+                <button
+                  :disabled="sidebarActivitySubmitting || !sidebarHasPlainText"
+                  class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                  @click="sidebarAddActivity"
+                >{{ sidebarActivitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
+              </div>
+            </div>
+
+            <!-- Step 2b: task quick-create form -->
+            <div v-else class="space-y-2">
+              <div class="flex items-center gap-2 mb-2">
+                <span>📋</span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
+                <button
+                  class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  @click="sidebarActionType = ''"
+                >← {{ t('leadDetail.changeType') }}</button>
+              </div>
+              <input
+                v-model="sidebarTaskTitle"
+                type="text"
+                :placeholder="t('leadDetail.taskTitle')"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              />
+              <input
+                v-model="sidebarTaskDueDate"
+                type="date"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              />
+              <select
+                v-model="sidebarTaskAssigneeId"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+              >
+                <option value="">{{ t('tasks.noAssignee') }}</option>
+                <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
+              </select>
+              <div class="flex justify-end">
+                <button
+                  :disabled="sidebarTaskSubmitting || !sidebarTaskTitle.trim()"
+                  class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                  @click="sidebarAddTask"
+                >{{ sidebarTaskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lead details card -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              {{ t('leadDetail.leadDetails') }}
+            </p>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getStatusMeta(store.currentLead.status).label }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewSource') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd>
+              </div>
+              <div v-if="store.currentLead.value != null" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewValue') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentLead.value }} {{ store.currentLead.currency }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
+              </div>
+              <div v-if="store.currentLead.description" class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <dt class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{{ t('leadDetail.description') }}</dt>
+                <dd class="text-xs text-gray-700 dark:text-gray-300">{{ store.currentLead.description }}</dd>
+              </div>
+            </dl>
+          </div>
+
+        </div>
       </div>
 
       <!-- TASKS TAB -->

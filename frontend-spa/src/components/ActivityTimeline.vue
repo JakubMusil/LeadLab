@@ -5,7 +5,7 @@
  * Works identically for Lead, Realization and Management.
  * The consumer just passes entityType + entityId.
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -20,6 +20,7 @@ import DOMPurify from 'dompurify'
 const props = defineProps<{
   entityType: 'lead' | 'realization' | 'management'
   entityId: string
+  hideComposer?: boolean
 }>()
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,21 @@ const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
+
+// Filter state
+const filterType = ref('')
+const filterOptions = computed(() => [
+  { value: '', label: t('leadDetail.filterAll') },
+  { value: 'comment', label: t('leadDetail.typeComment') },
+  { value: 'call', label: t('leadDetail.typeCall') },
+  { value: 'meeting', label: t('leadDetail.typeMeeting') },
+  { value: 'email_out', label: t('leadDetail.typeEmailOut') },
+  { value: 'email_in', label: t('leadDetail.typeEmailIn') },
+  { value: 'task', label: t('leadDetail.typeTask') },
+])
+const filteredActivities = computed(() =>
+  filterType.value ? activities.value.filter((a) => a.type === filterType.value) : activities.value,
+)
 
 // Composer state
 const selectedActionType = ref('')
@@ -239,9 +255,9 @@ defineExpose({ load: () => loadActivities(1) })
 <template>
   <div class="space-y-4">
     <!-- ================================================================ -->
-    <!-- Unified action composer                                           -->
+    <!-- Unified action composer (hidden when hideComposer=true)          -->
     <!-- ================================================================ -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+    <div v-if="!hideComposer" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
 
       <!-- Step 1: Action type picker -->
       <div v-if="!selectedActionType">
@@ -361,16 +377,30 @@ defineExpose({ load: () => loadActivities(1) })
     <!-- ================================================================ -->
     <!-- Activity feed                                                      -->
     <!-- ================================================================ -->
+
+    <!-- Filter bar -->
+    <div class="flex flex-wrap gap-1.5">
+      <button
+        v-for="f in filterOptions"
+        :key="f.value"
+        class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+        :class="filterType === f.value
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
+        @click="filterType = f.value"
+      >{{ f.label }}</button>
+    </div>
+
     <div v-if="activitiesLoading" class="animate-pulse space-y-2">
       <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
-    <div v-else-if="activities.length === 0" class="text-center py-10 text-gray-400 text-sm">
-      {{ t('leadDetail.noActivities') }}
+    <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm">
+      {{ filterType ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-      <div v-for="act in activities" :key="act.id" class="flex items-start gap-3 p-4">
+      <div v-for="act in filteredActivities" :key="act.id" class="flex items-start gap-3 p-4">
         <span class="text-lg mt-0.5 flex-shrink-0">{{ activityIcons[act.type] ?? '📌' }}</span>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">

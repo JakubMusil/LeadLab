@@ -1112,7 +1112,10 @@
     "failedToDeleteFile": "Failed to delete file.",
     "parseError": "Upload response parse error.",
     "leadDetails": "Lead Details",
-    "description": "Description"
+    "description": "Description",
+    "quickActions": "Quick Actions",
+    "filterAll": "All",
+    "noActivitiesForFilter": "No activities match this filter."
   },
   "sequences": {
     "title": "Email Sequences",

@@ -1112,7 +1112,10 @@
     "failedToDeleteFile": "Nie udało się usunąć pliku.",
     "parseError": "Błąd parsowania odpowiedzi na przesyłanie.",
     "leadDetails": "Szczegóły szansy",
-    "description": "Opis"
+    "description": "Opis",
+    "quickActions": "Szybkie akcje",
+    "filterAll": "Wszystkie",
+    "noActivitiesForFilter": "Brak aktywności pasujących do tego filtra."
   },
   "sequences": {
     "title": "Sekwencje e-mail",

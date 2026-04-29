@@ -1113,7 +1113,10 @@
     "failedToDeleteFile": "Nepodařilo se smazat soubor.",
     "parseError": "Chyba při zpracování odpovědi na nahrání.",
     "leadDetails": "Detaily příležitosti",
-    "description": "Popis"
+    "description": "Popis",
+    "quickActions": "Rychlé akce",
+    "filterAll": "Vše",
+    "noActivitiesForFilter": "Žádné aktivity neodpovídají tomuto filtru."
   },
   "sequences": {
     "title": "E-mailové sekvence",
