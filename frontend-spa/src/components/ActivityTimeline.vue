@@ -205,8 +205,8 @@ function activityTypeLabel(type: string): string {
 // Whether content_text is required for the currently selected action type
 const activityTextRequired = computed(() => {
   const tool = streamlineTools.value.find((t) => t.activity_type === selectedActionType.value)
-  // Default to required if the tool is not yet loaded or has no schema info
-  return tool?.form_schema.required?.includes('content_text') ?? true
+  // Default to false (not required) if the tool is not yet loaded or has no schema info
+  return tool?.form_schema.required?.includes('content_text') ?? false
 })
 
 const actionPickerItems = computed<{ value: string; label: string; icon: Component }[]>(() => {
