@@ -957,6 +957,505 @@ class VoiceMemoTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
+# Phase 6 — Bonus tools (communication / workflow / system)
+# ---------------------------------------------------------------------------
+# These tools extend the unified Streamline timeline beyond the core
+# unification scope.  Most are pure logging tools (no side-effects); a few
+# perform lightweight side-effects (notifications, stamping ``viewed_at``).
+# Side-effect logic stays minimal and idempotent so any of these tools can
+# be invoked from webhooks / Celery tasks as well as the SPA composer.
+# ---------------------------------------------------------------------------
+
+
+class _SimpleLogTool(StreamlineTool):
+    """
+    Helper base class for tools that only log a structured event into the
+    timeline (no side-effects, schema fields are mirrored 1:1 into the
+    rendered payload).
+
+    Subclasses set:
+
+    * ``activity_type`` / ``label`` / ``icon``
+    * ``schema_properties``  — JSON Schema property dict
+    * ``required_fields``    — list of required property names
+    * ``payload_fields``     — list of metadata keys to surface in
+                               ``render_payload`` (defaults to keys of
+                               ``schema_properties``)
+    """
+
+    schema_properties: dict = {}
+    required_fields: list[str] = []
+    payload_fields: list[str] | None = None
+
+    def get_schema(self) -> dict:
+        schema: dict = {"type": "object", "properties": dict(self.schema_properties)}
+        if self.required_fields:
+            schema["required"] = list(self.required_fields)
+        return schema
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        keys = self.payload_fields or list(self.schema_properties.keys())
+        return {k: activity.metadata.get(k) for k in keys}
+
+
+# --- SMS -------------------------------------------------------------------
+
+class SmsOutTool(_SimpleLogTool):
+    activity_type = "sms_out"
+    label = "SMS (Outbound)"
+    icon = "DevicePhoneMobileIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Message"},
+        "to": {"type": "string", "title": "To"},
+        "from_number": {"type": "string", "title": "From"},
+        "provider_message_id": {"type": "string", "title": "Provider Message ID"},
+    }
+    required_fields = ["content_text", "to"]
+    payload_fields = ["to", "from_number", "provider_message_id"]
+
+
+class SmsInTool(_SimpleLogTool):
+    activity_type = "sms_in"
+    label = "SMS (Inbound)"
+    icon = "DevicePhoneMobileIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Message"},
+        "from_number": {"type": "string", "title": "From"},
+        "to": {"type": "string", "title": "To"},
+        "provider_message_id": {"type": "string", "title": "Provider Message ID"},
+    }
+    required_fields = ["content_text", "from_number"]
+    payload_fields = ["from_number", "to", "provider_message_id"]
+
+
+# --- WhatsApp / Chat -------------------------------------------------------
+
+class WhatsAppOutTool(_SimpleLogTool):
+    activity_type = "whatsapp_out"
+    label = "WhatsApp (Outbound)"
+    icon = "ChatBubbleOvalLeftEllipsisIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Message"},
+        "to": {"type": "string", "title": "To"},
+        "from_number": {"type": "string", "title": "From"},
+        "provider_message_id": {"type": "string", "title": "Provider Message ID"},
+    }
+    required_fields = ["content_text", "to"]
+    payload_fields = ["to", "from_number", "provider_message_id"]
+
+
+class WhatsAppInTool(_SimpleLogTool):
+    activity_type = "whatsapp_in"
+    label = "WhatsApp (Inbound)"
+    icon = "ChatBubbleOvalLeftEllipsisIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Message"},
+        "from_number": {"type": "string", "title": "From"},
+        "to": {"type": "string", "title": "To"},
+        "provider_message_id": {"type": "string", "title": "Provider Message ID"},
+    }
+    required_fields = ["content_text", "from_number"]
+    payload_fields = ["from_number", "to", "provider_message_id"]
+
+
+class ChatTool(_SimpleLogTool):
+    """Generic IM channel — distinguishes itself via ``metadata.channel``."""
+
+    activity_type = "chat"
+    label = "Chat Message"
+    icon = "ChatBubbleLeftRightIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Message"},
+        "channel": {
+            "type": "string",
+            "title": "Channel",
+            "enum": ["slack", "teams", "telegram", "messenger", "discord", "other"],
+        },
+        "direction": {
+            "type": "string",
+            "title": "Direction",
+            "enum": ["in", "out"],
+        },
+        "from_handle": {"type": "string", "title": "From"},
+        "to_handle": {"type": "string", "title": "To"},
+        "provider_message_id": {"type": "string", "title": "Provider Message ID"},
+    }
+    required_fields = ["content_text", "channel"]
+    payload_fields = [
+        "channel", "direction", "from_handle", "to_handle", "provider_message_id"
+    ]
+
+
+# --- Meeting Scheduled (calendar invite) -----------------------------------
+
+class MeetingScheduledTool(_SimpleLogTool):
+    """
+    Records a *future* calendar invite, distinct from ``meeting`` which
+    records a meeting that already happened.
+    """
+
+    activity_type = "meeting_scheduled"
+    label = "Meeting Scheduled"
+    icon = "CalendarDaysIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Subject / Notes"},
+        "start_at": {"type": "string", "format": "date-time", "title": "Start"},
+        "end_at": {"type": "string", "format": "date-time", "title": "End"},
+        "location": {"type": "string", "title": "Location"},
+        "attendees": {
+            "type": "array",
+            "items": {"type": "string"},
+            "title": "Attendees",
+        },
+        "ics_url": {"type": "string", "format": "uri", "title": "ICS URL"},
+        "provider_event_id": {"type": "string", "title": "Provider Event ID"},
+    }
+    required_fields = ["start_at"]
+
+
+# --- Link ------------------------------------------------------------------
+
+class LinkTool(_SimpleLogTool):
+    """A saved external link with optional Open Graph preview metadata."""
+
+    activity_type = "link"
+    label = "Link"
+    icon = "LinkIcon"
+    schema_properties = {
+        "url": {"type": "string", "format": "uri", "title": "URL"},
+        "title": {"type": "string", "title": "Title"},
+        "description": {"type": "string", "title": "Description"},
+        "thumbnail_url": {
+            "type": "string",
+            "format": "uri",
+            "title": "Thumbnail URL",
+        },
+    }
+    required_fields = ["url"]
+
+
+# --- Payment / Invoice -----------------------------------------------------
+
+class PaymentReceivedTool(_SimpleLogTool):
+    activity_type = "payment_received"
+    label = "Payment Received"
+    icon = "BanknotesIcon"
+    schema_properties = {
+        "amount": {"type": "number", "title": "Amount"},
+        "currency": {"type": "string", "title": "Currency"},
+        "invoice_id": {"type": "string", "title": "Invoice ID"},
+        "paid_at": {"type": "string", "format": "date-time", "title": "Paid At"},
+        "method": {"type": "string", "title": "Method"},
+        "provider": {"type": "string", "title": "Provider"},
+    }
+    required_fields = ["amount", "currency"]
+
+
+class InvoiceSentTool(_SimpleLogTool):
+    activity_type = "invoice_sent"
+    label = "Invoice Sent"
+    icon = "DocumentCurrencyDollarIcon"
+    schema_properties = {
+        "invoice_id": {"type": "string", "title": "Invoice ID"},
+        "invoice_number": {"type": "string", "title": "Invoice Number"},
+        "amount": {"type": "number", "title": "Amount"},
+        "currency": {"type": "string", "title": "Currency"},
+        "due_date": {"type": "string", "format": "date", "title": "Due Date"},
+        "url": {"type": "string", "format": "uri", "title": "Invoice URL"},
+        "provider": {"type": "string", "title": "Provider"},
+    }
+    required_fields = ["invoice_id"]
+
+
+# --- Signature workflow ----------------------------------------------------
+
+class SignatureRequestedTool(_SimpleLogTool):
+    activity_type = "signature_requested"
+    label = "Signature Requested"
+    icon = "PencilSquareIcon"
+    schema_properties = {
+        "document_id": {"type": "string", "title": "Document ID"},
+        "document_title": {"type": "string", "title": "Document Title"},
+        "signer_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Signer Email",
+        },
+        "provider": {"type": "string", "title": "Provider"},
+        "provider_request_id": {"type": "string", "title": "Provider Request ID"},
+    }
+    required_fields = ["document_id", "signer_email"]
+
+
+class SignatureCompletedTool(_SimpleLogTool):
+    activity_type = "signature_completed"
+    label = "Signature Completed"
+    icon = "CheckBadgeIcon"
+    schema_properties = {
+        "document_id": {"type": "string", "title": "Document ID"},
+        "document_title": {"type": "string", "title": "Document Title"},
+        "signer_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Signer Email",
+        },
+        "signed_at": {"type": "string", "format": "date-time", "title": "Signed At"},
+        "provider": {"type": "string", "title": "Provider"},
+        "provider_request_id": {"type": "string", "title": "Provider Request ID"},
+    }
+    required_fields = ["document_id"]
+
+
+# --- Proposal Viewed (passive tracking) ------------------------------------
+
+class ProposalViewedTool(StreamlineTool):
+    """
+    Logs that a recipient opened a proposal.  Side-effect: stamp
+    ``Proposal.first_viewed_at`` if not already set and bump ``view_count``.
+    """
+
+    activity_type = "proposal_viewed"
+    label = "Proposal Viewed"
+    icon = "EyeIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "proposal_id": {"type": "string", "title": "Proposal ID"},
+                "proposal_title": {"type": "string", "title": "Proposal Title"},
+                "viewer_email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Viewer Email",
+                },
+                "viewer_ip": {"type": "string", "title": "Viewer IP"},
+                "user_agent": {"type": "string", "title": "User Agent"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        from django.utils import timezone
+
+        proposal = activity.proposal
+        if proposal is None:
+            return
+        update_fields: list[str] = []
+        if hasattr(proposal, "first_viewed_at") and proposal.first_viewed_at is None:
+            proposal.first_viewed_at = timezone.now()
+            update_fields.append("first_viewed_at")
+        if hasattr(proposal, "view_count"):
+            proposal.view_count = (proposal.view_count or 0) + 1
+            update_fields.append("view_count")
+        if update_fields:
+            proposal.save(update_fields=update_fields)
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "proposal_id": activity.metadata.get("proposal_id", ""),
+            "proposal_title": activity.metadata.get("proposal_title", ""),
+            "viewer_email": activity.metadata.get("viewer_email", ""),
+            "viewer_ip": activity.metadata.get("viewer_ip", ""),
+            "user_agent": activity.metadata.get("user_agent", ""),
+        }
+
+
+# --- AI tools --------------------------------------------------------------
+
+class AiSummaryTool(_SimpleLogTool):
+    activity_type = "ai_summary"
+    label = "AI Summary"
+    icon = "SparklesIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Summary"},
+        "model": {"type": "string", "title": "Model"},
+        "prompt_version": {"type": "string", "title": "Prompt Version"},
+        "source_activity_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "title": "Source Activities",
+        },
+    }
+    required_fields = ["content_text"]
+    payload_fields = ["model", "prompt_version", "source_activity_ids"]
+
+
+class AiSuggestedActionTool(_SimpleLogTool):
+    activity_type = "ai_suggested_action"
+    label = "AI Suggested Action"
+    icon = "LightBulbIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Suggestion"},
+        "model": {"type": "string", "title": "Model"},
+        "prompt_version": {"type": "string", "title": "Prompt Version"},
+        "suggested_action": {"type": "string", "title": "Suggested Action"},
+        "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "minimum": 0,
+            "maximum": 1,
+        },
+    }
+    required_fields = ["suggested_action"]
+    payload_fields = ["model", "prompt_version", "suggested_action", "confidence"]
+
+
+# --- System Note -----------------------------------------------------------
+
+class SystemNoteTool(_SimpleLogTool):
+    """
+    Generic system-generated note (no user-facing composer).
+
+    Examples: "Imported from CSV", "Migrated from Pipedrive",
+    "Auto-merged duplicate".  Surfaces ``source`` so the timeline can group
+    or filter by origin.
+    """
+
+    activity_type = "system_note"
+    label = "System Note"
+    icon = "InformationCircleIcon"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Note"},
+        "source": {"type": "string", "title": "Source"},
+        "code": {"type": "string", "title": "Code"},
+    }
+    required_fields = ["content_text"]
+    payload_fields = ["source", "code"]
+
+
+# --- Tags ------------------------------------------------------------------
+
+class TagAddedTool(_SimpleLogTool):
+    activity_type = "tag_added"
+    label = "Tag Added"
+    icon = "TagIcon"
+    schema_properties = {
+        "tag": {"type": "string", "title": "Tag"},
+    }
+    required_fields = ["tag"]
+
+
+class TagRemovedTool(_SimpleLogTool):
+    activity_type = "tag_removed"
+    label = "Tag Removed"
+    icon = "TagIcon"
+    schema_properties = {
+        "tag": {"type": "string", "title": "Tag"},
+    }
+    required_fields = ["tag"]
+
+
+# --- Mention ---------------------------------------------------------------
+
+class MentionTool(StreamlineTool):
+    """
+    Standalone "you were mentioned" activity.
+
+    Distinct from a comment that incidentally contains a mention — this tool
+    is the explicit, primary record of the mention, with a side-effect of
+    creating a ``Notification`` for the mentioned user.
+    """
+
+    activity_type = "mention"
+    label = "Mention"
+    icon = "AtSymbolIcon"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "content_text": {"type": "string", "title": "Context"},
+                "mentioned_user_id": {
+                    "type": "string",
+                    "title": "Mentioned User ID",
+                },
+                "source_activity_id": {
+                    "type": "string",
+                    "title": "Source Activity ID",
+                },
+            },
+            "required": ["mentioned_user_id"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        from crm.models import Notification
+        from django.contrib.auth import get_user_model
+
+        firm = context["firm"]
+        actor = context.get("user")
+        metadata = payload.get("metadata", {}) or {}
+        mentioned_id = metadata.get("mentioned_user_id")
+        if not mentioned_id:
+            return
+
+        _User = get_user_model()
+        try:
+            mentioned_user = (
+                _User.objects.filter(id=str(mentioned_id), memberships__firm=firm)
+                .distinct()
+                .first()
+            )
+        except Exception:
+            mentioned_user = None
+        if mentioned_user is None or (actor and mentioned_user.id == actor.id):
+            return
+
+        Notification.objects.create(
+            firm=firm,
+            user=mentioned_user,
+            event="activity.mention",
+            payload={
+                "activity_id": str(activity.id),
+                "entity_type": activity.entity_type,
+                "entity_id": activity.entity_id,
+                "entity_title": context.get("entity_title", ""),
+                "by_user": getattr(actor, "full_name", None)
+                or (actor.email if actor else None),
+                "content_preview": activity.content_text[:_MENTION_PREVIEW_LENGTH],
+            },
+        )
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "mentioned_user_id": activity.metadata.get("mentioned_user_id", ""),
+            "source_activity_id": activity.metadata.get("source_activity_id", ""),
+        }
+
+
+# --- Pin / Unpin -----------------------------------------------------------
+
+class PinnedTool(_SimpleLogTool):
+    activity_type = "pinned"
+    label = "Pinned"
+    icon = "BookmarkIcon"
+    schema_properties = {
+        "target_activity_id": {"type": "string", "title": "Pinned Activity ID"},
+        "reason": {"type": "string", "title": "Reason"},
+    }
+    required_fields = ["target_activity_id"]
+
+
+class UnpinnedTool(_SimpleLogTool):
+    activity_type = "unpinned"
+    label = "Unpinned"
+    icon = "BookmarkSlashIcon"
+    schema_properties = {
+        "target_activity_id": {"type": "string", "title": "Unpinned Activity ID"},
+        "reason": {"type": "string", "title": "Reason"},
+    }
+    required_fields = ["target_activity_id"]
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -998,4 +1497,25 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     ProposalAcceptedTool(),
     ProposalRejectedTool(),
     EntityChangeTool(),
+    # Phase 6 — bonus tools
+    SmsOutTool(),
+    SmsInTool(),
+    WhatsAppOutTool(),
+    WhatsAppInTool(),
+    ChatTool(),
+    MeetingScheduledTool(),
+    LinkTool(),
+    PaymentReceivedTool(),
+    InvoiceSentTool(),
+    SignatureRequestedTool(),
+    SignatureCompletedTool(),
+    ProposalViewedTool(),
+    AiSummaryTool(),
+    AiSuggestedActionTool(),
+    SystemNoteTool(),
+    TagAddedTool(),
+    TagRemovedTool(),
+    MentionTool(),
+    PinnedTool(),
+    UnpinnedTool(),
 ]
