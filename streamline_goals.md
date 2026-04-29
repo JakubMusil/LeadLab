@@ -289,25 +289,43 @@ mají `<ActivityTimeline>` integrovaný; zbývá:
    `POST /api/v1/crm/activities` se správným `*_id` polem. Použito v
    `LeadDetailView` a `ManagementDetailView`.
 2. **2-sloupcový layout** (timeline vlevo, sidebar vpravo, sticky) v:
-   - `CustomerDetailView.vue`
-   - `RealizationDetailView.vue`
+   - ✅ `CustomerDetailView.vue` *(2026-04-29 session — tabs
+     `Overview` / `Tasks` / `Files`, 2-col Overview s
+     `EntitySidebarActionPicker`, Tasks přes `customer_id` filter,
+     Files přes Document API)*
+   - ✅ `RealizationDetailView.vue` *(2026-04-29 session — Overview tab
+     přepsán do 2-col layoutu (`ActivityTimeline` vlevo `col-span-2` +
+     sidebar s `EntitySidebarActionPicker`, popisek, milestones progress,
+     customer/lead/assignee/dates karty); duplicitní separátní
+     `activities` tab odstraněn; pre-existing tabs `milestones`/`tasks`/
+     `proposals`/`documents` ponechány. Header zjednodušený (jen
+     title + status), meta info migrováno do sidebaru.)*
    - ✅ `ManagementDetailView.vue` *(layout už existoval; přidán
      `EntitySidebarActionPicker` do toolbox sidebaru, timeline má `ref`
      pro reload po quick-action submitu)*
    - `ProposalBuilderView.vue` (jen v rámci timeline tabu — builder UI
-     zůstává netknutý)
+     zůstává netknutý) — **TODO příště**
 3. **Sjednotit tabs** — `overview` / `tasks` / `files` / *(entity-specific)*
    tam, kde dnes nejsou. `Files` přepnout na `DocumentsView`-style
    komponenty místo per-entity custom uploaderu.
+   - ✅ Customer + Realization + Management hotové.
+   - Proposal — TODO.
 4. **Inline editaci popisku** — RichTextEditor + `startEdit/save/cancel`
    pattern z `LeadDetailView` aplikovat na entity, které mají
    `description` / `description_html`.
+   - Customer model `description` field nemá → krok 4 se na něj
+     neaplikuje.
+   - Realization má `description` (plain text) — zatím render-only;
+     inline edit je nice-to-have, ne blokátor sjednocení designu.
+   - Proposal — TODO.
 5. **i18n** — průchod nově použitými klíči, doplnit chybějící do
    en/cs/de/pl, ověřit `node scripts/check-locales.mjs`.
+   - ✅ Customer (10 klíčů) + Realization (5 klíčů) doplněno do všech
+     4 lokálů (1817 klíčů × 4 jazyky, locale-checker passes).
 
-Doporučuji rozdělit na 4 menší PR (po jedné entitě), aby code review byl
-čitelný; `EntitySidebarActionPicker.vue` extrakce je první (samostatný PR),
-pak Customer / Realization / Management / Proposal po jednom.
+**Stav po session 2026-04-29 (PR `copilot/add-customer-realization-proposal-prs`):**
+hotový Customer + Realization. Zbývá Proposal — to je další PR
+v navazujícím session.
 
 ### C) Pokračovat s úklidem Fáze 2 + 3 backend *(volitelné, ale teď je to levné)*
 

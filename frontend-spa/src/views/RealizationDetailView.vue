@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,8 +21,11 @@ const { t } = useI18n()
 
 const realizationId = computed(() => route.params.id as string)
 
-type Tab = 'overview' | 'activities' | 'tasks' | 'milestones' | 'proposals' | 'documents'
+type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals' | 'documents'
 const activeTab = ref<Tab>('overview')
+
+// ActivityTimeline ref — used to reload feed after sidebar quick-action submits.
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 const editingTitle = ref(false)
 const titleDraft = ref('')
@@ -230,25 +234,6 @@ onMounted(async () => {
         >
           {{ realization.title }}
         </h1>
-
-        <!-- Meta line -->
-        <div class="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
-          <span v-if="realization.customer_name">
-            <span class="text-gray-400">{{ t('realizations.colCustomer') }}:</span> {{ realization.customer_name }}
-          </span>
-          <span v-if="realization.lead_title">
-            <span class="text-gray-400">Příležitost:</span> {{ realization.lead_title }}
-          </span>
-          <span v-if="realization.assigned_to_name">
-            <span class="text-gray-400">Odpovědná osoba:</span> {{ realization.assigned_to_name }}
-          </span>
-          <span v-if="realization.start_date">
-            <span class="text-gray-400">Zahájení:</span> {{ realization.start_date }}
-          </span>
-          <span v-if="realization.end_date">
-            <span class="text-gray-400">Termín:</span> {{ realization.end_date }}
-          </span>
-        </div>
       </div>
 
       <!-- Status selector -->
@@ -269,7 +254,6 @@ onMounted(async () => {
       <button
         v-for="tab in [
           { id: 'overview', label: t('realizations.tabOverview') },
-          { id: 'activities', label: t('realizations.tabActivities') },
           { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
           { id: 'tasks', label: t('realizations.tabTasks') },
           { id: 'proposals', label: t('realizations.tabProposals') },
@@ -286,19 +270,36 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Overview tab -->
-    <div v-if="activeTab === 'overview'" class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Overview tab: streamline left + sidebar right -->
+    <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: ActivityTimeline (streamline) -->
+      <div class="lg:col-span-2">
+        <ActivityTimeline ref="activityTimelineRef" entity-type="realization" :entity-id="realizationId" />
+      </div>
+
+      <!-- Right: sidebar (quick actions + description + milestones progress + meta) -->
+      <div class="space-y-4">
+
+        <!-- Quick actions (unified Streamline composer) -->
+        <EntitySidebarActionPicker
+          entity-type="realization"
+          :entity-id="realizationId"
+          @activity-added="activityTimelineRef?.load()"
+        />
+
+        <!-- Description -->
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('realizations.descLabel') }}</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ realization.description || '—' }}</p>
         </div>
 
+        <!-- Milestones progress -->
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('realizations.milestonesTitle') }}</h3>
           <div v-if="totalMilestones > 0">
             <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <span>{{ completedMilestones }} / {{ totalMilestones }} splněno</span>
+              <span>{{ completedMilestones }} / {{ totalMilestones }} {{ t('realizations.completed') }}</span>
               <span>{{ Math.round((completedMilestones / totalMilestones) * 100) }}%</span>
             </div>
             <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -310,12 +311,37 @@ onMounted(async () => {
           </div>
           <p v-else class="text-sm text-gray-400">{{ t('realizations.noMilestones') }}</p>
         </div>
-      </div>
-    </div>
 
-    <!-- Activities tab -->
-    <div v-if="activeTab === 'activities'">
-      <ActivityTimeline entity-type="realization" :entity-id="realizationId" />
+        <!-- Customer -->
+        <div v-if="realization.customer_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.colCustomer') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white">{{ realization.customer_name }}</div>
+        </div>
+
+        <!-- Lead -->
+        <div v-if="realization.lead_title" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.opportunityLabel') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white truncate">{{ realization.lead_title }}</div>
+        </div>
+
+        <!-- Assigned to -->
+        <div v-if="realization.assigned_to_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.assignedToLabel') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white">{{ realization.assigned_to_name }}</div>
+        </div>
+
+        <!-- Dates -->
+        <div v-if="realization.start_date || realization.end_date" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 space-y-2">
+          <div v-if="realization.start_date">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.startLabel') }}</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ realization.start_date }}</div>
+          </div>
+          <div v-if="realization.end_date">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.endLabel') }}</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ realization.end_date }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Milestones tab -->
