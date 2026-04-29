@@ -149,7 +149,7 @@ async function deleteDocument() {
 </script>
 
 <template>
-  <div class="p-6 max-w-5xl mx-auto">
+  <div class="p-6">
     <!-- Back -->
     <button
       @click="router.push('/app/management')"

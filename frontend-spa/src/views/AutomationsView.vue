@@ -419,7 +419,7 @@ function lastRunLabel(rule: AutomationRule): string {
 </script>
 
 <template>
-  <div class="p-6 max-w-3xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
 
     <!-- Header -->
     <div class="flex items-center justify-between">

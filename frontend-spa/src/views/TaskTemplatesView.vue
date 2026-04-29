@@ -257,7 +257,7 @@ onMounted(() => { loadTemplates() })
 </script>
 
 <template>
-  <div class="p-6 max-w-4xl mx-auto">
+  <div class="p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>

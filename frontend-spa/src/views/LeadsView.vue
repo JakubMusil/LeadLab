@@ -401,7 +401,7 @@ function exportPdf() {
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="p-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>

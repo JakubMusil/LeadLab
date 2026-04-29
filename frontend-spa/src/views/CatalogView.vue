@@ -350,7 +350,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 max-w-6xl mx-auto space-y-5">
+  <div class="p-6 space-y-5">
     <!-- Header -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>

@@ -56,7 +56,7 @@ onMounted(loadFirms)
 </script>
 
 <template>
-  <div class="p-6 max-w-6xl mx-auto space-y-6">
+  <div class="p-6 space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">🛡 Super Admin</h1>
       <button
