@@ -90,7 +90,16 @@ async function loadTeamMembers() {
 }
 
 // Streamline Tool Registry — loaded from the backend on mount
-interface StreamlineTool { activity_type: string; label: string; icon: string; form_schema: { type: string; properties?: Record<string, unknown>; required?: string[] } }
+interface StreamlineTool {
+  activity_type: string
+  label: string
+  icon: string
+  form_schema: {
+    type: string
+    properties?: Record<string, unknown>
+    required?: string[]
+  }
+}
 const streamlineTools = ref<StreamlineTool[]>([])
 
 async function loadStreamlineTools() {
@@ -130,7 +139,7 @@ const sidebarHasPlainText = computed(() =>
 // The "task" entry remains a special case since it creates a Task entity, not an Activity.
 const sidebarActionItems = computed<{ value: string; label: string; icon: Component }[]>(() => {
   const registryItems = streamlineTools.value
-    .filter((tool) => Boolean(tool.form_schema.properties?.['content_text']))
+    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
     .map((tool) => ({
       value: tool.activity_type,
       label: activityTypeLabelKey[tool.activity_type] ? t(activityTypeLabelKey[tool.activity_type]) : tool.label,
@@ -405,7 +414,7 @@ async function deleteLead() {
 onMounted(async () => {
   await store.fetchLead(leadId.value)
   loadTeamMembers()
-  loadStreamlineTools()
+  await loadStreamlineTools()
   if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
 
