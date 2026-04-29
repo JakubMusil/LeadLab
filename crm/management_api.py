@@ -22,6 +22,7 @@ from crm.models import (
     ManagementType,
     Realization,
 )
+from crm.api import _user_display_name
 from crm.events import broadcast_event
 from firms.auth import require_active_subscription, require_membership
 
@@ -303,6 +304,7 @@ class _ActivityOut(Schema):
     entity_id: str
     lead_id: Optional[str]
     user_id: Optional[str]
+    user_name: Optional[str]
     type: str
     content_text: str
     metadata: dict
@@ -330,7 +332,7 @@ def list_management_activities(
         raise errors.HttpError(404, "Management record not found")
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(management=record).order_by("-created_at")[offset:offset + page_size]
+    activities = Activity.objects.filter(management=record).select_related('user').order_by("-created_at")[offset:offset + page_size]
 
     return [
         {
@@ -339,6 +341,7 @@ def list_management_activities(
             "entity_id": a.entity_id,
             "lead_id": str(a.lead_id) if a.lead_id else None,
             "user_id": str(a.user_id) if a.user_id else None,
+            "user_name": _user_display_name(a.user),
             "type": a.type,
             "content_text": a.content_text,
             "metadata": a.metadata,

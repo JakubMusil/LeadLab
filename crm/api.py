@@ -706,6 +706,7 @@ class ActivityOut(Schema):
     # Kept for backwards-compatibility — None for realization/management activities
     lead_id: Optional[str]
     user_id: Optional[str]
+    user_name: Optional[str]
     type: str
     content_text: str
     metadata: Dict[str, Any]
@@ -724,6 +725,13 @@ class ActivityIn(Schema):
     metadata: Dict[str, Any] = {}
 
 
+def _user_display_name(user) -> Optional[str]:
+    """Return a human-readable display name for an auth User, or None."""
+    if user is None:
+        return None
+    return f"{user.first_name} {user.last_name}".strip() or user.email
+
+
 def _activity_out(a: Activity) -> dict:
     from crm.streamline.registry import get_tool
     tool = get_tool(a.type)
@@ -733,6 +741,7 @@ def _activity_out(a: Activity) -> dict:
         "entity_id": a.entity_id,
         "lead_id": str(a.lead_id) if a.lead_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
+        "user_name": _user_display_name(a.user),
         "type": a.type,
         "content_text": a.content_text,
         "metadata": a.metadata,
@@ -755,7 +764,7 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 404, {"detail": "Lead not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(lead=lead).order_by("-created_at")[offset:offset + page_size]
+    activities = Activity.objects.filter(lead=lead).select_related('user').order_by("-created_at")[offset:offset + page_size]
     return 200, [_activity_out(a) for a in activities]
 
 
