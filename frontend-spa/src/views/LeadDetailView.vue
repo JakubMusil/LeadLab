@@ -5,6 +5,7 @@ import { useLeadsStore, LEAD_STATUSES, getStatusMeta } from '@/stores/leads'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
+import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
@@ -65,6 +66,7 @@ const router = useRouter()
 const store = useLeadsStore()
 const toast = useToast()
 const firmStore = useFirmStore()
+const authStore = useAuthStore()
 const { on, off } = useWebSocket()
 const { t } = useI18n()
 
@@ -127,6 +129,9 @@ const sidebarRichEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(nul
 const sidebarTaskTitle = ref('')
 const sidebarTaskDueDate = ref('')
 const sidebarTaskAssigneeId = ref('')
+const sidebarTaskWatcherIds = ref<string[]>([])
+const sidebarTaskDescription = ref('')
+const sidebarTaskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const sidebarTaskSubmitting = ref(false)
 
 const sidebarHasPlainText = computed(() =>
@@ -355,6 +360,10 @@ async function sidebarAddActivity() {
   }
 }
 
+function defaultSidebarTaskAssigneeId(): string {
+  return authStore.user ? String(authStore.user.id) : ''
+}
+
 async function sidebarAddTask() {
   if (!sidebarTaskTitle.value.trim()) return
   sidebarTaskSubmitting.value = true
@@ -362,20 +371,41 @@ async function sidebarAddTask() {
     lead_id: leadId.value,
     title: sidebarTaskTitle.value.trim(),
     assigned_to_id: sidebarTaskAssigneeId.value || null,
+    watcher_ids: sidebarTaskWatcherIds.value,
   }
   if (sidebarTaskDueDate.value) payload.due_date = new Date(sidebarTaskDueDate.value).toISOString()
   const res = await api.post('/api/v1/crm/tasks', payload)
-  sidebarTaskSubmitting.value = false
   if (res.ok) {
+    // If a description was entered, post it as the first comment on the lead timeline
+    const descText = sidebarTaskDescription.value
+    if (descText && descText.replace(/<[^>]*>/g, '').trim()) {
+      const mentionedIds = sidebarTaskEditorRef.value?.getMentionedIds() ?? []
+      const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
+      await api.post('/api/v1/crm/activities', {
+        lead_id: leadId.value,
+        type: 'comment',
+        content_text: descText,
+        metadata,
+      })
+    }
     sidebarTaskTitle.value = ''
     sidebarTaskDueDate.value = ''
-    sidebarTaskAssigneeId.value = ''
+    sidebarTaskAssigneeId.value = defaultSidebarTaskAssigneeId()
+    sidebarTaskWatcherIds.value = []
+    sidebarTaskDescription.value = ''
     sidebarActionType.value = ''
     activityTimelineRef.value?.load()
     toast.success(t('leadDetail.taskCreated'))
   } else {
     toast.error(t('leadDetail.taskFailed'))
   }
+  sidebarTaskSubmitting.value = false
+}
+
+function toggleSidebarTaskWatcher(userId: string) {
+  const idx = sidebarTaskWatcherIds.value.indexOf(userId)
+  if (idx !== -1) sidebarTaskWatcherIds.value.splice(idx, 1)
+  else sidebarTaskWatcherIds.value.push(userId)
 }
 
 function openEdit() {
@@ -427,6 +457,9 @@ onMounted(async () => {
   await loadStreamlineTools()
   if (activeTab.value === 'tasks') await loadTasks()
   else if (activeTab.value === 'files') await loadFiles()
+
+  // Default sidebar task assignee = currently logged-in user
+  sidebarTaskAssigneeId.value = defaultSidebarTaskAssigneeId()
 
   on('lead.updated', onWsLeadUpdated)
 })
@@ -626,13 +659,44 @@ function getTabLabel(tab: string): string {
                 type="date"
                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
               />
-              <select
-                v-model="sidebarTaskAssigneeId"
-                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-              >
-                <option value="">{{ t('tasks.noAssignee') }}</option>
-                <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
-              </select>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.assignee') }}</label>
+                <select
+                  v-model="sidebarTaskAssigneeId"
+                  class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+                >
+                  <option value="">{{ t('tasks.noAssignee') }}</option>
+                  <option v-for="m in teamMembers" :key="m.id" :value="m.id">{{ m.label }}</option>
+                </select>
+              </div>
+              <div v-if="teamMembers.length">
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.watchers') }}</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <label
+                    v-for="m in teamMembers"
+                    :key="m.id"
+                    class="flex items-center gap-1.5 text-xs cursor-pointer px-2 py-1 rounded-lg border transition-colors"
+                    :class="sidebarTaskWatcherIds.includes(m.id)
+                      ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                  >
+                    <input type="checkbox" class="hidden" :checked="sidebarTaskWatcherIds.includes(m.id)" @change="toggleSidebarTaskWatcher(m.id)" />
+                    <BellIcon class="w-3.5 h-3.5" /> {{ m.label }}
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  {{ t('leadDetail.descriptionLabel') }}
+                </label>
+                <RichTextEditor
+                  ref="sidebarTaskEditorRef"
+                  v-model="sidebarTaskDescription"
+                  :members="teamMembers"
+                  :placeholder="t('leadDetail.addMentionPlaceholder')"
+                  class="min-h-[60px]"
+                />
+              </div>
               <div class="flex justify-end">
                 <button
                   :disabled="sidebarTaskSubmitting || !sidebarTaskTitle.trim()"
