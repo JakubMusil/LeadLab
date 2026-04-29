@@ -12,6 +12,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,9 @@ const toast = useToast()
 const { t } = useI18n()
 
 const recordId = computed(() => route.params.id as string)
+
+// ActivityTimeline ref (used to reload feed after sidebar quick-action submits).
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 type Tab = 'overview' | 'tasks' | 'proposals' | 'documents'
 const activeTab = ref<Tab>('overview')
@@ -246,11 +250,18 @@ async function deleteDocument() {
 
         <!-- Left: ActivityTimeline (streamline) -->
         <div class="lg:col-span-2">
-          <ActivityTimeline entity-type="management" :entity-id="recordId" />
+          <ActivityTimeline ref="activityTimelineRef" entity-type="management" :entity-id="recordId" />
         </div>
 
         <!-- Right: toolbox -->
         <div class="space-y-4">
+          <!-- Quick actions (unified Streamline composer) -->
+          <EntitySidebarActionPicker
+            entity-type="management"
+            :entity-id="recordId"
+            @activity-added="activityTimelineRef?.load()"
+          />
+
           <!-- Notes -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('management.notes') }}</h3>
