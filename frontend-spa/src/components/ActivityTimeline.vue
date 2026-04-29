@@ -331,7 +331,7 @@ function cleanFieldValue(raw: string | undefined | null): string {
   if (!raw) return '—'
   // Strip "TypeName:" prefix (e.g. "Decimal:", "int:", "str:", "NoneType:", etc.)
   const colonIdx = raw.indexOf(':')
-  if (colonIdx > 0) {
+  if (colonIdx !== -1) {
     const typePart = raw.substring(0, colonIdx)
     // Only strip if the prefix looks like a Python type name (no spaces, all word chars)
     if (/^\w+$/.test(typePart)) {
