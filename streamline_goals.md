@@ -303,13 +303,19 @@ mají `<ActivityTimeline>` integrovaný; zbývá:
    - ✅ `ManagementDetailView.vue` *(layout už existoval; přidán
      `EntitySidebarActionPicker` do toolbox sidebaru, timeline má `ref`
      pro reload po quick-action submitu)*
-   - `ProposalBuilderView.vue` (jen v rámci timeline tabu — builder UI
-     zůstává netknutý) — **TODO příště**
+   - ✅ `ProposalBuilderView.vue` *(2026-04-29 session — spodní sekce
+     "Activity Timeline" přepsána na 2-sloupcový grid: timeline vlevo
+     (`lg:col-span-2`) s `ref="activityTimelineRef"`, vpravo
+     `EntitySidebarActionPicker entity-type="proposal"`. Builder UI
+     (header bar, editor, live preview) zůstal kompletně netknutý dle
+     plánu. Quick-action submit reloaduje timeline přes ref.)*
 3. **Sjednotit tabs** — `overview` / `tasks` / `files` / *(entity-specific)*
    tam, kde dnes nejsou. `Files` přepnout na `DocumentsView`-style
    komponenty místo per-entity custom uploaderu.
    - ✅ Customer + Realization + Management hotové.
-   - Proposal — TODO.
+   - Proposal — N/A: `ProposalBuilderView` má jiné UX (builder, ne detail
+     view), tabs nejsou aplikovatelné. Streamline timeline je doplňkový
+     panel pod editorem, což je správný shape pro builder.
 4. **Inline editaci popisku** — RichTextEditor + `startEdit/save/cancel`
    pattern z `LeadDetailView` aplikovat na entity, které mají
    `description` / `description_html`.
@@ -317,15 +323,37 @@ mají `<ActivityTimeline>` integrovaný; zbývá:
      neaplikuje.
    - Realization má `description` (plain text) — zatím render-only;
      inline edit je nice-to-have, ne blokátor sjednocení designu.
-   - Proposal — TODO.
+   - Proposal má vlastní editor v builderu (Markdown body, line items,
+     closing) — RichTextEditor pattern z LeadDetailView se neaplikuje,
+     builder vlastní svůj save flow přes `editTitle`/`editContent`/atd.
 5. **i18n** — průchod nově použitými klíči, doplnit chybějící do
    en/cs/de/pl, ověřit `node scripts/check-locales.mjs`.
    - ✅ Customer (10 klíčů) + Realization (5 klíčů) doplněno do všech
      4 lokálů (1817 klíčů × 4 jazyky, locale-checker passes).
+   - ✅ Proposal — žádné nové klíče potřeba (reuse
+     `leadDetail.tabActivities` pro timeline header, sidebar action
+     picker si načítá labely z `entity-toolbar` API).
 
 **Stav po session 2026-04-29 (PR `copilot/add-customer-realization-proposal-prs`):**
-hotový Customer + Realization. Zbývá Proposal — to je další PR
-v navazujícím session.
+✅ Customer + Realization + Proposal **hotové**. Krok C je tímto PR
+**uzavřený**.
+
+### Co dál po Kroku C
+
+Možnosti pro navazující session (od nejlevnější po nejtěžší):
+
+1. **Fáze 2 backend úklid** (sekce C níže) — smazat
+   `LeadStatusHistory` model + zápis ze `StatusChangeTool`, přepsat
+   velocity reporty nad `Activity.objects.filter(type="status_change")`.
+   Bez datové migrace, jen `RunSQL DROP TABLE`. Cca 1 PR.
+2. **Fáze 3 backend úklid** (sekce C níže) — smazat `LeadAttachment` +
+   `TaskAttachment` modely + endpointy + frontendové komponenty.
+   `Document` model už pokrývá vše. Cca 1 PR (čistě delete-only).
+3. **Inline `description` edit pro Realization** — nice-to-have,
+   RichTextEditor pattern z `LeadDetailView`. Cca 1 menší PR.
+4. **Fáze 6 — nové tooly nad rámec** (`ProposalViewedTool` aktivní,
+   `AiSummaryTool`, `MentionTool`) — sekce 5.2 níže. Volitelné,
+   produktové rozhodnutí.
 
 ### C) Pokračovat s úklidem Fáze 2 + 3 backend *(volitelné, ale teď je to levné)*
 
