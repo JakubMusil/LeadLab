@@ -166,37 +166,37 @@ const navSections = computed(() => [
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
       { label: t('nav.proposals'), icon: DocumentDuplicateIcon, path: '/app/proposals' },
-      { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
-      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
-      { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
-      { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
-      { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
     ],
   },
   {
-    label: t('appShell.sectionErp'),
+    label: t('appShell.sectionProjects'),
     items: [
+      { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
+      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
+      { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
+      { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
       { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
-      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
-      { label: t('nav.documents'), icon: FolderOpenIcon, path: '/app/documents' },
     ],
   },
   {
     label: t('appShell.sectionInsights'),
     items: [
       { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
+      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
       { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
+      { label: t('appShell.sectionAutomations'), icon: BoltIcon, path: '/app/automations' },
       ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
     ],
   },
   {
-    label: t('appShell.sectionWorkspace'),
+    label: t('appShell.sectionConfig'),
     items: [
-      { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
-      { label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' },
+      { label: t('nav.documents'), icon: FolderOpenIcon, path: '/app/documents' },
+      { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('appShell.sectionProposalTemplates'), icon: RectangleStackIcon, path: '/app/proposal-templates' },
       { label: t('appShell.sectionCatalog'), icon: ArchiveBoxIcon, path: '/app/catalog' },
-      { label: t('appShell.sectionAutomations'), icon: BoltIcon, path: '/app/automations' },
+      { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
+      { label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' },
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
       ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: ShieldCheckIcon, path: '/app/superadmin' }] : []),
     ],
@@ -332,7 +332,7 @@ function formatNotifTime(ts: string): string {
       </div>
 
       <!-- Nav sections -->
-      <nav class="flex-1 px-2 py-4 overflow-y-auto" aria-label="Main navigation">
+      <nav class="flex-1 px-2 py-4 overflow-y-auto sidebar-scrollbar" aria-label="Main navigation">
         <template v-for="section in navSections" :key="section.label">
           <!-- Section label (only when expanded) -->
           <div v-if="sidebarOpen" class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider select-none">
