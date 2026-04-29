@@ -15,12 +15,15 @@ import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vu
 import DOMPurify from 'dompurify'
 import {
   ChatBubbleLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
   PhoneIcon,
   UsersIcon,
   PaperAirplaneIcon,
   InboxArrowDownIcon,
   ClipboardDocumentListIcon,
   CheckCircleIcon,
+  CheckIcon,
   ArrowsRightLeftIcon,
   PaperClipIcon,
   DocumentTextIcon,
@@ -28,13 +31,38 @@ import {
   PencilSquareIcon,
   QuestionMarkCircleIcon,
   BellIcon,
+  FlagIcon,
+  UserCircleIcon,
+  CalendarIcon,
+  CalendarDaysIcon,
+  Squares2X2Icon,
+  PlusCircleIcon,
+  ArchiveBoxIcon,
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  MicrophoneIcon,
+  DevicePhoneMobileIcon,
+  LinkIcon,
+  BanknotesIcon,
+  CheckBadgeIcon,
+  EyeIcon,
+  SparklesIcon,
+  LightBulbIcon,
+  InformationCircleIcon,
+  TagIcon,
+  AtSymbolIcon,
+  BookmarkIcon,
+  BookmarkSlashIcon,
+  FaceSmileIcon,
+  DocumentCurrencyDollarIcon,
 } from '@heroicons/vue/24/outline'
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 const props = defineProps<{
-  entityType: 'lead' | 'realization' | 'management' | 'customer' | 'proposal'
+  entityType: 'lead' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
   entityId: string
   hideComposer?: boolean
 }>()
@@ -79,6 +107,8 @@ interface StreamlineTool {
 // Map icon name strings (from the Streamline Tool Registry) to Heroicon components
 const heroIconMap: Record<string, Component> = {
   ChatBubbleLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
   PhoneIcon,
   UsersIcon,
   PaperAirplaneIcon,
@@ -87,9 +117,34 @@ const heroIconMap: Record<string, Component> = {
   PaperClipIcon,
   ClipboardDocumentListIcon,
   CheckCircleIcon,
+  CheckIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
   PencilSquareIcon,
+  FlagIcon,
+  UserCircleIcon,
+  CalendarIcon,
+  CalendarDaysIcon,
+  Squares2X2Icon,
+  PlusCircleIcon,
+  ArchiveBoxIcon,
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  MicrophoneIcon,
+  DevicePhoneMobileIcon,
+  LinkIcon,
+  BanknotesIcon,
+  DocumentCurrencyDollarIcon,
+  CheckBadgeIcon,
+  EyeIcon,
+  SparklesIcon,
+  LightBulbIcon,
+  InformationCircleIcon,
+  TagIcon,
+  AtSymbolIcon,
+  BookmarkIcon,
+  BookmarkSlashIcon,
 }
 
 // ---------------------------------------------------------------------------
@@ -140,8 +195,10 @@ const filterOptions = computed(() => [
         ? t(_filterLabelKey[tool.activity_type])
         : tool.label,
     })),
-  // Task group filter (covers task, task_assigned, task_completed)
-  { value: 'task', label: t('leadDetail.typeTask') },
+  // Task group filter — only relevant for entities that own tasks (not the task detail itself)
+  ...(props.entityType !== 'task'
+    ? [{ value: 'task', label: t('leadDetail.typeTask') }]
+    : []),
   // Entity change (auto-logged field changes)
   { value: 'entity_change', label: t('leadDetail.typeEntityChange') },
 ])
@@ -197,6 +254,39 @@ const activityIconMap: Record<string, Component> = {
   proposal_accepted: DocumentCheckIcon,
   proposal_rejected: DocumentTextIcon,
   entity_change: PencilSquareIcon,
+  // Phase 1 task tools
+  priority_change: FlagIcon,
+  assignee_change: UserCircleIcon,
+  due_date_change: CalendarIcon,
+  sub_task_added: Squares2X2Icon,
+  task_created: PlusCircleIcon,
+  task_archived: ArchiveBoxIcon,
+  approval_requested: ShieldExclamationIcon,
+  approval_resolved: ShieldCheckIcon,
+  time_logged: ClockIcon,
+  checklist_item_checked: CheckIcon,
+  voice_memo: MicrophoneIcon,
+  // Phase 6 bonus tools
+  sms_out: DevicePhoneMobileIcon,
+  sms_in: DevicePhoneMobileIcon,
+  whatsapp_out: ChatBubbleOvalLeftEllipsisIcon,
+  whatsapp_in: ChatBubbleOvalLeftEllipsisIcon,
+  chat: ChatBubbleLeftRightIcon,
+  meeting_scheduled: CalendarDaysIcon,
+  link: LinkIcon,
+  payment_received: BanknotesIcon,
+  invoice_sent: DocumentCurrencyDollarIcon,
+  signature_requested: PencilSquareIcon,
+  signature_completed: CheckBadgeIcon,
+  proposal_viewed: EyeIcon,
+  ai_summary: SparklesIcon,
+  ai_suggested_action: LightBulbIcon,
+  system_note: InformationCircleIcon,
+  tag_added: TagIcon,
+  tag_removed: TagIcon,
+  mention: AtSymbolIcon,
+  pinned: BookmarkIcon,
+  unpinned: BookmarkSlashIcon,
 }
 
 function activityIcon(type: string): Component {
@@ -243,6 +333,8 @@ const actionPickerItems = computed<{ value: string; label: string; icon: Compone
       label: tool.label,
       icon: heroIconMap[tool.icon] ?? QuestionMarkCircleIcon,
     }))
+  // The task creation pseudo-tool only makes sense on entities that can own tasks
+  if (props.entityType === 'task') return registryItems
   return [
     ...registryItems,
     { value: 'task', label: t('leadDetail.typeTask'), icon: ClipboardDocumentListIcon },
@@ -270,6 +362,7 @@ function listUrl(page: number): string {
   if (props.entityType === 'realization') return `/api/v1/crm/realizations/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'customer') return `/api/v1/crm/directory/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'proposal') return `/api/v1/crm/proposals/${props.entityId}/activities?page=${page}&page_size=20`
+  if (props.entityType === 'task') return `/api/v1/crm/tasks/${props.entityId}/activities?page=${page}&page_size=20`
   return `/api/v1/crm/management/${props.entityId}/activities?page=${page}&page_size=20`
 }
 
@@ -278,6 +371,7 @@ function entityIdKey(): string {
   if (props.entityType === 'realization') return 'realization_id'
   if (props.entityType === 'customer') return 'customer_id'
   if (props.entityType === 'proposal') return 'proposal_id'
+  if (props.entityType === 'task') return 'task_id'
   return 'management_id'
 }
 
