@@ -547,6 +547,22 @@ class Task(TenantModel):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    realization = models.ForeignKey(
+        "Realization",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+        help_text="Optional link to a Realization. SET_NULL on delete so task survives.",
+    )
+    management = models.ForeignKey(
+        "Management",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tasks",
+        help_text="Optional link to a Management record. SET_NULL on delete so task survives.",
+    )
     proposal = models.ForeignKey(
         "Proposal",
         null=True,

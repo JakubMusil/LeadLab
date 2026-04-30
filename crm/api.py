@@ -1026,6 +1026,10 @@ class TaskOut(Schema):
     # Entity links
     lead_id: Optional[str]
     lead_title: Optional[str]
+    realization_id: Optional[str]
+    realization_title: Optional[str]
+    management_id: Optional[str]
+    management_title: Optional[str]
     proposal_id: Optional[str]
     proposal_title: Optional[str]
     customer_id: Optional[str]
@@ -1085,6 +1089,8 @@ class TaskOut(Schema):
 
 class TaskIn(Schema):
     lead_id: Optional[str] = None
+    realization_id: Optional[str] = None
+    management_id: Optional[str] = None
     proposal_id: Optional[str] = None
     customer_id: Optional[str] = None
     title: str
@@ -1148,6 +1154,26 @@ def _task_out(t: Task, requesting_user=None) -> dict:
             lead_title = t.lead.title
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
+
+    # Resolve realization title
+    realization_id = None
+    realization_title = None
+    if t.realization_id:
+        realization_id = str(t.realization_id)
+        try:
+            realization_title = t.realization.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve realization title for task %s: %s", t.id, exc)
+
+    # Resolve management title
+    management_id = None
+    management_title = None
+    if t.management_id:
+        management_id = str(t.management_id)
+        try:
+            management_title = t.management.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve management title for task %s: %s", t.id, exc)
 
     # Resolve proposal title
     proposal_id = None
@@ -1309,6 +1335,10 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "firm_id": str(t.firm_id),
         "lead_id": lead_id,
         "lead_title": lead_title,
+        "realization_id": realization_id,
+        "realization_title": realization_title,
+        "management_id": management_id,
+        "management_title": management_title,
         "proposal_id": proposal_id,
         "proposal_title": proposal_title,
         "customer_id": customer_id,
@@ -1500,6 +1530,20 @@ def create_task(request, payload: TaskIn):
         except Lead.DoesNotExist:
             return 400, {"detail": "Lead not found in this Firm."}
 
+    realization = None
+    if payload.realization_id:
+        try:
+            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
+        except Realization.DoesNotExist:
+            return 400, {"detail": "Realization not found in this Firm."}
+
+    management = None
+    if payload.management_id:
+        try:
+            management = Management.objects.get(id=payload.management_id, firm=request.firm)
+        except Management.DoesNotExist:
+            return 400, {"detail": "Management record not found in this Firm."}
+
     proposal = None
     if payload.proposal_id:
         try:
@@ -1537,6 +1581,8 @@ def create_task(request, payload: TaskIn):
         task = Task.objects.create(
             firm=request.firm,
             lead=lead,
+            realization=realization,
+            management=management,
             proposal=proposal,
             customer=customer,
             assigned_to=assigned_to,

@@ -497,16 +497,165 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 sedmnácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 osmnácté iteraci)*
 
-Django test suite **181/181 pass** (174 → 181, +7 nových), žádné FE
+Django test suite **187/187 pass** (181 → 187, +6 nových), žádné FE
 změny v této iteraci, takže vue-tsc / vitest baseline z 16. iterace
-beze změn (čistý). **F-3 — `validate_payload(activity_type, content_text, metadata)`
-přes `jsonschema` — je nasazen** v `crm/streamline/validation.py` a
-zapojen v `create_activity` jako 400 gate před `transaction.atomic()`.
-Foundation pro inbound webhook router F-6 je tím připravená.
+beze změn (čistý). **`Task.realization` + `Task.management` FK je
+nasazen** end-to-end (model + migrace + ninja schemas + `_task_out`
++ `create_task` + tenant-isolated validation). Task model je nyní
+symetrický s Activity ve smyslu polymorfního entity link setu.
 
-#### ✅ Co bylo v této session (sedmnáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (osmnáctá iterace, 2026-04-30) uděláno
+
+Z plánu „Co dál" 17. iterace vybrána položka #4 — **`Task.realization`
+FK** — jako nejmenší atomický backend-only balíček (žádné FE změny,
+mirror existujícího patternu z Activity, který už `realization` /
+`management` FK má). Multi-select E2E refactor a F-6 webhook router
+zůstávají odložené (oba jsou multi-component balíčky neslučitelné s
+1-iteračním scope).
+
+##### Klíčový design insight
+
+Activity model už `realization` + `management` FK má (s `CASCADE`
+on_delete protože activity je event log vlastněný entitou), ale Task
+model je měl jen `lead` (CASCADE) + `proposal` / `customer` (SET_NULL).
+Task tedy mohl být přiřazen pouze k Lead-u, ne k Realization nebo
+Management — což je asymetrie: timeline na Realization detail page
+zobrazuje activities a comments, ale neumožňuje vytvořit task s tím
+kontextem ani z UI ani z API.
+
+Volba `on_delete=SET_NULL` (ne CASCADE jako u Activity) — task není
+event log, ale samostatná to-do položka, která může mít smysl i po
+smazání entity. Sledujeme stejný pattern jako Task → proposal /
+customer (oba SET_NULL). Lead je výjimka (CASCADE) protože tasks v
+„prodejní pipeline" mají smysl jen v kontextu konkrétního leadu.
+
+##### Backend
+
+1. **`crm/models.py:Task`** — 2 nové nullable FK pole:
+   - `realization = models.ForeignKey("Realization", null=True,
+     blank=True, on_delete=models.SET_NULL, related_name="tasks", …)`
+   - `management = models.ForeignKey("Management", null=True,
+     blank=True, on_delete=models.SET_NULL, related_name="tasks", …)`
+   - `related_name="tasks"` umožňuje `realization.tasks.all()` /
+     `management.tasks.all()` reverse access — symetrické s
+     `realization.activities.all()`.
+   - Žádný `db_index=True` (FK indexy si Django vytváří automaticky).
+2. **Migrace `0041_task_management_task_realization.py`** vygenerovaná
+   přes `manage.py makemigrations`. Bezpečná: jen `AddField`, žádný
+   data migration potřeba (nullable defaults to NULL).
+3. **`crm/api.py:TaskOut` schema** — přidány 4 nové optional pole:
+   `realization_id`, `realization_title`, `management_id`,
+   `management_title`. Mirror existujícího `lead_id` + `lead_title`
+   patternu.
+4. **`crm/api.py:TaskIn` schema** — `realization_id: Optional[str] =
+   None` a `management_id: Optional[str] = None`.
+5. **`_task_out` helper** — resolution titulu pro nové FKs s defensive
+   try/except (stejný pattern jako pro lead/proposal/customer).
+   Logger.debug, ne error, takže selhání resolution nezpůsobí 500.
+6. **`create_task` endpoint** — resolution Realization / Management v
+   request.firm scope (tenant isolation), 400 s explicit detail
+   message při neexistujícím ID nebo cross-firm ID. Předáváno do
+   `Task.objects.create(...)`.
+7. **`update_task` neměněn** — endpoint zatím neumožňuje měnit entity
+   linky pro žádný typ (lead, proposal, customer). Tato symetrie
+   zůstává; relink je samostatný feature out-of-scope.
+
+##### Backend tests (+6, 181 → 187)
+
+V `TaskCreateAPITest` (umístěno za pre-existující testy):
+
+- `test_create_task_with_realization_link` — happy path: vytvoření
+  tasku s `realization_id`, ověření `realization_id` +
+  `realization_title` v response, reverse access
+  `realization.tasks.count() == 1`.
+- `test_create_task_with_management_link` — totéž pro management.
+- `test_create_task_invalid_realization_returns_400` — random UUID
+  → 400, detail obsahuje "Realization".
+- `test_create_task_invalid_management_returns_400` — totéž pro
+  management.
+- `test_create_task_realization_from_other_firm_returns_400` —
+  **tenant isolation guard**: realization existuje v jiné firmě → 400.
+  Critical, bez tohoto by se task v jedné firmě dal linkovat na
+  realization v druhé.
+- `test_task_out_realization_management_default_none` — regression:
+  task bez nových FKs serializuje `realization_id: None`,
+  `realization_title: None`, atd. Ochrana proti budoucímu refaktoringu,
+  který by zapomněl null-safe defaults.
+
+Pre-existující testy (`test_create_task_returns_201`,
+`test_create_task_logs_task_assigned_activity`,
+`test_create_task_invalid_lead_returns_400`) zůstávají zelené —
+regression-safety pro lead-only flow.
+
+##### Validace
+
+- `python manage.py test crm.tests.TaskCreateAPITest crm.tests.TaskListAPITest crm.tests.TaskCompleteAPITest`
+  → **17/17 pass** (~18s).
+- `python manage.py test crm` — **187/187 pass** (181 baseline + 6
+  nových), 0 regressions, ~176s.
+- Žádné FE změny → vue-tsc / vitest / oxlint baseline unchanged od 16.
+  iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **`update_task` rozšíření o entity relink** — žádný existující entity
+  link (lead/proposal/customer) se nedá změnit přes PATCH, bylo by to
+  nový feature s vlastními edge cases (notification re-routing,
+  timeline re-attachment). Otevřené pro budoucí iteraci pokud bude
+  produktová potřeba.
+- **Tasks tab v Realization / Management detail page (FE)** — backend
+  je teď připravený (`realization.tasks` reverse manager funguje),
+  ale FE komponenta vyžaduje vlastní API endpoint
+  `GET /realizations/{id}/tasks` a Vue tab + listing. Out of scope.
+- **Auto-create `TASK_ASSIGNED` activity na realization/management** —
+  pre-existující kód v `create_task` to dělá pouze pro `lead`. Logická
+  symetrie by byla rozšířit i na realization/management, ale to vyžaduje
+  širší design (kdy se má activity logovat — jen na primární entitu
+  task-u nebo na všechny tři možné?). Out of scope, lze v samostatné
+  iteraci.
+- **`db_index=True` explicit na FK** — nepřidáno, Django si index
+  vytvoří automaticky pro všechny FK (verifikováno v migraci).
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E
+   (assert `data-activity-internal="true"`, badge visibility, default
+   false), `.github/workflows/e2e.yml` s Postgres service. Nyní je
+   také ideální chvíle, protože Realization a Management mají FE timeline
+   a backend `Task.realization` / `Task.management` API už taky.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User, null=True)` +
+   `POST /activities/{id}/pin` toggle endpoint + sticky pinned section
+   nahoru v `ActivityTimeline.vue` + pin/unpin button v action menu.
+   Pattern recyklovatelný z QW-1 + reactions endpointu. (Task už
+   `is_pinned: BooleanField(db_index=True)` má od fáze 3.)
+3. **Tasks tab v Realization detail + Management detail (FE)** —
+   přirozený follow-up této iterace. Vyžaduje:
+   - Nový endpoint `GET /api/v1/crm/realizations/{id}/tasks` (mirror
+     existujícího `/realizations/{id}/activities`).
+   - Totéž pro management.
+   - Vue komponenta `EntityTaskList.vue` zopakující `TaskList.vue`
+     stripped na lead-less variantu.
+   - Tab integrace v `RealizationDetail.vue` + `ManagementDetail.vue`.
+4. **F-6 — inbound webhook router** *(odblokovaný F-3 v 17. iteraci)*.
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header,
+   idempotency klíč, user resolution z webhook secret →
+   service-account user, audit log. Velký balíček, vlastní iterace.
+5. **`update_task` entity relink** — pokud bude potřeba měnit
+   `realization_id` / `management_id` (a navíc `lead_id` / atd.) přes
+   PATCH /tasks/{id}, vyžaduje samostatný design pro re-routing
+   notifikací a timeline event log.
+6. **`TASK_ASSIGNED` activity auto-log na realization/management** —
+   konzistentně s lead-only současným chováním.
+7. **Per-tool format-checker opt-in** — pokud F-6 přijde, tooly s
+   `format: uri` (webhook callbacks) by měly opt-in přes nový class
+   attribute `enable_format_checks = True`.
+
+#### ✅ Co bylo v sedmnácté iteraci (2026-04-30) uděláno
 
 Z plánu „Co dál" 16. iterace vybrána položka #3 — **F-3 (`validate_payload`
 via `jsonschema`)** — jako menší atomický scope, otevírá další

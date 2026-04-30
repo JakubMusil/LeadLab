@@ -1126,6 +1126,83 @@ class TaskCreateAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._post(self.URL, {"lead_id": str(uuid.uuid4()), "title": "Orphan"})
         self.assertEqual(resp.status_code, 400)
 
+    # ------------------------------------------------------------------
+    # Task.realization + Task.management FKs (18th iteration)
+    # ------------------------------------------------------------------
+
+    def test_create_task_with_realization_link(self):
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="Realization A", customer=self.customer,
+        )
+        resp = self._post(self.URL, {
+            "realization_id": str(realization.id),
+            "title": "Task on realization",
+        })
+        self.assertEqual(resp.status_code, 201)
+        body = resp.json()
+        self.assertEqual(body["realization_id"], str(realization.id))
+        self.assertEqual(body["realization_title"], "Realization A")
+        self.assertIsNone(body["lead_id"])
+        # DB round-trip: task is reachable via realization.tasks
+        self.assertEqual(realization.tasks.count(), 1)
+
+    def test_create_task_with_management_link(self):
+        from crm.models import Management
+        management = Management.objects.create(
+            firm=self.firm, title="Mgmt A", customer=self.customer,
+        )
+        resp = self._post(self.URL, {
+            "management_id": str(management.id),
+            "title": "Task on management",
+        })
+        self.assertEqual(resp.status_code, 201)
+        body = resp.json()
+        self.assertEqual(body["management_id"], str(management.id))
+        self.assertEqual(body["management_title"], "Mgmt A")
+        self.assertEqual(management.tasks.count(), 1)
+
+    def test_create_task_invalid_realization_returns_400(self):
+        import uuid
+        resp = self._post(self.URL, {
+            "realization_id": str(uuid.uuid4()),
+            "title": "Orphan",
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("Realization", resp.json()["detail"])
+
+    def test_create_task_invalid_management_returns_400(self):
+        import uuid
+        resp = self._post(self.URL, {
+            "management_id": str(uuid.uuid4()),
+            "title": "Orphan",
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("Management", resp.json()["detail"])
+
+    def test_create_task_realization_from_other_firm_returns_400(self):
+        """Tenant isolation: cannot link a Task to a Realization in another Firm."""
+        from crm.models import Realization
+        other_firm = Firm.objects.create(name="Other", subscription_tier="pro")
+        other_realization = Realization.objects.create(
+            firm=other_firm, title="Other R",
+        )
+        resp = self._post(self.URL, {
+            "realization_id": str(other_realization.id),
+            "title": "X",
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_task_out_realization_management_default_none(self):
+        """A task without realization/management still serializes the new keys as None."""
+        Task.objects.create(firm=self.firm, lead=self.lead, title="Plain")
+        data = self._get(self.URL).json()
+        self.assertEqual(len(data), 1)
+        self.assertIsNone(data[0]["realization_id"])
+        self.assertIsNone(data[0]["realization_title"])
+        self.assertIsNone(data[0]["management_id"])
+        self.assertIsNone(data[0]["management_title"])
+
 
 class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
     def setUp(self):
