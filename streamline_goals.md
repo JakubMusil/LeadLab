@@ -497,17 +497,71 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 dvanácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 třinácté iteraci)*
 
 Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
-čistý** (0 fails, 90/90 pass), repo je bez committnutých `.js` tsc-emit
-artefaktů, `ActivityTimeline.vue` + `EntitySidebarActionPicker.vue` mají
-kompletní `data-testid` pokrytí, **`e2e/tests/lead-timeline.spec.ts`
-i `e2e/tests/task-timeline.spec.ts` existují** se 4 testy každý
-(2 entity z 6 hotové). Streamline backend i frontend jsou kompletně
-sjednocené.
+čistý** (0 fails, 90/90 pass), E2E timeline pokrývá `lead` + `task`
+(2 entity z 6). **Sekce 5 dokumentu má nyní triage vrstvu** —
+nápady jsou roztříděné do quick-wins / foundations / strategic
+s navrženou sekvencí nasazení (3 sprinty). Streamline backend i
+frontend jsou kompletně sjednocené.
 
-#### ✅ Co bylo v této session (dvanáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (třináctá iterace, 2026-04-30) uděláno
+
+Práce čistě nad dokumentem `streamline_goals.md`, sekce 5 *Future
+improvements*. Sekce předtím obsahovala ~30 plochých nápadů přes 7
+oblastí (5.1–5.7), bez priority a bez závislostí — typický parking lot.
+Aby z toho šlo začít přírůstkově dělat PR, přidána triage vrstva
+**5.0 Triage — quick-wins, foundations, strategic**:
+
+1. **Tabulka 🟢 Quick-wins (6 položek, 1 PR každá)** — `Activity.is_internal`
+   boolean, `Activity.is_pinned` triplet (boolean + `pinned_at` +
+   `pinned_by`), filter chip po `activity_type` v timeline (pure-FE),
+   `select_related` / `prefetch_related` audit, `gettext_lazy` na
+   `StreamlineTool.label` / `icon`, GDPR export endpoint per Customer.
+   Žádná z nich neblokuje další → dají se rozdat napříč týmem paralelně.
+2. **Tabulka 🟡 Foundations (6 položek)** — `parent_activity` self-FK,
+   soft delete (`deleted_at`), `validate_payload` přes `jsonschema`,
+   deklarativní `permissions` scope, retention policy, inbound webhook
+   router. Tyto odemykají další features (threading UI, retention,
+   integrace) a mají závislosti, takže se musí dělat sériově ve Sprintu B.
+3. **Sekce 🔴 Strategic** — 8 položek, které by měly samostatný design
+   doc (polymorfní FK, partitioning, async Celery, undo, AI insights,
+   calendar/e-sign sync, Redis cache, field-level encryption).
+   Argument *proč zatím ne* u každé.
+4. **Doporučená sekvence** — Sprint A (paralelní quick-wins),
+   Sprint B (sériově F-3 → F-4 → F-1 → F-2 → F-5), Sprint C (F-6 po F-3).
+5. **Quick-win sketche pro QW-2 a QW-3** (vybrané jako největší UX dopad
+   za nejmenší úsilí) — konkrétní migrace + endpoint + UI plán u
+   `is_pinned` a filter-chips. Ostatní quick-wins jsou dost přímočaré,
+   aby stačila tabulka.
+
+Záměrně **žádná změna kódu**. Sekce 5 zůstává parking-lot pro nápady,
+jen má teď strukturu, aby šlo říct „příští sprint vezmeme QW-1 + QW-2 +
+QW-3" místo „někdy bychom měli vylepšit timeline".
+
+#### Co dál
+
+1. **Validovat triage s týmem / produktem** — než začneme jakýkoli
+   quick-win nasazovat, projít tabulku QW-1…QW-6 a potvrdit, že
+   priorita sedí. Případně QW-6 (GDPR export) mít hotové dřív kvůli
+   compliance termínu.
+2. **Otevřít první quick-win PR** — nejlepší kandidát je **QW-3
+   (filter chips)**, protože je čistě FE, nemá migraci a využije
+   existující `data-activity-type` v DOM. Můžeme ho dělat paralelně
+   s tím, jak doháníme E2E specs pro zbylé 4 entity.
+3. **Dokončit E2E timeline coverage** *(pokračování plánu z 12. iterace,
+   stále aktuální)* — `customer-timeline.spec.ts`,
+   `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
+   `proposal-timeline.spec.ts`. Pak sdílený helper
+   `e2e/tests/_fixtures.ts` a CI workflow `.github/workflows/e2e.yml`.
+4. **Po E2E suitě:** vrátit se k F-3 (`validate_payload`) a F-4
+   (`permissions`) — to jsou Foundation items, které otevírají
+   integrace (F-6 inbound webhook) a multi-tenant role-based access.
+5. **`Task.realization` FK + Tasks tab v Realization detail** — stále
+   na seznamu, mimo scope timeline.
+
+#### ✅ Co bylo v dvanácté iteraci (2026-04-30) uděláno
 
 Pokračování plánu z 11. iterace — replikace timeline E2E specu z
 `lead` na `task` entitu. Klíčový rozdíl: `TaskDetailView.vue` nepoužívá
@@ -888,6 +942,97 @@ uzavření Fáze 4 + 5.
 
 > Nápady pro další iterace, jakmile bude Phase 0–6 v provozu. Žádný z nich není naléhavý,
 > ale stojí za to je mít sepsané, ať na ně můžeme v budoucnu mrknout.
+
+### 5.0 Triage — quick-wins, foundations, strategic
+
+Sekce 5 dnes obsahuje ~30 nápadů přes 7 oblastí. Aby šlo začít přírůstkově, dělím
+je do tří košíků podle poměru přínos / risk / úsilí. **Quick-wins** jsou věci do
+1 PR bez datové migrace nebo s triviální migrací; **foundations** odemykají další
+features (typicky 1–3 PR + migrace); **strategic** jsou velké projekty na
+samostatný design doc.
+
+#### 🟢 Quick-wins *(1 PR, bez breaking změn, samostatně nasaditelné)*
+
+| # | Položka | Oblast | Proč teď |
+| --- | --- | --- | --- |
+| QW-1 | `Activity.is_internal` boolean | 5.1 | 1× sloupec + serializer flag; odemyká „interní poznámka" v UI bez migrace dat. |
+| QW-2 | `Activity.is_pinned` + `pinned_at` + `pinned_by` | 5.1 | 3× sloupce; existující `PinnedTool` / `UnpinnedTool` pak jen toggluje boolean. Dnes je dotaz „pinnuté pro lead" drahý (musí se procházet eventy). |
+| QW-3 | Filter chip po `activity_type` v timeline | 5.3 | Pure-FE; data už máme (`data-activity-type` v DOM). Multi-select chip nad feedem, persist do `localStorage`. |
+| QW-4 | `select_related` / `prefetch_related` audit | 5.6 | Django Debug Toolbar/silk profiling nad `ActivityOut` serializací; jeden PR s opravami N+1 v `user`, `tool_payload`, `reactions`. |
+| QW-5 | `gettext_lazy` na `StreamlineTool.label` / `icon` | 5.2 | Mechanická změna v `crm/streamline/tools.py`; cs/en/sk catalog už projekt má. |
+| QW-6 | GDPR export endpoint per Customer | 5.7 | Read-only endpoint `GET /api/v1/crm/customers/{id}/gdpr-export` → ZIP z `Activity.objects.filter(customer=...)` + `Document` blobs. Žádná schémová změna. |
+
+Dohromady 6 PR, žádný neblokuje další; dají se rozdat napříč týmem paralelně.
+
+#### 🟡 Foundations *(odemykají UX/strategic items, typicky 1–3 PR + migrace)*
+
+| # | Položka | Oblast | Co odemyká |
+| --- | --- | --- | --- |
+| F-1 | `Activity.parent_activity` self-FK | 5.1 | 5.3 inline reply (tree-render), serverový `prefetch_related("replies")`, count „kolik odpovědí". Nahrazuje dnešní `metadata.reply_to_id` (data-migrace v jednom batchi). |
+| F-2 | `Activity.deleted_at` (soft delete) | 5.1 | UI „komentář byl smazán" + audit zachová historii. Pre-req pro retention policy (F-5). |
+| F-3 | `StreamlineTool.validate_payload` (JSON Schema enforce) | 5.2 | Centrální validace přes `jsonschema` před `process_action`; smazat ad-hoc `if not payload.get(...)` v jednotlivých toolech. Pre-req pro inbound webhook router (S-1). |
+| F-4 | `StreamlineTool.permissions` deklarativní scope | 5.2 | Jednotná auth na `streamline/api.py`; pre-req pro public proposal view + multi-tenant role-based access. |
+| F-5 | Retention policy per tool *(konfigurovatelná)* | 5.6 | `entity_change` / `system_note` po N měsících → archive table nebo agregovat. Závisí na F-2 (soft delete). |
+| F-6 | Inbound webhook router `/inbound/{provider}/{kind}` | 5.5 | Sjednocuje dnešní roztříštěné Twilio/Postmark/WhatsApp handlery. Závisí na F-3 (payload validation). |
+
+#### 🔴 Strategic *(samostatný design doc, 4+ PR, riziko / náklady)*
+
+- **5.1 Polymorfní FK přes `entity_type` + `entity_id`** — ztráta DB integrity, řešit jen pokud reálně hrozí explose nullable FK sloupců (dnes 6, snesitelné).
+- **5.1 Partitioning po `created_at` / cold-storage do BigQuery** — až bude největší firma > 5M aktivit.
+- **5.2 Async `process_action` přes Celery** — vyžaduje queue infrastrukturu + dead-letter handling; pro AI/signature tooly stačí zatím sync s timeout.
+- **5.2 `StreamlineTool.undo()`** — riziko nekonzistencí (např. pin/unpin OK, ale „undo SMS" pošle revoke?); zatím raději nedělat.
+- **5.4 AI insights / funnel attribution / next-best-action** — vlastní ML pipeline + product discovery; mimo „infrastruktura timeline".
+- **5.5 Calendar two-way sync, e-sign provider plugin, outbound provider abstraction** — každé je samostatný integrační projekt s vlastním provider lock-in rizikem.
+- **5.6 Materialized view / Redis feed cache** — zbytečné, dokud nemáme změřený throughput problém.
+- **5.7 Field-level encryption (`pgcrypto`)** — komplikuje migrace + reporting; ano pro PII jako `signer_email`, ne plošně.
+
+#### Doporučená sekvence nasazení
+
+```
+Sprint A (paralelně):  QW-1, QW-2, QW-3, QW-4, QW-5, QW-6
+Sprint B (sériově):    F-3 → F-4 → F-1 → F-2 → F-5
+Sprint C (po F-3):     F-6  (inbound webhook router)
+Strategic:             samostatný backlog, řešit ad-hoc
+```
+
+Po Sprintu A máme reálné UX zlepšení (filter, pinned, GDPR) bez datové
+migrace. Sprint B drží pořadí kvůli závislostem (validation → permissions →
+threading → soft delete → retention). Sprint C dává smysl, jakmile máme
+F-3 pro JSON-schema enforcement na příchozí payload.
+
+#### Quick-win sketche *(pro QW-2 a QW-3 — nejhmatatelnější UX dopad)*
+
+**QW-2 — `Activity.is_pinned` boolean (≈ 1 PR)**
+
+- Migrace: `Activity.is_pinned = BooleanField(default=False, db_index=True)`,
+  `pinned_at = DateTimeField(null=True, blank=True)`,
+  `pinned_by = ForeignKey(User, null=True, blank=True, on_delete=SET_NULL)`.
+- `PinnedTool.process_action`: vedle dnešního zápisu `Activity(type="pinned")`
+  také `target_activity.is_pinned = True; pinned_at = now(); pinned_by = user`.
+  `UnpinnedTool` analogicky.
+- API: `GET /api/v1/crm/leads/{id}/activities?is_pinned=true` (filter na `ActivityViewSet`).
+  Bez UI ještě užitečné pro reporty.
+- UI (5.3 pinned section): nad `ActivityTimeline` feedem sticky sekce, která
+  čte `is_pinned=true` z téhož endpointu; pinned aktivity v hlavním feedu zůstávají
+  (ne mizí), jen se duplikují nahoře — známý UX pattern (Slack, Linear).
+- Audit trail (`pinned` / `unpinned` activity entries) zůstává — jen už není
+  *primárním zdrojem* informace „je to pinnuté".
+
+**QW-3 — Activity-type filter chips (≈ 1 PR, pure FE)**
+
+- `ActivityTimeline.vue` už dnes posílá `data-activity-type` do DOM (potvrzeno
+  z 10. iterace `data-testid` práce).
+- Stav: `const activeTypes = ref<Set<string>>(new Set())`, prázdný = ukaž vše.
+- Toolbar nad feedem: chips skupinované do logických bucketů
+  (`Komunikace`: comment / email_in / email_out / sms_in / sms_out / whatsapp /
+  call; `Změny`: status_change / assignee_change / priority_change / due_date_change;
+  `Soubory`: file_upload / voice_memo; `Systém`: system_note / entity_change).
+- Persist do `localStorage` pod klíčem `lead-lab.timeline.filter.{entityType}`.
+- E2E: již existující `lead-timeline.spec.ts` Test 2 testuje filter chip pro
+  jeden typ (`comment`); rozšířit na multi-select v rámci téže suite.
+- Pozn.: tohle je pure-FE, žádný backend filter ani změna serializace —
+  filtruje se klient-side nad celým feedem (timeline má i tak limit ~100 entries
+  v jednom načtení; pokud pojede pagination, posunout do query paramu později).
 
 ### 5.1 Datový model `Activity`
 
