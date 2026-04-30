@@ -5,6 +5,7 @@ Endpoints:
   /api/v1/crm/management          LIST + CREATE
   /api/v1/crm/management/{id}     GET / PATCH / DELETE
   /api/v1/crm/management/{id}/activities  LIST (timeline)
+  /api/v1/crm/management/{id}/tasks       LIST (entity-scoped tasks)
 """
 from __future__ import annotations
 
@@ -21,8 +22,9 @@ from crm.models import (
     ManagementStatus,
     ManagementType,
     Realization,
+    Task,
 )
-from crm.api import _user_display_name, _activity_out as _shared_activity_out
+from crm.api import _user_display_name, _activity_out as _shared_activity_out, _task_out as _shared_task_out, TaskOut as _SharedTaskOut
 from crm.events import broadcast_event
 from firms.auth import require_active_subscription, require_membership
 
@@ -338,3 +340,37 @@ def list_management_activities(
     activities = Activity.objects.filter(management=record).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
 
     return [_shared_activity_out(a, request.user) for a in activities]
+
+
+@management_router.get(
+    "/management/{management_id}/tasks",
+    response=List[_SharedTaskOut],
+    auth=django_auth,
+)
+def list_management_tasks(
+    request,
+    management_id: str,
+    page: int = 1,
+    page_size: int = 20,
+):
+    """Return tasks linked to a Management record, newest first (paginated).
+
+    Mirrors ``/management/{id}/activities``. Tenant-isolated via
+    ``firm=request.firm`` on the Management lookup; the task queryset
+    inherits the scope through the FK.
+    """
+    firm = _firm(request)
+    require_membership(request)
+
+    record = Management.objects.filter(firm=firm, id=management_id).first()
+    if not record:
+        from ninja import errors
+        raise errors.HttpError(404, "Management record not found")
+
+    offset = (page - 1) * page_size
+    tasks = (
+        Task.objects.filter(management=record)
+        .select_related("assigned_to", "completed_by", "created_by", "lead", "proposal", "customer", "parent_task")
+        .order_by("-created_at")[offset:offset + page_size]
+    )
+    return [_shared_task_out(t, request.user) for t in tasks]

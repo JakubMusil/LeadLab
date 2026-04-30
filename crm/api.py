@@ -1606,8 +1606,13 @@ def create_task(request, payload: TaskIn):
             projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
             task.projects.set(projects)
 
-        # Log activity on lead if linked
-        if lead:
+        # Log activity on the linked entity (lead, realization, or management).
+        # Mirrors the unified Streamline timeline contract: a TASK_ASSIGNED
+        # event is emitted onto whichever entity owns the task so that the
+        # entity's detail timeline shows it. We log onto each linked entity
+        # independently — a task may be linked to both lead and realization.
+        primary_entity = lead or realization or management
+        if primary_entity is not None:
             assignee_name = ""
             if payload.assigned_to_id:
                 from django.contrib.auth import get_user_model
@@ -1617,18 +1622,34 @@ def create_task(request, payload: TaskIn):
                     assignee_name = assignee.full_name
                 except User.DoesNotExist:
                     pass
-            Activity.objects.create(
-                lead=lead,
-                user=request.user,
-                type=ActivityType.TASK_ASSIGNED,
-                metadata={
-                    "task_id": str(task.id),
-                    "task_title": task.title,
-                    "due_date": payload.due_date.isoformat() if payload.due_date else None,
-                    "priority": payload.priority,
-                    "assigned_to_name": assignee_name,
-                },
-            )
+            activity_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "due_date": payload.due_date.isoformat() if payload.due_date else None,
+                "priority": payload.priority,
+                "assigned_to_name": assignee_name,
+            }
+            if lead:
+                Activity.objects.create(
+                    lead=lead,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
+            if realization:
+                Activity.objects.create(
+                    realization=realization,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
+            if management:
+                Activity.objects.create(
+                    management=management,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
 
     _notify_task_watchers(task, "task.created")
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))

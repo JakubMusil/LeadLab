@@ -2059,3 +2059,174 @@ class ReportsSummaryAPITest(CRMFixtureMixin, TestCase):
         self.assertAlmostEqual(float(data["total_expenses"]), 200.0)
         self.assertAlmostEqual(float(data["total_revenues"]), 500.0)
         self.assertAlmostEqual(float(data["profit_loss"]), 300.0)
+
+
+# ---------------------------------------------------------------------------
+# 19th iteration: TASK_ASSIGNED auto-log on realization/management +
+# entity-scoped task list endpoints
+# ---------------------------------------------------------------------------
+
+
+class TaskActivityLogAcrossEntitiesAPITest(CRMAPIFixtureMixin, TestCase):
+    """`create_task` should log a TASK_ASSIGNED Activity onto every entity
+    the task is linked to (lead, realization, management) — not just lead."""
+
+    URL = "/api/v1/crm/tasks"
+
+    def test_task_creation_logs_activity_on_realization(self):
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="R1", customer=self.customer,
+        )
+        resp = self._post(self.URL, {
+            "realization_id": str(realization.id),
+            "title": "Plan kickoff",
+        })
+        self.assertEqual(resp.status_code, 201)
+        # Activity logged onto realization
+        self.assertTrue(
+            Activity.objects.filter(
+                realization=realization, type=ActivityType.TASK_ASSIGNED
+            ).exists()
+        )
+        # No leakage onto lead
+        self.assertFalse(
+            Activity.objects.filter(
+                lead=self.lead, type=ActivityType.TASK_ASSIGNED
+            ).exists()
+        )
+
+    def test_task_creation_logs_activity_on_management(self):
+        from crm.models import Management
+        management = Management.objects.create(
+            firm=self.firm, title="M1", customer=self.customer,
+        )
+        resp = self._post(self.URL, {
+            "management_id": str(management.id),
+            "title": "Renew SLA",
+        })
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(
+            Activity.objects.filter(
+                management=management, type=ActivityType.TASK_ASSIGNED
+            ).exists()
+        )
+
+    def test_task_creation_logs_activity_on_both_lead_and_realization(self):
+        """When a task links to multiple entities, each gets its own log entry."""
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="R-multi", customer=self.customer,
+        )
+        resp = self._post(self.URL, {
+            "lead_id": str(self.lead.id),
+            "realization_id": str(realization.id),
+            "title": "Multi-link task",
+        })
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(
+            Activity.objects.filter(
+                lead=self.lead, type=ActivityType.TASK_ASSIGNED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            Activity.objects.filter(
+                realization=realization, type=ActivityType.TASK_ASSIGNED
+            ).count(),
+            1,
+        )
+
+
+class RealizationTasksListAPITest(CRMAPIFixtureMixin, TestCase):
+    """GET /api/v1/crm/realizations/{id}/tasks — entity-scoped task list."""
+
+    def setUp(self):
+        super().setUp()
+        from crm.models import Realization
+        self.realization = Realization.objects.create(
+            firm=self.firm, title="R-listing", customer=self.customer,
+        )
+        self.url = f"/api/v1/crm/realizations/{self.realization.id}/tasks"
+
+    def test_returns_200_empty_when_no_tasks(self):
+        resp = self._get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_returns_only_tasks_for_this_realization(self):
+        from crm.models import Realization
+        other_realization = Realization.objects.create(
+            firm=self.firm, title="R-other", customer=self.customer,
+        )
+        Task.objects.create(
+            firm=self.firm, realization=self.realization, title="On this R",
+        )
+        Task.objects.create(
+            firm=self.firm, realization=other_realization, title="On other R",
+        )
+        Task.objects.create(firm=self.firm, lead=self.lead, title="Lead-only")
+        resp = self._get(self.url)
+        body = resp.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["title"], "On this R")
+        self.assertEqual(body[0]["realization_id"], str(self.realization.id))
+
+    def test_returns_404_for_unknown_realization(self):
+        import uuid
+        resp = self._get(f"/api/v1/crm/realizations/{uuid.uuid4()}/tasks")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_tenant_isolation_returns_404_for_other_firm_realization(self):
+        from crm.models import Realization
+        other_firm = Firm.objects.create(name="Other-19", subscription_tier="pro")
+        other_r = Realization.objects.create(firm=other_firm, title="Forbidden")
+        resp = self._get(f"/api/v1/crm/realizations/{other_r.id}/tasks")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_pagination_respects_page_size(self):
+        for i in range(5):
+            Task.objects.create(
+                firm=self.firm, realization=self.realization, title=f"T{i}",
+            )
+        resp = self._get(self.url, {"page": 1, "page_size": 3})
+        self.assertEqual(len(resp.json()), 3)
+
+
+class ManagementTasksListAPITest(CRMAPIFixtureMixin, TestCase):
+    """GET /api/v1/crm/management/{id}/tasks — entity-scoped task list."""
+
+    def setUp(self):
+        super().setUp()
+        from crm.models import Management
+        self.management = Management.objects.create(
+            firm=self.firm, title="M-listing", customer=self.customer,
+        )
+        self.url = f"/api/v1/crm/management/{self.management.id}/tasks"
+
+    def test_returns_only_tasks_for_this_management(self):
+        from crm.models import Management
+        other = Management.objects.create(
+            firm=self.firm, title="M-other", customer=self.customer,
+        )
+        Task.objects.create(
+            firm=self.firm, management=self.management, title="On this M",
+        )
+        Task.objects.create(firm=self.firm, management=other, title="On other M")
+        resp = self._get(self.url)
+        body = resp.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["title"], "On this M")
+        self.assertEqual(body[0]["management_id"], str(self.management.id))
+
+    def test_returns_404_for_unknown_management(self):
+        import uuid
+        resp = self._get(f"/api/v1/crm/management/{uuid.uuid4()}/tasks")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_tenant_isolation_returns_404_for_other_firm_management(self):
+        from crm.models import Management
+        other_firm = Firm.objects.create(name="Other-19m", subscription_tier="pro")
+        other_m = Management.objects.create(firm=other_firm, title="Forbidden")
+        resp = self._get(f"/api/v1/crm/management/{other_m.id}/tasks")
+        self.assertEqual(resp.status_code, 404)

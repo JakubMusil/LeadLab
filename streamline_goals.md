@@ -497,16 +497,173 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 osmnácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 devatenácté iteraci)*
 
-Django test suite **187/187 pass** (181 → 187, +6 nových), žádné FE
+Django test suite **198/198 pass** (187 → 198, +11 nových), žádné FE
 změny v této iteraci, takže vue-tsc / vitest baseline z 16. iterace
-beze změn (čistý). **`Task.realization` + `Task.management` FK je
-nasazen** end-to-end (model + migrace + ninja schemas + `_task_out`
-+ `create_task` + tenant-isolated validation). Task model je nyní
-symetrický s Activity ve smyslu polymorfního entity link setu.
+beze změn (čistý). **`TASK_ASSIGNED` Activity auto-log je teď symetrický
+napříč všemi entitami** (lead + realization + management) a **entity-
+scoped task list endpointy** `GET /realizations/{id}/tasks` +
+`GET /management/{id}/tasks` jsou nasazené, plně testované, s tenant
+isolation. Backend foundation pro „Tasks tab" v Realization /
+Management detail view (FE) je připraven.
 
-#### ✅ Co bylo v této session (osmnáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (devatenáctá iterace, 2026-04-30) uděláno
+
+Z plánu „Co dál" 18. iterace vybrány **dvě navazující backend-only
+položky** (#6 — TASK_ASSIGNED auto-log na realization/management; a
+BE část položky #3 — entity-scoped Task list endpointy). Obě navazují
+přímo na 18. iteraci (`Task.realization` / `Task.management` FK +
+reverse `realization.tasks` / `management.tasks` manager) a vzájemně
+se podporují — nelze je rozumně rozdělit do dvou iterací, protože
+testy auto-logu volají i list endpoint.
+
+##### Klíčový design insight
+
+V 18. iteraci jsme přidali `Task.realization` + `Task.management` FK,
+ale `create_task` Activity-log block stále logoval **jen** na
+`lead`-linked tasky:
+
+```python
+if lead:
+    Activity.objects.create(lead=lead, type=TASK_ASSIGNED, …)
+```
+
+Důsledek: task přiřazený k Realization (např. „Plan kickoff" na nově
+spuštěné zakázce) nebyl viditelný v Realization timeline, i když
+`Task.realization` FK fungoval. To rozbíjelo intuici: timeline má
+zobrazovat *všechno* relevantní pro entitu.
+
+Refaktor logiky je „log na každou linkovanou entitu nezávisle":
+samostatný `Activity.objects.create(...)` pro lead, realization,
+management. Důvod proč ne *jeden* polymorfní Activity záznam: model
+povoluje vyplnit všechny tři FK najednou (např. task linkovaný i k
+leadu i k navazující realization). Pokud bychom logovali jen primární
+entitu, druhá by chyběla.
+
+Pro entity-scoped list endpointy bylo natural design: mirror
+**`/realizations/{id}/activities`** patternu — stejná struktura,
+stejná tenant-isolation logika, sdílené serialization helpery.
+Reuse `_task_out` + `TaskOut` schema z `crm.api` přes import (oba
+soubory už `_activity_out` + `_user_display_name` importují stejným
+způsobem) — tím garantujeme bit-pro-bit stejný JSON shape jako u
+`/tasks` listu, žádný drift.
+
+##### Backend
+
+1. **`crm/api.py:create_task`** — Activity-log block přepsán z
+   single-entity (`if lead:`) na **per-entity loop**:
+   - Společný `activity_metadata` dict (task_id, task_title, due_date,
+     priority, assigned_to_name) — sestaven jednou.
+   - Tři nezávislé `Activity.objects.create(...)` volání pro lead /
+     realization / management, každé jen pokud je daný link non-None.
+   - `assignee_name` resolution proběhne jen jednou (společné).
+   - Behavior preserved pro lead-only flow (existující 174 testů
+     žádný regression).
+2. **`crm/realization_api.py`** — nový endpoint
+   `GET /realizations/{realization_id}/tasks`:
+   - Mirror `list_realization_activities` (stejná struktura, stejná
+     paginace `page` + `page_size`, stejná `firm=firm` tenant isolation
+     na lookup, stejná 404 přes `ninja.errors.HttpError`).
+   - `Task.objects.filter(realization=realization)` + `.select_related(
+     "assigned_to", "completed_by", "created_by", "lead", "proposal",
+     "customer", "parent_task")` pro N+1 prevenci v `_task_out`.
+   - Ordering `-created_at` (newest first), shodně s `/tasks` listem.
+   - Reuse `_shared_task_out` (= import `_task_out as _shared_task_out`)
+     a `_SharedTaskOut` ninja schema (= `TaskOut as _SharedTaskOut`).
+3. **`crm/management_api.py`** — totéž pro Management:
+   `GET /management/{management_id}/tasks` — stejný pattern.
+4. **Imports rozšířeny**: oba soubory přidaly `Task` do `from
+   crm.models import (...)` a `_task_out` + `TaskOut` z `crm.api`.
+5. **Module docstrings aktualizované** v obou souborech (přidán
+   `…/tasks LIST` řádek).
+
+##### Backend tests (+11, 187 → 198)
+
+`TaskActivityLogAcrossEntitiesAPITest` (3 testy):
+- `test_task_creation_logs_activity_on_realization` — vytvoří task s
+  `realization_id`, ověří `Activity.objects.filter(realization=…,
+  type=TASK_ASSIGNED).exists()` *a zároveň* žádný leakage na lead.
+- `test_task_creation_logs_activity_on_management` — totéž pro
+  management.
+- `test_task_creation_logs_activity_on_both_lead_and_realization` —
+  task linkovaný k oběma → 2 separátní Activity záznamy (`count == 1`
+  na každé). Klíčový test, garantuje že per-entity log není dedup-ován.
+
+`RealizationTasksListAPITest` (5 testů):
+- `test_returns_200_empty_when_no_tasks` — happy path bez tasků.
+- `test_returns_only_tasks_for_this_realization` — vytvoří 3 tasky (1
+  na této, 1 na jiné realization, 1 lead-only) → response obsahuje
+  jen ten první. Testuje filter precision.
+- `test_returns_404_for_unknown_realization` — random UUID → 404.
+- `test_tenant_isolation_returns_404_for_other_firm_realization` —
+  realization existuje ale v jiné firmě → 404 (ne 403, ne 200,
+  garantuje že ID není leaknuté přes `exists()` trick).
+- `test_pagination_respects_page_size` — 5 tasků, page_size=3 → len 3.
+
+`ManagementTasksListAPITest` (3 testy): mirror struktura
+realizationího bloku — happy path filter precision, 404 unknown,
+tenant-isolation 404. (Pagination test vynechán — sdílí stejný offset
+helper s realization endpoint, redundance.)
+
+##### Validace
+
+- `python manage.py test crm.tests.TaskActivityLogAcrossEntitiesAPITest crm.tests.RealizationTasksListAPITest crm.tests.ManagementTasksListAPITest crm.tests.TaskCreateAPITest` → **20/20 pass** (~21s).
+- `python manage.py test crm` — **198/198 pass** (187 baseline + 11
+  nových), 0 regressions, ~186s.
+- Žádné FE změny → vue-tsc / vitest / oxlint baseline unchanged od 16.
+  iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **FE Tasks tab v Realization detail / Management detail** — backend je
+  připravený (oba endpointy plně testované), ale FE komponenta
+  (`EntityTaskList.vue`?) + tab integrace v `RealizationDetail.vue` /
+  `ManagementDetail.vue` je samostatný balíček. Out of scope.
+- **Filter / sort parametry** v entity-scoped task listech (např.
+  `?status=todo`, `?completed=true`) — `/tasks` global endpoint je má,
+  ale entity-scoped verze zatím ne. Odložené dokud nebude FE potřeba.
+- **`TASK_COMPLETED` activity log** symetricky pro realization /
+  management — `complete_task` endpoint zatím loguje jen na lead. Stejná
+  asymetrie jako byla v create_task, ale je vidět jako separátní
+  iterace (vyžaduje vlastní test set).
+- **Watcher notifications** přes realization / management owner —
+  `_notify_task_watchers` zatím funguje stejně jako dřív, neřeší
+  potenciální „auto-watch realization assignee".
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E,
+   `.github/workflows/e2e.yml`. Po 18+19 iteraci máme všechen backend
+   pro to, žádný další blokátor.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User,
+   null=True)` + `POST /activities/{id}/pin` toggle endpoint + sticky
+   pinned section v `ActivityTimeline.vue`. Recyklovatelný pattern z
+   QW-1 + reactions endpointu.
+3. **FE: Tasks tab v Realization / Management detail** — backend je teď
+   100% připravený. Vyžaduje:
+   - Vue komponenta `EntityTaskList.vue` (lead-less varianta `TaskList`).
+   - Tab integrace v `RealizationDetail.vue` + `ManagementDetail.vue`.
+   - Pinia store fetch wrapper přes nové endpointy `/realizations/{id}/tasks`
+     a `/management/{id}/tasks`.
+4. **`TASK_COMPLETED` symetrický auto-log** na realization/management —
+   `complete_task` endpoint má stejnou asymetrii jakou jsme v této
+   iteraci řešili pro `create_task`. Krátká iterace (~3–4 testy).
+5. **Filter / sort query parametry** v entity-scoped task listech
+   (`?status=`, `?completed=`, `?assigned_to_id=`) — pokud FE Tasks tab
+   je bude chtít.
+6. **F-6 — inbound webhook router** *(odblokovaný F-3 v 17. iteraci)*.
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header,
+   idempotency klíč, user resolution z webhook secret →
+   service-account user, audit log. Velký balíček, vlastní iterace.
+7. **`update_task` entity relink** — pokud bude potřeba měnit
+   `realization_id` / `management_id` přes PATCH /tasks/{id}, vyžaduje
+   samostatný design pro re-routing notifikací a timeline event log.
+
+#### ✅ Co bylo v osmnácté iteraci (2026-04-30) uděláno
 
 Z plánu „Co dál" 17. iterace vybrána položka #4 — **`Task.realization`
 FK** — jako nejmenší atomický backend-only balíček (žádné FE změny,
