@@ -96,6 +96,7 @@ interface Activity {
   type: string
   content_text: string
   metadata: Record<string, unknown>
+  is_internal: boolean
   created_at: string
   tool_payload: Record<string, unknown> | null
   reactions?: ReactionSummary[]
@@ -290,6 +291,7 @@ function isFilterActive(value: string): boolean {
 // Composer state
 const selectedActionType = ref('')
 const newActivityText = ref('')
+const newActivityIsInternal = ref(false)
 const activitySubmitting = ref(false)
 const richTextEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
@@ -531,11 +533,13 @@ async function addActivity() {
     type: selectedActionType.value,
     content_text: newActivityText.value,
     metadata,
+    is_internal: newActivityIsInternal.value,
   })
   activitySubmitting.value = false
   if (res.ok) {
     activities.value.unshift(res.data)
     newActivityText.value = ''
+    newActivityIsInternal.value = false
     selectedActionType.value = ''
     toast.success(t('leadDetail.activityAdded'))
   } else {
@@ -677,7 +681,16 @@ defineExpose({ load: () => loadActivities(1) })
           :disabled="activitySubmitting"
           :members="selectedActionType === 'comment' ? teamMembers : []"
         />
-        <div class="flex justify-end">
+        <div class="flex items-center justify-between gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 select-none cursor-pointer">
+            <input
+              v-model="newActivityIsInternal"
+              type="checkbox"
+              data-testid="activity-composer-internal"
+              class="rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-400"
+            />
+            <span>{{ t('leadDetail.markInternal') }}</span>
+          </label>
           <button
             :disabled="activitySubmitting || (activityTextRequired && !hasPlainText(newActivityText))"
             data-testid="activity-composer-submit"
@@ -795,6 +808,7 @@ defineExpose({ load: () => loadActivities(1) })
         data-testid="activity-item"
         :data-activity-id="act.id"
         :data-activity-type="act.type"
+        :data-activity-internal="act.is_internal ? 'true' : 'false'"
       >
         <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
           :class="act.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
@@ -812,6 +826,12 @@ defineExpose({ load: () => loadActivities(1) })
                 {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
               </template>
             </span>
+            <span
+              v-if="act.is_internal"
+              data-testid="activity-internal-badge"
+              class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
+              :title="t('leadDetail.activityInternalTooltip')"
+            >{{ t('leadDetail.activityInternal') }}</span>
             <span v-if="act.user_name" class="relative group/avatar flex items-center">
               <span
                 class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"

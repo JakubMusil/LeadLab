@@ -186,6 +186,23 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
             self.assertIsInstance(schema, dict)
             self.assertEqual(schema.get("type"), "object")
 
+    def test_activity_is_internal_default_false(self):
+        """Newly created activities default to is_internal=False."""
+        a = self._build_activity(ActivityType.COMMENT, content_text="public note")
+        self.assertFalse(a.is_internal)
+
+    def test_activity_is_internal_persisted(self):
+        """is_internal=True round-trips through the DB."""
+        a = self._build_activity(
+            ActivityType.COMMENT, content_text="internal-only", is_internal=True,
+        )
+        a.refresh_from_db()
+        self.assertTrue(a.is_internal)
+        # Filter index works (smoke).
+        self.assertEqual(
+            Activity.objects.filter(lead=self.lead, is_internal=True).count(), 1,
+        )
+
     def test_priority_change_render(self):
         from crm.streamline.registry import get_tool
         a = self._build_activity(

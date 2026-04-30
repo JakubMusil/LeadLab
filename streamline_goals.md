@@ -497,15 +497,147 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 patnácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 šestnácté iteraci)*
 
-Vue-tsc baseline **čistý**, vitest **90/90 pass**, Django test suite
-**172/172 pass**. **Multi-select QW-3 má nyní E2E coverage** v
-`lead-timeline.spec.ts` (5. test) a **QW-5 — `gettext_lazy` na
-backend Streamline labels — je nasazen** napříč 44 tooly + 2 API
-endpointy.
+Vue-tsc baseline **čistý**, vitest **90/90 pass**, oxlint čistý nad
+dotčenými soubory, Django test suite **174/174 pass** (172 → 174,
++2 nové). **QW-1 — `Activity.is_internal: BooleanField` — je nasazen**
+end-to-end (model + migrace + ninja schemas + composer toggle + feed
+badge + 4 i18n catalogs).
 
-#### ✅ Co bylo v této session (patnáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (šestnáctá iterace, 2026-04-30) uděláno
+
+Z plánu „Co dál" 15. iterace vybrána položka #1 — **QW-1
+(`Activity.is_internal`)** — jako další smysluplný atomický balíček
+(jediná nová DB kolumna + propagace přes celý stack, žádné
+pohyblivé části na multiple endpoints).
+
+##### Backend
+
+1. **`crm/models.py`** — `Activity.is_internal: BooleanField(default=False, db_index=True)`.
+   Help_text dokumentuje sémantiku jako *čistý flag* — gating na
+   externí views (Customer portal, share-out feeds) bude až v F-4
+   (`permissions` scope foundation), ne teď. Přidat `db_index=True`
+   protože budoucí queries `WHERE is_internal=False` na timeline pro
+   externí čtenáře by jinak full-scanovaly.
+2. **Migrace `crm/migrations/0040_activity_is_internal.py`** —
+   `AddField` s `default=False`, takže existující řádky se neporouchají.
+   `db_index=True` v migraci se promítne do `CREATE INDEX` (Django
+   autogen).
+3. **`crm/api.py`**:
+   - `ActivityIn.is_internal: bool = False` — opt-in na payload.
+   - `ActivityOut.is_internal: bool` — vždy v response, neoptional.
+   - `_activity_out` propaguje `a.is_internal`.
+   - `Activity.objects.create(...)` v `create_activity` propaguje
+     `payload.is_internal`.
+   - Endpoint `_activity_feed_item_out` (reports timeline aggregator
+     na řádku ~3984) **NE-touched** — má vlastní `ActivityFeedItemOut`
+     schema určenou pro reports view, není používaná pro streamline
+     feed. Pokud ji bude reports view potřebovat, přidá si `is_internal`
+     samostatně.
+4. **Testy** v `crm/tests.py:StreamlineToolsTest`:
+   - `test_activity_is_internal_default_false` — model default.
+   - `test_activity_is_internal_persisted` — round-trip přes DB +
+     `Activity.objects.filter(is_internal=True)` smoke (verifies
+     `db_index=True` index is queryable).
+
+##### Frontend
+
+5. **`ActivityTimeline.vue` — `Activity` interface** přidáno
+   `is_internal: boolean` (mandatory; backend ho vždy posílá).
+6. **Composer state** — `newActivityIsInternal = ref(false)`.
+   POST payload v `addActivity()` rozšířen o `is_internal:
+   newActivityIsInternal.value`. Reset na `false` po úspěchu, aby
+   příští activity dělaná bez explicitního klikání byla externí
+   (safe default).
+7. **Composer UI** — vedle submit buttonu (původně byl `flex justify-end`,
+   teď `flex items-center justify-between`) přidán checkbox label
+   `[t('leadDetail.markInternal')]` s `data-testid="activity-composer-internal"`.
+   Layout: vlevo checkbox, vpravo submit, vertikálně zarovnané.
+8. **Feed badge** — vedle activity-type label vyrenderován `<span>`
+   s textem `t('leadDetail.activityInternal')` (amber color scheme,
+   uppercase tracking-wide), pouze když `act.is_internal === true`.
+   `data-testid="activity-internal-badge"` + `title` tooltip
+   (`leadDetail.activityInternalTooltip`). Activity item dostal taky
+   nový atribut `data-activity-internal="true|false"` aby budoucí
+   E2E test mohl ověřovat hodnotu bez DOM-spelunkingu.
+9. **i18n keys (en/cs/de/pl)** — všechny 4 catalogs mají nové klíče:
+   - `leadDetail.activityInternal` — krátký badge text.
+   - `leadDetail.activityInternalTooltip` — full sentence v `title=`
+     atributu.
+   - `leadDetail.markInternal` — checkbox label v composeru.
+
+##### Validace
+
+- `python manage.py test crm` — **174/174 pass** (172 baseline +
+  2 nové), 0 regressions, čas ~163s.
+- `python manage.py test crm.tests.StreamlineToolsTest -v 1` —
+  14/14 pass (12 baseline + 2 nové).
+- Smoke test `ActivityIn` / `ActivityOut` přes ad-hoc skript —
+  default `False`, explicit `True`, response model přijímá field.
+- `frontend-spa`: `npm run type-check` — clean (vue-tsc bez
+  warnings/errors). `npm run test:unit -- --run` — 12/12 files,
+  90/90 tests pass.
+- `npx oxlint src/components/ActivityTimeline.vue` — 0 warnings,
+  0 errors.
+
+##### Co se NE-dělalo v této iteraci
+
+- **E2E test pro is_internal** — multi-select E2E pro task už čeká
+  jako bundle s ostatními 4 entity specs + sdíleným `_fixtures.ts`,
+  takže is_internal E2E se přidá do stejného bundle (1 spec navíc,
+  nebo doplnění existujícího lead-timeline.spec.ts). Pravidlo:
+  per-iteration je vhodné nezahájit nový E2E refactor scope kvůli
+  jediné feature.
+- **Permission gating na externí views** — Customer portal
+  / share-out feeds zatím neexistují, takže `is_internal` je
+  prozatím čistě vizuální flag. F-4 (`permissions` scope foundation)
+  to dořeší společně s ostatními serializer-level permission gate
+  patterny.
+- **Filter chip „Internal" / „Public"** — přemýšleno, ale rozhodnuto
+  *odložit*: aktuální multi-select chip bar je `activity_type` based
+  (z registry), přidat sem flag-based chip by zlámalo
+  homogenitu modelu. Lepší řešení = samostatný „Internal-only"
+  toggle nebo `Show internal` switch nad timeline; design TBD.
+- **Reports view (`/reports/activities`)** — má vlastní legacy
+  `ActivityFeedItemOut` schema na řádku ~3970. Záměrně netouched,
+  protože reports view nemá interní/externí distinkci (je to
+  aggregator pro firm members). Přidat až bude product use-case.
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`:
+   - Helper `seedLead({title, …}) → leadId`, podobně pro customer /
+     realization / management / proposal.
+   - `e2e/tests/lead-timeline.spec.ts` — extrahovat seed do fixture.
+   - **4 nové specs**: `customer-timeline.spec.ts`,
+     `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
+     `proposal-timeline.spec.ts` — každý ověřuje composer + feed +
+     multi-select filter chips + reload persistence + (po QW-1) 
+     **internal flag round-trip** (assert `data-activity-internal="true"`
+     na nově vytvořené activity, badge visibility, default false).
+   - `.github/workflows/e2e.yml` — Postgres service, manage.py
+     migrate, build SPA, npx playwright test. Trigger on PR.
+2. **QW-2 — `Activity.is_pinned` triplet** (sketch v sekci 5.0
+   §QW-2). Sdílí infrastrukturu s QW-1 (boolean flag + db_index +
+   filter), navíc:
+   - `pinned_at: DateTimeField(null=True)` pro sticky-section ordering.
+   - `pinned_by: FK(User, null=True)` pro „Pinned by Jakub".
+   - Endpoint `POST /activities/{id}/pin` toggluje (ala reactions).
+   - FE: sticky pinned section nahoru nad feed; pin/unpin button v
+     activity item action menu.
+3. **F-3 — `validate_payload(activity_type, payload)` přes
+   `jsonschema`** — Foundation, otevírá inbound webhook router F-6
+   (extra-trust source posílá raw JSON s `activity_type`, my musíme
+   validovat proti `tool.get_schema()`). Implementace:
+   - `pip install jsonschema` (už možná v deps).
+   - `crm/streamline/validation.py` — `validate_payload(at, payload)`
+     volá `tool.get_schema()` + `jsonschema.validate(payload, schema)`.
+   - Volat v `create_activity` před `tool.process_action`.
+   - Test fixture s `comment` schema + bad payload → `400`.
+4. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+
+#### ✅ Co bylo v patnácté iteraci (2026-04-30) uděláno
 
 Pokračování z 14. iterace dle plánu „Co dál" — vybrány první 2 položky
 ze seznamu (multi-select E2E test + první z dvojice QW-1/QW-5).

@@ -718,6 +718,7 @@ class ActivityOut(Schema):
     type: str
     content_text: str
     metadata: Dict[str, Any]
+    is_internal: bool = False
     created_at: datetime
     # Tool-specific data; None when the activity type has no registered tool
     tool_payload: Optional[Dict[str, Any]] = None
@@ -736,6 +737,7 @@ class ActivityIn(Schema):
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
+    is_internal: bool = False
 
 
 def _user_display_name(user) -> Optional[str]:
@@ -782,6 +784,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "type": a.type,
         "content_text": a.content_text,
         "metadata": a.metadata,
+        "is_internal": a.is_internal,
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
@@ -933,6 +936,7 @@ def create_activity(request, payload: ActivityIn):
             type=payload.type,
             content_text=payload.content_text,
             metadata=payload.metadata,
+            is_internal=payload.is_internal,
         )
         tool.process_action(activity, entity, payload.model_dump(), context)
 

@@ -363,6 +363,16 @@ class Activity(models.Model):
         blank=True,
         help_text="Type-specific structured data (see model docstring).",
     )
+    is_internal = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            "If true, this activity is internal-only and may be hidden from "
+            "external-facing views (customer portal, share-out feeds). "
+            "Permission gating itself is handled at the serializer / view "
+            "level — this field is purely a flag."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
