@@ -49,9 +49,9 @@ describe('CustomersView', () => {
     await router.isReady()
   })
 
-  it('renders the Customers heading', () => {
+  it('renders the Directory heading', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.text()).toContain('Customers')
+    expect(wrapper.text()).toContain('Directory')
   })
 
   it('shows the search input', () => {
@@ -59,16 +59,16 @@ describe('CustomersView', () => {
     expect(wrapper.find('input[placeholder*="Search"]').exists()).toBe(true)
   })
 
-  it('shows "+ New Customer" button', () => {
+  it('shows "New Contact" button', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.text()).toContain('+ New Customer')
+    expect(wrapper.text()).toContain('New Contact')
   })
 
   it('shows empty state when no customers', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: [] })
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('No customers yet')
+    expect(wrapper.text()).toContain('No contacts yet')
   })
 
   it('renders customers from store', async () => {

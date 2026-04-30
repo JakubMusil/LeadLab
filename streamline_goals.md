@@ -458,15 +458,36 @@ ale v okolních oblastech:
          poté přiřazení `action.tags`. Snižuje 1 error.
        - `lastRunLabel`: zavedeno `const first = runs[0]; if (!first) return ''`
          před voláním `formatDate(first.triggered_at)`. Snižuje 1 error.
-   - **Zbývá 13 errorů** ve 2 kategoriích:
-     - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
-       v lookup operacích + `string | undefined` not assignable.
-       Vyžaduje narrowing nebo non-null assertion.
-     - `AutomationsView.vue` (8 = 4 unikátní duplikované přes 2 contexty)
-       — `lead_title`/`task_title`/`customer_name`/`due_date` na
-       `$t()` interpolation contextu (chybí v typu named args
-       z i18n). Bude vyžadovat doplnění interface pro interpolation
-       payload — nebo cast.
+   - ✅ **Dokončen `vue-tsc` cleanup — 0 errorů** *(2026-04-30 sedmá iterace)* —
+     vyřešeny zbývající errory v `ActivityTimeline.vue` (5) a `AutomationsView.vue` (4).
+     Vue-tsc baseline tím skončil čistý.
+     - `ActivityTimeline.vue:203` (filterOptions): `_filterLabelKey[tool.activity_type]`
+       je `string | undefined`; TS neprovede narrowing přes opakovaný indexed access
+       v ternárním výrazu. Refaktorováno z inline ternáru na blok s lokální
+       `const labelKey = _filterLabelKey[tool.activity_type]` a
+       `labelKey ? t(labelKey) : tool.label`. Snižuje 1 error.
+     - `ActivityTimeline.vue:422` (`userInitials`): pod `noUncheckedIndexedAccess`
+       `parts[0]` a `parts[parts.length - 1]` jsou `string | undefined`, navíc
+       `[0]` indexace nad nimi. Rozdělil na `const first = parts[0] ?? ''`
+       / `const last = parts[parts.length - 1] ?? ''` + `(first[0] ?? '') + (last[0] ?? '')`
+       s fallbackem na `'?'` když by zbylo prázdno. Snižuje 4 errory.
+     - `ActivityTimeline.vue:753–754`: `(act.metadata as Record<string,string>).old_status`
+       / `.new_status` jsou `string | undefined`, ale `translateLeadStatus(status: string)`
+       vyžaduje `string`. Doplněn `?? ''` na obou call sites — funkce má interní
+       `map[status] ?? status` fallback, takže prázdný string projde bezpečně.
+       Snižuje 2 errory (= 5 v `ActivityTimeline.vue` celkem dohromady s předchozími).
+     - `AutomationsView.vue:663`: literální placeholdery `{{lead_title}}`,
+       `{{task_title}}`, `{{customer_name}}`, `{{due_date}}` v textovém popisku
+       (instrukce pro uživatele, jaké placeholdery smí dát do
+       `title_template`) Vue compiler interpretoval jako mustache výrazy a hledal
+       odpovídající property na komponentě. Přidán **`v-pre`** na `<p>` element
+       — celý jeho obsah se nepokouší kompilovat jako šablona, takže `{{…}}`
+       zůstanou literálním textem (přesně to, co tam patří jako dokumentace).
+       Snižuje 4 errory.
+     - **Validace:** `npm run type-check` prochází se 0 errorů (z 13 unikátních).
+       Vitest baseline beze změny: 66 failed / 102 passed (preexisting i18n setup
+       issues v Team/Settings/Customers/Leads/Dashboard testech, nesouvisí
+       s těmito úpravami).
 4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
@@ -475,6 +496,76 @@ ale v okolních oblastech:
    timeline (response time, channel mix, funnel attribution),
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
+
+### Čím pokračovat příští session *(stav po 2026-04-30 osmé iteraci)*
+
+Vue-tsc baseline je **kompletně čistý** a vitest baseline je **rovněž
+kompletně čistý** (0 fails, 90/90 pass — dokončeno v této session).
+Streamline backend i frontend jsou kompletně sjednocené.
+
+#### ✅ Co bylo v této session (osmá iterace, 2026-04-30) uděláno
+
+Vitest baseline cleanup — z **66 fail / 102 pass** na **0 fail / 90 pass**:
+
+1. **Globální i18n setup pro `@vue/test-utils`** — root cause 36 z 66 fails
+   bylo `SyntaxError: Need to install with app.use function` z `useI18n()`
+   uvnitř komponentového `setup()`. Vytvořen `src/test/setup.ts` který:
+   - importuje `en/cs/de/pl` JSON locales (pre-compiled `@intlify/unplugin-vue-i18n/vite`
+     pluginem zděděným z `vite.config.ts` — žádná runtime kompilace v testech).
+   - vytvoří `i18n` přes `createI18n({ legacy: false, locale: 'en', ... })`
+     s `missingWarn: false` / `fallbackWarn: false` aby chybějící klíče v
+     non-en lokálech nezahlcovaly test log.
+   - registruje plugin globálně přes `config.global.plugins = [..., i18n]`,
+     takže každý `mount(...)` ho automaticky dostane bez per-spec mocků.
+   - Zaregistrován jako `setupFiles: ['./src/test/setup.ts']` ve `vitest.config.ts`.
+2. **Filtr `.spec.js` duplicit** — repo obsahoval `.spec.js` artefakty
+   vedle `.spec.ts` (tsc compiled output, který se omylem checknul).
+   Bez explicit `include` vitest spouštěl oba a každý fail se započítal
+   2×. Přidáno `include: ['src/**/*.{test,spec}.{ts,tsx}']`. Snižuje
+   30 → 15 unique fails po i18n fixu.
+3. **Stale text assertions** — UI bylo přejmenováno (Leads → Opportunities,
+   Customers → Directory, Team Members → Team), ale testy testovaly staré
+   stringy:
+   - `TeamView.spec.ts`: `'Team Members'` → `'Team'`,
+     `'Invite Member'` → `'Invite member'` (lowercase v `team.inviteMember`),
+     `'Send Invite'` zachováno (klíč `team.sendInvite` je capital).
+   - `CustomersView.spec.ts`: `'Customers'` → `'Directory'`,
+     `'+ New Customer'` → `'New Contact'`, `'No customers yet'` → `'No contacts yet'`.
+   - `LeadsView.spec.ts`: `'Leads'` → `'Opportunities'`,
+     `'+ New Lead'` → `'+ New Opportunity'`, modal-open test podobně.
+4. **`SettingsView.spec.ts` mock fixes**:
+   - Stará mock `useI18n: () => ({ locale: { value: 'en' } })` neobsahovala
+     `t`, takže komponenta padala s `$setup.t is not a function`. Přepsáno
+     na `vi.importActual(...)` se spreadem + per-test stub jen `setLocale`
+     (kvůli `window.location.reload()` v real implementaci).
+   - Mock `useFirmStore` chyběl `fetchFirms` (komponenta to volá v
+     `onMounted`); přidán `fetchFirms: vi.fn().mockResolvedValue(undefined)`
+     + `setActiveFirm: vi.fn()`.
+
+**Validace:** `npm run type-check` 0 errorů, vitest 12/12 file pass,
+90/90 test pass. Code Review + CodeQL bez nálezů.
+
+#### Co dál
+
+1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
+   každou entitní timeline (lead, task, realization, management, customer,
+   proposal) ověřit happy-path s Cypress/Playwright. Zatím pokryté pouze
+   backend unit testy v `crm/tests.py` + frontend unit smokes. **Doporučený
+   další krok** — má jasný scope, přímo navazuje na uzavřenou Fázi 5 a
+   zvedne konfidenci nasazení. Začít doporučuju s `lead` (nejjednodušší
+   entita, kompletní pokrytí `EntitySidebarActionPicker` + reactions +
+   filter), pak postupně `task` → `customer` → `realization` →
+   `management` → `proposal`.
+2. **Vyčistit committed `.js` build artefakty** *(nice-to-have)* — repo
+   obsahuje `App.vue.js`, `main.js`, `design-tokens.js`, všechny
+   `*.spec.js` siblings atd., což jsou tsc-output artefakty omylem
+   committnuté. Vitest je teď ignoruje (`include` filtrem), ale
+   smazat fyzicky + přidat do `.gitignore` by repo zúžilo.
+3. **`Task.realization` FK + Tasks tab v Realization detail** —
+   placeholder tab v `RealizationDetailView` čeká na backend FK.
+   Vyžaduje migraci + `list_tasks` filtr + i18n + UI.
+4. **Sekce 5.3 / 5.4 / 5.5** — analytics / automatizace / integrace
+   nad timeline. Produktové rozhodnutí, žádný blokátor.
 
 ### C) Pokračovat s úklidem Fáze 2 + 3 backend *(už hotovo — viz výše)*
 

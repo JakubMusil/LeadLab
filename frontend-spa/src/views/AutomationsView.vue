@@ -660,7 +660,7 @@ function lastRunLabel(rule: AutomationRule): string {
                 placeholder="e.g. Follow up with {{customer_name}} on {{lead_title}}"
                 class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               />
-              <p class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{lead_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code> (triggering task's due date)</p>
+              <p v-pre class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{lead_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code> (triggering task's due date)</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>

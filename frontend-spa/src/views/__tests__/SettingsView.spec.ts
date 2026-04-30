@@ -11,10 +11,16 @@ vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }))
 
-vi.mock('@/composables/useI18n', () => ({
-  useI18n: () => ({ locale: { value: 'en' } }),
-  setLocale: vi.fn(),
-}))
+vi.mock('@/composables/useI18n', async () => {
+  const actual = await vi.importActual<typeof import('@/composables/useI18n')>('@/composables/useI18n')
+  return {
+    ...actual,
+    // Stub setLocale to avoid `window.location.reload()` during tests; keep
+    // the real `useI18n` so the global i18n plugin (registered in
+    // src/test/setup.ts) provides a working `t` function.
+    setLocale: vi.fn(),
+  }
+})
 
 vi.mock('@/composables/usePushNotifications', () => ({
   usePushNotifications: () => ({
@@ -47,6 +53,8 @@ vi.mock('@/stores/firm', () => ({
   useFirmStore: () => ({
     activeFirm: { id: '1', name: 'My Workspace', slug: 'my-workspace', subscription_tier: 'free', subscription_active: true, is_active: true },
     firms: [],
+    fetchFirms: vi.fn().mockResolvedValue(undefined),
+    setActiveFirm: vi.fn(),
   }),
 }))
 

@@ -46,18 +46,18 @@ describe('LeadsView', () => {
     await router.isReady()
   })
 
-  it('renders the Leads heading', () => {
+  it('renders the Opportunities heading', () => {
     const wrapper = mount(LeadsView, {
       global: { plugins: [router] },
     })
-    expect(wrapper.text()).toContain('Leads')
+    expect(wrapper.text()).toContain('Opportunities')
   })
 
-  it('renders the "+ New Lead" button', () => {
+  it('renders the "+ New Opportunity" button', () => {
     const wrapper = mount(LeadsView, {
       global: { plugins: [router] },
     })
-    expect(wrapper.text()).toContain('+ New Lead')
+    expect(wrapper.text()).toContain('+ New Opportunity')
   })
 
   it('shows table and kanban view toggle buttons', () => {
@@ -81,14 +81,14 @@ describe('LeadsView', () => {
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('opens create modal on "+ New Lead" click', async () => {
+  it('opens create modal on "+ New Opportunity" click', async () => {
     const wrapper = mount(LeadsView, {
       global: { plugins: [router] },
     })
     await wrapper.find('button').trigger('click')
-    // The button we want is "+ New Lead"
+    // The button we want is "+ New Opportunity"
     const buttons = wrapper.findAll('button')
-    const newLeadBtn = buttons.find((b) => b.text().includes('New Lead'))
+    const newLeadBtn = buttons.find((b) => b.text().includes('New Opportunity'))
     expect(newLeadBtn).toBeDefined()
   })
 
