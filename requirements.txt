@@ -45,3 +45,7 @@ django-axes>=8.0,<9.0
 
 # JSON Schema validation (streamline payload validation)
 jsonschema>=4.23
+
+# HTML sanitization for rich-text content (defense-in-depth on top of frontend
+# DOMPurify — protects renderers that don't sanitize like email, push, exports)
+bleach>=6.2,<7.0

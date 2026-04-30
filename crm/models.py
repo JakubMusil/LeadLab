@@ -69,14 +69,15 @@ class ActivityType(models.TextChoices):
     TASK_ASSIGNED = "task_assigned", "Task Assigned"
     TASK_COMPLETED = "task_completed", "Task Completed"
     TASK_ARCHIVED = "task_archived", "Task Archived"
-    SUB_TASK_ADDED = "sub_task_added", "Sub-task Added"
+    STREAMLINE_ITEMS_ADDED = "streamline_items_added", "Streamline Items Added"
+    STREAMLINE_ITEM_RESOLVED = "streamline_item_resolved", "Streamline Item Resolved"
+    STREAMLINE_ITEM_REOPENED = "streamline_item_reopened", "Streamline Item Reopened"
     PRIORITY_CHANGE = "priority_change", "Priority Change"
     ASSIGNEE_CHANGE = "assignee_change", "Assignee Change"
     DUE_DATE_CHANGE = "due_date_change", "Due Date Change"
     APPROVAL_REQUESTED = "approval_requested", "Approval Requested"
     APPROVAL_RESOLVED = "approval_resolved", "Approval Resolved"
     TIME_LOGGED = "time_logged", "Time Logged"
-    CHECKLIST_ITEM_CHECKED = "checklist_item_checked", "Checklist Item Checked"
     VOICE_MEMO = "voice_memo", "Voice Memo"
     PROPOSAL_CREATED = "proposal_created", "Proposal Created"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
@@ -624,14 +625,6 @@ class Task(TenantModel):
         on_delete=models.SET_NULL,
         related_name="tasks",
     )
-    parent_task = models.ForeignKey(
-        "self",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="subtasks",
-        help_text="Parent task for subtask hierarchy (prepared for Phase 3).",
-    )
     projects = models.ManyToManyField(
         Project,
         blank=True,
@@ -920,37 +913,69 @@ class TaskReminder(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Task Checklist Item
+# Streamline Item — unified TODO + sub-task list attached to a Task
 # ---------------------------------------------------------------------------
 
-class TaskChecklistItem(models.Model):
-    """A single checkbox item inside a Task's built-in checklist."""
+class StreamlineItemKind(models.TextChoices):
+    TODO = "todo", "TODO"
+    SUBTASK = "subtask", "Sub-task"
+
+
+class StreamlineItem(models.Model):
+    """A single TODO or sub-task item attached to a Task.
+
+    Replaces the legacy ``TaskChecklistItem`` and ``Task.parent_task``
+    sub-task hierarchy. Both kinds share the same simple shape — text +
+    resolved flag + audit metadata — so they can be displayed in a single
+    list with consistent UX. Toggling ``is_resolved`` produces an audit
+    entry on the parent Task's streamline.
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="checklist_items")
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="streamline_items")
+    kind = models.CharField(
+        max_length=10,
+        choices=StreamlineItemKind.choices,
+        default=StreamlineItemKind.TODO,
+        db_index=True,
+    )
     text = models.CharField(max_length=500)
-    is_checked = models.BooleanField(default=False, db_index=True)
+    is_resolved = models.BooleanField(default=False, db_index=True)
     position = models.PositiveSmallIntegerField(default=0, db_index=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="created_checklist_items",
+        related_name="created_streamline_items",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="resolved_streamline_items",
+        help_text="The user who last toggled this item to resolved.",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the last resolve action (cleared on reopen).",
+    )
 
     class Meta:
-        verbose_name = "task checklist item"
-        verbose_name_plural = "task checklist items"
-        ordering = ["position", "created_at"]
+        verbose_name = "streamline item"
+        verbose_name_plural = "streamline items"
+        ordering = ["kind", "position", "created_at"]
         indexes = [
-            models.Index(fields=["task", "position"]),
+            models.Index(fields=["task", "kind", "position"]),
+            models.Index(fields=["task", "kind", "is_resolved"]),
         ]
 
     def __str__(self):
-        checked = "☑" if self.is_checked else "☐"
-        return f"{checked} {self.text}"
+        marker = "☑" if self.is_resolved else "☐"
+        return f"{marker} [{self.kind}] {self.text}"
 
 
 # ---------------------------------------------------------------------------
@@ -1829,10 +1854,10 @@ class TaskTemplate(TenantModel):
     A reusable task template scoped to a Firm.
 
     When applied, it creates a new Task pre-populated with the template's
-    description, priority, estimated time, checklist items, and tags.
+    description, priority, estimated time, default streamline items, and tags.
 
-    ``checklist_items`` is a JSON list of ``{"text": "...", "position": N}``
-    objects that will be converted to ``TaskChecklistItem`` records upon apply.
+    ``default_items`` is a JSON list of ``{"kind": "todo|subtask", "text": "...", "position": N}``
+    objects that will be converted to ``StreamlineItem`` records upon apply.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -1851,10 +1876,13 @@ class TaskTemplate(TenantModel):
         blank=True,
         help_text="Estimated task duration in minutes.",
     )
-    checklist_items = models.JSONField(
+    default_items = models.JSONField(
         default=list,
         blank=True,
-        help_text='List of checklist item objects: [{"text": "...", "position": 0}].',
+        help_text=(
+            'List of default streamline items: '
+            '[{"kind": "todo|subtask", "text": "...", "position": 0}].'
+        ),
     )
     tags = models.JSONField(
         default=list,

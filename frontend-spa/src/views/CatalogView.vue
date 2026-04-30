@@ -5,7 +5,8 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useFirmStore } from '@/stores/firm'
 import RichTextEditor from '@/components/RichTextEditor.vue'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
+
 
 const toast = useToast()
 const { t } = useI18n()
@@ -43,10 +44,6 @@ const PAGE_SIZE = 50
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html)
-}
 
 function htmlToPlainText(html: string): string {
   return new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''

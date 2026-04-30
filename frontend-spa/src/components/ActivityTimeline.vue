@@ -14,7 +14,7 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -453,10 +453,6 @@ async function loadActivities(page = 1) {
 // ---------------------------------------------------------------------------
 // Adding activities
 // ---------------------------------------------------------------------------
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
-}
-
 function hasPlainText(html: string): boolean {
   return Boolean(html.replace(/<[^>]*>/g, '').trim())
 }

@@ -15,7 +15,7 @@ from crm.models import (
     PushSubscription,
     SavedView,
     Task,
-    TaskChecklistItem,
+    StreamlineItem,
     TaskDependency,
     TaskTemplate,
 )

@@ -1,10 +1,56 @@
 import type { Config } from 'tailwindcss'
+import typography from '@tailwindcss/typography'
 
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{vue,ts,tsx}'],
   theme: {
     extend: {
+      // Customize the @tailwindcss/typography `prose` palette so rich-text
+      // content rendered via <RichTextDisplay> and inside the Tiptap editor
+      // has WCAG-AA compliant contrast in light mode (the previous setup
+      // relied on missing prose styles and inherited colors from light
+      // containers like text-gray-500, which caused poor contrast).
+      typography: () => ({
+        DEFAULT: {
+          css: {
+            // Body text — gray-800 on white = ~13:1 contrast
+            '--tw-prose-body': '#1f2937',
+            '--tw-prose-headings': '#111827',
+            '--tw-prose-lead': '#374151',
+            '--tw-prose-links': '#2563eb',
+            '--tw-prose-bold': '#111827',
+            '--tw-prose-counters': '#374151',
+            '--tw-prose-bullets': '#6b7280',
+            '--tw-prose-hr': '#d1d5db',
+            '--tw-prose-quotes': '#111827',
+            '--tw-prose-quote-borders': '#d1d5db',
+            '--tw-prose-captions': '#374151',
+            '--tw-prose-code': '#111827',
+            '--tw-prose-pre-code': '#e5e7eb',
+            '--tw-prose-pre-bg': '#1f2937',
+            '--tw-prose-th-borders': '#9ca3af',
+            '--tw-prose-td-borders': '#d1d5db',
+            // Dark-mode invert palette (used via .dark .prose-invert)
+            '--tw-prose-invert-body': '#e5e7eb',
+            '--tw-prose-invert-headings': '#f9fafb',
+            '--tw-prose-invert-lead': '#d1d5db',
+            '--tw-prose-invert-links': '#60a5fa',
+            '--tw-prose-invert-bold': '#f9fafb',
+            '--tw-prose-invert-counters': '#d1d5db',
+            '--tw-prose-invert-bullets': '#9ca3af',
+            '--tw-prose-invert-hr': '#374151',
+            '--tw-prose-invert-quotes': '#f3f4f6',
+            '--tw-prose-invert-quote-borders': '#374151',
+            '--tw-prose-invert-captions': '#d1d5db',
+            '--tw-prose-invert-code': '#f9fafb',
+            '--tw-prose-invert-pre-code': '#e5e7eb',
+            '--tw-prose-invert-pre-bg': '#111827',
+            '--tw-prose-invert-th-borders': '#6b7280',
+            '--tw-prose-invert-td-borders': '#374151',
+          },
+        },
+      }),
       colors: {
         brand: {
           50: '#fef2f2',
@@ -45,5 +91,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 } satisfies Config
