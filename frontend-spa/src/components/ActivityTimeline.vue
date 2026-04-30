@@ -567,11 +567,11 @@ defineExpose({ load: () => loadActivities(1) })
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4" data-testid="activity-timeline">
     <!-- ================================================================ -->
     <!-- Unified action composer (hidden when hideComposer=true)          -->
     <!-- ================================================================ -->
-    <div v-if="!hideComposer" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+    <div v-if="!hideComposer" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4" data-testid="activity-timeline-composer">
 
       <!-- Step 1: Action type picker -->
       <div v-if="!selectedActionType">
@@ -580,6 +580,8 @@ defineExpose({ load: () => loadActivities(1) })
           <button
             v-for="item in actionPickerItems"
             :key="item.value"
+            data-testid="activity-action-option"
+            :data-action="item.value"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             @click="selectedActionType = item.value; newActivityText = ''"
           >
@@ -611,6 +613,7 @@ defineExpose({ load: () => loadActivities(1) })
         <div class="flex justify-end">
           <button
             :disabled="activitySubmitting || (activityTextRequired && !hasPlainText(newActivityText))"
+            data-testid="activity-composer-submit"
             class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
             @click="addActivity"
           >{{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
@@ -681,6 +684,7 @@ defineExpose({ load: () => loadActivities(1) })
         <div class="flex justify-end">
           <button
             :disabled="taskSubmitting || !newTaskTitle.trim()"
+            data-testid="activity-composer-task-submit"
             class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
             @click="addTask"
           >{{ taskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
@@ -697,6 +701,8 @@ defineExpose({ load: () => loadActivities(1) })
       <button
         v-for="f in filterOptions"
         :key="f.value"
+        :data-testid="'activity-timeline-filter'"
+        :data-filter-value="f.value"
         class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
         :class="filterType === f.value
           ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
@@ -705,16 +711,23 @@ defineExpose({ load: () => loadActivities(1) })
       >{{ f.label }}</button>
     </div>
 
-    <div v-if="activitiesLoading" class="animate-pulse space-y-2">
+    <div v-if="activitiesLoading" class="animate-pulse space-y-2" data-testid="activity-timeline-loading">
       <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
-    <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm">
+    <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm" data-testid="activity-timeline-empty">
       {{ filterType ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
-    <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-      <div v-for="act in filteredActivities" :key="act.id" class="flex items-start gap-3 p-4">
+    <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">
+      <div
+        v-for="act in filteredActivities"
+        :key="act.id"
+        class="flex items-start gap-3 p-4"
+        data-testid="activity-item"
+        :data-activity-id="act.id"
+        :data-activity-type="act.type"
+      >
         <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
           :class="act.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
             : act.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -782,10 +795,13 @@ defineExpose({ load: () => loadActivities(1) })
           <div
             v-if="act.type === 'comment'"
             class="flex flex-wrap items-center gap-1.5 mt-2"
+            data-testid="activity-reactions-row"
           >
             <button
               v-for="r in (act.reactions ?? [])"
               :key="r.emoji"
+              data-testid="activity-reaction-chip"
+              :data-emoji="r.emoji"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
               :class="r.reacted_by_me
                 ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
@@ -797,6 +813,7 @@ defineExpose({ load: () => loadActivities(1) })
             </button>
             <div class="relative">
               <button
+                data-testid="activity-add-reaction"
                 class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
                 :title="t('leadDetail.addReaction')"
                 @click="openEmojiPicker(act.id)"
@@ -805,11 +822,14 @@ defineExpose({ load: () => loadActivities(1) })
               </button>
               <div
                 v-if="emojiPickerActivityId === act.id"
+                data-testid="activity-emoji-picker"
                 class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
               >
                 <button
                   v-for="emoji in COMMON_EMOJIS"
                   :key="emoji"
+                  data-testid="activity-emoji-option"
+                  :data-emoji="emoji"
                   class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
                   @click="toggleReaction(act.id, emoji)"
                 >{{ emoji }}</button>
@@ -822,6 +842,7 @@ defineExpose({ load: () => loadActivities(1) })
 
     <button
       v-if="activitiesHasMore && !activitiesLoading"
+      data-testid="activity-timeline-load-more"
       class="w-full py-2 text-sm text-gray-500 hover:text-red-600 border border-gray-200 dark:border-gray-700 rounded-xl"
       @click="loadActivities(activitiesPage + 1)"
     >{{ t('leadDetail.loadMore') }}</button>

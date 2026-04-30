@@ -497,12 +497,90 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 deváté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 desáté iteraci)*
 
 Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
-čistý** (0 fails, 90/90 pass), a repo už nenese omylem committnuté
-`.js` tsc-emit artefakty (vyřešeno v této session). Streamline backend
-i frontend jsou kompletně sjednocené.
+čistý** (0 fails, 90/90 pass), repo je bez committnutých `.js` tsc-emit
+artefaktů, a `ActivityTimeline.vue` + `EntitySidebarActionPicker.vue`
+mají kompletní pokrytí `data-testid` atributy připravené pro psaní E2E
+testů. Streamline backend i frontend jsou kompletně sjednocené.
+
+#### ✅ Co bylo v této session (desátá iterace, 2026-04-30) uděláno
+
+Doplnění `data-testid` atributů do timeline komponent — prerekvizita
+plánovaného „Krok 1 — E2E testy timeline UX" z minulé session.
+Bez `data-testid` by Playwright selektory musely spoléhat na
+i18n textové popisky (křehké vůči přepnutí jazyka) nebo class names
+(křehké vůči Tailwind redesignu).
+
+1. **`ActivityTimeline.vue`** — přidáno celkem **13 `data-testid`
+   atributů**, pokrývající všechny interaktivní cesty timeline:
+   - **Root + sekce:** `activity-timeline` (root), `activity-timeline-composer`,
+     `activity-timeline-loading`, `activity-timeline-empty`,
+     `activity-timeline-list`, `activity-timeline-load-more`.
+   - **Composer (in-component):** `activity-action-option` (s
+     `data-action="<activity_type>"` pro výběr typu), submit tlačítka
+     `activity-composer-submit` a `activity-composer-task-submit`.
+   - **Filter chips:** `activity-timeline-filter` s `data-filter-value`
+     (== `''` pro "all", nebo konkrétní `activity_type`).
+   - **Activity items:** `activity-item` s `data-activity-id` +
+     `data-activity-type` na každém řádku — selektor `[data-testid="activity-item"][data-activity-type="email_out"]`
+     je triviální i ve vícejazyčném prostředí.
+   - **Reactions:** `activity-reactions-row` (kontejner),
+     `activity-reaction-chip` s `data-emoji` (existující agregovaná
+     reakce, kliknutí toggle), `activity-add-reaction` (`+` button
+     otevírající picker), `activity-emoji-picker` (popover),
+     `activity-emoji-option` s `data-emoji` (volba emoji).
+2. **`EntitySidebarActionPicker.vue`** — přidány **4 `data-testid`**:
+   - Root: `entity-sidebar-action-picker`.
+   - Action options: `entity-sidebar-action-option` s
+     `data-action="<activity_type>"`.
+   - Submit: `entity-sidebar-action-submit` (activity form),
+     `entity-sidebar-task-submit` (task quick-create).
+3. **Validace:**
+   - `npm run type-check` — **0 errorů** (baseline zachovaný).
+   - `npx vitest run` — 12/12 file pass, 90/90 test pass (baseline
+     zachovaný; 35 pre-existing unhandled rejections v Settings/Customers
+     specs nezávisle na této změně).
+   - Žádná funkční ani styling změna (atributy jsou pouze metadata pro
+     testy, neovlivňují DOM rendering ani CSS).
+
+**Konvence pojmenování** *(pro budoucí komponenty + testy):*
+- `<komponenta>` namespace prefix (`activity-`, `entity-sidebar-`).
+- Pro opakovatelné prvky doplnit `data-<discriminator>` (např.
+  `data-activity-type`, `data-emoji`, `data-action`) — Playwright pak
+  může napsat `page.locator('[data-testid="activity-item"][data-activity-type="comment"]').first()`
+  bez závislosti na pořadí v DOM.
+
+#### Co dál
+
+1. **Napsat `lead-timeline.spec.ts`** — teď, když máme `data-testid`,
+   může vzniknout E2E spec pokrývající:
+   - `await page.goto('/app/leads/{id}')` na lead z fixture
+   - `[data-testid="entity-sidebar-action-option"][data-action="comment"]`
+     → klik → fill RichTextEditor → `[data-testid="entity-sidebar-action-submit"]` → klik
+   - assert `[data-testid="activity-item"][data-activity-type="comment"]` první v listu
+   - filter chip `[data-testid="activity-timeline-filter"][data-filter-value="email_out"]` →
+     ověřit, že žádné `comment` items nejsou viditelné
+   - reaction toggle: hover na první comment → klik
+     `[data-testid="activity-add-reaction"]` → klik
+     `[data-testid="activity-emoji-option"][data-emoji="👍"]` → ověřit
+     `[data-testid="activity-reaction-chip"][data-emoji="👍"]` text obsahuje "1" →
+     druhý klik → chip zmizí.
+   - Persist přes reload: `await page.reload()` → comment + reaction zůstanou.
+   Tyto testy patří do `e2e/tests/lead-timeline.spec.ts` (nový soubor),
+   nebudou kolidovat s existujícím `lead-lifecycle.spec.ts`.
+2. **Replikovat E2E pro ostatní entity** — po lead spec napsat zkrácenou
+   variantu pro `task` (`/app/tasks/{id}`), `customer`, `realization`,
+   `management`, `proposal`. Stejný `data-testid` selektor model funguje
+   napříč entitami díky generickému `ActivityTimeline` + `EntitySidebarActionPicker`.
+3. **`Task.realization` FK + Tasks tab v Realization detail** —
+   placeholder tab v `RealizationDetailView` čeká na backend FK.
+   Vyžaduje migraci + `list_tasks` filtr + i18n + UI.
+4. **Sekce 5.3 / 5.4 / 5.5** — analytics / automatizace / integrace
+   nad timeline. Produktové rozhodnutí, žádný blokátor.
+
+### Předchozí sessions *(2026-04-30 první až devátá iterace)*
 
 #### ✅ Co bylo v této session (devátá iterace, 2026-04-30) uděláno
 
