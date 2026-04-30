@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
+from django.utils.translation import gettext_lazy as _
+
 from crm.streamline.base import StreamlineTool
 
 if TYPE_CHECKING:
@@ -17,7 +19,7 @@ _MENTION_PREVIEW_LENGTH = 120
 
 class CommentTool(StreamlineTool):
     activity_type = "comment"
-    label = "Comment"
+    label = _("Comment")
     icon = "ChatBubbleLeftIcon"
 
     def get_schema(self) -> dict:
@@ -94,7 +96,7 @@ class CommentTool(StreamlineTool):
 
 class CallTool(StreamlineTool):
     activity_type = "call"
-    label = "Call"
+    label = _("Call")
     icon = "PhoneIcon"
 
     def get_schema(self) -> dict:
@@ -150,7 +152,7 @@ class CallTool(StreamlineTool):
 
 class MeetingTool(StreamlineTool):
     activity_type = "meeting"
-    label = "Meeting"
+    label = _("Meeting")
     icon = "UsersIcon"
 
     def get_schema(self) -> dict:
@@ -184,7 +186,7 @@ class MeetingTool(StreamlineTool):
 
 class EmailOutTool(StreamlineTool):
     activity_type = "email_out"
-    label = "Email (Outbound)"
+    label = _("Email (Outbound)")
     icon = "PaperAirplaneIcon"
 
     def get_schema(self) -> dict:
@@ -222,7 +224,7 @@ class EmailOutTool(StreamlineTool):
 
 class EmailInTool(StreamlineTool):
     activity_type = "email_in"
-    label = "Email (Inbound)"
+    label = _("Email (Inbound)")
     icon = "InboxArrowDownIcon"
 
     def get_schema(self) -> dict:
@@ -261,7 +263,7 @@ class EmailInTool(StreamlineTool):
 
 class StatusChangeTool(StreamlineTool):
     activity_type = "status_change"
-    label = "Status Change"
+    label = _("Status Change")
     icon = "ArrowsRightLeftIcon"
 
     def get_schema(self) -> dict:
@@ -318,7 +320,7 @@ class StatusChangeTool(StreamlineTool):
 
 class FileUploadTool(StreamlineTool):
     activity_type = "file_upload"
-    label = "File Upload"
+    label = _("File Upload")
     icon = "PaperClipIcon"
 
     def get_schema(self) -> dict:
@@ -355,7 +357,7 @@ class FileUploadTool(StreamlineTool):
 
 class TaskAssignedTool(StreamlineTool):
     activity_type = "task_assigned"
-    label = "Task Assigned"
+    label = _("Task Assigned")
     icon = "ClipboardDocumentListIcon"
 
     def get_schema(self) -> dict:
@@ -391,7 +393,7 @@ class TaskAssignedTool(StreamlineTool):
 
 class TaskCompletedTool(StreamlineTool):
     activity_type = "task_completed"
-    label = "Task Completed"
+    label = _("Task Completed")
     icon = "CheckCircleIcon"
 
     def get_schema(self) -> dict:
@@ -421,7 +423,7 @@ class TaskCompletedTool(StreamlineTool):
 
 class ProposalCreatedTool(StreamlineTool):
     activity_type = "proposal_created"
-    label = "Proposal Created"
+    label = _("Proposal Created")
     icon = "DocumentTextIcon"
 
     def get_schema(self) -> dict:
@@ -451,7 +453,7 @@ class ProposalCreatedTool(StreamlineTool):
 
 class ProposalAcceptedTool(StreamlineTool):
     activity_type = "proposal_accepted"
-    label = "Proposal Accepted"
+    label = _("Proposal Accepted")
     icon = "DocumentCheckIcon"
 
     def get_schema(self) -> dict:
@@ -481,7 +483,7 @@ class ProposalAcceptedTool(StreamlineTool):
 
 class ProposalRejectedTool(StreamlineTool):
     activity_type = "proposal_rejected"
-    label = "Proposal Rejected"
+    label = _("Proposal Rejected")
     icon = "DocumentTextIcon"
 
     def get_schema(self) -> dict:
@@ -519,7 +521,7 @@ class EntityChangeTool(StreamlineTool):
     """
 
     activity_type = "entity_change"
-    label = "Field Changed"
+    label = _("Field Changed")
     icon = "PencilSquareIcon"
 
     def get_schema(self) -> dict:
@@ -553,7 +555,7 @@ class EntityChangeTool(StreamlineTool):
 
 class PriorityChangeTool(StreamlineTool):
     activity_type = "priority_change"
-    label = "Priority Change"
+    label = _("Priority Change")
     icon = "FlagIcon"
 
     def get_schema(self) -> dict:
@@ -584,7 +586,7 @@ class PriorityChangeTool(StreamlineTool):
 
 class AssigneeChangeTool(StreamlineTool):
     activity_type = "assignee_change"
-    label = "Assignee Change"
+    label = _("Assignee Change")
     icon = "UserCircleIcon"
 
     def get_schema(self) -> dict:
@@ -651,7 +653,7 @@ class AssigneeChangeTool(StreamlineTool):
 
 class DueDateChangeTool(StreamlineTool):
     activity_type = "due_date_change"
-    label = "Due Date Change"
+    label = _("Due Date Change")
     icon = "CalendarIcon"
 
     def get_schema(self) -> dict:
@@ -681,7 +683,7 @@ class DueDateChangeTool(StreamlineTool):
 
 class SubTaskAddedTool(StreamlineTool):
     activity_type = "sub_task_added"
-    label = "Sub-task Added"
+    label = _("Sub-task Added")
     icon = "Squares2X2Icon"
 
     def get_schema(self) -> dict:
@@ -712,7 +714,7 @@ class SubTaskAddedTool(StreamlineTool):
 
 class TaskCreatedTool(StreamlineTool):
     activity_type = "task_created"
-    label = "Task Created"
+    label = _("Task Created")
     icon = "PlusCircleIcon"
 
     def get_schema(self) -> dict:
@@ -742,7 +744,7 @@ class TaskCreatedTool(StreamlineTool):
 
 class TaskArchivedTool(StreamlineTool):
     activity_type = "task_archived"
-    label = "Task Archived"
+    label = _("Task Archived")
     icon = "ArchiveBoxIcon"
 
     def get_schema(self) -> dict:
@@ -774,7 +776,7 @@ class TaskArchivedTool(StreamlineTool):
 
 class ApprovalRequestedTool(StreamlineTool):
     activity_type = "approval_requested"
-    label = "Approval Requested"
+    label = _("Approval Requested")
     icon = "ShieldExclamationIcon"
 
     def get_schema(self) -> dict:
@@ -806,7 +808,7 @@ class ApprovalRequestedTool(StreamlineTool):
 
 class ApprovalResolvedTool(StreamlineTool):
     activity_type = "approval_resolved"
-    label = "Approval Resolved"
+    label = _("Approval Resolved")
     icon = "ShieldCheckIcon"
 
     def get_schema(self) -> dict:
@@ -845,7 +847,7 @@ class ApprovalResolvedTool(StreamlineTool):
 
 class TimeLoggedTool(StreamlineTool):
     activity_type = "time_logged"
-    label = "Time Logged"
+    label = _("Time Logged")
     icon = "ClockIcon"
 
     def get_schema(self) -> dict:
@@ -884,7 +886,7 @@ class TimeLoggedTool(StreamlineTool):
 
 class ChecklistItemCheckedTool(StreamlineTool):
     activity_type = "checklist_item_checked"
-    label = "Checklist Item Checked"
+    label = _("Checklist Item Checked")
     icon = "CheckIcon"
 
     def get_schema(self) -> dict:
@@ -917,7 +919,7 @@ class ChecklistItemCheckedTool(StreamlineTool):
 
 class VoiceMemoTool(StreamlineTool):
     activity_type = "voice_memo"
-    label = "Voice Memo"
+    label = _("Voice Memo")
     icon = "MicrophoneIcon"
 
     def get_schema(self) -> dict:
@@ -1007,7 +1009,7 @@ class _SimpleLogTool(StreamlineTool):
 
 class SmsOutTool(_SimpleLogTool):
     activity_type = "sms_out"
-    label = "SMS (Outbound)"
+    label = _("SMS (Outbound)")
     icon = "DevicePhoneMobileIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
@@ -1021,7 +1023,7 @@ class SmsOutTool(_SimpleLogTool):
 
 class SmsInTool(_SimpleLogTool):
     activity_type = "sms_in"
-    label = "SMS (Inbound)"
+    label = _("SMS (Inbound)")
     icon = "DevicePhoneMobileIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
@@ -1037,7 +1039,7 @@ class SmsInTool(_SimpleLogTool):
 
 class WhatsAppOutTool(_SimpleLogTool):
     activity_type = "whatsapp_out"
-    label = "WhatsApp (Outbound)"
+    label = _("WhatsApp (Outbound)")
     icon = "ChatBubbleOvalLeftEllipsisIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
@@ -1051,7 +1053,7 @@ class WhatsAppOutTool(_SimpleLogTool):
 
 class WhatsAppInTool(_SimpleLogTool):
     activity_type = "whatsapp_in"
-    label = "WhatsApp (Inbound)"
+    label = _("WhatsApp (Inbound)")
     icon = "ChatBubbleOvalLeftEllipsisIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
@@ -1067,7 +1069,7 @@ class ChatTool(_SimpleLogTool):
     """Generic IM channel — distinguishes itself via ``metadata.channel``."""
 
     activity_type = "chat"
-    label = "Chat Message"
+    label = _("Chat Message")
     icon = "ChatBubbleLeftRightIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
@@ -1100,7 +1102,7 @@ class MeetingScheduledTool(_SimpleLogTool):
     """
 
     activity_type = "meeting_scheduled"
-    label = "Meeting Scheduled"
+    label = _("Meeting Scheduled")
     icon = "CalendarDaysIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Subject / Notes"},
@@ -1124,7 +1126,7 @@ class LinkTool(_SimpleLogTool):
     """A saved external link with optional Open Graph preview metadata."""
 
     activity_type = "link"
-    label = "Link"
+    label = _("Link")
     icon = "LinkIcon"
     schema_properties = {
         "url": {"type": "string", "format": "uri", "title": "URL"},
@@ -1143,7 +1145,7 @@ class LinkTool(_SimpleLogTool):
 
 class PaymentReceivedTool(_SimpleLogTool):
     activity_type = "payment_received"
-    label = "Payment Received"
+    label = _("Payment Received")
     icon = "BanknotesIcon"
     schema_properties = {
         "amount": {"type": "number", "title": "Amount"},
@@ -1158,7 +1160,7 @@ class PaymentReceivedTool(_SimpleLogTool):
 
 class InvoiceSentTool(_SimpleLogTool):
     activity_type = "invoice_sent"
-    label = "Invoice Sent"
+    label = _("Invoice Sent")
     icon = "DocumentCurrencyDollarIcon"
     schema_properties = {
         "invoice_id": {"type": "string", "title": "Invoice ID"},
@@ -1176,7 +1178,7 @@ class InvoiceSentTool(_SimpleLogTool):
 
 class SignatureRequestedTool(_SimpleLogTool):
     activity_type = "signature_requested"
-    label = "Signature Requested"
+    label = _("Signature Requested")
     icon = "PencilSquareIcon"
     schema_properties = {
         "document_id": {"type": "string", "title": "Document ID"},
@@ -1194,7 +1196,7 @@ class SignatureRequestedTool(_SimpleLogTool):
 
 class SignatureCompletedTool(_SimpleLogTool):
     activity_type = "signature_completed"
-    label = "Signature Completed"
+    label = _("Signature Completed")
     icon = "CheckBadgeIcon"
     schema_properties = {
         "document_id": {"type": "string", "title": "Document ID"},
@@ -1220,7 +1222,7 @@ class ProposalViewedTool(StreamlineTool):
     """
 
     activity_type = "proposal_viewed"
-    label = "Proposal Viewed"
+    label = _("Proposal Viewed")
     icon = "EyeIcon"
 
     def get_schema(self) -> dict:
@@ -1271,7 +1273,7 @@ class ProposalViewedTool(StreamlineTool):
 
 class AiSummaryTool(_SimpleLogTool):
     activity_type = "ai_summary"
-    label = "AI Summary"
+    label = _("AI Summary")
     icon = "SparklesIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Summary"},
@@ -1289,7 +1291,7 @@ class AiSummaryTool(_SimpleLogTool):
 
 class AiSuggestedActionTool(_SimpleLogTool):
     activity_type = "ai_suggested_action"
-    label = "AI Suggested Action"
+    label = _("AI Suggested Action")
     icon = "LightBulbIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Suggestion"},
@@ -1319,7 +1321,7 @@ class SystemNoteTool(_SimpleLogTool):
     """
 
     activity_type = "system_note"
-    label = "System Note"
+    label = _("System Note")
     icon = "InformationCircleIcon"
     schema_properties = {
         "content_text": {"type": "string", "title": "Note"},
@@ -1334,7 +1336,7 @@ class SystemNoteTool(_SimpleLogTool):
 
 class TagAddedTool(_SimpleLogTool):
     activity_type = "tag_added"
-    label = "Tag Added"
+    label = _("Tag Added")
     icon = "TagIcon"
     schema_properties = {
         "tag": {"type": "string", "title": "Tag"},
@@ -1344,7 +1346,7 @@ class TagAddedTool(_SimpleLogTool):
 
 class TagRemovedTool(_SimpleLogTool):
     activity_type = "tag_removed"
-    label = "Tag Removed"
+    label = _("Tag Removed")
     icon = "TagIcon"
     schema_properties = {
         "tag": {"type": "string", "title": "Tag"},
@@ -1364,7 +1366,7 @@ class MentionTool(StreamlineTool):
     """
 
     activity_type = "mention"
-    label = "Mention"
+    label = _("Mention")
     icon = "AtSymbolIcon"
 
     def get_schema(self) -> dict:
@@ -1435,7 +1437,7 @@ class MentionTool(StreamlineTool):
 
 class PinnedTool(_SimpleLogTool):
     activity_type = "pinned"
-    label = "Pinned"
+    label = _("Pinned")
     icon = "BookmarkIcon"
     schema_properties = {
         "target_activity_id": {"type": "string", "title": "Pinned Activity ID"},
@@ -1446,7 +1448,7 @@ class PinnedTool(_SimpleLogTool):
 
 class UnpinnedTool(_SimpleLogTool):
     activity_type = "unpinned"
-    label = "Unpinned"
+    label = _("Unpinned")
     icon = "BookmarkSlashIcon"
     schema_properties = {
         "target_activity_id": {"type": "string", "title": "Unpinned Activity ID"},

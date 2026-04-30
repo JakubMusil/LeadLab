@@ -497,15 +497,139 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 čtrnácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 patnácté iteraci)*
 
-Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
-čistý** (0 fails, 90/90 pass), oxlint čistý nad dotčeným souborem,
-E2E timeline pokrývá `lead` + `task`. **První quick-win z triage
-(QW-3 — multi-select filter chips) je nasazen** v
-`frontend-spa/src/components/ActivityTimeline.vue`.
+Vue-tsc baseline **čistý**, vitest **90/90 pass**, Django test suite
+**172/172 pass**. **Multi-select QW-3 má nyní E2E coverage** v
+`lead-timeline.spec.ts` (5. test) a **QW-5 — `gettext_lazy` na
+backend Streamline labels — je nasazen** napříč 44 tooly + 2 API
+endpointy.
 
-#### ✅ Co bylo v této session (čtrnáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (patnáctá iterace, 2026-04-30) uděláno
+
+Pokračování z 14. iterace dle plánu „Co dál" — vybrány první 2 položky
+ze seznamu (multi-select E2E test + první z dvojice QW-1/QW-5).
+
+##### 1. Multi-select E2E test pro QW-3
+
+`e2e/tests/lead-timeline.spec.ts` — přidán 5. test
+`'multi-select filter chips persist across reload'`:
+
+1. **Seed druhého activity typu** (`call`) přes `request.post('/api/v1/crm/activities')`
+   se signaturou `{ lead_id, type: 'call', content_text: callNotes }` — využívá
+   `auth=django_auth` na endpointu, který sdílí session storage_state s page
+   fixturou Playwright (žádná manuální autentizace).
+2. **Multi-select assert** — klik na `comment` chip + `call` chip,
+   ověření `data-filter-active="true"` na obou + `="false"` na „Vše"
+   chip; iterace přes všechny `activity-item` ověřuje, že `data-activity-type ∈ {comment, call}`.
+3. **localStorage persistence assert** — `page.reload()`, pak znovu
+   ověření `data-filter-active="true"` na obou chipech a feed dál
+   zobrazuje pouze průnik typů. Tím se nezávisle ověřuje hydratace
+   `activeFilters` z `localStorage` klíče `lead-lab.timeline.filter.lead`.
+4. **Cleanup** — kliknutí na „Vše" chip (`data-filter-value=""`)
+   vrátí stav do prázdného setu (chips inactive, localStorage cleared).
+
+Type-check spec souboru přes `tsc --noEmit` projde clean. Test záměrně
+**nepřidávám do `task-timeline.spec.ts`** — task toolbar nemá `call`,
+musely by se použít `voice_memo` / `file_upload`, což otevírá další
+schema-payload work. Bundleme to s connectingem `_fixtures.ts` ve
+chvíli, kdy budeme dělat zbylé 4 entity timeline specs.
+
+##### 2. QW-5 — `gettext_lazy` na 44 Streamline labels
+
+Backend i18n přípravná práce. Aktuálně se label posílá z BE jako
+hardcoded English string a FE má nad tím vlastní `_filterLabelKey`
+override v `ActivityTimeline.vue` (mapuje `activity_type → leadDetail.typeXxx`
+key z vue-i18n bundle). Fallback ale stále byla čistá angličtina.
+
+1. **`crm/streamline/tools.py`** — přidán
+   `from django.utils.translation import gettext_lazy as _`. Všech
+   44 declarations `label = "X"` přepsáno na `label = _("X")` přes
+   regex sed (Python script). Ověřeno `grep -c "^    label = _("` = 44.
+2. **`crm/streamline/api.py`** — Pydantic `ToolOut.label: str`
+   nepřijme `__proxy__` přímo (`isinstance(__proxy__, str) is False`),
+   takže přidán explicit `str(tool.label)` coercion v `list_tools`
+   i v `get_entity_toolbar`. Synthetic „Task" entry v toolbaru taky
+   obalen `_("Task")` → `str(...)` pro budoucí překlad.
+   Import `from django.utils.translation import gettext_lazy as _`
+   přidán nahoru.
+3. **Type hint `label: str` v `crm/streamline/base.py`** — záměrně
+   ponechán `str` (ne `str | __proxy__`). `__proxy__` je runtime
+   string-like proxy, type-hint zůstává čistý API contract:
+   *„konzument label dostane string"*. Coercion na `str()` v API
+   layeru je single point pro tu transformaci, takže pokud někdo
+   přidá nový endpoint exposující tool.label, přídá si tu coercion sám.
+4. **Nová pole pro gettext extraction** — protože tool labels nejsou
+   v žádné Vue/Django template ani ve `views.py`, `manage.py
+   makemessages` je sám nezachytí. Budoucí krok (NE v tomto PR)
+   bude přidat explicit `extract_django` config nebo glob přes
+   `crm/streamline/tools.py` v `LOCALE_PATHS` setupu — necháno na
+   moment, kdy bude první `.po` soubor reálně potřeba.
+5. **Equality semantika ověřena** — `_("Comment") == "Comment"` je
+   `True` (gettext_lazy `__proxy__` overrides `__eq__`), takže
+   pokud nějaký test/condition srovnává label se string literálem,
+   nelomí se. `repr(label)` vrací `'Comment'`, `str(label)` vrací
+   přeloženou verzi (nebo původní pokud `.mo` chybí).
+
+**Validace:**
+
+- `python manage.py test crm.tests.StreamlineToolsTest -v 1` — 12/12 pass.
+- `python manage.py test crm` — **172/172 pass**, 0 regressions.
+- Smoke test ToolOut Pydantic serialization přes ad-hoc skript —
+  všech 44 toolů serializovatelných jako `{label: 'Comment', …}`,
+  `translation.override('cs')` neláme nic (fall-back na angličtinu
+  bez `.mo`).
+- `frontend-spa`: `npm run type-check` clean, `npm run test:unit -- --run`
+  90/90 pass — bez FE změn v této iteraci, jen baseline.
+- E2E spec `tsc --noEmit` clean. Spec sám se v sandboxu nespouští
+  (vyžaduje dev server + Playwright browsers).
+
+##### Co se NE-dělalo v této iteraci
+
+- **Multi-select E2E pro `task-timeline.spec.ts`** — zdůvodněno výše.
+- **`gettext_lazy` na `StreamlineTool.icon`** — schválně ne, ikony
+  jsou Heroicons component names (`ChatBubbleLeftIcon`), ne human-readable
+  strings; nejsou určené k překladu.
+- **Vlastní `extract_django` config / první `.po` soubor** — necháno
+  na moment, kdy product/loc team reálně potřebuje překlad. Dnes by
+  to byla mrtvá infrastruktura.
+- **QW-1 (`Activity.is_internal`)** — vyžaduje datovou migraci
+  + serializer flag + UI; větší než multi-select E2E + QW-5 dohromady.
+  Půjde do 16. iterace.
+
+#### Co dál
+
+1. **QW-1 — `Activity.is_internal: BooleanField`** — nejmenší
+   z migrace-required quick-winů. Plán:
+   - `crm/migrations/000X_add_activity_is_internal.py` — `default=False`,
+     `db_index=True`.
+   - `ActivityOut` schema v `crm/api.py` — přidat `is_internal: bool`.
+   - `ActivityIn` — přidat `is_internal: bool = False`.
+   - `_activity_out` helper — propagovat field.
+   - FE: `ActivityTimeline.vue` — vizuální badge „Interní" (i18n key
+     `leadDetail.activityInternal`) na items kde `is_internal === true`,
+     plus filter chip (lze zařadit pod existující multi-select).
+   - Permissions: `is_internal` activity by se v ideálním světě
+     skrývaly před externími uživateli (např. Customer portal, pokud
+     vznikne) — pro MVP stačí jen vizuální flag a posunutí permission
+     gate na pozdější F-4 (`permissions` scope foundation).
+2. **Multi-select E2E pro task** — bundle se zbylými 4 entity specs:
+   - `customer-timeline.spec.ts`, `realization-timeline.spec.ts`,
+     `management-timeline.spec.ts`, `proposal-timeline.spec.ts`.
+   - Sdílený fixture helper `e2e/tests/_fixtures.ts` pro seed přes API
+     (lead, customer, …) + přihlášení.
+   - CI workflow `.github/workflows/e2e.yml` se spuštěním Postgres,
+     Django dev serverem, build SPA, Playwright run.
+3. **QW-2 — `Activity.is_pinned` triplet** (sketch v sekci 5.0
+   §Sketch, §QW-2). Po QW-1, protože sdílí infrastrukturu (boolean
+   flag na Activity, BE filter, FE badge + sticky section).
+4. **F-3 — `validate_payload(activity_type, payload)` přes
+   `jsonschema`** — Foundation item, otevírá inbound webhook router
+   (F-6). Vyžaduje jen jedno místo v `create_activity` a runtime
+   validaci proti `tool.get_schema()`.
+5. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+
+#### ✅ Co bylo v čtrnácté iteraci (2026-04-30) uděláno
 
 Z plánu pro tuto session vybrán **QW-3** jako první quick-win k
 implementaci — pure-FE, žádná datová migrace, nejnižší riziko, nejlepší
