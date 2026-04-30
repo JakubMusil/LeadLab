@@ -1221,7 +1221,7 @@
       "whatsapp_in": "An inbound WhatsApp message.",
       "link": "A saved external link with title and description (contract, doc, website…).",
       "file_upload": "Attach a file to the opportunity — provide the URL of the uploaded file.",
-      "voice_memo": "Voice memo — paste the recording URL and an optional transcript.",
+      "voice_memo": "Voice memo — record audio with your microphone; you can pause, save, or discard. Filename and duration are stored for you.",
       "system_note": "System-style note, e.g. \"Imported from CSV\" or \"Merged from duplicate lead\".",
       "task": "Creates a task linked to this opportunity. Optionally add a description or mention.",
       "message": "Log or send an email, SMS, WhatsApp or chat message — pick the channel below."
@@ -2009,5 +2009,24 @@
     "channelChat": "Chat",
     "directionOut": "Outbound",
     "directionIn": "Inbound"
+  },
+  "voiceMemo": {
+    "statusIdle": "Ready to record",
+    "statusRecording": "Recording…",
+    "statusPaused": "Paused",
+    "statusReview": "Ready — save or discard",
+    "statusUploading": "Uploading…",
+    "start": "Start recording",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "save": "Save",
+    "saving": "Saving…",
+    "discard": "Discard",
+    "permissionDenied": "Microphone access was denied. Please allow it in your browser settings and try again.",
+    "unsupported": "Audio recording is not supported in this browser.",
+    "uploadFailed": "Could not save the recording.",
+    "showTranscript": "Show transcript",
+    "hideTranscript": "Hide transcript"
   }
 }

@@ -1454,6 +1454,61 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Voice Memo upload API tests
+# ---------------------------------------------------------------------------
+
+
+class VoiceMemoUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
+    """Smoke tests for ``POST /api/v1/crm/voice-memos/upload``."""
+
+    def _upload_voice(
+        self,
+        *,
+        lead_id=None,
+        content=b"FAKEAUDIO",
+        content_type="audio/webm",
+        filename="memo.webm",
+    ):
+        f = SimpleUploadedFile(filename, content, content_type=content_type)
+        url = "/api/v1/crm/voice-memos/upload"
+        if lead_id:
+            url = f"{url}?lead_id={lead_id}"
+        return self.client.post(url, data={"file": f}, **self.firm_headers())
+
+    def test_upload_voice_memo_returns_metadata_without_creating_activity(self):
+        before = Activity.objects.filter(type=ActivityType.VOICE_MEMO).count()
+        resp = self._upload_voice(lead_id=str(self.lead.id))
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        self.assertIn("document_id", body)
+        self.assertTrue(body["url"])
+        self.assertEqual(body["size_bytes"], len(b"FAKEAUDIO"))
+        self.assertEqual(body["content_type"], "audio/webm")
+        # The endpoint stores a Document but deliberately does NOT create
+        # an Activity — the SPA follows up with a regular activities POST.
+        after = Activity.objects.filter(type=ActivityType.VOICE_MEMO).count()
+        self.assertEqual(before, after)
+        self.assertTrue(
+            Document.objects.filter(id=body["document_id"], firm=self.firm).exists()
+        )
+
+    def test_upload_voice_memo_works_without_entity(self):
+        resp = self._upload_voice()
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        doc = Document.objects.get(id=body["document_id"])
+        self.assertIsNone(doc.lead_id)
+
+    def test_upload_voice_memo_rejects_non_audio(self):
+        resp = self._upload_voice(content_type="text/plain", filename="memo.txt")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upload_voice_memo_invalid_lead_returns_404(self):
+        resp = self._upload_voice(lead_id=str(uuid_module.uuid4()))
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
 # Task Documents API tests (Phase 6 — /tasks/{id}/documents endpoints)
 # ---------------------------------------------------------------------------
 

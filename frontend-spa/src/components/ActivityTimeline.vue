@@ -560,6 +560,23 @@ function toggleTaskWatcher(userId: string) {
 const COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '👏', '🎉', '🔥', '✅']
 const emojiPickerActivityId = ref<string | null>(null)
 
+// Voice-memo: per-activity toggle for the (optional) transcript collapse.
+const expandedTranscriptIds = ref<Set<string>>(new Set())
+
+function toggleTranscript(activityId: string) {
+  const next = new Set(expandedTranscriptIds.value)
+  if (next.has(activityId)) next.delete(activityId)
+  else next.add(activityId)
+  expandedTranscriptIds.value = next
+}
+
+function formatVoiceMemoDuration(value: unknown): string {
+  const total = Math.max(0, Math.floor(Number(value) || 0))
+  const minutes = Math.floor(total / 60).toString().padStart(2, '0')
+  const seconds = (total % 60).toString().padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
 function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
 }
@@ -859,6 +876,48 @@ defineExpose({ load: () => loadActivities(1) })
           >
             {{ t('leadDetail.viewProposal') }} →
           </RouterLink>
+
+          <!-- Voice memo player + (optional) transcript collapse -->
+          <div
+            v-if="act.type === 'voice_memo' && (act.metadata as Record<string, string>)?.url"
+            class="mt-2 space-y-1.5"
+            data-testid="voice-memo-player"
+            :data-activity-id="act.id"
+          >
+            <div class="flex items-center gap-2">
+              <audio
+                :src="(act.metadata as Record<string, string>).url"
+                controls
+                preload="metadata"
+                class="flex-1 min-w-0 max-w-md"
+              />
+              <span
+                v-if="(act.metadata as Record<string, unknown>).duration_seconds !== undefined && (act.metadata as Record<string, unknown>).duration_seconds !== null && (act.metadata as Record<string, unknown>).duration_seconds !== ''"
+                class="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0"
+                data-testid="voice-memo-duration"
+              >{{ formatVoiceMemoDuration((act.metadata as Record<string, unknown>).duration_seconds) }}</span>
+            </div>
+            <div
+              v-if="(act.metadata as Record<string, string>)?.transcript"
+              data-testid="voice-memo-transcript-wrapper"
+            >
+              <button
+                type="button"
+                class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 inline-flex items-center gap-1"
+                data-testid="voice-memo-transcript-toggle"
+                @click="toggleTranscript(act.id)"
+              >
+                {{ expandedTranscriptIds.has(act.id)
+                  ? t('voiceMemo.hideTranscript')
+                  : t('voiceMemo.showTranscript') }}
+              </button>
+              <p
+                v-if="expandedTranscriptIds.has(act.id)"
+                class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
+                data-testid="voice-memo-transcript"
+              >{{ (act.metadata as Record<string, string>).transcript }}</p>
+            </div>
+          </div>
 
           <!-- Reactions row (visible only for comment activities) -->
           <div

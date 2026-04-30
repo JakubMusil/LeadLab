@@ -1221,7 +1221,7 @@
       "whatsapp_in": "Eingehende WhatsApp-Nachricht.",
       "link": "Gespeicherter externer Link mit Titel und Beschreibung (Vertrag, Dokument, Website…).",
       "file_upload": "Datei an die Opportunity anhängen — geben Sie die URL der hochgeladenen Datei ein.",
-      "voice_memo": "Sprachnotiz — fügen Sie die Aufnahme-URL und optional ein Transkript ein.",
+      "voice_memo": "Sprachnotiz — Audio über das Mikrofon aufnehmen, Aufnahme pausieren, speichern oder verwerfen. Dateiname und Dauer werden für Sie verwaltet.",
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
       "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
       "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
@@ -2009,5 +2009,24 @@
     "channelChat": "Chat",
     "directionOut": "Ausgehend",
     "directionIn": "Eingehend"
+  },
+  "voiceMemo": {
+    "statusIdle": "Bereit zum Aufnehmen",
+    "statusRecording": "Aufnahme läuft…",
+    "statusPaused": "Pausiert",
+    "statusReview": "Fertig — speichern oder verwerfen",
+    "statusUploading": "Wird hochgeladen…",
+    "start": "Aufnahme starten",
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "stop": "Stopp",
+    "save": "Speichern",
+    "saving": "Speichern…",
+    "discard": "Verwerfen",
+    "permissionDenied": "Der Mikrofonzugriff wurde verweigert. Bitte erlauben Sie ihn in den Browser-Einstellungen und versuchen Sie es erneut.",
+    "unsupported": "Audioaufnahme wird in diesem Browser nicht unterstützt.",
+    "uploadFailed": "Aufnahme konnte nicht gespeichert werden.",
+    "showTranscript": "Transkript anzeigen",
+    "hideTranscript": "Transkript ausblenden"
   }
 }

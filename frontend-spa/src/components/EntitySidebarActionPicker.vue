@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useAuthStore } from '@/stores/auth'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
+import VoiceMemoRecorder from '@/components/VoiceMemoRecorder.vue'
 import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -721,6 +722,60 @@ async function sidebarAddActivity() {
   }
 }
 
+// ─── Voice memo recorder integration ───────────────────────────────────────
+//
+// The voice-memo composer is a special-case form (a `MediaRecorder`-based
+// recorder UI lives in `VoiceMemoRecorder.vue`); on save the recorder
+// uploads the audio blob to the dedicated audio endpoint and emits the
+// final metadata, which we wrap into a regular `voice_memo` Activity POST.
+// The endpoint accepts a single optional entity-id query parameter so the
+// resulting Document is linked to the active entity.
+
+const voiceMemoUploadUrl = computed(() => {
+  const params = new URLSearchParams({
+    [`${props.entityType}_id`]: props.entityId,
+  })
+  return `/api/v1/crm/voice-memos/upload?${params.toString()}`
+})
+
+interface VoiceMemoSubmitPayload {
+  url: string
+  duration_seconds: number
+  size_bytes: number
+  filename: string
+  content_type: string
+}
+
+async function sidebarSubmitVoiceMemo(payload: VoiceMemoSubmitPayload) {
+  sidebarActivitySubmitting.value = true
+  const metadata: Record<string, unknown> = {
+    url: payload.url,
+    filename: payload.filename,
+    content_type: payload.content_type,
+    size_bytes: payload.size_bytes,
+    duration_seconds: payload.duration_seconds,
+  }
+  const res = await api.post('/api/v1/crm/activities', {
+    [entityIdField.value]: props.entityId,
+    type: 'voice_memo',
+    content_text: '',
+    metadata,
+  })
+  sidebarActivitySubmitting.value = false
+  if (res.ok) {
+    sidebarActionType.value = ''
+    sidebarExtraFields.value = {}
+    emit('activity-added')
+    toast.success(t('leadDetail.activityAdded'))
+  } else {
+    toast.error(t('leadDetail.activityFailed'))
+  }
+}
+
+function sidebarCancelVoiceMemo() {
+  closeSidebarAction()
+}
+
 async function sidebarAddTask() {
   if (!sidebarTaskTitle.value.trim()) return
   sidebarTaskSubmitting.value = true
@@ -892,6 +947,19 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         {{ sidebarActionHelp }}
       </p>
 
+      <!-- Voice memo recorder: dedicated diktafonové UI replaces the
+           generic schema-driven form (filename / size / duration /
+           transcript are all populated server-side or by the recorder). -->
+      <VoiceMemoRecorder
+        v-if="sidebarActionType === 'voice_memo'"
+        :upload-url="voiceMemoUploadUrl"
+        @submit="sidebarSubmitVoiceMemo"
+        @cancel="sidebarCancelVoiceMemo"
+      />
+
+      <!-- Generic schema-driven form (everything except voice_memo, which
+           uses its own recorder UI above). -->
+      <template v-if="sidebarActionType !== 'voice_memo'">
       <!-- Unified message composer: Channel + Direction picker.
            Only rendered for the synthetic 'message' pseudo-tool. -->
       <div
@@ -1068,6 +1136,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
           @click="sidebarAddActivity"
         >{{ sidebarActivitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
       </div>
+      </template>
     </div>
 
     <!-- Step 2b: task quick-create form -->

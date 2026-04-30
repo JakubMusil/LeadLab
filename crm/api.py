@@ -4391,6 +4391,170 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
 
 
 # ===========================================================================
+# VOICE MEMO UPLOAD  (audio blob → Document, no automatic Activity)
+# ===========================================================================
+#
+# The voice-memo composer in the SPA records audio with the browser
+# ``MediaRecorder`` API and uploads the resulting blob to this endpoint.
+# We persist the binary as a ``Document`` (so it gets a stable URL backed
+# by ``MEDIA_ROOT/documents/``) but, unlike ``upload_attachment`` above, we
+# do **not** create an ``Activity`` here — the SPA follows up with a
+# regular ``POST /api/v1/crm/activities`` of ``type=voice_memo`` whose
+# ``metadata`` references the returned URL plus the captured
+# ``duration_seconds``.  This keeps technical metadata (filename, MIME,
+# size) entirely server-side and out of the user-facing form.
+#
+# The endpoint is entity-agnostic: it accepts an optional ``lead_id`` /
+# ``customer_id`` / ``realization_id`` / ``management_id`` / ``proposal_id``
+# query parameter so the resulting ``Document`` is correctly linked, but
+# linking is best-effort and the upload succeeds even without it.
+# ===========================================================================
+
+# Audio payload limit — 25 MB is enough for a ~30 minute Opus recording
+# at 64 kbps and well within the 20 MB attachment ceiling we keep for
+# generic file uploads.
+_MAX_VOICE_MEMO_BYTES = 25 * 1024 * 1024
+
+
+class VoiceMemoUploadOut(Schema):
+    document_id: str
+    url: str
+    size_bytes: int
+    content_type: str
+    filename: str
+
+
+def _resolve_voice_memo_entity(
+    request,
+    *,
+    lead_id: Optional[str],
+    customer_id: Optional[str],
+    realization_id: Optional[str],
+    management_id: Optional[str],
+    proposal_id: Optional[str],
+) -> tuple[Optional[Lead], Optional[Customer], Optional[Realization], Optional[Management], Optional[Proposal], Optional[str]]:
+    """Look up the optional parent entity for a voice-memo upload.
+
+    Returns a ``(lead, customer, realization, management, proposal, error)``
+    tuple.  When ``error`` is non-``None`` the caller should bail out with
+    a 404 response.  Tenants are enforced via ``firm=request.firm``.
+    """
+    lead = customer = realization = management = proposal = None
+    if lead_id:
+        try:
+            lead = Lead.objects.get(id=lead_id, firm=request.firm)
+        except Lead.DoesNotExist:
+            return None, None, None, None, None, "Lead not found."
+    if customer_id:
+        try:
+            customer = Customer.objects.get(id=customer_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return None, None, None, None, None, "Customer not found."
+    if realization_id:
+        try:
+            realization = Realization.objects.get(id=realization_id, firm=request.firm)
+        except Realization.DoesNotExist:
+            return None, None, None, None, None, "Realization not found."
+    if management_id:
+        try:
+            management = Management.objects.get(id=management_id, firm=request.firm)
+        except Management.DoesNotExist:
+            return None, None, None, None, None, "Management not found."
+    if proposal_id:
+        try:
+            proposal = Proposal.objects.get(id=proposal_id, firm=request.firm)
+        except Proposal.DoesNotExist:
+            return None, None, None, None, None, "Proposal not found."
+    return lead, customer, realization, management, proposal, None
+
+
+@router.post(
+    "/voice-memos/upload",
+    auth=django_auth,
+    response={201: VoiceMemoUploadOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upload_voice_memo(
+    request,
+    file: UploadedFile = File(...),
+    lead_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    realization_id: Optional[str] = None,
+    management_id: Optional[str] = None,
+    proposal_id: Optional[str] = None,
+):
+    """Persist a recorded voice-memo audio blob and return its URL.
+
+    The SPA calls this endpoint with the audio blob produced by the
+    browser ``MediaRecorder``; the returned ``url`` / ``document_id`` are
+    then included as metadata in a follow-up ``voice_memo`` Activity
+    submission.  This endpoint deliberately does **not** create an
+    Activity itself, so the audio can be discarded if the user cancels
+    the composer after recording.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    if file.size > _MAX_VOICE_MEMO_BYTES:
+        return 400, {
+            "detail": (
+                f"Voice memo exceeds the maximum allowed size of "
+                f"{_MAX_VOICE_MEMO_BYTES // (1024 * 1024)} MB."
+            )
+        }
+
+    content_type = (file.content_type or "").lower()
+    if content_type and not content_type.startswith("audio/"):
+        return 400, {"detail": "Only audio uploads are accepted on this endpoint."}
+
+    lead, customer, realization, management, proposal, error = _resolve_voice_memo_entity(
+        request,
+        lead_id=lead_id,
+        customer_id=customer_id,
+        realization_id=realization_id,
+        management_id=management_id,
+        proposal_id=proposal_id,
+    )
+    if error:
+        return 404, {"detail": error}
+
+    # Auto-generated filename — the user never sees it; we only need
+    # something stable for storage / download.  Preserve the extension
+    # from the upload so the browser can play the file back without
+    # MIME sniffing surprises.
+    original_name = (file.name or "voice-memo").strip() or "voice-memo"
+    timestamp = tz.now().strftime("%Y%m%d-%H%M%S")
+    extension = ""
+    if "." in original_name:
+        extension = "." + original_name.rsplit(".", 1)[-1].lower()
+    storage_name = f"voice-memo-{timestamp}{extension}"
+
+    doc = Document(
+        firm=request.firm,
+        lead=lead,
+        customer=customer,
+        realization=realization,
+        management=management,
+        proposal=proposal,
+        uploaded_by=request.user,
+        name=storage_name,
+        content_type=content_type or "audio/webm",
+        size_bytes=file.size,
+    )
+    doc.file.save(storage_name, file, save=True)
+
+    return 201, {
+        "document_id": str(doc.id),
+        "url": doc.file.url if doc.file.name else "",
+        "size_bytes": doc.size_bytes,
+        "content_type": doc.content_type,
+        "filename": doc.name,
+    }
+
+
+# ===========================================================================
 # REPORTS (v0.6)
 # ===========================================================================
 

@@ -1221,7 +1221,7 @@
       "whatsapp_in": "Wiadomość WhatsApp przychodząca.",
       "link": "Zapisany zewnętrzny link z tytułem i opisem (umowa, dokument, strona…).",
       "file_upload": "Załącznik do okazji — podaj URL przesłanego pliku.",
-      "voice_memo": "Notatka głosowa — wklej URL nagrania i opcjonalnie transkrypcję.",
+      "voice_memo": "Notatka głosowa — nagraj dźwięk za pomocą mikrofonu; możesz wstrzymać, zapisać lub odrzucić. Nazwę pliku i długość zapisujemy automatycznie.",
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
       "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
       "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
@@ -2009,5 +2009,24 @@
     "channelChat": "Czat",
     "directionOut": "Wychodząca",
     "directionIn": "Przychodząca"
+  },
+  "voiceMemo": {
+    "statusIdle": "Gotowe do nagrywania",
+    "statusRecording": "Nagrywanie…",
+    "statusPaused": "Wstrzymane",
+    "statusReview": "Gotowe — zapisz lub odrzuć",
+    "statusUploading": "Wysyłanie…",
+    "start": "Rozpocznij nagrywanie",
+    "pause": "Pauza",
+    "resume": "Wznów",
+    "stop": "Zatrzymaj",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "discard": "Odrzuć",
+    "permissionDenied": "Odmówiono dostępu do mikrofonu. Zezwól na niego w ustawieniach przeglądarki i spróbuj ponownie.",
+    "unsupported": "Ta przeglądarka nie obsługuje nagrywania dźwięku.",
+    "uploadFailed": "Nie udało się zapisać nagrania.",
+    "showTranscript": "Pokaż transkrypcję",
+    "hideTranscript": "Ukryj transkrypcję"
   }
 }
