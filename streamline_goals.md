@@ -497,15 +497,92 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 desáté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 jedenácté iteraci)*
 
 Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
 čistý** (0 fails, 90/90 pass), repo je bez committnutých `.js` tsc-emit
-artefaktů, a `ActivityTimeline.vue` + `EntitySidebarActionPicker.vue`
-mají kompletní pokrytí `data-testid` atributy připravené pro psaní E2E
-testů. Streamline backend i frontend jsou kompletně sjednocené.
+artefaktů, `ActivityTimeline.vue` + `EntitySidebarActionPicker.vue` mají
+kompletní `data-testid` pokrytí, a **`e2e/tests/lead-timeline.spec.ts`
+existuje** se 4 testy nad `lead` entitou. Streamline backend i frontend
+jsou kompletně sjednocené.
 
-#### ✅ Co bylo v této session (desátá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (jedenáctá iterace, 2026-04-30) uděláno
+
+Napsání prvního E2E specu pro timeline UX — přímý follow-up na 10.
+iteraci, kde byly přidány `data-testid` atributy. Tím se zavřel
+plánovaný „Krok 1 — E2E testy timeline UX" pro `lead` entitu.
+
+1. **Nový soubor `e2e/tests/lead-timeline.spec.ts`** (130 řádků, 4 testy
+   v `test.describe.serial`, sdílí jeden `leadId` napříč testy):
+   - **`beforeAll`** — vytvoří lead přes `POST /api/v1/crm/leads` (rychlejší
+     než New Lead modal, méně závislé na UI textech). Title obsahuje
+     `Date.now()` pro uniqueness mezi běhy.
+   - **Test 1 — Add comment via sidebar:** klikne na
+     `[data-testid="entity-sidebar-action-option"][data-action="comment"]`,
+     vyplní Tiptap RichTextEditor (`[contenteditable="true"]`), klikne
+     `entity-sidebar-action-submit`, ověří že nová `activity-item`
+     s `data-activity-type="comment"` obsahuje text.
+   - **Test 2 — Filter feed:** klikne filter chip
+     `[data-testid="activity-timeline-filter"][data-filter-value="comment"]`,
+     prochází všechny viditelné `activity-item` a asserts, že každý má
+     `data-activity-type="comment"`. Reset na all-filter na konci.
+   - **Test 3 — Reaction toggle:** otevře `activity-add-reaction` na
+     komentu, vybere `[data-emoji="👍"]` z `activity-emoji-picker`,
+     ověří že `activity-reaction-chip[data-emoji="👍"]` obsahuje text
+     `1`. Druhý klik na chip → `toHaveCount(0)` (chip zmizí).
+   - **Test 4 — Persist přes reload:** `await page.reload()` →
+     komentář je stále viditelný (timeline se znovu načítá z API).
+2. **Validace:** `npx playwright test --list tests/lead-timeline.spec.ts`
+   listuje všechny 4 testy v obou Playwright projektech (`chromium`,
+   `mobile-chrome`) — TypeScript syntaxe + Playwright API parsing OK.
+   Vlastní běh testu vyžaduje běžící backend + frontend dev server,
+   což je v sandboxu mimo scope (CI Playwright workflow toto pokryje).
+3. **Konzistence s `lead-lifecycle.spec.ts`:** stejný pattern
+   `test.describe.serial` + sdílený seed lead, jen výrazně robustnější
+   selektory díky `data-testid` (locator-only, ne `getByRole` /
+   `getByText` které jsou citlivé na i18n).
+
+**Pozn. ke `Test 3` (reaction):** `activity-add-reaction` button je
+viditelný permanentně (ne na hover) v current designu, takže není třeba
+hover triggera. Pokud by se design změnil na hover-only, stačí
+předtím doplnit `await commentItem.hover()`.
+
+#### Co dál
+
+1. **Replikovat E2E pro task** — `e2e/tests/task-timeline.spec.ts` —
+   stejné 4 testy nad `/app/tasks/{id}`. Task má specifikum: jeho
+   `LeadDetailView`-style stránka také používá `EntitySidebarActionPicker`
+   nebo `ActivityTimeline` composer? Zkontrolovat
+   `frontend-spa/src/views/TaskDetailView.vue` (z 9. iterace
+   `streamline_goals.md` známo, že legacy timeline byla nahrazena
+   `<ActivityTimeline ref entity-type="task" :entity-id="taskId" />` —
+   ale nevím, jestli je composer skrytý a používá se sidebar picker,
+   nebo composer in-component). Podle toho upravit selektory v
+   prvním testu (in-component composer používá
+   `activity-action-option` + `activity-composer-submit`).
+2. **Replikovat E2E pro customer / realization / management / proposal** —
+   stejný šablona, poslední 4 entity. `proposal` má specifický
+   builder UI (z 8. iterace) — composer je v Builder dolní sekci,
+   ale stále jako `EntitySidebarActionPicker`. Tedy selektory jsou
+   přenositelné 1:1.
+3. **Sdílený helper** *(nice-to-have)* — pokud se ukáže, že kód
+   `seedLead/seedTask/seedCustomer/...` se opakuje, extrahovat do
+   `e2e/tests/_fixtures.ts` (`createLead(request, title)` →
+   `Promise<string>`). Zatím ne potřeba (jen 1 entita pokrytá).
+4. **CI workflow** — po dopsání všech 6 specs se může v `.github/workflows/`
+   přidat E2E job, který spustí backend + frontend přes
+   `docker-compose` a pak `playwright test`. Ale to je až po doplnění
+   všech specs (zbytečné spouštět neúplnou sadu).
+5. **`Task.realization` FK + Tasks tab v Realization detail** —
+   placeholder tab v `RealizationDetailView` čeká na backend FK.
+   Vyžaduje migraci + `list_tasks` filtr + i18n + UI. Mimo scope
+   timeline E2E, ale na seznam si to zaslouží zůstat.
+6. **Sekce 5.3 / 5.4 / 5.5** — analytics / automatizace / integrace
+   nad timeline. Produktové rozhodnutí, žádný blokátor.
+
+### Předchozí sessions *(2026-04-30 první až desátá iterace)*
+
+#### ✅ Co bylo v desáté iteraci (2026-04-30) uděláno
 
 Doplnění `data-testid` atributů do timeline komponent — prerekvizita
 plánovaného „Krok 1 — E2E testy timeline UX" z minulé session.
@@ -582,7 +659,7 @@ i18n textové popisky (křehké vůči přepnutí jazyka) nebo class names
 
 ### Předchozí sessions *(2026-04-30 první až devátá iterace)*
 
-#### ✅ Co bylo v této session (devátá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v deváté iteraci (2026-04-30) uděláno
 
 Úklid omylem committnutých `vue-tsc` / `tsc` emit artefaktů z
 `frontend-spa/src/` — celkem **75 souborů smazáno**:
