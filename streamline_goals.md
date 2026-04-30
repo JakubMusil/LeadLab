@@ -497,70 +497,69 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 osmé iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 deváté iteraci)*
 
-Vue-tsc baseline je **kompletně čistý** a vitest baseline je **rovněž
-kompletně čistý** (0 fails, 90/90 pass — dokončeno v této session).
-Streamline backend i frontend jsou kompletně sjednocené.
+Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
+čistý** (0 fails, 90/90 pass), a repo už nenese omylem committnuté
+`.js` tsc-emit artefakty (vyřešeno v této session). Streamline backend
+i frontend jsou kompletně sjednocené.
 
-#### ✅ Co bylo v této session (osmá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (devátá iterace, 2026-04-30) uděláno
 
-Vitest baseline cleanup — z **66 fail / 102 pass** na **0 fail / 90 pass**:
+Úklid omylem committnutých `vue-tsc` / `tsc` emit artefaktů z
+`frontend-spa/src/` — celkem **75 souborů smazáno**:
 
-1. **Globální i18n setup pro `@vue/test-utils`** — root cause 36 z 66 fails
-   bylo `SyntaxError: Need to install with app.use function` z `useI18n()`
-   uvnitř komponentového `setup()`. Vytvořen `src/test/setup.ts` který:
-   - importuje `en/cs/de/pl` JSON locales (pre-compiled `@intlify/unplugin-vue-i18n/vite`
-     pluginem zděděným z `vite.config.ts` — žádná runtime kompilace v testech).
-   - vytvoří `i18n` přes `createI18n({ legacy: false, locale: 'en', ... })`
-     s `missingWarn: false` / `fallbackWarn: false` aby chybějící klíče v
-     non-en lokálech nezahlcovaly test log.
-   - registruje plugin globálně přes `config.global.plugins = [..., i18n]`,
-     takže každý `mount(...)` ho automaticky dostane bez per-spec mocků.
-   - Zaregistrován jako `setupFiles: ['./src/test/setup.ts']` ve `vitest.config.ts`.
-2. **Filtr `.spec.js` duplicit** — repo obsahoval `.spec.js` artefakty
-   vedle `.spec.ts` (tsc compiled output, který se omylem checknul).
-   Bez explicit `include` vitest spouštěl oba a každý fail se započítal
-   2×. Přidáno `include: ['src/**/*.{test,spec}.{ts,tsx}']`. Snižuje
-   30 → 15 unique fails po i18n fixu.
-3. **Stale text assertions** — UI bylo přejmenováno (Leads → Opportunities,
-   Customers → Directory, Team Members → Team), ale testy testovaly staré
-   stringy:
-   - `TeamView.spec.ts`: `'Team Members'` → `'Team'`,
-     `'Invite Member'` → `'Invite member'` (lowercase v `team.inviteMember`),
-     `'Send Invite'` zachováno (klíč `team.sendInvite` je capital).
-   - `CustomersView.spec.ts`: `'Customers'` → `'Directory'`,
-     `'+ New Customer'` → `'New Contact'`, `'No customers yet'` → `'No contacts yet'`.
-   - `LeadsView.spec.ts`: `'Leads'` → `'Opportunities'`,
-     `'+ New Lead'` → `'+ New Opportunity'`, modal-open test podobně.
-4. **`SettingsView.spec.ts` mock fixes**:
-   - Stará mock `useI18n: () => ({ locale: { value: 'en' } })` neobsahovala
-     `t`, takže komponenta padala s `$setup.t is not a function`. Přepsáno
-     na `vi.importActual(...)` se spreadem + per-test stub jen `setLocale`
-     (kvůli `window.location.reload()` v real implementaci).
-   - Mock `useFirmStore` chyběl `fetchFirms` (komponenta to volá v
-     `onMounted`); přidán `fetchFirms: vi.fn().mockResolvedValue(undefined)`
-     + `setActiveFirm: vi.fn()`.
+1. **Identifikace** — `git ls-files 'frontend-spa/src/**/*.js'` vrátilo
+   75 souborů (74 pod `src/`, plus `postcss.config.js` v rootu, který je
+   legitimní config a zůstává). Každý `.js` měl `.ts` nebo `.vue`
+   sourcing sibling (např. `Button.vue` + `Button.vue.js`,
+   `main.ts` + `main.js`, `auth.spec.ts` + `auth.spec.js`).
+   Hlavičky souborů (`/// <reference types=".../@vue/language-core/..."`)
+   potvrdily, že jde o emit z `vue-tsc`, ne ručně psaný kód.
+2. **Kontrola, že žádný runtime import je nepoužívá** — `index.html`
+   ukazuje na `/src/main.ts`, vite alias chain je celá TS, vitest
+   `include` filtr (přidaný v 8. iteraci) artefakty ignoroval.
+   Žádná regrese hrozit nemůže.
+3. **`git rm`** všech 75 souborů jedním batch příkazem.
+4. **`frontend-spa/.gitignore`** rozšířen o patterny pro
+   tsc/vue-tsc emit pod `src/`:
+   - `src/**/*.vue.js`, `src/**/*.spec.js`, `src/**/*.stories.js`
+   - `src/main.js`, `src/App.vue.js`, `src/design-tokens.js`
+   - `src/{components,views,stores,plugins,composables,api,router,utils,types,locales,test}/**/*.js`
+   - To zajistí, že případný omylem spuštěný `tsc --emit` nebo
+     `vue-tsc` bez `--noEmit` už víc nenacommituje stejné soubory.
+5. **Validace:** `npm run type-check` prochází se 0 errory; `vitest run`
+   12/12 file pass, 90/90 test pass — beze změny proti baseline.
+   Code review není potřeba (čistě delete + .gitignore).
 
-**Validace:** `npm run type-check` 0 errorů, vitest 12/12 file pass,
-90/90 test pass. Code Review + CodeQL bez nálezů.
+**Výsledek:** repo je o 75 mrtvých souborů menší, vue-tsc baseline
+zůstává čistý, vitest baseline zůstává čistý.
 
 #### Co dál
 
 1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
    každou entitní timeline (lead, task, realization, management, customer,
-   proposal) ověřit happy-path s Cypress/Playwright. Zatím pokryté pouze
-   backend unit testy v `crm/tests.py` + frontend unit smokes. **Doporučený
-   další krok** — má jasný scope, přímo navazuje na uzavřenou Fázi 5 a
-   zvedne konfidenci nasazení. Začít doporučuju s `lead` (nejjednodušší
-   entita, kompletní pokrytí `EntitySidebarActionPicker` + reactions +
-   filter), pak postupně `task` → `customer` → `realization` →
-   `management` → `proposal`.
-2. **Vyčistit committed `.js` build artefakty** *(nice-to-have)* — repo
-   obsahuje `App.vue.js`, `main.js`, `design-tokens.js`, všechny
-   `*.spec.js` siblings atd., což jsou tsc-output artefakty omylem
-   committnuté. Vitest je teď ignoruje (`include` filtrem), ale
-   smazat fyzicky + přidat do `.gitignore` by repo zúžilo.
+   proposal) ověřit happy-path s Playwrightem (`e2e/tests/`). Zatím
+   pokryté pouze backend unit testy v `crm/tests.py` + frontend unit
+   smokes. **Doporučený další krok** — má jasný scope, přímo navazuje na
+   uzavřenou Fázi 5 a zvedne konfidenci nasazení. Začít doporučuju s
+   `lead` (nejjednodušší entita, kompletní pokrytí
+   `EntitySidebarActionPicker` + reactions + filter), pak postupně
+   `task` → `customer` → `realization` → `management` → `proposal`.
+   Existující `e2e/tests/lead-lifecycle.spec.ts` už pokrývá comment +
+   task happy-path; nový `lead-timeline.spec.ts` by měl ověřit:
+   - načítání feedu po reload (persist přes ActivityWS)
+   - `EntitySidebarActionPicker` — open → vybrat tool → submit → ověřit
+     novou aktivitu v timeline
+   - filter chip — kliknout `email` → vidět jen email-typed aktivity
+   - reaction toggle — kliknout 👍 → chip s count `1` se objeví,
+     druhý klik → zmizí
+   Před psaním E2E pravděpodobně přidat `data-testid` atributy do
+   `ActivityTimeline.vue` a `EntitySidebarActionPicker.vue` (dnes žádné
+   nemají, role/text selektory jsou křehké vůči i18n a class-only
+   elementům).
+2. ~~**Vyčistit committed `.js` build artefakty**~~ — ✅ hotovo v této
+   (deváté) session, viz výše.
 3. **`Task.realization` FK + Tasks tab v Realization detail** —
    placeholder tab v `RealizationDetailView` čeká na backend FK.
    Vyžaduje migraci + `list_tasks` filtr + i18n + UI.

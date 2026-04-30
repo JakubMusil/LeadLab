@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# tsc / vue-tsc emit artifacts under src/ (sources are .ts / .vue; emit is unwanted)
+src/**/*.js
