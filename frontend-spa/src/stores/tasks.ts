@@ -29,11 +29,21 @@ export interface TaskOut {
   description_added_at: string | null
   // Classification
   priority: 'none' | 'low' | 'medium' | 'high' | 'critical'
-  status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled'
+  status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled' | 'expired'
+  kind: 'generic' | 'call' | 'meeting' | 'email_followup' | string
   tags: string[]
   // Dates
   due_date: string | null
   due_date_end: string | null
+  // Calendar fields (PR4)
+  location: string
+  attendees: string[]
+  auto_close_on_expiry: boolean
+  /** Set by the auto-expire job once a calendar task passes its
+   *  ``due_date_end`` and the assignee/watchers have been asked to log the
+   *  outcome (held / rescheduled / no_show). Null until prompted, cleared
+   *  again on reschedule. The SPA drives the outcome prompt UI off this. */
+  outcome_prompted_at: string | null
   // Flags
   is_completed: boolean
   completed_at: string | null
@@ -123,6 +133,22 @@ export interface FollowUpTaskIn {
   watcher_ids?: string[]
   due_date?: string | null
   lead_id?: string | null
+}
+
+/**
+ * Payload for ``POST /api/v1/crm/tasks/{id}/outcome``.
+ * See ``recordTaskOutcome`` for action semantics.
+ */
+export type TaskOutcomeAction = 'held' | 'rescheduled' | 'no_show'
+
+export interface TaskOutcomeIn {
+  action: TaskOutcomeAction
+  /** Free-form note shown on the resulting Activity timeline entry. */
+  note?: string
+  /** Required when ``action === 'rescheduled'``; ISO-8601 datetime. */
+  new_due_date?: string | null
+  /** Optional end of the new slot; must be ≥ ``new_due_date``. */
+  new_due_date_end?: string | null
 }
 
 export interface TaskFetchOpts {
@@ -411,6 +437,34 @@ export const useTasksStore = defineStore('tasks', () => {
       return { ok: true }
     }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to complete task.') }
+  }
+
+  /**
+   * Record the user's response to the post-expiry outcome prompt for a
+   * calendar-bound task (kind=call/meeting). One of:
+   *
+   * - ``held``        — the call/meeting took place; task → DONE, logs a
+   *                     ``call``/``meeting`` Activity (kind-driven).
+   * - ``rescheduled`` — needs ``new_due_date`` (and optionally
+   *                     ``new_due_date_end``); task is reopened (TODO),
+   *                     ``outcome_prompted_at`` cleared.
+   * - ``no_show``     — terminal ``EXPIRED`` with ``outcome=no_show``
+   *                     metadata.
+   *
+   * On success the local task list is patched in place so any open
+   * components (calendar, detail, list) reflect the new state immediately.
+   */
+  async function recordTaskOutcome(
+    id: string,
+    payload: TaskOutcomeIn,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/outcome`, payload)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to record outcome.') }
   }
 
   async function toggleFavourite(id: string): Promise<{ ok: boolean; is_favourite?: boolean; error?: string }> {
@@ -763,6 +817,7 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTask,
     completeTask,
     completeTaskWithFollowUp,
+    recordTaskOutcome,
     toggleFavourite,
     // Phase 3
     fetchSubtasks,

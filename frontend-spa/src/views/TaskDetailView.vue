@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import TaskOutcomeModal from '@/components/TaskOutcomeModal.vue'
 import DOMPurify from 'dompurify'
 
 function sanitizeHtml(html: string): string {
@@ -475,6 +476,35 @@ async function completeTask() {
   } else {
     toast.error(result.error ?? t('tasks.completeFailed'))
   }
+}
+
+// ---------------------------------------------------------------------------
+// PR4: outcome prompt for calendar-bound tasks (kind=call/meeting)
+// ---------------------------------------------------------------------------
+const showOutcomeModal = ref(false)
+
+/**
+ * True iff the auto-expire job has already prompted us for the outcome of
+ * this calendar task and the user hasn't resolved it yet (held / rescheduled
+ * / no_show). Drives both the inline banner and the "Log outcome" CTA.
+ */
+const needsOutcome = computed(() => {
+  const tt = task.value
+  if (!tt) return false
+  if (tt.is_completed || tt.is_archived) return false
+  if (tt.status === 'expired' || tt.status === 'done' || tt.status === 'cancelled') return false
+  if (!tt.outcome_prompted_at) return false
+  return tt.kind === 'call' || tt.kind === 'meeting'
+})
+
+function openOutcomeModal() {
+  if (!task.value) return
+  showOutcomeModal.value = true
+}
+
+async function onOutcomeResolved() {
+  // Refresh from API so timeline + counters reflect the new state.
+  await loadTask()
 }
 
 // ---------------------------------------------------------------------------
@@ -1150,6 +1180,29 @@ onUnmounted(() => {
           </span>
           <span v-if="task.is_pinned" class="text-yellow-500">📌 {{ t('tasks.pinned') }}</span>
           <span v-if="task.is_archived" class="text-gray-400">🗄 {{ t('tasks.archived') }}</span>
+        </div>
+
+        <!-- PR4: outcome prompt banner for calendar tasks -->
+        <div
+          v-if="needsOutcome"
+          class="rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 flex items-start gap-3"
+          role="status"
+        >
+          <span class="text-2xl flex-shrink-0" aria-hidden="true">⏰</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              {{ t('taskOutcome.headerPicker') }}
+            </p>
+            <p class="text-xs text-amber-700/90 dark:text-amber-400/80 mt-0.5">
+              {{ t('taskOutcome.prompt') }}
+            </p>
+          </div>
+          <button
+            class="flex-shrink-0 inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
+            @click="openOutcomeModal"
+          >
+            {{ t('calendar.logOutcome') }}
+          </button>
         </div>
 
         <div class="flex items-start gap-4">
@@ -2573,5 +2626,13 @@ onUnmounted(() => {
         </div>
       </div>
     </Teleport>
+
+    <!-- PR4: outcome prompt modal for calendar tasks -->
+    <TaskOutcomeModal
+      v-if="showOutcomeModal && task"
+      :task="task"
+      @close="showOutcomeModal = false"
+      @resolved="onOutcomeResolved"
+    />
   </div>
 </template>

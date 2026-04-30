@@ -1066,6 +1066,7 @@ class TaskOut(Schema):
     location: str
     attendees: List[str]
     auto_close_on_expiry: bool
+    outcome_prompted_at: Optional[datetime]
     # Flags
     is_completed: bool
     completed_at: Optional[datetime]
@@ -1375,6 +1376,7 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "location": t.location,
         "attendees": t.attendees if isinstance(t.attendees, list) else [],
         "auto_close_on_expiry": t.auto_close_on_expiry,
+        "outcome_prompted_at": t.outcome_prompted_at,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
         "is_pinned": t.is_pinned,
