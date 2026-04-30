@@ -136,28 +136,49 @@ def _make_post_save(tracked_fields, entity_kwarg):
         acting_user = get_current_user()
 
         from crm.models import Activity, ActivityType
-        activities_to_create = []
+        # Lazy import to avoid circular dependency with crm.api at module load.
+        from crm.api import _activity_out
+        from crm.events import broadcast_event
+
+        created_activities: list[Activity] = []
         for field, label in tracked_fields:
             old_val = snapshot.get(field)
             new_val = getattr(instance, field, None)
             if _normalize(old_val) == _normalize(new_val):
                 continue
-            activities_to_create.append(
-                Activity(
-                    **{entity_kwarg: instance},
-                    user=acting_user,
-                    type=ActivityType.ENTITY_CHANGE,
-                    content_text="",
-                    metadata={
-                        "field": field,
-                        "field_label": label,
-                        "old_value": _normalize(old_val),
-                        "new_value": _normalize(new_val),
-                    },
-                )
+            # Use ``create()`` instead of ``bulk_create()`` so that:
+            #   - the row is INSERTed immediately with its PK populated
+            #     (so we can hand a fully-formed payload to the WebSocket);
+            #   - any ``post_save`` listeners on Activity itself can fire;
+            #   - we can broadcast each new activity individually below.
+            #
+            # The number of tracked fields per entity is small (≤ 6 today),
+            # so the per-row INSERT cost vs. ``bulk_create`` is negligible.
+            activity = Activity.objects.create(
+                **{entity_kwarg: instance},
+                user=acting_user,
+                type=ActivityType.ENTITY_CHANGE,
+                content_text="",
+                metadata={
+                    "field": field,
+                    "field_label": label,
+                    "old_value": _normalize(old_val),
+                    "new_value": _normalize(new_val),
+                },
             )
-        if activities_to_create:
-            Activity.objects.bulk_create(activities_to_create)
+            created_activities.append(activity)
+
+        # Broadcast each new entity_change activity over WebSocket so any
+        # open ActivityTimeline rerenders the row instantly — without this,
+        # the user had to hit refresh to see field-change log entries.
+        # ``broadcast_event`` itself uses ``transaction.on_commit`` for the
+        # channel-layer send, so this is safe inside a request transaction.
+        for activity in created_activities:
+            broadcast_event(
+                firm=firm,
+                event="activity.created",
+                payload=_activity_out(activity),
+            )
     return _handler
 
 

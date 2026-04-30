@@ -1145,7 +1145,40 @@
     "entityChangeNew": "Jetzt:",
     "descriptionPlaceholder": "Beschreibung hinzufügen…",
     "selectOption": "Auswählen…",
-    "addReaction": "Reaktion hinzufügen"
+    "addReaction": "Reaktion hinzufügen",
+    "tagInputPlaceholder": "Wert eingeben und Enter drücken…",
+    "typeSmsOut": "SMS (gesendet)",
+    "typeSmsIn": "SMS (empfangen)",
+    "typeWhatsAppOut": "WhatsApp (gesendet)",
+    "typeWhatsAppIn": "WhatsApp (empfangen)",
+    "typeMeetingScheduled": "Geplantes Meeting",
+    "typeLink": "Link",
+    "typeVoiceMemo": "Sprachnotiz",
+    "typeSystemNote": "Systemnotiz",
+    "toolCategory": {
+      "communication": "Kommunikation",
+      "planning": "Planung",
+      "files": "Dateien & Links",
+      "system": "System",
+      "other": "Sonstiges"
+    },
+    "toolHelp": {
+      "comment": "Freier Kommentar zur Opportunity. Verwenden Sie {'@'}, um Kolleg:innen zu erwähnen.",
+      "call": "Bereits geführter Anruf — Dauer, Notizen, optional Aufnahme.",
+      "meeting": "Bereits stattgefundenes Meeting mit Notizen und Dauer.",
+      "meeting_scheduled": "Geplantes zukünftiges Meeting — Beginn, Ort, Teilnehmende.",
+      "email_out": "Ausgehende E-Mail — wird in der Timeline gespeichert und optional über Integration versendet.",
+      "email_in": "Manuell erfasste eingehende E-Mail (wenn nicht über Integration eingegangen).",
+      "sms_out": "Ausgehende SMS.",
+      "sms_in": "Eingehende SMS.",
+      "whatsapp_out": "Ausgehende WhatsApp-Nachricht.",
+      "whatsapp_in": "Eingehende WhatsApp-Nachricht.",
+      "link": "Gespeicherter externer Link mit Titel und Beschreibung (Vertrag, Dokument, Website…).",
+      "file_upload": "Datei an die Opportunity anhängen — geben Sie die URL der hochgeladenen Datei ein.",
+      "voice_memo": "Sprachnotiz — fügen Sie die Aufnahme-URL und optional ein Transkript ein.",
+      "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
+      "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung."
+    }
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

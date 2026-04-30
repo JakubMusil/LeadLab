@@ -265,13 +265,32 @@ class Lead(TenantModel):
     #: Activity types shown in the Lead detail sidebar toolbar, in display order.
     #: The frontend uses this list (via the streamline API) to build the toolbar
     #: from pre-registered tool elements — no hardcoding on the frontend side.
+    #: All manually-loggable Streamline tools that are logically valid for a
+    #: Lead (Příležitost) — covers communication channels, scheduling,
+    #: attachments and free-form system notes.  Auto-logged event types
+    #: (status_change, entity_change, task_*, proposal_*, ai_*, …) are
+    #: intentionally excluded as they are produced by other UI actions or
+    #: background jobs, not by the user choosing them from the toolbar.
     TOOLBAR_TOOLS: list[str] = [
+        # Communication
         "comment",
         "call",
         "meeting",
         "email_out",
         "email_in",
+        "sms_out",
+        "sms_in",
+        "whatsapp_out",
+        "whatsapp_in",
+        # Planning
+        "meeting_scheduled",
         "task",
+        # Files & references
+        "file_upload",
+        "voice_memo",
+        "link",
+        # System
+        "system_note",
     ]
 
 

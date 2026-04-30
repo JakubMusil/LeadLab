@@ -1145,7 +1145,40 @@
     "entityChangeNew": "Now:",
     "descriptionPlaceholder": "Add opportunity description…",
     "selectOption": "Select…",
-    "addReaction": "Add reaction"
+    "addReaction": "Add reaction",
+    "tagInputPlaceholder": "Type a value and press Enter…",
+    "typeSmsOut": "SMS (sent)",
+    "typeSmsIn": "SMS (received)",
+    "typeWhatsAppOut": "WhatsApp (sent)",
+    "typeWhatsAppIn": "WhatsApp (received)",
+    "typeMeetingScheduled": "Meeting scheduled",
+    "typeLink": "Link",
+    "typeVoiceMemo": "Voice memo",
+    "typeSystemNote": "System note",
+    "toolCategory": {
+      "communication": "Communication",
+      "planning": "Planning",
+      "files": "Files & links",
+      "system": "System",
+      "other": "Other"
+    },
+    "toolHelp": {
+      "comment": "Free-form comment on the opportunity. Use {'@'} to mention a teammate.",
+      "call": "Log a call that already happened — duration, notes, optional recording.",
+      "meeting": "Log a meeting that already happened, with notes and duration.",
+      "meeting_scheduled": "A scheduled future meeting — start, location, attendees.",
+      "email_out": "An outbound email — stored on the timeline and optionally sent via integration.",
+      "email_in": "Manually log an inbound email (e.g. when not coming through an integration).",
+      "sms_out": "An outbound SMS message.",
+      "sms_in": "An inbound SMS message.",
+      "whatsapp_out": "An outbound WhatsApp message.",
+      "whatsapp_in": "An inbound WhatsApp message.",
+      "link": "A saved external link with title and description (contract, doc, website…).",
+      "file_upload": "Attach a file to the opportunity — provide the URL of the uploaded file.",
+      "voice_memo": "Voice memo — paste the recording URL and an optional transcript.",
+      "system_note": "System-style note, e.g. \"Imported from CSV\" or \"Merged from duplicate lead\".",
+      "task": "Creates a task linked to this opportunity. Optionally add a description or mention."
+    }
   },
   "sequences": {
     "title": "Email Sequences",

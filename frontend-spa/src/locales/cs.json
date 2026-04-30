@@ -1146,7 +1146,40 @@
     "entityChangeNew": "Nyní:",
     "descriptionPlaceholder": "Přidejte popis příležitosti…",
     "selectOption": "Vyberte…",
-    "addReaction": "Přidat reakci"
+    "addReaction": "Přidat reakci",
+    "tagInputPlaceholder": "Přidejte hodnotu a stiskněte Enter…",
+    "typeSmsOut": "SMS (odeslaná)",
+    "typeSmsIn": "SMS (přijatá)",
+    "typeWhatsAppOut": "WhatsApp (odeslaná)",
+    "typeWhatsAppIn": "WhatsApp (přijatá)",
+    "typeMeetingScheduled": "Naplánovaná schůzka",
+    "typeLink": "Odkaz",
+    "typeVoiceMemo": "Hlasová poznámka",
+    "typeSystemNote": "Systémová poznámka",
+    "toolCategory": {
+      "communication": "Komunikace",
+      "planning": "Plánování",
+      "files": "Soubory a odkazy",
+      "system": "Systém",
+      "other": "Ostatní"
+    },
+    "toolHelp": {
+      "comment": "Volný komentář k příležitosti, můžete použít {'@'} pro zmínění kolegy.",
+      "call": "Záznam již proběhlého hovoru — délka, poznámky, případně nahrávka.",
+      "meeting": "Záznam již proběhlé schůzky s poznámkami a délkou trvání.",
+      "meeting_scheduled": "Naplánovaná budoucí schůzka — termín, místo, účastníci.",
+      "email_out": "Odeslaný e-mail — uloží se do timeline a volitelně se rozešle integrací.",
+      "email_in": "Ručně zaznamenaný přijatý e-mail (pokud nepřišel přes integraci).",
+      "sms_out": "Odeslaná SMS zpráva.",
+      "sms_in": "Přijatá SMS zpráva.",
+      "whatsapp_out": "Odeslaná WhatsApp zpráva.",
+      "whatsapp_in": "Přijatá WhatsApp zpráva.",
+      "link": "Uložený externí odkaz s popisem (smlouva, dokument, web…).",
+      "file_upload": "Soubor přiložený k příležitosti — zadejte URL nahraného souboru.",
+      "voice_memo": "Hlasová zpráva — vložte URL nahrávky a volitelně přepis.",
+      "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
+      "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku."
+    }
   },
   "sequences": {
     "title": "E-mailové sekvence",

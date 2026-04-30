@@ -1145,7 +1145,40 @@
     "entityChangeNew": "Teraz:",
     "descriptionPlaceholder": "Dodaj opis…",
     "selectOption": "Wybierz…",
-    "addReaction": "Dodaj reakcję"
+    "addReaction": "Dodaj reakcję",
+    "tagInputPlaceholder": "Wpisz wartość i naciśnij Enter…",
+    "typeSmsOut": "SMS (wysłana)",
+    "typeSmsIn": "SMS (otrzymana)",
+    "typeWhatsAppOut": "WhatsApp (wysłana)",
+    "typeWhatsAppIn": "WhatsApp (otrzymana)",
+    "typeMeetingScheduled": "Zaplanowane spotkanie",
+    "typeLink": "Link",
+    "typeVoiceMemo": "Notatka głosowa",
+    "typeSystemNote": "Notatka systemowa",
+    "toolCategory": {
+      "communication": "Komunikacja",
+      "planning": "Planowanie",
+      "files": "Pliki i linki",
+      "system": "System",
+      "other": "Inne"
+    },
+    "toolHelp": {
+      "comment": "Swobodny komentarz do okazji. Użyj {'@'}, aby wspomnieć członka zespołu.",
+      "call": "Zarejestruj wykonane już połączenie — czas trwania, notatki, opcjonalnie nagranie.",
+      "meeting": "Zarejestruj odbyte już spotkanie z notatkami i czasem trwania.",
+      "meeting_scheduled": "Zaplanowane przyszłe spotkanie — start, lokalizacja, uczestnicy.",
+      "email_out": "Wychodzący e-mail — zapisany w osi czasu i opcjonalnie wysłany przez integrację.",
+      "email_in": "Ręcznie zapisany przychodzący e-mail (gdy nie przyszedł przez integrację).",
+      "sms_out": "Wiadomość SMS wychodząca.",
+      "sms_in": "Wiadomość SMS przychodząca.",
+      "whatsapp_out": "Wiadomość WhatsApp wychodząca.",
+      "whatsapp_in": "Wiadomość WhatsApp przychodząca.",
+      "link": "Zapisany zewnętrzny link z tytułem i opisem (umowa, dokument, strona…).",
+      "file_upload": "Załącznik do okazji — podaj URL przesłanego pliku.",
+      "voice_memo": "Notatka głosowa — wklej URL nagrania i opcjonalnie transkrypcję.",
+      "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
+      "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę."
+    }
   },
   "sequences": {
     "title": "Sekwencje e-mail",
