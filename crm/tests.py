@@ -2322,3 +2322,164 @@ class TaskCompleteActivityLogAcrossEntitiesAPITest(CRMAPIFixtureMixin, TestCase)
             ).count(),
             1,
         )
+
+
+# ---------------------------------------------------------------------------
+# Calendar / Task unification — scheduled-activity tools + auto-expire job
+# ---------------------------------------------------------------------------
+
+class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
+    """
+    ``MeetingScheduledTool`` and ``CallScheduledTool`` must create a child
+    ``Task`` (kind=meeting/call, auto_close_on_expiry=True) AND link the
+    Activity to it via ``Activity.task``.  The Activity itself remains an
+    immutable timeline log.
+    """
+
+    def _invoke(self, activity_type, metadata):
+        from crm.streamline.registry import get_tool
+        tool = get_tool(activity_type)
+        self.assertIsNotNone(tool)
+        activity = Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type=activity_type,
+            metadata=metadata,
+        )
+        tool.process_action(
+            activity,
+            self.lead,
+            {"metadata": metadata},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+        )
+        activity.refresh_from_db()
+        return activity, Task.objects.get(id=activity.task_id)
+
+    def test_call_scheduled_creates_task_kind_call(self):
+        from crm.models import TaskStatus
+        start = timezone.now() + dt.timedelta(hours=2)
+        activity, task = self._invoke(
+            "call_scheduled",
+            {"start_at": start.isoformat(), "phone_number": "+420 123"},
+        )
+        self.assertEqual(task.kind, "call")
+        self.assertEqual(task.status, TaskStatus.TODO)
+        self.assertTrue(task.auto_close_on_expiry)
+        self.assertEqual(task.firm_id, self.firm.id)
+        self.assertEqual(task.lead_id, self.lead.id)
+        self.assertIsNotNone(task.due_date)
+        # Activity is linked back to the task.
+        self.assertEqual(activity.task_id, task.id)
+
+    def test_meeting_scheduled_creates_task_kind_meeting(self):
+        start = timezone.now() + dt.timedelta(days=1)
+        end = start + dt.timedelta(hours=1)
+        activity, task = self._invoke(
+            "meeting_scheduled",
+            {
+                "start_at": start.isoformat(),
+                "end_at": end.isoformat(),
+                "location": "HQ",
+                "attendees": ["alice@example.com", "bob@example.com"],
+            },
+        )
+        self.assertEqual(task.kind, "meeting")
+        self.assertTrue(task.auto_close_on_expiry)
+        self.assertEqual(task.location, "HQ")
+        self.assertEqual(task.attendees, ["alice@example.com", "bob@example.com"])
+        self.assertIsNotNone(task.due_date_end)
+        self.assertEqual(activity.task_id, task.id)
+
+    def test_call_scheduled_tool_registered(self):
+        from crm.streamline.registry import get_tool
+        self.assertIsNotNone(get_tool("call_scheduled"))
+
+
+class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
+    """``auto_expire_scheduled_tasks`` transitions overdue scheduled tasks."""
+
+    def _make_task(self, **overrides):
+        defaults = dict(
+            firm=self.firm,
+            lead=self.lead,
+            title="Scheduled call",
+            kind="call",
+            auto_close_on_expiry=True,
+            due_date=timezone.now() - dt.timedelta(hours=5),
+            assigned_to=self.owner,
+        )
+        defaults.update(overrides)
+        return Task.objects.create(**defaults)
+
+    def test_expires_overdue_call_past_grace(self):
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make_task()  # kind=call, grace=2h, due 5h ago → expired
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.EXPIRED)
+        # An Activity of type TASK_EXPIRED is logged on the same lead.
+        self.assertTrue(
+            Activity.objects.filter(
+                lead=self.lead, task=task, type=ActivityType.TASK_EXPIRED
+            ).exists()
+        )
+
+    def test_does_not_expire_within_grace(self):
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        # Meeting kind has 24h grace; due 1h ago → still within grace.
+        task = self._make_task(
+            kind="meeting",
+            due_date=timezone.now() - dt.timedelta(hours=1),
+        )
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.TODO)
+        self.assertFalse(
+            Activity.objects.filter(task=task, type=ActivityType.TASK_EXPIRED).exists()
+        )
+
+    def test_skips_already_completed_task(self):
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make_task(is_completed=True, status=TaskStatus.DONE)
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.DONE)
+
+    def test_skips_tasks_without_auto_close_flag(self):
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make_task(auto_close_on_expiry=False)
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.TODO)
+
+    def test_uses_due_date_end_when_set(self):
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        # Meeting due 30h ago, end 25h ago → past 24h grace from end → expire
+        task = self._make_task(
+            kind="meeting",
+            due_date=timezone.now() - dt.timedelta(hours=30),
+            due_date_end=timezone.now() - dt.timedelta(hours=25),
+        )
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.EXPIRED)
+
+    def test_returns_count_of_expired_tasks(self):
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        self._make_task()
+        self._make_task(title="Second")
+        # Within grace — should not be counted.
+        self._make_task(due_date=timezone.now() - dt.timedelta(minutes=10))
+        count = auto_expire_scheduled_tasks()
+        self.assertEqual(count, 2)

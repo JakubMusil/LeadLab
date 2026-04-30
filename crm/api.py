@@ -1051,10 +1051,15 @@ class TaskOut(Schema):
     # Classification
     priority: str
     status: str
+    kind: str
     tags: List[str]
     # Dates
     due_date: Optional[datetime]
     due_date_end: Optional[datetime]
+    # Calendar fields
+    location: str
+    attendees: List[str]
+    auto_close_on_expiry: bool
     # Flags
     is_completed: bool
     completed_at: Optional[datetime]
@@ -1357,9 +1362,13 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "description_added_at": t.description_added_at,
         "priority": t.priority,
         "status": t.status,
+        "kind": t.kind,
         "tags": t.tags if isinstance(t.tags, list) else [],
         "due_date": t.due_date,
         "due_date_end": t.due_date_end,
+        "location": t.location,
+        "attendees": t.attendees if isinstance(t.attendees, list) else [],
+        "auto_close_on_expiry": t.auto_close_on_expiry,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
         "is_pinned": t.is_pinned,

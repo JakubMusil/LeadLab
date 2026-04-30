@@ -90,6 +90,8 @@ class ActivityType(models.TextChoices):
     WHATSAPP_IN = "whatsapp_in", "WhatsApp (Inbound)"
     CHAT = "chat", "Chat Message"
     MEETING_SCHEDULED = "meeting_scheduled", "Meeting Scheduled"
+    CALL_SCHEDULED = "call_scheduled", "Call Scheduled"
+    TASK_EXPIRED = "task_expired", "Task Expired"
     LINK = "link", "Link"
     PAYMENT_RECEIVED = "payment_received", "Payment Received"
     INVOICE_SENT = "invoice_sent", "Invoice Sent"
@@ -543,6 +545,30 @@ class TaskStatus(models.TextChoices):
     BLOCKED = "blocked", "Blocked"
     DONE = "done", "Done"
     CANCELLED = "cancelled", "Cancelled"
+    EXPIRED = "expired", "Expired"
+
+
+class TaskKind(models.TextChoices):
+    """
+    Classification of a Task by its real-world purpose.
+
+    GENERIC tasks are the default "to-do" items.  Calendar-bound kinds
+    (CALL, MEETING, EMAIL_FOLLOWUP, …) act as the parent object for any
+    activity that requires a calendar slot AND a follow-up action by a
+    user.  These typically have ``auto_close_on_expiry=True`` so the
+    background job can mark them ``EXPIRED`` once their ``due_date`` has
+    passed without a manual outcome being logged.
+    """
+
+    GENERIC = "generic", "Generic"
+    CALL = "call", "Call"
+    MEETING = "meeting", "Meeting"
+    EMAIL_FOLLOWUP = "email_followup", "Email follow-up"
+
+
+#: Task kinds that represent a calendar-bound commitment and should
+#: auto-close on expiry by default.
+CALENDAR_TASK_KINDS = frozenset({TaskKind.CALL, TaskKind.MEETING})
 
 
 # ---------------------------------------------------------------------------
@@ -658,6 +684,17 @@ class Task(TenantModel):
     )
 
     # Classification
+    kind = models.CharField(
+        max_length=20,
+        choices=TaskKind.choices,
+        default=TaskKind.GENERIC,
+        db_index=True,
+        help_text=(
+            "What kind of task this is.  Calendar-bound kinds (call, meeting) "
+            "act as parent objects for scheduled activities and may auto-close "
+            "on expiry."
+        ),
+    )
     priority = models.CharField(
         max_length=20,
         choices=TaskPriority.choices,
@@ -696,6 +733,34 @@ class Task(TenantModel):
     completed_at = models.DateTimeField(null=True, blank=True)
     is_pinned = models.BooleanField(default=False, db_index=True)
     is_archived = models.BooleanField(default=False, db_index=True)
+
+    # ---------------------------------------------------------------------------
+    # Calendar / scheduled-activity fields
+    # ---------------------------------------------------------------------------
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Physical address or virtual meeting URL for calendar-bound tasks.",
+    )
+    attendees = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "List of attendees for calendar-bound tasks.  Items may be either "
+            "internal user IDs or external e-mail addresses / handles."
+        ),
+    )
+    auto_close_on_expiry = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            "When True, the task is automatically transitioned to status "
+            "``EXPIRED`` by the background job once its ``due_date`` has "
+            "elapsed past the configured grace period and no manual outcome "
+            "has been logged."
+        ),
+    )
 
     # ---------------------------------------------------------------------------
     # Phase 7 — Recurrence
@@ -768,6 +833,8 @@ class Task(TenantModel):
             models.Index(fields=["firm", "priority"]),
             models.Index(fields=["firm", "is_archived"]),
             models.Index(fields=["firm", "approval_status"]),
+            models.Index(fields=["firm", "kind"]),
+            models.Index(fields=["firm", "auto_close_on_expiry", "due_date"]),
         ]
 
     def __str__(self):

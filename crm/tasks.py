@@ -1443,3 +1443,182 @@ def spawn_recurring_tasks():
 
     logger.info("spawn_recurring_tasks: done — spawned %d tasks", spawned)
     return spawned
+
+
+# ---------------------------------------------------------------------------
+# Auto-expire scheduled tasks (Calendar / Task unification)
+# ---------------------------------------------------------------------------
+#
+# Calendar-bound tasks (kind=call/meeting) carry ``auto_close_on_expiry=True``.
+# Once their ``due_date`` (or ``due_date_end`` if set) has passed by more than
+# the configured per-kind grace period and the task has not been manually
+# resolved (DONE/CANCELLED), this periodic job transitions them to the
+# terminal ``EXPIRED`` status and emits a ``task_expired`` Activity into the
+# linked entity's timeline so the history stays auditable.
+#
+# Notifications go to assignee + watchers prompting them to either log the
+# real-world outcome (Activity ``call``/``meeting``) or reschedule the task.
+
+# Default grace periods per task kind — how long after ``due_date_end``
+# (or ``due_date`` if no end is set) we wait before auto-closing.
+_DEFAULT_GRACE_MINUTES_BY_KIND = {
+    "call": 120,        # 2 hours
+    "meeting": 24 * 60, # 24 hours
+    "email_followup": 24 * 60,
+    "generic": 0,
+}
+
+
+@shared_task(bind=True, max_retries=0)
+def auto_expire_scheduled_tasks(self):
+    """
+    Periodic Celery job — auto-close calendar-bound tasks past their grace.
+
+    A task is auto-expired when **all** of the following hold:
+
+    * ``auto_close_on_expiry`` is True
+    * ``is_completed`` is False and ``is_archived`` is False
+    * ``status`` is not already a terminal value (done/cancelled/expired)
+    * ``due_date`` is set and the configured grace period (per ``kind``) has
+      elapsed since the task's effective end (``due_date_end`` or ``due_date``)
+
+    On expiry the task transitions to ``status='expired'`` and emits a
+    ``task_expired`` Activity onto the linked CRM entity's timeline.
+    """
+    import datetime as _dt
+    from django.db import transaction
+    from django.utils import timezone as _tz
+    from crm.events import broadcast_event
+    from crm.models import (
+        Activity,
+        ActivityType,
+        Notification,
+        Task,
+        TaskStatus,
+    )
+
+    now = _tz.now()
+    terminal_statuses = {
+        TaskStatus.DONE,
+        TaskStatus.CANCELLED,
+        TaskStatus.EXPIRED,
+    }
+
+    candidates = (
+        Task.objects
+        .filter(
+            auto_close_on_expiry=True,
+            is_completed=False,
+            is_archived=False,
+            due_date__isnull=False,
+            due_date__lte=now,
+        )
+        .exclude(status__in=list(terminal_statuses))
+        .select_related("firm", "assigned_to", "lead", "customer", "realization", "management", "proposal")
+    )
+
+    expired_count = 0
+    for task in candidates:
+        effective_end = task.due_date_end or task.due_date
+        grace_minutes = _DEFAULT_GRACE_MINUTES_BY_KIND.get(
+            task.kind, _DEFAULT_GRACE_MINUTES_BY_KIND["generic"]
+        )
+        threshold = effective_end + _dt.timedelta(minutes=grace_minutes)
+        if now < threshold:
+            continue
+
+        try:
+            with transaction.atomic():
+                # Re-check inside the transaction to avoid races.
+                task.refresh_from_db()
+                if (
+                    task.is_completed
+                    or task.is_archived
+                    or task.status in terminal_statuses
+                    or not task.auto_close_on_expiry
+                ):
+                    continue
+
+                task.status = TaskStatus.EXPIRED
+                task.save(update_fields=["status"])
+
+                activity = Activity.objects.create(
+                    lead=task.lead,
+                    realization=task.realization,
+                    management=task.management,
+                    customer=task.customer,
+                    proposal=task.proposal,
+                    task=task,
+                    user=None,
+                    type=ActivityType.TASK_EXPIRED,
+                    content_text="",
+                    metadata={
+                        "task_id": str(task.id),
+                        "task_title": task.title,
+                        "task_kind": task.kind,
+                        "due_date": task.due_date.isoformat() if task.due_date else None,
+                        "expired_at": now.isoformat(),
+                    },
+                )
+
+                # Notify assignee + watchers (best-effort).
+                recipients = set()
+                if task.assigned_to_id:
+                    recipients.add(task.assigned_to_id)
+                try:
+                    recipients.update(task.watchers.values_list("id", flat=True))
+                except Exception:  # pragma: no cover — defensive
+                    logger.debug(
+                        "auto_expire_scheduled_tasks: could not resolve watchers for task %s",
+                        task.id,
+                    )
+
+                notification_payload = {
+                    "task_id": str(task.id),
+                    "task_title": task.title,
+                    "task_kind": task.kind,
+                    "due_date": task.due_date.isoformat() if task.due_date else None,
+                }
+                for user_id in recipients:
+                    try:
+                        Notification.objects.create(
+                            firm=task.firm,
+                            user_id=user_id,
+                            event="task.expired",
+                            payload=notification_payload,
+                        )
+                    except Exception as exc:  # pragma: no cover — defensive
+                        logger.debug(
+                            "auto_expire_scheduled_tasks: notification failed for user=%s task=%s: %s",
+                            user_id, task.id, exc,
+                        )
+        except Exception as exc:
+            logger.exception(
+                "auto_expire_scheduled_tasks: failed to expire task=%s: %s",
+                task.id, exc,
+            )
+            continue
+
+        expired_count += 1
+
+        # Best-effort WebSocket broadcast (outside the atomic block so a
+        # broker outage cannot roll back the DB transition).
+        try:
+            broadcast_event(
+                firm=task.firm,
+                event="task.expired",
+                payload={
+                    "task_id": str(task.id),
+                    "activity_id": str(activity.id),
+                    "task_title": task.title,
+                    "task_kind": task.kind,
+                },
+            )
+        except Exception:  # pragma: no cover — defensive
+            logger.debug(
+                "auto_expire_scheduled_tasks: broadcast failed for task=%s",
+                task.id,
+            )
+
+    logger.info("auto_expire_scheduled_tasks: expired %d task(s)", expired_count)
+    return expired_count

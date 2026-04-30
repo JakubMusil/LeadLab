@@ -1093,17 +1093,115 @@ class ChatTool(_SimpleLogTool):
     ]
 
 
-# --- Meeting Scheduled (calendar invite) -----------------------------------
+# --- Scheduled (calendar invite) tools -------------------------------------
+#
+# Scheduled-activity tools (Meeting Scheduled, Call Scheduled, …) act as
+# parent objects: when invoked they (a) log the immutable Activity into
+# the timeline as before, and (b) create a ``Task`` of the appropriate
+# ``kind`` so the engagement appears in the user's calendar / agenda and
+# can be auto-closed on expiry.  The Activity is linked to the Task via
+# the existing ``Activity.task`` FK so the timeline keeps full history.
 
-class MeetingScheduledTool(_SimpleLogTool):
+
+class _ScheduledActivityTool(_SimpleLogTool):
+    """
+    Base class for "X Scheduled" tools that own a child ``Task``.
+
+    Subclasses set ``task_kind`` to one of ``TaskKind`` values and may
+    override ``task_title_prefix``.  ``process_action`` parses
+    ``start_at`` / ``end_at`` from the activity metadata and creates a
+    Task linked to the same CRM entity as the activity.  The activity is
+    then re-linked to the new Task via ``Activity.task``.
+    """
+
+    task_kind: str = ""
+    task_title_prefix: str = ""
+
+    def _parse_dt(self, value):
+        if not value:
+            return None
+        if hasattr(value, "tzinfo"):
+            return value
+        from datetime import datetime
+        from django.utils import timezone as _tz
+        try:
+            # Accept trailing 'Z' as UTC for ISO-8601 strings.
+            iso = value.replace("Z", "+00:00") if isinstance(value, str) else value
+            dt = datetime.fromisoformat(iso) if isinstance(iso, str) else iso
+        except (TypeError, ValueError):
+            return None
+        if dt is not None and _tz.is_naive(dt):
+            dt = _tz.make_aware(dt, _tz.get_current_timezone())
+        return dt
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        from crm.models import Task
+
+        firm = context.get("firm") or getattr(entity, "firm", None)
+        if firm is None:
+            return  # No tenant context — skip task creation defensively.
+
+        metadata = payload.get("metadata") or {}
+        start_at = self._parse_dt(metadata.get("start_at"))
+        end_at = self._parse_dt(metadata.get("end_at"))
+
+        title_bits = [self.task_title_prefix or str(self.label)]
+        entity_title = (context.get("entity_title") or "").strip()
+        if entity_title:
+            title_bits.append(entity_title)
+        title = " — ".join(b for b in title_bits if b)[:255]
+
+        attendees_raw = metadata.get("attendees") or []
+        attendees = [str(a) for a in attendees_raw if a is not None]
+
+        task = Task.objects.create(
+            firm=firm,
+            kind=self.task_kind,
+            title=title,
+            description=activity.content_text or "",
+            status="todo",
+            priority="medium",
+            due_date=start_at,
+            due_date_end=end_at,
+            location=str(metadata.get("location") or "")[:255],
+            attendees=attendees,
+            auto_close_on_expiry=True,
+            assigned_to=context.get("user"),
+            created_by=context.get("user"),
+            lead=activity.lead,
+            realization=activity.realization,
+            management=activity.management,
+            customer=activity.customer,
+            proposal=activity.proposal,
+            metadata={
+                "source_activity_id": str(activity.id),
+                "source_activity_type": activity.type,
+                "ics_url": metadata.get("ics_url") or "",
+                "provider_event_id": metadata.get("provider_event_id") or "",
+            },
+        )
+        # Link the activity back to the freshly-created task.  We do not
+        # overwrite an existing link (the activity may already belong to
+        # a different task surface).
+        if activity.task_id is None:
+            activity.task = task
+            activity.save(update_fields=["task"])
+
+
+class MeetingScheduledTool(_ScheduledActivityTool):
     """
     Records a *future* calendar invite, distinct from ``meeting`` which
-    records a meeting that already happened.
+    records a meeting that already happened.  Creates a Task of kind
+    ``meeting`` so the engagement is visible in the calendar / agenda.
     """
 
     activity_type = "meeting_scheduled"
     label = _("Meeting Scheduled")
     icon = "CalendarDaysIcon"
+    task_kind = "meeting"
+    task_title_prefix = "Meeting"
     schema_properties = {
         "content_text": {"type": "string", "title": "Subject / Notes"},
         "start_at": {"type": "string", "format": "date-time", "title": "Start"},
@@ -1115,6 +1213,33 @@ class MeetingScheduledTool(_SimpleLogTool):
             "title": "Attendees",
         },
         "ics_url": {"type": "string", "format": "uri", "title": "ICS URL"},
+        "provider_event_id": {"type": "string", "title": "Provider Event ID"},
+    }
+    required_fields = ["start_at"]
+
+
+class CallScheduledTool(_ScheduledActivityTool):
+    """
+    Records a *future* scheduled call, distinct from ``call`` which
+    records a call that already happened.  Creates a Task of kind
+    ``call`` so the engagement is visible in the calendar / agenda.
+    """
+
+    activity_type = "call_scheduled"
+    label = _("Call Scheduled")
+    icon = "PhoneIcon"
+    task_kind = "call"
+    task_title_prefix = "Call"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Subject / Notes"},
+        "start_at": {"type": "string", "format": "date-time", "title": "Start"},
+        "end_at": {"type": "string", "format": "date-time", "title": "End"},
+        "phone_number": {"type": "string", "title": "Phone number"},
+        "attendees": {
+            "type": "array",
+            "items": {"type": "string"},
+            "title": "Attendees",
+        },
         "provider_event_id": {"type": "string", "title": "Provider Event ID"},
     }
     required_fields = ["start_at"]
@@ -1506,6 +1631,7 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     WhatsAppInTool(),
     ChatTool(),
     MeetingScheduledTool(),
+    CallScheduledTool(),
     LinkTool(),
     PaymentReceivedTool(),
     InvoiceSentTool(),
