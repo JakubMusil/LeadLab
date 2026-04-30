@@ -1189,6 +1189,7 @@
     "typeWhatsAppIn": "WhatsApp (empfangen)",
     "typeMeetingScheduled": "Geplantes Meeting",
     "typeCallScheduled": "Geplanter Anruf",
+    "typeEventScheduled": "Geplante Veranstaltung",
     "typeTaskExpired": "Aufgabe abgelaufen",
     "scheduledTaskStatus": {
       "todo": "Geplant",
@@ -1213,6 +1214,7 @@
       "call": "Bereits geführter Anruf — Dauer, Notizen, optional Aufnahme.",
       "meeting": "Bereits stattgefundenes Meeting mit Notizen und Dauer.",
       "meeting_scheduled": "Geplantes zukünftiges Meeting — Beginn, Ort, Teilnehmende.",
+      "event_scheduled": "Allgemeines Kalenderereignis (Workshop, Webinar, Jubiläum…) — Datum, Uhrzeit oder ganztägig, Ort, Teilnehmende, Beschreibung.",
       "email_out": "Ausgehende E-Mail — wird in der Timeline gespeichert und optional über Integration versendet.",
       "email_in": "Manuell erfasste eingehende E-Mail (wenn nicht über Integration eingegangen).",
       "sms_out": "Ausgehende SMS.",
@@ -1220,8 +1222,8 @@
       "whatsapp_out": "Ausgehende WhatsApp-Nachricht.",
       "whatsapp_in": "Eingehende WhatsApp-Nachricht.",
       "link": "Gespeicherter externer Link mit Titel und Beschreibung (Vertrag, Dokument, Website…).",
-      "file_upload": "Datei an die Opportunity anhängen — geben Sie die URL der hochgeladenen Datei ein.",
-      "voice_memo": "Sprachnotiz — fügen Sie die Aufnahme-URL und optional ein Transkript ein.",
+      "file_upload": "Datei — direkt von der Festplatte hochladen, per Drag-and-Drop ablegen oder eine URL einfügen. Wir können sie herunterladen und speichern oder nur den Link behalten.",
+      "voice_memo": "Sprachnotiz — Audio über das Mikrofon aufnehmen, Aufnahme pausieren, speichern oder verwerfen. Dateiname und Dauer werden für Sie verwaltet.",
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
       "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
       "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
@@ -2009,5 +2011,51 @@
     "channelChat": "Chat",
     "directionOut": "Ausgehend",
     "directionIn": "Eingehend"
+  },
+  "voiceMemo": {
+    "statusIdle": "Bereit zum Aufnehmen",
+    "statusRecording": "Aufnahme läuft…",
+    "statusPaused": "Pausiert",
+    "statusReview": "Fertig — speichern oder verwerfen",
+    "statusUploading": "Wird hochgeladen…",
+    "start": "Aufnahme starten",
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "stop": "Stopp",
+    "save": "Speichern",
+    "saving": "Speichern…",
+    "discard": "Verwerfen",
+    "permissionDenied": "Der Mikrofonzugriff wurde verweigert. Bitte erlauben Sie ihn in den Browser-Einstellungen und versuchen Sie es erneut.",
+    "unsupported": "Audioaufnahme wird in diesem Browser nicht unterstützt.",
+    "uploadFailed": "Aufnahme konnte nicht gespeichert werden.",
+    "showTranscript": "Transkript anzeigen",
+    "hideTranscript": "Transkript ausblenden"
+  },
+  "fileUpload": {
+    "sourceLabel": "Quelle",
+    "sourceUpload": "Datei(en) hochladen",
+    "sourceUrl": "Aus URL",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Kurze Beschreibung der Datei",
+    "urlLabel": "URL",
+    "storeLocally": "Lokale Kopie herunterladen und speichern",
+    "dropHint": "Dateien hierher ziehen oder zum Auswählen klicken.",
+    "limitHint": "Maximale Größe {limit} pro Datei.",
+    "overLimit": "Datei „{name}\" überschreitet das Limit von {limit}. Upgraden Sie Ihren Plan für größere Dateien.",
+    "uploadFailed": "Datei konnte nicht hochgeladen werden.",
+    "save": "Speichern",
+    "saving": "Speichern…",
+    "cancel": "Abbrechen",
+    "externalLink": "Externer Link",
+    "fetching": "Wird geladen…",
+    "untitled": "Ohne Titel"
+  },
+  "event": {
+    "allDay": "Ganztägig",
+    "attendees": "Teilnehmende",
+    "location": "Ort",
+    "start": "Beginn",
+    "end": "Ende",
+    "description": "Beschreibung"
   }
 }

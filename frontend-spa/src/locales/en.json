@@ -1189,6 +1189,7 @@
     "typeWhatsAppIn": "WhatsApp (received)",
     "typeMeetingScheduled": "Meeting scheduled",
     "typeCallScheduled": "Call scheduled",
+    "typeEventScheduled": "Event scheduled",
     "typeTaskExpired": "Task expired",
     "scheduledTaskStatus": {
       "todo": "Scheduled",
@@ -1213,6 +1214,7 @@
       "call": "Log a call that already happened — duration, notes, optional recording.",
       "meeting": "Log a meeting that already happened, with notes and duration.",
       "meeting_scheduled": "A scheduled future meeting — start, location, attendees.",
+      "event_scheduled": "Generic calendar event (workshop, webinar, anniversary…) — date, time or all-day, location, attendees, description.",
       "email_out": "An outbound email — stored on the timeline and optionally sent via integration.",
       "email_in": "Manually log an inbound email (e.g. when not coming through an integration).",
       "sms_out": "An outbound SMS message.",
@@ -1220,8 +1222,8 @@
       "whatsapp_out": "An outbound WhatsApp message.",
       "whatsapp_in": "An inbound WhatsApp message.",
       "link": "A saved external link with title and description (contract, doc, website…).",
-      "file_upload": "Attach a file to the opportunity — provide the URL of the uploaded file.",
-      "voice_memo": "Voice memo — paste the recording URL and an optional transcript.",
+      "file_upload": "File — upload directly from disk, drag-and-drop, or paste a URL. We can fetch and store it for you, or just keep the link.",
+      "voice_memo": "Voice memo — record audio with your microphone; you can pause, save, or discard. Filename and duration are stored for you.",
       "system_note": "System-style note, e.g. \"Imported from CSV\" or \"Merged from duplicate lead\".",
       "task": "Creates a task linked to this opportunity. Optionally add a description or mention.",
       "message": "Log or send an email, SMS, WhatsApp or chat message — pick the channel below."
@@ -2009,5 +2011,51 @@
     "channelChat": "Chat",
     "directionOut": "Outbound",
     "directionIn": "Inbound"
+  },
+  "voiceMemo": {
+    "statusIdle": "Ready to record",
+    "statusRecording": "Recording…",
+    "statusPaused": "Paused",
+    "statusReview": "Ready — save or discard",
+    "statusUploading": "Uploading…",
+    "start": "Start recording",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "save": "Save",
+    "saving": "Saving…",
+    "discard": "Discard",
+    "permissionDenied": "Microphone access was denied. Please allow it in your browser settings and try again.",
+    "unsupported": "Audio recording is not supported in this browser.",
+    "uploadFailed": "Could not save the recording.",
+    "showTranscript": "Show transcript",
+    "hideTranscript": "Hide transcript"
+  },
+  "fileUpload": {
+    "sourceLabel": "Source",
+    "sourceUpload": "Upload file(s)",
+    "sourceUrl": "From URL",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Short description of the file",
+    "urlLabel": "URL",
+    "storeLocally": "Download and store a local copy",
+    "dropHint": "Drag files here or click to choose.",
+    "limitHint": "Maximum size {limit} per file.",
+    "overLimit": "File \"{name}\" exceeds the {limit} limit. Upgrade your plan for larger files.",
+    "uploadFailed": "Could not upload the file.",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "externalLink": "External link",
+    "fetching": "Fetching…",
+    "untitled": "Untitled"
+  },
+  "event": {
+    "allDay": "All day",
+    "attendees": "Attendees",
+    "location": "Location",
+    "start": "Start",
+    "end": "End",
+    "description": "Description"
   }
 }

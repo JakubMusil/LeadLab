@@ -147,3 +147,89 @@ describe('EntitySidebarActionPicker — unified message composer', () => {
     expect((payload as Record<string, unknown>).type).toBe('sms_out')
   })
 })
+
+describe('EntitySidebarActionPicker — event_scheduled', () => {
+  // Toolbar containing the new ``event_scheduled`` tool with the same
+  // schema the backend produces.
+  const EVENT_TOOLBAR = [
+    ...TOOLBAR,
+    {
+      activity_type: 'event_scheduled',
+      label: 'Event Scheduled',
+      icon: 'CalendarIcon',
+      channel: 'none',
+      direction: 'none',
+      form_schema: {
+        type: 'object',
+        properties: {
+          content_text: { type: 'string', title: 'Subject' },
+          all_day: { type: 'boolean', title: 'All day', default: false },
+          start_at: { type: 'string', format: 'date-time', title: 'Start' },
+          end_at: { type: 'string', format: 'date-time', title: 'End' },
+          location: { type: 'string', title: 'Location' },
+          attendees: { type: 'array', items: { type: 'string' }, title: 'Attendees' },
+          description: { type: 'string', title: 'Description' },
+        },
+        required: ['start_at'],
+      },
+    },
+  ]
+
+  async function mountWithEvent() {
+    vi.mocked(api.get).mockResolvedValue({ ok: true, status: 200, data: EVENT_TOOLBAR })
+    const wrapper = mount(EntitySidebarActionPicker, {
+      props: { entityType: 'lead', entityId: 'lead-1' },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('renders the all-day checkbox and switches start_at/end_at to date inputs when toggled on', async () => {
+    const wrapper = await mountWithEvent()
+    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="event_scheduled"]').trigger('click')
+
+    // Default — start_at is a datetime-local input.
+    const startBefore = wrapper.find('[data-field="start_at"] input')
+    expect(startBefore.exists()).toBe(true)
+    expect(startBefore.attributes('type')).toBe('datetime-local')
+
+    // Toggle the all-day checkbox; the same input must collapse to date.
+    const allDayCheckbox = wrapper.find('[data-field="all_day"] input[type="checkbox"]')
+    expect(allDayCheckbox.exists()).toBe(true)
+    await allDayCheckbox.setValue(true)
+
+    const startAfter = wrapper.find('[data-field="start_at"] input')
+    expect(startAfter.attributes('type')).toBe('date')
+    const endAfter = wrapper.find('[data-field="end_at"] input')
+    expect(endAfter.attributes('type')).toBe('date')
+  })
+
+  it('submits all_day=true and the date-only start when the toggle is on', async () => {
+    const wrapper = await mountWithEvent()
+    vi.mocked(api.post).mockResolvedValue({ ok: true, status: 201, data: {} })
+
+    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="event_scheduled"]').trigger('click')
+    await wrapper.find('[data-field="all_day"] input[type="checkbox"]').setValue(true)
+    await wrapper.find('[data-field="start_at"] input').setValue('2026-05-04')
+    await wrapper.find('[data-field="end_at"] input').setValue('2026-05-04')
+    await wrapper.find('[data-field="location"] input').setValue('Studio')
+
+    await wrapper.find('[data-testid="entity-sidebar-action-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledTimes(1)
+    const [, payload] = vi.mocked(api.post).mock.calls[0]!
+    const body = payload as Record<string, unknown>
+    expect(body.type).toBe('event_scheduled')
+    const meta = body.metadata as Record<string, unknown>
+    expect(meta.all_day).toBe(true)
+    expect(meta.start_at).toBe('2026-05-04')
+    expect(meta.end_at).toBe('2026-05-04')
+    expect(meta.location).toBe('Studio')
+  })
+})

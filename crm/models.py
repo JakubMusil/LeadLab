@@ -91,6 +91,7 @@ class ActivityType(models.TextChoices):
     CHAT = "chat", "Chat Message"
     MEETING_SCHEDULED = "meeting_scheduled", "Meeting Scheduled"
     CALL_SCHEDULED = "call_scheduled", "Call Scheduled"
+    EVENT_SCHEDULED = "event_scheduled", "Event Scheduled"
     TASK_EXPIRED = "task_expired", "Task Expired"
     LINK = "link", "Link"
     PAYMENT_RECEIVED = "payment_received", "Payment Received"
@@ -564,11 +565,12 @@ class TaskKind(models.TextChoices):
     CALL = "call", "Call"
     MEETING = "meeting", "Meeting"
     EMAIL_FOLLOWUP = "email_followup", "Email follow-up"
+    EVENT = "event", "Event"
 
 
 #: Task kinds that represent a calendar-bound commitment and should
 #: auto-close on expiry by default.
-CALENDAR_TASK_KINDS = frozenset({TaskKind.CALL, TaskKind.MEETING})
+CALENDAR_TASK_KINDS = frozenset({TaskKind.CALL, TaskKind.MEETING, TaskKind.EVENT})
 
 
 # ---------------------------------------------------------------------------
@@ -749,6 +751,16 @@ class Task(TenantModel):
         help_text=(
             "List of attendees for calendar-bound tasks.  Items may be either "
             "internal user IDs or external e-mail addresses / handles."
+        ),
+    )
+    is_all_day = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text=(
+            "When True, the task represents an all-day calendar entry and "
+            "the ``due_date`` / ``due_date_end`` time components should be "
+            "ignored by the calendar renderer (rendered as the dedicated "
+            "all-day strip instead of a timed slot)."
         ),
     )
     auto_close_on_expiry = models.BooleanField(

@@ -28,6 +28,8 @@ import {
   CheckIcon,
   ArrowsRightLeftIcon,
   PaperClipIcon,
+  PhotoIcon,
+  DocumentIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
   PencilSquareIcon,
@@ -37,6 +39,7 @@ import {
   UserCircleIcon,
   CalendarIcon,
   CalendarDaysIcon,
+  MapPinIcon,
   Squares2X2Icon,
   PlusCircleIcon,
   ArchiveBoxIcon,
@@ -138,6 +141,7 @@ const heroIconMap: Record<string, Component> = {
   UserCircleIcon,
   CalendarIcon,
   CalendarDaysIcon,
+  MapPinIcon,
   Squares2X2Icon,
   PlusCircleIcon,
   ArchiveBoxIcon,
@@ -293,6 +297,7 @@ const activityIconMap: Record<string, Component> = {
   chat: ChatBubbleLeftRightIcon,
   meeting_scheduled: CalendarDaysIcon,
   call_scheduled: PhoneIcon,
+  event_scheduled: CalendarIcon,
   task_expired: ClockIcon,
   link: LinkIcon,
   payment_received: BanknotesIcon,
@@ -338,6 +343,7 @@ function activityTypeLabel(type: string): string {
     whatsapp_in: t('leadDetail.typeWhatsAppIn'),
     meeting_scheduled: t('leadDetail.typeMeetingScheduled'),
     call_scheduled: t('leadDetail.typeCallScheduled'),
+    event_scheduled: t('leadDetail.typeEventScheduled'),
     task_expired: t('leadDetail.typeTaskExpired'),
     link: t('leadDetail.typeLink'),
     voice_memo: t('leadDetail.typeVoiceMemo'),
@@ -559,6 +565,199 @@ function toggleTaskWatcher(userId: string) {
 // ---------------------------------------------------------------------------
 const COMMON_EMOJIS = ['👍', '❤️', '😂', '😮', '👏', '🎉', '🔥', '✅']
 const emojiPickerActivityId = ref<string | null>(null)
+
+// Voice-memo: per-activity toggle for the (optional) transcript collapse.
+const expandedTranscriptIds = ref<Set<string>>(new Set())
+
+function toggleTranscript(activityId: string) {
+  const next = new Set(expandedTranscriptIds.value)
+  if (next.has(activityId)) next.delete(activityId)
+  else next.add(activityId)
+  expandedTranscriptIds.value = next
+}
+
+function formatVoiceMemoDuration(value: unknown): string {
+  const total = Math.max(0, Math.floor(Number(value) || 0))
+  const minutes = Math.floor(total / 60).toString().padStart(2, '0')
+  const seconds = (total % 60).toString().padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+function voiceMemoMetadata(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function voiceMemoUrl(act: Activity): string {
+  const url = voiceMemoMetadata(act).url
+  return typeof url === 'string' ? url : ''
+}
+
+function voiceMemoTranscript(act: Activity): string {
+  const transcript = voiceMemoMetadata(act).transcript
+  return typeof transcript === 'string' ? transcript : ''
+}
+
+function voiceMemoDurationSeconds(act: Activity): number | null {
+  const raw = voiceMemoMetadata(act).duration_seconds
+  if (raw === undefined || raw === null || raw === '') return null
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : null
+}
+
+// ---------------------------------------------------------------------------
+// File upload helpers (Fáze 7.2)
+// ---------------------------------------------------------------------------
+//
+// The `file_upload` Activity carries the user-facing label in
+// `metadata.title`, the storage URL in `metadata.url`, and the
+// server-populated technical fields (`filename`, `size_bytes`,
+// `mime_type`, `source_kind`, `store_locally`, `fetch_status`) which
+// feed into the file-card renderer below.
+
+function fileUploadMetadata(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function fileUploadTitle(act: Activity): string {
+  const value = fileUploadMetadata(act).title
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadUrl(act: Activity): string {
+  const value = fileUploadMetadata(act).url
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadFilename(act: Activity): string {
+  const value = fileUploadMetadata(act).filename
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadMime(act: Activity): string {
+  const value = fileUploadMetadata(act).mime_type
+  return typeof value === 'string' ? value.toLowerCase() : ''
+}
+
+function fileUploadSourceKind(act: Activity): 'url' | 'upload' {
+  return fileUploadMetadata(act).source_kind === 'url' ? 'url' : 'upload'
+}
+
+function fileUploadIsExternal(act: Activity): boolean {
+  if (fileUploadSourceKind(act) !== 'url') return false
+  const storeLocally = fileUploadMetadata(act).store_locally
+  // Only treat as external when explicitly opted out of local storage
+  // *and* the async fetch hasn't already replaced the URL.
+  return storeLocally === false
+}
+
+function fileUploadFetchPending(act: Activity): boolean {
+  if (fileUploadSourceKind(act) !== 'url') return false
+  if (fileUploadMetadata(act).store_locally === false) return false
+  const status = fileUploadMetadata(act).fetch_status
+  return status !== 'ok' && status !== 'failed'
+}
+
+function fileUploadSizeBytes(act: Activity): number | null {
+  const raw = fileUploadMetadata(act).size_bytes
+  if (raw === undefined || raw === null || raw === '') return null
+  const num = Number(raw)
+  return Number.isFinite(num) && num > 0 ? num : null
+}
+
+function fileUploadFormattedSize(act: Activity): string {
+  const bytes = fileUploadSizeBytes(act)
+  if (bytes === null) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fileUploadIcon(act: Activity): Component {
+  const mime = fileUploadMime(act)
+  const filename = fileUploadFilename(act).toLowerCase()
+  if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/.test(filename)) {
+    return PhotoIcon
+  }
+  if (
+    mime === 'application/pdf' ||
+    mime.includes('msword') ||
+    mime.includes('officedocument') ||
+    /\.(pdf|docx?|xlsx?|pptx?|odt|ods|odp)$/.test(filename)
+  ) {
+    return DocumentTextIcon
+  }
+  return DocumentIcon
+}
+
+// ---------------------------------------------------------------------------
+// Event scheduled helpers (Fáze 7.3)
+// ---------------------------------------------------------------------------
+//
+// `event_scheduled` carries calendar metadata in `act.metadata`:
+//   - `start_at` / `end_at` (ISO datetime, or ISO date when `all_day`)
+//   - `all_day` (bool)
+//   - `location` (string)
+//   - `attendees` (string[]) — user IDs or external email/handles
+//   - `description` (string, multiline)
+//
+// We also surface the linked Task's `task_status` via `tool_payload` (see
+// `_ScheduledActivityTool.render_payload`) so the dedicated card can show
+// "Done"/"Expired" without an extra request.
+
+function eventScheduledMeta(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function eventScheduledIsAllDay(act: Activity): boolean {
+  return Boolean(eventScheduledMeta(act).all_day)
+}
+
+function eventScheduledLocation(act: Activity): string {
+  const value = eventScheduledMeta(act).location
+  return typeof value === 'string' ? value : ''
+}
+
+function eventScheduledDescription(act: Activity): string {
+  const value = eventScheduledMeta(act).description
+  return typeof value === 'string' ? value : ''
+}
+
+function eventScheduledAttendees(act: Activity): string[] {
+  const raw = eventScheduledMeta(act).attendees
+  if (!Array.isArray(raw)) return []
+  return raw.map((x) => String(x)).filter((s) => s.length > 0)
+}
+
+function eventScheduledRange(act: Activity): string {
+  const meta = eventScheduledMeta(act)
+  const startRaw = meta.start_at
+  const endRaw = meta.end_at
+  const start = typeof startRaw === 'string' && startRaw ? new Date(startRaw) : null
+  const end = typeof endRaw === 'string' && endRaw ? new Date(endRaw) : null
+  if (!start || Number.isNaN(start.getTime())) return ''
+  // All-day events show just the date (one date when start === end day).
+  if (eventScheduledIsAllDay(act)) {
+    const startDate = start.toLocaleDateString()
+    if (!end || Number.isNaN(end.getTime())) return startDate
+    const endDate = end.toLocaleDateString()
+    return startDate === endDate ? startDate : `${startDate} – ${endDate}`
+  }
+  const startStr = start.toLocaleString([], {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  if (!end || Number.isNaN(end.getTime()) || end.getTime() === start.getTime()) {
+    return startStr
+  }
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  const endStr = sameDay
+    ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : end.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  return `${startStr} – ${endStr}`
+}
 
 function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
@@ -798,8 +997,8 @@ defineExpose({ load: () => loadActivities(1) })
                 {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
               </template>
             </span>
-            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call) -->
-            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled'">
+            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call/event) -->
+            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled' || act.type === 'event_scheduled'">
               <span
                 v-if="(act.tool_payload as Record<string, unknown> | null)?.task_status"
                 data-testid="scheduled-task-status-badge"
@@ -859,6 +1058,128 @@ defineExpose({ load: () => loadActivities(1) })
           >
             {{ t('leadDetail.viewProposal') }} →
           </RouterLink>
+
+          <!-- Voice memo player + (optional) transcript collapse -->
+          <div
+            v-if="act.type === 'voice_memo' && voiceMemoUrl(act)"
+            class="mt-2 space-y-1.5"
+            data-testid="voice-memo-player"
+            :data-activity-id="act.id"
+          >
+            <div class="flex items-center gap-2">
+              <audio
+                :src="voiceMemoUrl(act)"
+                controls
+                preload="metadata"
+                class="flex-1 min-w-0 max-w-md"
+              />
+              <span
+                v-if="voiceMemoDurationSeconds(act) !== null"
+                class="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0"
+                data-testid="voice-memo-duration"
+              >{{ formatVoiceMemoDuration(voiceMemoDurationSeconds(act)) }}</span>
+            </div>
+            <div
+              v-if="voiceMemoTranscript(act)"
+              data-testid="voice-memo-transcript-wrapper"
+            >
+              <button
+                type="button"
+                class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 inline-flex items-center gap-1"
+                data-testid="voice-memo-transcript-toggle"
+                @click="toggleTranscript(act.id)"
+              >
+                {{ expandedTranscriptIds.has(act.id)
+                  ? t('voiceMemo.hideTranscript')
+                  : t('voiceMemo.showTranscript') }}
+              </button>
+              <p
+                v-if="expandedTranscriptIds.has(act.id)"
+                class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
+                data-testid="voice-memo-transcript"
+              >{{ voiceMemoTranscript(act) }}</p>
+            </div>
+          </div>
+
+          <!-- File upload card (Fáze 7.2): icon + title + filename/size,
+               click downloads the file (or follows the external URL when
+               the user opted out of local storage). -->
+          <a
+            v-if="act.type === 'file_upload' && fileUploadUrl(act)"
+            :href="fileUploadUrl(act)"
+            :target="fileUploadIsExternal(act) ? '_blank' : '_self'"
+            :rel="fileUploadIsExternal(act) ? 'noopener noreferrer' : undefined"
+            :download="fileUploadIsExternal(act) ? undefined : (fileUploadFilename(act) || true)"
+            class="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
+            data-testid="file-upload-card"
+            :data-activity-id="act.id"
+            :data-source-kind="fileUploadSourceKind(act)"
+          >
+            <component :is="fileUploadIcon(act)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {{ fileUploadTitle(act) || fileUploadFilename(act) || t('fileUpload.untitled') }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <span v-if="fileUploadFilename(act)">{{ fileUploadFilename(act) }}</span>
+                <span v-if="fileUploadFilename(act) && fileUploadFormattedSize(act)" class="mx-1">·</span>
+                <span v-if="fileUploadFormattedSize(act)" class="tabular-nums">{{ fileUploadFormattedSize(act) }}</span>
+                <span v-if="fileUploadIsExternal(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
+                <span v-else-if="fileUploadFetchPending(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
+              </p>
+            </div>
+          </a>
+
+          <!-- Event scheduled card (Fáze 7.3): date/time, location, attendees, description.
+               The status pill is rendered above (next to the type label) — this card only
+               carries the descriptive metadata. -->
+          <div
+            v-if="act.type === 'event_scheduled'"
+            class="mt-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 space-y-1"
+            data-testid="event-scheduled-card"
+            :data-activity-id="act.id"
+          >
+            <div
+              v-if="eventScheduledRange(act)"
+              class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+              data-testid="event-scheduled-time"
+            >
+              <CalendarIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <span class="font-medium tabular-nums">{{ eventScheduledRange(act) }}</span>
+              <span
+                v-if="eventScheduledIsAllDay(act)"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide"
+                data-testid="event-scheduled-all-day-badge"
+              >{{ t('event.allDay') }}</span>
+            </div>
+            <div
+              v-if="eventScheduledLocation(act)"
+              class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+              data-testid="event-scheduled-location"
+            >
+              <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <span class="truncate">{{ eventScheduledLocation(act) }}</span>
+            </div>
+            <div
+              v-if="eventScheduledAttendees(act).length"
+              class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+              data-testid="event-scheduled-attendees"
+            >
+              <UsersIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="a in eventScheduledAttendees(act)"
+                  :key="a"
+                  class="inline-flex items-center px-2 py-0.5 rounded-lg bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 text-xs"
+                >{{ a }}</span>
+              </div>
+            </div>
+            <p
+              v-if="eventScheduledDescription(act)"
+              class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap"
+              data-testid="event-scheduled-description"
+            >{{ eventScheduledDescription(act) }}</p>
+          </div>
 
           <!-- Reactions row (visible only for comment activities) -->
           <div

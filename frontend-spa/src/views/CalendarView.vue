@@ -89,8 +89,12 @@ const events = computed<EventInput[]>(() =>
     .map((t) => {
       const isoStr = t.due_date!
       const endIso = t.due_date_end ?? null
-      // Treat as all-day if the time component is midnight UTC or absent
-      const isAllDay = /T00:00:00/.test(isoStr) || !isoStr.includes('T')
+      // Prefer the explicit ``is_all_day`` flag (set by EventScheduledTool
+      // and other future all-day producers).  Fall back to the legacy
+      // heuristic for older Tasks created before the field existed.
+      const isAllDay =
+        t.is_all_day === true ||
+        (t.is_all_day === undefined && (/T00:00:00/.test(isoStr) || !isoStr.includes('T')))
       // PR4: visual differentiation for expired / prompted tasks so the
       // user spots overdue calendar items at a glance.
       const isExpired = t.status === 'expired'

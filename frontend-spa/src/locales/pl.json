@@ -1189,6 +1189,7 @@
     "typeWhatsAppIn": "WhatsApp (otrzymana)",
     "typeMeetingScheduled": "Zaplanowane spotkanie",
     "typeCallScheduled": "Zaplanowana rozmowa",
+    "typeEventScheduled": "Zaplanowane wydarzenie",
     "typeTaskExpired": "Zadanie wygasło",
     "scheduledTaskStatus": {
       "todo": "Zaplanowane",
@@ -1213,6 +1214,7 @@
       "call": "Zarejestruj wykonane już połączenie — czas trwania, notatki, opcjonalnie nagranie.",
       "meeting": "Zarejestruj odbyte już spotkanie z notatkami i czasem trwania.",
       "meeting_scheduled": "Zaplanowane przyszłe spotkanie — start, lokalizacja, uczestnicy.",
+      "event_scheduled": "Ogólne wydarzenie kalendarzowe (warsztat, webinar, rocznica…) — data, godzina lub cały dzień, lokalizacja, uczestnicy, opis.",
       "email_out": "Wychodzący e-mail — zapisany w osi czasu i opcjonalnie wysłany przez integrację.",
       "email_in": "Ręcznie zapisany przychodzący e-mail (gdy nie przyszedł przez integrację).",
       "sms_out": "Wiadomość SMS wychodząca.",
@@ -1220,8 +1222,8 @@
       "whatsapp_out": "Wiadomość WhatsApp wychodząca.",
       "whatsapp_in": "Wiadomość WhatsApp przychodząca.",
       "link": "Zapisany zewnętrzny link z tytułem i opisem (umowa, dokument, strona…).",
-      "file_upload": "Załącznik do okazji — podaj URL przesłanego pliku.",
-      "voice_memo": "Notatka głosowa — wklej URL nagrania i opcjonalnie transkrypcję.",
+      "file_upload": "Plik — prześlij bezpośrednio z dysku, przeciągnij i upuść lub wklej URL. Możemy go pobrać i zapisać albo zachować tylko jako link.",
+      "voice_memo": "Notatka głosowa — nagraj dźwięk za pomocą mikrofonu; możesz wstrzymać, zapisać lub odrzucić. Nazwę pliku i długość zapisujemy automatycznie.",
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
       "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
       "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
@@ -2009,5 +2011,51 @@
     "channelChat": "Czat",
     "directionOut": "Wychodząca",
     "directionIn": "Przychodząca"
+  },
+  "voiceMemo": {
+    "statusIdle": "Gotowe do nagrywania",
+    "statusRecording": "Nagrywanie…",
+    "statusPaused": "Wstrzymane",
+    "statusReview": "Gotowe — zapisz lub odrzuć",
+    "statusUploading": "Wysyłanie…",
+    "start": "Rozpocznij nagrywanie",
+    "pause": "Pauza",
+    "resume": "Wznów",
+    "stop": "Zatrzymaj",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "discard": "Odrzuć",
+    "permissionDenied": "Odmówiono dostępu do mikrofonu. Zezwól na niego w ustawieniach przeglądarki i spróbuj ponownie.",
+    "unsupported": "Ta przeglądarka nie obsługuje nagrywania dźwięku.",
+    "uploadFailed": "Nie udało się zapisać nagrania.",
+    "showTranscript": "Pokaż transkrypcję",
+    "hideTranscript": "Ukryj transkrypcję"
+  },
+  "fileUpload": {
+    "sourceLabel": "Źródło",
+    "sourceUpload": "Prześlij plik(i)",
+    "sourceUrl": "Z URL",
+    "titleLabel": "Nazwa",
+    "titlePlaceholder": "Krótki opis pliku",
+    "urlLabel": "URL",
+    "storeLocally": "Pobierz i zapisz kopię",
+    "dropHint": "Przeciągnij pliki tutaj lub kliknij, aby wybrać.",
+    "limitHint": "Maksymalny rozmiar {limit} na plik.",
+    "overLimit": "Plik „{name}\" przekracza limit {limit}. Ulepsz plan, aby przesyłać większe pliki.",
+    "uploadFailed": "Nie udało się przesłać pliku.",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "cancel": "Anuluj",
+    "externalLink": "Link zewnętrzny",
+    "fetching": "Pobieranie…",
+    "untitled": "Bez nazwy"
+  },
+  "event": {
+    "allDay": "Cały dzień",
+    "attendees": "Uczestnicy",
+    "location": "Lokalizacja",
+    "start": "Start",
+    "end": "Koniec",
+    "description": "Opis"
   }
 }

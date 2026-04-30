@@ -1454,6 +1454,251 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Voice Memo upload API tests
+# ---------------------------------------------------------------------------
+
+
+class VoiceMemoUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
+    """Smoke tests for ``POST /api/v1/crm/voice-memos/upload``."""
+
+    def _upload_voice(
+        self,
+        *,
+        lead_id=None,
+        content=b"FAKEAUDIO",
+        content_type="audio/webm",
+        filename="memo.webm",
+    ):
+        f = SimpleUploadedFile(filename, content, content_type=content_type)
+        url = "/api/v1/crm/voice-memos/upload"
+        if lead_id:
+            url = f"{url}?lead_id={lead_id}"
+        return self.client.post(url, data={"file": f}, **self.firm_headers())
+
+    def test_upload_voice_memo_returns_metadata_without_creating_activity(self):
+        before = Activity.objects.filter(type=ActivityType.VOICE_MEMO).count()
+        resp = self._upload_voice(lead_id=str(self.lead.id))
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        self.assertIn("document_id", body)
+        self.assertTrue(body["url"])
+        self.assertEqual(body["size_bytes"], len(b"FAKEAUDIO"))
+        self.assertEqual(body["content_type"], "audio/webm")
+        # The endpoint stores a Document but deliberately does NOT create
+        # an Activity — the SPA follows up with a regular activities POST.
+        after = Activity.objects.filter(type=ActivityType.VOICE_MEMO).count()
+        self.assertEqual(before, after)
+        self.assertTrue(
+            Document.objects.filter(id=body["document_id"], firm=self.firm).exists()
+        )
+
+    def test_upload_voice_memo_works_without_entity(self):
+        resp = self._upload_voice()
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        doc = Document.objects.get(id=body["document_id"])
+        self.assertIsNone(doc.lead_id)
+
+    def test_upload_voice_memo_rejects_non_audio(self):
+        resp = self._upload_voice(content_type="text/plain", filename="memo.txt")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upload_voice_memo_invalid_lead_returns_404(self):
+        resp = self._upload_voice(lead_id=str(uuid_module.uuid4()))
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# File Upload composer API tests (Fáze 7.2)
+# ---------------------------------------------------------------------------
+
+
+class FileUploadComposerAPITest(AttachmentAPIFixtureMixin, TestCase):
+    """Smoke tests for ``POST /api/v1/crm/file-uploads/upload``."""
+
+    URL = "/api/v1/crm/file-uploads/upload"
+
+    def _upload_files(self, *files, lead_id=None):
+        payload = [("files", f) for f in files]
+        url = self.URL
+        if lead_id:
+            url = f"{url}?lead_id={lead_id}"
+        return self.client.post(url, dict(payload), **self.firm_headers())
+
+    def test_multi_file_upload_returns_one_entry_per_file_no_activity(self):
+        before = Activity.objects.filter(type=ActivityType.FILE_UPLOAD).count()
+        f1 = SimpleUploadedFile("a.pdf", b"PDF1", content_type="application/pdf")
+        f2 = SimpleUploadedFile("b.png", b"PNGDATA", content_type="image/png")
+        resp = self.client.post(
+            f"{self.URL}?lead_id={self.lead.id}",
+            data={"files": [f1, f2]},
+            **self.firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        self.assertEqual(len(body["files"]), 2)
+        # Endpoint must NOT auto-create file_upload Activities — the SPA
+        # follows up with one POST /activities per returned entry.
+        self.assertEqual(
+            Activity.objects.filter(type=ActivityType.FILE_UPLOAD).count(),
+            before,
+        )
+        for entry in body["files"]:
+            self.assertTrue(entry["url"])
+            self.assertTrue(entry["document_id"])
+            self.assertTrue(
+                Document.objects.filter(id=entry["document_id"], firm=self.firm).exists()
+            )
+
+    def test_upload_rejects_oversize_for_free_plan(self):
+        # Fixture firm is `pro` (100 MB cap); flip it to `free` so the
+        # 15 MB ceiling kicks in for this test only.
+        self.firm.subscription_tier = "free"
+        self.firm.save(update_fields=["subscription_tier"])
+        # Build a 16 MB blob — one byte over the free-plan cap.
+        blob = b"x" * (16 * 1024 * 1024)
+        f = SimpleUploadedFile("huge.bin", blob, content_type="application/octet-stream")
+        resp = self.client.post(
+            self.URL,
+            data={"files": f},
+            **self.firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("MB", resp.json()["detail"])
+
+    def test_upload_invalid_lead_returns_404(self):
+        f = SimpleUploadedFile("a.txt", b"hi", content_type="text/plain")
+        resp = self.client.post(
+            f"{self.URL}?lead_id={uuid_module.uuid4()}",
+            data={"files": f},
+            **self.firm_headers(),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    def test_upload_works_without_entity(self):
+        f = SimpleUploadedFile("standalone.txt", b"hi", content_type="text/plain")
+        resp = self.client.post(self.URL, data={"files": f}, **self.firm_headers())
+        self.assertEqual(resp.status_code, 201, resp.content)
+        body = resp.json()
+        self.assertEqual(len(body["files"]), 1)
+        doc = Document.objects.get(id=body["files"][0]["document_id"])
+        self.assertIsNone(doc.lead_id)
+
+
+class FileUploadToolSchemaTest(TestCase):
+    """The expanded `file_upload` schema is the contract the SPA renders."""
+
+    def test_schema_advertises_title_and_source_kind(self):
+        from crm.streamline.tools import FileUploadTool
+
+        schema = FileUploadTool().get_schema()
+        self.assertIn("title", schema["properties"])
+        self.assertIn("source_kind", schema["properties"])
+        self.assertIn("store_locally", schema["properties"])
+        self.assertIn("mime_type", schema["properties"])
+        self.assertIn("title", schema["required"])
+        self.assertIn("url", schema["required"])
+        self.assertEqual(
+            schema["properties"]["source_kind"]["enum"],
+            ["url", "upload"],
+        )
+
+    def test_render_payload_exposes_user_facing_fields(self):
+        from crm.streamline.tools import FileUploadTool
+
+        firm = Firm.objects.create(name="FUT firm")
+        lead = Lead.objects.create(firm=firm, title="FUT lead")
+        activity = Activity.objects.create(
+            lead=lead,
+            type=ActivityType.FILE_UPLOAD,
+            metadata={
+                "title": "Q4 brief",
+                "filename": "brief.pdf",
+                "url": "https://example.org/brief.pdf",
+                "size_bytes": 1024,
+                "mime_type": "application/pdf",
+                "source_kind": "url",
+                "store_locally": False,
+            },
+        )
+        payload = FileUploadTool().render_payload(activity)
+        self.assertEqual(payload["title"], "Q4 brief")
+        self.assertEqual(payload["source_kind"], "url")
+        self.assertFalse(payload["store_locally"])
+        self.assertEqual(payload["mime_type"], "application/pdf")
+
+
+class FileUploadRemoteFetchTaskTest(TestCase):
+    """The Celery task that downloads remote URLs into Document storage."""
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Fetch firm")
+        self.lead = Lead.objects.create(firm=self.firm, title="Fetch lead")
+
+    def _make_activity(self, **metadata):
+        return Activity.objects.create(
+            lead=self.lead,
+            type=ActivityType.FILE_UPLOAD,
+            metadata=metadata,
+        )
+
+    def test_task_populates_document_and_metadata_on_success(self):
+        from unittest.mock import MagicMock, patch
+
+        activity = self._make_activity(
+            title="Remote brief",
+            url="https://example.org/foo.pdf",
+            source_kind="url",
+            store_locally=True,
+        )
+
+        body = b"%PDF-1.4 fake-bytes"
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/pdf", "Content-Length": str(len(body))}
+        mock_response.iter_content = MagicMock(return_value=[body])
+        mock_response.raise_for_status = MagicMock()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("requests.get", return_value=mock_response):
+            from crm.tasks import fetch_remote_file_for_activity
+
+            fetch_remote_file_for_activity(str(activity.id))
+
+        activity.refresh_from_db()
+        self.assertEqual(activity.metadata.get("fetch_status"), "ok")
+        self.assertEqual(activity.metadata.get("size_bytes"), len(body))
+        self.assertEqual(activity.metadata.get("mime_type"), "application/pdf")
+        self.assertTrue(activity.metadata.get("document_id"))
+        self.assertEqual(
+            activity.metadata.get("source_url"), "https://example.org/foo.pdf"
+        )
+
+    def test_task_records_failure_without_corrupting_url(self):
+        from unittest.mock import patch
+
+        activity = self._make_activity(
+            title="Broken",
+            url="https://example.org/missing.pdf",
+            source_kind="url",
+            store_locally=True,
+        )
+
+        with patch("requests.get", side_effect=RuntimeError("boom")):
+            from crm.tasks import fetch_remote_file_for_activity
+
+            fetch_remote_file_for_activity(str(activity.id))
+
+        activity.refresh_from_db()
+        self.assertEqual(activity.metadata.get("fetch_status"), "failed")
+        self.assertIn("boom", activity.metadata.get("fetch_error", ""))
+        # Original URL is preserved so the user can still click through.
+        self.assertEqual(
+            activity.metadata.get("url"), "https://example.org/missing.pdf"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Task Documents API tests (Phase 6 — /tasks/{id}/documents endpoints)
 # ---------------------------------------------------------------------------
 
@@ -2393,6 +2638,71 @@ class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
     def test_call_scheduled_tool_registered(self):
         from crm.streamline.registry import get_tool
         self.assertIsNotNone(get_tool("call_scheduled"))
+
+    def test_event_scheduled_creates_task_kind_event(self):
+        from crm.models import TaskStatus
+        start = timezone.now() + dt.timedelta(days=2)
+        end = start + dt.timedelta(hours=2)
+        activity, task = self._invoke(
+            "event_scheduled",
+            {
+                "start_at": start.isoformat(),
+                "end_at": end.isoformat(),
+                "location": "Conference Hall A",
+                "attendees": ["alice@example.com"],
+                "description": "Annual roadmap review.",
+            },
+        )
+        self.assertEqual(task.kind, "event")
+        self.assertEqual(task.status, TaskStatus.TODO)
+        self.assertTrue(task.auto_close_on_expiry)
+        self.assertFalse(task.is_all_day)
+        self.assertEqual(task.location, "Conference Hall A")
+        self.assertEqual(task.attendees, ["alice@example.com"])
+        self.assertEqual(activity.task_id, task.id)
+
+    def test_event_scheduled_with_all_day_accepts_date_only(self):
+        # When `all_day=true`, the SPA submits a plain ISO date — make
+        # sure the tool turns it into a midnight-tz-aware datetime and
+        # propagates `is_all_day=True` onto the linked Task.
+        activity, task = self._invoke(
+            "event_scheduled",
+            {
+                "start_at": "2026-05-04",
+                "end_at": "2026-05-04",
+                "all_day": True,
+                "location": "",
+            },
+        )
+        self.assertEqual(task.kind, "event")
+        self.assertTrue(task.is_all_day)
+        self.assertIsNotNone(task.due_date)
+        self.assertEqual(task.due_date.year, 2026)
+        self.assertEqual(task.due_date.month, 5)
+        self.assertEqual(task.due_date.day, 4)
+        self.assertEqual(task.due_date.hour, 0)
+        self.assertEqual(task.due_date.minute, 0)
+
+    def test_event_scheduled_render_payload_surfaces_metadata(self):
+        from crm.streamline.registry import get_tool
+        start = timezone.now() + dt.timedelta(days=3)
+        activity = Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type="event_scheduled",
+            metadata={
+                "start_at": start.isoformat(),
+                "all_day": True,
+                "location": "Studio",
+                "attendees": ["x@y.com", "z@y.com"],
+                "description": "Workshop kickoff.",
+            },
+        )
+        payload = get_tool("event_scheduled").render_payload(activity)
+        self.assertTrue(payload["all_day"])
+        self.assertEqual(payload["location"], "Studio")
+        self.assertEqual(payload["attendees"], ["x@y.com", "z@y.com"])
+        self.assertEqual(payload["description"], "Workshop kickoff.")
 
 
 class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):

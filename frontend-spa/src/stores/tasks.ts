@@ -39,6 +39,12 @@ export interface TaskOut {
   location: string
   attendees: string[]
   auto_close_on_expiry: boolean
+  /** When true, this task represents an all-day calendar entry — the
+   *  calendar should render it in the dedicated all-day strip and ignore
+   *  the time component of ``due_date`` / ``due_date_end``. Optional for
+   *  backwards compatibility with older Tasks created before the field
+   *  was added. */
+  is_all_day?: boolean
   /** Set by the auto-expire job once a calendar task passes its
    *  ``due_date_end`` and the assignee/watchers have been asked to log the
    *  outcome (held / rescheduled / no_show). Null until prompted, cleared
