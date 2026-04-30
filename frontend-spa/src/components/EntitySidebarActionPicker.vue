@@ -327,7 +327,7 @@ function onFileUploaded(file: unknown) {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4" data-testid="entity-sidebar-action-picker">
     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
       {{ t('leadDetail.quickActions') }}
     </p>
@@ -337,6 +337,8 @@ function onFileUploaded(file: unknown) {
       <button
         v-for="item in sidebarActionItems"
         :key="item.value"
+        data-testid="entity-sidebar-action-option"
+        :data-action="item.value"
         class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-left"
         @click="openSidebarAction(item.value)"
       >
@@ -423,6 +425,7 @@ function onFileUploaded(file: unknown) {
       <div class="flex justify-end">
         <button
           :disabled="sidebarSubmitDisabled"
+          data-testid="entity-sidebar-action-submit"
           class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="sidebarAddActivity"
         >{{ sidebarActivitySubmitting ? '…' : t('leadDetail.activitySubmit') }}</button>
@@ -491,6 +494,7 @@ function onFileUploaded(file: unknown) {
       <div class="flex justify-end">
         <button
           :disabled="sidebarTaskSubmitting || !sidebarTaskTitle.trim()"
+          data-testid="entity-sidebar-task-submit"
           class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="sidebarAddTask"
         >{{ sidebarTaskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
