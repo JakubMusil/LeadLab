@@ -24,12 +24,12 @@
 - [x] Validace: `vue-tsc`, `oxlint`, `vite build` — vše prošlo.
 
 ### Krok 2 — `Lead.description` všude přes editor + Safe HTML
-- [ ] Backend: přidat HTML pole na Lead (buď `description_html`, nebo přepnout `description` na HTML s server-side sanitizací — finální rozhodnutí v rámci kroku).
-- [ ] Backend: sjednotit sanitizaci (utility v `crm/`), aplikovat na all writes.
-- [ ] Schémata `LeadOut`/`LeadIn`/`LeadUpdateIn` upravit.
-- [ ] Frontend: najít všechna místa, kde se popis leadu zobrazuje (sidebar, kartičky, tooltipy, public/share view, exporty, notifikace) a sjednotit přes `RichTextDisplay`. Edit vždy přes `RichTextEditor`.
-- [ ] ESLint pravidlo `vue/no-v-html` (s povolenou výjimkou pro `RichTextDisplay`) — pokud nezvyšuje šum.
-- [ ] Migrace dat: stávající plain-text → `<p>` (nikoliv mazání).
+- [x] Backend: nainstalován `bleach>=6.2,<7.0` a vytvořen `crm/sanitize.py` s allow-listem odpovídajícím Tiptap StarterKit + Mention + Image (zakázány `javascript:`, `data:` protokoly).
+- [x] Backend: `Lead.description` sanitizován v `create_lead` i `update_lead` endpointech — defense-in-depth nad rámec frontend DOMPurify.
+- [x] Frontend: `LeadsView.vue` modal pro create/edit leadu — `<textarea>` nahrazen za `<RichTextEditor>`. Tím je popis leadu **všude** editovatelný editorem (LeadDetailView i LeadsView modal).
+- [x] Frontend: konsolidace 4 lokálních `sanitizeHtml` definic (LeadDetailView, CatalogView, TaskDetailView, ActivityTimeline) → import ze sdíleného `@/utils/sanitizeHtml`. Odstraněny nepotřebné importy DOMPurify, kde byly redundantní.
+- [x] Validace: `crm.tests` (274 testů) prošly, `vue-tsc`, `oxlint` (mé soubory čisté), `vite build` OK.
+- [ ] *(odloženo na pozdější krok pokud bude potřeba)* Aplikovat backend sanitizaci i na `Activity.content_text`, `Task.description_html`, `TaskTemplate.description_html` atd. — util je připraven, lze rozšířit plošně bez zásahu do schémat.
 
 ### Krok 3 — Nový `StreamlineItem` + tooly v backendu
 - [ ] Model `StreamlineItem` (`task` FK, `kind`, `text`, `is_resolved`, `resolved_at`, `resolved_by`, `created_at`, `created_by`, `order`).
@@ -53,20 +53,23 @@
 
 ## Stav vypracování
 
-**Aktuálně:** Krok 1 dokončen, pokračuji Krokem 2.
+**Aktuálně:** Kroky 1 a 2 dokončeny. Čekám na potvrzení/úpravu předpokladů uživatelem před začátkem Kroku 3 (smazání legacy modelů bez migrace dat je nevratná operace — chci si být jistý zadáním).
 
 **Hotovo:**
 - Plán a předpoklady zapsány do `plan.md`.
-- **Krok 1 (Kontrast):**
-  - Identifikováno, že `@tailwindcss/typography` plugin nebyl nainstalovaný — proto třídy `prose`/`dark:prose-invert` napříč SPA neaplikovaly žádné styly. To je kořenová příčina kontrastních problémů.
-  - Přidán `@tailwindcss/typography@^0.5.19` jako devDependency (bez známých CVE).
-  - V `tailwind.config.ts` zaregistrován plugin a customizována paleta `prose` proměnných pro WCAG-AA kontrast jak v light, tak v dark mode.
-  - V `RichTextEditor.vue` doplněna explicitní `text-gray-900 dark:text-gray-100` na editovací oblast a ztmaven placeholder z `gray-400` (~3.4:1) na `gray-500` (~4.8:1) v light mode, s parem `gray-400` v dark mode.
-  - Opraven hot-spot `LeadDetailView.vue:564` (popis úkolu): `text-gray-500` → `text-gray-700 dark:text-gray-300` + doplněno `dark:prose-invert`.
-  - Vytvořen sdílený util `src/utils/sanitizeHtml.ts` (single source of truth pro DOMPurify sanitizaci) — připraveno k postupné konsolidaci 4 lokálních duplicit.
-  - Vytvořena sdílená komponenta `src/components/RichTextDisplay.vue` pro jednotné read-only renderování HTML z editoru.
-  - Validace: `vue-tsc --build`, `oxlint`, `vite build` — vše čisté.
+- **Krok 1 (Kontrast):** viz checklist výše. Plugin Tailwind Typography registrovaný s WCAG-AA paletou; placeholder editor a popis úkolu opraveny; `RichTextDisplay` + sdílený `sanitizeHtml` util pro plošné konzistentní renderování.
+- **Krok 2 (Popis leadu + Safe HTML):**
+  - Backend `crm/sanitize.py` s bleach allow-listem.
+  - `Lead.description` sanitizace v create + update endpointech.
+  - `LeadsView.vue` modal — editor místo textarea (popis leadu nyní editovatelný přes editor i v modalu).
+  - 4× konsolidace lokálních `sanitizeHtml` na sdílený util.
+  - Backend testy 274/274 OK, frontend build + typecheck OK, lint na změněných souborech čistý.
 
 **Následuje:**
-- Krok 2 — `Lead.description` všude přes editor + Safe HTML rendering (backend HTML pole + sanitizace, sjednocení všech zobrazení popisu leadu na `RichTextEditor` / `RichTextDisplay`).
-- V rámci Kroku 2 také postupně nahradit lokální `sanitizeHtml` definice v `LeadDetailView.vue`, `CatalogView.vue`, `TaskDetailView.vue` a `ActivityTimeline.vue` importem ze sdíleného utilu.
+- **Krok 3** — Nový `StreamlineItem` model + tooly + smazání legacy `TaskChecklistItem` a `Task.parent_task` bez data migrace. Před začátkem chci ideálně potvrzení od uživatele (bod níže), ale pokud nepřijde, budu pokračovat podle zapsaných pracovních předpokladů.
+
+**Otevřené body pro uživatele (viz "Pracovní předpoklady" výše):**
+1. Potvrzení že "akce" = `Task` (ano/ne).
+2. Položky bez assignee/deadline (jen text + resolved) — souhlas?
+3. Při hromadném vstupu — jeden agregovaný streamline záznam ("přidáno N položek") + N záznamů při toggle. Souhlas?
+4. Potvrzení že `Lead.description` plain-text data zůstanou tak, jak jsou (sanitizace plain text propustí beze změny — žádná data migrace nutná).

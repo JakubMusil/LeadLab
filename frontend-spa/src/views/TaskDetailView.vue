@@ -10,11 +10,7 @@ import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import TaskOutcomeModal from '@/components/TaskOutcomeModal.vue'
-import DOMPurify from 'dompurify'
-
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
-}
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const route = useRoute()
 const router = useRouter()

@@ -65,6 +65,7 @@ from firms.auth import (
 from firms.models import Membership
 
 from crm.events import broadcast_event
+from crm.sanitize import sanitize_html
 
 router = Router(tags=["crm"])
 
@@ -591,7 +592,7 @@ def create_lead(request, payload: LeadIn):
         customer=customer,
         assigned_to=assigned_to,
         title=payload.title,
-        description=payload.description,
+        description=sanitize_html(payload.description),
         status=payload.status,
         source=payload.source,
         value=payload.value,
@@ -643,6 +644,11 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
 
     # Handle status change — create an Activity in the same transaction
     new_status = update_data.pop("status", None)
+
+    # Sanitize rich-text description before persisting (defense-in-depth on
+    # top of the frontend's DOMPurify — protects email/push/export renderers).
+    if "description" in update_data:
+        update_data["description"] = sanitize_html(update_data["description"])
 
     for field, value in update_data.items():
         setattr(lead, field, value)

@@ -11,7 +11,7 @@ import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
   CheckIcon,
   CalendarDaysIcon,
@@ -23,10 +23,6 @@ import {
   PaperClipIcon,
   ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
-
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
-}
 
 const route = useRoute()
 const router = useRouter()
