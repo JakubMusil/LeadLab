@@ -46,8 +46,8 @@ const byStatus = computed(() => {
   const map: Record<string, ManagementOut[]> = {}
   for (const s of MANAGEMENT_STATUSES) map[s.value] = []
   for (const r of store.records) {
-    if (map[r.status]) map[r.status].push(r)
-    else map['open'].push(r)
+    const bucket = map[r.status] ?? map['open']
+    bucket?.push(r)
   }
   return map
 })

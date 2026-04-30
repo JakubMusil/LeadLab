@@ -50,8 +50,8 @@ const reByStatus = computed(() => {
   const map: Record<string, RealizationOut[]> = {}
   for (const s of REALIZATION_STATUSES) map[s.value] = []
   for (const r of store.realizations) {
-    if (map[r.status]) map[r.status].push(r)
-    else map['planned'].push(r)
+    const bucket = map[r.status] ?? map['planned']
+    bucket?.push(r)
   }
   return map
 })

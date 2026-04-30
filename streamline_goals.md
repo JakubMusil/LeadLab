@@ -409,7 +409,7 @@ ale v okolních oblastech:
    - Vitest baseline: 66 failed / 102 passed test count beze změny
      (preexisting failures jsou nezávislé — i18n/messages compile
      errors v testech).
-3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 20 unikátních errorů)*:
+3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 13 unikátních errorů)*:
    - ✅ **`GanttView.vue` ambient module** *(2026-04-29 čtvrtá iterace)* —
      do `env.d.ts` přidán `declare module 'frappe-gantt'`. Package
      ships jen ES bundle bez `.d.ts`, importujeme ho jen dynamicky
@@ -441,17 +441,32 @@ ale v okolních oblastech:
      callback ztrácí narrowing z `<template v-else>`. Použito `record?.type`
      pouze uvnitř callback (vnější `?? record.type` zůstává narrowing-OK).
      Snižuje 1 error.
-   - **Zbývá 20 errorů** ve 4 kategoriích:
+   - ✅ **Sort/filter callback narrowing + EntitySidebarActionPicker
+     v-model + AutomationsView nullable indexing** *(2026-04-30 šestá iterace)* —
+     - `RealizationsView.vue` & `ManagementView.vue`: bucketing
+       `if (map[r.status]) map[r.status].push(r); else map['planned'].push(r)`
+       refaktorováno na `const bucket = map[r.status] ?? map['default']; bucket?.push(r)`
+       — `noUncheckedIndexedAccess` jinak hlásil `Object is possibly 'undefined'`
+       pro každé `map[key]`. Snižuje 4 errory.
+     - `EntitySidebarActionPicker.vue`: `sidebarExtraFields` typ změněn z
+       `Record<string, unknown>` na `Record<string, string | number | string[] | null>`,
+       aby `<textarea v-model>` přijal value-type. Hodnoty jsou inicializovány
+       prázdným stringem a všechny binding pole jsou textbox/select/number.
+       Snižuje 1 error.
+     - `AutomationsView.vue`:
+       - `setActionTagsFromString`: extrahováno `const action = ruleFormActions.value[i]; if (!action) return`,
+         poté přiřazení `action.tags`. Snižuje 1 error.
+       - `lastRunLabel`: zavedeno `const first = runs[0]; if (!first) return ''`
+         před voláním `formatDate(first.triggered_at)`. Snižuje 1 error.
+   - **Zbývá 13 errorů** ve 2 kategoriích:
      - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
        v lookup operacích + `string | undefined` not assignable.
        Vyžaduje narrowing nebo non-null assertion.
-     - `AutomationsView.vue` (10 = 5 unikátních duplikované přes 2 contexty)
+     - `AutomationsView.vue` (8 = 4 unikátní duplikované přes 2 contexty)
        — `lead_title`/`task_title`/`customer_name`/`due_date` na
-       `$tm` interpolation contextu (chybí v event payload typu).
-     - `RealizationsView.vue` (2), `ManagementView.vue` (2) —
-       `Object is possibly 'undefined'` v sort/filter callbacích.
-     - `EntitySidebarActionPicker.vue` (1) — `v-model` na
-       `Record<string, unknown>[key]` (`unknown` vs `string | number`).
+       `$t()` interpolation contextu (chybí v typu named args
+       z i18n). Bude vyžadovat doplnění interface pro interpolation
+       payload — nebo cast.
 4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
