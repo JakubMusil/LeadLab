@@ -1,7 +1,7 @@
 """
 Django Ninja API router – Users & Authentication
 """
-from typing import Optional
+from typing import List, Optional
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from users.models import User
+from users.models import User, UserStreamlinePreference
 from users.throttle import rate_limit
 
 router = Router(tags=["users"])
@@ -61,6 +61,16 @@ class PasswordResetConfirmIn(Schema):
 
 class ErrorOut(Schema):
     detail: str
+
+
+class StreamlinePreferenceIn(Schema):
+    # `None` = reset to defaults (frontend uses per-tool default_visibility).
+    visible_activity_types: Optional[List[str]] = None
+
+
+class StreamlinePreferenceOut(Schema):
+    # `None` until the user customises the filter; then the explicit list.
+    visible_activity_types: Optional[List[str]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +149,63 @@ def upload_avatar(request, avatar: UploadedFile = File(...)):
         user.profile_picture.delete(save=False)
     user.profile_picture.save(avatar.name, avatar, save=True)
     return 200, _user_out(user)
+
+
+@router.get(
+    "/me/streamline-preferences",
+    auth=django_auth,
+    response={200: StreamlinePreferenceOut},
+)
+def get_streamline_preferences(request):
+    """
+    Return the current user's Streamline (activity timeline) filter
+    preferences.
+
+    ``visible_activity_types`` is ``null`` until the user customises the
+    filter; in that case the frontend should fall back to each tool's
+    built-in ``default_visibility``.  Once the user toggles the dropdown
+    we persist their exact selection and use it verbatim.
+    """
+    pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
+    return 200, {"visible_activity_types": pref.visible_activity_types}
+
+
+@router.put(
+    "/me/streamline-preferences",
+    auth=django_auth,
+    response={200: StreamlinePreferenceOut, 400: ErrorOut},
+)
+def update_streamline_preferences(request, payload: StreamlinePreferenceIn):
+    """
+    Replace the current user's Streamline filter preferences.
+
+    Pass ``visible_activity_types: null`` to reset the user back to
+    per-tool defaults.  Pass an explicit list (possibly empty) to
+    persist that exact selection across all streamline views.
+    """
+    cleaned: Optional[List[str]]
+    if payload.visible_activity_types is None:
+        cleaned = None
+    else:
+        # Sanitize: drop empty strings and duplicates while preserving order.
+        seen: set[str] = set()
+        items: list[str] = []
+        for at in payload.visible_activity_types:
+            if not isinstance(at, str):
+                return 400, {
+                    "detail": "visible_activity_types must be a list of strings or null."
+                }
+            v = at.strip()
+            if not v or v in seen:
+                continue
+            seen.add(v)
+            items.append(v)
+        cleaned = items
+
+    pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
+    pref.visible_activity_types = cleaned
+    pref.save(update_fields=["visible_activity_types", "updated_at"])
+    return 200, {"visible_activity_types": cleaned}
 
 
 @router.post(

@@ -1223,8 +1223,10 @@
       "file_upload": "Załącznik do okazji — podaj URL przesłanego pliku.",
       "voice_memo": "Notatka głosowa — wklej URL nagrania i opcjonalnie transkrypcję.",
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
-      "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę."
-    }
+      "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
+      "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
+    },
+    "typeMessage": "Wiadomość"
   },
   "sequences": {
     "title": "Sekwencje e-mail",
@@ -1982,5 +1984,30 @@
     "priorityMedium": "Średni",
     "priorityHigh": "Wysoki",
     "priorityCritical": "Krytyczny"
+  },
+  "streamlineFilter": {
+    "button": "Filtr",
+    "importantOnly": "Tylko ważne",
+    "all": "Wszystko",
+    "none": "Żadne",
+    "reset": "Przywróć domyślne",
+    "categoryCommunication": "Komunikacja",
+    "categoryTask": "Zadania i zatwierdzenia",
+    "categoryCommerce": "Sprzedaż",
+    "categorySystem": "Logi systemowe",
+    "categoryAi": "AI",
+    "categoryMeta": "Inne",
+    "secondaryBadge": "log",
+    "secondaryHint": "Domyślnie ukryte — pokazywane tylko po włączeniu."
+  },
+  "messageComposer": {
+    "channelLabel": "Kanał",
+    "directionLabel": "Kierunek",
+    "channelEmail": "E-mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp",
+    "channelChat": "Czat",
+    "directionOut": "Wychodząca",
+    "directionIn": "Przychodząca"
   }
 }
