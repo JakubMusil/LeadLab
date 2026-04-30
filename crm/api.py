@@ -1856,13 +1856,31 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         task.completed_by = request.user
         task.status = TaskStatus.DONE
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
-        # Log Activity only when linked to a lead
+        # Log Activity on every linked entity (lead, realization, management).
+        # Mirrors the per-entity pattern from create_task (19th iter): a task
+        # may be linked to multiple entities and each timeline must show the
+        # completion event independently.
+        completion_metadata = {"task_id": str(task.id), "title": task.title}
         if task.lead_id:
             Activity.objects.create(
                 lead=task.lead,
                 user=request.user,
                 type=ActivityType.TASK_COMPLETED,
-                metadata={"task_id": str(task.id), "title": task.title},
+                metadata=completion_metadata,
+            )
+        if task.realization_id:
+            Activity.objects.create(
+                realization=task.realization,
+                user=request.user,
+                type=ActivityType.TASK_COMPLETED,
+                metadata=completion_metadata,
+            )
+        if task.management_id:
+            Activity.objects.create(
+                management=task.management,
+                user=request.user,
+                type=ActivityType.TASK_COMPLETED,
+                metadata=completion_metadata,
             )
 
         follow_up_task = None

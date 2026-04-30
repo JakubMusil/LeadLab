@@ -2230,3 +2230,95 @@ class ManagementTasksListAPITest(CRMAPIFixtureMixin, TestCase):
         other_m = Management.objects.create(firm=other_firm, title="Forbidden")
         resp = self._get(f"/api/v1/crm/management/{other_m.id}/tasks")
         self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# 20th iteration: TASK_COMPLETED symmetric auto-log on realization/management
+# ---------------------------------------------------------------------------
+
+
+class TaskCompleteActivityLogAcrossEntitiesAPITest(CRMAPIFixtureMixin, TestCase):
+    """`complete_task` should log a TASK_COMPLETED Activity onto every
+    entity the task is linked to (lead, realization, management) — mirror
+    of the 19th-iteration refactor in `create_task`."""
+
+    def test_complete_task_logs_activity_on_realization(self):
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="R-complete", customer=self.customer,
+        )
+        task = Task.objects.create(
+            firm=self.firm, realization=realization, title="Do thing",
+        )
+        resp = self._post(f"/api/v1/crm/tasks/{task.id}/complete", {})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Activity.objects.filter(
+                realization=realization, type=ActivityType.TASK_COMPLETED
+            ).exists()
+        )
+        # No leakage onto lead
+        self.assertFalse(
+            Activity.objects.filter(
+                lead=self.lead, type=ActivityType.TASK_COMPLETED
+            ).exists()
+        )
+
+    def test_complete_task_logs_activity_on_management(self):
+        from crm.models import Management
+        management = Management.objects.create(
+            firm=self.firm, title="M-complete", customer=self.customer,
+        )
+        task = Task.objects.create(
+            firm=self.firm, management=management, title="Renew",
+        )
+        resp = self._post(f"/api/v1/crm/tasks/{task.id}/complete", {})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Activity.objects.filter(
+                management=management, type=ActivityType.TASK_COMPLETED
+            ).exists()
+        )
+
+    def test_complete_task_logs_activity_on_both_lead_and_realization(self):
+        """Multi-link task → exactly one Activity per linked entity."""
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="R-multi-complete", customer=self.customer,
+        )
+        task = Task.objects.create(
+            firm=self.firm, lead=self.lead, realization=realization,
+            title="Multi-link complete",
+        )
+        resp = self._post(f"/api/v1/crm/tasks/{task.id}/complete", {})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            Activity.objects.filter(
+                lead=self.lead, type=ActivityType.TASK_COMPLETED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            Activity.objects.filter(
+                realization=realization, type=ActivityType.TASK_COMPLETED
+            ).count(),
+            1,
+        )
+
+    def test_complete_already_completed_realization_task_is_idempotent(self):
+        """Re-completing a realization-linked task does not double-log."""
+        from crm.models import Realization
+        realization = Realization.objects.create(
+            firm=self.firm, title="R-idem", customer=self.customer,
+        )
+        task = Task.objects.create(
+            firm=self.firm, realization=realization, title="Idem task",
+        )
+        self._post(f"/api/v1/crm/tasks/{task.id}/complete", {})
+        self._post(f"/api/v1/crm/tasks/{task.id}/complete", {})
+        self.assertEqual(
+            Activity.objects.filter(
+                realization=realization, type=ActivityType.TASK_COMPLETED
+            ).count(),
+            1,
+        )
