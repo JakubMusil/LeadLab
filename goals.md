@@ -1,329 +1,149 @@
-# LeadLab — Cílová architektura a Roadmapa
+# Streamline & Sidebar UX Goals
 
-> **Tento dokument slouží jako master-plan pro všechny budoucí iterace LeadLab.**
-> Systém je budován na modelu **Příležitost → Realizace → Správa** a skládá se ze tří pilířů:
-> **CRM** (vztahy a obchod), **ERP** (provoz a nástroje) a **INSIGHT** (data a mozek).
-
----
-
-## Aktuální stav (dokončeno v 1.x–3.0)
-
-Následující funkce jsou implementovány, otestovány a nasazeny:
-
-- [x] Vícenájemní architektura (Firm/Tenant) s rolemi Owner / Admin / Worker
-- [x] Autentizace e-mailem, obnova hesla, pozvánky do týmu
-- [x] **Adresář** (Customer) — CRUD kontaktů (firmy i osoby), tagy, metadata
-- [x] **Příležitosti** (Lead) — 6-stavový pipeline Kanban (Nový → Kontaktovaný → Kvalifikovaný → Nabídka → Vyhráno / Prohráno)
-- [x] Úkoly — globální Task Manager s kalendářem a šablonami
-- [x] Nabídky (Proposals) — tvorba, PDF, veřejný link, akceptace
-- [x] Aktivity — komentáře, hovory, schůzky, e-maily, nahrávání souborů
-- [x] Real-time aktualizace přes WebSocket (Django Channels)
-- [x] Analytika — pipeline velocity, výkon týmu, trendy konverzí
-- [x] Stripe integrace — předplatné, webhooky, usage-limits
-- [x] Plugin systém — registrace custom nav položek, activity typů, webhook event typů
-- [x] Automatizace — trigger/condition/action engine s Celery
-- [x] Vue 3 SPA (Vite, Pinia, Vue Router, Tailwind, dark mode, i18n: cs/en/de/pl)
-- [x] Docker Compose, CI/CD, Sentry, PWA, E2E testy (Playwright)
+Tento dokument je živý plán postavený na základě návrhu tří souvisejících UX
+vylepšení streamline / activity timeline + sidebar composeru + IMAP/SMTP
+pluginu. Položky jsou řazené dle priority. Hotové úkoly se odškrtávají
+(`- [x]`), neodevzdané zůstávají `- [ ]`.
 
 ---
 
-## Architektura systému
+## 1) Filtr typů aktivit do dropdownu + per‑user nastavení
 
-### I. CRM — Vztahy a Obchod
+**Koncept**
+- Bar filtru nahradit jedním tlačítkem „Filtr aktivit" (ikona + počet
+  aktivních / celkem). Po kliknutí dropdown se sekcemi a checkboxy.
+- Tři vrstvy konfigurace:
+  1. **Default per parent type** — pro každý nadřazený objekt
+     (Lead / Realization / Management / Task / Proposal …) backend definuje,
+     které typy jsou „důležité" a defaultně zaškrtnuté. Zbytek (logy,
+     `system_note`, `tag_added/removed`, `entity_change`, `ai_summary`,
+     `pinned/unpinned` …) je defaultně **odškrtnuté**.
+  2. **Per‑user override** — uživatel si v dropdownu zaškrtne/odškrtne
+     typy a volba se uloží do jeho profilu. Platí napříč všemi výpisy
+     streamline (globální nastavení uživatele), ne per objekt.
+  3. **Per‑view ad‑hoc** — aktuální session filtr (např. „chci teď vidět
+     jen e‑maily"). Nepřepisuje uložené nastavení, jen dočasné.
 
-#### 1.1 Adresář
-Centrální evidence subjektů — firem i osob. Všechny ostatní entity systému (Příležitosti, Realizace, Správa, Úkoly, Výkazy) se na záznamy v Adresáři váží.
+**Kategorizace typů (pro hezký dropdown)**
+Do `StreamlineTool` přidat dvě metadata:
+- `category` (výčet: `communication`, `task`, `commerce`, `system`, `ai`, `meta`)
+- `default_visibility` (`important` / `secondary`) — `important` =
+  defaultně viditelné
 
-**Datový model:**
-- `Contact` — unifikovaný model pro fyzické osoby i firmy (typ: `person` / `company`)
-- Pole: jméno, e-mail, telefon, web, adresa, IČO/DIČ, tagy, vlastní metadata
-- Vztahy: kontakt může být zaměstnancem/kontaktní osobou jiné firmy
+Sekce v dropdownu:
+- **Komunikace** (Comment, Email, SMS, WhatsApp, Chat, Call, Meeting, Mention)
+- **Úkoly & schvalování** (Task*, Approval*, Checklist, TimeLogged, DueDate …)
+- **Obchod** (Proposal*, Invoice, Payment, Signature*)
+- **Systémové logy** (StatusChange, EntityChange, Priority, Assignee, Tag*,
+  Pinned, SystemNote)
+- **AI** (AiSummary, AiSuggestedAction)
 
-**Funkce:**
-- Vyhledávání a filtrování (jméno, e-mail, telefon, IČO, tag)
-- Import/export CSV
-- Rychlé akce: mailto, tel, odkaz na web
-- Propojení na všechny navazující entity
-- Enrichment (plugin: LinkedIn, Clearbit)
+Nahoře dropdownu „Vybrat vše / Jen důležité / Žádné" a dole „Uložit jako
+moje výchozí".
 
----
+**Backend úkoly**
+- [x] Přidat `category` a `default_visibility` na `StreamlineTool` (base).
+- [x] Přiřadit metadata všem registrovaným toolům v `crm/streamline/tools.py`.
+- [x] Rozšířit `ToolOut` v `crm/streamline/api.py` o `category` a
+      `default_visibility`.
+- [x] Nový model `UserStreamlinePreference` (user FK, `hidden_activity_types`
+      JSON list — ukládáme „co skrýt", aby nové typy automaticky respektovaly
+      svůj default).
+- [x] Endpointy `GET/PUT /api/v1/users/me/streamline-preferences/`.
+- [x] Migrace + testy.
 
-#### 1.2 Příležitosti
-Obchodní Kanban. Aktivuje se při vstupu nového obchodního podnětu. Vychází z nynějšího modulu Lead.
-
-**Datový model:**
-- Pole: název, hodnota, měna, zdroj, fáze, přiřazená osoba, termín uzavření, popis
-- Vazby: Adresář (kontakt/firma), Úkoly, Aktivity, Nabídky, Dokumenty, Realizace (1:1 po vyhraní)
-
-**Pipeline fáze:** Nový → Kontaktovaný → Kvalifikovaný → Nabídka → Vyhráno / Prohráno / Zrušeno
-
-**Funkce:**
-- Kanban board (drag-and-drop) + tabulkový pohled
-- Inline editace stavu, hodnoty a přiřazení
-- Lead scoring (0–100) dle konfigurovatelných pravidel
-- Uložené pohledy (filtry + řazení)
-- Automatické vytvoření Realizace při přechodu na „Vyhráno"
-
----
-
-#### 1.3 Realizace *(nová entita)*
-Výrobní / servisní Kanban. Aktivuje se automaticky po vyhrané Příležitosti. Řeší doručení hodnoty zákazníkovi.
-
-**Datový model:**
-- Vazba 1:1 na Příležitost (origin), N:1 na Adresář (zákazník)
-- Pole: název, fáze, odpovědná osoba, termín zahájení, termín dokončení, popis
-- Komponenty: Úkoly, Aktivity, Dokumenty, Výkazy (náklady/výnosy), Milníky
-
-**Pipeline fáze:** Naplánováno → Probíhá → Pozastaveno → Dokončeno / Zrušeno
-
-**Funkce:**
-- Kanban board pro Realizace (stejný UI pattern jako Příležitosti)
-- Milníky s vazbou na Kalendář
-- Měření času na úrovni celé Realizace i jednotlivých Úkolů
-- Generování fakturačních podkladů do Výkazů
-
----
-
-#### 1.4 Správa *(nová entita)*
-Post-realizační fáze. Péče o zákazníka, SLA, záruky a retence.
-
-**Datový model:**
-- Vazba na Realizaci (origin) a Adresář (zákazník)
-- Pole: typ (SLA / Záruka / Retence / Péče), stav, odpovědná osoba, termín expirace, poznámky
-- Komponenty: Úkoly (service kanban), Aktivity, Dokumenty, Výkazy
-
-**Pipeline fáze (Service Kanban):** Otevřeno → Řeší se → Čeká na zákazníka → Uzavřeno
-
-**Funkce:**
-- SLA tracking — výpočet zbývajícího času, barevné indikátory
-- Automatická eskalace (Automatizace engine)
-- Propojení zpětné vazby s Příležitostmi (upsell/cross-sell)
+**Frontend úkoly (SPA)**
+- [x] Komponenta `StreamlineFilterDropdown` (button + popover s checkboxy
+      po sekcích, ikony z `tool.icon`).
+- [x] Stav uživatelských preferencí v Pinia store (1× při loginu).
+- [x] Indikátor počtu skrytých položek („3 skryté – zobrazit").
+- [x] Tlačítka „Vybrat vše / Jen důležité / Žádné / Resetovat na výchozí /
+      Uložit jako moje výchozí".
+- [x] Nahradit stávající chip-bar v `ActivityTimeline.vue` tímto dropdownem.
 
 ---
 
-### II. ERP — Provoz a Nástroje
+## 2) Sjednocení duplicitních komunikačních toolů v sidebaru
 
-#### 2.1 Úkoly
-Rozšíření stávajícího globálního Task Manageru.
+**Problém dnes**
+Sidebar/composer má 6 samostatných tlačítek: Email odeslaný/přijatý,
+SMS odeslaná/přijatá, WhatsApp odeslaná/přijatá. Opticky šum, ostatní akce
+se tlačí dolů.
 
-**Funkce:**
-- Úkol může být zcela samostatný nebo volitelně propojený s libovolnou CRM entitou (Adresář / Příležitost / Realizace / Správa)
-- Šablony úkolů, opakování, kontrolní seznamy (checklisty)
-- Přiřazení více členům týmu, sledování stavu
+**Návrh**
+Jediné tlačítko **„Zpráva"** otevře unifikovaný composer s:
+- Dropdown **Kanál**: E‑mail / SMS / WhatsApp / Chat / IM…
+- Toggle **Směr**: Odchozí ↔ Příchozí (default Odchozí; Příchozí slouží pro
+  zpětně logované zprávy).
+- Pole se dynamicky mění podle kanálu (převzato z `get_schema()` jednotlivých
+  toolů, jen sloučeno pod jednu UI „obálku").
 
----
+**Backend úkoly**
+- [ ] V `StreamlineTool` přidat metadata `channel`
+      (`email`/`sms`/`whatsapp`/`chat`/`none`) a `direction`
+      (`in`/`out`/`none`).
+- [ ] Vrátit obojí přes `ToolOut`.
+- [ ] Aktivity zůstávají uložené pod existujícími `activity_type`
+      (`email_in`, `email_out`, …) — žádná datová migrace.
 
-#### 2.2 Měření času *(nová funkce)*
-Sitewide časovač přístupný z libovolné části aplikace.
-
-**Funkce:**
-- Plovoucí počítadlo (persistent UI widget) viditelné po celou dobu prohlížení aplikace
-- Spuštění s výběrem kontextu: ke které entitě se čas váže (Úkol / Příležitost / Realizace / Správa / Adresář nebo samostatně)
-- Více záznamů na stejnou entitu od různých členů týmu
-- Ruční zadání záznamu (zpětně)
-- Export do Výkazů (timesheet)
-
----
-
-#### 2.3 Kalendář
-Agregované zobrazení termínů ze všech CRM entit.
-
-**Funkce:**
-- Měsíční / týdenní / denní pohled (FullCalendar)
-- Zdroje: Úkoly (due date), Milníky Realizací, SLA expiry (Správa), Události aktivit
-- Inline vytváření úkolů kliknutím na datum
-- iCal export
+**Frontend úkoly**
+- [ ] Nový sidebar item „Zpráva" s unified composerem.
+- [ ] Mapování (kanál + směr) → konkrétní `activity_type` před
+      `create_activity`.
+- [ ] Skrýt 6 stávajících tlačítek v sidebaru pro entity, kde tam byly.
 
 ---
 
-#### 2.4 Výkazy *(rozšíření)*
-Finanční mezivrstva — sběr nákladů a výnosů z celého systému.
+## 3) IMAP/SMTP plugin pro automatické přiřazování e‑mailů
 
-**Datový model:**
-- `TimeEntry` — záznam z časovače (viz 2.2); vazba na libovolnou entitu
-- `ExpenseItem` — jednorázová nebo opakovaná nákladová položka; vazba na libovolnou entitu
-- `RevenueItem` — jednorázová nebo opakovaná výnosová položka (např. schválená nabídka, milník Realizace)
-- Agregace po Firmě / Projektu / Zákazníkovi / Datu
+**Princip**
+- Firma si v nastavení pluginu zadá:
+  - IMAP server + creds + složky ke čtení (Inbox, Sent) — pro **příchozí
+    i odchozí** detekci.
+  - Volitelně SMTP — pouze pro **odesílání** z LeadLabu (composer
+    „Email odchozí" ho použije).
+  - Frekvenci pollu (default 5 min) nebo IMAP IDLE pro real‑time.
+- Každý objekt v CRM má **unikátní klíč** (např. `[LL-A8F3K2]` nebo
+  doménový `lead-A8F3K2@reply.firma.cz`).
+- Plugin při načtení e‑mailu:
+  1. Hledá klíč v `Subject`, `In-Reply-To`/`References`, těle (regex).
+  2. Pokud najde → vytvoří `Activity` typu `email_in`/`email_out`
+     navázanou na správnou entitu (přes existující `EmailIn/OutTool`).
+  3. Pokud nenajde → fallback na **e‑mail odesílatele/příjemce** → match
+     proti `Contact`/`Lead`.
+  4. Jinak → uloží do „Nepřiřazené e‑maily" inboxu, kde uživatel ručně
+     přiřadí (drag & drop / select objektu). Po přiřazení se klíč může
+     i zpětně doplnit do threadu.
 
-**Funkce:**
-- Timesheet — přehled odpracovaného času (filtrovatelný po členu týmu, entitě, datu)
-- Přehled nákladů a výnosů (P&L na úrovni Příležitosti / Realizace / Zákazníka)
-- Položkový rozpad ziskovosti
-- Integrace Fakturoid API — tvorba nabídek a faktur přímo z Výkazů
-- Export do CSV / PDF
+**Backend úkoly (MVP)**
+- [ ] Model `IncomingMailbox` (firm, host, port, ssl, username,
+      password_encrypted, last_uid_seen, folder_in, folder_sent,
+      polling_interval, enabled).
+- [ ] Model `UnassignedEmail` (mailbox, message_id, headers, raw_body,
+      parsed_text, attachments, received_at, suggested_entity_id, status).
+- [ ] Celery periodic task `poll_imap_mailboxes`.
+- [ ] Matcher pipeline: `KeyTagMatcher` → `ReplyAddressMatcher` →
+      `ContactEmailMatcher` → `Unassigned`.
+- [ ] Composer odchozí pošty doplňuje token do hlavičky
+      (`X-LeadLab-Ref`) a do patičky („Vaše reference: LL-A8F3K2").
+- [ ] Šifrování credentials (Fernet/`django-fernet-fields`).
+- [ ] `UNIQUE(mailbox, message_id)` proti duplicitám.
+- [ ] Přílohy přes existující file pipeline.
 
----
-
-#### 2.5 Dokumenty *(nová entita)*
-Centrální správa souborů s vazbou na entity.
-
-**Funkce:**
-- Upload souborů (drag-and-drop, XHR progress)
-- Vazba na libovolnou CRM entitu (Adresář / Příležitost / Realizace / Správa)
-- Sdílení pomocí podepsaného dočasného odkazu
-- Preview obrázků a PDF přímo v aplikaci
-- Vyhledávání napříč dokumenty (název, typ, entita)
-
----
-
-### III. INSIGHT — Data a Mozek
-
-#### 3.1 Statistiky
-Reporting výkonu obchodu, týmu a pipeline.
-
-**Funkce:**
-- Pipeline velocity (průměrný čas ve fázi)
-- Vyhráno / Prohráno dle zdroje (stacked bar)
-- Výkon týmu (Příležitosti, Realizace, Úkoly, odpracovaný čas)
-- Marže a ziskovost (z Výkazů)
-- Trendy: nové/uzavřené Příležitosti a Realizace za 12 týdnů
-- Konfigurovatelný date range picker
+**V2 / V3** (mimo MVP)
+- [ ] IDLE/push, SMTP odesílání z LL, OAuth (Google/Microsoft).
+- [ ] Reply‑address routing, ML návrhy přiřazení.
+- [ ] Bidirectional sync (read state), threading view.
 
 ---
 
-#### 3.2 Automatizace
-Engine pro workflow — bez nutnosti kódu.
+## Pořadí prací
 
-**Triggery:**
-- Změna stavu libovolné CRM entity (Příležitosti, Realizace, Správy, Úkolu)
-- Vypršení SLA / záruky (Správa)
-- Nový záznam v Adresáři
-- Příchozí webhook
-
-**Akce:**
-- Vytvořit Realizaci při vyhraní Příležitosti
-- Vytvořit úkol / eskalovat SLA
-- Odeslat e-mail / Slack notifikaci
-- Aktualizovat pole / přiřadit osobu
-- Spustit plugin
+1. **Bod 1** — nejvyšší poměr přínos/úsilí, čistě UI + 1 model. Hned uklidí
+   stránku.
+2. **Bod 2** — navazuje na metadata `channel`/`direction`, žádná data migrace.
+3. **Bod 3** — samostatný plugin, větší rozsah, nezávislý na 1+2.
 
 ---
 
-### IV. Nastavení
-
-- **Správa týmu** — pozvánky, role, oprávnění
-- **Pluginy** — manager instalovaných pluginů, konfigurace, sandbox
-- **Systémové nastavení** — profil, workspace, Stripe, API tokeny, webhooky, šablony nabídek, pipeline fáze
-- **Super Admin zóna** — přehled všech firem, ruční úpravy předplatného
-
----
-
-## Fázovaná Roadmapa
-
-### Fáze 4.0 — Měření času a Výkazy
-
-Sitewide časovač a finanční mezivrstva.
-
-- [x] **TimeEntry model** — nový Django model se vazbou na volitelnou entitu (GenericForeignKey nebo nullable FK na Lead/Customer/…)
-- [x] **REST API pro TimeEntry** — CRUD (`/api/v1/erp/time-entries`), filtry po uživateli, entitě, datu
-- [x] **Sitewide časovač** — Vue 3 composable `useTimer` (start/stop/reset); stav persistován v Pinia; plovoucí UI widget v AppShell (viditelný přes router-view)
-- [x] **Výběr kontextu** — modal/popover při spuštění časovače: vybrat typ entity + konkrétní záznam (search dropdown); lze spustit bez kontextu
-- [x] **Manuální zadání záznamu** — formulář pro ruční timesheet záznam s výběrem entity
-- [x] **Timesheet view** — nová stránka `/app/timesheets`; tabulka záznamů s filtry; inline editace a mazání
-- [x] **ExpenseItem a RevenueItem modely** — jednorázové i opakované položky s vazbou na entitu
-- [x] **Výkazy view** — `/app/reports`; P&L přehled, položkový rozpad, exporty CSV/PDF
-- [x] **Fakturoid integrace** — API klíč v Nastavení; tvorba faktur z agregovaných dat Výkazů
-- [x] Navigace — přidat „Výkazy" a „Čas" do ERP sekce sidebaru
-- [ ] Testy — Vitest pro `useTimer`, Pinia store; Django testy pro nová API
-
----
-
-### Fáze 4.1 — Realizace
-
-Výrobní Kanban aktivovaný po vyhraní Příležitosti.
-
-- [x] **Realization model** — Django model s vazbou na `Lead` (origin, nullable), `Customer`, přiřazenou osobou, fázemi a milníky
-- [x] **Milestone model** — milníky Realizace (název, datum, splněno T/F); vazba na Kalendář
-- [x] **REST API** — CRUD pro Realizace a Milníky (`/api/v1/crm/realizations`, `/milestones`)
-- [x] **Automatizace trigger** — „Při Won v Příležitosti → vytvořit Realizaci" jako built-in automation template
-- [x] **Realizace view** — `/app/realizations`; Kanban board (stejný pattern jako Příležitosti); drag-and-drop fáze
-- [x] **Detail Realizace** — záložky: Přehled / Úkoly / Aktivity / Dokumenty / Výkazy / Milníky
-- [x] **Měření času** — rozšíření `useTimer` o kontext Realizace
-- [x] **Navigace** — přidat „Realizace" do CRM sekce sidebaru; aktualizovat i18n (cs/en/de/pl)
-- [x] WebSocket eventy — `realization.created/updated/deleted`
-- [ ] Testy — Django + Vitest + Playwright smoke test
-
----
-
-### Fáze 4.2 — Správa
-
-Post-realizační fáze (SLA, záruky, retence).
-
-- [x] **Management model** — Django model s vazbou na `Realization` (origin), `Customer`, typem (SLA/Záruka/Retence/Péče), stavem a termínem expirace
-- [x] **REST API** — CRUD (`/api/v1/crm/management`)
-- [x] **SLA tracking** — výpočet zbývajícího času; barevné indikátory (zelená/žlutá/červená)
-- [x] **Automatizace** — trigger „SLA expiruje za N dní → eskaluj / pošli notifikaci" (SLA_EXPIRING trigger + template v automations_api.py)
-- [x] **Service Kanban view** — `/app/management`; 4-stavový kanban
-- [x] **Detail Správy** — záložky: Přehled / Úkoly / Aktivity
-- [x] **Navigace** — přidat „Správa" do CRM sekce sidebaru; aktualizovat i18n
-- [ ] Testy
-
----
-
-### Fáze 4.3 — Dokumenty
-
-Centrální správa souborů.
-
-- [x] **Document model** — nullable FKs na libovolnou entitu; pole: název, typ, velikost, URL, nahráno kým/kdy
-- [x] **REST API** — upload, list, delete (`/api/v1/erp/documents`)
-- [x] **Documents view** — `/app/documents`; tabulka s filtry a vyhledáváním
-- [x] **Integrace do Detail views** — záložka Dokumenty v Realizaci a Správě
-- [x] Vyhledávání dokumentů v Command Palette
-- [ ] Testy
-
----
-
-### Fáze 4.4 — Adresář v2 (Firmy a Lidé)
-
-Rozšíření stávajícího Customer modelu na plnohodnotný Adresář.
-
-- [x] **Unifikovaný Contact model** — přidat `type` pole (`person` / `company`); přidat pole IČO, DIČ, adresa, web; přidat relaci „zaměstnanec firmy" (self-referential FK)
-- [x] **Migrace** — DataMigration: stávající Customer záznamy → Contact type=person (nebo company dle přítomnosti company_name)
-- [x] **Adresář view** — přidání přepínače Firmy / Lidé; zobrazení hierarchie (firma → kontaktní osoby)
-- [x] **Detail kontaktu** — záložky: Info / Příležitosti / Realizace / Správa / Úkoly / Dokumenty / Aktivity
-- [ ] **Enrichment plugin** — LinkedIn/Clearbit napojení (dobrovolné)
-- [ ] Testy
-
----
-
-### Fáze 4.5 — Statistiky v2
-
-Rozšíření analytického modulu o nové entity.
-
-- [x] Přidat metriky Realizací do pipeline reportů
-- [x] Výkonnostní report: čas → ziskovost (z Výkazů + Realizací)
-- [x] Přehled SLA plnění (Správa)
-- [x] Konfigurovatelný dashboard — drag-and-drop widget layout (vue-draggable-plus), uložení per-user
-- [x] Plánované reporty — týdenní e-mailový digest (Celery beat)
-
----
-
-### Fáze 4.6 — Automatizace v2
-
-Rozšíření automation engine o nové triggery a akce.
-
-- [x] Nové triggery: změna fáze Realizace, SLA expiry, nový kontakt v Adresáři, dokončení Milníku
-- [x] Nové akce: vytvoření Správy po dokončení Realizace (create_management), spuštění Fakturoid akce (přes run_plugin_action)
-- [x] Výchozí automation templates pro celý CRM lifecycle (Příležitost → Realizace → Správa)
-- [x] Vizuální editor podmínek (AND/OR builder)
-
----
-
-### Fáze 5.0 — Platform Release
-
-- [ ] Audit překladu — kontrola pokrytí všech klíčů ve všech lokalizacích (cs/en/de/pl)
-- [ ] Security audit — externí penetrační test; vyřešení všech kritických nálezů
-- [ ] SLA & uptime — public status page; PagerDuty alerting
-- [ ] Aktualizace marketingové stránky a dokumentace (MkDocs) o nové funkce
-- [x] Demo data — seed script pro celý CRM lifecycle (`python manage.py load_demo_data`)
-- [ ] Veřejné oznámení a changelog
-
----
-
-## Principy architektury (zachovány z v1–v3)
-
-1. **Multi-tenancy first** — veškerá data jsou striktně scopována na Firm; žádný únik dat mezi nájemníky
-2. **Explicit over implicit** — kontroly oprávnění (`require_membership`, `require_active_subscription`) jsou volány na vrcholu každého endpointu
-3. **Thin models, fat API** — business logika žije v API vrstvě (transakce, side-efekty, Celery dispatch)
-4. **Graceful degradation** — volitelné služby (Celery, Redis, S3, Stripe, Fakturoid) nezpůsobují hard failure při absenci konfigurace
-5. **API-first** — Django Ninja / OpenAPI jako primární interface; Vue SPA je konzumentem stejného API
+_Aktualizováno průběžně agentem v této session._
