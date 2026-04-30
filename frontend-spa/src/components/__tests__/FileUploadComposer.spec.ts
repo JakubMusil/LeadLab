@@ -18,8 +18,8 @@ const fetchMock = vi.fn()
 beforeEach(() => {
   setActivePinia(createPinia())
   fetchMock.mockReset()
-  // @ts-expect-error — JSDOM does not provide fetch by default.
-  global.fetch = fetchMock
+  // JSDOM does not provide fetch by default; install our mock.
+  global.fetch = fetchMock as unknown as typeof fetch
 })
 
 function _mount() {
@@ -47,7 +47,7 @@ describe('FileUploadComposer', () => {
 
     const items = wrapper.findAll('[data-testid="file-upload-selected-item"]')
     expect(items).toHaveLength(1)
-    expect(items[0].text()).toContain('a.pdf')
+    expect(items[0]?.text()).toContain('a.pdf')
     expect(submit.attributes('disabled')).toBeUndefined()
   })
 
@@ -107,7 +107,7 @@ describe('FileUploadComposer', () => {
     expect(fetchMock).not.toHaveBeenCalled()
     const submits = wrapper.emitted('submit') ?? []
     expect(submits).toHaveLength(1)
-    expect(submits[0][0]).toMatchObject({
+    expect(submits[0]?.[0]).toMatchObject({
       source_kind: 'url',
       url: 'https://example.org/x.pdf',
       store_locally: true,
@@ -123,7 +123,7 @@ describe('FileUploadComposer', () => {
     await checkbox.setValue(false)
     await wrapper.find('[data-testid="file-upload-submit"]').trigger('click')
     await flushPromises()
-    const payload = (wrapper.emitted('submit') ?? [])[0][0] as { store_locally: boolean }
+    const payload = (wrapper.emitted('submit') ?? [])[0]?.[0] as { store_locally: boolean }
     expect(payload.store_locally).toBe(false)
   })
 })

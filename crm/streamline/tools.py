@@ -1390,6 +1390,109 @@ class CallScheduledTool(_ScheduledActivityTool):
     required_fields = ["start_at"]
 
 
+class EventScheduledTool(_ScheduledActivityTool):
+    """
+    Generic calendar event — modeled loosely on a Google Calendar event.
+
+    Distinct from :class:`MeetingScheduledTool` (which is specifically a
+    sales meeting with a Lead) and :class:`CallScheduledTool` (a phone
+    appointment): an "event" can be anything that needs a calendar slot
+    *and* a record on the entity timeline — a workshop, a webinar,
+    annual review, internal kickoff, etc.
+
+    Two notable differences from its siblings:
+
+    * Supports an explicit ``all_day`` flag.  When true, the calendar
+      shows the event in the dedicated all-day strip and the time
+      components of ``start_at`` / ``end_at`` are ignored — the user can
+      submit either ISO date-time strings (``2026-05-04T09:00``) or
+      plain ISO dates (``2026-05-04``).
+    * Carries a free-form ``description`` (multiline) in addition to the
+      short ``content_text`` subject — Google Calendar makes the same
+      distinction between *Title* and *Description*.
+    """
+
+    activity_type = "event_scheduled"
+    label = _("Event Scheduled")
+    icon = "CalendarIcon"
+    category = "planning"
+    default_visibility = "important"
+    task_kind = "event"
+    task_title_prefix = "Event"
+    schema_properties = {
+        "content_text": {"type": "string", "title": "Subject"},
+        "all_day": {"type": "boolean", "title": "All day", "default": False},
+        "start_at": {"type": "string", "format": "date-time", "title": "Start"},
+        "end_at": {"type": "string", "format": "date-time", "title": "End"},
+        "location": {"type": "string", "title": "Location"},
+        "attendees": {
+            "type": "array",
+            "items": {"type": "string"},
+            "title": "Attendees",
+        },
+        "description": {
+            "type": "string",
+            "title": "Description",
+        },
+    }
+    required_fields = ["start_at"]
+
+    def _parse_dt(self, value):
+        # When the user marks the event as all-day, the SPA sends a
+        # plain ISO date (``YYYY-MM-DD``) instead of a date-time —
+        # fromisoformat in the base class returns a ``date`` object in
+        # that case, which fails the timezone branch.  Normalise to a
+        # naive datetime first so the parent timezone-aware path applies
+        # uniformly.
+        from datetime import date, datetime
+
+        parsed = super()._parse_dt(value)
+        if isinstance(parsed, datetime):
+            return parsed
+        if isinstance(value, str) and value and "T" not in value:
+            try:
+                d = date.fromisoformat(value)
+            except ValueError:
+                return None
+            from django.utils import timezone as _tz
+
+            return _tz.make_aware(
+                datetime(d.year, d.month, d.day, 0, 0, 0),
+                _tz.get_current_timezone(),
+            )
+        return parsed
+
+    def render_payload(self, activity: "Activity") -> dict:
+        # Surface the descriptive metadata fields the dedicated
+        # timeline renderer reads — base class provides the schema-mapped
+        # ``content_text`` / ``start_at`` / ``end_at`` plus task fields.
+        payload = super().render_payload(activity)
+        meta = activity.metadata or {}
+        payload["all_day"] = bool(meta.get("all_day", False))
+        payload["location"] = str(meta.get("location") or "")
+        attendees = meta.get("attendees") or []
+        payload["attendees"] = [str(a) for a in attendees if a is not None]
+        payload["description"] = str(meta.get("description") or "")
+        return payload
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        # Run the base implementation to create the linked Task, then
+        # patch ``is_all_day`` onto it — the parent doesn't know about
+        # the flag and we don't want to duplicate the entire creation
+        # logic just to thread a single boolean through.
+        super().process_action(activity, entity, payload, context)
+        task = getattr(activity, "task", None)
+        if task is None:
+            return
+        metadata = payload.get("metadata") or {}
+        all_day = bool(metadata.get("all_day", False))
+        if task.is_all_day != all_day:
+            task.is_all_day = all_day
+            task.save(update_fields=["is_all_day"])
+
+
 # --- Link ------------------------------------------------------------------
 
 class LinkTool(_SimpleLogTool):
@@ -1805,6 +1908,7 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     ChatTool(),
     MeetingScheduledTool(),
     CallScheduledTool(),
+    EventScheduledTool(),
     LinkTool(),
     PaymentReceivedTool(),
     InvoiceSentTool(),

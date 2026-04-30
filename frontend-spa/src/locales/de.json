@@ -1189,6 +1189,7 @@
     "typeWhatsAppIn": "WhatsApp (empfangen)",
     "typeMeetingScheduled": "Geplantes Meeting",
     "typeCallScheduled": "Geplanter Anruf",
+    "typeEventScheduled": "Geplante Veranstaltung",
     "typeTaskExpired": "Aufgabe abgelaufen",
     "scheduledTaskStatus": {
       "todo": "Geplant",
@@ -1213,6 +1214,7 @@
       "call": "Bereits geführter Anruf — Dauer, Notizen, optional Aufnahme.",
       "meeting": "Bereits stattgefundenes Meeting mit Notizen und Dauer.",
       "meeting_scheduled": "Geplantes zukünftiges Meeting — Beginn, Ort, Teilnehmende.",
+      "event_scheduled": "Allgemeines Kalenderereignis (Workshop, Webinar, Jubiläum…) — Datum, Uhrzeit oder ganztägig, Ort, Teilnehmende, Beschreibung.",
       "email_out": "Ausgehende E-Mail — wird in der Timeline gespeichert und optional über Integration versendet.",
       "email_in": "Manuell erfasste eingehende E-Mail (wenn nicht über Integration eingegangen).",
       "sms_out": "Ausgehende SMS.",
@@ -2047,5 +2049,13 @@
     "externalLink": "Externer Link",
     "fetching": "Wird geladen…",
     "untitled": "Ohne Titel"
+  },
+  "event": {
+    "allDay": "Ganztägig",
+    "attendees": "Teilnehmende",
+    "location": "Ort",
+    "start": "Beginn",
+    "end": "Ende",
+    "description": "Beschreibung"
   }
 }

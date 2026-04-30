@@ -1066,6 +1066,7 @@ class TaskOut(Schema):
     location: str
     attendees: List[str]
     auto_close_on_expiry: bool
+    is_all_day: bool
     outcome_prompted_at: Optional[datetime]
     # Flags
     is_completed: bool
@@ -1376,6 +1377,7 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "location": t.location,
         "attendees": t.attendees if isinstance(t.attendees, list) else [],
         "auto_close_on_expiry": t.auto_close_on_expiry,
+        "is_all_day": t.is_all_day,
         "outcome_prompted_at": t.outcome_prompted_at,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
@@ -1472,6 +1474,7 @@ class CalendarTaskOut(Schema):
     end: datetime
     location: str
     attendees: List[str]
+    is_all_day: bool
     assigned_to_id: Optional[str]
     assigned_to_name: Optional[str]
     # Entity link for click-through; exactly one is populated.
@@ -1502,6 +1505,7 @@ def _calendar_task_out(t: Task) -> dict:
         "end": end,
         "location": t.location or "",
         "attendees": list(t.attendees or []),
+        "is_all_day": bool(t.is_all_day),
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "assigned_to_name": _user_display_name(t.assigned_to),
         "lead_id": str(t.lead_id) if t.lead_id else None,

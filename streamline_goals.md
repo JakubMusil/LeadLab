@@ -301,7 +301,7 @@ z uploadu/stažení.
 Celery job na stažení do storage; po dokončení update `activity.metadata`.
 Plánové size limity validovat i serverside.
 
-#### 7.3 Naplánovaná událost *(nový tool `event_scheduled`)* — 🟡 následuje
+#### 7.3 Naplánovaná událost *(nový tool `event_scheduled`)* — ✅ hotovo
 
 Obdoba schůzky / Tasku, která má vlastní záznam v kalendáři. Vychází
 schematicky z eventu v Google Kalendáři.

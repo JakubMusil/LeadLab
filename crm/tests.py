@@ -2639,6 +2639,71 @@ class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
         from crm.streamline.registry import get_tool
         self.assertIsNotNone(get_tool("call_scheduled"))
 
+    def test_event_scheduled_creates_task_kind_event(self):
+        from crm.models import TaskStatus
+        start = timezone.now() + dt.timedelta(days=2)
+        end = start + dt.timedelta(hours=2)
+        activity, task = self._invoke(
+            "event_scheduled",
+            {
+                "start_at": start.isoformat(),
+                "end_at": end.isoformat(),
+                "location": "Conference Hall A",
+                "attendees": ["alice@example.com"],
+                "description": "Annual roadmap review.",
+            },
+        )
+        self.assertEqual(task.kind, "event")
+        self.assertEqual(task.status, TaskStatus.TODO)
+        self.assertTrue(task.auto_close_on_expiry)
+        self.assertFalse(task.is_all_day)
+        self.assertEqual(task.location, "Conference Hall A")
+        self.assertEqual(task.attendees, ["alice@example.com"])
+        self.assertEqual(activity.task_id, task.id)
+
+    def test_event_scheduled_with_all_day_accepts_date_only(self):
+        # When `all_day=true`, the SPA submits a plain ISO date — make
+        # sure the tool turns it into a midnight-tz-aware datetime and
+        # propagates `is_all_day=True` onto the linked Task.
+        activity, task = self._invoke(
+            "event_scheduled",
+            {
+                "start_at": "2026-05-04",
+                "end_at": "2026-05-04",
+                "all_day": True,
+                "location": "",
+            },
+        )
+        self.assertEqual(task.kind, "event")
+        self.assertTrue(task.is_all_day)
+        self.assertIsNotNone(task.due_date)
+        self.assertEqual(task.due_date.year, 2026)
+        self.assertEqual(task.due_date.month, 5)
+        self.assertEqual(task.due_date.day, 4)
+        self.assertEqual(task.due_date.hour, 0)
+        self.assertEqual(task.due_date.minute, 0)
+
+    def test_event_scheduled_render_payload_surfaces_metadata(self):
+        from crm.streamline.registry import get_tool
+        start = timezone.now() + dt.timedelta(days=3)
+        activity = Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type="event_scheduled",
+            metadata={
+                "start_at": start.isoformat(),
+                "all_day": True,
+                "location": "Studio",
+                "attendees": ["x@y.com", "z@y.com"],
+                "description": "Workshop kickoff.",
+            },
+        )
+        payload = get_tool("event_scheduled").render_payload(activity)
+        self.assertTrue(payload["all_day"])
+        self.assertEqual(payload["location"], "Studio")
+        self.assertEqual(payload["attendees"], ["x@y.com", "z@y.com"])
+        self.assertEqual(payload["description"], "Workshop kickoff.")
+
 
 class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
     """``auto_expire_scheduled_tasks`` transitions overdue scheduled tasks."""

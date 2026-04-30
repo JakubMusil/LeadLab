@@ -1190,6 +1190,7 @@
     "typeWhatsAppIn": "WhatsApp (přijatá)",
     "typeMeetingScheduled": "Naplánovaná schůzka",
     "typeCallScheduled": "Naplánovaný hovor",
+    "typeEventScheduled": "Naplánovaná událost",
     "typeTaskExpired": "Úkol vypršel",
     "scheduledTaskStatus": {
       "todo": "Plánováno",
@@ -1214,6 +1215,7 @@
       "call": "Záznam již proběhlého hovoru — délka, poznámky, případně nahrávka.",
       "meeting": "Záznam již proběhlé schůzky s poznámkami a délkou trvání.",
       "meeting_scheduled": "Naplánovaná budoucí schůzka — termín, místo, účastníci.",
+      "event_scheduled": "Obecná událost v kalendáři (workshop, prezentace, výročí…) — datum, čas nebo celodenní, místo, účastníci, popis.",
       "email_out": "Odeslaný e-mail — uloží se do timeline a volitelně se rozešle integrací.",
       "email_in": "Ručně zaznamenaný přijatý e-mail (pokud nepřišel přes integraci).",
       "sms_out": "Odeslaná SMS zpráva.",
@@ -2048,5 +2050,13 @@
     "externalLink": "Externí odkaz",
     "fetching": "Stahuji…",
     "untitled": "Bez názvu"
+  },
+  "event": {
+    "allDay": "Celý den",
+    "attendees": "Účastníci",
+    "location": "Místo",
+    "start": "Začátek",
+    "end": "Konec",
+    "description": "Popis"
   }
 }

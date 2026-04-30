@@ -133,6 +133,7 @@ const activityTypeLabelKey: Record<string, string> = {
   whatsapp_out: 'leadDetail.typeWhatsAppOut',
   whatsapp_in: 'leadDetail.typeWhatsAppIn',
   meeting_scheduled: 'leadDetail.typeMeetingScheduled',
+  event_scheduled: 'leadDetail.typeEventScheduled',
   link: 'leadDetail.typeLink',
   voice_memo: 'leadDetail.typeVoiceMemo',
   system_note: 'leadDetail.typeSystemNote',
@@ -148,6 +149,7 @@ const activityTypeHelpKey: Record<string, string> = {
   call: 'leadDetail.toolHelp.call',
   meeting: 'leadDetail.toolHelp.meeting',
   meeting_scheduled: 'leadDetail.toolHelp.meeting_scheduled',
+  event_scheduled: 'leadDetail.toolHelp.event_scheduled',
   email_out: 'leadDetail.toolHelp.email_out',
   email_in: 'leadDetail.toolHelp.email_in',
   sms_out: 'leadDetail.toolHelp.sms_out',
@@ -201,7 +203,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'planning',
     labelKey: 'leadDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'task'],
+    activityTypes: ['meeting_scheduled', 'event_scheduled', 'task'],
     accent: 'blue',
   },
   {
@@ -348,6 +350,12 @@ const sidebarActivitySubmitting = ref(false)
 const sidebarRichEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 type FieldValue = string | number | string[] | null
 const sidebarExtraFields = ref<Record<string, FieldValue>>({})
+// Boolean schema fields (e.g. ``event_scheduled.all_day``) are stored
+// in a separate ref because ``<input type="checkbox" v-model>`` requires
+// a boolean target whereas the text/array inputs above require strings.
+// At submit time we merge `sidebarBoolFields` back into the metadata
+// payload alongside `sidebarExtraFields`.
+const sidebarBoolFields = ref<Record<string, boolean>>({})
 
 // Task quick-create state
 const sidebarTaskTitle = ref('')
@@ -482,14 +490,25 @@ const sidebarSubmitDisabled = computed(() => {
  */
 function _initFieldsForTool(tool: StreamlineTool | null): Record<string, FieldValue> {
   const fields: Record<string, FieldValue> = {}
+  const bools: Record<string, boolean> = {}
   if (tool?.form_schema?.properties) {
     for (const [key, raw] of Object.entries(
       tool.form_schema.properties as Record<string, Record<string, unknown>>,
     )) {
       if (SKIP_FIELD_KEYS.has(key)) continue
-      fields[key] = (raw.type as string | undefined) === 'array' ? [] : ''
+      const propType = raw.type as string | undefined
+      if (propType === 'array') {
+        fields[key] = []
+      } else if (propType === 'boolean') {
+        // Honour explicit schema `default` (e.g. `event_scheduled.all_day`),
+        // otherwise start unchecked so the form has a deterministic state.
+        bools[key] = (raw.default as boolean | undefined) ?? false
+      } else {
+        fields[key] = ''
+      }
     }
   }
+  sidebarBoolFields.value = bools
   return fields
 }
 
@@ -502,6 +521,7 @@ function openSidebarAction(type: string) {
     messageChannel.value = ''
     messageDirection.value = ''
     sidebarExtraFields.value = {}
+    sidebarBoolFields.value = {}
     return
   }
   // Pre-initialise schema keys so Vue's Proxy reactivity tracks them from start.
@@ -526,6 +546,7 @@ watch(resolvedMessageTool, (next, prev) => {
 function closeSidebarAction() {
   sidebarActionType.value = ''
   sidebarExtraFields.value = {}
+  sidebarBoolFields.value = {}
   messageChannel.value = ''
   messageDirection.value = ''
 }
@@ -697,6 +718,12 @@ async function sidebarAddActivity() {
     if (Array.isArray(v) && v.length === 0) continue
     cleanFields[k] = v
   }
+  // Boolean schema fields (e.g. ``event_scheduled.all_day``) are kept
+  // in their own ref so they can drive UI state independently — fold
+  // them back into metadata so the backend tool sees them.
+  for (const [k, v] of Object.entries(sidebarBoolFields.value)) {
+    cleanFields[k] = v
+  }
   const metadata: Record<string, unknown> = {
     ...cleanFields,
     ...(mentionedIds.length ? { mentions: mentionedIds } : {}),
@@ -713,6 +740,7 @@ async function sidebarAddActivity() {
     sidebarActivityText.value = ''
     sidebarActionType.value = ''
     sidebarExtraFields.value = {}
+    sidebarBoolFields.value = {}
     messageChannel.value = ''
     messageDirection.value = ''
     tagDrafts.value = {}
@@ -766,6 +794,7 @@ async function sidebarSubmitVoiceMemo(payload: VoiceMemoSubmitPayload) {
   if (res.ok) {
     sidebarActionType.value = ''
     sidebarExtraFields.value = {}
+    sidebarBoolFields.value = {}
     emit('activity-added')
     toast.success(t('leadDetail.activityAdded'))
   } else {
@@ -833,6 +862,7 @@ async function sidebarSubmitFileUpload(payload: FileUploadSubmitPayload) {
     toast.success(t('leadDetail.activityAdded'))
     sidebarActionType.value = ''
     sidebarExtraFields.value = {}
+    sidebarBoolFields.value = {}
   } else {
     toast.error(t('leadDetail.activityFailed'))
   }
@@ -901,7 +931,19 @@ function inputTypeFor(prop: SchemaProp): string {
   if (prop.format === 'email') return 'email'
   if (prop.format === 'uri') return 'url'
   if (prop.format === 'date') return 'date'
-  if (prop.format === 'date-time') return 'datetime-local'
+  if (prop.format === 'date-time') {
+    // For the `event_scheduled` tool, the dedicated "All day" toggle
+    // collapses the date-time pickers down to plain date pickers — the
+    // backend accepts an ISO date and treats it as a midnight slot.
+    if (
+      sidebarActionType.value === 'event_scheduled'
+      && (prop.key === 'start_at' || prop.key === 'end_at')
+      && sidebarBoolFields.value.all_day === true
+    ) {
+      return 'date'
+    }
+    return 'datetime-local'
+  }
   return 'text'
 }
 
@@ -1184,6 +1226,19 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
               @blur="addTag(prop.key)"
             />
           </div>
+
+          <!-- Boolean → checkbox toggle -->
+          <label
+            v-else-if="prop.type === 'boolean'"
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none"
+          >
+            <input
+              v-model="sidebarBoolFields[prop.key]"
+              type="checkbox"
+              class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+            <span>{{ prop.title }}</span>
+          </label>
 
           <!-- Multi-line free text -->
           <textarea

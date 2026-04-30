@@ -39,6 +39,7 @@ import {
   UserCircleIcon,
   CalendarIcon,
   CalendarDaysIcon,
+  MapPinIcon,
   Squares2X2Icon,
   PlusCircleIcon,
   ArchiveBoxIcon,
@@ -140,6 +141,7 @@ const heroIconMap: Record<string, Component> = {
   UserCircleIcon,
   CalendarIcon,
   CalendarDaysIcon,
+  MapPinIcon,
   Squares2X2Icon,
   PlusCircleIcon,
   ArchiveBoxIcon,
@@ -295,6 +297,7 @@ const activityIconMap: Record<string, Component> = {
   chat: ChatBubbleLeftRightIcon,
   meeting_scheduled: CalendarDaysIcon,
   call_scheduled: PhoneIcon,
+  event_scheduled: CalendarIcon,
   task_expired: ClockIcon,
   link: LinkIcon,
   payment_received: BanknotesIcon,
@@ -340,6 +343,7 @@ function activityTypeLabel(type: string): string {
     whatsapp_in: t('leadDetail.typeWhatsAppIn'),
     meeting_scheduled: t('leadDetail.typeMeetingScheduled'),
     call_scheduled: t('leadDetail.typeCallScheduled'),
+    event_scheduled: t('leadDetail.typeEventScheduled'),
     task_expired: t('leadDetail.typeTaskExpired'),
     link: t('leadDetail.typeLink'),
     voice_memo: t('leadDetail.typeVoiceMemo'),
@@ -685,6 +689,76 @@ function fileUploadIcon(act: Activity): Component {
   return DocumentIcon
 }
 
+// ---------------------------------------------------------------------------
+// Event scheduled helpers (Fáze 7.3)
+// ---------------------------------------------------------------------------
+//
+// `event_scheduled` carries calendar metadata in `act.metadata`:
+//   - `start_at` / `end_at` (ISO datetime, or ISO date when `all_day`)
+//   - `all_day` (bool)
+//   - `location` (string)
+//   - `attendees` (string[]) — user IDs or external email/handles
+//   - `description` (string, multiline)
+//
+// We also surface the linked Task's `task_status` via `tool_payload` (see
+// `_ScheduledActivityTool.render_payload`) so the dedicated card can show
+// "Done"/"Expired" without an extra request.
+
+function eventScheduledMeta(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function eventScheduledIsAllDay(act: Activity): boolean {
+  return Boolean(eventScheduledMeta(act).all_day)
+}
+
+function eventScheduledLocation(act: Activity): string {
+  const value = eventScheduledMeta(act).location
+  return typeof value === 'string' ? value : ''
+}
+
+function eventScheduledDescription(act: Activity): string {
+  const value = eventScheduledMeta(act).description
+  return typeof value === 'string' ? value : ''
+}
+
+function eventScheduledAttendees(act: Activity): string[] {
+  const raw = eventScheduledMeta(act).attendees
+  if (!Array.isArray(raw)) return []
+  return raw.map((x) => String(x)).filter((s) => s.length > 0)
+}
+
+function eventScheduledRange(act: Activity): string {
+  const meta = eventScheduledMeta(act)
+  const startRaw = meta.start_at
+  const endRaw = meta.end_at
+  const start = typeof startRaw === 'string' && startRaw ? new Date(startRaw) : null
+  const end = typeof endRaw === 'string' && endRaw ? new Date(endRaw) : null
+  if (!start || Number.isNaN(start.getTime())) return ''
+  // All-day events show just the date (one date when start === end day).
+  if (eventScheduledIsAllDay(act)) {
+    const startDate = start.toLocaleDateString()
+    if (!end || Number.isNaN(end.getTime())) return startDate
+    const endDate = end.toLocaleDateString()
+    return startDate === endDate ? startDate : `${startDate} – ${endDate}`
+  }
+  const startStr = start.toLocaleString([], {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  if (!end || Number.isNaN(end.getTime()) || end.getTime() === start.getTime()) {
+    return startStr
+  }
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  const endStr = sameDay
+    ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : end.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  return `${startStr} – ${endStr}`
+}
+
 function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
 }
@@ -923,8 +997,8 @@ defineExpose({ load: () => loadActivities(1) })
                 {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
               </template>
             </span>
-            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call) -->
-            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled'">
+            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call/event) -->
+            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled' || act.type === 'event_scheduled'">
               <span
                 v-if="(act.tool_payload as Record<string, unknown> | null)?.task_status"
                 data-testid="scheduled-task-status-badge"
@@ -1055,6 +1129,57 @@ defineExpose({ load: () => loadActivities(1) })
               </p>
             </div>
           </a>
+
+          <!-- Event scheduled card (Fáze 7.3): date/time, location, attendees, description.
+               The status pill is rendered above (next to the type label) — this card only
+               carries the descriptive metadata. -->
+          <div
+            v-if="act.type === 'event_scheduled'"
+            class="mt-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 space-y-1"
+            data-testid="event-scheduled-card"
+            :data-activity-id="act.id"
+          >
+            <div
+              v-if="eventScheduledRange(act)"
+              class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+              data-testid="event-scheduled-time"
+            >
+              <CalendarIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <span class="font-medium tabular-nums">{{ eventScheduledRange(act) }}</span>
+              <span
+                v-if="eventScheduledIsAllDay(act)"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide"
+                data-testid="event-scheduled-all-day-badge"
+              >{{ t('event.allDay') }}</span>
+            </div>
+            <div
+              v-if="eventScheduledLocation(act)"
+              class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+              data-testid="event-scheduled-location"
+            >
+              <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <span class="truncate">{{ eventScheduledLocation(act) }}</span>
+            </div>
+            <div
+              v-if="eventScheduledAttendees(act).length"
+              class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+              data-testid="event-scheduled-attendees"
+            >
+              <UsersIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="a in eventScheduledAttendees(act)"
+                  :key="a"
+                  class="inline-flex items-center px-2 py-0.5 rounded-lg bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 text-xs"
+                >{{ a }}</span>
+              </div>
+            </div>
+            <p
+              v-if="eventScheduledDescription(act)"
+              class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap"
+              data-testid="event-scheduled-description"
+            >{{ eventScheduledDescription(act) }}</p>
+          </div>
 
           <!-- Reactions row (visible only for comment activities) -->
           <div

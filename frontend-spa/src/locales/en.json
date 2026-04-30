@@ -1189,6 +1189,7 @@
     "typeWhatsAppIn": "WhatsApp (received)",
     "typeMeetingScheduled": "Meeting scheduled",
     "typeCallScheduled": "Call scheduled",
+    "typeEventScheduled": "Event scheduled",
     "typeTaskExpired": "Task expired",
     "scheduledTaskStatus": {
       "todo": "Scheduled",
@@ -1213,6 +1214,7 @@
       "call": "Log a call that already happened — duration, notes, optional recording.",
       "meeting": "Log a meeting that already happened, with notes and duration.",
       "meeting_scheduled": "A scheduled future meeting — start, location, attendees.",
+      "event_scheduled": "Generic calendar event (workshop, webinar, anniversary…) — date, time or all-day, location, attendees, description.",
       "email_out": "An outbound email — stored on the timeline and optionally sent via integration.",
       "email_in": "Manually log an inbound email (e.g. when not coming through an integration).",
       "sms_out": "An outbound SMS message.",
@@ -2047,5 +2049,13 @@
     "externalLink": "External link",
     "fetching": "Fetching…",
     "untitled": "Untitled"
+  },
+  "event": {
+    "allDay": "All day",
+    "attendees": "Attendees",
+    "location": "Location",
+    "start": "Start",
+    "end": "End",
+    "description": "Description"
   }
 }
