@@ -1224,8 +1224,10 @@
       "file_upload": "Soubor přiložený k příležitosti — zadejte URL nahraného souboru.",
       "voice_memo": "Hlasová zpráva — vložte URL nahrávky a volitelně přepis.",
       "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
-      "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku."
-    }
+      "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku.",
+      "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže."
+    },
+    "typeMessage": "Zpráva"
   },
   "sequences": {
     "title": "E-mailové sekvence",
@@ -1998,5 +2000,15 @@
     "categoryMeta": "Ostatní",
     "secondaryBadge": "log",
     "secondaryHint": "Defaultně skryté — zobrazí se pouze po zapnutí."
+  },
+  "messageComposer": {
+    "channelLabel": "Kanál",
+    "directionLabel": "Směr",
+    "channelEmail": "E-mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp",
+    "channelChat": "Chat",
+    "directionOut": "Odchozí",
+    "directionIn": "Příchozí"
   }
 }

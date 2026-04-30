@@ -357,3 +357,45 @@ class StreamlineToolsAPITest(TestCase):
         self.assertEqual(by_type["tag_added"]["default_visibility"], "secondary")
         # AI
         self.assertEqual(by_type["ai_summary"]["category"], "ai")
+
+
+class StreamlineToolsChannelDirectionTest(TestCase):
+    """Verify the unified messaging metadata exposed to the SPA."""
+
+    URL = "/api/v1/streamline/tools"
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="ch@example.com", password="pass1234")
+        self.client.login(username="ch@example.com", password="pass1234")
+
+    def test_messaging_tools_carry_channel_and_direction(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        by_type = {t["activity_type"]: t for t in resp.json()}
+        # Six concrete email/SMS/WhatsApp tools
+        cases = {
+            "email_out": ("email", "out"),
+            "email_in": ("email", "in"),
+            "sms_out": ("sms", "out"),
+            "sms_in": ("sms", "in"),
+            "whatsapp_out": ("whatsapp", "out"),
+            "whatsapp_in": ("whatsapp", "in"),
+        }
+        for at, (channel, direction) in cases.items():
+            self.assertIn(at, by_type, f"tool {at} missing")
+            self.assertEqual(by_type[at]["channel"], channel)
+            self.assertEqual(by_type[at]["direction"], direction)
+
+    def test_chat_tool_uses_channel_chat_with_no_direction(self):
+        resp = self.client.get(self.URL)
+        by_type = {t["activity_type"]: t for t in resp.json()}
+        self.assertEqual(by_type["chat"]["channel"], "chat")
+        # ChatTool covers both directions internally via its schema.
+        self.assertEqual(by_type["chat"]["direction"], "none")
+
+    def test_non_messaging_tools_have_none_channel_and_direction(self):
+        resp = self.client.get(self.URL)
+        by_type = {t["activity_type"]: t for t in resp.json()}
+        for at in ["comment", "call", "meeting", "system_note", "task_completed"]:
+            self.assertEqual(by_type[at]["channel"], "none", f"{at} channel")
+            self.assertEqual(by_type[at]["direction"], "none", f"{at} direction")

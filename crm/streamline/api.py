@@ -53,6 +53,8 @@ class ToolOut(Schema):
     icon: str
     category: str
     default_visibility: str
+    channel: str
+    direction: str
     form_schema: Dict[str, Any]
 
 
@@ -61,6 +63,8 @@ class EntityToolbarOut(Schema):
     activity_type: str
     label: str
     icon: str
+    channel: str = "none"
+    direction: str = "none"
     form_schema: Dict[str, Any]
 
 
@@ -97,6 +101,8 @@ def list_tools(request):
             "icon": tool.icon,
             "category": tool.category,
             "default_visibility": tool.default_visibility,
+            "channel": tool.channel,
+            "direction": tool.direction,
             "form_schema": tool.get_schema(),
         }
         for tool in all_tools()
@@ -132,6 +138,8 @@ def get_entity_toolbar(request, entity_type: str):
                 "activity_type": "task",
                 "label": str(_("Task")),
                 "icon": "ClipboardDocumentListIcon",
+                "channel": "none",
+                "direction": "none",
                 "form_schema": {"type": "object", "properties": {}},
             })
         else:
@@ -141,6 +149,8 @@ def get_entity_toolbar(request, entity_type: str):
                     "activity_type": tool.activity_type,
                     "label": str(tool.label),
                     "icon": tool.icon,
+                    "channel": tool.channel,
+                    "direction": tool.direction,
                     "form_schema": tool.get_schema(),
                 })
     return result

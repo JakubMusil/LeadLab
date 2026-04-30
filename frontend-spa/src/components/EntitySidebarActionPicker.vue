@@ -60,6 +60,8 @@ interface StreamlineTool {
   activity_type: string
   label: string
   icon: string
+  channel?: string
+  direction?: string
   form_schema: {
     type: string
     properties?: Record<string, unknown>
@@ -133,6 +135,8 @@ const activityTypeLabelKey: Record<string, string> = {
   voice_memo: 'leadDetail.typeVoiceMemo',
   system_note: 'leadDetail.typeSystemNote',
   file_upload: 'leadDetail.typeFileUpload',
+  // Pseudo-tool for the unified messaging composer (no real activity_type).
+  message: 'leadDetail.typeMessage',
 }
 
 // Short helper text shown below the action header so the user knows what
@@ -153,6 +157,7 @@ const activityTypeHelpKey: Record<string, string> = {
   voice_memo: 'leadDetail.toolHelp.voice_memo',
   system_note: 'leadDetail.toolHelp.system_note',
   task: 'leadDetail.toolHelp.task',
+  message: 'leadDetail.toolHelp.message',
 }
 
 // ─── Tool category grouping (UX layout) ────────────────────────────────────
@@ -179,17 +184,15 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'communication',
     labelKey: 'leadDetail.toolCategory.communication',
+    // Note: the 6 channel-specific email/SMS/WhatsApp tools (and `chat`) are
+    // *not* listed here individually any more — they are replaced by the
+    // unified pseudo-tool `'message'` further down, which surfaces
+    // a Channel + Direction picker on top of the per-channel form schema.
     activityTypes: [
       'comment',
       'call',
       'meeting',
-      'email_out',
-      'email_in',
-      'sms_out',
-      'sms_in',
-      'whatsapp_out',
-      'whatsapp_in',
-      'chat',
+      'message',
     ],
     accent: 'red',
   },
@@ -230,6 +233,96 @@ onMounted(() => {
 watch(() => props.entityType, () => {
   toolbarTools.value = []
   loadToolbar()
+})
+
+// ─── Unified "Message" composer ────────────────────────────────────────────
+//
+// The 6 channel-specific email/SMS/WhatsApp tools (and the generic `chat`
+// tool) all live behind a single pseudo-tool `'message'`.  When the user
+// picks "Message" from the action grid, we render a Channel + Direction
+// selector that resolves to a concrete StreamlineTool from the toolbar
+// registry — its activity_type and form_schema are then used verbatim by
+// the existing schema-driven form & submit pipeline.
+//
+// Channels that aren't backed by a registered tool for the current entity
+// type are filtered out, so the picker only ever offers channels the
+// backend will actually accept.
+
+interface MessageChannelOption {
+  value: string                // 'email' | 'sms' | 'whatsapp' | 'chat'
+  labelKey: string
+  // Direction options that have a registered tool for this channel.
+  directions: { value: 'out' | 'in'; labelKey: string }[]
+}
+
+// All possible channel/direction combinations (filtered later by registry).
+const MESSAGE_CHANNEL_LABEL: Record<string, string> = {
+  email: 'messageComposer.channelEmail',
+  sms: 'messageComposer.channelSms',
+  whatsapp: 'messageComposer.channelWhatsapp',
+  chat: 'messageComposer.channelChat',
+}
+const _CHANNEL_ORDER = ['email', 'sms', 'whatsapp', 'chat'] as const
+
+/** Tools available behind the unified composer (`channel != 'none'`). */
+const messagingTools = computed(() =>
+  toolbarTools.value.filter((t) => t.channel && t.channel !== 'none'),
+)
+
+/** Whether at least one messaging tool exists, i.e. the unified entry should be rendered. */
+const hasMessagingTools = computed(() => messagingTools.value.length > 0)
+
+/**
+ * Channels the user can pick from in the unified composer, alongside the
+ * directions actually supported by the backend for each channel.  A channel
+ * with `direction = 'none'` (e.g. `chat`, which captures direction inside
+ * its own form schema) is exposed without a Direction toggle.
+ */
+const messageChannelOptions = computed<MessageChannelOption[]>(() => {
+  const byChannel = new Map<string, StreamlineTool[]>()
+  for (const tool of messagingTools.value) {
+    const ch = tool.channel ?? 'none'
+    if (!byChannel.has(ch)) byChannel.set(ch, [])
+    byChannel.get(ch)!.push(tool)
+  }
+  const result: MessageChannelOption[] = []
+  for (const ch of _CHANNEL_ORDER) {
+    const tools = byChannel.get(ch)
+    if (!tools || tools.length === 0) continue
+    const directions: { value: 'out' | 'in'; labelKey: string }[] = []
+    if (tools.some((t) => t.direction === 'out')) {
+      directions.push({ value: 'out', labelKey: 'messageComposer.directionOut' })
+    }
+    if (tools.some((t) => t.direction === 'in')) {
+      directions.push({ value: 'in', labelKey: 'messageComposer.directionIn' })
+    }
+    result.push({ value: ch, labelKey: MESSAGE_CHANNEL_LABEL[ch] ?? ch, directions })
+  }
+  return result
+})
+
+// Composer selection state (only used while sidebarActionType === 'message').
+const messageChannel = ref<string>('')
+const messageDirection = ref<'out' | 'in' | ''>('')
+
+/**
+ * Resolve the user's (channel, direction) selection to a concrete registered
+ * tool.  Falls back to the first matching channel tool when the channel has
+ * no direction toggle (e.g. `chat`).  Returns ``null`` until a viable
+ * combination is selected.
+ */
+const resolvedMessageTool = computed<StreamlineTool | null>(() => {
+  if (!messageChannel.value) return null
+  const candidates = messagingTools.value.filter((t) => t.channel === messageChannel.value)
+  if (candidates.length === 0) return null
+  const channelOption = messageChannelOptions.value.find((c) => c.value === messageChannel.value)
+  // Channels without a direction toggle (e.g. `chat`) collapse to their
+  // single tool regardless of any leftover direction state.
+  if (!channelOption || channelOption.directions.length === 0) return candidates[0] ?? null
+  if (!messageDirection.value) return null
+  return (
+    candidates.find((t) => t.direction === messageDirection.value) ?? null
+  )
 })
 
 // ─── Activity composer state ───────────────────────────────────────────────
@@ -299,8 +392,20 @@ interface SchemaProp {
   items?: { type?: string }
 }
 
+/**
+ * The StreamlineTool currently being composed.  When the user picks the
+ * unified "Message" pseudo-tool, this resolves to whichever channel-specific
+ * tool matches the (channel, direction) selection — so the rest of the
+ * form/submit pipeline can treat both flows identically.
+ */
+const currentTool = computed<StreamlineTool | null>(() => {
+  if (!sidebarActionType.value) return null
+  if (sidebarActionType.value === 'message') return resolvedMessageTool.value
+  return toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value) ?? null
+})
+
 const sidebarSchemaPropsAll = computed<SchemaProp[]>(() => {
-  const tool = toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value)
+  const tool = currentTool.value
   if (!tool?.form_schema?.properties) return []
   return Object.entries(tool.form_schema.properties as Record<string, Record<string, unknown>>)
     .filter(([key]) => !SKIP_FIELD_KEYS.has(key))
@@ -324,7 +429,7 @@ const sidebarSchemaPropsBottom = computed(() =>
 )
 
 const sidebarToolHasContentText = computed(() => {
-  const tool = toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value)
+  const tool = currentTool.value
   return !!(tool?.form_schema?.properties as Record<string, unknown> | undefined)?.content_text
 })
 
@@ -333,20 +438,20 @@ const sidebarHasPlainText = computed(() =>
 )
 
 const sidebarToolRequiresText = computed(() => {
-  const tool = toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value)
-  return tool?.form_schema.required?.includes('content_text') ?? false
+  return currentTool.value?.form_schema.required?.includes('content_text') ?? false
 })
 
 function sidebarRequiresField(key: string): boolean {
-  const tool = toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value)
-  return tool?.form_schema.required?.includes(key) ?? false
+  return currentTool.value?.form_schema.required?.includes(key) ?? false
 }
 
 const sidebarSubmitDisabled = computed(() => {
   if (sidebarActivitySubmitting.value) return true
+  // For the unified message composer: until the user picks a channel
+  // (and direction, when applicable) we have no tool to submit against.
+  if (sidebarActionType.value === 'message' && !currentTool.value) return true
   if (sidebarToolRequiresText.value && !sidebarHasPlainText.value) return true
-  const tool = toolbarTools.value.find((x) => x.activity_type === sidebarActionType.value)
-  for (const key of tool?.form_schema.required ?? []) {
+  for (const key of currentTool.value?.form_schema.required ?? []) {
     if (key === 'content_text') continue
     const val = sidebarExtraFields.value[key]
     if (val === undefined || val === null || val === '') return true
@@ -355,30 +460,59 @@ const sidebarSubmitDisabled = computed(() => {
   return false
 })
 
-function openSidebarAction(type: string) {
-  sidebarActionType.value = type
-  sidebarActivityText.value = ''
-  // Pre-initialise schema keys so Vue's Proxy reactivity tracks them from start.
-  const tool = toolbarTools.value.find((x) => x.activity_type === type)
+/**
+ * Build the per-key default values for whatever tool is currently active.
+ * Pulled out so we can re-run it when the user changes channel / direction
+ * inside the unified composer (each channel has a different schema).
+ */
+function _initFieldsForTool(tool: StreamlineTool | null): Record<string, FieldValue> {
   const fields: Record<string, FieldValue> = {}
   if (tool?.form_schema?.properties) {
     for (const [key, raw] of Object.entries(
       tool.form_schema.properties as Record<string, Record<string, unknown>>,
     )) {
       if (SKIP_FIELD_KEYS.has(key)) continue
-      // Arrays default to an empty list so the tag-input renders correctly.
       fields[key] = (raw.type as string | undefined) === 'array' ? [] : ''
     }
   }
-  sidebarExtraFields.value = fields
+  return fields
+}
+
+function openSidebarAction(type: string) {
+  sidebarActionType.value = type
+  sidebarActivityText.value = ''
+  if (type === 'message') {
+    // Reset the channel/direction picker — schema fields are populated
+    // lazily once the user resolves to a concrete channel+direction.
+    messageChannel.value = ''
+    messageDirection.value = ''
+    sidebarExtraFields.value = {}
+    return
+  }
+  // Pre-initialise schema keys so Vue's Proxy reactivity tracks them from start.
+  const tool = toolbarTools.value.find((x) => x.activity_type === type)
+  sidebarExtraFields.value = _initFieldsForTool(tool ?? null)
   if (type === 'task') {
     sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
   }
 }
 
+// Re-initialise the schema-driven form whenever the user resolves to a new
+// concrete tool inside the unified messaging composer.  Carry the message
+// body across so switching between e.g. "Email Outbound" and "SMS Outbound"
+// doesn't wipe what the user has already typed.
+watch(resolvedMessageTool, (next, prev) => {
+  if (sidebarActionType.value !== 'message') return
+  if (next?.activity_type === prev?.activity_type) return
+  sidebarExtraFields.value = _initFieldsForTool(next)
+  tagDrafts.value = {}
+})
+
 function closeSidebarAction() {
   sidebarActionType.value = ''
   sidebarExtraFields.value = {}
+  messageChannel.value = ''
+  messageDirection.value = ''
 }
 
 // Build action items directly from the entity-toolbar registry, then group
@@ -394,6 +528,21 @@ interface ActionItem {
 const _toolByActivityType = computed(() => {
   const map = new Map<string, StreamlineTool>()
   for (const tool of toolbarTools.value) map.set(tool.activity_type, tool)
+  // Inject the synthetic "message" pseudo-tool whenever the backend toolbar
+  // exposes any channel-specific messaging tool, so the action grid can
+  // render a single "Message" entry in place of the 6+ channel buttons.
+  if (hasMessagingTools.value) {
+    map.set('message', {
+      activity_type: 'message',
+      label: t('leadDetail.typeMessage'),
+      // Generic icon — the real channel icon is shown only after the user
+      // resolves to a concrete tool inside the composer.
+      icon: 'ChatBubbleLeftRightIcon',
+      channel: 'none',
+      direction: 'none',
+      form_schema: { type: 'object', properties: {} },
+    })
+  }
   return map
 })
 
@@ -426,8 +575,10 @@ const groupedActionItems = computed<ToolGroup[]>(() => {
   }).filter((g) => g.items.length > 0)
 
   // Anything the backend exposed that we haven't categorised → "other".
+  // Messaging tools (channel != 'none') are intentionally hidden here —
+  // they are surfaced via the unified `'message'` pseudo-tool instead.
   const leftover = toolbarTools.value
-    .filter((t) => !used.has(t.activity_type))
+    .filter((t) => !used.has(t.activity_type) && (!t.channel || t.channel === 'none'))
     .map(_toActionItem)
   if (leftover.length) {
     groups.push({
@@ -442,6 +593,11 @@ const groupedActionItems = computed<ToolGroup[]>(() => {
 })
 
 const sidebarActionIcon = computed(() => {
+  // When composing a message, swap the generic chat icon for the resolved
+  // channel-specific icon as soon as the user has picked a channel.
+  if (sidebarActionType.value === 'message' && currentTool.value) {
+    return heroIconMap[currentTool.value.icon] ?? ChatBubbleLeftRightIcon
+  }
   for (const g of groupedActionItems.value) {
     const it = g.items.find((i) => i.value === sidebarActionType.value)
     if (it) return it.icon
@@ -509,8 +665,14 @@ const entityIdField = computed(() => `${props.entityType}_id`)
 
 async function sidebarAddActivity() {
   if (sidebarToolRequiresText.value && !sidebarHasPlainText.value) return
+  // For the unified message composer the user must have resolved to a
+  // concrete (channel, direction) combination before submitting.
+  const resolvedType = sidebarActionType.value === 'message'
+    ? resolvedMessageTool.value?.activity_type
+    : sidebarActionType.value
+  if (!resolvedType) return
   sidebarActivitySubmitting.value = true
-  const mentionedIds = sidebarActionType.value === 'comment'
+  const mentionedIds = resolvedType === 'comment'
     ? (sidebarRichEditorRef.value?.getMentionedIds() ?? [])
     : []
   // Drop empty values so the backend metadata stays compact.
@@ -526,7 +688,7 @@ async function sidebarAddActivity() {
   }
   const payload: Record<string, unknown> = {
     [entityIdField.value]: props.entityId,
-    type: sidebarActionType.value,
+    type: resolvedType,
     content_text: sidebarActivityText.value,
     metadata,
   }
@@ -536,6 +698,8 @@ async function sidebarAddActivity() {
     sidebarActivityText.value = ''
     sidebarActionType.value = ''
     sidebarExtraFields.value = {}
+    messageChannel.value = ''
+    messageDirection.value = ''
     tagDrafts.value = {}
     emit('activity-added')
     toast.success(t('leadDetail.activityAdded'))
@@ -714,6 +878,61 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
       >
         {{ sidebarActionHelp }}
       </p>
+
+      <!-- Unified message composer: Channel + Direction picker.
+           Only rendered for the synthetic 'message' pseudo-tool. -->
+      <div
+        v-if="sidebarActionType === 'message'"
+        class="space-y-2 pb-2 border-b border-gray-100 dark:border-gray-700"
+        data-testid="message-composer-channel-picker"
+      >
+        <div data-field="message-channel">
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {{ t('messageComposer.channelLabel') }}<span class="text-red-500 ml-0.5">*</span>
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="ch in messageChannelOptions"
+              :key="ch.value"
+              type="button"
+              data-testid="message-composer-channel-option"
+              :data-channel="ch.value"
+              :data-active="messageChannel === ch.value ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+              :class="messageChannel === ch.value
+                ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
+                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'"
+              @click="messageChannel = ch.value; if (ch.directions.length === 0) messageDirection = ''"
+            >{{ t(ch.labelKey) }}</button>
+          </div>
+        </div>
+
+        <!-- Direction toggle — hidden for channels that capture direction inside their own schema (e.g. chat). -->
+        <div
+          v-if="messageChannel"
+          v-show="(messageChannelOptions.find((c) => c.value === messageChannel)?.directions.length ?? 0) > 0"
+          data-field="message-direction"
+        >
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {{ t('messageComposer.directionLabel') }}<span class="text-red-500 ml-0.5">*</span>
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="dir in (messageChannelOptions.find((c) => c.value === messageChannel)?.directions ?? [])"
+              :key="dir.value"
+              type="button"
+              data-testid="message-composer-direction-option"
+              :data-direction="dir.value"
+              :data-active="messageDirection === dir.value ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+              :class="messageDirection === dir.value
+                ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
+                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'"
+              @click="messageDirection = dir.value"
+            >{{ t(dir.labelKey) }}</button>
+          </div>
+        </div>
+      </div>
 
       <!-- "Header" fields: subject, to, from, channel, … — shown above the body -->
       <template v-for="prop in sidebarSchemaPropsTop" :key="prop.key">

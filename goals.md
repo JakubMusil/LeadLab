@@ -82,18 +82,28 @@ Jediné tlačítko **„Zpráva"** otevře unifikovaný composer s:
   toolů, jen sloučeno pod jednu UI „obálku").
 
 **Backend úkoly**
-- [ ] V `StreamlineTool` přidat metadata `channel`
+- [x] V `StreamlineTool` přidat metadata `channel`
       (`email`/`sms`/`whatsapp`/`chat`/`none`) a `direction`
       (`in`/`out`/`none`).
-- [ ] Vrátit obojí přes `ToolOut`.
-- [ ] Aktivity zůstávají uložené pod existujícími `activity_type`
+- [x] Vrátit obojí přes `ToolOut` i `EntityToolbarOut`.
+- [x] Aktivity zůstávají uložené pod existujícími `activity_type`
       (`email_in`, `email_out`, …) — žádná datová migrace.
+- [x] Testy ověřující, že 6 messaging toolů + chat nese správnou
+      `channel`/`direction` kombinaci a ostatní toolby mají `none`.
 
 **Frontend úkoly**
-- [ ] Nový sidebar item „Zpráva" s unified composerem.
-- [ ] Mapování (kanál + směr) → konkrétní `activity_type` před
-      `create_activity`.
-- [ ] Skrýt 6 stávajících tlačítek v sidebaru pro entity, kde tam byly.
+- [x] Nový sidebar item „Zpráva" s unified composerem (synthetic
+      `'message'` pseudo-tool, generovaný ze záznamů s `channel != 'none'`).
+- [x] Mapování (kanál + směr) → konkrétní `activity_type` přes
+      `resolvedMessageTool` computed; submit posílá konkrétní typ
+      (`email_out`, `sms_in`, …), nikdy ne `'message'`.
+- [x] Skrýt 6 stávajících tlačítek v sidebaru pro všechny entity.
+- [x] Channel `chat` nemá toggle směru (`direction` je v jeho schema).
+- [x] i18n překlady (`leadDetail.typeMessage`, `leadDetail.toolHelp.message`,
+      `messageComposer.*`) pro en/cs/de/pl.
+- [x] Unit testy pro composer (6 testů: skrytí tlačítek, chybějící
+      messaging tools, picker, resolution, chat skip-direction, submit
+      používá resolved type).
 
 ---
 

@@ -1223,8 +1223,10 @@
       "file_upload": "Datei an die Opportunity anhängen — geben Sie die URL der hochgeladenen Datei ein.",
       "voice_memo": "Sprachnotiz — fügen Sie die Aufnahme-URL und optional ein Transkript ein.",
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
-      "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung."
-    }
+      "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
+      "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
+    },
+    "typeMessage": "Nachricht"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
@@ -1997,5 +1999,15 @@
     "categoryMeta": "Sonstige",
     "secondaryBadge": "Log",
     "secondaryHint": "Standardmäßig ausgeblendet — wird nur bei Aktivierung angezeigt."
+  },
+  "messageComposer": {
+    "channelLabel": "Kanal",
+    "directionLabel": "Richtung",
+    "channelEmail": "E-Mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp",
+    "channelChat": "Chat",
+    "directionOut": "Ausgehend",
+    "directionIn": "Eingehend"
   }
 }

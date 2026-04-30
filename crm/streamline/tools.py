@@ -196,6 +196,8 @@ class EmailOutTool(StreamlineTool):
     icon = "PaperAirplaneIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "email"
+    direction = "out"
 
     def get_schema(self) -> dict:
         return {
@@ -236,6 +238,8 @@ class EmailInTool(StreamlineTool):
     icon = "InboxArrowDownIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "email"
+    direction = "in"
 
     def get_schema(self) -> dict:
         return {
@@ -1061,6 +1065,8 @@ class SmsOutTool(_SimpleLogTool):
     icon = "DevicePhoneMobileIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "sms"
+    direction = "out"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
         "to": {"type": "string", "title": "To"},
@@ -1077,6 +1083,8 @@ class SmsInTool(_SimpleLogTool):
     icon = "DevicePhoneMobileIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "sms"
+    direction = "in"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
         "from_number": {"type": "string", "title": "From"},
@@ -1095,6 +1103,8 @@ class WhatsAppOutTool(_SimpleLogTool):
     icon = "ChatBubbleOvalLeftEllipsisIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "whatsapp"
+    direction = "out"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
         "to": {"type": "string", "title": "To"},
@@ -1111,6 +1121,8 @@ class WhatsAppInTool(_SimpleLogTool):
     icon = "ChatBubbleOvalLeftEllipsisIcon"
     category = "communication"
     default_visibility = "important"
+    channel = "whatsapp"
+    direction = "in"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
         "from_number": {"type": "string", "title": "From"},
@@ -1129,6 +1141,14 @@ class ChatTool(_SimpleLogTool):
     icon = "ChatBubbleLeftRightIcon"
     category = "communication"
     default_visibility = "important"
+    # ``channel`` is "chat" at the tool level (the unified composer surfaces
+    # this as a single "Chat" option); the *specific* IM channel (slack, teams,
+    # …) is captured per-activity inside ``schema_properties.channel`` below.
+    # ``direction`` is left "none" because ChatTool covers both inbound and
+    # outbound chat messages — the direction is captured per-activity in the
+    # schema field.
+    channel = "chat"
+    direction = "none"
     schema_properties = {
         "content_text": {"type": "string", "title": "Message"},
         "channel": {

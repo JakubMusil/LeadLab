@@ -1223,8 +1223,10 @@
       "file_upload": "Attach a file to the opportunity — provide the URL of the uploaded file.",
       "voice_memo": "Voice memo — paste the recording URL and an optional transcript.",
       "system_note": "System-style note, e.g. \"Imported from CSV\" or \"Merged from duplicate lead\".",
-      "task": "Creates a task linked to this opportunity. Optionally add a description or mention."
-    }
+      "task": "Creates a task linked to this opportunity. Optionally add a description or mention.",
+      "message": "Log or send an email, SMS, WhatsApp or chat message — pick the channel below."
+    },
+    "typeMessage": "Message"
   },
   "sequences": {
     "title": "Email Sequences",
@@ -1997,5 +1999,15 @@
     "categoryMeta": "Other",
     "secondaryBadge": "log",
     "secondaryHint": "Hidden by default — shown only when enabled here."
+  },
+  "messageComposer": {
+    "channelLabel": "Channel",
+    "directionLabel": "Direction",
+    "channelEmail": "Email",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp",
+    "channelChat": "Chat",
+    "directionOut": "Outbound",
+    "directionIn": "Inbound"
   }
 }

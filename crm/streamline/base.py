@@ -37,6 +37,19 @@ class StreamlineTool(ABC):
         ``"important"`` types are visible to a fresh user; ``"secondary"``
         types are hidden until the user opts in via the filter dropdown.
         Defaults to ``"secondary"`` so noisy logs do not overwhelm the UI.
+    channel : str
+        Communication channel this tool represents.  Used by the unified
+        "Message" composer to collapse the 6 separate email / SMS /
+        WhatsApp buttons into a single entry whose channel is selected
+        in-form.  One of: ``"email"``, ``"sms"``, ``"whatsapp"``,
+        ``"chat"``, ``"none"``.  Defaults to ``"none"`` for non-messaging
+        tools.
+    direction : str
+        Whether the activity is outbound, inbound, or has no direction
+        semantics.  Pairs with ``channel`` so the SPA can map a
+        ``(channel, direction)`` selection back to a concrete
+        ``activity_type``.  One of: ``"out"``, ``"in"``, ``"none"``.
+        Defaults to ``"none"``.
     """
 
     activity_type: str
@@ -44,6 +57,8 @@ class StreamlineTool(ABC):
     icon: str
     category: str = "system"
     default_visibility: str = "secondary"
+    channel: str = "none"
+    direction: str = "none"
 
     @abstractmethod
     def get_schema(self) -> dict:
