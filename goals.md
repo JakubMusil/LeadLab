@@ -46,20 +46,23 @@ moje výchozí".
 - [x] Přiřadit metadata všem registrovaným toolům v `crm/streamline/tools.py`.
 - [x] Rozšířit `ToolOut` v `crm/streamline/api.py` o `category` a
       `default_visibility`.
-- [x] Nový model `UserStreamlinePreference` (user FK, `hidden_activity_types`
-      JSON list — ukládáme „co skrýt", aby nové typy automaticky respektovaly
-      svůj default).
+- [x] Nový model `UserStreamlinePreference` (user FK, `visible_activity_types`
+      JSON list nebo `null` — `null` = použij per-tool defaulty, jinak je
+      uložená sada použita verbatim, `Reset to defaults` ji vyprázdní).
 - [x] Endpointy `GET/PUT /api/v1/users/me/streamline-preferences/`.
 - [x] Migrace + testy.
 
 **Frontend úkoly (SPA)**
 - [x] Komponenta `StreamlineFilterDropdown` (button + popover s checkboxy
       po sekcích, ikony z `tool.icon`).
-- [x] Stav uživatelských preferencí v Pinia store (1× při loginu).
-- [x] Indikátor počtu skrytých položek („3 skryté – zobrazit").
-- [x] Tlačítka „Vybrat vše / Jen důležité / Žádné / Resetovat na výchozí /
-      Uložit jako moje výchozí".
+- [x] Pinia store `streamlinePreferences` (1× při loginu, persist do BE).
+- [x] Indikátor počtu skrytých položek („3 skryté" badge na buttonu).
+- [x] Tlačítka „Vybrat vše / Jen důležité / Žádné / Resetovat na výchozí".
+      (Auto-save při každé změně — žádné explicitní „Save as default" už
+      není potřeba, protože dropdown JE uložený stav.)
 - [x] Nahradit stávající chip-bar v `ActivityTimeline.vue` tímto dropdownem.
+- [x] i18n překlady `streamlineFilter.*` pro en/cs/de/pl.
+- [x] Unit testy pro store (6) i komponentu (8).
 
 ---
 

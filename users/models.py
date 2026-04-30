@@ -76,19 +76,16 @@ class UserStreamlinePreference(models.Model):
     """
     Per-user preferences for the Streamline (activity timeline) UI.
 
-    Stores which activity types the user has explicitly hidden in the
-    timeline filter dropdown.  We persist *hidden* types (rather than
-    visible ones) so that newly registered ``StreamlineTool`` types are
-    automatically shown or hidden according to their built-in
-    ``default_visibility``, without requiring every user to revisit their
-    preferences.
+    Stores the explicit set of activity types the user wants visible in
+    the streamline filter dropdown.  When ``visible_activity_types`` is
+    ``None`` the user has never customised their filter and the
+    frontend falls back to each tool's built-in
+    ``default_visibility`` (``"important"`` types shown, ``"secondary"``
+    hidden).  Once the user toggles the dropdown the explicit list is
+    persisted and used verbatim across all streamline views.
 
-    Field
-    -----
-    hidden_activity_types : list[str]
-        Activity type identifiers (e.g. ``"system_note"``, ``"tag_added"``)
-        the user has chosen to hide.  An empty list means "use the
-        per-tool defaults".
+    ``Reset to defaults`` clears the stored list (sets it back to
+    ``None``).
     """
 
     user = models.OneToOneField(
@@ -97,7 +94,7 @@ class UserStreamlinePreference(models.Model):
         related_name="streamline_preference",
         primary_key=True,
     )
-    hidden_activity_types = models.JSONField(default=list, blank=True)
+    visible_activity_types = models.JSONField(null=True, blank=True, default=None)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -1982,5 +1982,20 @@
     "priorityMedium": "Średni",
     "priorityHigh": "Wysoki",
     "priorityCritical": "Krytyczny"
+  },
+  "streamlineFilter": {
+    "button": "Filtr",
+    "importantOnly": "Tylko ważne",
+    "all": "Wszystko",
+    "none": "Żadne",
+    "reset": "Przywróć domyślne",
+    "categoryCommunication": "Komunikacja",
+    "categoryTask": "Zadania i zatwierdzenia",
+    "categoryCommerce": "Sprzedaż",
+    "categorySystem": "Logi systemowe",
+    "categoryAi": "AI",
+    "categoryMeta": "Inne",
+    "secondaryBadge": "log",
+    "secondaryHint": "Domyślnie ukryte — pokazywane tylko po włączeniu."
   }
 }

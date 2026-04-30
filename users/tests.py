@@ -261,47 +261,63 @@ class StreamlinePreferenceAPITest(TestCase):
             self.URL, data=json.dumps(data), content_type="application/json"
         )
 
-    def test_get_default_returns_empty_list(self):
+    def test_get_default_returns_null(self):
         resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {"hidden_activity_types": []})
+        self.assertEqual(resp.json(), {"visible_activity_types": None})
 
     def test_get_creates_row_lazily(self):
         self.assertFalse(UserStreamlinePreference.objects.filter(user=self.user).exists())
         self.client.get(self.URL)
         self.assertTrue(UserStreamlinePreference.objects.filter(user=self.user).exists())
 
-    def test_put_persists_hidden_types(self):
-        resp = self._put({"hidden_activity_types": ["system_note", "tag_added"]})
+    def test_put_persists_explicit_visible_set(self):
+        resp = self._put({"visible_activity_types": ["comment", "email_in"]})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            resp.json()["hidden_activity_types"], ["system_note", "tag_added"]
+            resp.json()["visible_activity_types"], ["comment", "email_in"]
         )
         pref = UserStreamlinePreference.objects.get(user=self.user)
-        self.assertEqual(pref.hidden_activity_types, ["system_note", "tag_added"])
+        self.assertEqual(pref.visible_activity_types, ["comment", "email_in"])
+
+    def test_put_null_resets_to_defaults(self):
+        UserStreamlinePreference.objects.create(
+            user=self.user, visible_activity_types=["comment"]
+        )
+        resp = self._put({"visible_activity_types": None})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.json()["visible_activity_types"])
+        pref = UserStreamlinePreference.objects.get(user=self.user)
+        self.assertIsNone(pref.visible_activity_types)
+
+    def test_put_empty_list_persists_as_empty_not_null(self):
+        # Empty list is a valid choice ("show nothing") and must round-trip.
+        resp = self._put({"visible_activity_types": []})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["visible_activity_types"], [])
 
     def test_put_deduplicates_and_strips_blanks(self):
         resp = self._put({
-            "hidden_activity_types": [" tag_added ", "tag_added", "", "system_note"]
+            "visible_activity_types": [" comment ", "comment", "", "email_in"]
         })
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
-            resp.json()["hidden_activity_types"], ["tag_added", "system_note"]
+            resp.json()["visible_activity_types"], ["comment", "email_in"]
         )
 
     def test_put_replaces_existing_value(self):
         UserStreamlinePreference.objects.create(
-            user=self.user, hidden_activity_types=["old"]
+            user=self.user, visible_activity_types=["old"]
         )
-        resp = self._put({"hidden_activity_types": ["new"]})
+        resp = self._put({"visible_activity_types": ["new"]})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["hidden_activity_types"], ["new"])
+        self.assertEqual(resp.json()["visible_activity_types"], ["new"])
 
     def test_requires_authentication(self):
         self.client.logout()
         resp = self.client.get(self.URL)
         self.assertIn(resp.status_code, [401, 403])
-        resp = self._put({"hidden_activity_types": []})
+        resp = self._put({"visible_activity_types": []})
         self.assertIn(resp.status_code, [401, 403])
 
 

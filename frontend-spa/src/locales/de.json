@@ -1982,5 +1982,20 @@
     "priorityMedium": "Mittel",
     "priorityHigh": "Hoch",
     "priorityCritical": "Kritisch"
+  },
+  "streamlineFilter": {
+    "button": "Filter",
+    "importantOnly": "Nur Wichtige",
+    "all": "Alle",
+    "none": "Keine",
+    "reset": "Auf Standard zurücksetzen",
+    "categoryCommunication": "Kommunikation",
+    "categoryTask": "Aufgaben & Freigaben",
+    "categoryCommerce": "Vertrieb",
+    "categorySystem": "Systemprotokolle",
+    "categoryAi": "KI",
+    "categoryMeta": "Sonstige",
+    "secondaryBadge": "Log",
+    "secondaryHint": "Standardmäßig ausgeblendet — wird nur bei Aktivierung angezeigt."
   }
 }

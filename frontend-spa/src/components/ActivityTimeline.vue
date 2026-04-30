@@ -5,13 +5,15 @@
  * Works identically for Lead, Realization, Management, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
-import { ref, computed, watch, onMounted, onUnmounted, type Component } from 'vue'
+import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
+import { useStreamlinePreferencesStore } from '@/stores/streamlinePreferences'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
+import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import DOMPurify from 'dompurify'
 import {
   ChatBubbleLeftIcon,
@@ -106,6 +108,8 @@ interface StreamlineTool {
   activity_type: string
   label: string
   icon: string
+  category: string
+  default_visibility: 'important' | 'secondary'
   form_schema: {
     type: string
     properties?: Record<string, unknown>
@@ -180,112 +184,49 @@ const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
 
-// Filter state — multi-select set of activity_type values.
-// Empty set = "All" (show every activity). The synthetic "task" entry expands
-// to the related task_* activity types, see `filteredActivities` below.
-const activeFilters = ref<Set<string>>(new Set())
+// Filter state — set of activity_type values that are currently visible.
+// Sourced from the streamline preferences store (per-user, persisted on the
+// backend) and falls back to per-tool `default_visibility` when the user has
+// never customised the filter.
+const streamlinePrefs = useStreamlinePreferencesStore()
 
-// localStorage persistence: per-entityType so each entity remembers its own
-// last-used filter combination across reloads.
-const _filterStorageKey = computed(() => `lead-lab.timeline.filter.${props.entityType}`)
+const visibleTypes = computed<Set<string>>(() => {
+  // Build effective visible set from saved prefs + tool defaults.
+  return streamlinePrefs.effectiveVisible(streamlineTools.value)
+})
 
-// Hydrate from localStorage on mount (best-effort; ignore parse errors so a
-// corrupted entry can't break the timeline).
-try {
-  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(_filterStorageKey.value) : null
-  if (raw) {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) {
-      activeFilters.value = new Set(parsed.filter((v): v is string => typeof v === 'string'))
-    }
-  }
-} catch {
-  // ignore — fall back to empty set
-}
-
-// Persist whenever the set changes.
-watch(
-  activeFilters,
-  (next) => {
-    try {
-      if (typeof localStorage === 'undefined') return
-      if (next.size === 0) {
-        localStorage.removeItem(_filterStorageKey.value)
-      } else {
-        localStorage.setItem(_filterStorageKey.value, JSON.stringify(Array.from(next)))
-      }
-    } catch {
-      // ignore storage failures (quota, private mode, …)
-    }
-  },
-  { deep: true },
-)
-
-// Map of known activity_type → i18n key for the filter labels
-const _filterLabelKey: Record<string, string> = {
-  comment: 'leadDetail.typeComment',
-  call: 'leadDetail.typeCall',
-  meeting: 'leadDetail.typeMeeting',
-  email_out: 'leadDetail.typeEmailOut',
-  email_in: 'leadDetail.typeEmailIn',
-  entity_change: 'leadDetail.typeEntityChange',
-}
-
-const filterOptions = computed(() => [
-  { value: '', label: t('leadDetail.filterAll') },
-  // Composable tools from the registry (those that have a content_text field)
-  ...streamlineTools.value
-    .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
-    .map((tool) => {
-      const labelKey = _filterLabelKey[tool.activity_type]
-      return {
-        value: tool.activity_type,
-        label: labelKey ? t(labelKey) : tool.label,
-      }
-    }),
-  // Task group filter — only relevant for entities that own tasks (not the task detail itself)
-  ...(props.entityType !== 'task'
-    ? [{ value: 'task', label: t('leadDetail.typeTask') }]
-    : []),
-  // Entity change (auto-logged field changes)
-  { value: 'entity_change', label: t('leadDetail.typeEntityChange') },
-])
-
-// Activity types covered by the synthetic "task" group filter chip.
-const _taskGroupTypes = ['task', 'task_assigned', 'task_completed'] as const
+// Activity types covered by the synthetic "task" group (kept for backwards
+// compatibility with bare task activities — `task` is a pseudo-type for which
+// no dedicated tool is registered, so include it whenever any task_* type is
+// visible).
+const _taskGroupTypes = ['task_assigned', 'task_completed', 'task_created'] as const
 
 const filteredActivities = computed(() => {
-  if (activeFilters.value.size === 0) return activities.value
+  // If the user has hidden literally everything, render nothing.
+  if (visibleTypes.value.size === 0) return []
   return activities.value.filter((a) => {
-    if (activeFilters.value.has(a.type)) return true
-    // Synthetic "task" chip expands to the related task_* activity types.
-    if (activeFilters.value.has('task') && (_taskGroupTypes as readonly string[]).includes(a.type)) {
+    if (visibleTypes.value.has(a.type)) return true
+    // Bare 'task' activity rows ride along with any task_* type so users who
+    // tick a task type still see related synthetic 'task' rows.
+    if (a.type === 'task' && _taskGroupTypes.some((t) => visibleTypes.value.has(t))) {
       return true
     }
     return false
   })
 })
 
-// Chip click handler: empty value = "All" chip clears the set;
-// otherwise toggle membership of the clicked filter value.
-function toggleFilter(value: string) {
-  if (value === '') {
-    activeFilters.value = new Set()
-    return
-  }
-  const next = new Set(activeFilters.value)
-  if (next.has(value)) {
-    next.delete(value)
-  } else {
-    next.add(value)
-  }
-  activeFilters.value = next
-}
-
-// Helper for chip active-class binding.
-function isFilterActive(value: string): boolean {
-  if (value === '') return activeFilters.value.size === 0
-  return activeFilters.value.has(value)
+/**
+ * Apply a new visible-types selection from the filter dropdown.
+ *
+ * `next` semantics:
+ *   - `null`        → reset to per-tool defaults (clears saved prefs).
+ *   - `string[]`    → persist this exact set as the user's saved prefs.
+ *
+ * The change is persisted via the streamline preferences store, so it
+ * applies across every streamline view for this user.
+ */
+async function onFilterChange(next: string[] | null) {
+  await streamlinePrefs.save(next)
 }
 
 // Composer state
@@ -657,7 +598,12 @@ function onWsActivityCreated(payload: Record<string, unknown>) {
 // Lifecycle
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadActivities(), loadTeamMembers(), loadStreamlineTools()])
+  await Promise.all([
+    loadActivities(),
+    loadTeamMembers(),
+    loadStreamlineTools(),
+    streamlinePrefs.load(),
+  ])
   on('activity.created', onWsActivityCreated)
 })
 
@@ -808,20 +754,14 @@ defineExpose({ load: () => loadActivities(1) })
     <!-- Activity feed                                                      -->
     <!-- ================================================================ -->
 
-    <!-- Filter bar -->
-    <div class="flex flex-wrap gap-1.5">
-      <button
-        v-for="f in filterOptions"
-        :key="f.value"
-        :data-testid="'activity-timeline-filter'"
-        :data-filter-value="f.value"
-        :data-filter-active="isFilterActive(f.value) ? 'true' : 'false'"
-        class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
-        :class="isFilterActive(f.value)
-          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
-        @click="toggleFilter(f.value)"
-      >{{ f.label }}</button>
+    <!-- Filter dropdown -->
+    <div class="flex items-center justify-end">
+      <StreamlineFilterDropdown
+        :tools="streamlineTools"
+        :model-value="visibleTypes"
+        :is-customised="streamlinePrefs.isCustomised"
+        @update:visible="onFilterChange"
+      />
     </div>
 
     <div v-if="activitiesLoading" class="animate-pulse space-y-2" data-testid="activity-timeline-loading">
@@ -829,7 +769,7 @@ defineExpose({ load: () => loadActivities(1) })
     </div>
 
     <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm" data-testid="activity-timeline-empty">
-      {{ activeFilters.size > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
+      {{ activities.length > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">

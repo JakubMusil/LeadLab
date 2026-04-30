@@ -64,11 +64,13 @@ class ErrorOut(Schema):
 
 
 class StreamlinePreferenceIn(Schema):
-    hidden_activity_types: List[str]
+    # `None` = reset to defaults (frontend uses per-tool default_visibility).
+    visible_activity_types: Optional[List[str]] = None
 
 
 class StreamlinePreferenceOut(Schema):
-    hidden_activity_types: List[str]
+    # `None` until the user customises the filter; then the explicit list.
+    visible_activity_types: Optional[List[str]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -159,12 +161,13 @@ def get_streamline_preferences(request):
     Return the current user's Streamline (activity timeline) filter
     preferences.
 
-    The response contains the list of activity types the user has
-    explicitly hidden.  The frontend combines this with each tool's
-    built-in ``default_visibility`` to compute the effective filter.
+    ``visible_activity_types`` is ``null`` until the user customises the
+    filter; in that case the frontend should fall back to each tool's
+    built-in ``default_visibility``.  Once the user toggles the dropdown
+    we persist their exact selection and use it verbatim.
     """
     pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
-    return 200, {"hidden_activity_types": list(pref.hidden_activity_types or [])}
+    return 200, {"visible_activity_types": pref.visible_activity_types}
 
 
 @router.put(
@@ -176,26 +179,33 @@ def update_streamline_preferences(request, payload: StreamlinePreferenceIn):
     """
     Replace the current user's Streamline filter preferences.
 
-    Accepts a list of activity type identifiers to hide.  Unknown types
-    are kept as-is so a user's preferences survive a tool being
-    temporarily unregistered (e.g. by a feature flag).
+    Pass ``visible_activity_types: null`` to reset the user back to
+    per-tool defaults.  Pass an explicit list (possibly empty) to
+    persist that exact selection across all streamline views.
     """
-    # Sanitize: drop empty strings and duplicates while preserving order.
-    seen: set[str] = set()
-    cleaned: list[str] = []
-    for at in payload.hidden_activity_types:
-        if not isinstance(at, str):
-            return 400, {"detail": "hidden_activity_types must be a list of strings."}
-        v = at.strip()
-        if not v or v in seen:
-            continue
-        seen.add(v)
-        cleaned.append(v)
+    cleaned: Optional[List[str]]
+    if payload.visible_activity_types is None:
+        cleaned = None
+    else:
+        # Sanitize: drop empty strings and duplicates while preserving order.
+        seen: set[str] = set()
+        items: list[str] = []
+        for at in payload.visible_activity_types:
+            if not isinstance(at, str):
+                return 400, {
+                    "detail": "visible_activity_types must be a list of strings or null."
+                }
+            v = at.strip()
+            if not v or v in seen:
+                continue
+            seen.add(v)
+            items.append(v)
+        cleaned = items
 
     pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
-    pref.hidden_activity_types = cleaned
-    pref.save(update_fields=["hidden_activity_types", "updated_at"])
-    return 200, {"hidden_activity_types": cleaned}
+    pref.visible_activity_types = cleaned
+    pref.save(update_fields=["visible_activity_types", "updated_at"])
+    return 200, {"visible_activity_types": cleaned}
 
 
 @router.post(

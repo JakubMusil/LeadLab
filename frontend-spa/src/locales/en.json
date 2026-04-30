@@ -1982,5 +1982,20 @@
     "priorityMedium": "Medium",
     "priorityHigh": "High",
     "priorityCritical": "Critical"
+  },
+  "streamlineFilter": {
+    "button": "Filter",
+    "importantOnly": "Important only",
+    "all": "All",
+    "none": "None",
+    "reset": "Reset to defaults",
+    "categoryCommunication": "Communication",
+    "categoryTask": "Tasks & approvals",
+    "categoryCommerce": "Commerce",
+    "categorySystem": "System logs",
+    "categoryAi": "AI",
+    "categoryMeta": "Other",
+    "secondaryBadge": "log",
+    "secondaryHint": "Hidden by default — shown only when enabled here."
   }
 }

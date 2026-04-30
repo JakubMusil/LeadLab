@@ -1983,5 +1983,20 @@
     "priorityMedium": "Střední",
     "priorityHigh": "Vysoká",
     "priorityCritical": "Kritická"
+  },
+  "streamlineFilter": {
+    "button": "Filtr",
+    "importantOnly": "Jen důležité",
+    "all": "Vše",
+    "none": "Žádné",
+    "reset": "Obnovit výchozí",
+    "categoryCommunication": "Komunikace",
+    "categoryTask": "Úkoly a schvalování",
+    "categoryCommerce": "Obchod",
+    "categorySystem": "Systémové logy",
+    "categoryAi": "AI",
+    "categoryMeta": "Ostatní",
+    "secondaryBadge": "log",
+    "secondaryHint": "Defaultně skryté — zobrazí se pouze po zapnutí."
   }
 }
