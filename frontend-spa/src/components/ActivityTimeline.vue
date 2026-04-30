@@ -197,12 +197,13 @@ const filterOptions = computed(() => [
   // Composable tools from the registry (those that have a content_text field)
   ...streamlineTools.value
     .filter((tool) => tool.form_schema.properties?.['content_text'] !== undefined)
-    .map((tool) => ({
-      value: tool.activity_type,
-      label: _filterLabelKey[tool.activity_type]
-        ? t(_filterLabelKey[tool.activity_type])
-        : tool.label,
-    })),
+    .map((tool) => {
+      const labelKey = _filterLabelKey[tool.activity_type]
+      return {
+        value: tool.activity_type,
+        label: labelKey ? t(labelKey) : tool.label,
+      }
+    }),
   // Task group filter — only relevant for entities that own tasks (not the task detail itself)
   ...(props.entityType !== 'task'
     ? [{ value: 'task', label: t('leadDetail.typeTask') }]
@@ -419,7 +420,11 @@ function formatTime(ts: string) {
 function userInitials(name: string | null): string {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  if (parts.length >= 2) {
+    const first = parts[0] ?? ''
+    const last = parts[parts.length - 1] ?? ''
+    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || '?'
+  }
   return (name[0] ?? '?').toUpperCase()
 }
 
@@ -750,8 +755,8 @@ defineExpose({ load: () => loadActivities(1) })
           <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
           <p v-if="act.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             {{ t('leadDetail.statusChangedArrow', {
-              from: translateLeadStatus((act.metadata as Record<string, string>).old_status),
-              to: translateLeadStatus((act.metadata as Record<string, string>).new_status),
+              from: translateLeadStatus((act.metadata as Record<string, string>).old_status ?? ''),
+              to: translateLeadStatus((act.metadata as Record<string, string>).new_status ?? ''),
             }) }}
           </p>
           <p v-else-if="act.type === 'task_completed' && (act.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">

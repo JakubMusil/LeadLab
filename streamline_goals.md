@@ -458,15 +458,36 @@ ale v okolních oblastech:
          poté přiřazení `action.tags`. Snižuje 1 error.
        - `lastRunLabel`: zavedeno `const first = runs[0]; if (!first) return ''`
          před voláním `formatDate(first.triggered_at)`. Snižuje 1 error.
-   - **Zbývá 13 errorů** ve 2 kategoriích:
-     - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
-       v lookup operacích + `string | undefined` not assignable.
-       Vyžaduje narrowing nebo non-null assertion.
-     - `AutomationsView.vue` (8 = 4 unikátní duplikované přes 2 contexty)
-       — `lead_title`/`task_title`/`customer_name`/`due_date` na
-       `$t()` interpolation contextu (chybí v typu named args
-       z i18n). Bude vyžadovat doplnění interface pro interpolation
-       payload — nebo cast.
+   - ✅ **Dokončen `vue-tsc` cleanup — 0 errorů** *(2026-04-30 sedmá iterace)* —
+     vyřešeny zbývající errory v `ActivityTimeline.vue` (5) a `AutomationsView.vue` (4).
+     Vue-tsc baseline tím skončil čistý.
+     - `ActivityTimeline.vue:203` (filterOptions): `_filterLabelKey[tool.activity_type]`
+       je `string | undefined`; TS neprovede narrowing přes opakovaný indexed access
+       v ternárním výrazu. Refaktorováno z inline ternáru na blok s lokální
+       `const labelKey = _filterLabelKey[tool.activity_type]` a
+       `labelKey ? t(labelKey) : tool.label`. Snižuje 1 error.
+     - `ActivityTimeline.vue:422` (`userInitials`): pod `noUncheckedIndexedAccess`
+       `parts[0]` a `parts[parts.length - 1]` jsou `string | undefined`, navíc
+       `[0]` indexace nad nimi. Rozdělil na `const first = parts[0] ?? ''`
+       / `const last = parts[parts.length - 1] ?? ''` + `(first[0] ?? '') + (last[0] ?? '')`
+       s fallbackem na `'?'` když by zbylo prázdno. Snižuje 4 errory.
+     - `ActivityTimeline.vue:753–754`: `(act.metadata as Record<string,string>).old_status`
+       / `.new_status` jsou `string | undefined`, ale `translateLeadStatus(status: string)`
+       vyžaduje `string`. Doplněn `?? ''` na obou call sites — funkce má interní
+       `map[status] ?? status` fallback, takže prázdný string projde bezpečně.
+       Snižuje 2 errory (= 5 v `ActivityTimeline.vue` celkem dohromady s předchozími).
+     - `AutomationsView.vue:663`: literální placeholdery `{{lead_title}}`,
+       `{{task_title}}`, `{{customer_name}}`, `{{due_date}}` v textovém popisku
+       (instrukce pro uživatele, jaké placeholdery smí dát do
+       `title_template`) Vue compiler interpretoval jako mustache výrazy a hledal
+       odpovídající property na komponentě. Přidán **`v-pre`** na `<p>` element
+       — celý jeho obsah se nepokouší kompilovat jako šablona, takže `{{…}}`
+       zůstanou literálním textem (přesně to, co tam patří jako dokumentace).
+       Snižuje 4 errory.
+     - **Validace:** `npm run type-check` prochází se 0 errorů (z 13 unikátních).
+       Vitest baseline beze změny: 66 failed / 102 passed (preexisting i18n setup
+       issues v Team/Settings/Customers/Leads/Dashboard testech, nesouvisí
+       s těmito úpravami).
 4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
@@ -475,6 +496,31 @@ ale v okolních oblastech:
    timeline (response time, channel mix, funnel attribution),
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
+
+### Čím pokračovat příští session *(stav po 2026-04-30 sedmé iteraci)*
+
+Vue-tsc baseline je **kompletně čistý** (0 errorů, dokončeno v této session).
+Streamline backend i frontend jsou kompletně sjednocené. Zbývající navazující
+práce (z předchozího seznamu, žádný blokátor pro Streamline jako celek):
+
+1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
+   každou entitní timeline (lead, task, realization, management, customer,
+   proposal) ověřit happy-path s Cypress/Playwright. Zatím pokryté pouze
+   unit testy v `crm/tests.py`. **Doporučený další krok** — má jasný
+   scope, přímo navazuje na uzavřenou Fázi 5 a zvedne konfidenci nasazení.
+   Začít doporučuju s `lead` (nejjednodušší entita, kompletní pokrytí
+   `EntitySidebarActionPicker` + reactions + filter), pak postupně
+   `task` → `customer` → `realization` → `management` → `proposal`.
+2. **Vitest baseline cleanup** — preexisting 66 failed testů (i18n setup
+   `Need to install with app.use function` v Team/Settings/Customers/
+   Leads/Dashboard specs). Vyžaduje opravu test helperu pro `vue-i18n`
+   v setup souboru. Není to streamline věc, ale dokud je červená,
+   nejde poznat regrese ze skutečných změn.
+3. **`Task.realization` FK + Tasks tab v Realization detail** —
+   placeholder tab v `RealizationDetailView` čeká na backend FK.
+   Vyžaduje migraci + `list_tasks` filtr + i18n + UI.
+4. **Sekce 5.3 / 5.4 / 5.5** — analytics / automatizace / integrace
+   nad timeline. Produktové rozhodnutí, žádný blokátor.
 
 ### C) Pokračovat s úklidem Fáze 2 + 3 backend *(už hotovo — viz výše)*
 
