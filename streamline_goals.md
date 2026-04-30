@@ -497,17 +497,948 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 dvanácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 dvacáté iteraci)*
 
-Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
-čistý** (0 fails, 90/90 pass), repo je bez committnutých `.js` tsc-emit
-artefaktů, `ActivityTimeline.vue` + `EntitySidebarActionPicker.vue` mají
-kompletní `data-testid` pokrytí, **`e2e/tests/lead-timeline.spec.ts`
-i `e2e/tests/task-timeline.spec.ts` existují** se 4 testy každý
-(2 entity z 6 hotové). Streamline backend i frontend jsou kompletně
-sjednocené.
+Django test suite **202/202 pass** (198 → 202, +4 nových), žádné FE
+změny v této iteraci, takže vue-tsc / vitest baseline z 16. iterace
+beze změn (čistý). **Activity auto-log je nyní symetrický u celého
+task lifecycle** — `TASK_ASSIGNED` (z 19. iterace) i `TASK_COMPLETED`
+(tato iterace) logují per-entity na lead + realization + management.
+Asymetrie z 18. iterace (FK existoval, ale activity-log byl jen
+lead-only) je tím plně uzavřena pro create+complete páry.
 
-#### ✅ Co bylo v této session (dvanáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (dvacátá iterace, 2026-04-30) uděláno
+
+Z plánu „Co dál" 19. iterace vybrána položka #4 — **`TASK_COMPLETED`
+symetrický auto-log na realization/management** — jako natural
+follow-up z 19. iterace (`create_task` byl refaktorován tam, ale
+`complete_task` měl tu samou asymetrii: `if task.lead_id:` block
+logoval jen na lead, i když task.realization a task.management FKs
+existují od 18. iterace).
+
+##### Klíčový design insight
+
+`complete_task` měl identický asymetrický pattern jako `create_task`
+před 19. iterací:
+
+```python
+# Log Activity only when linked to a lead
+if task.lead_id:
+    Activity.objects.create(lead=task.lead, type=TASK_COMPLETED, …)
+```
+
+Důsledek: task přiřazený k Realization byl označen jako completed,
+ale Realization timeline o tom nedostala záznam. Stejně jako u
+`create_task` v 19. iter — refactor je „log na každou linkovanou
+entitu nezávisle" se sdíleným `completion_metadata` dict (task_id +
+title) a třemi nezávislými `Activity.objects.create` voláními pro
+lead / realization / management. Každý se aktivuje jen pokud je daný
+FK non-None.
+
+##### Backend
+
+1. **`crm/api.py:complete_task`** — activity-log block (řádky
+   1859-1866) přepsán z single-entity na per-entity:
+   - Společný `completion_metadata = {"task_id": ..., "title": ...}`
+     dict — sestaven jednou.
+   - Tři nezávislé `Activity.objects.create(...)` volání, každé
+     guarded na `if task.lead_id:` / `if task.realization_id:` /
+     `if task.management_id:`.
+   - Behavior preserved pro lead-only flow (4 existující tests
+     v `TaskCompleteAPITest` zůstávají green bez modifikace).
+   - Idempotency guarantee zachována — `if task.is_completed: return`
+     short-circuit na řádku 1841 zabraňuje druhému log volání.
+
+##### Backend tests (+4, 198 → 202)
+
+`TaskCompleteActivityLogAcrossEntitiesAPITest` (4 testy):
+- `test_complete_task_logs_activity_on_realization` — vytvoří
+  realization-only task, complete-ne ho, ověří Activity je na
+  realization a *není* leak na lead.
+- `test_complete_task_logs_activity_on_management` — totéž pro
+  management.
+- `test_complete_task_logs_activity_on_both_lead_and_realization` —
+  multi-link task → 1 Activity per entity, count == 1 na každé.
+  Mirror analogického testu z 19. iterace.
+- `test_complete_already_completed_realization_task_is_idempotent` —
+  dvě po sobě jdoucí volání `complete` na realization-linked task
+  vyústí v exactly 1 Activity (testuje že short-circuit
+  `if task.is_completed:` chrání i nový realization log path).
+
+##### Validace
+
+- `python manage.py test crm.tests.TaskCompleteActivityLogAcrossEntitiesAPITest crm.tests.TaskCompleteAPITest` → **8/8 pass** (~7s).
+- `python manage.py test crm` — **202/202 pass** (198 → 202, +4
+  new), 0 regressions, ~146s.
+- Žádné FE změny → vue-tsc / vitest / oxlint baseline unchanged.
+
+##### Co se NE-dělalo v této iteraci
+
+- **Bulk action `complete` (řádek ~2966)** — používá
+  `_log_timeline_event` místo přímého `Activity.objects.create`,
+  a ten už *je* per-entity safe (interně používá generic FK lookup).
+  Out of scope, žádná asymetrie tam neexistuje.
+- **`update_task` entity relink** — pokud uživatel změní
+  `realization_id` přes PATCH, neexistuje activity log "task
+  re-linked from realization X to Y". Samostatný design, vlastní
+  iterace.
+- **Watcher notifications cross-entity** — `_notify_task_watchers`
+  zatím nepošle notifikaci ownerovi realization při completion.
+  Produktové rozhodnutí (může být spam), oddělená diskuze.
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený
+   `e2e/tests/_fixtures.ts` (`seedLead`, `seedCustomer`,
+   `seedRealization`, `seedManagement`, `seedProposal`), 4 nové
+   entity timeline specs, `is_internal` E2E,
+   `.github/workflows/e2e.yml`. Po 18+19+20 iteraci máme všechen
+   backend, žádný blokátor.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned:
+   BooleanField` + `pinned_at: DateTimeField(null=True)` +
+   `pinned_by: FK(User, null=True)` + `POST /activities/{id}/pin`
+   toggle endpoint + sticky pinned section v `ActivityTimeline.vue`.
+   Recyklovatelný pattern z QW-1 + reactions.
+3. **FE: Tasks tab v Realization / Management detail** — backend je
+   100% připravený (19. iter list endpointy + 18+19+20 iter activity
+   log). Vyžaduje:
+   - Vue komponenta `EntityTaskList.vue` (lead-less varianta
+     `TaskList`).
+   - Tab integrace v `RealizationDetail.vue` + `ManagementDetail.vue`.
+   - Pinia store fetch wrapper přes
+     `/realizations/{id}/tasks` + `/management/{id}/tasks`.
+4. **`TASK_REASSIGNED` auto-log** — pokud `update_task` změní
+   `assigned_to`, zalogovat Activity na všechny linkované entity
+   (mirror create+complete patternu). Krátká iterace.
+5. **Filter / sort query parametry** v entity-scoped task listech
+   (`?status=`, `?completed=`, `?assigned_to_id=`) — pokud FE Tasks
+   tab je bude chtít.
+6. **F-6 — inbound webhook router** *(odblokovaný F-3 v 17. iter)*.
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header,
+   idempotency klíč, user resolution z webhook secret →
+   service-account user, audit log. Velký balíček, vlastní iterace.
+7. **`update_task` entity relink** — pokud bude potřeba měnit
+   `realization_id` / `management_id` přes PATCH /tasks/{id},
+   vyžaduje samostatný design pro re-routing notifikací a timeline
+   event log.
+
+#### ✅ Co bylo v devatenácté iteraci (2026-04-30) uděláno
+
+Z plánu „Co dál" 18. iterace vybrány **dvě navazující backend-only
+položky** (#6 — TASK_ASSIGNED auto-log na realization/management; a
+BE část položky #3 — entity-scoped Task list endpointy). Obě navazují
+přímo na 18. iteraci (`Task.realization` / `Task.management` FK +
+reverse `realization.tasks` / `management.tasks` manager) a vzájemně
+se podporují — nelze je rozumně rozdělit do dvou iterací, protože
+testy auto-logu volají i list endpoint.
+
+##### Klíčový design insight
+
+V 18. iteraci jsme přidali `Task.realization` + `Task.management` FK,
+ale `create_task` Activity-log block stále logoval **jen** na
+`lead`-linked tasky:
+
+```python
+if lead:
+    Activity.objects.create(lead=lead, type=TASK_ASSIGNED, …)
+```
+
+Důsledek: task přiřazený k Realization (např. „Plan kickoff" na nově
+spuštěné zakázce) nebyl viditelný v Realization timeline, i když
+`Task.realization` FK fungoval. To rozbíjelo intuici: timeline má
+zobrazovat *všechno* relevantní pro entitu.
+
+Refaktor logiky je „log na každou linkovanou entitu nezávisle":
+samostatný `Activity.objects.create(...)` pro lead, realization,
+management. Důvod proč ne *jeden* polymorfní Activity záznam: model
+povoluje vyplnit všechny tři FK najednou (např. task linkovaný i k
+leadu i k navazující realization). Pokud bychom logovali jen primární
+entitu, druhá by chyběla.
+
+Pro entity-scoped list endpointy bylo natural design: mirror
+**`/realizations/{id}/activities`** patternu — stejná struktura,
+stejná tenant-isolation logika, sdílené serialization helpery.
+Reuse `_task_out` + `TaskOut` schema z `crm.api` přes import (oba
+soubory už `_activity_out` + `_user_display_name` importují stejným
+způsobem) — tím garantujeme bit-pro-bit stejný JSON shape jako u
+`/tasks` listu, žádný drift.
+
+##### Backend
+
+1. **`crm/api.py:create_task`** — Activity-log block přepsán z
+   single-entity (`if lead:`) na **per-entity loop**:
+   - Společný `activity_metadata` dict (task_id, task_title, due_date,
+     priority, assigned_to_name) — sestaven jednou.
+   - Tři nezávislé `Activity.objects.create(...)` volání pro lead /
+     realization / management, každé jen pokud je daný link non-None.
+   - `assignee_name` resolution proběhne jen jednou (společné).
+   - Behavior preserved pro lead-only flow (existující 174 testů
+     žádný regression).
+2. **`crm/realization_api.py`** — nový endpoint
+   `GET /realizations/{realization_id}/tasks`:
+   - Mirror `list_realization_activities` (stejná struktura, stejná
+     paginace `page` + `page_size`, stejná `firm=firm` tenant isolation
+     na lookup, stejná 404 přes `ninja.errors.HttpError`).
+   - `Task.objects.filter(realization=realization)` + `.select_related(
+     "assigned_to", "completed_by", "created_by", "lead", "proposal",
+     "customer", "parent_task")` pro N+1 prevenci v `_task_out`.
+   - Ordering `-created_at` (newest first), shodně s `/tasks` listem.
+   - Reuse `_shared_task_out` (= import `_task_out as _shared_task_out`)
+     a `_SharedTaskOut` ninja schema (= `TaskOut as _SharedTaskOut`).
+3. **`crm/management_api.py`** — totéž pro Management:
+   `GET /management/{management_id}/tasks` — stejný pattern.
+4. **Imports rozšířeny**: oba soubory přidaly `Task` do `from
+   crm.models import (...)` a `_task_out` + `TaskOut` z `crm.api`.
+5. **Module docstrings aktualizované** v obou souborech (přidán
+   `…/tasks LIST` řádek).
+
+##### Backend tests (+11, 187 → 198)
+
+`TaskActivityLogAcrossEntitiesAPITest` (3 testy):
+- `test_task_creation_logs_activity_on_realization` — vytvoří task s
+  `realization_id`, ověří `Activity.objects.filter(realization=…,
+  type=TASK_ASSIGNED).exists()` *a zároveň* žádný leakage na lead.
+- `test_task_creation_logs_activity_on_management` — totéž pro
+  management.
+- `test_task_creation_logs_activity_on_both_lead_and_realization` —
+  task linkovaný k oběma → 2 separátní Activity záznamy (`count == 1`
+  na každé). Klíčový test, garantuje že per-entity log není dedup-ován.
+
+`RealizationTasksListAPITest` (5 testů):
+- `test_returns_200_empty_when_no_tasks` — happy path bez tasků.
+- `test_returns_only_tasks_for_this_realization` — vytvoří 3 tasky (1
+  na této, 1 na jiné realization, 1 lead-only) → response obsahuje
+  jen ten první. Testuje filter precision.
+- `test_returns_404_for_unknown_realization` — random UUID → 404.
+- `test_tenant_isolation_returns_404_for_other_firm_realization` —
+  realization existuje ale v jiné firmě → 404 (ne 403, ne 200,
+  garantuje že ID není leaknuté přes `exists()` trick).
+- `test_pagination_respects_page_size` — 5 tasků, page_size=3 → len 3.
+
+`ManagementTasksListAPITest` (3 testy): mirror struktura
+realizationího bloku — happy path filter precision, 404 unknown,
+tenant-isolation 404. (Pagination test vynechán — sdílí stejný offset
+helper s realization endpoint, redundance.)
+
+##### Validace
+
+- `python manage.py test crm.tests.TaskActivityLogAcrossEntitiesAPITest crm.tests.RealizationTasksListAPITest crm.tests.ManagementTasksListAPITest crm.tests.TaskCreateAPITest` → **20/20 pass** (~21s).
+- `python manage.py test crm` — **198/198 pass** (187 baseline + 11
+  nových), 0 regressions, ~186s.
+- Žádné FE změny → vue-tsc / vitest / oxlint baseline unchanged od 16.
+  iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **FE Tasks tab v Realization detail / Management detail** — backend je
+  připravený (oba endpointy plně testované), ale FE komponenta
+  (`EntityTaskList.vue`?) + tab integrace v `RealizationDetail.vue` /
+  `ManagementDetail.vue` je samostatný balíček. Out of scope.
+- **Filter / sort parametry** v entity-scoped task listech (např.
+  `?status=todo`, `?completed=true`) — `/tasks` global endpoint je má,
+  ale entity-scoped verze zatím ne. Odložené dokud nebude FE potřeba.
+- **`TASK_COMPLETED` activity log** symetricky pro realization /
+  management — `complete_task` endpoint zatím loguje jen na lead. Stejná
+  asymetrie jako byla v create_task, ale je vidět jako separátní
+  iterace (vyžaduje vlastní test set).
+- **Watcher notifications** přes realization / management owner —
+  `_notify_task_watchers` zatím funguje stejně jako dřív, neřeší
+  potenciální „auto-watch realization assignee".
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E,
+   `.github/workflows/e2e.yml`. Po 18+19 iteraci máme všechen backend
+   pro to, žádný další blokátor.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User,
+   null=True)` + `POST /activities/{id}/pin` toggle endpoint + sticky
+   pinned section v `ActivityTimeline.vue`. Recyklovatelný pattern z
+   QW-1 + reactions endpointu.
+3. **FE: Tasks tab v Realization / Management detail** — backend je teď
+   100% připravený. Vyžaduje:
+   - Vue komponenta `EntityTaskList.vue` (lead-less varianta `TaskList`).
+   - Tab integrace v `RealizationDetail.vue` + `ManagementDetail.vue`.
+   - Pinia store fetch wrapper přes nové endpointy `/realizations/{id}/tasks`
+     a `/management/{id}/tasks`.
+4. **`TASK_COMPLETED` symetrický auto-log** na realization/management —
+   `complete_task` endpoint má stejnou asymetrii jakou jsme v této
+   iteraci řešili pro `create_task`. Krátká iterace (~3–4 testy).
+5. **Filter / sort query parametry** v entity-scoped task listech
+   (`?status=`, `?completed=`, `?assigned_to_id=`) — pokud FE Tasks tab
+   je bude chtít.
+6. **F-6 — inbound webhook router** *(odblokovaný F-3 v 17. iteraci)*.
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header,
+   idempotency klíč, user resolution z webhook secret →
+   service-account user, audit log. Velký balíček, vlastní iterace.
+7. **`update_task` entity relink** — pokud bude potřeba měnit
+   `realization_id` / `management_id` přes PATCH /tasks/{id}, vyžaduje
+   samostatný design pro re-routing notifikací a timeline event log.
+
+#### ✅ Co bylo v osmnácté iteraci (2026-04-30) uděláno
+
+Z plánu „Co dál" 17. iterace vybrána položka #4 — **`Task.realization`
+FK** — jako nejmenší atomický backend-only balíček (žádné FE změny,
+mirror existujícího patternu z Activity, který už `realization` /
+`management` FK má). Multi-select E2E refactor a F-6 webhook router
+zůstávají odložené (oba jsou multi-component balíčky neslučitelné s
+1-iteračním scope).
+
+##### Klíčový design insight
+
+Activity model už `realization` + `management` FK má (s `CASCADE`
+on_delete protože activity je event log vlastněný entitou), ale Task
+model je měl jen `lead` (CASCADE) + `proposal` / `customer` (SET_NULL).
+Task tedy mohl být přiřazen pouze k Lead-u, ne k Realization nebo
+Management — což je asymetrie: timeline na Realization detail page
+zobrazuje activities a comments, ale neumožňuje vytvořit task s tím
+kontextem ani z UI ani z API.
+
+Volba `on_delete=SET_NULL` (ne CASCADE jako u Activity) — task není
+event log, ale samostatná to-do položka, která může mít smysl i po
+smazání entity. Sledujeme stejný pattern jako Task → proposal /
+customer (oba SET_NULL). Lead je výjimka (CASCADE) protože tasks v
+„prodejní pipeline" mají smysl jen v kontextu konkrétního leadu.
+
+##### Backend
+
+1. **`crm/models.py:Task`** — 2 nové nullable FK pole:
+   - `realization = models.ForeignKey("Realization", null=True,
+     blank=True, on_delete=models.SET_NULL, related_name="tasks", …)`
+   - `management = models.ForeignKey("Management", null=True,
+     blank=True, on_delete=models.SET_NULL, related_name="tasks", …)`
+   - `related_name="tasks"` umožňuje `realization.tasks.all()` /
+     `management.tasks.all()` reverse access — symetrické s
+     `realization.activities.all()`.
+   - Žádný `db_index=True` (FK indexy si Django vytváří automaticky).
+2. **Migrace `0041_task_management_task_realization.py`** vygenerovaná
+   přes `manage.py makemigrations`. Bezpečná: jen `AddField`, žádný
+   data migration potřeba (nullable defaults to NULL).
+3. **`crm/api.py:TaskOut` schema** — přidány 4 nové optional pole:
+   `realization_id`, `realization_title`, `management_id`,
+   `management_title`. Mirror existujícího `lead_id` + `lead_title`
+   patternu.
+4. **`crm/api.py:TaskIn` schema** — `realization_id: Optional[str] =
+   None` a `management_id: Optional[str] = None`.
+5. **`_task_out` helper** — resolution titulu pro nové FKs s defensive
+   try/except (stejný pattern jako pro lead/proposal/customer).
+   Logger.debug, ne error, takže selhání resolution nezpůsobí 500.
+6. **`create_task` endpoint** — resolution Realization / Management v
+   request.firm scope (tenant isolation), 400 s explicit detail
+   message při neexistujícím ID nebo cross-firm ID. Předáváno do
+   `Task.objects.create(...)`.
+7. **`update_task` neměněn** — endpoint zatím neumožňuje měnit entity
+   linky pro žádný typ (lead, proposal, customer). Tato symetrie
+   zůstává; relink je samostatný feature out-of-scope.
+
+##### Backend tests (+6, 181 → 187)
+
+V `TaskCreateAPITest` (umístěno za pre-existující testy):
+
+- `test_create_task_with_realization_link` — happy path: vytvoření
+  tasku s `realization_id`, ověření `realization_id` +
+  `realization_title` v response, reverse access
+  `realization.tasks.count() == 1`.
+- `test_create_task_with_management_link` — totéž pro management.
+- `test_create_task_invalid_realization_returns_400` — random UUID
+  → 400, detail obsahuje "Realization".
+- `test_create_task_invalid_management_returns_400` — totéž pro
+  management.
+- `test_create_task_realization_from_other_firm_returns_400` —
+  **tenant isolation guard**: realization existuje v jiné firmě → 400.
+  Critical, bez tohoto by se task v jedné firmě dal linkovat na
+  realization v druhé.
+- `test_task_out_realization_management_default_none` — regression:
+  task bez nových FKs serializuje `realization_id: None`,
+  `realization_title: None`, atd. Ochrana proti budoucímu refaktoringu,
+  který by zapomněl null-safe defaults.
+
+Pre-existující testy (`test_create_task_returns_201`,
+`test_create_task_logs_task_assigned_activity`,
+`test_create_task_invalid_lead_returns_400`) zůstávají zelené —
+regression-safety pro lead-only flow.
+
+##### Validace
+
+- `python manage.py test crm.tests.TaskCreateAPITest crm.tests.TaskListAPITest crm.tests.TaskCompleteAPITest`
+  → **17/17 pass** (~18s).
+- `python manage.py test crm` — **187/187 pass** (181 baseline + 6
+  nových), 0 regressions, ~176s.
+- Žádné FE změny → vue-tsc / vitest / oxlint baseline unchanged od 16.
+  iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **`update_task` rozšíření o entity relink** — žádný existující entity
+  link (lead/proposal/customer) se nedá změnit přes PATCH, bylo by to
+  nový feature s vlastními edge cases (notification re-routing,
+  timeline re-attachment). Otevřené pro budoucí iteraci pokud bude
+  produktová potřeba.
+- **Tasks tab v Realization / Management detail page (FE)** — backend
+  je teď připravený (`realization.tasks` reverse manager funguje),
+  ale FE komponenta vyžaduje vlastní API endpoint
+  `GET /realizations/{id}/tasks` a Vue tab + listing. Out of scope.
+- **Auto-create `TASK_ASSIGNED` activity na realization/management** —
+  pre-existující kód v `create_task` to dělá pouze pro `lead`. Logická
+  symetrie by byla rozšířit i na realization/management, ale to vyžaduje
+  širší design (kdy se má activity logovat — jen na primární entitu
+  task-u nebo na všechny tři možné?). Out of scope, lze v samostatné
+  iteraci.
+- **`db_index=True` explicit na FK** — nepřidáno, Django si index
+  vytvoří automaticky pro všechny FK (verifikováno v migraci).
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E
+   (assert `data-activity-internal="true"`, badge visibility, default
+   false), `.github/workflows/e2e.yml` s Postgres service. Nyní je
+   také ideální chvíle, protože Realization a Management mají FE timeline
+   a backend `Task.realization` / `Task.management` API už taky.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User, null=True)` +
+   `POST /activities/{id}/pin` toggle endpoint + sticky pinned section
+   nahoru v `ActivityTimeline.vue` + pin/unpin button v action menu.
+   Pattern recyklovatelný z QW-1 + reactions endpointu. (Task už
+   `is_pinned: BooleanField(db_index=True)` má od fáze 3.)
+3. **Tasks tab v Realization detail + Management detail (FE)** —
+   přirozený follow-up této iterace. Vyžaduje:
+   - Nový endpoint `GET /api/v1/crm/realizations/{id}/tasks` (mirror
+     existujícího `/realizations/{id}/activities`).
+   - Totéž pro management.
+   - Vue komponenta `EntityTaskList.vue` zopakující `TaskList.vue`
+     stripped na lead-less variantu.
+   - Tab integrace v `RealizationDetail.vue` + `ManagementDetail.vue`.
+4. **F-6 — inbound webhook router** *(odblokovaný F-3 v 17. iteraci)*.
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header,
+   idempotency klíč, user resolution z webhook secret →
+   service-account user, audit log. Velký balíček, vlastní iterace.
+5. **`update_task` entity relink** — pokud bude potřeba měnit
+   `realization_id` / `management_id` (a navíc `lead_id` / atd.) přes
+   PATCH /tasks/{id}, vyžaduje samostatný design pro re-routing
+   notifikací a timeline event log.
+6. **`TASK_ASSIGNED` activity auto-log na realization/management** —
+   konzistentně s lead-only současným chováním.
+7. **Per-tool format-checker opt-in** — pokud F-6 přijde, tooly s
+   `format: uri` (webhook callbacks) by měly opt-in přes nový class
+   attribute `enable_format_checks = True`.
+
+#### ✅ Co bylo v sedmnácté iteraci (2026-04-30) uděláno
+
+Z plánu „Co dál" 16. iterace vybrána položka #3 — **F-3 (`validate_payload`
+via `jsonschema`)** — jako menší atomický scope, otevírá další
+foundation work (F-6 inbound webhook router). Multi-select E2E refactor
+byl odložen, protože je velký balíček (4 nové specs + sdílené fixtures
++ CI workflow) a nelze ho spojit s 1-soubor F-3 do jedné iterace.
+
+##### Klíčový design insight
+
+Schemas v `crm/streamline/tools.py` (44 tooly) popisují **flattened
+composer view** pro SPA — `content_text` je top-level property, ostatní
+form-fieldy jsou taky top-level (`new_status`, `duration_minutes`,
+`recording_url` atd.). V inbound payloadu (`ActivityIn`) ale
+`content_text` je top-level a všechno ostatní žije v `metadata: dict`.
+
+Validation tedy musí inbound payload **flattnout** do composer-view tvaru
+před `jsonschema.validate(...)`:
+
+```python
+flat = {**(metadata or {}), "content_text": content_text}
+```
+
+`additionalProperties` je v JSON Schema defaultně `true`, takže neznámé
+metadata klíče (např. `mentions` v komentářích, nebo `is_internal` z
+QW-1, který v žádné schema není) procházejí bez šumu. Schema gate je
+tedy **opt-in** — zachycuje jen explicitně deklarované constraints
+(`required`, `enum`, `type`, `minimum`/`maximum`).
+
+##### Backend
+
+1. **Nový modul `crm/streamline/validation.py`** (~85 řádek):
+   - `PayloadValidationError(ValueError)` — typed exception, message
+     je human-readable a obsahuje `activity_type` + `json_path` +
+     `exc.message`. Bezpečné echovat na `detail` field 400 response
+     (žádný user content tam neecho-uje, jen field name a constraint).
+   - `_flatten_payload(content_text, metadata) → dict` — pomocná funkce.
+   - `validate_payload(activity_type, content_text, metadata) → None`:
+     - Tool nenalezen → no-op (caller to řeší zvlášť, jasnější chybou).
+     - Tool's `get_schema()` raises → log warning, no-op (defensive
+       proti tool-author bugům).
+     - `SchemaError` (malformed schema) → log warning, no-op (stejný
+       důvod).
+     - `ValidationError` (payload mismatch) → raise
+       `PayloadValidationError`.
+   - **Žádný `format_checker`** — záměrné, formáty jako `format: uri`,
+     `format: html` jsou v existujících schemas spíše annotation-only;
+     enabling format checking by retroaktivně rozbil legitimní callery
+     s méně přísnými URL/HTML stringy. Lze přidat později per-tool.
+2. **`crm/api.py:create_activity`** — gate vložen *po* resolve toolu
+   (předáme jasnější error pro unknown type) a *před* `transaction.atomic`.
+   Late import `from crm.streamline.validation import …` aby se
+   neimportoval `jsonschema` při každém modulovém loadu.
+3. **`requirements.txt`** netouched — `jsonschema 4.10.3` je už v deps
+   (Django Ninja používá pydantic, který má vlastní schema toolset, ale
+   `jsonschema` běží paralelně pro tooly).
+
+##### Backend tests
+
+- **3 unit testy v `StreamlineToolsTest`**:
+  - `test_validate_payload_unknown_type_is_noop` — neznámý
+    `activity_type` → silent return.
+  - `test_validate_payload_invalid_schema_is_noop` — registruje ad-hoc
+    `BrokenTool` se schemou `{"type": 123}` (`SchemaError` při
+    metaschema check), ověří že `validate_payload` neselže (cleanup
+    via try/finally aby `_tool_registry` nezůstal kontaminovaný).
+  - `test_validate_payload_message_includes_field_path` — error
+    message obsahuje jak `activity_type`, tak název chybějícího pole.
+- **4 API testy v `ActivityCreateAPITest`**:
+  - `test_payload_missing_required_field_returns_400` —
+    `status_change` bez `metadata.new_status` → 400, detail mentions
+    `new_status` + `status_change`.
+  - `test_payload_invalid_enum_returns_400` — `new_status:
+    "not_a_real_status"` → 400.
+  - `test_payload_negative_minimum_returns_400` —
+    `call.duration_minutes: -5` (schema má `minimum: 0`) → 400.
+  - `test_payload_unknown_metadata_keys_allowed` — comment +
+    `metadata.some_future_key` → 201 (regression-safety pro
+    additionalProperties: true).
+- **Existující test `test_status_change_activity_updates_lead`** (běží
+  validní payload) zůstává zelený → regression-safety.
+
+##### Validace
+
+- `python manage.py test crm` — **181/181 pass** (174 baseline + 7
+  nových), 0 regressions, ~169s.
+- Cílený běh `crm.tests.StreamlineToolsTest crm.tests.ActivityCreateAPITest`
+  → 25/25 pass (~20s).
+- Žádné FE změny → vue-tsc / vitest / oxlint unchanged od 16. iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **Multi-select E2E refactor bundle** — velký balíček, čeká na
+  samostatnou iteraci (4 specs + shared fixtures + CI workflow).
+- **QW-2 — `Activity.is_pinned` triplet** — odloženo, by zopakovalo
+  pattern QW-1 (boolean + db_index + FE badge), víc payloadu (sticky
+  section v FE) a vyžaduje nový `POST /activities/{id}/pin` endpoint.
+- **`format` checker** — zatím off; lze přidat opt-in per-schema až
+  budou existovat schemas, které to opravdu potřebují (např. F-6
+  webhook payloads s `format: uri` u callback URL).
+- **Per-tool custom validation hooks** — tooly můžou v budoucnu chtít
+  `tool.validate(payload)` pro křížové constraints, které JSON Schema
+  neumí (např. „when type=email_out, metadata.to musí být v
+  CRM kontaktech"). Až bude reálná potřeba; F-3 jen pokrývá
+  strukturální gate.
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E
+   (assert `data-activity-internal="true"`, badge visibility, default
+   false), `.github/workflows/e2e.yml` s Postgres service. Jediná
+   položka v plánu, která zlepší confidence při merge bezprostředně.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User, null=True)` +
+   `POST /activities/{id}/pin` toggle endpoint + sticky pinned section
+   nahoru v `ActivityTimeline.vue` + pin/unpin button v action menu.
+   Pattern recyklovatelný z QW-1 + reactions endpointu.
+3. **F-6 — inbound webhook router** *(nový kandidát díky F-3)*. Teď když
+   máme `validate_payload`, můžeme bezpečně přijímat externí JSON do
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header.
+   Validation gate je už hotový. Scope: HMAC ověření, idempotency klíč,
+   user resolution z webhook secret → service-account user, audit log.
+4. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+5. **Per-tool format-checker opt-in** — pokud F-6 přijde, tooly s
+   `format: uri` (webhook callbacks) by měly opt-in přes nový class
+   attribute `enable_format_checks = True`.
+
+#### ✅ Co bylo v šestnácté iteraci (2026-04-30) uděláno
+
+Z plánu „Co dál" 15. iterace vybrána položka #1 — **QW-1
+(`Activity.is_internal`)** — jako další smysluplný atomický balíček
+(jediná nová DB kolumna + propagace přes celý stack, žádné
+pohyblivé části na multiple endpoints).
+
+##### Backend
+
+1. **`crm/models.py`** — `Activity.is_internal: BooleanField(default=False, db_index=True)`.
+   Help_text dokumentuje sémantiku jako *čistý flag* — gating na
+   externí views (Customer portal, share-out feeds) bude až v F-4
+   (`permissions` scope foundation), ne teď. Přidat `db_index=True`
+   protože budoucí queries `WHERE is_internal=False` na timeline pro
+   externí čtenáře by jinak full-scanovaly.
+2. **Migrace `crm/migrations/0040_activity_is_internal.py`** —
+   `AddField` s `default=False`, takže existující řádky se neporouchají.
+   `db_index=True` v migraci se promítne do `CREATE INDEX` (Django
+   autogen).
+3. **`crm/api.py`**:
+   - `ActivityIn.is_internal: bool = False` — opt-in na payload.
+   - `ActivityOut.is_internal: bool` — vždy v response, neoptional.
+   - `_activity_out` propaguje `a.is_internal`.
+   - `Activity.objects.create(...)` v `create_activity` propaguje
+     `payload.is_internal`.
+   - Endpoint `_activity_feed_item_out` (reports timeline aggregator
+     na řádku ~3984) **NE-touched** — má vlastní `ActivityFeedItemOut`
+     schema určenou pro reports view, není používaná pro streamline
+     feed. Pokud ji bude reports view potřebovat, přidá si `is_internal`
+     samostatně.
+4. **Testy** v `crm/tests.py:StreamlineToolsTest`:
+   - `test_activity_is_internal_default_false` — model default.
+   - `test_activity_is_internal_persisted` — round-trip přes DB +
+     `Activity.objects.filter(is_internal=True)` smoke (verifies
+     `db_index=True` index is queryable).
+
+##### Frontend
+
+5. **`ActivityTimeline.vue` — `Activity` interface** přidáno
+   `is_internal: boolean` (mandatory; backend ho vždy posílá).
+6. **Composer state** — `newActivityIsInternal = ref(false)`.
+   POST payload v `addActivity()` rozšířen o `is_internal:
+   newActivityIsInternal.value`. Reset na `false` po úspěchu, aby
+   příští activity dělaná bez explicitního klikání byla externí
+   (safe default).
+7. **Composer UI** — vedle submit buttonu (původně byl `flex justify-end`,
+   teď `flex items-center justify-between`) přidán checkbox label
+   `[t('leadDetail.markInternal')]` s `data-testid="activity-composer-internal"`.
+   Layout: vlevo checkbox, vpravo submit, vertikálně zarovnané.
+8. **Feed badge** — vedle activity-type label vyrenderován `<span>`
+   s textem `t('leadDetail.activityInternal')` (amber color scheme,
+   uppercase tracking-wide), pouze když `act.is_internal === true`.
+   `data-testid="activity-internal-badge"` + `title` tooltip
+   (`leadDetail.activityInternalTooltip`). Activity item dostal taky
+   nový atribut `data-activity-internal="true|false"` aby budoucí
+   E2E test mohl ověřovat hodnotu bez DOM-spelunkingu.
+9. **i18n keys (en/cs/de/pl)** — všechny 4 catalogs mají nové klíče:
+   - `leadDetail.activityInternal` — krátký badge text.
+   - `leadDetail.activityInternalTooltip` — full sentence v `title=`
+     atributu.
+   - `leadDetail.markInternal` — checkbox label v composeru.
+
+##### Validace
+
+- `python manage.py test crm` — **174/174 pass** (172 baseline +
+  2 nové), 0 regressions, čas ~163s.
+- `python manage.py test crm.tests.StreamlineToolsTest -v 1` —
+  14/14 pass (12 baseline + 2 nové).
+- Smoke test `ActivityIn` / `ActivityOut` přes ad-hoc skript —
+  default `False`, explicit `True`, response model přijímá field.
+- `frontend-spa`: `npm run type-check` — clean (vue-tsc bez
+  warnings/errors). `npm run test:unit -- --run` — 12/12 files,
+  90/90 tests pass.
+- `npx oxlint src/components/ActivityTimeline.vue` — 0 warnings,
+  0 errors.
+
+##### Co se NE-dělalo v této iteraci
+
+- **E2E test pro is_internal** — multi-select E2E pro task už čeká
+  jako bundle s ostatními 4 entity specs + sdíleným `_fixtures.ts`,
+  takže is_internal E2E se přidá do stejného bundle (1 spec navíc,
+  nebo doplnění existujícího lead-timeline.spec.ts). Pravidlo:
+  per-iteration je vhodné nezahájit nový E2E refactor scope kvůli
+  jediné feature.
+- **Permission gating na externí views** — Customer portal
+  / share-out feeds zatím neexistují, takže `is_internal` je
+  prozatím čistě vizuální flag. F-4 (`permissions` scope foundation)
+  to dořeší společně s ostatními serializer-level permission gate
+  patterny.
+- **Filter chip „Internal" / „Public"** — přemýšleno, ale rozhodnuto
+  *odložit*: aktuální multi-select chip bar je `activity_type` based
+  (z registry), přidat sem flag-based chip by zlámalo
+  homogenitu modelu. Lepší řešení = samostatný „Internal-only"
+  toggle nebo `Show internal` switch nad timeline; design TBD.
+- **Reports view (`/reports/activities`)** — má vlastní legacy
+  `ActivityFeedItemOut` schema na řádku ~3970. Záměrně netouched,
+  protože reports view nemá interní/externí distinkci (je to
+  aggregator pro firm members). Přidat až bude product use-case.
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`:
+   - Helper `seedLead({title, …}) → leadId`, podobně pro customer /
+     realization / management / proposal.
+   - `e2e/tests/lead-timeline.spec.ts` — extrahovat seed do fixture.
+   - **4 nové specs**: `customer-timeline.spec.ts`,
+     `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
+     `proposal-timeline.spec.ts` — každý ověřuje composer + feed +
+     multi-select filter chips + reload persistence + (po QW-1) 
+     **internal flag round-trip** (assert `data-activity-internal="true"`
+     na nově vytvořené activity, badge visibility, default false).
+   - `.github/workflows/e2e.yml` — Postgres service, manage.py
+     migrate, build SPA, npx playwright test. Trigger on PR.
+2. **QW-2 — `Activity.is_pinned` triplet** (sketch v sekci 5.0
+   §QW-2). Sdílí infrastrukturu s QW-1 (boolean flag + db_index +
+   filter), navíc:
+   - `pinned_at: DateTimeField(null=True)` pro sticky-section ordering.
+   - `pinned_by: FK(User, null=True)` pro „Pinned by Jakub".
+   - Endpoint `POST /activities/{id}/pin` toggluje (ala reactions).
+   - FE: sticky pinned section nahoru nad feed; pin/unpin button v
+     activity item action menu.
+3. **F-3 — `validate_payload(activity_type, payload)` přes
+   `jsonschema`** — Foundation, otevírá inbound webhook router F-6
+   (extra-trust source posílá raw JSON s `activity_type`, my musíme
+   validovat proti `tool.get_schema()`). Implementace:
+   - `pip install jsonschema` (už možná v deps).
+   - `crm/streamline/validation.py` — `validate_payload(at, payload)`
+     volá `tool.get_schema()` + `jsonschema.validate(payload, schema)`.
+   - Volat v `create_activity` před `tool.process_action`.
+   - Test fixture s `comment` schema + bad payload → `400`.
+4. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+
+#### ✅ Co bylo v patnácté iteraci (2026-04-30) uděláno
+
+Pokračování z 14. iterace dle plánu „Co dál" — vybrány první 2 položky
+ze seznamu (multi-select E2E test + první z dvojice QW-1/QW-5).
+
+##### 1. Multi-select E2E test pro QW-3
+
+`e2e/tests/lead-timeline.spec.ts` — přidán 5. test
+`'multi-select filter chips persist across reload'`:
+
+1. **Seed druhého activity typu** (`call`) přes `request.post('/api/v1/crm/activities')`
+   se signaturou `{ lead_id, type: 'call', content_text: callNotes }` — využívá
+   `auth=django_auth` na endpointu, který sdílí session storage_state s page
+   fixturou Playwright (žádná manuální autentizace).
+2. **Multi-select assert** — klik na `comment` chip + `call` chip,
+   ověření `data-filter-active="true"` na obou + `="false"` na „Vše"
+   chip; iterace přes všechny `activity-item` ověřuje, že `data-activity-type ∈ {comment, call}`.
+3. **localStorage persistence assert** — `page.reload()`, pak znovu
+   ověření `data-filter-active="true"` na obou chipech a feed dál
+   zobrazuje pouze průnik typů. Tím se nezávisle ověřuje hydratace
+   `activeFilters` z `localStorage` klíče `lead-lab.timeline.filter.lead`.
+4. **Cleanup** — kliknutí na „Vše" chip (`data-filter-value=""`)
+   vrátí stav do prázdného setu (chips inactive, localStorage cleared).
+
+Type-check spec souboru přes `tsc --noEmit` projde clean. Test záměrně
+**nepřidávám do `task-timeline.spec.ts`** — task toolbar nemá `call`,
+musely by se použít `voice_memo` / `file_upload`, což otevírá další
+schema-payload work. Bundleme to s connectingem `_fixtures.ts` ve
+chvíli, kdy budeme dělat zbylé 4 entity timeline specs.
+
+##### 2. QW-5 — `gettext_lazy` na 44 Streamline labels
+
+Backend i18n přípravná práce. Aktuálně se label posílá z BE jako
+hardcoded English string a FE má nad tím vlastní `_filterLabelKey`
+override v `ActivityTimeline.vue` (mapuje `activity_type → leadDetail.typeXxx`
+key z vue-i18n bundle). Fallback ale stále byla čistá angličtina.
+
+1. **`crm/streamline/tools.py`** — přidán
+   `from django.utils.translation import gettext_lazy as _`. Všech
+   44 declarations `label = "X"` přepsáno na `label = _("X")` přes
+   regex sed (Python script). Ověřeno `grep -c "^    label = _("` = 44.
+2. **`crm/streamline/api.py`** — Pydantic `ToolOut.label: str`
+   nepřijme `__proxy__` přímo (`isinstance(__proxy__, str) is False`),
+   takže přidán explicit `str(tool.label)` coercion v `list_tools`
+   i v `get_entity_toolbar`. Synthetic „Task" entry v toolbaru taky
+   obalen `_("Task")` → `str(...)` pro budoucí překlad.
+   Import `from django.utils.translation import gettext_lazy as _`
+   přidán nahoru.
+3. **Type hint `label: str` v `crm/streamline/base.py`** — záměrně
+   ponechán `str` (ne `str | __proxy__`). `__proxy__` je runtime
+   string-like proxy, type-hint zůstává čistý API contract:
+   *„konzument label dostane string"*. Coercion na `str()` v API
+   layeru je single point pro tu transformaci, takže pokud někdo
+   přidá nový endpoint exposující tool.label, přídá si tu coercion sám.
+4. **Nová pole pro gettext extraction** — protože tool labels nejsou
+   v žádné Vue/Django template ani ve `views.py`, `manage.py
+   makemessages` je sám nezachytí. Budoucí krok (NE v tomto PR)
+   bude přidat explicit `extract_django` config nebo glob přes
+   `crm/streamline/tools.py` v `LOCALE_PATHS` setupu — necháno na
+   moment, kdy bude první `.po` soubor reálně potřeba.
+5. **Equality semantika ověřena** — `_("Comment") == "Comment"` je
+   `True` (gettext_lazy `__proxy__` overrides `__eq__`), takže
+   pokud nějaký test/condition srovnává label se string literálem,
+   nelomí se. `repr(label)` vrací `'Comment'`, `str(label)` vrací
+   přeloženou verzi (nebo původní pokud `.mo` chybí).
+
+**Validace:**
+
+- `python manage.py test crm.tests.StreamlineToolsTest -v 1` — 12/12 pass.
+- `python manage.py test crm` — **172/172 pass**, 0 regressions.
+- Smoke test ToolOut Pydantic serialization přes ad-hoc skript —
+  všech 44 toolů serializovatelných jako `{label: 'Comment', …}`,
+  `translation.override('cs')` neláme nic (fall-back na angličtinu
+  bez `.mo`).
+- `frontend-spa`: `npm run type-check` clean, `npm run test:unit -- --run`
+  90/90 pass — bez FE změn v této iteraci, jen baseline.
+- E2E spec `tsc --noEmit` clean. Spec sám se v sandboxu nespouští
+  (vyžaduje dev server + Playwright browsers).
+
+##### Co se NE-dělalo v této iteraci
+
+- **Multi-select E2E pro `task-timeline.spec.ts`** — zdůvodněno výše.
+- **`gettext_lazy` na `StreamlineTool.icon`** — schválně ne, ikony
+  jsou Heroicons component names (`ChatBubbleLeftIcon`), ne human-readable
+  strings; nejsou určené k překladu.
+- **Vlastní `extract_django` config / první `.po` soubor** — necháno
+  na moment, kdy product/loc team reálně potřebuje překlad. Dnes by
+  to byla mrtvá infrastruktura.
+- **QW-1 (`Activity.is_internal`)** — vyžaduje datovou migraci
+  + serializer flag + UI; větší než multi-select E2E + QW-5 dohromady.
+  Půjde do 16. iterace.
+
+#### Co dál
+
+1. **QW-1 — `Activity.is_internal: BooleanField`** — nejmenší
+   z migrace-required quick-winů. Plán:
+   - `crm/migrations/000X_add_activity_is_internal.py` — `default=False`,
+     `db_index=True`.
+   - `ActivityOut` schema v `crm/api.py` — přidat `is_internal: bool`.
+   - `ActivityIn` — přidat `is_internal: bool = False`.
+   - `_activity_out` helper — propagovat field.
+   - FE: `ActivityTimeline.vue` — vizuální badge „Interní" (i18n key
+     `leadDetail.activityInternal`) na items kde `is_internal === true`,
+     plus filter chip (lze zařadit pod existující multi-select).
+   - Permissions: `is_internal` activity by se v ideálním světě
+     skrývaly před externími uživateli (např. Customer portal, pokud
+     vznikne) — pro MVP stačí jen vizuální flag a posunutí permission
+     gate na pozdější F-4 (`permissions` scope foundation).
+2. **Multi-select E2E pro task** — bundle se zbylými 4 entity specs:
+   - `customer-timeline.spec.ts`, `realization-timeline.spec.ts`,
+     `management-timeline.spec.ts`, `proposal-timeline.spec.ts`.
+   - Sdílený fixture helper `e2e/tests/_fixtures.ts` pro seed přes API
+     (lead, customer, …) + přihlášení.
+   - CI workflow `.github/workflows/e2e.yml` se spuštěním Postgres,
+     Django dev serverem, build SPA, Playwright run.
+3. **QW-2 — `Activity.is_pinned` triplet** (sketch v sekci 5.0
+   §Sketch, §QW-2). Po QW-1, protože sdílí infrastrukturu (boolean
+   flag na Activity, BE filter, FE badge + sticky section).
+4. **F-3 — `validate_payload(activity_type, payload)` přes
+   `jsonschema`** — Foundation item, otevírá inbound webhook router
+   (F-6). Vyžaduje jen jedno místo v `create_activity` a runtime
+   validaci proti `tool.get_schema()`.
+5. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+
+#### ✅ Co bylo v čtrnácté iteraci (2026-04-30) uděláno
+
+Z plánu pro tuto session vybrán **QW-3** jako první quick-win k
+implementaci — pure-FE, žádná datová migrace, nejnižší riziko, nejlepší
+UX dopad. Konkrétně v `ActivityTimeline.vue`:
+
+1. **`filterType: ref<string>('')` → `activeFilters: ref<Set<string>>(new Set())`** —
+   filter je teď multi-select. Empty set = „Vše" (zobrazit všechno).
+   Logika `filteredActivities` v computed: prázdná množina → vše;
+   jinak `activity.type ∈ activeFilters` nebo (pokud je v setu
+   synthetic „task" chip) `activity.type ∈ ['task', 'task_assigned',
+   'task_completed']`. Synthetic task-group expansion zachován z
+   původní implementace.
+2. **`toggleFilter(value)` chip handler** — kliknutí na chip s prázdným
+   value (= „Vše") vyresetuje set; jinak toggluje členství. Drží to
+   zpětnou kompatibilitu s existujícím E2E (`Test 2 — filter the feed`
+   v `lead-timeline.spec.ts` a `task-timeline.spec.ts` klikne na
+   `comment` chip a očekává jen comment items, pak klikne na `""` All
+   chip pro reset — oba kroky fungují i s novou logikou).
+3. **`isFilterActive(value)` helper** — pro chip CSS class binding;
+   `value === ''` je aktivní pokud je set prázdný, jinak `set.has(value)`.
+   V templatu nahrazeno `:class="filterType === f.value ? ... : ..."`.
+   Přidán `data-filter-active="true|false"` atribut pro přesnější
+   E2E asserce v budoucnu (multi-select chips testy).
+4. **Persistence do `localStorage`** — `watch(activeFilters, ...)` s
+   klíčem `lead-lab.timeline.filter.{entityType}` (per-entityType, takže
+   lead a task drží svoje filtry odděleně). Hydratace na mount z
+   `localStorage.getItem(...)`, ignorování parse/storage chyb (best-effort,
+   nesmí rozbít timeline). Empty set = `localStorage.removeItem`,
+   ne `setItem('[]')` — neblokuje se quota zbytečně.
+5. **Empty state hláška** — `filterType ? 'noActivitiesForFilter' : 'noActivities'`
+   nahrazeno `activeFilters.size > 0 ? ... : ...`. i18n klíče beze
+   změny — žádná nová překladová práce.
+6. **Vue import aktualizován** — `import { ref, computed, watch, ... }
+   from 'vue'` (přidáno `watch`).
+
+**Validace:**
+
+- `npm run type-check` — exit 0 (vue-tsc bez errorů).
+- `npm run test:unit -- --run` — `Test Files 12 passed (12)`,
+  `Tests 90 passed (90)`. Žádný regress.
+- `oxlint src/components/ActivityTimeline.vue` — 0 warnings, 0 errors.
+- E2E spec `lead-timeline.spec.ts` Test 2 + `task-timeline.spec.ts`
+  Test 2 zůstávají platné: `click('[data-filter-value="comment"]')`
+  → assert všechny `data-activity-type="comment"` → `click('[data-filter-value=""]')`
+  → reset. Logika nové implementace (toggleFilter('') = clear) přesně
+  drží tohle chování. (Nespouštím v sandboxu — vyžaduje dev server.)
+
+**Co se NE-dělalo:**
+
+- **UI bucketing chips** (skupiny *Komunikace* / *Změny* / *Soubory* /
+  *Systém*) — sketch v sekci 5.0 to navrhuje, ale 1) zvyšuje to PR
+  scope, 2) UX bucketing je samostatné rozhodnutí (závisí na tom, kolik
+  toolů reálně bude v registry — dnes ~12, bucket dává smysl od ~20+).
+  Necháno na follow-up PR.
+- **Multi-select E2E test** — existující single-select E2E pokrývá
+  hot-path; nový test by jen testoval, že po kliknutí na *dva* chips
+  (např. `comment` + `email_out`) je v DOM jen ten průnik typů, plus
+  reload-persist ověření přes `localStorage`. Přidá se až s entity
+  E2E specs (customer/realization/management/proposal), kde dává
+  smysl bundlovat.
+
+#### Co dál
+
+1. **Multi-select E2E** — přidat 5. test do `lead-timeline.spec.ts`
+   (a podobný do `task-timeline.spec.ts`):
+   ```ts
+   test('multi-select filter persists across reload', async ({ page }) => {
+     // … seed druhý activity typ (např. status_change přes API)
+     await page.locator('[data-filter-value="comment"]').click()
+     await page.locator('[data-filter-value="status_change"]').click()
+     // assert: pouze items s typem comment / status_change viditelné
+     await page.reload()
+     // assert: chips comment + status_change stále data-filter-active="true",
+     // feed stále filtrovaný
+   })
+   ```
+2. **Dokončit E2E timeline coverage pro zbylé 4 entity** — stále
+   prioritní (12. iterace) — `customer-timeline.spec.ts`,
+   `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
+   `proposal-timeline.spec.ts` + sdílený `_fixtures.ts`. Multi-select
+   test bude součástí šablony.
+3. **Další quick-win z triage** — po dokončení E2E suite vzít buď
+   **QW-1** (`Activity.is_internal` boolean — jednoduchá migrace +
+   serializer flag), nebo **QW-5** (`gettext_lazy` na Streamline labels —
+   čistě mechanická). Oba bez závislostí.
+4. **QW-2 (`Activity.is_pinned`)** — sketch v sekci 5.0 je hotový;
+   PR vyžaduje migraci + úpravu `PinnedTool` / `UnpinnedTool` v
+   `crm/streamline/tools.py` + filter parametr na `ActivityViewSet` +
+   sticky pinned section v `ActivityTimeline.vue`. Větší než ostatní
+   quick-wins, ale stále vejde do 1 PR.
+5. **`Task.realization` FK** — neudělané, mimo scope timeline.
+
+#### ✅ Co bylo v třinácté iteraci (2026-04-30) uděláno
+
+Práce čistě nad dokumentem `streamline_goals.md`, sekce 5 *Future
+improvements*. Sekce předtím obsahovala ~30 plochých nápadů přes 7
+oblastí (5.1–5.7), bez priority a bez závislostí — typický parking lot.
+Aby z toho šlo začít přírůstkově dělat PR, přidána triage vrstva
+**5.0 Triage — quick-wins, foundations, strategic**:
+
+1. **Tabulka 🟢 Quick-wins (6 položek, 1 PR každá)** — `Activity.is_internal`
+   boolean, `Activity.is_pinned` triplet (boolean + `pinned_at` +
+   `pinned_by`), filter chip po `activity_type` v timeline (pure-FE),
+   `select_related` / `prefetch_related` audit, `gettext_lazy` na
+   `StreamlineTool.label` / `icon`, GDPR export endpoint per Customer.
+   Žádná z nich neblokuje další → dají se rozdat napříč týmem paralelně.
+2. **Tabulka 🟡 Foundations (6 položek)** — `parent_activity` self-FK,
+   soft delete (`deleted_at`), `validate_payload` přes `jsonschema`,
+   deklarativní `permissions` scope, retention policy, inbound webhook
+   router. Tyto odemykají další features (threading UI, retention,
+   integrace) a mají závislosti, takže se musí dělat sériově ve Sprintu B.
+3. **Sekce 🔴 Strategic** — 8 položek, které by měly samostatný design
+   doc (polymorfní FK, partitioning, async Celery, undo, AI insights,
+   calendar/e-sign sync, Redis cache, field-level encryption).
+   Argument *proč zatím ne* u každé.
+4. **Doporučená sekvence** — Sprint A (paralelní quick-wins),
+   Sprint B (sériově F-3 → F-4 → F-1 → F-2 → F-5), Sprint C (F-6 po F-3).
+5. **Quick-win sketche pro QW-2 a QW-3** (vybrané jako největší UX dopad
+   za nejmenší úsilí) — konkrétní migrace + endpoint + UI plán u
+   `is_pinned` a filter-chips. Ostatní quick-wins jsou dost přímočaré,
+   aby stačila tabulka.
+
+Sekce 5 zůstává parking-lot pro nápady, jen má teď strukturu, aby šlo
+říct „příští sprint vezmeme QW-1 + QW-2 + QW-3" místo „někdy bychom
+měli vylepšit timeline".
+
+#### ✅ Co bylo v dvanácté iteraci (2026-04-30) uděláno
 
 Pokračování plánu z 11. iterace — replikace timeline E2E specu z
 `lead` na `task` entitu. Klíčový rozdíl: `TaskDetailView.vue` nepoužívá
@@ -888,6 +1819,97 @@ uzavření Fáze 4 + 5.
 
 > Nápady pro další iterace, jakmile bude Phase 0–6 v provozu. Žádný z nich není naléhavý,
 > ale stojí za to je mít sepsané, ať na ně můžeme v budoucnu mrknout.
+
+### 5.0 Triage — quick-wins, foundations, strategic
+
+Sekce 5 dnes obsahuje ~30 nápadů přes 7 oblastí. Aby šlo začít přírůstkově, dělím
+je do tří košíků podle poměru přínos / risk / úsilí. **Quick-wins** jsou věci do
+1 PR bez datové migrace nebo s triviální migrací; **foundations** odemykají další
+features (typicky 1–3 PR + migrace); **strategic** jsou velké projekty na
+samostatný design doc.
+
+#### 🟢 Quick-wins *(1 PR, bez breaking změn, samostatně nasaditelné)*
+
+| # | Položka | Oblast | Proč teď |
+| --- | --- | --- | --- |
+| QW-1 | `Activity.is_internal` boolean | 5.1 | 1× sloupec + serializer flag; odemyká „interní poznámka" v UI bez migrace dat. |
+| QW-2 | `Activity.is_pinned` + `pinned_at` + `pinned_by` | 5.1 | 3× sloupce; existující `PinnedTool` / `UnpinnedTool` pak jen toggluje boolean. Dnes je dotaz „pinnuté pro lead" drahý (musí se procházet eventy). |
+| QW-3 | Filter chip po `activity_type` v timeline | 5.3 | Pure-FE; data už máme (`data-activity-type` v DOM). Multi-select chip nad feedem, persist do `localStorage`. |
+| QW-4 | `select_related` / `prefetch_related` audit | 5.6 | Django Debug Toolbar/silk profiling nad `ActivityOut` serializací; jeden PR s opravami N+1 v `user`, `tool_payload`, `reactions`. |
+| QW-5 | `gettext_lazy` na `StreamlineTool.label` / `icon` | 5.2 | Mechanická změna v `crm/streamline/tools.py`; cs/en/sk catalog už projekt má. |
+| QW-6 | GDPR export endpoint per Customer | 5.7 | Read-only endpoint `GET /api/v1/crm/customers/{id}/gdpr-export` → ZIP z `Activity.objects.filter(customer=...)` + `Document` blobs. Žádná schémová změna. |
+
+Dohromady 6 PR, žádný neblokuje další; dají se rozdat napříč týmem paralelně.
+
+#### 🟡 Foundations *(odemykají UX/strategic items, typicky 1–3 PR + migrace)*
+
+| # | Položka | Oblast | Co odemyká |
+| --- | --- | --- | --- |
+| F-1 | `Activity.parent_activity` self-FK | 5.1 | 5.3 inline reply (tree-render), serverový `prefetch_related("replies")`, count „kolik odpovědí". Nahrazuje dnešní `metadata.reply_to_id` (data-migrace v jednom batchi). |
+| F-2 | `Activity.deleted_at` (soft delete) | 5.1 | UI „komentář byl smazán" + audit zachová historii. Pre-req pro retention policy (F-5). |
+| F-3 | `StreamlineTool.validate_payload` (JSON Schema enforce) | 5.2 | Centrální validace přes `jsonschema` před `process_action`; smazat ad-hoc `if not payload.get(...)` v jednotlivých toolech. Pre-req pro inbound webhook router (S-1). |
+| F-4 | `StreamlineTool.permissions` deklarativní scope | 5.2 | Jednotná auth na `streamline/api.py`; pre-req pro public proposal view + multi-tenant role-based access. |
+| F-5 | Retention policy per tool *(konfigurovatelná)* | 5.6 | `entity_change` / `system_note` po N měsících → archive table nebo agregovat. Závisí na F-2 (soft delete). |
+| F-6 | Inbound webhook router `/inbound/{provider}/{kind}` | 5.5 | Sjednocuje dnešní roztříštěné Twilio/Postmark/WhatsApp handlery. Závisí na F-3 (payload validation). |
+
+#### 🔴 Strategic *(samostatný design doc, 4+ PR, riziko / náklady)*
+
+- **5.1 Polymorfní FK přes `entity_type` + `entity_id`** — ztráta DB integrity, řešit jen pokud reálně hrozí explose nullable FK sloupců (dnes 6, snesitelné).
+- **5.1 Partitioning po `created_at` / cold-storage do BigQuery** — až bude největší firma > 5M aktivit.
+- **5.2 Async `process_action` přes Celery** — vyžaduje queue infrastrukturu + dead-letter handling; pro AI/signature tooly stačí zatím sync s timeout.
+- **5.2 `StreamlineTool.undo()`** — riziko nekonzistencí (např. pin/unpin OK, ale „undo SMS" pošle revoke?); zatím raději nedělat.
+- **5.4 AI insights / funnel attribution / next-best-action** — vlastní ML pipeline + product discovery; mimo „infrastruktura timeline".
+- **5.5 Calendar two-way sync, e-sign provider plugin, outbound provider abstraction** — každé je samostatný integrační projekt s vlastním provider lock-in rizikem.
+- **5.6 Materialized view / Redis feed cache** — zbytečné, dokud nemáme změřený throughput problém.
+- **5.7 Field-level encryption (`pgcrypto`)** — komplikuje migrace + reporting; ano pro PII jako `signer_email`, ne plošně.
+
+#### Doporučená sekvence nasazení
+
+```
+Sprint A (paralelně):  QW-1, QW-2, QW-3, QW-4, QW-5, QW-6
+Sprint B (sériově):    F-3 → F-4 → F-1 → F-2 → F-5
+Sprint C (po F-3):     F-6  (inbound webhook router)
+Strategic:             samostatný backlog, řešit ad-hoc
+```
+
+Po Sprintu A máme reálné UX zlepšení (filter, pinned, GDPR) bez datové
+migrace. Sprint B drží pořadí kvůli závislostem (validation → permissions →
+threading → soft delete → retention). Sprint C dává smysl, jakmile máme
+F-3 pro JSON-schema enforcement na příchozí payload.
+
+#### Quick-win sketche *(pro QW-2 a QW-3 — nejhmatatelnější UX dopad)*
+
+**QW-2 — `Activity.is_pinned` boolean (≈ 1 PR)**
+
+- Migrace: `Activity.is_pinned = BooleanField(default=False, db_index=True)`,
+  `pinned_at = DateTimeField(null=True, blank=True)`,
+  `pinned_by = ForeignKey(User, null=True, blank=True, on_delete=SET_NULL)`.
+- `PinnedTool.process_action`: vedle dnešního zápisu `Activity(type="pinned")`
+  také `target_activity.is_pinned = True; pinned_at = now(); pinned_by = user`.
+  `UnpinnedTool` analogicky.
+- API: `GET /api/v1/crm/leads/{id}/activities?is_pinned=true` (filter na `ActivityViewSet`).
+  Bez UI ještě užitečné pro reporty.
+- UI (5.3 pinned section): nad `ActivityTimeline` feedem sticky sekce, která
+  čte `is_pinned=true` z téhož endpointu; pinned aktivity v hlavním feedu zůstávají
+  (ne mizí), jen se duplikují nahoře — známý UX pattern (Slack, Linear).
+- Audit trail (`pinned` / `unpinned` activity entries) zůstává — jen už není
+  *primárním zdrojem* informace „je to pinnuté".
+
+**QW-3 — Activity-type filter chips (≈ 1 PR, pure FE)**
+
+- `ActivityTimeline.vue` už dnes posílá `data-activity-type` do DOM (potvrzeno
+  z 10. iterace `data-testid` práce).
+- Stav: `const activeTypes = ref<Set<string>>(new Set())`, prázdný = ukaž vše.
+- Toolbar nad feedem: chips skupinované do logických bucketů
+  (`Komunikace`: comment / email_in / email_out / sms_in / sms_out / whatsapp /
+  call; `Změny`: status_change / assignee_change / priority_change / due_date_change;
+  `Soubory`: file_upload / voice_memo; `Systém`: system_note / entity_change).
+- Persist do `localStorage` pod klíčem `lead-lab.timeline.filter.{entityType}`.
+- E2E: již existující `lead-timeline.spec.ts` Test 2 testuje filter chip pro
+  jeden typ (`comment`); rozšířit na multi-select v rámci téže suite.
+- Pozn.: tohle je pure-FE, žádný backend filter ani změna serializace —
+  filtruje se klient-side nad celým feedem (timeline má i tak limit ~100 entries
+  v jednom načtení; pokud pojede pagination, posunout do query paramu později).
 
 ### 5.1 Datový model `Activity`
 

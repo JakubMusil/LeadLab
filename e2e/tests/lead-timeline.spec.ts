@@ -138,4 +138,78 @@ test.describe.serial('Lead timeline UX', () => {
         .first(),
     ).toBeVisible({ timeout: 10_000 })
   })
+
+  test('multi-select filter chips persist across reload', async ({ page, request }) => {
+    // Seed a second activity of a *different* type so we can verify the
+    // multi-select union (comment ∪ call) actually selects more than one
+    // type — and that an unrelated type would be hidden if present.
+    const callNotes = `Automated multi-select call ${Date.now()}`
+    const seed = await request.post('/api/v1/crm/activities', {
+      data: { lead_id: leadId, type: 'call', content_text: callNotes },
+    })
+    expect(seed.ok(), `Call seed failed: ${seed.status()} ${await seed.text()}`).toBeTruthy()
+
+    await page.goto(`/app/leads/${leadId}`)
+
+    // Both seeded activities must be in the feed before we touch the filter.
+    await expect(
+      page
+        .locator('[data-testid="activity-item"][data-activity-type="comment"]')
+        .filter({ hasText: commentText })
+        .first(),
+    ).toBeVisible({ timeout: 10_000 })
+    await expect(
+      page
+        .locator('[data-testid="activity-item"][data-activity-type="call"]')
+        .filter({ hasText: callNotes })
+        .first(),
+    ).toBeVisible({ timeout: 10_000 })
+
+    // Toggle on two chips — comment AND call — multi-select.
+    const commentChip = page.locator(
+      '[data-testid="activity-timeline-filter"][data-filter-value="comment"]',
+    )
+    const callChip = page.locator(
+      '[data-testid="activity-timeline-filter"][data-filter-value="call"]',
+    )
+    await commentChip.click()
+    await callChip.click()
+
+    // Both chips must report active state.
+    await expect(commentChip).toHaveAttribute('data-filter-active', 'true')
+    await expect(callChip).toHaveAttribute('data-filter-active', 'true')
+    // The "All" chip must report inactive when the set is non-empty.
+    await expect(
+      page.locator('[data-testid="activity-timeline-filter"][data-filter-value=""]'),
+    ).toHaveAttribute('data-filter-active', 'false')
+
+    // Every visible activity item must be either a comment or a call.
+    const items = page.locator('[data-testid="activity-item"]')
+    const count = await items.count()
+    expect(count).toBeGreaterThanOrEqual(2)
+    for (let i = 0; i < count; i += 1) {
+      const t = await items.nth(i).getAttribute('data-activity-type')
+      expect(['comment', 'call']).toContain(t ?? '')
+    }
+
+    // Reload and verify the filter set is restored from localStorage.
+    await page.reload()
+    await expect(commentChip).toHaveAttribute('data-filter-active', 'true', { timeout: 10_000 })
+    await expect(callChip).toHaveAttribute('data-filter-active', 'true')
+    const itemsAfter = page.locator('[data-testid="activity-item"]')
+    const countAfter = await itemsAfter.count()
+    expect(countAfter).toBeGreaterThanOrEqual(2)
+    for (let i = 0; i < countAfter; i += 1) {
+      const t = await itemsAfter.nth(i).getAttribute('data-activity-type')
+      expect(['comment', 'call']).toContain(t ?? '')
+    }
+
+    // Reset back to the "all" filter so subsequent runs of this suite
+    // start from a clean per-entity-type localStorage entry.
+    await page
+      .locator('[data-testid="activity-timeline-filter"][data-filter-value=""]')
+      .click()
+    await expect(commentChip).toHaveAttribute('data-filter-active', 'false')
+    await expect(callChip).toHaveAttribute('data-filter-active', 'false')
+  })
 })

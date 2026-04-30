@@ -718,6 +718,7 @@ class ActivityOut(Schema):
     type: str
     content_text: str
     metadata: Dict[str, Any]
+    is_internal: bool = False
     created_at: datetime
     # Tool-specific data; None when the activity type has no registered tool
     tool_payload: Optional[Dict[str, Any]] = None
@@ -736,6 +737,7 @@ class ActivityIn(Schema):
     type: str
     content_text: str = ""
     metadata: Dict[str, Any] = {}
+    is_internal: bool = False
 
 
 def _user_display_name(user) -> Optional[str]:
@@ -782,6 +784,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "type": a.type,
         "content_text": a.content_text,
         "metadata": a.metadata,
+        "is_internal": a.is_internal,
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
@@ -914,6 +917,13 @@ def create_activity(request, payload: ActivityIn):
     if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
 
+    # F-3 — structural payload validation against the tool's JSON Schema.
+    from crm.streamline.validation import PayloadValidationError, validate_payload
+    try:
+        validate_payload(payload.type, payload.content_text, payload.metadata)
+    except PayloadValidationError as exc:
+        return 400, {"detail": str(exc)}
+
     entity = lead or realization or management or customer or proposal or task
     context = {
         "firm": request.firm,
@@ -933,6 +943,7 @@ def create_activity(request, payload: ActivityIn):
             type=payload.type,
             content_text=payload.content_text,
             metadata=payload.metadata,
+            is_internal=payload.is_internal,
         )
         tool.process_action(activity, entity, payload.model_dump(), context)
 
@@ -1015,6 +1026,10 @@ class TaskOut(Schema):
     # Entity links
     lead_id: Optional[str]
     lead_title: Optional[str]
+    realization_id: Optional[str]
+    realization_title: Optional[str]
+    management_id: Optional[str]
+    management_title: Optional[str]
     proposal_id: Optional[str]
     proposal_title: Optional[str]
     customer_id: Optional[str]
@@ -1074,6 +1089,8 @@ class TaskOut(Schema):
 
 class TaskIn(Schema):
     lead_id: Optional[str] = None
+    realization_id: Optional[str] = None
+    management_id: Optional[str] = None
     proposal_id: Optional[str] = None
     customer_id: Optional[str] = None
     title: str
@@ -1137,6 +1154,26 @@ def _task_out(t: Task, requesting_user=None) -> dict:
             lead_title = t.lead.title
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
+
+    # Resolve realization title
+    realization_id = None
+    realization_title = None
+    if t.realization_id:
+        realization_id = str(t.realization_id)
+        try:
+            realization_title = t.realization.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve realization title for task %s: %s", t.id, exc)
+
+    # Resolve management title
+    management_id = None
+    management_title = None
+    if t.management_id:
+        management_id = str(t.management_id)
+        try:
+            management_title = t.management.title
+        except (AttributeError, Exception) as exc:
+            logger.debug("Could not resolve management title for task %s: %s", t.id, exc)
 
     # Resolve proposal title
     proposal_id = None
@@ -1298,6 +1335,10 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "firm_id": str(t.firm_id),
         "lead_id": lead_id,
         "lead_title": lead_title,
+        "realization_id": realization_id,
+        "realization_title": realization_title,
+        "management_id": management_id,
+        "management_title": management_title,
         "proposal_id": proposal_id,
         "proposal_title": proposal_title,
         "customer_id": customer_id,
@@ -1489,6 +1530,20 @@ def create_task(request, payload: TaskIn):
         except Lead.DoesNotExist:
             return 400, {"detail": "Lead not found in this Firm."}
 
+    realization = None
+    if payload.realization_id:
+        try:
+            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
+        except Realization.DoesNotExist:
+            return 400, {"detail": "Realization not found in this Firm."}
+
+    management = None
+    if payload.management_id:
+        try:
+            management = Management.objects.get(id=payload.management_id, firm=request.firm)
+        except Management.DoesNotExist:
+            return 400, {"detail": "Management record not found in this Firm."}
+
     proposal = None
     if payload.proposal_id:
         try:
@@ -1526,6 +1581,8 @@ def create_task(request, payload: TaskIn):
         task = Task.objects.create(
             firm=request.firm,
             lead=lead,
+            realization=realization,
+            management=management,
             proposal=proposal,
             customer=customer,
             assigned_to=assigned_to,
@@ -1549,8 +1606,13 @@ def create_task(request, payload: TaskIn):
             projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
             task.projects.set(projects)
 
-        # Log activity on lead if linked
-        if lead:
+        # Log activity on the linked entity (lead, realization, or management).
+        # Mirrors the unified Streamline timeline contract: a TASK_ASSIGNED
+        # event is emitted onto whichever entity owns the task so that the
+        # entity's detail timeline shows it. We log onto each linked entity
+        # independently — a task may be linked to both lead and realization.
+        primary_entity = lead or realization or management
+        if primary_entity is not None:
             assignee_name = ""
             if payload.assigned_to_id:
                 from django.contrib.auth import get_user_model
@@ -1560,18 +1622,34 @@ def create_task(request, payload: TaskIn):
                     assignee_name = assignee.full_name
                 except User.DoesNotExist:
                     pass
-            Activity.objects.create(
-                lead=lead,
-                user=request.user,
-                type=ActivityType.TASK_ASSIGNED,
-                metadata={
-                    "task_id": str(task.id),
-                    "task_title": task.title,
-                    "due_date": payload.due_date.isoformat() if payload.due_date else None,
-                    "priority": payload.priority,
-                    "assigned_to_name": assignee_name,
-                },
-            )
+            activity_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "due_date": payload.due_date.isoformat() if payload.due_date else None,
+                "priority": payload.priority,
+                "assigned_to_name": assignee_name,
+            }
+            if lead:
+                Activity.objects.create(
+                    lead=lead,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
+            if realization:
+                Activity.objects.create(
+                    realization=realization,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
+            if management:
+                Activity.objects.create(
+                    management=management,
+                    user=request.user,
+                    type=ActivityType.TASK_ASSIGNED,
+                    metadata=activity_metadata,
+                )
 
     _notify_task_watchers(task, "task.created")
     broadcast_event(firm=request.firm, event='task.created', payload=_task_out(task, request.user))
@@ -1778,13 +1856,31 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         task.completed_by = request.user
         task.status = TaskStatus.DONE
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
-        # Log Activity only when linked to a lead
+        # Log Activity on every linked entity (lead, realization, management).
+        # Mirrors the per-entity pattern from create_task (19th iter): a task
+        # may be linked to multiple entities and each timeline must show the
+        # completion event independently.
+        completion_metadata = {"task_id": str(task.id), "title": task.title}
         if task.lead_id:
             Activity.objects.create(
                 lead=task.lead,
                 user=request.user,
                 type=ActivityType.TASK_COMPLETED,
-                metadata={"task_id": str(task.id), "title": task.title},
+                metadata=completion_metadata,
+            )
+        if task.realization_id:
+            Activity.objects.create(
+                realization=task.realization,
+                user=request.user,
+                type=ActivityType.TASK_COMPLETED,
+                metadata=completion_metadata,
+            )
+        if task.management_id:
+            Activity.objects.create(
+                management=task.management,
+                user=request.user,
+                type=ActivityType.TASK_COMPLETED,
+                metadata=completion_metadata,
             )
 
         follow_up_task = None

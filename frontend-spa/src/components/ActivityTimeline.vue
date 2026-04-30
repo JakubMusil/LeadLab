@@ -5,7 +5,7 @@
  * Works identically for Lead, Realization, Management, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
-import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -96,6 +96,7 @@ interface Activity {
   type: string
   content_text: string
   metadata: Record<string, unknown>
+  is_internal: boolean
   created_at: string
   tool_payload: Record<string, unknown> | null
   reactions?: ReactionSummary[]
@@ -179,8 +180,46 @@ const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
 
-// Filter state
-const filterType = ref('')
+// Filter state — multi-select set of activity_type values.
+// Empty set = "All" (show every activity). The synthetic "task" entry expands
+// to the related task_* activity types, see `filteredActivities` below.
+const activeFilters = ref<Set<string>>(new Set())
+
+// localStorage persistence: per-entityType so each entity remembers its own
+// last-used filter combination across reloads.
+const _filterStorageKey = computed(() => `lead-lab.timeline.filter.${props.entityType}`)
+
+// Hydrate from localStorage on mount (best-effort; ignore parse errors so a
+// corrupted entry can't break the timeline).
+try {
+  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(_filterStorageKey.value) : null
+  if (raw) {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      activeFilters.value = new Set(parsed.filter((v): v is string => typeof v === 'string'))
+    }
+  }
+} catch {
+  // ignore — fall back to empty set
+}
+
+// Persist whenever the set changes.
+watch(
+  activeFilters,
+  (next) => {
+    try {
+      if (typeof localStorage === 'undefined') return
+      if (next.size === 0) {
+        localStorage.removeItem(_filterStorageKey.value)
+      } else {
+        localStorage.setItem(_filterStorageKey.value, JSON.stringify(Array.from(next)))
+      }
+    } catch {
+      // ignore storage failures (quota, private mode, …)
+    }
+  },
+  { deep: true },
+)
 
 // Map of known activity_type → i18n key for the filter labels
 const _filterLabelKey: Record<string, string> = {
@@ -212,17 +251,47 @@ const filterOptions = computed(() => [
   { value: 'entity_change', label: t('leadDetail.typeEntityChange') },
 ])
 
+// Activity types covered by the synthetic "task" group filter chip.
+const _taskGroupTypes = ['task', 'task_assigned', 'task_completed'] as const
+
 const filteredActivities = computed(() => {
-  if (!filterType.value) return activities.value
-  if (filterType.value === 'task') {
-    return activities.value.filter((a) => ['task', 'task_assigned', 'task_completed'].includes(a.type))
-  }
-  return activities.value.filter((a) => a.type === filterType.value)
+  if (activeFilters.value.size === 0) return activities.value
+  return activities.value.filter((a) => {
+    if (activeFilters.value.has(a.type)) return true
+    // Synthetic "task" chip expands to the related task_* activity types.
+    if (activeFilters.value.has('task') && (_taskGroupTypes as readonly string[]).includes(a.type)) {
+      return true
+    }
+    return false
+  })
 })
+
+// Chip click handler: empty value = "All" chip clears the set;
+// otherwise toggle membership of the clicked filter value.
+function toggleFilter(value: string) {
+  if (value === '') {
+    activeFilters.value = new Set()
+    return
+  }
+  const next = new Set(activeFilters.value)
+  if (next.has(value)) {
+    next.delete(value)
+  } else {
+    next.add(value)
+  }
+  activeFilters.value = next
+}
+
+// Helper for chip active-class binding.
+function isFilterActive(value: string): boolean {
+  if (value === '') return activeFilters.value.size === 0
+  return activeFilters.value.has(value)
+}
 
 // Composer state
 const selectedActionType = ref('')
 const newActivityText = ref('')
+const newActivityIsInternal = ref(false)
 const activitySubmitting = ref(false)
 const richTextEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
@@ -464,11 +533,13 @@ async function addActivity() {
     type: selectedActionType.value,
     content_text: newActivityText.value,
     metadata,
+    is_internal: newActivityIsInternal.value,
   })
   activitySubmitting.value = false
   if (res.ok) {
     activities.value.unshift(res.data)
     newActivityText.value = ''
+    newActivityIsInternal.value = false
     selectedActionType.value = ''
     toast.success(t('leadDetail.activityAdded'))
   } else {
@@ -610,7 +681,16 @@ defineExpose({ load: () => loadActivities(1) })
           :disabled="activitySubmitting"
           :members="selectedActionType === 'comment' ? teamMembers : []"
         />
-        <div class="flex justify-end">
+        <div class="flex items-center justify-between gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 select-none cursor-pointer">
+            <input
+              v-model="newActivityIsInternal"
+              type="checkbox"
+              data-testid="activity-composer-internal"
+              class="rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-400"
+            />
+            <span>{{ t('leadDetail.markInternal') }}</span>
+          </label>
           <button
             :disabled="activitySubmitting || (activityTextRequired && !hasPlainText(newActivityText))"
             data-testid="activity-composer-submit"
@@ -703,11 +783,12 @@ defineExpose({ load: () => loadActivities(1) })
         :key="f.value"
         :data-testid="'activity-timeline-filter'"
         :data-filter-value="f.value"
+        :data-filter-active="isFilterActive(f.value) ? 'true' : 'false'"
         class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
-        :class="filterType === f.value
+        :class="isFilterActive(f.value)
           ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
           : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
-        @click="filterType = f.value"
+        @click="toggleFilter(f.value)"
       >{{ f.label }}</button>
     </div>
 
@@ -716,7 +797,7 @@ defineExpose({ load: () => loadActivities(1) })
     </div>
 
     <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm" data-testid="activity-timeline-empty">
-      {{ filterType ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
+      {{ activeFilters.size > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">
@@ -727,6 +808,7 @@ defineExpose({ load: () => loadActivities(1) })
         data-testid="activity-item"
         :data-activity-id="act.id"
         :data-activity-type="act.type"
+        :data-activity-internal="act.is_internal ? 'true' : 'false'"
       >
         <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
           :class="act.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
@@ -744,6 +826,12 @@ defineExpose({ load: () => loadActivities(1) })
                 {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
               </template>
             </span>
+            <span
+              v-if="act.is_internal"
+              data-testid="activity-internal-badge"
+              class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
+              :title="t('leadDetail.activityInternalTooltip')"
+            >{{ t('leadDetail.activityInternal') }}</span>
             <span v-if="act.user_name" class="relative group/avatar flex items-center">
               <span
                 class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"

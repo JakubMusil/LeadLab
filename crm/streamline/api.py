@@ -3,6 +3,8 @@ Streamline API router — exposes tool registry metadata to the SPA.
 """
 from typing import Any, Dict, List, Optional
 
+from django.utils.translation import gettext_lazy as _
+
 from ninja import Router, Schema
 from ninja.security import django_auth
 
@@ -83,10 +85,13 @@ def list_tools(request):
             }
         }
     """
+    # Note: `str(tool.label)` coerces Django's `gettext_lazy` `__proxy__`
+    # to a real string for Pydantic — Pydantic's `isinstance(value, str)`
+    # check rejects `__proxy__` even though it's string-like at runtime.
     return [
         {
             "activity_type": tool.activity_type,
-            "label": tool.label,
+            "label": str(tool.label),
             "icon": tool.icon,
             "form_schema": tool.get_schema(),
         }
@@ -121,7 +126,7 @@ def get_entity_toolbar(request, entity_type: str):
             # Synthetic entry — handled specially by the frontend
             result.append({
                 "activity_type": "task",
-                "label": "Task",
+                "label": str(_("Task")),
                 "icon": "ClipboardDocumentListIcon",
                 "form_schema": {"type": "object", "properties": {}},
             })
@@ -130,7 +135,7 @@ def get_entity_toolbar(request, entity_type: str):
             if tool:
                 result.append({
                     "activity_type": tool.activity_type,
-                    "label": tool.label,
+                    "label": str(tool.label),
                     "icon": tool.icon,
                     "form_schema": tool.get_schema(),
                 })
