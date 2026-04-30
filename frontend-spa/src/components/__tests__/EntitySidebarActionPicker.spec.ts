@@ -131,17 +131,15 @@ describe('EntitySidebarActionPicker — unified message composer', () => {
     await wrapper.find('[data-testid="message-composer-direction-option"][data-direction="out"]').trigger('click')
 
     // Fill required fields directly via the v-model surface.
-    const toInput = wrapper.find('input[data-field-input], [data-field="to"] input')
+    const toInput = wrapper.find('[data-field="to"] input')
     expect(toInput.exists()).toBe(true)
     await toInput.setValue('+420123456789')
     const body = wrapper.find('[data-testid="stub-rich-text"]')
     await body.setValue('Hello SMS')
 
-    // Find the submit button (last red button in the form).
-    const buttons = wrapper.findAll('button')
-    const submit = buttons.find((b) => /add|odeslat|absenden|dodaj|hotovo|ulo|save/i.test(b.text())) ?? buttons[buttons.length - 1]
-    expect(submit).toBeTruthy()
-    await submit!.trigger('click')
+    const submit = wrapper.find('[data-testid="entity-sidebar-action-submit"]')
+    expect(submit.exists()).toBe(true)
+    await submit.trigger('click')
     await flushPromises()
 
     expect(api.post).toHaveBeenCalledTimes(1)

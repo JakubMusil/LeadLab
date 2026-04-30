@@ -325,6 +325,19 @@ const resolvedMessageTool = computed<StreamlineTool | null>(() => {
   )
 })
 
+function pickMessageChannel(channel: string) {
+  messageChannel.value = channel
+  // Channels that capture direction inside their own form schema (e.g. chat)
+  // expose no direction toggle, so any leftover direction selection from a
+  // previously chosen channel must be cleared.
+  const opt = messageChannelOptions.value.find((c) => c.value === channel)
+  if (!opt || opt.directions.length === 0) messageDirection.value = ''
+}
+
+function pickMessageDirection(direction: 'out' | 'in') {
+  messageDirection.value = direction
+}
+
 // ─── Activity composer state ───────────────────────────────────────────────
 
 const sidebarActionType = ref('')
@@ -902,7 +915,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
               :class="messageChannel === ch.value
                 ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
                 : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'"
-              @click="messageChannel = ch.value; if (ch.directions.length === 0) messageDirection = ''"
+              @click="pickMessageChannel(ch.value)"
             >{{ t(ch.labelKey) }}</button>
           </div>
         </div>
@@ -928,7 +941,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
               :class="messageDirection === dir.value
                 ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
                 : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'"
-              @click="messageDirection = dir.value"
+              @click="pickMessageDirection(dir.value)"
             >{{ t(dir.labelKey) }}</button>
           </div>
         </div>
