@@ -5,7 +5,7 @@
  * Works identically for Lead, Realization, Management, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
-import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -179,8 +179,46 @@ const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
 
-// Filter state
-const filterType = ref('')
+// Filter state — multi-select set of activity_type values.
+// Empty set = "All" (show every activity). The synthetic "task" entry expands
+// to the related task_* activity types, see `filteredActivities` below.
+const activeFilters = ref<Set<string>>(new Set())
+
+// localStorage persistence: per-entityType so each entity remembers its own
+// last-used filter combination across reloads.
+const _filterStorageKey = computed(() => `lead-lab.timeline.filter.${props.entityType}`)
+
+// Hydrate from localStorage on mount (best-effort; ignore parse errors so a
+// corrupted entry can't break the timeline).
+try {
+  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(_filterStorageKey.value) : null
+  if (raw) {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      activeFilters.value = new Set(parsed.filter((v): v is string => typeof v === 'string'))
+    }
+  }
+} catch {
+  // ignore — fall back to empty set
+}
+
+// Persist whenever the set changes.
+watch(
+  activeFilters,
+  (next) => {
+    try {
+      if (typeof localStorage === 'undefined') return
+      if (next.size === 0) {
+        localStorage.removeItem(_filterStorageKey.value)
+      } else {
+        localStorage.setItem(_filterStorageKey.value, JSON.stringify(Array.from(next)))
+      }
+    } catch {
+      // ignore storage failures (quota, private mode, …)
+    }
+  },
+  { deep: true },
+)
 
 // Map of known activity_type → i18n key for the filter labels
 const _filterLabelKey: Record<string, string> = {
@@ -212,13 +250,42 @@ const filterOptions = computed(() => [
   { value: 'entity_change', label: t('leadDetail.typeEntityChange') },
 ])
 
+// Activity types covered by the synthetic "task" group filter chip.
+const _taskGroupTypes = ['task', 'task_assigned', 'task_completed'] as const
+
 const filteredActivities = computed(() => {
-  if (!filterType.value) return activities.value
-  if (filterType.value === 'task') {
-    return activities.value.filter((a) => ['task', 'task_assigned', 'task_completed'].includes(a.type))
-  }
-  return activities.value.filter((a) => a.type === filterType.value)
+  if (activeFilters.value.size === 0) return activities.value
+  return activities.value.filter((a) => {
+    if (activeFilters.value.has(a.type)) return true
+    // Synthetic "task" chip expands to the related task_* activity types.
+    if (activeFilters.value.has('task') && (_taskGroupTypes as readonly string[]).includes(a.type)) {
+      return true
+    }
+    return false
+  })
 })
+
+// Chip click handler: empty value = "All" chip clears the set;
+// otherwise toggle membership of the clicked filter value.
+function toggleFilter(value: string) {
+  if (value === '') {
+    activeFilters.value = new Set()
+    return
+  }
+  const next = new Set(activeFilters.value)
+  if (next.has(value)) {
+    next.delete(value)
+  } else {
+    next.add(value)
+  }
+  activeFilters.value = next
+}
+
+// Helper for chip active-class binding.
+function isFilterActive(value: string): boolean {
+  if (value === '') return activeFilters.value.size === 0
+  return activeFilters.value.has(value)
+}
 
 // Composer state
 const selectedActionType = ref('')
@@ -703,11 +770,12 @@ defineExpose({ load: () => loadActivities(1) })
         :key="f.value"
         :data-testid="'activity-timeline-filter'"
         :data-filter-value="f.value"
+        :data-filter-active="isFilterActive(f.value) ? 'true' : 'false'"
         class="px-3 py-1 rounded-lg text-xs font-medium transition-colors"
-        :class="filterType === f.value
+        :class="isFilterActive(f.value)
           ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
           : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
-        @click="filterType = f.value"
+        @click="toggleFilter(f.value)"
       >{{ f.label }}</button>
     </div>
 
@@ -716,7 +784,7 @@ defineExpose({ load: () => loadActivities(1) })
     </div>
 
     <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm" data-testid="activity-timeline-empty">
-      {{ filterType ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
+      {{ activeFilters.size > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">

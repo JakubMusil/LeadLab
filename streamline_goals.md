@@ -497,16 +497,108 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 třinácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 čtrnácté iteraci)*
 
 Vue-tsc baseline je **kompletně čistý**, vitest baseline je **kompletně
-čistý** (0 fails, 90/90 pass), E2E timeline pokrývá `lead` + `task`
-(2 entity z 6). **Sekce 5 dokumentu má nyní triage vrstvu** —
-nápady jsou roztříděné do quick-wins / foundations / strategic
-s navrženou sekvencí nasazení (3 sprinty). Streamline backend i
-frontend jsou kompletně sjednocené.
+čistý** (0 fails, 90/90 pass), oxlint čistý nad dotčeným souborem,
+E2E timeline pokrývá `lead` + `task`. **První quick-win z triage
+(QW-3 — multi-select filter chips) je nasazen** v
+`frontend-spa/src/components/ActivityTimeline.vue`.
 
-#### ✅ Co bylo v této session (třináctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (čtrnáctá iterace, 2026-04-30) uděláno
+
+Z plánu pro tuto session vybrán **QW-3** jako první quick-win k
+implementaci — pure-FE, žádná datová migrace, nejnižší riziko, nejlepší
+UX dopad. Konkrétně v `ActivityTimeline.vue`:
+
+1. **`filterType: ref<string>('')` → `activeFilters: ref<Set<string>>(new Set())`** —
+   filter je teď multi-select. Empty set = „Vše" (zobrazit všechno).
+   Logika `filteredActivities` v computed: prázdná množina → vše;
+   jinak `activity.type ∈ activeFilters` nebo (pokud je v setu
+   synthetic „task" chip) `activity.type ∈ ['task', 'task_assigned',
+   'task_completed']`. Synthetic task-group expansion zachován z
+   původní implementace.
+2. **`toggleFilter(value)` chip handler** — kliknutí na chip s prázdným
+   value (= „Vše") vyresetuje set; jinak toggluje členství. Drží to
+   zpětnou kompatibilitu s existujícím E2E (`Test 2 — filter the feed`
+   v `lead-timeline.spec.ts` a `task-timeline.spec.ts` klikne na
+   `comment` chip a očekává jen comment items, pak klikne na `""` All
+   chip pro reset — oba kroky fungují i s novou logikou).
+3. **`isFilterActive(value)` helper** — pro chip CSS class binding;
+   `value === ''` je aktivní pokud je set prázdný, jinak `set.has(value)`.
+   V templatu nahrazeno `:class="filterType === f.value ? ... : ..."`.
+   Přidán `data-filter-active="true|false"` atribut pro přesnější
+   E2E asserce v budoucnu (multi-select chips testy).
+4. **Persistence do `localStorage`** — `watch(activeFilters, ...)` s
+   klíčem `lead-lab.timeline.filter.{entityType}` (per-entityType, takže
+   lead a task drží svoje filtry odděleně). Hydratace na mount z
+   `localStorage.getItem(...)`, ignorování parse/storage chyb (best-effort,
+   nesmí rozbít timeline). Empty set = `localStorage.removeItem`,
+   ne `setItem('[]')` — neblokuje se quota zbytečně.
+5. **Empty state hláška** — `filterType ? 'noActivitiesForFilter' : 'noActivities'`
+   nahrazeno `activeFilters.size > 0 ? ... : ...`. i18n klíče beze
+   změny — žádná nová překladová práce.
+6. **Vue import aktualizován** — `import { ref, computed, watch, ... }
+   from 'vue'` (přidáno `watch`).
+
+**Validace:**
+
+- `npm run type-check` — exit 0 (vue-tsc bez errorů).
+- `npm run test:unit -- --run` — `Test Files 12 passed (12)`,
+  `Tests 90 passed (90)`. Žádný regress.
+- `oxlint src/components/ActivityTimeline.vue` — 0 warnings, 0 errors.
+- E2E spec `lead-timeline.spec.ts` Test 2 + `task-timeline.spec.ts`
+  Test 2 zůstávají platné: `click('[data-filter-value="comment"]')`
+  → assert všechny `data-activity-type="comment"` → `click('[data-filter-value=""]')`
+  → reset. Logika nové implementace (toggleFilter('') = clear) přesně
+  drží tohle chování. (Nespouštím v sandboxu — vyžaduje dev server.)
+
+**Co se NE-dělalo:**
+
+- **UI bucketing chips** (skupiny *Komunikace* / *Změny* / *Soubory* /
+  *Systém*) — sketch v sekci 5.0 to navrhuje, ale 1) zvyšuje to PR
+  scope, 2) UX bucketing je samostatné rozhodnutí (závisí na tom, kolik
+  toolů reálně bude v registry — dnes ~12, bucket dává smysl od ~20+).
+  Necháno na follow-up PR.
+- **Multi-select E2E test** — existující single-select E2E pokrývá
+  hot-path; nový test by jen testoval, že po kliknutí na *dva* chips
+  (např. `comment` + `email_out`) je v DOM jen ten průnik typů, plus
+  reload-persist ověření přes `localStorage`. Přidá se až s entity
+  E2E specs (customer/realization/management/proposal), kde dává
+  smysl bundlovat.
+
+#### Co dál
+
+1. **Multi-select E2E** — přidat 5. test do `lead-timeline.spec.ts`
+   (a podobný do `task-timeline.spec.ts`):
+   ```ts
+   test('multi-select filter persists across reload', async ({ page }) => {
+     // … seed druhý activity typ (např. status_change přes API)
+     await page.locator('[data-filter-value="comment"]').click()
+     await page.locator('[data-filter-value="status_change"]').click()
+     // assert: pouze items s typem comment / status_change viditelné
+     await page.reload()
+     // assert: chips comment + status_change stále data-filter-active="true",
+     // feed stále filtrovaný
+   })
+   ```
+2. **Dokončit E2E timeline coverage pro zbylé 4 entity** — stále
+   prioritní (12. iterace) — `customer-timeline.spec.ts`,
+   `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
+   `proposal-timeline.spec.ts` + sdílený `_fixtures.ts`. Multi-select
+   test bude součástí šablony.
+3. **Další quick-win z triage** — po dokončení E2E suite vzít buď
+   **QW-1** (`Activity.is_internal` boolean — jednoduchá migrace +
+   serializer flag), nebo **QW-5** (`gettext_lazy` na Streamline labels —
+   čistě mechanická). Oba bez závislostí.
+4. **QW-2 (`Activity.is_pinned`)** — sketch v sekci 5.0 je hotový;
+   PR vyžaduje migraci + úpravu `PinnedTool` / `UnpinnedTool` v
+   `crm/streamline/tools.py` + filter parametr na `ActivityViewSet` +
+   sticky pinned section v `ActivityTimeline.vue`. Větší než ostatní
+   quick-wins, ale stále vejde do 1 PR.
+5. **`Task.realization` FK** — neudělané, mimo scope timeline.
+
+#### ✅ Co bylo v třinácté iteraci (2026-04-30) uděláno
 
 Práce čistě nad dokumentem `streamline_goals.md`, sekce 5 *Future
 improvements*. Sekce předtím obsahovala ~30 plochých nápadů přes 7
@@ -536,30 +628,9 @@ Aby z toho šlo začít přírůstkově dělat PR, přidána triage vrstva
    `is_pinned` a filter-chips. Ostatní quick-wins jsou dost přímočaré,
    aby stačila tabulka.
 
-Záměrně **žádná změna kódu**. Sekce 5 zůstává parking-lot pro nápady,
-jen má teď strukturu, aby šlo říct „příští sprint vezmeme QW-1 + QW-2 +
-QW-3" místo „někdy bychom měli vylepšit timeline".
-
-#### Co dál
-
-1. **Validovat triage s týmem / produktem** — než začneme jakýkoli
-   quick-win nasazovat, projít tabulku QW-1…QW-6 a potvrdit, že
-   priorita sedí. Případně QW-6 (GDPR export) mít hotové dřív kvůli
-   compliance termínu.
-2. **Otevřít první quick-win PR** — nejlepší kandidát je **QW-3
-   (filter chips)**, protože je čistě FE, nemá migraci a využije
-   existující `data-activity-type` v DOM. Můžeme ho dělat paralelně
-   s tím, jak doháníme E2E specs pro zbylé 4 entity.
-3. **Dokončit E2E timeline coverage** *(pokračování plánu z 12. iterace,
-   stále aktuální)* — `customer-timeline.spec.ts`,
-   `realization-timeline.spec.ts`, `management-timeline.spec.ts`,
-   `proposal-timeline.spec.ts`. Pak sdílený helper
-   `e2e/tests/_fixtures.ts` a CI workflow `.github/workflows/e2e.yml`.
-4. **Po E2E suitě:** vrátit se k F-3 (`validate_payload`) a F-4
-   (`permissions`) — to jsou Foundation items, které otevírají
-   integrace (F-6 inbound webhook) a multi-tenant role-based access.
-5. **`Task.realization` FK + Tasks tab v Realization detail** — stále
-   na seznamu, mimo scope timeline.
+Sekce 5 zůstává parking-lot pro nápady, jen má teď strukturu, aby šlo
+říct „příští sprint vezmeme QW-1 + QW-2 + QW-3" místo „někdy bychom
+měli vylepšit timeline".
 
 #### ✅ Co bylo v dvanácté iteraci (2026-04-30) uděláno
 
