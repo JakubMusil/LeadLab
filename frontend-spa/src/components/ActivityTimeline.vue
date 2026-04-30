@@ -28,6 +28,8 @@ import {
   CheckIcon,
   ArrowsRightLeftIcon,
   PaperClipIcon,
+  PhotoIcon,
+  DocumentIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
   PencilSquareIcon,
@@ -598,6 +600,91 @@ function voiceMemoDurationSeconds(act: Activity): number | null {
   return Number.isFinite(num) ? num : null
 }
 
+// ---------------------------------------------------------------------------
+// File upload helpers (Fáze 7.2)
+// ---------------------------------------------------------------------------
+//
+// The `file_upload` Activity carries the user-facing label in
+// `metadata.title`, the storage URL in `metadata.url`, and the
+// server-populated technical fields (`filename`, `size_bytes`,
+// `mime_type`, `source_kind`, `store_locally`, `fetch_status`) which
+// feed into the file-card renderer below.
+
+function fileUploadMetadata(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function fileUploadTitle(act: Activity): string {
+  const value = fileUploadMetadata(act).title
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadUrl(act: Activity): string {
+  const value = fileUploadMetadata(act).url
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadFilename(act: Activity): string {
+  const value = fileUploadMetadata(act).filename
+  return typeof value === 'string' ? value : ''
+}
+
+function fileUploadMime(act: Activity): string {
+  const value = fileUploadMetadata(act).mime_type
+  return typeof value === 'string' ? value.toLowerCase() : ''
+}
+
+function fileUploadSourceKind(act: Activity): 'url' | 'upload' {
+  return fileUploadMetadata(act).source_kind === 'url' ? 'url' : 'upload'
+}
+
+function fileUploadIsExternal(act: Activity): boolean {
+  if (fileUploadSourceKind(act) !== 'url') return false
+  const storeLocally = fileUploadMetadata(act).store_locally
+  // Only treat as external when explicitly opted out of local storage
+  // *and* the async fetch hasn't already replaced the URL.
+  return storeLocally === false
+}
+
+function fileUploadFetchPending(act: Activity): boolean {
+  if (fileUploadSourceKind(act) !== 'url') return false
+  if (fileUploadMetadata(act).store_locally === false) return false
+  const status = fileUploadMetadata(act).fetch_status
+  return status !== 'ok' && status !== 'failed'
+}
+
+function fileUploadSizeBytes(act: Activity): number | null {
+  const raw = fileUploadMetadata(act).size_bytes
+  if (raw === undefined || raw === null || raw === '') return null
+  const num = Number(raw)
+  return Number.isFinite(num) && num > 0 ? num : null
+}
+
+function fileUploadFormattedSize(act: Activity): string {
+  const bytes = fileUploadSizeBytes(act)
+  if (bytes === null) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fileUploadIcon(act: Activity): Component {
+  const mime = fileUploadMime(act)
+  const filename = fileUploadFilename(act).toLowerCase()
+  if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/.test(filename)) {
+    return PhotoIcon
+  }
+  if (
+    mime === 'application/pdf' ||
+    mime.includes('msword') ||
+    mime.includes('officedocument') ||
+    /\.(pdf|docx?|xlsx?|pptx?|odt|ods|odp)$/.test(filename)
+  ) {
+    return DocumentTextIcon
+  }
+  return DocumentIcon
+}
+
 function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
 }
@@ -939,6 +1026,35 @@ defineExpose({ load: () => loadActivities(1) })
               >{{ voiceMemoTranscript(act) }}</p>
             </div>
           </div>
+
+          <!-- File upload card (Fáze 7.2): icon + title + filename/size,
+               click downloads the file (or follows the external URL when
+               the user opted out of local storage). -->
+          <a
+            v-if="act.type === 'file_upload' && fileUploadUrl(act)"
+            :href="fileUploadUrl(act)"
+            :target="fileUploadIsExternal(act) ? '_blank' : '_self'"
+            :rel="fileUploadIsExternal(act) ? 'noopener noreferrer' : undefined"
+            :download="fileUploadIsExternal(act) ? undefined : (fileUploadFilename(act) || true)"
+            class="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
+            data-testid="file-upload-card"
+            :data-activity-id="act.id"
+            :data-source-kind="fileUploadSourceKind(act)"
+          >
+            <component :is="fileUploadIcon(act)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {{ fileUploadTitle(act) || fileUploadFilename(act) || t('fileUpload.untitled') }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <span v-if="fileUploadFilename(act)">{{ fileUploadFilename(act) }}</span>
+                <span v-if="fileUploadFilename(act) && fileUploadFormattedSize(act)" class="mx-1">·</span>
+                <span v-if="fileUploadFormattedSize(act)" class="tabular-nums">{{ fileUploadFormattedSize(act) }}</span>
+                <span v-if="fileUploadIsExternal(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
+                <span v-else-if="fileUploadFetchPending(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
+              </p>
+            </div>
+          </a>
 
           <!-- Reactions row (visible only for comment activities) -->
           <div

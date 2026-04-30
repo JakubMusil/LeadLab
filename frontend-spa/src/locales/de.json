@@ -1220,7 +1220,7 @@
       "whatsapp_out": "Ausgehende WhatsApp-Nachricht.",
       "whatsapp_in": "Eingehende WhatsApp-Nachricht.",
       "link": "Gespeicherter externer Link mit Titel und Beschreibung (Vertrag, Dokument, Website…).",
-      "file_upload": "Datei an die Opportunity anhängen — geben Sie die URL der hochgeladenen Datei ein.",
+      "file_upload": "Datei — direkt von der Festplatte hochladen, per Drag-and-Drop ablegen oder eine URL einfügen. Wir können sie herunterladen und speichern oder nur den Link behalten.",
       "voice_memo": "Sprachnotiz — Audio über das Mikrofon aufnehmen, Aufnahme pausieren, speichern oder verwerfen. Dateiname und Dauer werden für Sie verwaltet.",
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
       "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
@@ -2028,5 +2028,24 @@
     "uploadFailed": "Aufnahme konnte nicht gespeichert werden.",
     "showTranscript": "Transkript anzeigen",
     "hideTranscript": "Transkript ausblenden"
+  },
+  "fileUpload": {
+    "sourceLabel": "Quelle",
+    "sourceUpload": "Datei(en) hochladen",
+    "sourceUrl": "Aus URL",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Kurze Beschreibung der Datei",
+    "urlLabel": "URL",
+    "storeLocally": "Lokale Kopie herunterladen und speichern",
+    "dropHint": "Dateien hierher ziehen oder zum Auswählen klicken.",
+    "limitHint": "Maximale Größe {limit} pro Datei.",
+    "overLimit": "Datei „{name}\" überschreitet das Limit von {limit}. Upgraden Sie Ihren Plan für größere Dateien.",
+    "uploadFailed": "Datei konnte nicht hochgeladen werden.",
+    "save": "Speichern",
+    "saving": "Speichern…",
+    "cancel": "Abbrechen",
+    "externalLink": "Externer Link",
+    "fetching": "Wird geladen…",
+    "untitled": "Ohne Titel"
   }
 }

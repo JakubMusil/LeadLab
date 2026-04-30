@@ -6,6 +6,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useAuthStore } from '@/stores/auth'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import VoiceMemoRecorder from '@/components/VoiceMemoRecorder.vue'
+import FileUploadComposer from '@/components/FileUploadComposer.vue'
 import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -776,6 +777,71 @@ function sidebarCancelVoiceMemo() {
   closeSidebarAction()
 }
 
+// ─── File upload composer integration ──────────────────────────────────────
+//
+// Like the voice-memo composer, the `file_upload` tool replaces the
+// schema-driven form with a richer UI (URL ↔ Upload pill switcher,
+// drop-zone + multi-file). The composer owns the upload step and emits
+// one Activity-ready payload per successfully-stored file (or one
+// payload total for the URL branch). For the URL branch with
+// `store_locally=true` the backend Celery task fetches the file
+// asynchronously and patches `metadata` in place once done.
+
+const fileUploadUrl = computed(() => {
+  const params = new URLSearchParams({
+    [`${props.entityType}_id`]: props.entityId,
+  })
+  return `/api/v1/crm/file-uploads/upload?${params.toString()}`
+})
+
+interface FileUploadSubmitPayload {
+  title: string
+  url: string
+  filename: string
+  size_bytes: number
+  mime_type: string
+  source_kind: 'url' | 'upload'
+  store_locally: boolean
+}
+
+async function sidebarSubmitFileUpload(payload: FileUploadSubmitPayload) {
+  sidebarActivitySubmitting.value = true
+  // Strip empty optional fields so backend metadata stays compact.
+  const metadata: Record<string, unknown> = {
+    title: payload.title,
+    url: payload.url,
+    source_kind: payload.source_kind,
+    store_locally: payload.store_locally,
+  }
+  if (payload.filename) metadata.filename = payload.filename
+  if (payload.size_bytes) metadata.size_bytes = payload.size_bytes
+  if (payload.mime_type) metadata.mime_type = payload.mime_type
+
+  const res = await api.post('/api/v1/crm/activities', {
+    [entityIdField.value]: props.entityId,
+    type: 'file_upload',
+    content_text: '',
+    metadata,
+  })
+  sidebarActivitySubmitting.value = false
+  if (res.ok) {
+    // We only close the composer after the *whole batch* has been
+    // processed — multi-file uploads will fire `submit` once per file
+    // and we want the panel to stay open between them. The composer
+    // itself stays mounted and only resets when closed manually below.
+    emit('activity-added')
+    toast.success(t('leadDetail.activityAdded'))
+    sidebarActionType.value = ''
+    sidebarExtraFields.value = {}
+  } else {
+    toast.error(t('leadDetail.activityFailed'))
+  }
+}
+
+function sidebarCancelFileUpload() {
+  closeSidebarAction()
+}
+
 async function sidebarAddTask() {
   if (!sidebarTaskTitle.value.trim()) return
   sidebarTaskSubmitting.value = true
@@ -957,9 +1023,19 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         @cancel="sidebarCancelVoiceMemo"
       />
 
-      <!-- Generic schema-driven form (everything except voice_memo, which
-           uses its own recorder UI above). -->
-      <template v-if="sidebarActionType !== 'voice_memo'">
+      <!-- File upload composer: URL ↔ Upload switcher, multi-file drop-
+           zone, plan-aware client-side limits.  Owns its own upload
+           step — emits one activity-ready payload per stored file. -->
+      <FileUploadComposer
+        v-else-if="sidebarActionType === 'file_upload'"
+        :upload-url="fileUploadUrl"
+        @submit="sidebarSubmitFileUpload"
+        @cancel="sidebarCancelFileUpload"
+      />
+
+      <!-- Generic schema-driven form (everything except voice_memo and
+           file_upload, which use their own composers above). -->
+      <template v-if="sidebarActionType !== 'voice_memo' && sidebarActionType !== 'file_upload'">
       <!-- Unified message composer: Channel + Direction picker.
            Only rendered for the synthetic 'message' pseudo-tool. -->
       <div

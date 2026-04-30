@@ -229,7 +229,7 @@ relevantní (obsah, název, kontext) — technická metadata si systém doplní 
 
 Plán se dělí na tři dílčí podúkoly v daném pořadí:
 
-#### 7.1 Hlasová poznámka *(`voice_memo`)* — 🟡 probíhá *(první úkol)*
+#### 7.1 Hlasová poznámka *(`voice_memo`)* — ✅ hotovo
 
 **Sidebar formulář:** nahradit generický field-renderer dedikovaným
 diktafonovým UI:
@@ -258,7 +258,7 @@ diktafonovým UI:
 **Backend:** schéma `VoiceMemoTool` (URL + transcript + duration + size) je
 již dostatečné, není třeba měnit.
 
-#### 7.2 Nahrání souboru *(`file_upload`)*
+#### 7.2 Nahrání souboru *(`file_upload`)* — ✅ hotovo
 
 **Sidebar formulář:** přepínač (button-pill, stejný styl jako
 `messageChannelOptions`) s dvěma režimy:
@@ -301,7 +301,7 @@ z uploadu/stažení.
 Celery job na stažení do storage; po dokončení update `activity.metadata`.
 Plánové size limity validovat i serverside.
 
-#### 7.3 Naplánovaná událost *(nový tool `event_scheduled`)*
+#### 7.3 Naplánovaná událost *(nový tool `event_scheduled`)* — 🟡 následuje
 
 Obdoba schůzky / Tasku, která má vlastní záznam v kalendáři. Vychází
 schematicky z eventu v Google Kalendáři.

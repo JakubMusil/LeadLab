@@ -1716,3 +1716,154 @@ def _send_outcome_prompt(task, now, *, logger):
         )
     except Exception:  # pragma: no cover — defensive
         logger.debug("_send_outcome_prompt: ws push failed for task=%s", task.id)
+
+
+# ---------------------------------------------------------------------------
+# Streamline FileUploadTool — async URL fetch (Fáze 7.2)
+# ---------------------------------------------------------------------------
+
+#: Maximum bytes we are willing to pull from a remote URL.  Mirrors the
+#: hard ceiling of an authenticated file upload (free plan = 15 MB,
+#: pro = 100 MB) — we always honour the higher cap here because the
+#: source URL was already user-validated; per-plan validation lives in
+#: the request path that schedules this task.
+_REMOTE_FETCH_HARD_LIMIT_BYTES = 100 * 1024 * 1024
+
+#: Connect / read timeout (seconds) for the remote fetch.  Files that
+#: cannot be retrieved within this window are flagged ``failed`` and the
+#: original URL stays as a plain reference in the activity metadata.
+_REMOTE_FETCH_TIMEOUT_SECONDS = 30
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def fetch_remote_file_for_activity(self, activity_id: str):
+    """Download a remote file referenced by a ``file_upload`` Activity.
+
+    Triggered by ``FileUploadTool.process_action`` whenever the user
+    submitted a URL with ``store_locally=true``.  On success the
+    associated ``Document`` is populated with the downloaded binary,
+    ``activity.metadata`` is patched with ``filename`` / ``size_bytes`` /
+    ``mime_type`` / ``document_id`` / ``fetch_status="ok"`` and the
+    canonical CRM ``url`` is rewritten to the local storage URL.
+
+    On failure ``fetch_status`` is set to ``"failed"`` and a short
+    ``fetch_error`` message is recorded; the source URL stays in
+    ``metadata.url`` so the user can still click through.
+    """
+    import os
+    from urllib.parse import urlparse
+
+    import requests
+    from django.core.files.base import ContentFile
+
+    from crm.models import Activity, Document
+
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except Activity.DoesNotExist:
+        logger.warning("fetch_remote_file_for_activity: activity %s missing", activity_id)
+        return
+
+    meta = dict(activity.metadata or {})
+    source_url = meta.get("url")
+    if not source_url:
+        return
+
+    try:
+        with requests.get(
+            source_url,
+            stream=True,
+            timeout=_REMOTE_FETCH_TIMEOUT_SECONDS,
+            allow_redirects=True,
+        ) as resp:
+            resp.raise_for_status()
+            content_length = resp.headers.get("Content-Length")
+            if content_length and int(content_length) > _REMOTE_FETCH_HARD_LIMIT_BYTES:
+                raise ValueError("remote-file-too-large")
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in resp.iter_content(chunk_size=64 * 1024):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _REMOTE_FETCH_HARD_LIMIT_BYTES:
+                    raise ValueError("remote-file-too-large")
+                chunks.append(chunk)
+            payload = b"".join(chunks)
+            mime_type = (resp.headers.get("Content-Type") or "application/octet-stream").split(";")[0].strip()
+
+        # Pick a sensible storage filename from the URL path.
+        parsed = urlparse(source_url)
+        basename = os.path.basename(parsed.path) or "remote-file"
+        if "." not in basename:
+            # Best-effort extension from the MIME type so the file is
+            # recognisable later.
+            ext = ""
+            if "/" in mime_type:
+                ext = "." + mime_type.split("/", 1)[1].split("+", 1)[0]
+            basename = f"{basename}{ext}"
+
+        # Preserve any existing entity links from sibling activity rows
+        # so the document shows up in the right "files" tab.  Activity
+        # doesn't carry its own ``firm`` FK — derive it from whichever
+        # parent entity is set.
+        firm = None
+        for parent in (
+            getattr(activity, "lead", None),
+            getattr(activity, "customer", None),
+            getattr(activity, "realization", None),
+            getattr(activity, "management", None),
+            getattr(activity, "proposal", None),
+            getattr(activity, "task", None),
+        ):
+            if parent is not None and getattr(parent, "firm_id", None):
+                firm = parent.firm
+                break
+        if firm is None:
+            raise ValueError("activity has no parent entity to attach the file to")
+
+        doc = Document(
+            firm=firm,
+            lead=getattr(activity, "lead", None),
+            customer=getattr(activity, "customer", None),
+            realization=getattr(activity, "realization", None),
+            management=getattr(activity, "management", None),
+            proposal=getattr(activity, "proposal", None),
+            task=getattr(activity, "task", None),
+            uploaded_by=getattr(activity, "user", None),
+            name=basename,
+            content_type=mime_type or "application/octet-stream",
+            size_bytes=len(payload),
+        )
+        doc.file.save(basename, ContentFile(payload), save=True)
+
+        meta.update(
+            {
+                "document_id": str(doc.id),
+                "filename": doc.name,
+                "size_bytes": doc.size_bytes,
+                "mime_type": doc.content_type,
+                "url": doc.file.url if doc.file.name else source_url,
+                "source_url": source_url,
+                "fetch_status": "ok",
+            }
+        )
+        activity.metadata = meta
+        activity.save(update_fields=["metadata"])
+    except Exception as exc:
+        logger.warning(
+            "fetch_remote_file_for_activity: %s failed for activity %s",
+            exc,
+            activity_id,
+        )
+        meta.update(
+            {
+                "fetch_status": "failed",
+                "fetch_error": str(exc)[:200],
+            }
+        )
+        try:
+            activity.metadata = meta
+            activity.save(update_fields=["metadata"])
+        except Exception:  # pragma: no cover — last-ditch safety
+            pass

@@ -1221,7 +1221,7 @@
       "whatsapp_out": "Odeslaná WhatsApp zpráva.",
       "whatsapp_in": "Přijatá WhatsApp zpráva.",
       "link": "Uložený externí odkaz s popisem (smlouva, dokument, web…).",
-      "file_upload": "Soubor přiložený k příležitosti — zadejte URL nahraného souboru.",
+      "file_upload": "Soubor — nahrajte přímo z disku, přetáhněte do okna, nebo vložte URL. Můžeme ho stáhnout a uložit, nebo nechat jen jako odkaz.",
       "voice_memo": "Hlasová poznámka — nahrajte zvuk přes mikrofon, můžete pauznout, uložit nebo zahodit. Název souboru a délku ukládáme za vás.",
       "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
       "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku.",
@@ -2029,5 +2029,24 @@
     "uploadFailed": "Nahrávku se nepodařilo uložit.",
     "showTranscript": "Zobrazit přepis",
     "hideTranscript": "Skrýt přepis"
+  },
+  "fileUpload": {
+    "sourceLabel": "Zdroj",
+    "sourceUpload": "Nahrát soubor(y)",
+    "sourceUrl": "Z URL",
+    "titleLabel": "Název",
+    "titlePlaceholder": "Krátký popis souboru",
+    "urlLabel": "URL",
+    "storeLocally": "Stáhnout a uložit kopii",
+    "dropHint": "Přetáhněte sem soubory nebo klikněte pro výběr.",
+    "limitHint": "Maximální velikost {limit} na soubor.",
+    "overLimit": "Soubor „{name}\" překračuje limit {limit}. Upgradujte plán pro větší soubory.",
+    "uploadFailed": "Soubor se nepodařilo nahrát.",
+    "save": "Uložit",
+    "saving": "Ukládám…",
+    "cancel": "Zrušit",
+    "externalLink": "Externí odkaz",
+    "fetching": "Stahuji…",
+    "untitled": "Bez názvu"
   }
 }

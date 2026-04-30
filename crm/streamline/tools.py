@@ -342,30 +342,75 @@ class FileUploadTool(StreamlineTool):
     default_visibility = "important"
 
     def get_schema(self) -> dict:
+        # Schema notes:
+        #   * ``title`` is the user-facing label of the file as a whole
+        #     (NOT the filename) — the SPA renders it required.
+        #   * ``source_kind`` distinguishes between an externally hosted
+        #     URL reference and a binary the user uploaded directly.
+        #   * ``store_locally`` only applies to ``source_kind="url"``: when
+        #     true, the backend asynchronously downloads the resource into
+        #     our Document storage; when false, we keep just the link.
+        #   * ``filename`` / ``size_bytes`` / ``mime_type`` are populated
+        #     server-side from the upload (or the async URL fetch) and
+        #     deliberately hidden in the user-facing form.
         return {
             "type": "object",
             "properties": {
-                "filename": {"type": "string", "title": "Filename"},
+                "title": {"type": "string", "title": "Title"},
                 "url": {"type": "string", "format": "uri", "title": "URL"},
+                "source_kind": {
+                    "type": "string",
+                    "enum": ["url", "upload"],
+                    "title": "Source",
+                },
+                "store_locally": {
+                    "type": "boolean",
+                    "title": "Store locally",
+                    "default": True,
+                },
+                "filename": {"type": "string", "title": "Filename"},
                 "size_bytes": {
                     "type": "integer",
                     "title": "Size (bytes)",
                     "minimum": 0,
                 },
+                "mime_type": {"type": "string", "title": "MIME Type"},
             },
-            "required": ["url"],
+            "required": ["title", "url"],
         }
 
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
-        pass
+        # When the user pasted a URL and asked us to store the file
+        # locally, hand the heavy lifting off to a Celery worker so the
+        # API request returns immediately.  The activity's metadata will
+        # be patched in-place once the download finishes.
+        meta = activity.metadata or {}
+        if (
+            meta.get("source_kind") == "url"
+            and meta.get("store_locally")
+            and meta.get("url")
+        ):
+            try:
+                from crm.tasks import fetch_remote_file_for_activity
+
+                fetch_remote_file_for_activity.delay(str(activity.id))
+            except Exception:  # pragma: no cover — Celery broker may be unavailable in dev
+                pass
 
     def render_payload(self, activity: "Activity") -> dict:
+        meta = activity.metadata or {}
         return {
-            "filename": activity.metadata.get("filename", ""),
-            "url": activity.metadata.get("url", ""),
-            "size_bytes": activity.metadata.get("size_bytes", 0),
+            "title": meta.get("title", ""),
+            "filename": meta.get("filename", ""),
+            "url": meta.get("url", ""),
+            "size_bytes": meta.get("size_bytes", 0),
+            "mime_type": meta.get("mime_type", ""),
+            "source_kind": meta.get("source_kind", "upload"),
+            "store_locally": meta.get("store_locally", True),
+            "document_id": meta.get("document_id", ""),
+            "fetch_status": meta.get("fetch_status", ""),
         }
 
 

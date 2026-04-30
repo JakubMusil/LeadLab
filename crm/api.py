@@ -4577,6 +4577,158 @@ def upload_voice_memo(
 
 
 # ===========================================================================
+# FILE UPLOAD COMPOSER  (multi-file blob → Documents, no automatic Activity)
+# ===========================================================================
+#
+# The Streamline ``file_upload`` composer in the SPA accepts either a
+# remote URL (handled entirely client-side and submitted directly to
+# ``POST /activities``) or one or more uploaded binary files.  This
+# endpoint covers the latter: it persists the binary as a ``Document``
+# but does **not** create an ``Activity`` itself — the SPA instead
+# follows up with a regular ``POST /api/v1/crm/activities`` of
+# ``type=file_upload`` whose metadata references the returned URL +
+# filename + size.  This mirrors the voice-memo flow (see above) and is
+# what lets the user discard a recording after upload.
+#
+# A single multipart request can carry several files in the ``files``
+# field; each file becomes its own Document/response entry and the SPA
+# is responsible for fanning out one Activity per file.
+# ===========================================================================
+
+# Plan-aware size limits — kept in sync with the client-side caps
+# advertised in `streamline_goals.md` § Fáze 7.2.
+_FILE_UPLOAD_LIMIT_FREE_BYTES = 15 * 1024 * 1024
+_FILE_UPLOAD_LIMIT_PRO_BYTES = 100 * 1024 * 1024
+
+
+def _file_upload_limit_for_firm(firm) -> int:
+    """Return the per-file size cap (bytes) for the active firm's plan."""
+    tier = (getattr(firm, "subscription_tier", "") or "").lower()
+    if tier == "pro":
+        return _FILE_UPLOAD_LIMIT_PRO_BYTES
+    return _FILE_UPLOAD_LIMIT_FREE_BYTES
+
+
+class FileUploadEntryOut(Schema):
+    document_id: str
+    url: str
+    filename: str
+    content_type: str
+    size_bytes: int
+
+
+class FileUploadResponseOut(Schema):
+    files: List[FileUploadEntryOut]
+
+
+def _resolve_file_upload_entity(
+    request,
+    *,
+    lead_id: Optional[str],
+    customer_id: Optional[str],
+    realization_id: Optional[str],
+    management_id: Optional[str],
+    proposal_id: Optional[str],
+) -> _VoiceMemoEntities:
+    """Reuse the voice-memo entity resolver for file uploads.
+
+    Both endpoints accept the same optional parent-entity query params
+    and link the resulting Document identically; sharing the resolver
+    keeps the validation + tenant guard in one place.
+    """
+    return _resolve_voice_memo_entity(
+        request,
+        lead_id=lead_id,
+        customer_id=customer_id,
+        realization_id=realization_id,
+        management_id=management_id,
+        proposal_id=proposal_id,
+    )
+
+
+@router.post(
+    "/file-uploads/upload",
+    auth=django_auth,
+    response={201: FileUploadResponseOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def upload_file_blobs(
+    request,
+    files: List[UploadedFile] = File(...),
+    lead_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    realization_id: Optional[str] = None,
+    management_id: Optional[str] = None,
+    proposal_id: Optional[str] = None,
+):
+    """Persist one or more uploaded binaries; return their stable URLs.
+
+    The SPA composer fans these out into one ``file_upload`` Activity
+    per returned entry.  Per-file size is capped by the firm's plan
+    (15 MB free / 100 MB pro); exceeding the cap fails the entire
+    request so the user gets a single clear toast rather than a partial
+    success.
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+        require_active_subscription(request.firm)
+    except (PermissionDenied, SubscriptionRequired) as exc:
+        return 403, {"detail": str(exc)}
+
+    if not files:
+        return 400, {"detail": "No files were uploaded."}
+
+    limit = _file_upload_limit_for_firm(request.firm)
+    for upload in files:
+        if upload.size > limit:
+            return 400, {
+                "detail": (
+                    f"File '{upload.name}' exceeds the maximum allowed size of "
+                    f"{limit // (1024 * 1024)} MB for your current plan."
+                )
+            }
+
+    entities = _resolve_file_upload_entity(
+        request,
+        lead_id=lead_id,
+        customer_id=customer_id,
+        realization_id=realization_id,
+        management_id=management_id,
+        proposal_id=proposal_id,
+    )
+    if entities.error:
+        return 404, {"detail": entities.error}
+
+    results: list[dict] = []
+    for upload in files:
+        original_name = (upload.name or "file").strip() or "file"
+        content_type = (upload.content_type or "application/octet-stream").lower()
+        doc = Document(
+            firm=request.firm,
+            lead=entities.lead,
+            customer=entities.customer,
+            realization=entities.realization,
+            management=entities.management,
+            proposal=entities.proposal,
+            uploaded_by=request.user,
+            name=original_name,
+            content_type=content_type,
+            size_bytes=upload.size,
+        )
+        doc.file.save(original_name, upload, save=True)
+        results.append(
+            {
+                "document_id": str(doc.id),
+                "url": doc.file.url if doc.file.name else "",
+                "filename": doc.name,
+                "content_type": doc.content_type,
+                "size_bytes": doc.size_bytes,
+            }
+        )
+
+    return 201, {"files": results}
+
+
+# ===========================================================================
 # REPORTS (v0.6)
 # ===========================================================================
 

@@ -1220,7 +1220,7 @@
       "whatsapp_out": "Wiadomość WhatsApp wychodząca.",
       "whatsapp_in": "Wiadomość WhatsApp przychodząca.",
       "link": "Zapisany zewnętrzny link z tytułem i opisem (umowa, dokument, strona…).",
-      "file_upload": "Załącznik do okazji — podaj URL przesłanego pliku.",
+      "file_upload": "Plik — prześlij bezpośrednio z dysku, przeciągnij i upuść lub wklej URL. Możemy go pobrać i zapisać albo zachować tylko jako link.",
       "voice_memo": "Notatka głosowa — nagraj dźwięk za pomocą mikrofonu; możesz wstrzymać, zapisać lub odrzucić. Nazwę pliku i długość zapisujemy automatycznie.",
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
       "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
@@ -2028,5 +2028,24 @@
     "uploadFailed": "Nie udało się zapisać nagrania.",
     "showTranscript": "Pokaż transkrypcję",
     "hideTranscript": "Ukryj transkrypcję"
+  },
+  "fileUpload": {
+    "sourceLabel": "Źródło",
+    "sourceUpload": "Prześlij plik(i)",
+    "sourceUrl": "Z URL",
+    "titleLabel": "Nazwa",
+    "titlePlaceholder": "Krótki opis pliku",
+    "urlLabel": "URL",
+    "storeLocally": "Pobierz i zapisz kopię",
+    "dropHint": "Przeciągnij pliki tutaj lub kliknij, aby wybrać.",
+    "limitHint": "Maksymalny rozmiar {limit} na plik.",
+    "overLimit": "Plik „{name}\" przekracza limit {limit}. Ulepsz plan, aby przesyłać większe pliki.",
+    "uploadFailed": "Nie udało się przesłać pliku.",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "cancel": "Anuluj",
+    "externalLink": "Link zewnętrzny",
+    "fetching": "Pobieranie…",
+    "untitled": "Bez nazwy"
   }
 }
