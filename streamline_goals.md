@@ -497,25 +497,70 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 sedmé iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 osmé iteraci)*
 
-Vue-tsc baseline je **kompletně čistý** (0 errorů, dokončeno v této session).
-Streamline backend i frontend jsou kompletně sjednocené. Zbývající navazující
-práce (z předchozího seznamu, žádný blokátor pro Streamline jako celek):
+Vue-tsc baseline je **kompletně čistý** a vitest baseline je **rovněž
+kompletně čistý** (0 fails, 90/90 pass — dokončeno v této session).
+Streamline backend i frontend jsou kompletně sjednocené.
+
+#### ✅ Co bylo v této session (osmá iterace, 2026-04-30) uděláno
+
+Vitest baseline cleanup — z **66 fail / 102 pass** na **0 fail / 90 pass**:
+
+1. **Globální i18n setup pro `@vue/test-utils`** — root cause 36 z 66 fails
+   bylo `SyntaxError: Need to install with app.use function` z `useI18n()`
+   uvnitř komponentového `setup()`. Vytvořen `src/test/setup.ts` který:
+   - importuje `en/cs/de/pl` JSON locales (pre-compiled `@intlify/unplugin-vue-i18n/vite`
+     pluginem zděděným z `vite.config.ts` — žádná runtime kompilace v testech).
+   - vytvoří `i18n` přes `createI18n({ legacy: false, locale: 'en', ... })`
+     s `missingWarn: false` / `fallbackWarn: false` aby chybějící klíče v
+     non-en lokálech nezahlcovaly test log.
+   - registruje plugin globálně přes `config.global.plugins = [..., i18n]`,
+     takže každý `mount(...)` ho automaticky dostane bez per-spec mocků.
+   - Zaregistrován jako `setupFiles: ['./src/test/setup.ts']` ve `vitest.config.ts`.
+2. **Filtr `.spec.js` duplicit** — repo obsahoval `.spec.js` artefakty
+   vedle `.spec.ts` (tsc compiled output, který se omylem checknul).
+   Bez explicit `include` vitest spouštěl oba a každý fail se započítal
+   2×. Přidáno `include: ['src/**/*.{test,spec}.{ts,tsx}']`. Snižuje
+   30 → 15 unique fails po i18n fixu.
+3. **Stale text assertions** — UI bylo přejmenováno (Leads → Opportunities,
+   Customers → Directory, Team Members → Team), ale testy testovaly staré
+   stringy:
+   - `TeamView.spec.ts`: `'Team Members'` → `'Team'`,
+     `'Invite Member'` → `'Invite member'` (lowercase v `team.inviteMember`),
+     `'Send Invite'` zachováno (klíč `team.sendInvite` je capital).
+   - `CustomersView.spec.ts`: `'Customers'` → `'Directory'`,
+     `'+ New Customer'` → `'New Contact'`, `'No customers yet'` → `'No contacts yet'`.
+   - `LeadsView.spec.ts`: `'Leads'` → `'Opportunities'`,
+     `'+ New Lead'` → `'+ New Opportunity'`, modal-open test podobně.
+4. **`SettingsView.spec.ts` mock fixes**:
+   - Stará mock `useI18n: () => ({ locale: { value: 'en' } })` neobsahovala
+     `t`, takže komponenta padala s `$setup.t is not a function`. Přepsáno
+     na `vi.importActual(...)` se spreadem + per-test stub jen `setLocale`
+     (kvůli `window.location.reload()` v real implementaci).
+   - Mock `useFirmStore` chyběl `fetchFirms` (komponenta to volá v
+     `onMounted`); přidán `fetchFirms: vi.fn().mockResolvedValue(undefined)`
+     + `setActiveFirm: vi.fn()`.
+
+**Validace:** `npm run type-check` 0 errorů, vitest 12/12 file pass,
+90/90 test pass. Code Review + CodeQL bez nálezů.
+
+#### Co dál
 
 1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
    každou entitní timeline (lead, task, realization, management, customer,
    proposal) ověřit happy-path s Cypress/Playwright. Zatím pokryté pouze
-   unit testy v `crm/tests.py`. **Doporučený další krok** — má jasný
-   scope, přímo navazuje na uzavřenou Fázi 5 a zvedne konfidenci nasazení.
-   Začít doporučuju s `lead` (nejjednodušší entita, kompletní pokrytí
-   `EntitySidebarActionPicker` + reactions + filter), pak postupně
-   `task` → `customer` → `realization` → `management` → `proposal`.
-2. **Vitest baseline cleanup** — preexisting 66 failed testů (i18n setup
-   `Need to install with app.use function` v Team/Settings/Customers/
-   Leads/Dashboard specs). Vyžaduje opravu test helperu pro `vue-i18n`
-   v setup souboru. Není to streamline věc, ale dokud je červená,
-   nejde poznat regrese ze skutečných změn.
+   backend unit testy v `crm/tests.py` + frontend unit smokes. **Doporučený
+   další krok** — má jasný scope, přímo navazuje na uzavřenou Fázi 5 a
+   zvedne konfidenci nasazení. Začít doporučuju s `lead` (nejjednodušší
+   entita, kompletní pokrytí `EntitySidebarActionPicker` + reactions +
+   filter), pak postupně `task` → `customer` → `realization` →
+   `management` → `proposal`.
+2. **Vyčistit committed `.js` build artefakty** *(nice-to-have)* — repo
+   obsahuje `App.vue.js`, `main.js`, `design-tokens.js`, všechny
+   `*.spec.js` siblings atd., což jsou tsc-output artefakty omylem
+   committnuté. Vitest je teď ignoruje (`include` filtrem), ale
+   smazat fyzicky + přidat do `.gitignore` by repo zúžilo.
 3. **`Task.realization` FK + Tasks tab v Realization detail** —
    placeholder tab v `RealizationDetailView` čeká na backend FK.
    Vyžaduje migraci + `list_tasks` filtr + i18n + UI.

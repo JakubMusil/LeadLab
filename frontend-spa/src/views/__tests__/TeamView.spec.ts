@@ -47,10 +47,10 @@ describe('TeamView', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the Team Members heading', () => {
+  it('renders the Team heading', () => {
     vi.mocked(api.get).mockResolvedValue({ ok: true, status: 200, data: [] })
     const wrapper = mount(TeamView, { global: { stubs: { Teleport: true } } })
-    expect(wrapper.text()).toContain('Team Members')
+    expect(wrapper.text()).toContain('Team')
   })
 
   it('shows members after load', async () => {
@@ -89,7 +89,7 @@ describe('TeamView', () => {
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('Invite Member')
+    expect(wrapper.text()).toContain('Invite member')
     expect(wrapper.text()).toContain('Send Invite')
   })
 
