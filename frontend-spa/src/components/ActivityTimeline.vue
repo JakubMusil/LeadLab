@@ -389,6 +389,14 @@ function activityTypeLabel(type: string): string {
     proposal_accepted: t('leadDetail.typeProposalAccepted'),
     proposal_rejected: t('leadDetail.typeProposalRejected'),
     entity_change: t('leadDetail.typeEntityChange'),
+    sms_out: t('leadDetail.typeSmsOut'),
+    sms_in: t('leadDetail.typeSmsIn'),
+    whatsapp_out: t('leadDetail.typeWhatsAppOut'),
+    whatsapp_in: t('leadDetail.typeWhatsAppIn'),
+    meeting_scheduled: t('leadDetail.typeMeetingScheduled'),
+    link: t('leadDetail.typeLink'),
+    voice_memo: t('leadDetail.typeVoiceMemo'),
+    system_note: t('leadDetail.typeSystemNote'),
   }
   if (map[type]) return map[type]
   const tool = streamlineTools.value.find((t) => t.activity_type === type)

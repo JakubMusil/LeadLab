@@ -497,15 +497,193 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 dvacáté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 dvacáté první iteraci)*
 
-Django test suite **202/202 pass** (198 → 202, +4 nových), žádné FE
-změny v této iteraci, takže vue-tsc / vitest baseline z 16. iterace
-beze změn (čistý). **Activity auto-log je nyní symetrický u celého
-task lifecycle** — `TASK_ASSIGNED` (z 19. iterace) i `TASK_COMPLETED`
-(tato iterace) logují per-entity na lead + realization + management.
-Asymetrie z 18. iterace (FK existoval, ale activity-log byl jen
-lead-only) je tím plně uzavřena pro create+complete páry.
+Django test suite **202/202 pass**, vue-tsc **0 errorů**, oxlint/eslint
+**0 warnings** na měněných souborech, vitest **90/90 pass** v
+unit suite (12 souborů). FE má teď v sidebar Quick Actions na Lead detailu
+**všech 14 logických nástrojů**, organizovaných do 4 UX kategorií, a
+schema-driven formulář umí všechny field-typy z aktuální tool registry
+(string/email/uri/date/date-time/integer/number/enum/array/multi-line).
+
+#### ✅ Co bylo ve dvacáté první iteraci (2026-04-30) uděláno
+
+V této session jsme předskočili z plánu předchozích iterací (multi-select
+E2E refactor, `is_pinned` triplet, …) přímo na **Tool formuláře ve
+frontendu** — uživatel chce, aby se na příležitosti (Lead detail) v
+sidebaru daly obsluhovat **všechny logicky validní Streamline tooly**, a
+zároveň aby měly výrazně lepší UI/UX.
+
+##### Backend
+
+1. **`crm/models.py: Lead.TOOLBAR_TOOLS`** rozšířen ze 6 položek
+   (`comment, call, meeting, email_out, email_in, task`) na **15 položek**
+   uspořádaných do logických skupin:
+   - Komunikace: `comment, call, meeting, email_out, email_in,
+     sms_out, sms_in, whatsapp_out, whatsapp_in`
+   - Plánování: `meeting_scheduled, task`
+   - Soubory & odkazy: `file_upload, voice_memo, link`
+   - Systém: `system_note`
+2. Záměrně **vynechány** auto-logované tooly (status_change,
+   entity_change, task_*, proposal_*, priority_change, due_date_change,
+   assignee_change, sub_task_added, time_logged, checklist_item_checked,
+   approval_*, ai_*, payment_received, invoice_sent, signature_*,
+   mention, tag_*, pinned, unpinned) — ty nemá smysl ručně zakládat
+   z toolbaru, protože je generují ostatní UI akce / webhooky / cron.
+3. Endpoint `GET /api/v1/streamline/entity-toolbar/lead` automaticky
+   vrátí nový seznam (čte přímo z `Lead.TOOLBAR_TOOLS`), žádná změna
+   v `crm/streamline/api.py` nebyla potřeba.
+
+##### Frontend — kompletní přepis `EntitySidebarActionPicker.vue`
+
+1. **Kategorizovaný picker (Step 1)** — místo flat seznamu butonů jsou
+   tooly seskupené do 4 sekcí (`Komunikace / Plánování / Soubory a odkazy
+   / Systém`), každá má vlastní accent (red/blue/emerald/amber). Pořadí
+   uvnitř kategorie respektuje pořadí z `Lead.TOOLBAR_TOOLS`. Tooly,
+   které backend vrátí ale FE-side mapování je nezná, padají do
+   syntetické sekce „Ostatní" (zero-loss bezpečnost).
+2. **Schema-driven formulář (Step 2)** rozšířen o všechny dosud chybějící
+   primitivy:
+   - `format: date` → `<input type="date">`
+   - `format: date-time` → `<input type="datetime-local">`
+   - `format: email` / `uri` → typed input s placeholder hintem
+     (`name@example.com` / `https://…`)
+   - `type: array` → **tag-style chip input** (Enter / čárka přidá tag,
+     Backspace na prázdném draftu odebere poslední, X na chipu odstraní);
+     odešle se zpět jako `string[]` v `metadata`.
+   - `type: number` (decimální) → `step="any"` na rozdíl od `integer`
+     (`step="1"`); přidán i `max` constraint, který tools.py už používá
+     (`AiSuggestedActionTool.confidence`).
+   - **Multi-line heuristika** podle názvu klíče — `transcript`,
+     `description`, `notes`, `message` se rendrují jako `<textarea
+     rows="3">` (dříve byl tvrdě zadrátovaný jen `transcript`).
+   - **Header sekce** rozšířena o další smysluplné top-fieldy:
+     `from_number`, `from_handle`, `to_handle`, `channel`, `direction`,
+     `url` (pro `link` tool kde URL leadne, popis ji následuje).
+   - **SKIP set** rozšířen o auto-populated klíče, které nemá smysl
+     ručně zadávat (`provider_message_id`, `provider_event_id`,
+     `provider_request_id`, `message_id`, `viewer_ip`, `user_agent`,
+     `source_activity_ids`).
+3. **Per-tool help text** — pod hlavičkou aktivního toolu se renderuje
+   krátký nápovědný text (i18n key
+   `leadDetail.toolHelp.<activity_type>`), takže uživatel ví co tam
+   patří. Help text se zobrazí jen když i18n klíč existuje (jinak se
+   sekce schová).
+4. **Required validace** zachována — submit button se disabluje pokud
+   chybí `content_text` (a tool ho vyžaduje) nebo některý required
+   non-text klíč. Nově je rozpoznáno i prázdné pole (`Array.isArray(val)
+   && val.length === 0`) tak, aby `meeting_scheduled.start_at` /
+   `link.url` / `voice_memo.url` apod. nešly odeslat prázdné.
+5. **Heroicon mapa** doplněna o ikony, které backend tooly už používaly,
+   ale FE picker je neměl namapované: `DevicePhoneMobileIcon` (SMS),
+   `ChatBubbleOvalLeftEllipsisIcon` (WhatsApp), `CalendarDaysIcon`
+   (`meeting_scheduled`), `LinkIcon`, `MicrophoneIcon`,
+   `InformationCircleIcon`, `ChatBubbleLeftRightIcon`. Předtím by
+   spadly na `ClipboardDocumentListIcon` fallback (tj. všechny stejnou
+   ikonu).
+6. **Datová čistota při odeslání** — prázdné stringy / null hodnoty se
+   odstraňují z `metadata` před POST. Před změnou se posílaly i prázdné
+   `subject: ''` / `to: ''`, což znečišťovalo timeline payload.
+7. **Data-testid hooks** doplněny pro budoucí E2E:
+   `entity-sidebar-action-groups`, `entity-sidebar-action-group`
+   (s `data-group="communication|planning|files|system"`),
+   `entity-sidebar-action-current`, `entity-sidebar-action-help`,
+   `data-field` na každém input bloku. Stávající
+   `entity-sidebar-action-option[data-action]` zachován → existující
+   `e2e/tests/lead-timeline.spec.ts` projde beze změny.
+
+##### Frontend — `ActivityTimeline.vue`
+
+1. `activityTypeLabel()` rozšířen o překlady pro nové aktivity v feedu
+   (`sms_out`, `sms_in`, `whatsapp_out`, `whatsapp_in`,
+   `meeting_scheduled`, `link`, `voice_memo`, `system_note`). Bez toho
+   by se aktivita po vytvoření zobrazila s anglickým fallbackem
+   z `streamlineTools` registry. `activityIconMap` už správné ikony měl
+   z předchozích iterací — žádná změna.
+
+##### i18n — všechny 4 locales (cs / en / de / pl)
+
+1. Doplněno **8 nových `typeXxx` klíčů** pro labels v pickeru a feedu
+   (sms/whatsapp out+in, meeting_scheduled, link, voice_memo,
+   system_note).
+2. Doplněna **`toolCategory` skupina** (5 klíčů: communication, planning,
+   files, system, other).
+3. Doplněna **`toolHelp` skupina** (15 klíčů — krátký vysvětlující text
+   pro každý tool). Texty jsou stylisticky konzistentní napříč jazyky a
+   neopakují label.
+4. Doplněn `tagInputPlaceholder` pro nový array-input UX.
+
+##### Validace
+
+- `python manage.py test crm` → **202/202 pass** (~188 s).
+- `npx vue-tsc --build` → **0 errorů**.
+- `npx oxlint` na `EntitySidebarActionPicker.vue` +
+  `ActivityTimeline.vue` → 0 warnings, 0 errors.
+- `npx eslint` na obou změněných souborech → 0 issues.
+- `npx vitest run` → **12 souborů / 90 testů pass** (žádná regrese).
+  *(Pre-existující SettingsView store-mock errory v unhandled stack
+  jsou nesouvisející z 16. iterace, žádný test test-case status
+  neselhává.)*
+- JSON validita všech 4 locales potvrzena `python -c "import json"`.
+
+##### Co se NE-dělalo v této iteraci
+
+- **Skutečný file-upload UI pro `file_upload` / `voice_memo`** — tooly
+  vyžadují `url`, takže uživatel teď musí soubor nahrát mimo (např.
+  přes File picker v komentáři) a URL nakopírovat. Plnohodnotný
+  drag-and-drop přímo v tool composeru by vyžadoval scaffold pro
+  multipart upload + temporary blob storage, separate iterace.
+- **Rendering nových activity typů ve feedu nad rámec labelu** —
+  `meeting_scheduled` by mohl vyrenderovat „Začátek: 5. 5. 2026 10:00"
+  pod headerem, `link` thumbnail preview, `voice_memo` přehrávač.
+  Aktuálně se zobrazí jen `content_text` + label + ikona, což funguje,
+  ale není zlatý standard. Iterace „Tool render UX" by to měla pokrýt.
+- **`status_change` / `entity_change` / `task_*` v sidebar pickeru** —
+  záměrně vynechány, viz výše. Pokud bude produkt chtít „ručně označit
+  status change" jako akci, měla by být v jiné UI komponentě (status
+  selector v hlavičce leadu už to dělá automaticky).
+- **Realization / Management / Customer / Proposal toolbar TOOLBAR_TOOLS**
+  rozšíření — `TOOLBAR_TOOLS` jsou per-entitu (Lead, Realization,
+  Management) attribute na modelu, customer/proposal mají hardcode
+  v `streamline/api.py`. Zatím rozšířen jen Lead, jak požadoval
+  problem statement (zaměřeno na „příležitost"). Realization /
+  Management / Customer mohou mít vlastní logickou množinu (např.
+  Management asi nepotřebuje sms_in/out, ale potřebuje system_note +
+  link) — separate iterace, snadná replikace patternu.
+- **E2E test pro nové tooly** — `e2e/tests/lead-timeline.spec.ts`
+  testuje jen comment cestu. Test pro `link` / `meeting_scheduled` /
+  `sms_out` (= ověřit že schema-driven form vyrenderuje URL/datetime/
+  tags input a submit prochází) je natural follow-up.
+
+#### Co dál
+
+1. **Per-entity toolbar pro Realization / Management / Customer /
+   Proposal** — replikovat dnešní práci na ostatní entity podle jejich
+   doménových potřeb. Customer ≈ Lead (full komunikace), Realization
+   bez `email_*` (interní entita), Management komentáře +
+   meeting_scheduled, Proposal jen comment + signature_requested.
+2. **Tool render UX ve feedu** — vyrenderovat strukturovaná pole
+   metadat (`meeting_scheduled.start_at`, `link.thumbnail_url`,
+   `voice_memo.url` jako audio přehrávač). Dnes feed renderuje jen
+   `content_text` + ikonu/label, struktura zůstává v `metadata`.
+3. **File-upload composer** — drag-and-drop přímo ve `file_upload` a
+   `voice_memo` toolech (vlastní upload-blob endpoint + `MediaRecorder`
+   API pro voice). Po dokončení vyplní `url` automaticky.
+4. **E2E pro nové tooly** — rozšířit `lead-timeline.spec.ts` o test že
+   pro každou kategorii v pickeru je vidět header + alespoň jeden
+   action button, a smoke-test submitu pro `link` (URL field) +
+   `meeting_scheduled` (datetime-local field).
+5. **Multi-select E2E refactor bundle** *(z 20. iterace, neudělané)* —
+   sdílený `e2e/tests/_fixtures.ts`, 4 nové entity timeline specs,
+   `is_internal` E2E, GitHub Actions e2e workflow.
+6. **QW-2 — `Activity.is_pinned` triplet** *(z 20. iterace, neudělané)*
+   — `is_pinned` BooleanField + `pinned_at` + `pinned_by` + `POST
+   /activities/{id}/pin` toggle endpoint + sticky pinned section v
+   `ActivityTimeline.vue`.
+7. **F-3 enforce** — `StreamlineTool.validate_payload` přes `jsonschema`
+   už podporujeme, ale FE neukazuje chybové hlášky z backendu.
+   Po failed POST (HTTP 400) zobrazit `errors[].path` jako per-field
+   chybu v dynamickém formuláři.
 
 #### ✅ Co bylo v této session (dvacátá iterace, 2026-04-30) uděláno
 
