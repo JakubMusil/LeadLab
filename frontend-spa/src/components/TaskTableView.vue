@@ -103,7 +103,7 @@ const grouped = computed<GroupEntry[]>(() => {
 function startEdit(task: TaskOut, field: string) {
   editingCell.value = { id: task.id, field }
   if (field === 'due_date') {
-    editValue.value = task.due_date ? task.due_date.split('T')[0] : ''
+    editValue.value = task.due_date ? (task.due_date.split('T')[0] ?? '') : ''
   } else if (field === 'tags') {
     editValue.value = (task.tags ?? []).join(', ')
   } else {

@@ -409,7 +409,7 @@ ale v okolních oblastech:
    - Vitest baseline: 66 failed / 102 passed test count beze změny
      (preexisting failures jsou nezávislé — i18n/messages compile
      errors v testech).
-3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 29 unikátních errorů)*:
+3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 20 unikátních errorů)*:
    - ✅ **`GanttView.vue` ambient module** *(2026-04-29 čtvrtá iterace)* —
      do `env.d.ts` přidán `declare module 'frappe-gantt'`. Package
      ships jen ES bundle bez `.d.ts`, importujeme ho jen dynamicky
@@ -425,22 +425,33 @@ ale v okolních oblastech:
        `type`, `company_id`, `ico`, `dic`, `address_street`,
        `address_city`, `address_zip`, `address_country`, `website`.
      - Snižuje ~12 errorů. Vitest: 36/36 passed pro upravené specs.
-   - **Zbývá ~29 errorů** v 4 kategoriích:
+   - ✅ **`String#split('T')[0]` → `?? ''`** *(2026-04-30 pátá iterace)* —
+     pod `noUncheckedIndexedAccess` vrací `string | undefined`. Cílilo
+     na `Task.due_date`/`due_date_end` nullable mismatch + příbuzné:
+     - `TaskDetailView.vue` (4 řádky: editDueDate, editDueDateEnd,
+       logFormDate, recurrenceEndsAt).
+     - `TasksView.vue` (editDueDate), `TaskTableView.vue` (editValue).
+     - `GanttView.vue` (start/end z `_start.toISOString().split('T')[0]`
+       předávané do `emit('taskDateChange', task.id, start, end)`).
+     - `CalendarView.vue` (`USER_COLORS[i % USER_COLORS.length]` →
+       `?? '#6b7280'` default barva).
+     - Snižuje 8 errorů.
+   - ✅ **`ManagementDetailView.vue` narrowing** *(2026-04-30 pátá iterace)* —
+     `record.type` uvnitř `MANAGEMENT_TYPES.find(t => t.value === record.type)`
+     callback ztrácí narrowing z `<template v-else>`. Použito `record?.type`
+     pouze uvnitř callback (vnější `?? record.type` zůstává narrowing-OK).
+     Snižuje 1 error.
+   - **Zbývá 20 errorů** ve 4 kategoriích:
      - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
        v lookup operacích + `string | undefined` not assignable.
        Vyžaduje narrowing nebo non-null assertion.
-     - `AutomationsView.vue` (5) — `lead_title`/`task_title`/`customer_name`/`due_date`
-       na `$tm` interpolation contextu (chybí v event payload typu;
-       errory se ze 4 unikátních lokací duplikují přes 2 contexty,
-       reálně 4 místa k opravě).
-     - `TaskDetailView.vue` (4), `TasksView.vue` (1), `TaskTableView.vue` (1) —
-       `Task.due_date`/`due_date_end` nullable vs UI `string`.
+     - `AutomationsView.vue` (10 = 5 unikátních duplikované přes 2 contexty)
+       — `lead_title`/`task_title`/`customer_name`/`due_date` na
+       `$tm` interpolation contextu (chybí v event payload typu).
      - `RealizationsView.vue` (2), `ManagementView.vue` (2) —
        `Object is possibly 'undefined'` v sort/filter callbacích.
-     - `GanttView.vue` (1), `EntitySidebarActionPicker.vue` (1),
-       `CalendarView.vue` (1), `ManagementDetailView.vue` (1) —
-       drobné null checks (`string | undefined` arg, `unknown` vs
-       `string | number`, `record possibly null`).
+     - `EntitySidebarActionPicker.vue` (1) — `v-model` na
+       `Record<string, unknown>[key]` (`unknown` vs `string | number`).
 4. **`Task.realization` FK + Tasks tab v Realization detail** —
    v `RealizationDetailView` je placeholder `tasks` tab; backend
    `Task` model FK na `Realization` nemá. Vyžadovalo by migrace

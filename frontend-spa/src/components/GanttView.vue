@@ -61,8 +61,8 @@ async function initGantt() {
       date_format: 'YYYY-MM-DD',
       language: 'en',
       on_date_change(task: { id: string; _start: Date; _end: Date }) {
-        const start = task._start.toISOString().split('T')[0]
-        const end = task._end.toISOString().split('T')[0]
+        const start = task._start.toISOString().split('T')[0] ?? ''
+        const end = task._end.toISOString().split('T')[0] ?? ''
         emit('taskDateChange', task.id, start, end)
       },
       on_progress_change() {},

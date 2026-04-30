@@ -206,7 +206,7 @@ async function deleteDocument() {
               {{ getManagementStatusMeta(record.status).label }}
             </span>
             <span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-              {{ MANAGEMENT_TYPES.find(t => t.value === record.type)?.label ?? record.type }}
+              {{ MANAGEMENT_TYPES.find(t => t.value === record?.type)?.label ?? record.type }}
             </span>
             <span
               v-if="record.expires_at"
