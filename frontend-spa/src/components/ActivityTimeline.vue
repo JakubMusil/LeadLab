@@ -414,13 +414,6 @@ function activityTypeLabel(type: string): string {
 // When a scheduled-activity tool (meeting_scheduled / call_scheduled) creates
 // its parent Task, ``tool_payload.task_status`` carries the live status so we
 // can render an inline pill without a second request.
-function scheduledTaskStatusOf(act: Activity): string | null {
-  const payload = (act.tool_payload ?? null) as Record<string, unknown> | null
-  if (!payload) return null
-  const status = payload['task_status']
-  return typeof status === 'string' && status.length > 0 ? status : null
-}
-
 const _SCHEDULED_TASK_STATUS_CLASSES: Record<string, string> = {
   todo: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   in_progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
@@ -430,7 +423,7 @@ const _SCHEDULED_TASK_STATUS_CLASSES: Record<string, string> = {
   blocked: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
 }
 
-function scheduledTaskStatusBadgeClass(status: string | null): string {
+function scheduledTaskStatusBadgeClass(status: string | null | undefined): string {
   if (!status) return ''
   return _SCHEDULED_TASK_STATUS_CLASSES[status] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
 }
@@ -866,12 +859,14 @@ defineExpose({ load: () => loadActivities(1) })
               </template>
             </span>
             <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call) -->
-            <span
-              v-if="(act.type === 'meeting_scheduled' || act.type === 'call_scheduled') && scheduledTaskStatusOf(act)"
-              data-testid="scheduled-task-status-badge"
-              class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide"
-              :class="scheduledTaskStatusBadgeClass(scheduledTaskStatusOf(act))"
-            >{{ t(`leadDetail.scheduledTaskStatus.${scheduledTaskStatusOf(act)}`) }}</span>
+            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled'">
+              <span
+                v-if="(act.tool_payload as Record<string, unknown> | null)?.task_status"
+                data-testid="scheduled-task-status-badge"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide"
+                :class="scheduledTaskStatusBadgeClass(((act.tool_payload as Record<string, unknown>).task_status as string))"
+              >{{ t(`leadDetail.scheduledTaskStatus.${((act.tool_payload as Record<string, unknown>).task_status as string)}`) }}</span>
+            </template>
             <span
               v-if="act.is_internal"
               data-testid="activity-internal-badge"
