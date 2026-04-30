@@ -240,3 +240,104 @@ class PasswordResetAPITest(TestCase):
         })
         self.assertEqual(resp.status_code, 400)
 
+
+
+# ---------------------------------------------------------------------------
+# Streamline preferences tests
+# ---------------------------------------------------------------------------
+
+from users.models import UserStreamlinePreference
+
+
+class StreamlinePreferenceAPITest(TestCase):
+    URL = "/api/v1/users/me/streamline-preferences"
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="pref@example.com", password="pass")
+        self.client.login(username="pref@example.com", password="pass")
+
+    def _put(self, data):
+        return self.client.put(
+            self.URL, data=json.dumps(data), content_type="application/json"
+        )
+
+    def test_get_default_returns_empty_list(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"hidden_activity_types": []})
+
+    def test_get_creates_row_lazily(self):
+        self.assertFalse(UserStreamlinePreference.objects.filter(user=self.user).exists())
+        self.client.get(self.URL)
+        self.assertTrue(UserStreamlinePreference.objects.filter(user=self.user).exists())
+
+    def test_put_persists_hidden_types(self):
+        resp = self._put({"hidden_activity_types": ["system_note", "tag_added"]})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json()["hidden_activity_types"], ["system_note", "tag_added"]
+        )
+        pref = UserStreamlinePreference.objects.get(user=self.user)
+        self.assertEqual(pref.hidden_activity_types, ["system_note", "tag_added"])
+
+    def test_put_deduplicates_and_strips_blanks(self):
+        resp = self._put({
+            "hidden_activity_types": [" tag_added ", "tag_added", "", "system_note"]
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json()["hidden_activity_types"], ["tag_added", "system_note"]
+        )
+
+    def test_put_replaces_existing_value(self):
+        UserStreamlinePreference.objects.create(
+            user=self.user, hidden_activity_types=["old"]
+        )
+        resp = self._put({"hidden_activity_types": ["new"]})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["hidden_activity_types"], ["new"])
+
+    def test_requires_authentication(self):
+        self.client.logout()
+        resp = self.client.get(self.URL)
+        self.assertIn(resp.status_code, [401, 403])
+        resp = self._put({"hidden_activity_types": []})
+        self.assertIn(resp.status_code, [401, 403])
+
+
+class StreamlineToolsAPITest(TestCase):
+    """Verify the /streamline/tools endpoint exposes category metadata."""
+
+    URL = "/api/v1/streamline/tools"
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="t@example.com", password="pass")
+        self.client.login(username="t@example.com", password="pass")
+
+    def test_tools_response_includes_category_and_default_visibility(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        tools = resp.json()
+        self.assertGreater(len(tools), 0)
+        for tool in tools:
+            self.assertIn("category", tool)
+            self.assertIn("default_visibility", tool)
+            self.assertIn(
+                tool["category"],
+                {"communication", "task", "commerce", "system", "ai", "meta"},
+            )
+            self.assertIn(tool["default_visibility"], {"important", "secondary"})
+
+    def test_known_tools_have_expected_categories(self):
+        resp = self.client.get(self.URL)
+        by_type = {t["activity_type"]: t for t in resp.json()}
+        # Communication/important
+        self.assertEqual(by_type["comment"]["category"], "communication")
+        self.assertEqual(by_type["comment"]["default_visibility"], "important")
+        self.assertEqual(by_type["email_in"]["category"], "communication")
+        # System/secondary (defaults — noise)
+        self.assertEqual(by_type["system_note"]["category"], "system")
+        self.assertEqual(by_type["system_note"]["default_visibility"], "secondary")
+        self.assertEqual(by_type["tag_added"]["default_visibility"], "secondary")
+        # AI
+        self.assertEqual(by_type["ai_summary"]["category"], "ai")

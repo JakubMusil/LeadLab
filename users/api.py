@@ -1,7 +1,7 @@
 """
 Django Ninja API router – Users & Authentication
 """
-from typing import Optional
+from typing import List, Optional
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from users.models import User
+from users.models import User, UserStreamlinePreference
 from users.throttle import rate_limit
 
 router = Router(tags=["users"])
@@ -61,6 +61,14 @@ class PasswordResetConfirmIn(Schema):
 
 class ErrorOut(Schema):
     detail: str
+
+
+class StreamlinePreferenceIn(Schema):
+    hidden_activity_types: List[str]
+
+
+class StreamlinePreferenceOut(Schema):
+    hidden_activity_types: List[str]
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +147,55 @@ def upload_avatar(request, avatar: UploadedFile = File(...)):
         user.profile_picture.delete(save=False)
     user.profile_picture.save(avatar.name, avatar, save=True)
     return 200, _user_out(user)
+
+
+@router.get(
+    "/me/streamline-preferences",
+    auth=django_auth,
+    response={200: StreamlinePreferenceOut},
+)
+def get_streamline_preferences(request):
+    """
+    Return the current user's Streamline (activity timeline) filter
+    preferences.
+
+    The response contains the list of activity types the user has
+    explicitly hidden.  The frontend combines this with each tool's
+    built-in ``default_visibility`` to compute the effective filter.
+    """
+    pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
+    return 200, {"hidden_activity_types": list(pref.hidden_activity_types or [])}
+
+
+@router.put(
+    "/me/streamline-preferences",
+    auth=django_auth,
+    response={200: StreamlinePreferenceOut, 400: ErrorOut},
+)
+def update_streamline_preferences(request, payload: StreamlinePreferenceIn):
+    """
+    Replace the current user's Streamline filter preferences.
+
+    Accepts a list of activity type identifiers to hide.  Unknown types
+    are kept as-is so a user's preferences survive a tool being
+    temporarily unregistered (e.g. by a feature flag).
+    """
+    # Sanitize: drop empty strings and duplicates while preserving order.
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for at in payload.hidden_activity_types:
+        if not isinstance(at, str):
+            return 400, {"detail": "hidden_activity_types must be a list of strings."}
+        v = at.strip()
+        if not v or v in seen:
+            continue
+        seen.add(v)
+        cleaned.append(v)
+
+    pref, _created = UserStreamlinePreference.objects.get_or_create(user=request.user)
+    pref.hidden_activity_types = cleaned
+    pref.save(update_fields=["hidden_activity_types", "updated_at"])
+    return 200, {"hidden_activity_types": cleaned}
 
 
 @router.post(

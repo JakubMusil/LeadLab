@@ -70,3 +70,39 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
+
+
+class UserStreamlinePreference(models.Model):
+    """
+    Per-user preferences for the Streamline (activity timeline) UI.
+
+    Stores which activity types the user has explicitly hidden in the
+    timeline filter dropdown.  We persist *hidden* types (rather than
+    visible ones) so that newly registered ``StreamlineTool`` types are
+    automatically shown or hidden according to their built-in
+    ``default_visibility``, without requiring every user to revisit their
+    preferences.
+
+    Field
+    -----
+    hidden_activity_types : list[str]
+        Activity type identifiers (e.g. ``"system_note"``, ``"tag_added"``)
+        the user has chosen to hide.  An empty list means "use the
+        per-tool defaults".
+    """
+
+    user = models.OneToOneField(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="streamline_preference",
+        primary_key=True,
+    )
+    hidden_activity_types = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "user streamline preference"
+        verbose_name_plural = "user streamline preferences"
+
+    def __str__(self) -> str:  # pragma: no cover - trivial
+        return f"StreamlinePref({self.user_id})"

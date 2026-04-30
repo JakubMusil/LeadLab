@@ -28,11 +28,22 @@ class StreamlineTool(ABC):
         Human-readable display name used by the SPA.
     icon : str
         Icon key (maps to a Heroicons component name on the frontend).
+    category : str
+        Group used by the SPA filter dropdown to organise activity types.
+        One of: ``"communication"``, ``"task"``, ``"commerce"``, ``"system"``,
+        ``"ai"``, ``"meta"``.  Defaults to ``"system"``.
+    default_visibility : str
+        Whether this activity type is shown by default in the streamline.
+        ``"important"`` types are visible to a fresh user; ``"secondary"``
+        types are hidden until the user opts in via the filter dropdown.
+        Defaults to ``"secondary"`` so noisy logs do not overwhelm the UI.
     """
 
     activity_type: str
     label: str
     icon: str
+    category: str = "system"
+    default_visibility: str = "secondary"
 
     @abstractmethod
     def get_schema(self) -> dict:

@@ -51,6 +51,8 @@ class ToolOut(Schema):
     activity_type: str
     label: str
     icon: str
+    category: str
+    default_visibility: str
     form_schema: Dict[str, Any]
 
 
@@ -93,6 +95,8 @@ def list_tools(request):
             "activity_type": tool.activity_type,
             "label": str(tool.label),
             "icon": tool.icon,
+            "category": tool.category,
+            "default_visibility": tool.default_visibility,
             "form_schema": tool.get_schema(),
         }
         for tool in all_tools()
