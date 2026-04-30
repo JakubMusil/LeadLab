@@ -497,15 +497,145 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 šestnácté iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 sedmnácté iteraci)*
 
-Vue-tsc baseline **čistý**, vitest **90/90 pass**, oxlint čistý nad
-dotčenými soubory, Django test suite **174/174 pass** (172 → 174,
-+2 nové). **QW-1 — `Activity.is_internal: BooleanField` — je nasazen**
-end-to-end (model + migrace + ninja schemas + composer toggle + feed
-badge + 4 i18n catalogs).
+Django test suite **181/181 pass** (174 → 181, +7 nových), žádné FE
+změny v této iteraci, takže vue-tsc / vitest baseline z 16. iterace
+beze změn (čistý). **F-3 — `validate_payload(activity_type, content_text, metadata)`
+přes `jsonschema` — je nasazen** v `crm/streamline/validation.py` a
+zapojen v `create_activity` jako 400 gate před `transaction.atomic()`.
+Foundation pro inbound webhook router F-6 je tím připravená.
 
-#### ✅ Co bylo v této session (šestnáctá iterace, 2026-04-30) uděláno
+#### ✅ Co bylo v této session (sedmnáctá iterace, 2026-04-30) uděláno
+
+Z plánu „Co dál" 16. iterace vybrána položka #3 — **F-3 (`validate_payload`
+via `jsonschema`)** — jako menší atomický scope, otevírá další
+foundation work (F-6 inbound webhook router). Multi-select E2E refactor
+byl odložen, protože je velký balíček (4 nové specs + sdílené fixtures
++ CI workflow) a nelze ho spojit s 1-soubor F-3 do jedné iterace.
+
+##### Klíčový design insight
+
+Schemas v `crm/streamline/tools.py` (44 tooly) popisují **flattened
+composer view** pro SPA — `content_text` je top-level property, ostatní
+form-fieldy jsou taky top-level (`new_status`, `duration_minutes`,
+`recording_url` atd.). V inbound payloadu (`ActivityIn`) ale
+`content_text` je top-level a všechno ostatní žije v `metadata: dict`.
+
+Validation tedy musí inbound payload **flattnout** do composer-view tvaru
+před `jsonschema.validate(...)`:
+
+```python
+flat = {**(metadata or {}), "content_text": content_text}
+```
+
+`additionalProperties` je v JSON Schema defaultně `true`, takže neznámé
+metadata klíče (např. `mentions` v komentářích, nebo `is_internal` z
+QW-1, který v žádné schema není) procházejí bez šumu. Schema gate je
+tedy **opt-in** — zachycuje jen explicitně deklarované constraints
+(`required`, `enum`, `type`, `minimum`/`maximum`).
+
+##### Backend
+
+1. **Nový modul `crm/streamline/validation.py`** (~85 řádek):
+   - `PayloadValidationError(ValueError)` — typed exception, message
+     je human-readable a obsahuje `activity_type` + `json_path` +
+     `exc.message`. Bezpečné echovat na `detail` field 400 response
+     (žádný user content tam neecho-uje, jen field name a constraint).
+   - `_flatten_payload(content_text, metadata) → dict` — pomocná funkce.
+   - `validate_payload(activity_type, content_text, metadata) → None`:
+     - Tool nenalezen → no-op (caller to řeší zvlášť, jasnější chybou).
+     - Tool's `get_schema()` raises → log warning, no-op (defensive
+       proti tool-author bugům).
+     - `SchemaError` (malformed schema) → log warning, no-op (stejný
+       důvod).
+     - `ValidationError` (payload mismatch) → raise
+       `PayloadValidationError`.
+   - **Žádný `format_checker`** — záměrné, formáty jako `format: uri`,
+     `format: html` jsou v existujících schemas spíše annotation-only;
+     enabling format checking by retroaktivně rozbil legitimní callery
+     s méně přísnými URL/HTML stringy. Lze přidat později per-tool.
+2. **`crm/api.py:create_activity`** — gate vložen *po* resolve toolu
+   (předáme jasnější error pro unknown type) a *před* `transaction.atomic`.
+   Late import `from crm.streamline.validation import …` aby se
+   neimportoval `jsonschema` při každém modulovém loadu.
+3. **`requirements.txt`** netouched — `jsonschema 4.10.3` je už v deps
+   (Django Ninja používá pydantic, který má vlastní schema toolset, ale
+   `jsonschema` běží paralelně pro tooly).
+
+##### Backend tests
+
+- **3 unit testy v `StreamlineToolsTest`**:
+  - `test_validate_payload_unknown_type_is_noop` — neznámý
+    `activity_type` → silent return.
+  - `test_validate_payload_invalid_schema_is_noop` — registruje ad-hoc
+    `BrokenTool` se schemou `{"type": 123}` (`SchemaError` při
+    metaschema check), ověří že `validate_payload` neselže (cleanup
+    via try/finally aby `_tool_registry` nezůstal kontaminovaný).
+  - `test_validate_payload_message_includes_field_path` — error
+    message obsahuje jak `activity_type`, tak název chybějícího pole.
+- **4 API testy v `ActivityCreateAPITest`**:
+  - `test_payload_missing_required_field_returns_400` —
+    `status_change` bez `metadata.new_status` → 400, detail mentions
+    `new_status` + `status_change`.
+  - `test_payload_invalid_enum_returns_400` — `new_status:
+    "not_a_real_status"` → 400.
+  - `test_payload_negative_minimum_returns_400` —
+    `call.duration_minutes: -5` (schema má `minimum: 0`) → 400.
+  - `test_payload_unknown_metadata_keys_allowed` — comment +
+    `metadata.some_future_key` → 201 (regression-safety pro
+    additionalProperties: true).
+- **Existující test `test_status_change_activity_updates_lead`** (běží
+  validní payload) zůstává zelený → regression-safety.
+
+##### Validace
+
+- `python manage.py test crm` — **181/181 pass** (174 baseline + 7
+  nových), 0 regressions, ~169s.
+- Cílený běh `crm.tests.StreamlineToolsTest crm.tests.ActivityCreateAPITest`
+  → 25/25 pass (~20s).
+- Žádné FE změny → vue-tsc / vitest / oxlint unchanged od 16. iterace.
+
+##### Co se NE-dělalo v této iteraci
+
+- **Multi-select E2E refactor bundle** — velký balíček, čeká na
+  samostatnou iteraci (4 specs + shared fixtures + CI workflow).
+- **QW-2 — `Activity.is_pinned` triplet** — odloženo, by zopakovalo
+  pattern QW-1 (boolean + db_index + FE badge), víc payloadu (sticky
+  section v FE) a vyžaduje nový `POST /activities/{id}/pin` endpoint.
+- **`format` checker** — zatím off; lze přidat opt-in per-schema až
+  budou existovat schemas, které to opravdu potřebují (např. F-6
+  webhook payloads s `format: uri` u callback URL).
+- **Per-tool custom validation hooks** — tooly můžou v budoucnu chtít
+  `tool.validate(payload)` pro křížové constraints, které JSON Schema
+  neumí (např. „when type=email_out, metadata.to musí být v
+  CRM kontaktech"). Až bude reálná potřeba; F-3 jen pokrývá
+  strukturální gate.
+
+#### Co dál
+
+1. **Multi-select E2E refactor bundle** — sdílený `e2e/tests/_fixtures.ts`
+   (`seedLead`, `seedCustomer`, `seedRealization`, `seedManagement`,
+   `seedProposal`), 4 nové entity timeline specs, `is_internal` E2E
+   (assert `data-activity-internal="true"`, badge visibility, default
+   false), `.github/workflows/e2e.yml` s Postgres service. Jediná
+   položka v plánu, která zlepší confidence při merge bezprostředně.
+2. **QW-2 — `Activity.is_pinned` triplet** — `is_pinned: BooleanField` +
+   `pinned_at: DateTimeField(null=True)` + `pinned_by: FK(User, null=True)` +
+   `POST /activities/{id}/pin` toggle endpoint + sticky pinned section
+   nahoru v `ActivityTimeline.vue` + pin/unpin button v action menu.
+   Pattern recyklovatelný z QW-1 + reactions endpointu.
+3. **F-6 — inbound webhook router** *(nový kandidát díky F-3)*. Teď když
+   máme `validate_payload`, můžeme bezpečně přijímat externí JSON do
+   `POST /api/v1/crm/webhooks/activities` s HMAC signature header.
+   Validation gate je už hotový. Scope: HMAC ověření, idempotency klíč,
+   user resolution z webhook secret → service-account user, audit log.
+4. **`Task.realization` FK** — stále otevřené, mimo scope timeline.
+5. **Per-tool format-checker opt-in** — pokud F-6 přijde, tooly s
+   `format: uri` (webhook callbacks) by měly opt-in přes nový class
+   attribute `enable_format_checks = True`.
+
+#### ✅ Co bylo v šestnácté iteraci (2026-04-30) uděláno
 
 Z plánu „Co dál" 15. iterace vybrána položka #1 — **QW-1
 (`Activity.is_internal`)** — jako další smysluplný atomický balíček

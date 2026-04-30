@@ -917,6 +917,13 @@ def create_activity(request, payload: ActivityIn):
     if tool is None:
         return 400, {"detail": f"Unknown activity type '{payload.type}'."}
 
+    # F-3 — structural payload validation against the tool's JSON Schema.
+    from crm.streamline.validation import PayloadValidationError, validate_payload
+    try:
+        validate_payload(payload.type, payload.content_text, payload.metadata)
+    except PayloadValidationError as exc:
+        return 400, {"detail": str(exc)}
+
     entity = lead or realization or management or customer or proposal or task
     context = {
         "firm": request.firm,

@@ -203,6 +203,58 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
             Activity.objects.filter(lead=self.lead, is_internal=True).count(), 1,
         )
 
+    # ------------------------------------------------------------------
+    # F-3 — validate_payload unit tests (tool-independent edge cases)
+    # ------------------------------------------------------------------
+
+    def test_validate_payload_unknown_type_is_noop(self):
+        """Unknown activity types short-circuit cleanly (no exception)."""
+        from crm.streamline.validation import validate_payload
+        # Must not raise — caller (create_activity) handles unknown types.
+        validate_payload("definitely_not_a_tool", "", {})
+
+    def test_validate_payload_invalid_schema_is_noop(self):
+        """If a tool's schema is malformed we log and skip rather than 500."""
+        from crm.streamline.registry import _tool_registry
+        from crm.streamline.validation import validate_payload
+        from crm.streamline.base import StreamlineTool
+
+        class BrokenTool(StreamlineTool):
+            activity_type = "broken_test_tool"
+            label = "Broken"
+            icon = "X"
+
+            def get_schema(self):
+                # "type" must be a string or array of strings — not an int.
+                return {"type": 123}
+
+            def process_action(self, *a, **k):
+                pass
+
+            def render_payload(self, *a, **k):
+                return {}
+
+        original = _tool_registry.get("broken_test_tool")
+        _tool_registry["broken_test_tool"] = BrokenTool()
+        try:
+            # Should NOT raise.
+            validate_payload("broken_test_tool", "anything", {"x": 1})
+        finally:
+            if original is None:
+                _tool_registry.pop("broken_test_tool", None)
+            else:
+                _tool_registry["broken_test_tool"] = original
+
+    def test_validate_payload_message_includes_field_path(self):
+        """Validation errors mention the offending JSON path."""
+        from crm.streamline.validation import (
+            PayloadValidationError, validate_payload,
+        )
+        with self.assertRaises(PayloadValidationError) as cm:
+            validate_payload("status_change", "", {})
+        self.assertIn("status_change", str(cm.exception))
+        self.assertIn("new_status", str(cm.exception))
+
     def test_priority_change_render(self):
         from crm.streamline.registry import get_tool
         a = self._build_activity(
@@ -971,6 +1023,53 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
         self.lead.refresh_from_db()
         self.assertEqual(self.lead.status, "contacted")
+
+    # ------------------------------------------------------------------
+    # F-3 — payload validation against tool JSON Schema
+    # ------------------------------------------------------------------
+
+    def test_payload_missing_required_field_returns_400(self):
+        """status_change requires metadata.new_status — empty metadata fails."""
+        resp = self._post(self.URL, {
+            "lead_id": str(self.lead.id),
+            "type": "status_change",
+            "metadata": {},
+        })
+        self.assertEqual(resp.status_code, 400)
+        body = resp.json()
+        self.assertIn("status_change", body["detail"])
+        self.assertIn("new_status", body["detail"])
+
+    def test_payload_invalid_enum_returns_400(self):
+        """status_change has new_status enum — bogus value fails."""
+        resp = self._post(self.URL, {
+            "lead_id": str(self.lead.id),
+            "type": "status_change",
+            "metadata": {"new_status": "not_a_real_status"},
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("new_status", resp.json()["detail"])
+
+    def test_payload_negative_minimum_returns_400(self):
+        """call.duration_minutes has minimum: 0 — negative value fails."""
+        resp = self._post(self.URL, {
+            "lead_id": str(self.lead.id),
+            "type": "call",
+            "content_text": "Quick chat",
+            "metadata": {"duration_minutes": -5},
+        })
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("duration_minutes", resp.json()["detail"])
+
+    def test_payload_unknown_metadata_keys_allowed(self):
+        """Unknown metadata properties should pass (additionalProperties: true)."""
+        resp = self._post(self.URL, {
+            "lead_id": str(self.lead.id),
+            "type": "comment",
+            "content_text": "Hello",
+            "metadata": {"some_future_key": "anything"},
+        })
+        self.assertEqual(resp.status_code, 201)
 
 
 # -- Tasks -------------------------------------------------------------------
