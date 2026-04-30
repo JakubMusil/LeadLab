@@ -1152,6 +1152,16 @@
     "typeWhatsAppOut": "WhatsApp (sent)",
     "typeWhatsAppIn": "WhatsApp (received)",
     "typeMeetingScheduled": "Meeting scheduled",
+    "typeCallScheduled": "Call scheduled",
+    "typeTaskExpired": "Task expired",
+    "scheduledTaskStatus": {
+      "todo": "Scheduled",
+      "in_progress": "In progress",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "expired": "Expired",
+      "blocked": "Blocked"
+    },
     "typeLink": "Link",
     "typeVoiceMemo": "Voice memo",
     "typeSystemNote": "System note",

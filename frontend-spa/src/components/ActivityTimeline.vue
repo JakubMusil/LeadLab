@@ -351,6 +351,8 @@ const activityIconMap: Record<string, Component> = {
   whatsapp_in: ChatBubbleOvalLeftEllipsisIcon,
   chat: ChatBubbleLeftRightIcon,
   meeting_scheduled: CalendarDaysIcon,
+  call_scheduled: PhoneIcon,
+  task_expired: ClockIcon,
   link: LinkIcon,
   payment_received: BanknotesIcon,
   invoice_sent: DocumentCurrencyDollarIcon,
@@ -394,6 +396,8 @@ function activityTypeLabel(type: string): string {
     whatsapp_out: t('leadDetail.typeWhatsAppOut'),
     whatsapp_in: t('leadDetail.typeWhatsAppIn'),
     meeting_scheduled: t('leadDetail.typeMeetingScheduled'),
+    call_scheduled: t('leadDetail.typeCallScheduled'),
+    task_expired: t('leadDetail.typeTaskExpired'),
     link: t('leadDetail.typeLink'),
     voice_memo: t('leadDetail.typeVoiceMemo'),
     system_note: t('leadDetail.typeSystemNote'),
@@ -402,6 +406,33 @@ function activityTypeLabel(type: string): string {
   const tool = streamlineTools.value.find((t) => t.activity_type === type)
   if (tool) return tool.label
   return type.replace(/_/g, ' ')
+}
+
+// ---------------------------------------------------------------------------
+// Calendar / Task unification helpers
+// ---------------------------------------------------------------------------
+// When a scheduled-activity tool (meeting_scheduled / call_scheduled) creates
+// its parent Task, ``tool_payload.task_status`` carries the live status so we
+// can render an inline pill without a second request.
+function scheduledTaskStatusOf(act: Activity): string | null {
+  const payload = (act.tool_payload ?? null) as Record<string, unknown> | null
+  if (!payload) return null
+  const status = payload['task_status']
+  return typeof status === 'string' && status.length > 0 ? status : null
+}
+
+const _SCHEDULED_TASK_STATUS_CLASSES: Record<string, string> = {
+  todo: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  in_progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  cancelled: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  expired: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  blocked: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+}
+
+function scheduledTaskStatusBadgeClass(status: string | null): string {
+  if (!status) return ''
+  return _SCHEDULED_TASK_STATUS_CLASSES[status] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
 }
 
 // Whether content_text is required for the currently selected action type
@@ -834,6 +865,13 @@ defineExpose({ load: () => loadActivities(1) })
                 {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
               </template>
             </span>
+            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call) -->
+            <span
+              v-if="(act.type === 'meeting_scheduled' || act.type === 'call_scheduled') && scheduledTaskStatusOf(act)"
+              data-testid="scheduled-task-status-badge"
+              class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide"
+              :class="scheduledTaskStatusBadgeClass(scheduledTaskStatusOf(act))"
+            >{{ t(`leadDetail.scheduledTaskStatus.${scheduledTaskStatusOf(act)}`) }}</span>
             <span
               v-if="act.is_internal"
               data-testid="activity-internal-badge"

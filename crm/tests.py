@@ -2483,3 +2483,183 @@ class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
         self._make_task(due_date=timezone.now() - dt.timedelta(minutes=10))
         count = auto_expire_scheduled_tasks()
         self.assertEqual(count, 2)
+
+
+# ---------------------------------------------------------------------------
+# Calendar / Task unification — follow-up: data migration + ActivityOut payload
+# ---------------------------------------------------------------------------
+
+class ScheduledActivityRenderPayloadTest(CRMFixtureMixin, TestCase):
+    """``MeetingScheduledTool``/``CallScheduledTool`` must surface the
+    linked Task's ``id``, ``status`` and ``kind`` via ``render_payload``
+    so the SPA can render an inline status badge without a second request.
+    """
+
+    def _scheduled_payload_for(self, activity_type, metadata):
+        from crm.streamline.registry import get_tool
+        tool = get_tool(activity_type)
+        activity = Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type=activity_type,
+            metadata=metadata,
+        )
+        tool.process_action(
+            activity, self.lead, {"metadata": metadata},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+        )
+        activity.refresh_from_db()
+        return tool.render_payload(activity), activity
+
+    def test_meeting_scheduled_render_payload_includes_task(self):
+        start = timezone.now() + dt.timedelta(hours=3)
+        payload, activity = self._scheduled_payload_for(
+            "meeting_scheduled", {"start_at": start.isoformat()},
+        )
+        self.assertEqual(payload["task_id"], str(activity.task_id))
+        self.assertEqual(payload["task_status"], "todo")
+        self.assertEqual(payload["task_kind"], "meeting")
+        self.assertFalse(payload["task_is_completed"])
+
+    def test_call_scheduled_render_payload_includes_task(self):
+        start = timezone.now() + dt.timedelta(hours=4)
+        payload, activity = self._scheduled_payload_for(
+            "call_scheduled", {"start_at": start.isoformat()},
+        )
+        self.assertEqual(payload["task_id"], str(activity.task_id))
+        self.assertEqual(payload["task_kind"], "call")
+
+    def test_render_payload_for_orphan_activity_has_null_task_fields(self):
+        """An Activity not linked to a Task (e.g. legacy) renders nulls."""
+        from crm.streamline.registry import get_tool
+        activity = Activity.objects.create(
+            lead=self.lead,
+            user=self.owner,
+            type="meeting_scheduled",
+            metadata={"start_at": "2026-01-01T10:00:00Z"},
+        )
+        # Deliberately do NOT call process_action — simulates legacy data.
+        payload = get_tool("meeting_scheduled").render_payload(activity)
+        self.assertIsNone(payload["task_id"])
+        self.assertIsNone(payload["task_status"])
+        self.assertIsNone(payload["task_kind"])
+
+
+class ActivityOutTaskIdExposureTest(CRMFixtureMixin, TestCase):
+    """The HTTP API must expose ``task_id`` on each ``ActivityOut`` entry."""
+
+    def setUp(self):
+        super().setUp()
+        Membership.objects.get_or_create(
+            user=self.owner, firm=self.firm,
+            defaults={"role": MembershipRole.OWNER},
+        )
+
+    def test_activity_out_serializer_exposes_task_id(self):
+        from crm.api import _activity_out
+        task = Task.objects.create(firm=self.firm, lead=self.lead, title="Parent task")
+        activity = Activity.objects.create(
+            lead=self.lead, user=self.owner, type="comment",
+            content_text="hello", task=task,
+        )
+        out = _activity_out(activity, self.owner)
+        self.assertEqual(out["task_id"], str(task.id))
+
+    def test_activity_out_task_id_is_none_when_unlinked(self):
+        from crm.api import _activity_out
+        activity = Activity.objects.create(
+            lead=self.lead, user=self.owner, type="comment", content_text="hi",
+        )
+        out = _activity_out(activity, self.owner)
+        self.assertIsNone(out["task_id"])
+
+
+class BackfillMeetingScheduledTasksMigrationTest(TestCase):
+    """The 0043 data migration must create child Tasks for legacy
+    ``meeting_scheduled`` Activities while remaining idempotent.
+    """
+
+    def setUp(self):
+        from firms.models import Firm
+        self.firm = Firm.objects.create(name="Migration Firm", subscription_tier="pro")
+        self.customer = Customer.objects.create(
+            firm=self.firm, first_name="Mig", last_name="Test",
+        )
+        self.lead = Lead.objects.create(
+            firm=self.firm, customer=self.customer, title="Mig Lead",
+            status=LeadStatus.NEW, source=LeadSource.WEB,
+        )
+
+    def _run_migration(self):
+        # Re-apply the data-migration function directly against the live
+        # apps registry — emulates what Django would do during migrate.
+        from django.apps import apps
+        from importlib import import_module
+        mod = import_module("crm.migrations.0043_backfill_meeting_scheduled_tasks")
+        mod.backfill_meeting_scheduled_tasks(apps, None)
+
+    def test_creates_task_for_legacy_meeting_scheduled_activity(self):
+        start = (timezone.now() + dt.timedelta(days=1)).isoformat()
+        a = Activity.objects.create(
+            lead=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            metadata={
+                "start_at": start,
+                "location": "HQ",
+                "attendees": ["x@example.com"],
+            },
+        )
+        self.assertIsNone(a.task_id)
+        self._run_migration()
+        a.refresh_from_db()
+        self.assertIsNotNone(a.task_id)
+        task = Task.objects.get(id=a.task_id)
+        self.assertEqual(task.kind, "meeting")
+        self.assertTrue(task.auto_close_on_expiry)
+        self.assertEqual(task.location, "HQ")
+        self.assertEqual(task.attendees, ["x@example.com"])
+        self.assertEqual(task.firm_id, self.firm.id)
+        self.assertEqual(task.lead_id, self.lead.id)
+        self.assertTrue(task.metadata.get("backfilled"))
+
+    def test_skips_activities_already_linked(self):
+        existing_task = Task.objects.create(
+            firm=self.firm, lead=self.lead, title="Already linked",
+        )
+        a = Activity.objects.create(
+            lead=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            metadata={"start_at": (timezone.now() + dt.timedelta(days=1)).isoformat()},
+            task=existing_task,
+        )
+        before = Task.objects.count()
+        self._run_migration()
+        a.refresh_from_db()
+        self.assertEqual(a.task_id, existing_task.id)
+        self.assertEqual(Task.objects.count(), before)
+
+    def test_skips_activities_without_start_at(self):
+        a = Activity.objects.create(
+            lead=self.lead, type=ActivityType.MEETING_SCHEDULED, metadata={},
+        )
+        before = Task.objects.count()
+        self._run_migration()
+        a.refresh_from_db()
+        self.assertIsNone(a.task_id)
+        self.assertEqual(Task.objects.count(), before)
+
+    def test_is_idempotent_when_run_twice(self):
+        Activity.objects.create(
+            lead=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            metadata={"start_at": (timezone.now() + dt.timedelta(days=1)).isoformat()},
+        )
+        self._run_migration()
+        count_after_first = Task.objects.count()
+        self._run_migration()
+        self.assertEqual(Task.objects.count(), count_after_first)
+
+    def test_does_not_touch_non_meeting_scheduled_activities(self):
+        Activity.objects.create(
+            lead=self.lead, type="comment", content_text="hi",
+        )
+        before = Task.objects.count()
+        self._run_migration()
+        self.assertEqual(Task.objects.count(), before)

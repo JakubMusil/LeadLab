@@ -1134,6 +1134,24 @@ class _ScheduledActivityTool(_SimpleLogTool):
             dt = _tz.make_aware(dt, _tz.get_current_timezone())
         return dt
 
+    def render_payload(self, activity: "Activity") -> dict:
+        # Surface raw schema-mapped metadata fields plus the linked
+        # parent Task's status/kind so the SPA can render a badge or
+        # state pill inline without a second request.
+        payload = super().render_payload(activity)
+        task = getattr(activity, "task", None)
+        if task is not None:
+            payload["task_id"] = str(task.id)
+            payload["task_status"] = task.status
+            payload["task_kind"] = task.kind
+            payload["task_is_completed"] = task.is_completed
+        else:
+            payload["task_id"] = None
+            payload["task_status"] = None
+            payload["task_kind"] = None
+            payload["task_is_completed"] = False
+        return payload
+
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:

@@ -1152,6 +1152,16 @@
     "typeWhatsAppOut": "WhatsApp (wysłana)",
     "typeWhatsAppIn": "WhatsApp (otrzymana)",
     "typeMeetingScheduled": "Zaplanowane spotkanie",
+    "typeCallScheduled": "Zaplanowana rozmowa",
+    "typeTaskExpired": "Zadanie wygasło",
+    "scheduledTaskStatus": {
+      "todo": "Zaplanowane",
+      "in_progress": "W trakcie",
+      "done": "Gotowe",
+      "cancelled": "Anulowane",
+      "expired": "Wygasłe",
+      "blocked": "Zablokowane"
+    },
     "typeLink": "Link",
     "typeVoiceMemo": "Notatka głosowa",
     "typeSystemNote": "Notatka systemowa",

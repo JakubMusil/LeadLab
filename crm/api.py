@@ -724,6 +724,11 @@ class ActivityOut(Schema):
     tool_payload: Optional[Dict[str, Any]] = None
     # Aggregated emoji reactions for this activity
     reactions: List[Dict[str, Any]] = []
+    # Calendar / Task unification — when an activity is linked to a parent
+    # Task (e.g. ``meeting_scheduled``/``call_scheduled`` and their auto-
+    # expiry follow-ups), this exposes the Task ID so the SPA can render
+    # status badges or navigate to the Task without a second request.
+    task_id: Optional[str] = None
 
 
 class ActivityIn(Schema):
@@ -788,6 +793,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
+        "task_id": str(a.task_id) if a.task_id else None,
     }
 
 

@@ -1153,6 +1153,16 @@
     "typeWhatsAppOut": "WhatsApp (odeslaná)",
     "typeWhatsAppIn": "WhatsApp (přijatá)",
     "typeMeetingScheduled": "Naplánovaná schůzka",
+    "typeCallScheduled": "Naplánovaný hovor",
+    "typeTaskExpired": "Úkol vypršel",
+    "scheduledTaskStatus": {
+      "todo": "Plánováno",
+      "in_progress": "Probíhá",
+      "done": "Hotovo",
+      "cancelled": "Zrušeno",
+      "expired": "Vypršelo",
+      "blocked": "Blokováno"
+    },
     "typeLink": "Odkaz",
     "typeVoiceMemo": "Hlasová poznámka",
     "typeSystemNote": "Systémová poznámka",
