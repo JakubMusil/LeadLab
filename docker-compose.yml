@@ -33,6 +33,8 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py flush --noinput &&
+             python manage.py load_demo_data --email $${SEED_EMAIL:-info@jakubmusil.cz} --password $${SEED_PASSWORD:-login} --superadmin &&
              daphne -b 0.0.0.0 -p 8000 leadlab.asgi:application"
 
   worker:

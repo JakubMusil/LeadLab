@@ -184,11 +184,18 @@ class Command(BaseCommand):
             default="LeadLab Demo",
             help="Name for the demo workspace (default: 'LeadLab Demo').",
         )
+        parser.add_argument(
+            "--superadmin",
+            action="store_true",
+            default=False,
+            help="Grant the demo user superadmin (is_staff + is_superuser) privileges.",
+        )
 
     def handle(self, *args, **options):
         email = options["email"]
         password = options["password"]
         firm_name = options["firm_name"]
+        superadmin = options["superadmin"]
 
         # ---- owner user ----
         user, user_created = User.objects.get_or_create(
@@ -197,6 +204,8 @@ class Command(BaseCommand):
                 "first_name": "Demo",
                 "last_name": "User",
                 "is_active": True,
+                "is_staff": superadmin,
+                "is_superuser": superadmin,
             },
         )
         if user_created:
@@ -204,6 +213,11 @@ class Command(BaseCommand):
             user.save()
             self.stdout.write(self.style.SUCCESS(f"Created user: {email}  (password: {password})"))
         else:
+            # Always sync password and superadmin flags on existing user
+            user.set_password(password)
+            user.is_staff = superadmin
+            user.is_superuser = superadmin
+            user.save()
             self.stdout.write(f"Using existing user: {email}")
 
         # ---- firm ----
