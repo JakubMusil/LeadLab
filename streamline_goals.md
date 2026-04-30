@@ -219,6 +219,153 @@ Implementační poznámky:
 
 ---
 
+### Fáze 7 — Sidebar tool form refinements
+
+**Stav:** 🟡 Probíhá. Cíl: doladit user-facing formuláře pro tooly v entity
+sidebaru a přidat nový tool pro plánování událostí. Schémata jednotlivých
+toolů zůstávají interním kontraktem (URL / size / filename / MIME), ale
+uživatelské UI je zjednodušujeme tak, aby uživatel viděl jen to, co je pro něj
+relevantní (obsah, název, kontext) — technická metadata si systém doplní sám.
+
+Plán se dělí na tři dílčí podúkoly v daném pořadí:
+
+#### 7.1 Hlasová poznámka *(`voice_memo`)* — 🟡 probíhá *(první úkol)*
+
+**Sidebar formulář:** nahradit generický field-renderer dedikovaným
+diktafonovým UI:
+
+- Tlačítko **Start / Pauza / Pokračovat** + tlačítko **Uložit** + **Zahodit**.
+- Časomíra (mm:ss) a vizuální feedback nahrávání (úroveň vstupu / waveform).
+- Implementace přes `MediaRecorder` API; výsledný blob se nahraje na existující
+  attachment endpoint, URL se vloží do `metadata.url`.
+- `duration_seconds`, `size_bytes`, `filename` (auto-generated např.
+  `voice-memo-<timestamp>.webm`) se doplňují **interně** — uživatel je nevidí
+  ani nezadává.
+- Permissions error (zamítnutý mikrofon) → user-friendly hláška s návodem.
+- **STT:** pokud má firma aktivní AI plugin pro přepis (detekce přes
+  feature-flag z `auth_store` / firm settings), po uložení se spustí
+  transkripce a `metadata.transcript` se asynchronně doplní.
+
+**Streamline výpis (`ActivityTimeline.vue`):** dedikovaný renderer pro
+`voice_memo`:
+
+- Vlevo ikona mikrofonu, uprostřed inline `<audio controls>` přehrávač
+  (`payload.url`), vpravo zobrazená délka.
+- Pokud je `payload.transcript` neprázdný → pod přehrávačem rozklikávací
+  sekce **„Zobrazit přepis"** (collapse) s plným textem.
+- „Smazat" akce přes existující generický activity delete endpoint.
+
+**Backend:** schéma `VoiceMemoTool` (URL + transcript + duration + size) je
+již dostatečné, není třeba měnit.
+
+#### 7.2 Nahrání souboru *(`file_upload`)*
+
+**Sidebar formulář:** přepínač (button-pill, stejný styl jako
+`messageChannelOptions`) s dvěma režimy:
+
+- **„Z URL"** — jedno pole pro URL + toggle **„Stáhnout a uložit"**
+  (default ON). Když OFF → uložíme jen referenci, neukládáme binárku
+  (badge „Externí odkaz" ve výpisu). Když ON → backend si soubor stáhne
+  asynchronně (Celery), spočte size_bytes a MIME a vyplní interní metadata.
+- **„Nahrát soubor(y)"** — drop-zone + file input s `multiple`.
+  Klientský limit **15 MB** (free) / **100 MB** (placená verze) — zjistit
+  z `firm.plan` přes `auth_store`. Překročení → toast s výzvou k upgrade.
+  Vícenásobný výběr → vytvoří **N samostatných** `file_upload` aktivit.
+
+Vždy zobrazené pole: **„Název"** (uživatelský label objektu jako celku, ne
+název souboru). Required.
+
+Skryté před uživatelem: `filename`, `size_bytes`, MIME — doplňujeme
+z uploadu/stažení.
+
+**Streamline výpis:** dedikovaný renderer:
+
+- Karta s ikonou dle typu souboru vlevo (PDF / image / doc / generic, mapping
+  podle `payload.mime_type` nebo extension).
+- Vpravo: velký nadpis = uživatelský `title`, pod ním šedě `filename` + `(X.X MB)`.
+- Klik na kartu → spustí download (link s `download` atributem nebo redirect
+  na storage URL).
+- Tlačítko **„Odstranit soubor"** (X / kebab) — využít existující
+  `DELETE /api/v1/streamline/activities/{id}` + smazat blob ze storage.
+- U URL varianty s `store_locally=false` badge „Externí odkaz" a klik vede
+  na cílovou URL v novém tabu.
+
+**Backend:** rozšířit `FileUploadTool` schéma o:
+
+- `title` (string, required) — uživatelský název.
+- `source_kind` (`"url"` / `"upload"`).
+- `store_locally` (bool, default `true`).
+- `mime_type` (string, interní).
+
+`process_action`: pokud `source_kind == "url"` a `store_locally`, naplánovat
+Celery job na stažení do storage; po dokončení update `activity.metadata`.
+Plánové size limity validovat i serverside.
+
+#### 7.3 Naplánovaná událost *(nový tool `event_scheduled`)*
+
+Obdoba schůzky / Tasku, která má vlastní záznam v kalendáři. Vychází
+schematicky z eventu v Google Kalendáři.
+
+**Backend (`crm/streamline/tools.py`):** nová třída
+`EventScheduledTool(_ScheduledActivityTool)`:
+
+- `activity_type = "event_scheduled"`
+- `category = "planning"`, `icon = "CalendarIcon"`,
+  `default_visibility = "important"`.
+- `task_kind = "event"` — nová varianta v `TaskKind` (migrace).
+- `task_title_prefix = "Event"`.
+- Schema: `content_text` (subject), `start_at`, `end_at`, `all_day` (bool),
+  `location`, `attendees` (array), `description` (multiline).
+- `required_fields = ["start_at"]`. Pokud `all_day=true`, postačí datum
+  (validace ve `process_action`).
+- Registrovat do `BUILTIN_TOOLS`.
+
+**Migrace:**
+
+- Rozšířit `TaskKind` o `EVENT = "event"`. Přidat do `CALENDAR_TASK_KINDS`.
+- Přidat `Task.is_all_day = BooleanField(default=False)` (kalendář to
+  potřebuje pro celodenní pruh).
+- `process_action` propíše `is_all_day` do nově vytvořeného `Task`.
+
+**Frontend — sidebar:** zařadit `event_scheduled` do
+`activityTypeLabelKey` / `activityTypeHelpKey` a do kategorie `planning`
+(`activityTypes: ['meeting_scheduled', 'event_scheduled', 'task']`).
+Formulář vychází z generického schema rendereru, plus:
+
+- **Toggle „Celý den"** (boolean). Když ON → `start_at`/`end_at` se přepnou
+  z `datetime-local` na `date`.
+- **Attendees picker** (uživatelé firmy + možnost zadat externí email) —
+  generalizovat existující `sidebarTaskWatcherIds` UI z task quick-create.
+
+**Frontend — kalendář:** filtr `task.kind="event"` (vlastní barva/ikona),
+respekt `is_all_day=true` (renderovat jako klasický all-day pruh nahoře).
+
+**Streamline výpis:** přidat `event_scheduled` do `iconForType` /
+`labelForType` v `ActivityTimeline.vue` (`CalendarIcon`). Renderer ukáže
+název, datum/čas (nebo „Celý den"), lokaci, účastníky.
+
+**i18n klíče:** `leadDetail.typeEventScheduled`,
+`leadDetail.toolHelp.event_scheduled`,
+`leadDetail.event.allDay/attendees/location/start/end/description`.
+
+#### Otevřené otázky před spuštěním 7.2 / 7.3
+
+1. **STT plugin detekce (7.1):** jaký je oficiální způsob zjištění, že má
+   firma aktivní AI/STT plugin? (Existující flag v `firm.settings`, plugin
+   registry?)
+2. **Plánové limity (7.2):** je už někde v `firms` modelu příznak placené
+   verze, nebo to potřebuje samostatný PR?
+3. **Multi-file upload (7.2):** jeden společný „Název" pro všechny soubory
+   (s indexem `(1)`, `(2)`) nebo per-řádek editace v listu před odesláním?
+4. **`event_scheduled` vs `meeting_scheduled` (7.3):** držet jako dva
+   typy (meeting = obchodní schůzka s leadem, event = obecná událost),
+   nebo `event_scheduled` postupně nahradí `meeting_scheduled`? Zatím
+   doporučujeme přidat `event_scheduled` a `meeting_scheduled` ponechat.
+5. **Storage backend (7.2):** kam má soubor stažený z URL přistát (S3 vs
+   lokální storage) — sjednotit s tím, jak to dnes řeší upload větev.
+
+---
+
 ## Další kroky pro příští session
 
 > **Důležitý kontext:** aplikace je stále čistě ve fázi vývoje, **nejsou
