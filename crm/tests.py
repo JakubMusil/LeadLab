@@ -2663,3 +2663,231 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
         before = Task.objects.count()
         self._run_migration()
         self.assertEqual(Task.objects.count(), before)
+
+
+# ---------------------------------------------------------------------------
+# Calendar / Task unification — calendar endpoint
+# ---------------------------------------------------------------------------
+
+class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
+    """``GET /api/v1/crm/calendar/tasks`` returns tasks whose calendar
+    slot overlaps the requested window, scoped by assignee."""
+
+    URL = "/api/v1/crm/calendar/tasks"
+
+    def setUp(self):
+        super().setUp()
+        # Window we'll query against in most tests: 2026-05-01 → 2026-05-08
+        self.win_start = "2026-05-01T00:00:00+00:00"
+        self.win_end = "2026-05-08T00:00:00+00:00"
+
+        def mk(due, end=None, **kw):
+            defaults = dict(
+                firm=self.firm, lead=self.lead, title=kw.pop("title", "T"),
+                assigned_to=kw.pop("assigned_to", self.owner),
+                due_date=due, due_date_end=end,
+            )
+            defaults.update(kw)
+            return Task.objects.create(**defaults)
+
+        # Inside window
+        self.t_in = mk(
+            dt.datetime(2026, 5, 3, 10, 0, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 5, 3, 11, 0, tzinfo=dt.timezone.utc),
+            title="In window meeting", kind="meeting", location="HQ",
+            attendees=["a@b.cz"],
+        )
+        # Spans the window (due before, end inside)
+        self.t_span = mk(
+            dt.datetime(2026, 4, 30, 23, 0, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 5, 1, 1, 0, tzinfo=dt.timezone.utc),
+            title="Spans start",
+        )
+        # Before window
+        self.t_before = mk(
+            dt.datetime(2026, 4, 20, 12, 0, tzinfo=dt.timezone.utc),
+            title="Before",
+        )
+        # After window
+        self.t_after = mk(
+            dt.datetime(2026, 5, 20, 12, 0, tzinfo=dt.timezone.utc),
+            title="After",
+        )
+        # No due_date — never appears
+        self.t_no_due = mk(None, title="No due")
+        # Worker's task in window
+        self.t_worker = mk(
+            dt.datetime(2026, 5, 4, 9, 0, tzinfo=dt.timezone.utc),
+            assigned_to=self.worker, title="Worker meeting", kind="call",
+        )
+        # Watching task — owner is watcher, assigned to worker
+        self.t_watch = mk(
+            dt.datetime(2026, 5, 5, 14, 0, tzinfo=dt.timezone.utc),
+            assigned_to=self.worker, title="Watched",
+        )
+        self.t_watch.watchers.add(self.owner)
+
+    # -- happy path ---------------------------------------------------------
+
+    def test_default_scope_returns_only_my_tasks_in_range(self):
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        self.assertEqual(resp.status_code, 200)
+        ids = {row["id"] for row in resp.json()}
+        self.assertIn(str(self.t_in.id), ids)
+        self.assertIn(str(self.t_span.id), ids)
+        self.assertNotIn(str(self.t_before.id), ids)
+        self.assertNotIn(str(self.t_after.id), ids)
+        self.assertNotIn(str(self.t_no_due.id), ids)
+        self.assertNotIn(str(self.t_worker.id), ids)  # owned by worker
+
+    def test_response_shape_includes_calendar_fields(self):
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        rows = {r["id"]: r for r in resp.json()}
+        row = rows[str(self.t_in.id)]
+        self.assertEqual(row["title"], "In window meeting")
+        self.assertEqual(row["kind"], "meeting")
+        self.assertEqual(row["location"], "HQ")
+        self.assertEqual(row["attendees"], ["a@b.cz"])
+        self.assertEqual(row["lead_id"], str(self.lead.id))
+        self.assertEqual(row["assigned_to_id"], str(self.owner.id))
+        self.assertIn("start", row)
+        self.assertIn("end", row)
+
+    def test_results_ordered_by_due_date(self):
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        starts = [r["start"] for r in resp.json()]
+        self.assertEqual(starts, sorted(starts))
+
+    # -- scope --------------------------------------------------------------
+
+    def test_owner_admin_scope_all_returns_everything(self):
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end, "assigned_to_id": "all"})
+        ids = {r["id"] for r in resp.json()}
+        self.assertIn(str(self.t_in.id), ids)
+        self.assertIn(str(self.t_worker.id), ids)
+        self.assertIn(str(self.t_watch.id), ids)
+
+    def test_specific_user_id_filters_to_that_user(self):
+        resp = self._get(self.URL, {
+            "start": self.win_start, "end": self.win_end,
+            "assigned_to_id": str(self.worker.id),
+        })
+        ids = {r["id"] for r in resp.json()}
+        self.assertEqual(ids, {str(self.t_worker.id), str(self.t_watch.id)})
+
+    def test_watching_scope_returns_watched_tasks(self):
+        resp = self._get(self.URL, {
+            "start": self.win_start, "end": self.win_end,
+            "assigned_to_id": "watching",
+        })
+        ids = {r["id"] for r in resp.json()}
+        self.assertEqual(ids, {str(self.t_watch.id)})
+
+    def test_worker_cannot_see_other_users_via_all(self):
+        self.client.logout()
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end, "assigned_to_id": "all"})
+        ids = {r["id"] for r in resp.json()}
+        # Worker only sees their own assignments even with "all"
+        self.assertEqual(ids, {str(self.t_worker.id), str(self.t_watch.id)})
+
+    def test_worker_querying_other_user_silently_narrows_to_self(self):
+        self.client.logout()
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._get(self.URL, {
+            "start": self.win_start, "end": self.win_end,
+            "assigned_to_id": str(self.owner.id),
+        })
+        ids = {r["id"] for r in resp.json()}
+        # Worker is silently narrowed to their own assignments
+        self.assertNotIn(str(self.t_in.id), ids)
+        self.assertIn(str(self.t_worker.id), ids)
+
+    # -- filters ------------------------------------------------------------
+
+    def test_kind_filter(self):
+        resp = self._get(self.URL, {
+            "start": self.win_start, "end": self.win_end,
+            "assigned_to_id": "all", "kind": "meeting",
+        })
+        ids = {r["id"] for r in resp.json()}
+        self.assertEqual(ids, {str(self.t_in.id)})
+
+    def test_completed_excluded_by_default(self):
+        self.t_in.is_completed = True
+        self.t_in.status = "done"
+        self.t_in.save()
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        ids = {r["id"] for r in resp.json()}
+        self.assertNotIn(str(self.t_in.id), ids)
+
+    def test_expired_excluded_by_default(self):
+        self.t_in.status = "expired"
+        self.t_in.save()
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        ids = {r["id"] for r in resp.json()}
+        self.assertNotIn(str(self.t_in.id), ids)
+
+    def test_include_completed_true_returns_them(self):
+        self.t_in.is_completed = True
+        self.t_in.status = "done"
+        self.t_in.save()
+        resp = self._get(self.URL, {
+            "start": self.win_start, "end": self.win_end, "include_completed": "true",
+        })
+        ids = {r["id"] for r in resp.json()}
+        self.assertIn(str(self.t_in.id), ids)
+
+    def test_archived_excluded_by_default(self):
+        self.t_in.is_archived = True
+        self.t_in.save()
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end})
+        ids = {r["id"] for r in resp.json()}
+        self.assertNotIn(str(self.t_in.id), ids)
+
+    # -- validation ---------------------------------------------------------
+
+    def test_missing_start_returns_422_or_400(self):
+        # Ninja raises 422 for missing required query params; either is acceptable
+        resp = self._get(self.URL, {"end": self.win_end})
+        self.assertIn(resp.status_code, (400, 422))
+
+    def test_invalid_iso_returns_400(self):
+        resp = self._get(self.URL, {"start": "not-a-date", "end": self.win_end})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_end_before_start_returns_400(self):
+        resp = self._get(self.URL, {"start": self.win_end, "end": self.win_start})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_window_too_large_returns_400(self):
+        resp = self._get(self.URL, {
+            "start": "2026-01-01T00:00:00Z", "end": "2027-12-31T23:59:59Z",
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_z_suffix_iso_is_accepted(self):
+        resp = self._get(self.URL, {
+            "start": "2026-05-01T00:00:00Z", "end": "2026-05-08T00:00:00Z",
+        })
+        self.assertEqual(resp.status_code, 200)
+
+    # -- isolation ----------------------------------------------------------
+
+    def test_firm_isolation(self):
+        other_firm = Firm.objects.create(name="Other Firm Cal")
+        other_user = User.objects.create_user(email="other@cal.com", password="pass")
+        Membership.objects.create(user=other_user, firm=other_firm, role=MembershipRole.OWNER)
+        Task.objects.create(
+            firm=other_firm, title="Cross-firm",
+            due_date=dt.datetime(2026, 5, 3, 10, 0, tzinfo=dt.timezone.utc),
+            assigned_to=other_user,
+        )
+        resp = self._get(self.URL, {"start": self.win_start, "end": self.win_end, "assigned_to_id": "all"})
+        titles = {r["title"] for r in resp.json()}
+        self.assertNotIn("Cross-firm", titles)
+
+    def test_unauthenticated_returns_401_or_403(self):
+        self.client.logout()
+        resp = self.client.get(self.URL, {"start": self.win_start, "end": self.win_end}, **self.firm_headers())
+        self.assertIn(resp.status_code, (401, 403))

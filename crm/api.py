@@ -1451,6 +1451,196 @@ def _notify_task_watchers(task: Task, event: str) -> None:
         logger.exception("Failed to persist watcher notifications for task %s event %s", task.id, event)
 
 
+class CalendarTaskOut(Schema):
+    """Lightweight calendar entry derived from a ``Task``.
+
+    Returned by ``GET /calendar/tasks`` for rendering month/week/day views.
+    Carries only what the calendar needs — full Task details remain
+    available via ``GET /tasks/{id}``.
+    """
+    id: str
+    title: str
+    kind: str
+    status: str
+    priority: str
+    is_completed: bool
+    # Calendar slot — start = ``due_date``, end = ``due_date_end`` if set
+    # otherwise the same as ``due_date`` (point-in-time event).
+    start: datetime
+    end: datetime
+    location: str
+    attendees: List[str]
+    assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str]
+    # Entity link for click-through; exactly one is populated.
+    lead_id: Optional[str]
+    lead_title: Optional[str]
+    realization_id: Optional[str]
+    realization_title: Optional[str]
+    management_id: Optional[str]
+    management_title: Optional[str]
+    customer_id: Optional[str]
+    customer_name: Optional[str]
+    proposal_id: Optional[str]
+    proposal_title: Optional[str]
+
+
+def _calendar_task_out(t: Task) -> dict:
+    """Serialize a ``Task`` as a calendar entry."""
+    start = t.due_date
+    end = t.due_date_end or t.due_date
+    return {
+        "id": str(t.id),
+        "title": t.title,
+        "kind": t.kind,
+        "status": t.status,
+        "priority": t.priority,
+        "is_completed": bool(t.is_completed),
+        "start": start,
+        "end": end,
+        "location": t.location or "",
+        "attendees": list(t.attendees or []),
+        "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
+        "assigned_to_name": _user_display_name(t.assigned_to),
+        "lead_id": str(t.lead_id) if t.lead_id else None,
+        "lead_title": t.lead.title if t.lead_id else None,
+        "realization_id": str(t.realization_id) if t.realization_id else None,
+        "realization_title": getattr(t.realization, "title", None) if t.realization_id else None,
+        "management_id": str(t.management_id) if t.management_id else None,
+        "management_title": getattr(t.management, "title", None) if t.management_id else None,
+        "customer_id": str(t.customer_id) if t.customer_id else None,
+        "customer_name": (
+            f"{t.customer.first_name or ''} {t.customer.last_name or ''}".strip()
+            or t.customer.email
+            or t.customer.company_name
+            or None
+        ) if t.customer_id else None,
+        "proposal_id": str(t.proposal_id) if t.proposal_id else None,
+        "proposal_title": getattr(t.proposal, "title", None) if t.proposal_id else None,
+    }
+
+
+# Hard cap on the number of entries returned in a single calendar query.
+# Calendars typically render at most a few hundred items per view; cap
+# protects against an accidental year-wide query melting the API.
+_CALENDAR_MAX_RESULTS = 1000
+# Maximum window the caller is allowed to request in a single call.
+# Keeps DB scans bounded; SPA can page month-by-month if it needs more.
+_CALENDAR_MAX_WINDOW_DAYS = 366
+
+
+def _parse_iso_datetime(value: str, field_name: str):
+    """Parse an ISO-8601 string supporting the ``Z`` suffix, returning
+    a tuple ``(dt_or_none, error_response_or_none)``.
+    """
+    parsed = parse_datetime(value)
+    if parsed is None:
+        try:
+            parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None, (400, {"detail": f"Invalid {field_name} format: '{value}'. Use ISO-8601."})
+    if tz.is_naive(parsed):
+        parsed = tz.make_aware(parsed, tz.get_current_timezone())
+    return parsed, None
+
+
+@router.get(
+    "/calendar/tasks",
+    auth=django_auth,
+    response={200: List[CalendarTaskOut], 400: ErrorOut, 403: ErrorOut},
+)
+def list_calendar_tasks(
+    request,
+    start: str,
+    end: str,
+    assigned_to_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    include_completed: bool = False,
+    include_archived: bool = False,
+):
+    """
+    Return tasks whose calendar slot overlaps the ``[start, end]`` window.
+
+    A task overlaps the window when ``due_date <= end`` **and**
+    ``coalesce(due_date_end, due_date) >= start``. Tasks without a
+    ``due_date`` are not calendar events and are excluded.
+
+    Scope (``assigned_to_id``):
+      * omitted / ``"me"`` — tasks assigned to the current user
+      * ``"watching"``     — tasks where the current user is in ``watchers``
+      * ``"all"``          — all firm tasks (admin/owner only; workers
+                              are silently narrowed to their own)
+      * ``<uuid>``         — tasks assigned to that user (admin/owner can
+                              query anyone; workers can only query themselves)
+
+    By default ``status=expired`` and ``is_completed=True`` tasks are
+    excluded; pass ``include_completed=true`` to bring them back in.
+    Archived tasks are always excluded unless ``include_archived=true``.
+    """
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    start_dt, err = _parse_iso_datetime(start, "start")
+    if err is not None:
+        return err
+    end_dt, err = _parse_iso_datetime(end, "end")
+    if err is not None:
+        return err
+
+    if end_dt < start_dt:
+        return 400, {"detail": "'end' must be greater than or equal to 'start'."}
+    if (end_dt - start_dt) > dt.timedelta(days=_CALENDAR_MAX_WINDOW_DAYS):
+        return 400, {
+            "detail": (
+                f"Requested window is too large; maximum is "
+                f"{_CALENDAR_MAX_WINDOW_DAYS} days."
+            )
+        }
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+
+    qs = Task.objects.filter(firm=request.firm).select_related(
+        "lead", "realization", "management", "customer", "proposal", "assigned_to",
+    )
+
+    # Window overlap: due_date <= end AND coalesce(due_date_end, due_date) >= start.
+    qs = qs.filter(due_date__isnull=False, due_date__lte=end_dt).filter(
+        Q(due_date_end__isnull=False, due_date_end__gte=start_dt)
+        | Q(due_date_end__isnull=True, due_date__gte=start_dt)
+    )
+
+    # Scope filter.
+    if assigned_to_id in (None, "", "me"):
+        qs = qs.filter(assigned_to=request.user)
+    elif assigned_to_id == "watching":
+        qs = qs.filter(watchers=request.user)
+    elif assigned_to_id == "all":
+        if not is_admin:
+            qs = qs.filter(assigned_to=request.user)
+        # admins/owners: no extra filter
+    else:
+        # Specific UUID — workers can only ask about themselves.
+        if not is_admin and str(request.user.id) != str(assigned_to_id):
+            qs = qs.filter(assigned_to=request.user)
+        else:
+            qs = qs.filter(assigned_to_id=assigned_to_id)
+
+    if kind is not None:
+        qs = qs.filter(kind=kind)
+    if status is not None:
+        qs = qs.filter(status=status)
+    if not include_completed:
+        qs = qs.filter(is_completed=False).exclude(status=TaskStatus.EXPIRED)
+    if not include_archived:
+        qs = qs.filter(is_archived=False)
+
+    qs = qs.order_by("due_date").distinct()[: _CALENDAR_MAX_RESULTS]
+    return 200, [_calendar_task_out(t) for t in qs]
+
+
 @router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
 def list_tasks(
     request,
