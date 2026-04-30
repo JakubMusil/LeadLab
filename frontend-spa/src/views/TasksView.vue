@@ -190,7 +190,7 @@ function openEditTask(task: TaskOut) {
   editingTask.value = task
   editTitle.value = task.title
   editDescription.value = task.description
-  editDueDate.value = task.due_date ? task.due_date.split('T')[0] : ''
+  editDueDate.value = task.due_date ? (task.due_date.split('T')[0] ?? '') : ''
   editAssigneeId.value = task.assigned_to_id ?? ''
   editWatcherIds.value = [...task.watcher_ids]
   editPriority.value = task.priority

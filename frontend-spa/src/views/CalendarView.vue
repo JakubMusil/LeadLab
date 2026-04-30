@@ -42,7 +42,7 @@ const activeUserIds = ref<Set<string>>(new Set())
 
 const userColorMap = computed(() => {
   const map = new Map<string, string>()
-  members.value.forEach((m, i) => map.set(m.id, USER_COLORS[i % USER_COLORS.length]))
+  members.value.forEach((m, i) => map.set(m.id, USER_COLORS[i % USER_COLORS.length] ?? '#6b7280'))
   return map
 })
 

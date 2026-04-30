@@ -6,6 +6,8 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 
 const route = useRoute()
 const store = useCustomersStore()
@@ -13,6 +15,13 @@ const toast = useToast()
 const { t } = useI18n()
 
 const customerId = computed(() => route.params.id as string)
+
+// Tabs
+type Tab = 'overview' | 'tasks' | 'files'
+const activeTab = ref<Tab>('overview')
+
+// ActivityTimeline ref (used to reload feed after sidebar quick-action submits).
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 // Edit mode
 const editing = ref(false)
@@ -221,6 +230,90 @@ async function loadEmployees() {
   employeesLoading.value = false
 }
 
+// ---------------------------------------------------------------------------
+// Linked tasks (tasks tab)
+// ---------------------------------------------------------------------------
+interface TaskOut {
+  id: string
+  title: string
+  is_completed: boolean
+  status: string
+  priority: string
+  due_date: string | null
+  assigned_to_id: string | null
+  assigned_to_name?: string | null
+}
+const linkedTasks = ref<TaskOut[]>([])
+const tasksLoading = ref(false)
+
+async function loadLinkedTasks() {
+  tasksLoading.value = true
+  try {
+    const res = await api.get<TaskOut[]>(`/api/v1/crm/tasks?customer_id=${customerId.value}&page_size=100`)
+    if (res.ok) linkedTasks.value = res.data
+  } finally {
+    tasksLoading.value = false
+  }
+}
+
+function taskStatusColor(status: string) {
+  const map: Record<string, string> = {
+    todo: 'bg-gray-100 text-gray-700', in_progress: 'bg-blue-100 text-blue-700',
+    blocked: 'bg-red-100 text-red-700', done: 'bg-green-100 text-green-700',
+  }
+  return map[status] ?? 'bg-gray-100 text-gray-700'
+}
+
+// ---------------------------------------------------------------------------
+// Documents (files tab)
+// ---------------------------------------------------------------------------
+const documents = ref<DocumentOut[]>([])
+const docsLoading = ref(false)
+const docsUploading = ref(false)
+const docFileInputRef = ref<HTMLInputElement | null>(null)
+const deleteDocId = ref<string | null>(null)
+
+async function loadDocuments() {
+  docsLoading.value = true
+  try {
+    const res = await api.get<DocumentOut[]>(`/api/v1/erp/documents?customer_id=${customerId.value}`)
+    if (res.ok) documents.value = res.data
+  } finally {
+    docsLoading.value = false
+  }
+}
+
+async function onDocFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  docsUploading.value = true
+  for (const file of Array.from(input.files)) {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('name', file.name)
+    fd.append('customer_id', customerId.value)
+    const res = await api.postForm<DocumentOut>('/api/v1/erp/documents', fd)
+    if (res.ok) documents.value.unshift(res.data)
+    else toast.error(t('customers.failedToUpload'))
+  }
+  docsUploading.value = false
+  input.value = ''
+}
+
+async function deleteDocument() {
+  const id = deleteDocId.value
+  if (!id) return
+  deleteDocId.value = null
+  const res = await api.delete(`/api/v1/erp/documents/${id}`)
+  if (res.ok) documents.value = documents.value.filter(d => d.id !== id)
+}
+
+async function switchTab(tab: Tab) {
+  activeTab.value = tab
+  if (tab === 'tasks' && linkedTasks.value.length === 0) await loadLinkedTasks()
+  else if (tab === 'files' && documents.value.length === 0) await loadDocuments()
+}
+
 onMounted(async () => {
   await store.fetchCustomers({ page: 1 })
   await store.fetchCustomer(customerId.value)
@@ -324,127 +417,233 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Employees (for companies) -->
-      <div v-if="store.currentCustomer.type === 'company'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.employees') }}</h3>
-        <div v-if="employeesLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+      <!-- Tab bar -->
+      <div class="flex gap-1 border-b border-gray-200 dark:border-gray-700">
+        <button
+          v-for="tab in (['overview', 'tasks', 'files'] as Tab[])"
+          :key="tab"
+          @click="switchTab(tab)"
+          :class="activeTab === tab
+            ? 'border-b-2 border-red-600 text-red-600 dark:text-red-400'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+          class="px-4 py-2 text-sm font-medium transition-colors"
+        >
+          {{ tab === 'overview' ? t('customers.tabOverview') : tab === 'tasks' ? t('customers.tabTasks') : `${t('customers.tabFiles')} (${documents.length})` }}
+        </button>
+      </div>
+
+      <!-- OVERVIEW TAB: 2-column layout (timeline + sidebar) -->
+      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: ActivityTimeline -->
+        <div class="lg:col-span-2">
+          <ActivityTimeline ref="activityTimelineRef" entity-type="customer" :entity-id="customerId" />
         </div>
-        <div v-else-if="employees.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noEmployees') }}</div>
-        <div v-else class="space-y-1">
+
+        <!-- Right: sidebar (quick actions + employees + tags + metadata + linked entities) -->
+        <div class="space-y-4">
+
+          <!-- Quick actions (unified Streamline composer) -->
+          <EntitySidebarActionPicker
+            entity-type="customer"
+            :entity-id="customerId"
+            @activity-added="activityTimelineRef?.load()"
+          />
+
+          <!-- Employees (for companies) -->
+          <div v-if="store.currentCustomer.type === 'company'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.employees') }}</h3>
+            <div v-if="employeesLoading" class="animate-pulse space-y-2">
+              <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+            </div>
+            <div v-else-if="employees.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noEmployees') }}</div>
+            <div v-else class="space-y-1">
+              <RouterLink
+                v-for="emp in employees"
+                :key="emp.id"
+                :to="`/app/directory/${emp.id}`"
+                class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 text-sm font-medium flex-shrink-0">
+                  {{ emp.first_name[0]?.toUpperCase() ?? '?' }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ [emp.first_name, emp.last_name].filter(Boolean).join(' ') }}</div>
+                  <div v-if="emp.email" class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ emp.email }}</div>
+                </div>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.tagsSection') }}</h3>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span
+                v-for="tag in store.currentCustomer.tags"
+                :key="tag"
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
+              >
+                {{ tag }}
+                <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">×</button>
+              </span>
+              <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noTags') }}</span>
+            </div>
+            <div class="flex gap-2">
+              <input
+                v-model="newTag"
+                type="text"
+                :placeholder="t('customers.addTag')"
+                class="flex-1 max-w-48 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
+                @keydown.enter.prevent="addTag"
+              />
+              <button :disabled="tagsLoading || !newTag.trim()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50" @click="addTag">{{ t('customers.add') }}</button>
+            </div>
+          </div>
+
+          <!-- Metadata -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.customFields') }}</h3>
+            <div v-if="Object.keys(store.currentCustomer.metadata).length > 0" class="divide-y divide-gray-50 dark:divide-gray-700 mb-3">
+              <div v-for="(val, key) in store.currentCustomer.metadata" :key="key" class="flex items-center gap-3 py-2 group">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-32 flex-shrink-0 truncate">{{ key }}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400 flex-1 truncate">{{ val }}</span>
+                <button class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700" :disabled="metaLoading" @click="removeMetadata(key)">✕</button>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-400 dark:text-gray-500 mb-3">{{ t('customers.noCustomFields') }}</div>
+            <div class="flex gap-2 flex-wrap">
+              <input v-model="newMetaKey" type="text" :placeholder="t('customers.metaKeyPlaceholder')" class="w-36 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              <input v-model="newMetaValue" type="text" :placeholder="t('customers.metaValuePlaceholder')" class="flex-1 min-w-36 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              <button :disabled="metaLoading || !newMetaKey.trim()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50" @click="addMetadata">{{ t('customers.add') }}</button>
+            </div>
+          </div>
+
+          <!-- Linked Leads -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.linkedLeads') }}</h3>
+            <div v-if="leadsLoading" class="animate-pulse space-y-2">
+              <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+            </div>
+            <div v-else-if="linkedLeads.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noLinkedLeads') }}</div>
+            <div v-else class="space-y-2">
+              <RouterLink
+                v-for="lead in linkedLeads"
+                :key="lead.id"
+                :to="`/app/opportunities/${lead.id}`"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(lead.status)">{{ lead.status }}</span>
+                <span v-if="lead.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ lead.value }} {{ lead.currency }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Linked Proposals -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('proposals.title') }}</h3>
+              <RouterLink
+                :to="`/app/proposals`"
+                class="text-xs text-red-600 hover:text-red-700"
+              >{{ t('proposals.allProposals') }}</RouterLink>
+            </div>
+            <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+              <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+            </div>
+            <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('proposals.noProposals') }}</div>
+            <div v-else class="space-y-2">
+              <RouterLink
+                v-for="p in linkedProposals"
+                :key="p.id"
+                :to="`/app/proposals/${p.id}`"
+                class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.title }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TASKS TAB -->
+      <div v-else-if="activeTab === 'tasks'" class="space-y-4">
+        <div v-if="tasksLoading" class="animate-pulse space-y-2">
+          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        </div>
+        <div v-else-if="linkedTasks.length === 0" class="text-center py-10 text-sm text-gray-400 dark:text-gray-500">
+          {{ t('customers.noTasks') }}
+        </div>
+        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
           <RouterLink
-            v-for="emp in employees"
-            :key="emp.id"
-            :to="`/app/directory/${emp.id}`"
-            class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            v-for="task in linkedTasks"
+            :key="task.id"
+            :to="`/app/tasks/${task.id}`"
+            class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
           >
-            <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 text-sm font-medium flex-shrink-0">
-              {{ emp.first_name[0]?.toUpperCase() ?? '?' }}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ [emp.first_name, emp.last_name].filter(Boolean).join(' ') }}</div>
-              <div v-if="emp.email" class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ emp.email }}</div>
-            </div>
+            <span
+              class="w-4 h-4 rounded-full border flex-shrink-0"
+              :class="task.is_completed ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
+            />
+            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusColor(task.status)">{{ task.status }}</span>
+            <span v-if="task.due_date" class="text-xs text-gray-500 dark:text-gray-400">{{ new Date(task.due_date).toLocaleDateString() }}</span>
+            <span v-if="task.assigned_to_name" class="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[8rem]">{{ task.assigned_to_name }}</span>
           </RouterLink>
         </div>
       </div>
 
-      <!-- Tags -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.tagsSection') }}</h3>
-        <div class="flex flex-wrap gap-2 mb-3">
-          <span
-            v-for="tag in store.currentCustomer.tags"
-            :key="tag"
-            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
+      <!-- FILES TAB -->
+      <div v-else-if="activeTab === 'files'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('customers.documents') }}</h3>
+          <button
+            @click="docFileInputRef?.click()"
+            :disabled="docsUploading"
+            class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
           >
-            {{ tag }}
-            <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">×</button>
-          </span>
-          <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noTags') }}</span>
+            {{ docsUploading ? t('customers.uploading') : t('customers.uploadBtn') }}
+          </button>
+          <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
         </div>
-        <div class="flex gap-2">
-          <input
-            v-model="newTag"
-            type="text"
-            :placeholder="t('customers.addTag')"
-            class="flex-1 max-w-48 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
-            @keydown.enter.prevent="addTag"
-          />
-          <button :disabled="tagsLoading || !newTag.trim()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50" @click="addTag">{{ t('customers.add') }}</button>
-        </div>
-      </div>
 
-      <!-- Metadata -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.customFields') }}</h3>
-        <div v-if="Object.keys(store.currentCustomer.metadata).length > 0" class="divide-y divide-gray-50 dark:divide-gray-700 mb-3">
-          <div v-for="(val, key) in store.currentCustomer.metadata" :key="key" class="flex items-center gap-3 py-2 group">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-32 flex-shrink-0 truncate">{{ key }}</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400 flex-1 truncate">{{ val }}</span>
-            <button class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700" :disabled="metaLoading" @click="removeMetadata(key)">✕</button>
+        <div v-if="docsLoading" class="animate-pulse space-y-2">
+          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        </div>
+
+        <div v-else-if="documents.length === 0" class="text-center py-10">
+          <div class="text-4xl mb-2">📁</div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('customers.noDocuments') }}</p>
+        </div>
+
+        <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+          <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-3 p-3 group">
+            <span class="text-xl">{{ docFileIcon(doc.content_type) }}</span>
+            <div class="flex-1 min-w-0">
+              <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
+                 class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
+                {{ doc.name }}
+              </a>
+              <p class="text-xs text-gray-400">{{ fmtDocBytes(doc.size_bytes) }} · {{ new Date(doc.created_at).toLocaleDateString('cs-CZ') }}</p>
+            </div>
+            <button @click="deleteDocId = doc.id" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-sm transition-opacity">🗑</button>
           </div>
         </div>
-        <div v-else class="text-sm text-gray-400 dark:text-gray-500 mb-3">{{ t('customers.noCustomFields') }}</div>
-        <div class="flex gap-2 flex-wrap">
-          <input v-model="newMetaKey" type="text" :placeholder="t('customers.metaKeyPlaceholder')" class="w-36 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-          <input v-model="newMetaValue" type="text" :placeholder="t('customers.metaValuePlaceholder')" class="flex-1 min-w-36 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-          <button :disabled="metaLoading || !newMetaKey.trim()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50" @click="addMetadata">{{ t('customers.add') }}</button>
-        </div>
-      </div>
 
-      <!-- Linked Leads -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.linkedLeads') }}</h3>
-        <div v-if="leadsLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+        <!-- Delete confirm -->
+        <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
+            <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('customers.confirmDocDelete') }}</p>
+            <div class="flex gap-3 justify-end">
+              <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('customers.cancel') }}</button>
+              <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('customers.delete') }}</button>
+            </div>
+          </div>
         </div>
-        <div v-else-if="linkedLeads.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noLinkedLeads') }}</div>
-        <div v-else class="space-y-2">
-          <RouterLink
-            v-for="lead in linkedLeads"
-            :key="lead.id"
-            :to="`/app/opportunities/${lead.id}`"
-            class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-          >
-            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(lead.status)">{{ lead.status }}</span>
-            <span v-if="lead.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ lead.value }} {{ lead.currency }}</span>
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- Linked Proposals -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('proposals.title') }}</h3>
-          <RouterLink
-            :to="`/app/proposals`"
-            class="text-xs text-red-600 hover:text-red-700"
-          >{{ t('proposals.allProposals') }}</RouterLink>
-        </div>
-        <div v-if="proposalsLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-        <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('proposals.noProposals') }}</div>
-        <div v-else class="space-y-2">
-          <RouterLink
-            v-for="p in linkedProposals"
-            :key="p.id"
-            :to="`/app/proposals/${p.id}`"
-            class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-          >
-            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.title }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- Activity Timeline -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
-        <ActivityTimeline entityType="customer" :entityId="customerId" />
       </div>
     </template>
 

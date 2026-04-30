@@ -289,27 +289,194 @@ mají `<ActivityTimeline>` integrovaný; zbývá:
    `POST /api/v1/crm/activities` se správným `*_id` polem. Použito v
    `LeadDetailView` a `ManagementDetailView`.
 2. **2-sloupcový layout** (timeline vlevo, sidebar vpravo, sticky) v:
-   - `CustomerDetailView.vue`
-   - `RealizationDetailView.vue`
+   - ✅ `CustomerDetailView.vue` *(2026-04-29 session — tabs
+     `Overview` / `Tasks` / `Files`, 2-col Overview s
+     `EntitySidebarActionPicker`, Tasks přes `customer_id` filter,
+     Files přes Document API)*
+   - ✅ `RealizationDetailView.vue` *(2026-04-29 session — Overview tab
+     přepsán do 2-col layoutu (`ActivityTimeline` vlevo `col-span-2` +
+     sidebar s `EntitySidebarActionPicker`, popisek, milestones progress,
+     customer/lead/assignee/dates karty); duplicitní separátní
+     `activities` tab odstraněn; pre-existing tabs `milestones`/`tasks`/
+     `proposals`/`documents` ponechány. Header zjednodušený (jen
+     title + status), meta info migrováno do sidebaru.)*
    - ✅ `ManagementDetailView.vue` *(layout už existoval; přidán
      `EntitySidebarActionPicker` do toolbox sidebaru, timeline má `ref`
      pro reload po quick-action submitu)*
-   - `ProposalBuilderView.vue` (jen v rámci timeline tabu — builder UI
-     zůstává netknutý)
+   - ✅ `ProposalBuilderView.vue` *(2026-04-29 session — spodní sekce
+     "Activity Timeline" přepsána na 2-sloupcový grid: timeline vlevo
+     (`lg:col-span-2`) s `ref="activityTimelineRef"`, vpravo
+     `EntitySidebarActionPicker entity-type="proposal"`. Builder UI
+     (header bar, editor, live preview) zůstal kompletně netknutý dle
+     plánu. Quick-action submit reloaduje timeline přes ref.)*
 3. **Sjednotit tabs** — `overview` / `tasks` / `files` / *(entity-specific)*
    tam, kde dnes nejsou. `Files` přepnout na `DocumentsView`-style
    komponenty místo per-entity custom uploaderu.
+   - ✅ Customer + Realization + Management hotové.
+   - Proposal — N/A: `ProposalBuilderView` má jiné UX (builder, ne detail
+     view), tabs nejsou aplikovatelné. Streamline timeline je doplňkový
+     panel pod editorem, což je správný shape pro builder.
 4. **Inline editaci popisku** — RichTextEditor + `startEdit/save/cancel`
    pattern z `LeadDetailView` aplikovat na entity, které mají
    `description` / `description_html`.
+   - Customer model `description` field nemá → krok 4 se na něj
+     neaplikuje.
+   - Realization má `description` (plain text) — zatím render-only;
+     inline edit je nice-to-have, ne blokátor sjednocení designu.
+   - Proposal má vlastní editor v builderu (Markdown body, line items,
+     closing) — RichTextEditor pattern z LeadDetailView se neaplikuje,
+     builder vlastní svůj save flow přes `editTitle`/`editContent`/atd.
 5. **i18n** — průchod nově použitými klíči, doplnit chybějící do
    en/cs/de/pl, ověřit `node scripts/check-locales.mjs`.
+   - ✅ Customer (10 klíčů) + Realization (5 klíčů) doplněno do všech
+     4 lokálů (1817 klíčů × 4 jazyky, locale-checker passes).
+   - ✅ Proposal — žádné nové klíče potřeba (reuse
+     `leadDetail.tabActivities` pro timeline header, sidebar action
+     picker si načítá labely z `entity-toolbar` API).
 
-Doporučuji rozdělit na 4 menší PR (po jedné entitě), aby code review byl
-čitelný; `EntitySidebarActionPicker.vue` extrakce je první (samostatný PR),
-pak Customer / Realization / Management / Proposal po jednom.
+**Stav po session 2026-04-29 (PR `copilot/add-customer-realization-proposal-prs`):**
+✅ Customer + Realization + Proposal **hotové**. Krok C je tímto PR
+**uzavřený**.
 
-### C) Pokračovat s úklidem Fáze 2 + 3 backend *(volitelné, ale teď je to levné)*
+### Co dál po Kroku C
+
+Stav po session 2026-04-29 (druhá iterace):
+
+1. ✅ **Fáze 2 backend úklid** (`LeadStatusHistory`) — již proběhlo
+   v migraci `0038_drop_legacy_attachment_comment_timeline_models.py`.
+   Žádné runtime referencie nezbyly; jen historický log v této markdown.
+2. ✅ **Fáze 3 backend úklid** (`LeadAttachment` + `TaskAttachment`) —
+   také proběhlo v migraci `0038`. Pouze legacy upload-path helpers
+   (`_attachment_upload_to`, `_task_attachment_upload_to`,
+   `_voice_attachment_upload_to`) v `crm/models.py` zůstaly s docstring
+   *"kept for migrations"* — historické migrace 0002/0014/0018 je
+   importují, takže smazat nelze.
+3. ✅ **Inline `description` edit pro Realization** *(2026-04-29 session
+   druhá iterace)* — `RealizationDetailView.vue` Description sidebar
+   karta umí inline edit:
+   - State: `editingDescription`, `descriptionDraft`, `savingDescription`
+     + `startEditDescription` / `saveDescription` / `cancelEditDescription`.
+   - Edit button (… vpravo) → textarea (4 rows, resize-y) + Save/Cancel.
+   - Když je `description` prázdný, klik na placeholder spustí editaci.
+   - Plain text (textarea, ne RichTextEditor) — odpovídá datovému modelu
+     (Realization `description` je plain string, ne HTML — na rozdíl od
+     `Lead.description`).
+   - Save přes `store.updateRealization(id, { description })`, success
+     toast `realizations.updated`, error `realizations.failedToUpdate`.
+   - i18n: 2 nové klíče `realizations.edit` + `realizations.failedToUpdate`
+     × 4 lokály (en/cs/de/pl).
+4. ✅ **Frontend dead-code cleanup** *(2026-04-29 session druhá iterace)*
+   — odstraněny nepoužívané `fetchTaskAttachments` /
+   `uploadTaskAttachment` / `deleteTaskAttachment` + interface
+   `TaskDocumentOut` z `frontend-spa/src/stores/tasks.ts`. Šlo o legacy
+   alias k `tasks/{id}/documents` Document API; nikde se nikdy
+   nezavolaly.
+5. ✅ **Fáze 6 — nové tooly nad rámec** — již implementováno v migraci
+   `0039_phase6_streamline_bonus_activity_types`
+   (`ProposalViewedTool`, `AiSummaryTool`, `AiSuggestedActionTool`,
+   `MentionTool`, `SystemNoteTool`, `TagAddedTool`, `TagRemovedTool`,
+   `PinnedTool`, `UnpinnedTool`, `LinkTool`, `PaymentReceivedTool`,
+   `InvoiceSentTool`, `SignatureRequestedTool`, `SignatureCompletedTool`).
+   Viz sekce 5.2 níže.
+
+### Co dál po této session
+
+Backend i frontend Streamline systému jsou **kompletně sjednocené** —
+všechny entity (lead, customer, realization, management, proposal, task)
+mají jednotný `Activity` log + `EntitySidebarActionPicker` + responzivní
+2-col layout. Reálné navazující práce už nejsou v tématu Streamline,
+ale v okolních oblastech:
+
+1. **E2E testy timeline UX** *(sekce 4.10 — Fáze 5 follow-up)* — pro
+   každou entitní timeline (lead, task, realization, management,
+   customer, proposal) ověřit happy-path s Cypress/Playwright. Zatím
+   pokryté pouze unit testy v `crm/tests.py`.
+2. ✅ **Odstranit baseline `vue-tsc` errory** *(2026-04-29 session třetí
+   iterace)* — `RealizationDetailView.vue` 3 errory + `stores/realizations.ts`
+   10 errorů + `stores/management.ts` 10 errorů. Celkem **−23 errorů**
+   (z 57 unikátních na 34). Konkrétně:
+   - `RealizationDetailView.vue`: odstraněn redundantní 3. arg
+     `{ headers: firmHeader() }` z `api.post`/`api.patch`/`api.delete`
+     volání (řádky 110, 135, 149). Odstraněn nepoužitý `firmHeader()`
+     helper, `firmStore` ref a import `useFirmStore`. Firm header se
+     nastavuje globálně přes interceptor v `src/api/index.ts` —
+     `getFirmId()` čte z `localStorage` a přidává `X-Firm-ID` ke všem
+     `request<T>()` voláním. Žádná runtime regrese.
+   - `stores/realizations.ts` + `stores/management.ts`:
+     `extractErrorMessage(x)` calls (jen 1 arg) v `console.error`
+     blocích → přidán fallback `''` jako 2. arg podle konvence
+     ze `stores/customers.ts`. Jen log statements, žádná runtime změna.
+   - Vitest baseline: 66 failed / 102 passed test count beze změny
+     (preexisting failures jsou nezávislé — i18n/messages compile
+     errors v testech).
+3. **Pokračování baseline `vue-tsc` cleanup** *(zbývá 13 unikátních errorů)*:
+   - ✅ **`GanttView.vue` ambient module** *(2026-04-29 čtvrtá iterace)* —
+     do `env.d.ts` přidán `declare module 'frappe-gantt'`. Package
+     ships jen ES bundle bez `.d.ts`, importujeme ho jen dynamicky
+     s `as any` cast. Snižuje 1 error (TS7016).
+   - ✅ **Test fixture drift** *(2026-04-29 čtvrtá iterace)* — doplněna
+     chybějící pole do mock objektů ve 4 spec souborech:
+     - `auth.spec.ts`: `is_superuser: false`.
+     - `leads.spec.ts`: `created_by_id: null`, `created_by_name: null`.
+     - `tasks.spec.ts`: `recurrence`, `recurrence_parent_id`,
+       `approval_required`, `approval_status`, `approval_requested_from_id`,
+       `approval_requested_from_name`, `approval_note`, `custom_fields`.
+     - `customers.spec.ts` + `views/__tests__/CustomersView.spec.ts`:
+       `type`, `company_id`, `ico`, `dic`, `address_street`,
+       `address_city`, `address_zip`, `address_country`, `website`.
+     - Snižuje ~12 errorů. Vitest: 36/36 passed pro upravené specs.
+   - ✅ **`String#split('T')[0]` → `?? ''`** *(2026-04-30 pátá iterace)* —
+     pod `noUncheckedIndexedAccess` vrací `string | undefined`. Cílilo
+     na `Task.due_date`/`due_date_end` nullable mismatch + příbuzné:
+     - `TaskDetailView.vue` (4 řádky: editDueDate, editDueDateEnd,
+       logFormDate, recurrenceEndsAt).
+     - `TasksView.vue` (editDueDate), `TaskTableView.vue` (editValue).
+     - `GanttView.vue` (start/end z `_start.toISOString().split('T')[0]`
+       předávané do `emit('taskDateChange', task.id, start, end)`).
+     - `CalendarView.vue` (`USER_COLORS[i % USER_COLORS.length]` →
+       `?? '#6b7280'` default barva).
+     - Snižuje 8 errorů.
+   - ✅ **`ManagementDetailView.vue` narrowing** *(2026-04-30 pátá iterace)* —
+     `record.type` uvnitř `MANAGEMENT_TYPES.find(t => t.value === record.type)`
+     callback ztrácí narrowing z `<template v-else>`. Použito `record?.type`
+     pouze uvnitř callback (vnější `?? record.type` zůstává narrowing-OK).
+     Snižuje 1 error.
+   - ✅ **Sort/filter callback narrowing + EntitySidebarActionPicker
+     v-model + AutomationsView nullable indexing** *(2026-04-30 šestá iterace)* —
+     - `RealizationsView.vue` & `ManagementView.vue`: bucketing
+       `if (map[r.status]) map[r.status].push(r); else map['planned'].push(r)`
+       refaktorováno na `const bucket = map[r.status] ?? map['default']; bucket?.push(r)`
+       — `noUncheckedIndexedAccess` jinak hlásil `Object is possibly 'undefined'`
+       pro každé `map[key]`. Snižuje 4 errory.
+     - `EntitySidebarActionPicker.vue`: `sidebarExtraFields` typ změněn z
+       `Record<string, unknown>` na `Record<string, string | number | string[] | null>`,
+       aby `<textarea v-model>` přijal value-type. Hodnoty jsou inicializovány
+       prázdným stringem a všechny binding pole jsou textbox/select/number.
+       Snižuje 1 error.
+     - `AutomationsView.vue`:
+       - `setActionTagsFromString`: extrahováno `const action = ruleFormActions.value[i]; if (!action) return`,
+         poté přiřazení `action.tags`. Snižuje 1 error.
+       - `lastRunLabel`: zavedeno `const first = runs[0]; if (!first) return ''`
+         před voláním `formatDate(first.triggered_at)`. Snižuje 1 error.
+   - **Zbývá 13 errorů** ve 2 kategoriích:
+     - `ActivityTimeline.vue` (5) — `Object is possibly 'undefined'`
+       v lookup operacích + `string | undefined` not assignable.
+       Vyžaduje narrowing nebo non-null assertion.
+     - `AutomationsView.vue` (8 = 4 unikátní duplikované přes 2 contexty)
+       — `lead_title`/`task_title`/`customer_name`/`due_date` na
+       `$t()` interpolation contextu (chybí v typu named args
+       z i18n). Bude vyžadovat doplnění interface pro interpolation
+       payload — nebo cast.
+4. **`Task.realization` FK + Tasks tab v Realization detail** —
+   v `RealizationDetailView` je placeholder `tasks` tab; backend
+   `Task` model FK na `Realization` nemá. Vyžadovalo by migrace
+   + `list_tasks` filtr + i18n + UI.
+5. **Sekce 5.3 / 5.4 / 5.5** v `streamline_goals.md` — analytics nad
+   timeline (response time, channel mix, funnel attribution),
+   automatizace (rules over Activity), integrace (e-mail/voicemail
+   import). Produktové rozhodnutí, žádný blokátor.
+
+### C) Pokračovat s úklidem Fáze 2 + 3 backend *(už hotovo — viz výše)*
 
 Když odpadla povinnost migrovat data, dříve odložené úklidové fáze jsou
 triviální:

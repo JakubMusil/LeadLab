@@ -77,10 +77,10 @@ export const useRealizationsStore = defineStore('realizations', () => {
       if (res.ok) {
         realizations.value = res.data
       } else {
-        console.error('fetchRealizations:', extractErrorMessage(res.data))
+        console.error('fetchRealizations:', extractErrorMessage(res.data, ''))
       }
     } catch (err) {
-      console.error('fetchRealizations:', extractErrorMessage(err))
+      console.error('fetchRealizations:', extractErrorMessage(err, ''))
     } finally {
       loading.value = false
     }
@@ -94,10 +94,10 @@ export const useRealizationsStore = defineStore('realizations', () => {
         currentRealization.value = res.data
         return currentRealization.value
       }
-      console.error('fetchRealization:', extractErrorMessage(res.data))
+      console.error('fetchRealization:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('fetchRealization:', extractErrorMessage(err))
+      console.error('fetchRealization:', extractErrorMessage(err, ''))
       return null
     } finally {
       loadingDetail.value = false
@@ -111,10 +111,10 @@ export const useRealizationsStore = defineStore('realizations', () => {
         realizations.value.unshift(res.data)
         return res.data
       }
-      console.error('createRealization:', extractErrorMessage(res.data))
+      console.error('createRealization:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('createRealization:', extractErrorMessage(err))
+      console.error('createRealization:', extractErrorMessage(err, ''))
       return null
     }
   }
@@ -128,10 +128,10 @@ export const useRealizationsStore = defineStore('realizations', () => {
         if (currentRealization.value?.id === id) currentRealization.value = res.data
         return res.data
       }
-      console.error('updateRealization:', extractErrorMessage(res.data))
+      console.error('updateRealization:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('updateRealization:', extractErrorMessage(err))
+      console.error('updateRealization:', extractErrorMessage(err, ''))
       return null
     }
   }
@@ -144,10 +144,10 @@ export const useRealizationsStore = defineStore('realizations', () => {
         if (currentRealization.value?.id === id) currentRealization.value = null
         return true
       }
-      console.error('deleteRealization:', extractErrorMessage(res.data))
+      console.error('deleteRealization:', extractErrorMessage(res.data, ''))
       return false
     } catch (err) {
-      console.error('deleteRealization:', extractErrorMessage(err))
+      console.error('deleteRealization:', extractErrorMessage(err, ''))
       return false
     }
   }

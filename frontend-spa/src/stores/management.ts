@@ -77,10 +77,10 @@ export const useManagementStore = defineStore('management', () => {
       if (res.ok) {
         records.value = res.data
       } else {
-        console.error('fetchManagement:', extractErrorMessage(res.data))
+        console.error('fetchManagement:', extractErrorMessage(res.data, ''))
       }
     } catch (err) {
-      console.error('fetchManagement:', extractErrorMessage(err))
+      console.error('fetchManagement:', extractErrorMessage(err, ''))
     } finally {
       loading.value = false
     }
@@ -94,10 +94,10 @@ export const useManagementStore = defineStore('management', () => {
         currentRecord.value = res.data
         return currentRecord.value
       }
-      console.error('fetchManagementRecord:', extractErrorMessage(res.data))
+      console.error('fetchManagementRecord:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('fetchManagementRecord:', extractErrorMessage(err))
+      console.error('fetchManagementRecord:', extractErrorMessage(err, ''))
       return null
     } finally {
       loadingDetail.value = false
@@ -111,10 +111,10 @@ export const useManagementStore = defineStore('management', () => {
         records.value.unshift(res.data)
         return res.data
       }
-      console.error('createManagement:', extractErrorMessage(res.data))
+      console.error('createManagement:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('createManagement:', extractErrorMessage(err))
+      console.error('createManagement:', extractErrorMessage(err, ''))
       return null
     }
   }
@@ -128,10 +128,10 @@ export const useManagementStore = defineStore('management', () => {
         if (currentRecord.value?.id === id) currentRecord.value = res.data
         return res.data
       }
-      console.error('updateManagement:', extractErrorMessage(res.data))
+      console.error('updateManagement:', extractErrorMessage(res.data, ''))
       return null
     } catch (err) {
-      console.error('updateManagement:', extractErrorMessage(err))
+      console.error('updateManagement:', extractErrorMessage(err, ''))
       return null
     }
   }
@@ -144,10 +144,10 @@ export const useManagementStore = defineStore('management', () => {
         if (currentRecord.value?.id === id) currentRecord.value = null
         return true
       }
-      console.error('deleteManagement:', extractErrorMessage(res.data))
+      console.error('deleteManagement:', extractErrorMessage(res.data, ''))
       return false
     } catch (err) {
-      console.error('deleteManagement:', extractErrorMessage(err))
+      console.error('deleteManagement:', extractErrorMessage(err, ''))
       return false
     }
   }

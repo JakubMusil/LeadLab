@@ -267,7 +267,9 @@ function getActionTagsString(action: AutomationAction): string {
 }
 
 function setActionTagsFromString(i: number, value: string) {
-  ruleFormActions.value[i].tags = value.split(',').map((t) => t.trim()).filter(Boolean)
+  const action = ruleFormActions.value[i]
+  if (!action) return
+  action.tags = value.split(',').map((t) => t.trim()).filter(Boolean)
 }
 
 // ---------------------------------------------------------------------------
@@ -414,7 +416,9 @@ function formatDate(iso: string): string {
 function lastRunLabel(rule: AutomationRule): string {
   const runs = ruleRunsMap.value[rule.id]
   if (!runs || runs.length === 0) return ''
-  return `Last run: ${formatDate(runs[0].triggered_at)}`
+  const first = runs[0]
+  if (!first) return ''
+  return `Last run: ${formatDate(first.triggered_at)}`
 }
 </script>
 

@@ -3,25 +3,27 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRealizationsStore, REALIZATION_STATUSES, getRealizationStatusMeta, type MilestoneOut } from '@/stores/realizations'
 import { useAuthStore } from '@/stores/auth'
-import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRealizationsStore()
 const authStore = useAuthStore()
-const firmStore = useFirmStore()
 const toast = useToast()
 const { t } = useI18n()
 
 const realizationId = computed(() => route.params.id as string)
 
-type Tab = 'overview' | 'activities' | 'tasks' | 'milestones' | 'proposals' | 'documents'
+type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals' | 'documents'
 const activeTab = ref<Tab>('overview')
+
+// ActivityTimeline ref — used to reload feed after sidebar quick-action submits.
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 const editingTitle = ref(false)
 const titleDraft = ref('')
@@ -38,10 +40,6 @@ const milestoneFormLoading = ref(false)
 interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
 const linkedProposals = ref<ProposalOut[]>([])
 const proposalsLoading = ref(false)
-
-function firmHeader() {
-  return firmStore.activeFirm ? { 'X-Firm-ID': String(firmStore.activeFirm.id) } : {}
-}
 
 const realization = computed(() => store.currentRealization)
 
@@ -63,6 +61,36 @@ function startEditTitle() {
   editingTitle.value = true
 }
 
+// Inline description editing (plain text — Realization.description is a plain string)
+const editingDescription = ref(false)
+const descriptionDraft = ref('')
+const savingDescription = ref(false)
+
+function startEditDescription() {
+  descriptionDraft.value = realization.value?.description ?? ''
+  editingDescription.value = true
+}
+
+async function saveDescription() {
+  if (!realization.value) return
+  savingDescription.value = true
+  try {
+    const result = await store.updateRealization(realization.value.id, { description: descriptionDraft.value })
+    if (result) {
+      toast.success(t('realizations.updated'))
+      editingDescription.value = false
+    } else {
+      toast.error(t('realizations.failedToUpdate'))
+    }
+  } finally {
+    savingDescription.value = false
+  }
+}
+
+function cancelEditDescription() {
+  editingDescription.value = false
+}
+
 async function updateStatus(status: string) {
   if (!realization.value) return
   await store.updateRealization(realization.value.id, { status })
@@ -80,7 +108,6 @@ async function createMilestone() {
         date: milestoneFormDate.value,
         description: milestoneFormDesc.value,
       },
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
     toast.success(t('realizations.milestoneAdded'))
@@ -101,7 +128,6 @@ async function toggleMilestone(m: MilestoneOut) {
     await api.patch(
       `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
       { is_completed: !m.is_completed },
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
   } catch {
@@ -114,7 +140,6 @@ async function deleteMilestone(m: MilestoneOut) {
   try {
     await api.delete(
       `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
-      { headers: firmHeader() }
     )
     await store.fetchRealization(realization.value.id)
     toast.success(t('realizations.milestoneDeleted'))
@@ -230,25 +255,6 @@ onMounted(async () => {
         >
           {{ realization.title }}
         </h1>
-
-        <!-- Meta line -->
-        <div class="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
-          <span v-if="realization.customer_name">
-            <span class="text-gray-400">{{ t('realizations.colCustomer') }}:</span> {{ realization.customer_name }}
-          </span>
-          <span v-if="realization.lead_title">
-            <span class="text-gray-400">Příležitost:</span> {{ realization.lead_title }}
-          </span>
-          <span v-if="realization.assigned_to_name">
-            <span class="text-gray-400">Odpovědná osoba:</span> {{ realization.assigned_to_name }}
-          </span>
-          <span v-if="realization.start_date">
-            <span class="text-gray-400">Zahájení:</span> {{ realization.start_date }}
-          </span>
-          <span v-if="realization.end_date">
-            <span class="text-gray-400">Termín:</span> {{ realization.end_date }}
-          </span>
-        </div>
       </div>
 
       <!-- Status selector -->
@@ -269,7 +275,6 @@ onMounted(async () => {
       <button
         v-for="tab in [
           { id: 'overview', label: t('realizations.tabOverview') },
-          { id: 'activities', label: t('realizations.tabActivities') },
           { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
           { id: 'tasks', label: t('realizations.tabTasks') },
           { id: 'proposals', label: t('realizations.tabProposals') },
@@ -286,19 +291,71 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Overview tab -->
-    <div v-if="activeTab === 'overview'" class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Overview tab: streamline left + sidebar right -->
+    <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: ActivityTimeline (streamline) -->
+      <div class="lg:col-span-2">
+        <ActivityTimeline ref="activityTimelineRef" entity-type="realization" :entity-id="realizationId" />
+      </div>
+
+      <!-- Right: sidebar (quick actions + description + milestones progress + meta) -->
+      <div class="space-y-4">
+
+        <!-- Quick actions (unified Streamline composer) -->
+        <EntitySidebarActionPicker
+          entity-type="realization"
+          :entity-id="realizationId"
+          @activity-added="activityTimelineRef?.load()"
+        />
+
+        <!-- Description -->
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('realizations.descLabel') }}</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ realization.description || '—' }}</p>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ t('realizations.descLabel') }}</h3>
+            <button
+              v-if="!editingDescription"
+              class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              @click="startEditDescription"
+            >{{ t('realizations.edit') }}</button>
+          </div>
+          <template v-if="editingDescription">
+            <textarea
+              v-model="descriptionDraft"
+              rows="4"
+              class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 dark:focus:border-red-500 resize-y"
+              :placeholder="t('realizations.descPlaceholder')"
+            />
+            <div class="flex justify-end gap-2 mt-1.5">
+              <button
+                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                @click="cancelEditDescription"
+              >{{ t('common.cancel') }}</button>
+              <button
+                :disabled="savingDescription"
+                class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                @click="saveDescription"
+              >{{ savingDescription ? t('realizations.saving') : t('common.save') }}</button>
+            </div>
+          </template>
+          <p
+            v-else-if="realization.description"
+            class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap cursor-pointer"
+            @click="startEditDescription"
+          >{{ realization.description }}</p>
+          <p
+            v-else
+            class="text-sm text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
+            @click="startEditDescription"
+          >{{ t('realizations.descPlaceholder') }}</p>
         </div>
 
+        <!-- Milestones progress -->
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('realizations.milestonesTitle') }}</h3>
           <div v-if="totalMilestones > 0">
             <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <span>{{ completedMilestones }} / {{ totalMilestones }} splněno</span>
+              <span>{{ completedMilestones }} / {{ totalMilestones }} {{ t('realizations.completed') }}</span>
               <span>{{ Math.round((completedMilestones / totalMilestones) * 100) }}%</span>
             </div>
             <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -310,12 +367,37 @@ onMounted(async () => {
           </div>
           <p v-else class="text-sm text-gray-400">{{ t('realizations.noMilestones') }}</p>
         </div>
-      </div>
-    </div>
 
-    <!-- Activities tab -->
-    <div v-if="activeTab === 'activities'">
-      <ActivityTimeline entity-type="realization" :entity-id="realizationId" />
+        <!-- Customer -->
+        <div v-if="realization.customer_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.colCustomer') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white">{{ realization.customer_name }}</div>
+        </div>
+
+        <!-- Lead -->
+        <div v-if="realization.lead_title" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.opportunityLabel') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white truncate">{{ realization.lead_title }}</div>
+        </div>
+
+        <!-- Assigned to -->
+        <div v-if="realization.assigned_to_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.assignedToLabel') }}</div>
+          <div class="text-sm text-gray-900 dark:text-white">{{ realization.assigned_to_name }}</div>
+        </div>
+
+        <!-- Dates -->
+        <div v-if="realization.start_date || realization.end_date" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 space-y-2">
+          <div v-if="realization.start_date">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.startLabel') }}</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ realization.start_date }}</div>
+          </div>
+          <div v-if="realization.end_date">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.endLabel') }}</div>
+            <div class="text-sm text-gray-900 dark:text-white">{{ realization.end_date }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Milestones tab -->

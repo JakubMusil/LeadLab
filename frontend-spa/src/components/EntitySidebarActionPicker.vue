@@ -124,7 +124,7 @@ const sidebarActionType = ref('')
 const sidebarActivityText = ref('')
 const sidebarActivitySubmitting = ref(false)
 const sidebarRichEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
-const sidebarExtraFields = ref<Record<string, unknown>>({})
+const sidebarExtraFields = ref<Record<string, string | number | string[] | null>>({})
 
 // Task quick-create state
 const sidebarTaskTitle = ref('')
@@ -208,7 +208,7 @@ function openSidebarAction(type: string) {
   sidebarActivityText.value = ''
   // Pre-initialise schema keys so Vue's Proxy reactivity tracks them from start.
   const tool = toolbarTools.value.find((x) => x.activity_type === type)
-  const fields: Record<string, unknown> = {}
+  const fields: Record<string, string | number | string[] | null> = {}
   if (tool?.form_schema?.properties) {
     for (const key of Object.keys(tool.form_schema.properties as object)) {
       if (!SKIP_FIELD_KEYS.has(key)) fields[key] = ''

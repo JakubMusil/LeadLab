@@ -189,8 +189,8 @@ function openEditTask() {
   editTitle.value = task.value.title
   editDescription.value = task.value.description
   editDescriptionHtml.value = task.value.description_html
-  editDueDate.value = task.value.due_date ? task.value.due_date.split('T')[0] : ''
-  editDueDateEnd.value = task.value.due_date_end ? task.value.due_date_end.split('T')[0] : ''
+  editDueDate.value = task.value.due_date ? (task.value.due_date.split('T')[0] ?? '') : ''
+  editDueDateEnd.value = task.value.due_date_end ? (task.value.due_date_end.split('T')[0] ?? '') : ''
   editAssigneeId.value = task.value.assigned_to_id ?? ''
   editWatcherIds.value = [...task.value.watcher_ids]
   editPriority.value = task.value.priority
@@ -785,7 +785,7 @@ async function handleStopTimer() {
 
 function openLogForm() {
   const now = new Date()
-  logFormDate.value = now.toISOString().split('T')[0]
+  logFormDate.value = now.toISOString().split('T')[0] ?? ''
   logFormMinutes.value = null
   logFormDescription.value = ''
   showLogForm.value = true
@@ -881,7 +881,7 @@ function openRecurrenceModal() {
     recurrenceType.value = String(rec.type ?? 'daily')
     recurrenceInterval.value = Number(rec.interval ?? 1)
     recurrenceDayOfWeek.value = Array.isArray(rec.day_of_week) ? rec.day_of_week.map(Number) : []
-    recurrenceEndsAt.value = rec.ends_at ? String(rec.ends_at).split('T')[0] : ''
+    recurrenceEndsAt.value = rec.ends_at ? (String(rec.ends_at).split('T')[0] ?? '') : ''
   } else {
     recurrenceType.value = 'daily'
     recurrenceInterval.value = 1

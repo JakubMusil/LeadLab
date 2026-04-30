@@ -6,6 +6,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -132,6 +133,9 @@ const sendingProposal = ref(false)
 
 // Preview panel
 const showPreview = ref(false)
+
+// ActivityTimeline ref — reload feed after sidebar quick-action submits.
+const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
 const CURRENCIES = ['CZK', 'EUR', 'USD', 'GBP', 'PLN']
 const STATUSES = computed(() => [
@@ -953,10 +957,19 @@ watch(
             </div>
           </div>
 
-          <!-- Activity Timeline -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
-            <ActivityTimeline entityType="proposal" :entityId="currentProposal.id" />
+          <!-- Streamline: timeline + quick-action sidebar (builder UI above stays untouched) -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
+              <ActivityTimeline ref="activityTimelineRef" entityType="proposal" :entityId="currentProposal.id" />
+            </div>
+            <div>
+              <EntitySidebarActionPicker
+                entity-type="proposal"
+                :entity-id="currentProposal.id"
+                @activity-added="activityTimelineRef?.load()"
+              />
+            </div>
           </div>
         </template>
       </div>
