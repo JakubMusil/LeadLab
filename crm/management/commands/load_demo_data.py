@@ -29,7 +29,10 @@ from crm.models import (
     Lead,
     LeadSource,
     LeadStatus,
+    Project,
     Task,
+    TaskPriority,
+    TaskStatus,
 )
 from firms.models import Firm, Membership, MembershipRole
 
@@ -80,6 +83,22 @@ CUSTOMERS = [
         "phone": "+1 555-0105",
         "company_name": "Davis Digital",
         "tags": ["startup", "prospect"],
+    },
+    {
+        "first_name": "Frank",
+        "last_name": "Miller",
+        "email": "frank.miller@example.com",
+        "phone": "+1 555-0106",
+        "company_name": "Miller Tech",
+        "tags": ["enterprise", "prospect"],
+    },
+    {
+        "first_name": "Grace",
+        "last_name": "Wilson",
+        "email": "grace.wilson@example.com",
+        "phone": "+1 555-0107",
+        "company_name": "Wilson & Co",
+        "tags": ["smb", "vip"],
     },
 ]
 
@@ -138,23 +157,81 @@ LEADS = [
         "currency": "USD",
         "customer_index": 1,
     },
+    {
+        "title": "Miller Tech — cloud migration project",
+        "description": "Full migration from on-premise ERP to cloud-hosted solution.",
+        "status": LeadStatus.PROPOSAL,
+        "source": LeadSource.REFERRAL,
+        "value": Decimal("32000.00"),
+        "currency": "USD",
+        "customer_index": 5,
+    },
+    {
+        "title": "Wilson & Co — monthly retainer",
+        "description": "Ongoing support and CRM customisation retainer agreement.",
+        "status": LeadStatus.WON,
+        "source": LeadSource.EMAIL,
+        "value": Decimal("2400.00"),
+        "currency": "USD",
+        "customer_index": 6,
+    },
+    {
+        "title": "Canceled — budget freeze",
+        "description": "Client paused all vendor negotiations due to internal budget review.",
+        "status": LeadStatus.CANCELED,
+        "source": LeadSource.OTHER,
+        "value": Decimal("5000.00"),
+        "currency": "USD",
+        "customer_index": 3,
+    },
 ]
 
-ACTIVITIES = [
-    ("Introduced LeadLab via introductory call — positive reception.", ActivityType.CALL),
-    ("Sent product overview deck and pricing sheet.", ActivityType.EMAIL_OUT),
-    ("Follow-up email: confirmed interest in Pro plan.", ActivityType.EMAIL_IN),
-    ("Demo session scheduled for next Tuesday.", ActivityType.MEETING),
-    ("Proposal draft sent for review.", ActivityType.EMAIL_OUT),
-    ("Received signed contract — deal closed!", ActivityType.COMMENT),
-]
+# Activities per lead index (activities are attached to the lead at that position).
+ACTIVITIES_BY_LEAD = {
+    0: [
+        ("Introduced LeadLab via introductory call — positive reception.", ActivityType.CALL),
+        ("Sent product overview deck and pricing sheet.", ActivityType.EMAIL_OUT),
+        ("Follow-up email: confirmed interest in Pro plan.", ActivityType.EMAIL_IN),
+        ("Demo session scheduled for next Tuesday.", ActivityType.MEETING),
+        ("Proposal draft sent for review.", ActivityType.EMAIL_OUT),
+        ("Received signed contract — deal closed!", ActivityType.COMMENT),
+    ],
+    1: [
+        ("Initial discovery call completed.", ActivityType.CALL),
+        ("Sent portfolio samples and case studies.", ActivityType.EMAIL_OUT),
+        ("Client requested a revised scope document.", ActivityType.EMAIL_IN),
+    ],
+    2: [
+        ("Renewal reminder sent 60 days before expiry.", ActivityType.EMAIL_OUT),
+        ("Client confirmed renewal — invoice raised.", ActivityType.EMAIL_IN),
+    ],
+    3: [
+        ("First contact via LinkedIn message.", ActivityType.COMMENT),
+        ("Scheduled introductory call for next week.", ActivityType.MEETING),
+    ],
+    6: [
+        ("Referral introduction call with Miller Tech CTO.", ActivityType.CALL),
+        ("Sent high-level migration roadmap for review.", ActivityType.EMAIL_OUT),
+    ],
+}
 
 TASKS = [
-    ("Send follow-up email", 3),
-    ("Prepare demo environment", 7),
-    ("Schedule stakeholder call", 5),
-    ("Review proposal feedback", 2),
-    ("Update CRM with call notes", 1),
+    # (title, lead_index, days_offset, priority, status)
+    ("Send follow-up email", 0, 3, TaskPriority.HIGH, TaskStatus.TODO),
+    ("Prepare demo environment", 0, 7, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS),
+    ("Schedule stakeholder call", 0, 5, TaskPriority.HIGH, TaskStatus.TODO),
+    ("Review proposal feedback", 1, 2, TaskPriority.MEDIUM, TaskStatus.TODO),
+    ("Update CRM with call notes", 0, 1, TaskPriority.LOW, TaskStatus.DONE),
+    ("Send revised scope document", 1, 4, TaskPriority.HIGH, TaskStatus.TODO),
+    ("Confirm renewal invoice details", 2, 1, TaskPriority.MEDIUM, TaskStatus.DONE),
+    ("Prepare Miller Tech migration plan", 6, 10, TaskPriority.CRITICAL, TaskStatus.IN_PROGRESS),
+    ("Draft retainer agreement for Wilson & Co", 7, 3, TaskPriority.MEDIUM, TaskStatus.TODO),
+]
+
+PROJECTS = [
+    "Q3 Pipeline",
+    "Key Account Management",
+    "Renewals & Retention",
 ]
 
 
@@ -253,7 +330,6 @@ class Command(BaseCommand):
 
         # ---- leads ----
         leads = []
-        base_date = timezone.now() - timedelta(days=60)
         for i, data in enumerate(LEADS):
             customer = customers[data["customer_index"]]
             lead, created = Lead.objects.get_or_create(
@@ -274,34 +350,49 @@ class Command(BaseCommand):
                 self.stdout.write(f"  + Lead: {lead.title[:60]}")
 
         # ---- activities ----
-        if leads:
-            primary_lead = leads[0]
-            existing_count = Activity.objects.filter(lead=primary_lead).count()
-            if existing_count == 0:
-                for j, (body, atype) in enumerate(ACTIVITIES):
-                    Activity.objects.create(
-                        lead=primary_lead,
-                        user=user,
-                        type=atype,
-                        content_text=body,
-                    )
-                self.stdout.write(f"  + {len(ACTIVITIES)} activities on '{primary_lead.title[:40]}'")
+        for lead_index, activity_list in ACTIVITIES_BY_LEAD.items():
+            if lead_index >= len(leads):
+                continue
+            target_lead = leads[lead_index]
+            if Activity.objects.filter(lead=target_lead).exists():
+                continue
+            for body, atype in activity_list:
+                Activity.objects.create(
+                    lead=target_lead,
+                    user=user,
+                    type=atype,
+                    content_text=body,
+                )
+            self.stdout.write(f"  + {len(activity_list)} activities on '{target_lead.title[:40]}'")
+
+        # ---- projects ----
+        projects = []
+        for project_name in PROJECTS:
+            project, created = Project.objects.get_or_create(firm=firm, name=project_name)
+            projects.append(project)
+            if created:
+                self.stdout.write(f"  + Project: {project_name}")
 
         # ---- tasks ----
-        if leads:
-            primary_lead = leads[0]
-            existing_tasks = Task.objects.filter(lead=primary_lead).count()
-            if existing_tasks == 0:
-                now = timezone.now()
-                for title, days_offset in TASKS:
-                    Task.objects.create(
-                        firm=firm,
-                        lead=primary_lead,
-                        assigned_to=user,
-                        title=title,
-                        due_date=now + timedelta(days=days_offset),
-                    )
-                self.stdout.write(f"  + {len(TASKS)} tasks on '{primary_lead.title[:40]}'")
+        now = timezone.now()
+        for title, lead_index, days_offset, priority, status in TASKS:
+            if lead_index >= len(leads):
+                continue
+            target_lead = leads[lead_index]
+            task, created = Task.objects.get_or_create(
+                firm=firm,
+                title=title,
+                lead=target_lead,
+                defaults={
+                    "assigned_to": user,
+                    "due_date": now + timedelta(days=days_offset),
+                    "priority": priority,
+                    "status": status,
+                    "is_completed": status == TaskStatus.DONE,
+                },
+            )
+            if created:
+                self.stdout.write(f"  + Task: {title}")
 
         self.stdout.write(self.style.SUCCESS("\nDemo data loaded successfully!"))
         self.stdout.write(
