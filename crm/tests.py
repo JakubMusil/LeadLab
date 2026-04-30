@@ -2891,3 +2891,270 @@ class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
         self.client.logout()
         resp = self.client.get(self.URL, {"start": self.win_start, "end": self.win_end}, **self.firm_headers())
         self.assertIn(resp.status_code, (401, 403))
+
+
+# ---------------------------------------------------------------------------
+# Calendar / Task unification — outcome prompt (PR4)
+# ---------------------------------------------------------------------------
+
+class TaskOutcomePromptJobTest(CRMFixtureMixin, TestCase):
+    """The auto-expire job sends a one-shot ``task.outcome_prompt`` notification
+    once ``due_date_end`` has elapsed, before the grace period closes."""
+
+    def _make(self, **overrides):
+        defaults = dict(
+            firm=self.firm,
+            lead=self.lead,
+            title="Calendar meeting",
+            kind="meeting",
+            auto_close_on_expiry=True,
+            due_date=timezone.now() - dt.timedelta(hours=2),
+            assigned_to=self.owner,
+        )
+        defaults.update(overrides)
+        return Task.objects.create(**defaults)
+
+    def test_prompt_sent_within_grace_window(self):
+        from crm.models import Notification
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make()  # meeting, 24h grace, due 2h ago → in grace
+        auto_expire_scheduled_tasks()
+
+        task.refresh_from_db()
+        self.assertIsNotNone(task.outcome_prompted_at)
+        notes = Notification.objects.filter(user=self.owner, event="task.outcome_prompt")
+        self.assertEqual(notes.count(), 1)
+        self.assertEqual(notes.first().payload["task_id"], str(task.id))
+
+    def test_prompt_sent_only_once(self):
+        from crm.models import Notification
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make()
+        auto_expire_scheduled_tasks()
+        auto_expire_scheduled_tasks()
+        auto_expire_scheduled_tasks()
+
+        task.refresh_from_db()
+        self.assertEqual(
+            Notification.objects.filter(user=self.owner, event="task.outcome_prompt").count(),
+            1,
+        )
+        self.assertIsNotNone(task.outcome_prompted_at)
+
+    def test_prompt_includes_watchers(self):
+        from crm.models import Notification
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        task = self._make()
+        task.watchers.add(self.worker)
+        auto_expire_scheduled_tasks()
+
+        recipients = set(
+            Notification.objects.filter(event="task.outcome_prompt")
+            .values_list("user_id", flat=True)
+        )
+        self.assertEqual(recipients, {self.owner.id, self.worker.id})
+
+    def test_no_prompt_before_due_date(self):
+        from crm.models import Notification
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        # Future task — should not produce any prompt or expire.
+        task = self._make(due_date=timezone.now() + dt.timedelta(hours=2))
+        auto_expire_scheduled_tasks()
+
+        task.refresh_from_db()
+        self.assertIsNone(task.outcome_prompted_at)
+        self.assertFalse(
+            Notification.objects.filter(event="task.outcome_prompt").exists()
+        )
+
+    def test_generic_kind_skipped_no_prompt(self):
+        """Generic tasks have zero grace → no prompt window, just direct expiry."""
+        from crm.models import Notification
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        self._make(kind="generic", due_date=timezone.now() - dt.timedelta(minutes=5))
+        auto_expire_scheduled_tasks()
+
+        self.assertFalse(
+            Notification.objects.filter(event="task.outcome_prompt").exists()
+        )
+
+    def test_prompt_then_expire_when_grace_elapses(self):
+        """A task prompted within grace is auto-expired once grace elapses."""
+        from crm.models import TaskStatus
+        from crm.tasks import auto_expire_scheduled_tasks
+
+        # Kind=call → 2h grace. due 1h ago → in grace.
+        task = self._make(kind="call", due_date=timezone.now() - dt.timedelta(hours=1))
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.TODO)
+        self.assertIsNotNone(task.outcome_prompted_at)
+
+        # Now move due_date back so grace has elapsed and re-run.
+        task.due_date = timezone.now() - dt.timedelta(hours=5)
+        task.save(update_fields=["due_date"])
+        auto_expire_scheduled_tasks()
+        task.refresh_from_db()
+        self.assertEqual(task.status, TaskStatus.EXPIRED)
+
+
+class TaskOutcomeEndpointTest(CRMAPIFixtureMixin, TestCase):
+    """``POST /api/v1/crm/tasks/{id}/outcome`` — held / rescheduled / no_show."""
+
+    def setUp(self):
+        super().setUp()
+        from crm.models import Task
+        self.task = Task.objects.create(
+            firm=self.firm,
+            lead=self.lead,
+            title="Calendar call",
+            kind="call",
+            auto_close_on_expiry=True,
+            due_date=dt.datetime(2026, 4, 30, 10, 0, tzinfo=dt.timezone.utc),
+            due_date_end=dt.datetime(2026, 4, 30, 10, 30, tzinfo=dt.timezone.utc),
+            assigned_to=self.owner,
+            outcome_prompted_at=dt.datetime(2026, 4, 30, 11, 0, tzinfo=dt.timezone.utc),
+        )
+
+    def _url(self):
+        return f"/api/v1/crm/tasks/{self.task.id}/outcome"
+
+    # -- held ---------------------------------------------------------------
+
+    def test_held_marks_done_and_logs_call_activity(self):
+        from crm.models import ActivityType, TaskStatus
+
+        resp = self._post(self._url(), {"action": "held", "note": "Spoke with client, all good."})
+        self.assertEqual(resp.status_code, 200)
+        self.task.refresh_from_db()
+        self.assertTrue(self.task.is_completed)
+        self.assertEqual(self.task.status, TaskStatus.DONE)
+        self.assertEqual(self.task.completed_by, self.owner)
+
+        acts = Activity.objects.filter(task=self.task, type=ActivityType.CALL)
+        self.assertEqual(acts.count(), 1)
+        self.assertEqual(acts.first().content_text, "Spoke with client, all good.")
+        self.assertEqual(acts.first().metadata.get("outcome"), "held")
+        self.assertEqual(acts.first().lead, self.lead)
+
+    def test_held_meeting_kind_logs_meeting_activity(self):
+        from crm.models import ActivityType
+        self.task.kind = "meeting"
+        self.task.save(update_fields=["kind"])
+
+        resp = self._post(self._url(), {"action": "held"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Activity.objects.filter(task=self.task, type=ActivityType.MEETING).exists()
+        )
+
+    def test_held_already_completed_returns_400(self):
+        self.task.is_completed = True
+        self.task.save(update_fields=["is_completed"])
+        resp = self._post(self._url(), {"action": "held"})
+        self.assertEqual(resp.status_code, 400)
+
+    # -- rescheduled --------------------------------------------------------
+
+    def test_rescheduled_updates_due_date_and_resets_prompt(self):
+        from crm.models import ActivityType, TaskStatus
+
+        new_due = "2026-05-15T14:00:00+00:00"
+        resp = self._post(self._url(), {
+            "action": "rescheduled",
+            "new_due_date": new_due,
+            "new_due_date_end": "2026-05-15T15:00:00+00:00",
+            "note": "Client asked to move",
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.due_date.isoformat(), "2026-05-15T14:00:00+00:00")
+        self.assertEqual(self.task.due_date_end.isoformat(), "2026-05-15T15:00:00+00:00")
+        self.assertIsNone(self.task.outcome_prompted_at)
+        self.assertFalse(self.task.is_completed)
+        self.assertEqual(self.task.status, TaskStatus.TODO)
+
+        # Logs a DUE_DATE_CHANGE Activity with outcome=rescheduled metadata.
+        acts = Activity.objects.filter(task=self.task, type=ActivityType.DUE_DATE_CHANGE)
+        self.assertEqual(acts.count(), 1)
+        self.assertEqual(acts.first().metadata.get("outcome"), "rescheduled")
+        self.assertEqual(acts.first().metadata.get("note"), "Client asked to move")
+
+    def test_rescheduled_resurrects_expired_task(self):
+        from crm.models import TaskStatus
+        self.task.status = TaskStatus.EXPIRED
+        self.task.save(update_fields=["status"])
+
+        resp = self._post(self._url(), {
+            "action": "rescheduled",
+            "new_due_date": "2026-05-15T14:00:00+00:00",
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, TaskStatus.TODO)
+
+    def test_rescheduled_requires_new_due_date(self):
+        resp = self._post(self._url(), {"action": "rescheduled"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_rescheduled_validates_end_after_start(self):
+        resp = self._post(self._url(), {
+            "action": "rescheduled",
+            "new_due_date": "2026-05-15T14:00:00+00:00",
+            "new_due_date_end": "2026-05-15T13:00:00+00:00",
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    # -- no_show ------------------------------------------------------------
+
+    def test_no_show_marks_expired_and_logs_activity(self):
+        from crm.models import ActivityType, TaskStatus
+
+        resp = self._post(self._url(), {"action": "no_show", "note": "Klient nedorazil"})
+        self.assertEqual(resp.status_code, 200)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, TaskStatus.EXPIRED)
+        self.assertFalse(self.task.is_completed)  # not "done"
+
+        acts = Activity.objects.filter(task=self.task, type=ActivityType.TASK_EXPIRED)
+        self.assertEqual(acts.count(), 1)
+        self.assertEqual(acts.first().metadata.get("outcome"), "no_show")
+        self.assertEqual(acts.first().content_text, "Klient nedorazil")
+
+    # -- validation & permissions -------------------------------------------
+
+    def test_invalid_action_returns_400(self):
+        resp = self._post(self._url(), {"action": "bogus"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unknown_task_returns_404(self):
+        import uuid
+        resp = self._post(f"/api/v1/crm/tasks/{uuid.uuid4()}/outcome", {"action": "held"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_cross_firm_task_returns_404(self):
+        other_firm = Firm.objects.create(name="Other Firm Outcome")
+        from crm.models import Task
+        other_task = Task.objects.create(
+            firm=other_firm,
+            title="X",
+            kind="call",
+            due_date=dt.datetime(2026, 4, 30, 10, 0, tzinfo=dt.timezone.utc),
+        )
+        resp = self._post(f"/api/v1/crm/tasks/{other_task.id}/outcome", {"action": "held"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_unauthenticated_returns_401_or_403(self):
+        self.client.logout()
+        resp = self.client.post(
+            self._url(),
+            data=json.dumps({"action": "held"}),
+            content_type="application/json",
+            **self.firm_headers(),
+        )
+        self.assertIn(resp.status_code, (401, 403))

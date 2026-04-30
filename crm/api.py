@@ -2148,6 +2148,196 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
 # Task detail (single task)
 # ---------------------------------------------------------------------------
 
+class TaskOutcomeIn(Schema):
+    """Payload for ``POST /tasks/{id}/outcome``.
+
+    The ``action`` discriminates between the three possible answers to the
+    "what happened with this calendar task?" prompt:
+
+    * ``held``        — the call/meeting took place; mark task DONE and log
+                        a ``call``/``meeting`` Activity (kind-driven). Optional
+                        ``note`` becomes the Activity content.
+    * ``rescheduled`` — move the task to a new date; resets status to TODO
+                        and re-opens the prompt window. Requires
+                        ``new_due_date``.
+    * ``no_show``     — the event did not happen and won't be rescheduled;
+                        terminal ``EXPIRED`` status with ``outcome=no_show``
+                        in the Activity metadata.
+    """
+    action: str
+    note: str = ""
+    new_due_date: Optional[datetime] = None
+    new_due_date_end: Optional[datetime] = None
+
+
+_TASK_OUTCOME_ACTIONS = {"held", "rescheduled", "no_show"}
+
+
+@router.post(
+    "/tasks/{task_id}/outcome",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
+    """Record the user's response to the calendar-task outcome prompt.
+
+    Accepts one of three actions (``held`` / ``rescheduled`` / ``no_show``)
+    and adjusts the Task + timeline accordingly. See :class:`TaskOutcomeIn`
+    for semantics.
+
+    Authorisation: any worker of the firm can record an outcome on any
+    task they are allowed to see (mirrors ``complete_task``).
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    if payload.action not in _TASK_OUTCOME_ACTIONS:
+        return 400, {
+            "detail": (
+                f"Invalid action '{payload.action}'. "
+                f"Expected one of: {sorted(_TASK_OUTCOME_ACTIONS)}."
+            )
+        }
+
+    try:
+        task = Task.objects.select_related(
+            "lead", "realization", "management", "customer", "proposal",
+        ).get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if task.is_completed and payload.action != "rescheduled":
+        # Already resolved — surface a 400 so the SPA can refresh state
+        # rather than silently no-op (which would mask a stale prompt).
+        return 400, {"detail": "Task is already completed."}
+
+    note = (payload.note or "").strip()
+
+    with transaction.atomic():
+        if payload.action == "held":
+            task.is_completed = True
+            task.completed_at = tz.now()
+            task.completed_by = request.user
+            task.status = TaskStatus.DONE
+            task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
+
+            # Map task kind → outcome Activity type. Generic / unknown
+            # kinds fall back to TASK_COMPLETED so the timeline is still
+            # truthful even if an automation set kind to something exotic.
+            kind_to_activity = {
+                "call": ActivityType.CALL,
+                "meeting": ActivityType.MEETING,
+            }
+            outcome_type = kind_to_activity.get(task.kind, ActivityType.TASK_COMPLETED)
+            outcome_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "task_kind": task.kind,
+                "outcome": "held",
+            }
+            # Log on every linked entity timeline (mirrors complete_task).
+            for entity_kwargs in _task_entity_kwargs_iter(task):
+                Activity.objects.create(
+                    user=request.user,
+                    type=outcome_type,
+                    content_text=note,
+                    metadata=outcome_metadata,
+                    task=task,
+                    **entity_kwargs,
+                )
+
+        elif payload.action == "rescheduled":
+            if payload.new_due_date is None:
+                return 400, {"detail": "'new_due_date' is required when rescheduling."}
+            if (
+                payload.new_due_date_end is not None
+                and payload.new_due_date_end < payload.new_due_date
+            ):
+                return 400, {"detail": "'new_due_date_end' cannot precede 'new_due_date'."}
+
+            old_due_date = task.due_date.isoformat() if task.due_date else None
+            task.due_date = payload.new_due_date
+            task.due_date_end = payload.new_due_date_end
+            # Re-open the task: reset status if it had been auto-expired
+            # and clear the prompt mark so the next occurrence prompts
+            # again from scratch.
+            if task.status == TaskStatus.EXPIRED:
+                task.status = TaskStatus.TODO
+            task.outcome_prompted_at = None
+            task.is_completed = False
+            task.completed_at = None
+            task.completed_by = None
+            task.save(update_fields=[
+                "due_date", "due_date_end", "status", "outcome_prompted_at",
+                "is_completed", "completed_at", "completed_by",
+            ])
+            _log_timeline_event(
+                task,
+                ActivityType.DUE_DATE_CHANGE,
+                author=request.user,
+                metadata={
+                    "old": old_due_date,
+                    "new": payload.new_due_date.isoformat(),
+                    "outcome": "rescheduled",
+                    "note": note,
+                },
+            )
+
+        else:  # no_show
+            task.status = TaskStatus.EXPIRED
+            task.save(update_fields=["status"])
+            outcome_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "task_kind": task.kind,
+                "outcome": "no_show",
+                "note": note,
+            }
+            for entity_kwargs in _task_entity_kwargs_iter(task):
+                Activity.objects.create(
+                    user=request.user,
+                    type=ActivityType.TASK_EXPIRED,
+                    content_text=note,
+                    metadata=outcome_metadata,
+                    task=task,
+                    **entity_kwargs,
+                )
+
+    return 200, _task_out(task, request.user)
+
+
+def _task_entity_kwargs_iter(task: Task):
+    """Yield ``Activity`` constructor kwargs for each linked CRM entity.
+
+    A task can be tied to several entities (lead/realization/management/
+    customer/proposal). We log a separate Activity per timeline so each
+    entity's history is self-contained. If no entity is linked we still
+    yield one empty dict so the Activity is created (orphan timeline).
+    """
+    yielded = False
+    if task.lead_id:
+        yield {"lead": task.lead}
+        yielded = True
+    if task.realization_id:
+        yield {"realization": task.realization}
+        yielded = True
+    if task.management_id:
+        yield {"management": task.management}
+        yielded = True
+    if task.customer_id and not (task.lead_id or task.realization_id or task.management_id):
+        # Only attach to customer if no higher-level entity carries it,
+        # to avoid double-logging on the customer's aggregated timeline.
+        yield {"customer": task.customer}
+        yielded = True
+    if task.proposal_id and not yielded:
+        yield {"proposal": task.proposal}
+        yielded = True
+    if not yielded:
+        yield {}
+
+
 @router.get("/tasks/{task_id}", auth=django_auth, response={200: TaskOut, 403: ErrorOut, 404: ErrorOut})
 def get_task(request, task_id: str):
     """Retrieve a single task by ID."""

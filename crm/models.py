@@ -761,6 +761,16 @@ class Task(TenantModel):
             "has been logged."
         ),
     )
+    outcome_prompted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Timestamp when the assignee/watchers were prompted to log the "
+            "outcome of this calendar task (held / rescheduled / no_show). "
+            "Set by the auto-expire job after ``due_date_end`` and cleared "
+            "when the task is rescheduled. Null means we have not asked yet."
+        ),
+    )
 
     # ---------------------------------------------------------------------------
     # Phase 7 — Recurrence
