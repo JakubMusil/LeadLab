@@ -233,7 +233,7 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class:
-        'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[80px] px-3 py-2',
+        'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[80px] px-3 py-2 text-gray-900 dark:text-gray-100',
     },
   },
   onUpdate({ editor }) {
@@ -449,13 +449,17 @@ defineExpose({ getMentionedIds })
 </template>
 
 <style>
-/* Tiptap placeholder */
+/* Tiptap placeholder — color must keep ≥ 4.5:1 contrast on white background.
+   gray-500 (#6b7280) on white is ~4.83:1, passes WCAG AA for normal text. */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #9ca3af;
+  color: #6b7280;
   pointer-events: none;
   height: 0;
+}
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af;
 }
 
 /* Mention node styling */

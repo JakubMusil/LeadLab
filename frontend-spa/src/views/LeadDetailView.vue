@@ -561,7 +561,7 @@ function getTabLabel(tab: string): string {
               <div class="flex-1 min-w-0">
                 <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
                 <!-- eslint-disable-next-line vue/no-v-html -->
-                <div v-if="task.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 prose prose-xs max-w-none" v-html="sanitizeHtml(task.description)" />
+                <div v-if="task.description" class="text-xs text-gray-700 dark:text-gray-300 mt-0.5 prose prose-xs dark:prose-invert max-w-none" v-html="sanitizeHtml(task.description)" />
                 <div class="flex flex-wrap gap-3 mt-1 text-xs">
                   <span v-if="task.due_date" class="inline-flex items-center gap-1" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
                     <CalendarDaysIcon class="w-3.5 h-3.5" />

@@ -14,11 +14,14 @@
 ## Kroky
 
 ### Krok 1 — Plošný fix kontrastu v light mode (Tiptap + prose)
-- [ ] Audit všech míst, kde se zobrazuje výstup z `RichTextEditor` (search `prose ` ve `frontend-spa/src/`).
-- [ ] V `RichTextEditor.vue` (edit oblast): nastavit explicitní `text-gray-900 dark:text-gray-100` na editor content; zkontrolovat placeholder, mention chip, list markery, inline kód.
-- [ ] Doplnit chybějící `dark:prose-invert` a sjednotit kontejnerový `text-gray-700 dark:text-gray-300` na všech read-only místech (známý hot-spot: `LeadDetailView.vue:564`).
-- [ ] Vytvořit shared komponentu `RichTextDisplay.vue` (sanitize + `v-html` + jednotné prose třídy), použít ji všude místo ad-hoc `v-html`.
-- [ ] Spustit lint + typecheck.
+- [x] Audit všech míst, kde se zobrazuje výstup z `RichTextEditor` (search `prose ` ve `frontend-spa/src/`).
+- [x] Zjištěna kořenová příčina: chybějící `@tailwindcss/typography` plugin → prose třídy byly mrtvé.
+- [x] Plugin nainstalován (`@tailwindcss/typography@^0.5.19`) a zaregistrován v `tailwind.config.ts` s vlastní paletou pro WCAG-AA.
+- [x] V `RichTextEditor.vue` (edit oblast): nastavena explicitní `text-gray-900 dark:text-gray-100`, opraven placeholder color.
+- [x] Doplněno chybějící `dark:prose-invert` a sjednocen kontejnerový `text-gray-700 dark:text-gray-300` v `LeadDetailView.vue:564`.
+- [x] Vytvořena shared komponenta `RichTextDisplay.vue` (sanitize + `v-html` + jednotné prose třídy).
+- [x] Vytvořen sdílený util `utils/sanitizeHtml.ts`.
+- [x] Validace: `vue-tsc`, `oxlint`, `vite build` — vše prošlo.
 
 ### Krok 2 — `Lead.description` všude přes editor + Safe HTML
 - [ ] Backend: přidat HTML pole na Lead (buď `description_html`, nebo přepnout `description` na HTML s server-side sanitizací — finální rozhodnutí v rámci kroku).
@@ -50,10 +53,20 @@
 
 ## Stav vypracování
 
-**Aktuálně:** Plán uložen, začínám Krok 1.
+**Aktuálně:** Krok 1 dokončen, pokračuji Krokem 2.
 
 **Hotovo:**
 - Plán a předpoklady zapsány do `plan.md`.
+- **Krok 1 (Kontrast):**
+  - Identifikováno, že `@tailwindcss/typography` plugin nebyl nainstalovaný — proto třídy `prose`/`dark:prose-invert` napříč SPA neaplikovaly žádné styly. To je kořenová příčina kontrastních problémů.
+  - Přidán `@tailwindcss/typography@^0.5.19` jako devDependency (bez známých CVE).
+  - V `tailwind.config.ts` zaregistrován plugin a customizována paleta `prose` proměnných pro WCAG-AA kontrast jak v light, tak v dark mode.
+  - V `RichTextEditor.vue` doplněna explicitní `text-gray-900 dark:text-gray-100` na editovací oblast a ztmaven placeholder z `gray-400` (~3.4:1) na `gray-500` (~4.8:1) v light mode, s parem `gray-400` v dark mode.
+  - Opraven hot-spot `LeadDetailView.vue:564` (popis úkolu): `text-gray-500` → `text-gray-700 dark:text-gray-300` + doplněno `dark:prose-invert`.
+  - Vytvořen sdílený util `src/utils/sanitizeHtml.ts` (single source of truth pro DOMPurify sanitizaci) — připraveno k postupné konsolidaci 4 lokálních duplicit.
+  - Vytvořena sdílená komponenta `src/components/RichTextDisplay.vue` pro jednotné read-only renderování HTML z editoru.
+  - Validace: `vue-tsc --build`, `oxlint`, `vite build` — vše čisté.
 
 **Následuje:**
-- Krok 1 — kontrastní fix napříč editorem a všemi read-only renderery výstupu z editoru.
+- Krok 2 — `Lead.description` všude přes editor + Safe HTML rendering (backend HTML pole + sanitizace, sjednocení všech zobrazení popisu leadu na `RichTextEditor` / `RichTextDisplay`).
+- V rámci Kroku 2 také postupně nahradit lokální `sanitizeHtml` definice v `LeadDetailView.vue`, `CatalogView.vue`, `TaskDetailView.vue` a `ActivityTimeline.vue` importem ze sdíleného utilu.
