@@ -497,7 +497,7 @@ ale v okolních oblastech:
    automatizace (rules over Activity), integrace (e-mail/voicemail
    import). Produktové rozhodnutí, žádný blokátor.
 
-### Čím pokračovat příští session *(stav po 2026-04-30 dvacáté první iteraci)*
+### Čím pokračovat příští session *(stav po 2026-04-30 dvacáté první iteraci + bugfix)*
 
 Django test suite **202/202 pass**, vue-tsc **0 errorů**, oxlint/eslint
 **0 warnings** na měněných souborech, vitest **90/90 pass** v
@@ -505,6 +505,34 @@ unit suite (12 souborů). FE má teď v sidebar Quick Actions na Lead detailu
 **všech 14 logických nástrojů**, organizovaných do 4 UX kategorií, a
 schema-driven formulář umí všechny field-typy z aktuální tool registry
 (string/email/uri/date/date-time/integer/number/enum/array/multi-line).
+
+#### 🐛 Bugfix doplněný k 21. iteraci (2026-04-30)
+
+**Problém:** Po editaci pole na Lead detailu (název, status, …) se
+`entity_change` Activity vytvořil v DB, ale v timeline se objevil **až
+po refreshi stránky**. Real-time WS update neproběhl.
+
+**Příčina:** V `crm/apps.py` jsme entity-change Activity záznamy zakládali
+přes `Activity.objects.bulk_create(activities_to_create)`, který:
+1. nespouští `post_save` signály (žádný hook na broadcast),
+2. nikde poté nebyl `broadcast_event(event="activity.created", …)`.
+
+`POST /api/v1/crm/activities` (manuální komentáře/calls) broadcast měl,
+takže ty se objevily okamžitě — auto-logované entity_change ne.
+
+**Fix:** `crm/apps.py: _make_post_save` nyní:
+1. Místo `bulk_create` volá `Activity.objects.create(...)` per pole
+   (typicky 1 INSERT per editaci, max 5–6 — výkonový rozdíl
+   zanedbatelný oproti volání API endpointu).
+2. Nově shromažďuje vrácené Activity instance a po smyčce volá
+   `broadcast_event(firm=firm, event="activity.created",
+   payload=_activity_out(activity))` pro každou. `broadcast_event` má
+   uvnitř `transaction.on_commit`, takže WS push proběhne až po commitu
+   transakce — žádné race condition se čtením z DB.
+3. Importy `_activity_out` a `broadcast_event` jsou lazy (uvnitř
+   handleru), aby se předešlo cirkulárnímu importu při startu Django.
+
+**Validace:** Django suite **202/202 pass** beze změn.
 
 #### ✅ Co bylo ve dvacáté první iteraci (2026-04-30) uděláno
 
