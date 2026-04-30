@@ -724,6 +724,11 @@ class ActivityOut(Schema):
     tool_payload: Optional[Dict[str, Any]] = None
     # Aggregated emoji reactions for this activity
     reactions: List[Dict[str, Any]] = []
+    # Calendar / Task unification — when an activity is linked to a parent
+    # Task (e.g. ``meeting_scheduled``/``call_scheduled`` and their auto-
+    # expiry follow-ups), this exposes the Task ID so the SPA can render
+    # status badges or navigate to the Task without a second request.
+    task_id: Optional[str] = None
 
 
 class ActivityIn(Schema):
@@ -788,6 +793,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
+        "task_id": str(a.task_id) if a.task_id else None,
     }
 
 
@@ -1051,10 +1057,16 @@ class TaskOut(Schema):
     # Classification
     priority: str
     status: str
+    kind: str
     tags: List[str]
     # Dates
     due_date: Optional[datetime]
     due_date_end: Optional[datetime]
+    # Calendar fields
+    location: str
+    attendees: List[str]
+    auto_close_on_expiry: bool
+    outcome_prompted_at: Optional[datetime]
     # Flags
     is_completed: bool
     completed_at: Optional[datetime]
@@ -1357,9 +1369,14 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "description_added_at": t.description_added_at,
         "priority": t.priority,
         "status": t.status,
+        "kind": t.kind,
         "tags": t.tags if isinstance(t.tags, list) else [],
         "due_date": t.due_date,
         "due_date_end": t.due_date_end,
+        "location": t.location,
+        "attendees": t.attendees if isinstance(t.attendees, list) else [],
+        "auto_close_on_expiry": t.auto_close_on_expiry,
+        "outcome_prompted_at": t.outcome_prompted_at,
         "is_completed": t.is_completed,
         "completed_at": t.completed_at,
         "is_pinned": t.is_pinned,
@@ -1434,6 +1451,196 @@ def _notify_task_watchers(task: Task, event: str) -> None:
             Notification.objects.bulk_create(notifications, ignore_conflicts=True)
     except Exception:
         logger.exception("Failed to persist watcher notifications for task %s event %s", task.id, event)
+
+
+class CalendarTaskOut(Schema):
+    """Lightweight calendar entry derived from a ``Task``.
+
+    Returned by ``GET /calendar/tasks`` for rendering month/week/day views.
+    Carries only what the calendar needs — full Task details remain
+    available via ``GET /tasks/{id}``.
+    """
+    id: str
+    title: str
+    kind: str
+    status: str
+    priority: str
+    is_completed: bool
+    # Calendar slot — start = ``due_date``, end = ``due_date_end`` if set
+    # otherwise the same as ``due_date`` (point-in-time event).
+    start: datetime
+    end: datetime
+    location: str
+    attendees: List[str]
+    assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str]
+    # Entity link for click-through; exactly one is populated.
+    lead_id: Optional[str]
+    lead_title: Optional[str]
+    realization_id: Optional[str]
+    realization_title: Optional[str]
+    management_id: Optional[str]
+    management_title: Optional[str]
+    customer_id: Optional[str]
+    customer_name: Optional[str]
+    proposal_id: Optional[str]
+    proposal_title: Optional[str]
+
+
+def _calendar_task_out(t: Task) -> dict:
+    """Serialize a ``Task`` as a calendar entry."""
+    start = t.due_date
+    end = t.due_date_end or t.due_date
+    return {
+        "id": str(t.id),
+        "title": t.title,
+        "kind": t.kind,
+        "status": t.status,
+        "priority": t.priority,
+        "is_completed": bool(t.is_completed),
+        "start": start,
+        "end": end,
+        "location": t.location or "",
+        "attendees": list(t.attendees or []),
+        "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
+        "assigned_to_name": _user_display_name(t.assigned_to),
+        "lead_id": str(t.lead_id) if t.lead_id else None,
+        "lead_title": t.lead.title if t.lead_id else None,
+        "realization_id": str(t.realization_id) if t.realization_id else None,
+        "realization_title": getattr(t.realization, "title", None) if t.realization_id else None,
+        "management_id": str(t.management_id) if t.management_id else None,
+        "management_title": getattr(t.management, "title", None) if t.management_id else None,
+        "customer_id": str(t.customer_id) if t.customer_id else None,
+        "customer_name": (
+            f"{t.customer.first_name or ''} {t.customer.last_name or ''}".strip()
+            or t.customer.email
+            or t.customer.company_name
+            or None
+        ) if t.customer_id else None,
+        "proposal_id": str(t.proposal_id) if t.proposal_id else None,
+        "proposal_title": getattr(t.proposal, "title", None) if t.proposal_id else None,
+    }
+
+
+# Hard cap on the number of entries returned in a single calendar query.
+# Calendars typically render at most a few hundred items per view; cap
+# protects against an accidental year-wide query melting the API.
+_CALENDAR_MAX_RESULTS = 1000
+# Maximum window the caller is allowed to request in a single call.
+# Keeps DB scans bounded; SPA can page month-by-month if it needs more.
+_CALENDAR_MAX_WINDOW_DAYS = 366
+
+
+def _parse_iso_datetime(value: str, field_name: str):
+    """Parse an ISO-8601 string supporting the ``Z`` suffix, returning
+    a tuple ``(dt_or_none, error_response_or_none)``.
+    """
+    parsed = parse_datetime(value)
+    if parsed is None:
+        try:
+            parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None, (400, {"detail": f"Invalid {field_name} format: '{value}'. Use ISO-8601."})
+    if tz.is_naive(parsed):
+        parsed = tz.make_aware(parsed, tz.get_current_timezone())
+    return parsed, None
+
+
+@router.get(
+    "/calendar/tasks",
+    auth=django_auth,
+    response={200: List[CalendarTaskOut], 400: ErrorOut, 403: ErrorOut},
+)
+def list_calendar_tasks(
+    request,
+    start: str,
+    end: str,
+    assigned_to_id: Optional[str] = None,
+    kind: Optional[str] = None,
+    status: Optional[str] = None,
+    include_completed: bool = False,
+    include_archived: bool = False,
+):
+    """
+    Return tasks whose calendar slot overlaps the ``[start, end]`` window.
+
+    A task overlaps the window when ``due_date <= end`` **and**
+    ``coalesce(due_date_end, due_date) >= start``. Tasks without a
+    ``due_date`` are not calendar events and are excluded.
+
+    Scope (``assigned_to_id``):
+      * omitted / ``"me"`` — tasks assigned to the current user
+      * ``"watching"``     — tasks where the current user is in ``watchers``
+      * ``"all"``          — all firm tasks (admin/owner only; workers
+                              are silently narrowed to their own)
+      * ``<uuid>``         — tasks assigned to that user (admin/owner can
+                              query anyone; workers can only query themselves)
+
+    By default ``status=expired`` and ``is_completed=True`` tasks are
+    excluded; pass ``include_completed=true`` to bring them back in.
+    Archived tasks are always excluded unless ``include_archived=true``.
+    """
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    start_dt, err = _parse_iso_datetime(start, "start")
+    if err is not None:
+        return err
+    end_dt, err = _parse_iso_datetime(end, "end")
+    if err is not None:
+        return err
+
+    if end_dt < start_dt:
+        return 400, {"detail": "'end' must be greater than or equal to 'start'."}
+    if (end_dt - start_dt) > dt.timedelta(days=_CALENDAR_MAX_WINDOW_DAYS):
+        return 400, {
+            "detail": (
+                f"Requested window is too large; maximum is "
+                f"{_CALENDAR_MAX_WINDOW_DAYS} days."
+            )
+        }
+
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+
+    qs = Task.objects.filter(firm=request.firm).select_related(
+        "lead", "realization", "management", "customer", "proposal", "assigned_to",
+    )
+
+    # Window overlap: due_date <= end AND coalesce(due_date_end, due_date) >= start.
+    qs = qs.filter(due_date__isnull=False, due_date__lte=end_dt).filter(
+        Q(due_date_end__isnull=False, due_date_end__gte=start_dt)
+        | Q(due_date_end__isnull=True, due_date__gte=start_dt)
+    )
+
+    # Scope filter.
+    if assigned_to_id in (None, "", "me"):
+        qs = qs.filter(assigned_to=request.user)
+    elif assigned_to_id == "watching":
+        qs = qs.filter(watchers=request.user)
+    elif assigned_to_id == "all":
+        if not is_admin:
+            qs = qs.filter(assigned_to=request.user)
+        # admins/owners: no extra filter
+    else:
+        # Specific UUID — workers can only ask about themselves.
+        if not is_admin and str(request.user.id) != str(assigned_to_id):
+            qs = qs.filter(assigned_to=request.user)
+        else:
+            qs = qs.filter(assigned_to_id=assigned_to_id)
+
+    if kind is not None:
+        qs = qs.filter(kind=kind)
+    if status is not None:
+        qs = qs.filter(status=status)
+    if not include_completed:
+        qs = qs.filter(is_completed=False).exclude(status=TaskStatus.EXPIRED)
+    if not include_archived:
+        qs = qs.filter(is_archived=False)
+
+    qs = qs.order_by("due_date").distinct()[: _CALENDAR_MAX_RESULTS]
+    return 200, [_calendar_task_out(t) for t in qs]
 
 
 @router.get("/tasks", auth=django_auth, response={200: List[TaskOut], 403: ErrorOut})
@@ -1942,6 +2149,196 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
 # ---------------------------------------------------------------------------
 # Task detail (single task)
 # ---------------------------------------------------------------------------
+
+class TaskOutcomeIn(Schema):
+    """Payload for ``POST /tasks/{id}/outcome``.
+
+    The ``action`` discriminates between the three possible answers to the
+    "what happened with this calendar task?" prompt:
+
+    * ``held``        — the call/meeting took place; mark task DONE and log
+                        a ``call``/``meeting`` Activity (kind-driven). Optional
+                        ``note`` becomes the Activity content.
+    * ``rescheduled`` — move the task to a new date; resets status to TODO
+                        and re-opens the prompt window. Requires
+                        ``new_due_date``.
+    * ``no_show``     — the event did not happen and won't be rescheduled;
+                        terminal ``EXPIRED`` status with ``outcome=no_show``
+                        in the Activity metadata.
+    """
+    action: str
+    note: str = ""
+    new_due_date: Optional[datetime] = None
+    new_due_date_end: Optional[datetime] = None
+
+
+_TASK_OUTCOME_ACTIONS = {"held", "rescheduled", "no_show"}
+
+
+@router.post(
+    "/tasks/{task_id}/outcome",
+    auth=django_auth,
+    response={200: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
+    """Record the user's response to the calendar-task outcome prompt.
+
+    Accepts one of three actions (``held`` / ``rescheduled`` / ``no_show``)
+    and adjusts the Task + timeline accordingly. See :class:`TaskOutcomeIn`
+    for semantics.
+
+    Authorisation: any worker of the firm can record an outcome on any
+    task they are allowed to see (mirrors ``complete_task``).
+    """
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    if payload.action not in _TASK_OUTCOME_ACTIONS:
+        return 400, {
+            "detail": (
+                f"Invalid action '{payload.action}'. "
+                f"Expected one of: {sorted(_TASK_OUTCOME_ACTIONS)}."
+            )
+        }
+
+    try:
+        task = Task.objects.select_related(
+            "lead", "realization", "management", "customer", "proposal",
+        ).get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if task.is_completed and payload.action != "rescheduled":
+        # Already resolved — surface a 400 so the SPA can refresh state
+        # rather than silently no-op (which would mask a stale prompt).
+        return 400, {"detail": "Task is already completed."}
+
+    note = (payload.note or "").strip()
+
+    with transaction.atomic():
+        if payload.action == "held":
+            task.is_completed = True
+            task.completed_at = tz.now()
+            task.completed_by = request.user
+            task.status = TaskStatus.DONE
+            task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
+
+            # Map task kind → outcome Activity type. Generic / unknown
+            # kinds fall back to TASK_COMPLETED so the timeline is still
+            # truthful even if an automation set kind to something exotic.
+            kind_to_activity = {
+                "call": ActivityType.CALL,
+                "meeting": ActivityType.MEETING,
+            }
+            outcome_type = kind_to_activity.get(task.kind, ActivityType.TASK_COMPLETED)
+            outcome_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "task_kind": task.kind,
+                "outcome": "held",
+            }
+            # Log on every linked entity timeline (mirrors complete_task).
+            for entity_kwargs in _task_entity_kwargs_iter(task):
+                Activity.objects.create(
+                    user=request.user,
+                    type=outcome_type,
+                    content_text=note,
+                    metadata=outcome_metadata,
+                    task=task,
+                    **entity_kwargs,
+                )
+
+        elif payload.action == "rescheduled":
+            if payload.new_due_date is None:
+                return 400, {"detail": "'new_due_date' is required when rescheduling."}
+            if (
+                payload.new_due_date_end is not None
+                and payload.new_due_date_end < payload.new_due_date
+            ):
+                return 400, {"detail": "'new_due_date_end' cannot precede 'new_due_date'."}
+
+            old_due_date = task.due_date.isoformat() if task.due_date else None
+            task.due_date = payload.new_due_date
+            task.due_date_end = payload.new_due_date_end
+            # Re-open the task: reset status if it had been auto-expired
+            # and clear the prompt mark so the next occurrence prompts
+            # again from scratch.
+            if task.status == TaskStatus.EXPIRED:
+                task.status = TaskStatus.TODO
+            task.outcome_prompted_at = None
+            task.is_completed = False
+            task.completed_at = None
+            task.completed_by = None
+            task.save(update_fields=[
+                "due_date", "due_date_end", "status", "outcome_prompted_at",
+                "is_completed", "completed_at", "completed_by",
+            ])
+            _log_timeline_event(
+                task,
+                ActivityType.DUE_DATE_CHANGE,
+                author=request.user,
+                metadata={
+                    "old": old_due_date,
+                    "new": payload.new_due_date.isoformat(),
+                    "outcome": "rescheduled",
+                    "note": note,
+                },
+            )
+
+        else:  # no_show
+            task.status = TaskStatus.EXPIRED
+            task.save(update_fields=["status"])
+            outcome_metadata = {
+                "task_id": str(task.id),
+                "task_title": task.title,
+                "task_kind": task.kind,
+                "outcome": "no_show",
+                "note": note,
+            }
+            for entity_kwargs in _task_entity_kwargs_iter(task):
+                Activity.objects.create(
+                    user=request.user,
+                    type=ActivityType.TASK_EXPIRED,
+                    content_text=note,
+                    metadata=outcome_metadata,
+                    task=task,
+                    **entity_kwargs,
+                )
+
+    return 200, _task_out(task, request.user)
+
+
+def _task_entity_kwargs_iter(task: Task):
+    """Yield ``Activity`` constructor kwargs for each linked CRM entity.
+
+    A task can be tied to several entities (lead/realization/management/
+    customer/proposal). We log a separate Activity per timeline so each
+    entity's history is self-contained. If no entity is linked we still
+    yield one empty dict so the Activity is created (orphan timeline).
+    """
+    yielded = False
+    if task.lead_id:
+        yield {"lead": task.lead}
+        yielded = True
+    if task.realization_id:
+        yield {"realization": task.realization}
+        yielded = True
+    if task.management_id:
+        yield {"management": task.management}
+        yielded = True
+    if task.customer_id and not (task.lead_id or task.realization_id or task.management_id):
+        # Only attach to customer if no higher-level entity carries it,
+        # to avoid double-logging on the customer's aggregated timeline.
+        yield {"customer": task.customer}
+        yielded = True
+    if task.proposal_id and not yielded:
+        yield {"proposal": task.proposal}
+        yielded = True
+    if not yielded:
+        yield {}
+
 
 @router.get("/tasks/{task_id}", auth=django_auth, response={200: TaskOut, 403: ErrorOut, 404: ErrorOut})
 def get_task(request, task_id: str):

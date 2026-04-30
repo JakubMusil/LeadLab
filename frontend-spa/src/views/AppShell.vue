@@ -6,6 +6,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useLeadsStore, type LeadOut } from '@/stores/leads'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
+import { useTasksStore } from '@/stores/tasks'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
@@ -43,6 +44,7 @@ const firmStore = useFirmStore()
 const leadsStore = useLeadsStore()
 const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
+const tasksStore = useTasksStore()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 
@@ -92,6 +94,26 @@ function onTaskCompleted(payload: Record<string, unknown>) {
   notifStore.pushNotification('task.completed', payload)
 }
 
+function onTaskOutcomePrompt(payload: Record<string, unknown>) {
+  // Refresh the in-memory task so the SPA picks up the new
+  // ``outcome_prompted_at`` timestamp without a manual reload — that
+  // timestamp is what TaskDetailView/CalendarView use to render the
+  // outcome banner / amber chip.
+  const taskId = payload['task_id'] as string | undefined
+  if (taskId) {
+    void tasksStore.fetchTask(taskId).catch(() => undefined)
+  }
+  notifStore.pushNotification('task.outcome_prompt', payload)
+}
+
+function onTaskExpired(payload: Record<string, unknown>) {
+  const taskId = payload['task_id'] as string | undefined
+  if (taskId) {
+    void tasksStore.fetchTask(taskId).catch(() => undefined)
+  }
+  notifStore.pushNotification('task.expired', payload)
+}
+
 function onRealizationCreated(payload: Record<string, unknown>) {
   notifStore.pushNotification('realization.created', payload)
 }
@@ -127,6 +149,8 @@ onMounted(async () => {
   on('lead.deleted', onLeadDeleted)
   on('activity.created', onActivityCreated)
   on('task.completed', onTaskCompleted)
+  on('task.outcome_prompt', onTaskOutcomePrompt)
+  on('task.expired', onTaskExpired)
   on('realization.created', onRealizationCreated)
   on('realization.updated', onRealizationUpdated)
   on('realization.deleted', onRealizationDeleted)
@@ -141,6 +165,8 @@ onUnmounted(() => {
   off('lead.deleted', onLeadDeleted)
   off('activity.created', onActivityCreated)
   off('task.completed', onTaskCompleted)
+  off('task.outcome_prompt', onTaskOutcomePrompt)
+  off('task.expired', onTaskExpired)
   off('realization.created', onRealizationCreated)
   off('realization.updated', onRealizationUpdated)
   off('realization.deleted', onRealizationDeleted)
@@ -237,6 +263,8 @@ function eventLabel(event: string): string {
     'lead.deleted': t('appShell.eventLeadDeleted'),
     'activity.created': t('appShell.eventActivityCreated'),
     'task.completed': t('appShell.eventTaskCompleted'),
+    'task.outcome_prompt': t('appShell.eventTaskOutcomePrompt'),
+    'task.expired': t('appShell.eventTaskExpired'),
   }
   return map[event] ?? event
 }
@@ -248,6 +276,8 @@ function eventIcon(event: string): string {
     'lead.deleted': '🗑',
     'activity.created': '💬',
     'task.completed': '✅',
+    'task.outcome_prompt': '⏰',
+    'task.expired': '⌛',
   }
   return map[event] ?? '🔔'
 }
@@ -261,6 +291,12 @@ function notifTitle(n: { event: string; payload: Record<string, unknown> }): str
   }
   if (n.event === 'task.completed') {
     return (n.payload.title as string) || t('appShell.notifTaskCompleted')
+  }
+  if (n.event === 'task.outcome_prompt') {
+    return (n.payload.task_title as string) || t('appShell.notifTaskOutcomePrompt')
+  }
+  if (n.event === 'task.expired') {
+    return (n.payload.task_title as string) || t('appShell.notifTaskExpired')
   }
   if (n.event === 'lead.deleted') {
     return t('appShell.notifLeadDeleted', { id: n.payload.id as string })

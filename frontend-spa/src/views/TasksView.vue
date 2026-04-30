@@ -622,9 +622,10 @@ onMounted(async () => {
                 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300': task.status === 'blocked',
                 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': task.status === 'done',
                 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400': task.status === 'cancelled',
+                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300': task.status === 'expired',
               }"
             >
-              {{ { todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'), blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled') }[task.status] ?? task.status }}
+              {{ { todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'), blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled'), expired: t('tasks.statusExpired') }[task.status] ?? task.status }}
             </span>
             <!-- Priority -->
             <span

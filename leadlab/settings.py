@@ -150,6 +150,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.check_sla_expiry_automations',
         'schedule': crontab(hour=8, minute=30),
     },
+    # Calendar / Task unification — auto-close scheduled tasks past their grace
+    'auto-expire-scheduled-tasks': {
+        'task': 'crm.tasks.auto_expire_scheduled_tasks',
+        'schedule': crontab(minute='*/15'),
+    },
 }
 
 # Stripe

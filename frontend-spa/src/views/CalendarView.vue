@@ -12,6 +12,7 @@ import { useTasksStore, type TaskOut } from '@/stores/tasks'
 import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
+import TaskOutcomeModal from '@/components/TaskOutcomeModal.vue'
 
 const router = useRouter()
 const tasksStore = useTasksStore()
@@ -87,18 +88,39 @@ const events = computed<EventInput[]>(() =>
     .filter((t) => t.due_date)
     .map((t) => {
       const isoStr = t.due_date!
+      const endIso = t.due_date_end ?? null
       // Treat as all-day if the time component is midnight UTC or absent
       const isAllDay = /T00:00:00/.test(isoStr) || !isoStr.includes('T')
-      const color = t.is_completed ? '#22c55e' : getUserColor(t.assigned_to_id)
+      // PR4: visual differentiation for expired / prompted tasks so the
+      // user spots overdue calendar items at a glance.
+      const isExpired = t.status === 'expired'
+      const isPrompted = !t.is_completed && !!t.outcome_prompted_at && !isExpired
+      let color: string
+      const classNames: string[] = []
+      if (t.is_completed) {
+        color = '#22c55e'
+        classNames.push('fc-event-completed')
+      } else if (isExpired) {
+        color = '#9ca3af' // gray-400
+        classNames.push('fc-event-expired')
+      } else if (isPrompted) {
+        color = '#f59e0b' // amber-500
+        classNames.push('fc-event-prompted')
+      } else {
+        color = getUserColor(t.assigned_to_id)
+      }
       return {
         id: t.id,
         title: t.title,
         start: isoStr,
+        // FullCalendar treats events with no end as point-in-time; using
+        // ``due_date_end`` lets meeting/call slots span their actual length.
+        end: endIso ?? undefined,
         allDay: isAllDay,
         backgroundColor: color,
         borderColor: color,
         textColor: '#fff',
-        classNames: t.is_completed ? ['fc-event-completed'] : [],
+        classNames,
         extendedProps: { task: t },
       }
     }),
@@ -175,6 +197,34 @@ async function completeSelectedTask() {
   } else {
     toast.error(r.error ?? t('calendar.failedToComplete'))
   }
+}
+
+// ── PR4: outcome prompt for calendar tasks ───────────────────────────────────
+const showOutcomeModal = ref(false)
+
+/** True iff the open modal's task is awaiting outcome resolution
+ *  (calendar kind, prompted by the auto-expire job, not yet resolved). */
+const selectedNeedsOutcome = computed(() => {
+  const tt = selectedTask.value
+  if (!tt) return false
+  if (tt.is_completed || tt.status === 'expired' || tt.status === 'done' || tt.status === 'cancelled') return false
+  if (!tt.outcome_prompted_at) return false
+  return tt.kind === 'call' || tt.kind === 'meeting'
+})
+
+function isExpired(task: TaskOut): boolean {
+  return task.status === 'expired'
+}
+
+function openOutcomeModal() {
+  if (!selectedTask.value) return
+  showOutcomeModal.value = true
+}
+
+function onOutcomeResolved(updated: TaskOut) {
+  selectedTask.value = updated
+  showOutcomeModal.value = false
+  showTaskDetail.value = false
 }
 
 function goToTaskDetail() {
@@ -442,11 +492,29 @@ onMounted(async () => {
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                 :class="selectedTask.is_completed
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
-                  : isOverdue(selectedTask)
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'"
+                  : isExpired(selectedTask)
+                    ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    : selectedNeedsOutcome
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                      : isOverdue(selectedTask)
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'"
               >
-                {{ selectedTask.is_completed ? t('calendar.statusCompleted') : isOverdue(selectedTask) ? t('calendar.overdueTasks') : t('calendar.statusOpen') }}
+                {{ selectedTask.is_completed
+                  ? t('calendar.statusCompleted')
+                  : isExpired(selectedTask)
+                    ? t('calendar.statusExpired')
+                    : selectedNeedsOutcome
+                      ? t('calendar.outcomePending')
+                      : isOverdue(selectedTask)
+                        ? t('calendar.overdueTasks')
+                        : t('calendar.statusOpen') }}
+              </span>
+              <span
+                v-if="selectedTask.kind === 'call' || selectedTask.kind === 'meeting'"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+              >
+                {{ selectedTask.kind === 'call' ? t('calendar.kindCall') : t('calendar.kindMeeting') }}
               </span>
             </div>
             <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ selectedTask.title }}</h2>
@@ -500,7 +568,17 @@ onMounted(async () => {
         <!-- Actions -->
         <div class="flex gap-2 px-5 pb-5">
           <button
-            v-if="!selectedTask.is_completed"
+            v-if="selectedNeedsOutcome"
+            class="flex-1 inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+            @click="openOutcomeModal"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ t('calendar.logOutcome') }}
+          </button>
+          <button
+            v-else-if="!selectedTask.is_completed && !isExpired(selectedTask)"
             :disabled="completeLoading"
             class="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
             @click="completeSelectedTask"
@@ -642,12 +720,30 @@ onMounted(async () => {
       </div>
     </div>
   </Teleport>
+
+  <!-- ── PR4: outcome prompt modal ─────────────────────────────────────────── -->
+  <TaskOutcomeModal
+    v-if="showOutcomeModal && selectedTask"
+    :task="selectedTask"
+    @close="showOutcomeModal = false"
+    @resolved="onOutcomeResolved"
+  />
 </template>
 
 <style>
 /* Subtle opacity for completed events */
 .fc-event-completed {
   opacity: 0.65;
+}
+/* PR4: expired calendar tasks — gray + line-through to signal "we gave up" */
+.fc-event-expired {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+/* PR4: prompted-but-unresolved — amber dashed border to draw the eye */
+.fc-event-prompted {
+  outline: 2px dashed #d97706;
+  outline-offset: -2px;
 }
 /* Remove default FullCalendar border radius for a cleaner look */
 .fc-leadlab .fc-event {

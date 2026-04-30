@@ -86,6 +86,7 @@ const grouped = computed<GroupEntry[]>(() => {
   const statusLabels: Record<string, string> = {
     todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'),
     blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled'),
+    expired: t('tasks.statusExpired'),
   }
   const priorityLabels: Record<string, string> = {
     none: t('tasks.priorityNone'), low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'),
@@ -171,6 +172,7 @@ function statusBg(s: string) {
     blocked: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
     done: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
     cancelled: 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+    expired: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
   }
   return map[s] ?? 'bg-gray-100 text-gray-600'
 }
@@ -178,6 +180,7 @@ function statusBg(s: string) {
 const statusLabels = computed(() => ({
   todo: t('tasks.statusTodo'), in_progress: t('tasks.statusInProgress'),
   blocked: t('tasks.statusBlocked'), done: t('tasks.statusDone'), cancelled: t('tasks.statusCancelled'),
+  expired: t('tasks.statusExpired'),
 }))
 
 const priorityLabels = computed(() => ({

@@ -38,9 +38,14 @@ const mockTask = {
   description_added_at: null,
   priority: 'medium' as const,
   status: 'todo' as const,
+  kind: 'generic' as const,
   tags: [],
   due_date: '2025-06-01T10:00:00Z',
   due_date_end: null,
+  location: '',
+  attendees: [],
+  auto_close_on_expiry: false,
+  outcome_prompted_at: null,
   is_completed: false,
   completed_at: null,
   is_pinned: false,
@@ -149,5 +154,76 @@ describe('useTasksStore', () => {
 
     expect(result.ok).toBe(false)
     expect(result.error).toBe('Forbidden.')
+  })
+
+  // ---------------------------------------------------------------------------
+  // PR4: recordTaskOutcome — held / rescheduled / no_show
+  // ---------------------------------------------------------------------------
+
+  it('recordTaskOutcome(held) marks task done locally', async () => {
+    const completed = { ...mockTask, is_completed: true, status: 'done' as const, completed_at: '2025-06-02T12:00:00Z' }
+    vi.mocked(api.post).mockResolvedValueOnce({ ok: true, status: 200, data: completed })
+
+    const store = useTasksStore()
+    store.tasks = [{ ...mockTask, kind: 'call', outcome_prompted_at: '2025-06-02T11:00:00Z' }]
+    const r = await store.recordTaskOutcome('task-1', { action: 'held', note: 'Talked to client.' })
+
+    expect(r.ok).toBe(true)
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/v1/crm/tasks/task-1/outcome',
+      { action: 'held', note: 'Talked to client.' },
+    )
+    expect(store.tasks[0]!.is_completed).toBe(true)
+    expect(store.tasks[0]!.status).toBe('done')
+  })
+
+  it('recordTaskOutcome(rescheduled) updates due_date and clears prompt', async () => {
+    const rescheduled = {
+      ...mockTask,
+      due_date: '2025-06-10T14:00:00Z',
+      due_date_end: '2025-06-10T15:00:00Z',
+      outcome_prompted_at: null,
+      status: 'todo' as const,
+    }
+    vi.mocked(api.post).mockResolvedValueOnce({ ok: true, status: 200, data: rescheduled })
+
+    const store = useTasksStore()
+    store.tasks = [{ ...mockTask, kind: 'meeting', outcome_prompted_at: '2025-06-02T11:00:00Z' }]
+    const r = await store.recordTaskOutcome('task-1', {
+      action: 'rescheduled',
+      new_due_date: '2025-06-10T14:00:00Z',
+      new_due_date_end: '2025-06-10T15:00:00Z',
+    })
+
+    expect(r.ok).toBe(true)
+    expect(store.tasks[0]!.due_date).toBe('2025-06-10T14:00:00Z')
+    expect(store.tasks[0]!.outcome_prompted_at).toBeNull()
+  })
+
+  it('recordTaskOutcome(no_show) flips status to expired', async () => {
+    const expired = { ...mockTask, status: 'expired' as const }
+    vi.mocked(api.post).mockResolvedValueOnce({ ok: true, status: 200, data: expired })
+
+    const store = useTasksStore()
+    store.tasks = [{ ...mockTask, kind: 'call', outcome_prompted_at: '2025-06-02T11:00:00Z' }]
+    const r = await store.recordTaskOutcome('task-1', { action: 'no_show' })
+
+    expect(r.ok).toBe(true)
+    expect(store.tasks[0]!.status).toBe('expired')
+  })
+
+  it('recordTaskOutcome() returns error on backend failure', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      data: { detail: 'new_due_date is required for rescheduled.' },
+    })
+
+    const store = useTasksStore()
+    store.tasks = [mockTask]
+    const r = await store.recordTaskOutcome('task-1', { action: 'rescheduled' })
+
+    expect(r.ok).toBe(false)
+    expect(r.error).toBe('new_due_date is required for rescheduled.')
   })
 })
