@@ -577,6 +577,27 @@ function formatVoiceMemoDuration(value: unknown): string {
   return `${minutes}:${seconds}`
 }
 
+function voiceMemoMetadata(act: Activity): Record<string, unknown> {
+  return (act.metadata as Record<string, unknown> | null) ?? {}
+}
+
+function voiceMemoUrl(act: Activity): string {
+  const url = voiceMemoMetadata(act).url
+  return typeof url === 'string' ? url : ''
+}
+
+function voiceMemoTranscript(act: Activity): string {
+  const transcript = voiceMemoMetadata(act).transcript
+  return typeof transcript === 'string' ? transcript : ''
+}
+
+function voiceMemoDurationSeconds(act: Activity): number | null {
+  const raw = voiceMemoMetadata(act).duration_seconds
+  if (raw === undefined || raw === null || raw === '') return null
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : null
+}
+
 function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
 }
@@ -879,26 +900,26 @@ defineExpose({ load: () => loadActivities(1) })
 
           <!-- Voice memo player + (optional) transcript collapse -->
           <div
-            v-if="act.type === 'voice_memo' && (act.metadata as Record<string, string>)?.url"
+            v-if="act.type === 'voice_memo' && voiceMemoUrl(act)"
             class="mt-2 space-y-1.5"
             data-testid="voice-memo-player"
             :data-activity-id="act.id"
           >
             <div class="flex items-center gap-2">
               <audio
-                :src="(act.metadata as Record<string, string>).url"
+                :src="voiceMemoUrl(act)"
                 controls
                 preload="metadata"
                 class="flex-1 min-w-0 max-w-md"
               />
               <span
-                v-if="(act.metadata as Record<string, unknown>).duration_seconds !== undefined && (act.metadata as Record<string, unknown>).duration_seconds !== null && (act.metadata as Record<string, unknown>).duration_seconds !== ''"
+                v-if="voiceMemoDurationSeconds(act) !== null"
                 class="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0"
                 data-testid="voice-memo-duration"
-              >{{ formatVoiceMemoDuration((act.metadata as Record<string, unknown>).duration_seconds) }}</span>
+              >{{ formatVoiceMemoDuration(voiceMemoDurationSeconds(act)) }}</span>
             </div>
             <div
-              v-if="(act.metadata as Record<string, string>)?.transcript"
+              v-if="voiceMemoTranscript(act)"
               data-testid="voice-memo-transcript-wrapper"
             >
               <button
@@ -915,7 +936,7 @@ defineExpose({ load: () => loadActivities(1) })
                 v-if="expandedTranscriptIds.has(act.id)"
                 class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
                 data-testid="voice-memo-transcript"
-              >{{ (act.metadata as Record<string, string>).transcript }}</p>
+              >{{ voiceMemoTranscript(act) }}</p>
             </div>
           </div>
 

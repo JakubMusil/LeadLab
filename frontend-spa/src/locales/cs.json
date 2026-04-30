@@ -1222,7 +1222,7 @@
       "whatsapp_in": "Přijatá WhatsApp zpráva.",
       "link": "Uložený externí odkaz s popisem (smlouva, dokument, web…).",
       "file_upload": "Soubor přiložený k příležitosti — zadejte URL nahraného souboru.",
-      "voice_memo": "Hlasová poznámka — nahrajte zvuk přes mikrofon, můžete pauznout, uložit nebo zahodit. Filename a délku ukládáme za vás.",
+      "voice_memo": "Hlasová poznámka — nahrajte zvuk přes mikrofon, můžete pauznout, uložit nebo zahodit. Název souboru a délku ukládáme za vás.",
       "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
       "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku.",
       "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže."

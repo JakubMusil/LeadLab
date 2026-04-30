@@ -10,7 +10,7 @@ import datetime as dt
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 
 from django.core.cache import cache
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Q, Sum
@@ -4424,6 +4424,23 @@ class VoiceMemoUploadOut(Schema):
     filename: str
 
 
+class _VoiceMemoEntities(NamedTuple):
+    """Resolved parent entities for a voice-memo upload.
+
+    All fields are optional — the upload endpoint accepts no parent at
+    all (resulting in a standalone Document) — and ``error`` is set to a
+    human-readable string when one of the supplied IDs failed to resolve
+    inside the active firm tenant.
+    """
+
+    lead: Optional[Lead] = None
+    customer: Optional[Customer] = None
+    realization: Optional[Realization] = None
+    management: Optional[Management] = None
+    proposal: Optional[Proposal] = None
+    error: Optional[str] = None
+
+
 def _resolve_voice_memo_entity(
     request,
     *,
@@ -4432,40 +4449,45 @@ def _resolve_voice_memo_entity(
     realization_id: Optional[str],
     management_id: Optional[str],
     proposal_id: Optional[str],
-) -> tuple[Optional[Lead], Optional[Customer], Optional[Realization], Optional[Management], Optional[Proposal], Optional[str]]:
+) -> _VoiceMemoEntities:
     """Look up the optional parent entity for a voice-memo upload.
 
-    Returns a ``(lead, customer, realization, management, proposal, error)``
-    tuple.  When ``error`` is non-``None`` the caller should bail out with
-    a 404 response.  Tenants are enforced via ``firm=request.firm``.
+    When ``error`` is non-``None`` the caller should bail out with a 404
+    response.  Tenants are enforced via ``firm=request.firm``.
     """
     lead = customer = realization = management = proposal = None
     if lead_id:
         try:
             lead = Lead.objects.get(id=lead_id, firm=request.firm)
         except Lead.DoesNotExist:
-            return None, None, None, None, None, "Lead not found."
+            return _VoiceMemoEntities(error="Lead not found.")
     if customer_id:
         try:
             customer = Customer.objects.get(id=customer_id, firm=request.firm)
         except Customer.DoesNotExist:
-            return None, None, None, None, None, "Customer not found."
+            return _VoiceMemoEntities(error="Customer not found.")
     if realization_id:
         try:
             realization = Realization.objects.get(id=realization_id, firm=request.firm)
         except Realization.DoesNotExist:
-            return None, None, None, None, None, "Realization not found."
+            return _VoiceMemoEntities(error="Realization not found.")
     if management_id:
         try:
             management = Management.objects.get(id=management_id, firm=request.firm)
         except Management.DoesNotExist:
-            return None, None, None, None, None, "Management not found."
+            return _VoiceMemoEntities(error="Management not found.")
     if proposal_id:
         try:
             proposal = Proposal.objects.get(id=proposal_id, firm=request.firm)
         except Proposal.DoesNotExist:
-            return None, None, None, None, None, "Proposal not found."
-    return lead, customer, realization, management, proposal, None
+            return _VoiceMemoEntities(error="Proposal not found.")
+    return _VoiceMemoEntities(
+        lead=lead,
+        customer=customer,
+        realization=realization,
+        management=management,
+        proposal=proposal,
+    )
 
 
 @router.post(
