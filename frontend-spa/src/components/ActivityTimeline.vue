@@ -1053,7 +1053,7 @@ defineExpose({ load: () => loadActivities(1) })
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('tasks.task') }}</span>
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
               <span class="text-xs text-gray-400">{{ formatTime(item._created_at) }}</span>
             </div>
             <TaskCard
