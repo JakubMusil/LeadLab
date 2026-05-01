@@ -252,7 +252,18 @@ const displayItems = computed<DisplayItem[]>(() => {
   if (useFeed.value) {
     return feedItems.value
       .filter((item) => {
-        if (item.item_type === 'task') return true
+        if (item.item_type === 'task') {
+          // Task cards are controlled by the 'task' pseudo-type in the filter.
+          // If the user has never customised the filter, visibleTypes contains
+          // all 'important' activity types but NOT the 'task' pseudo-type
+          // (which has no default_visibility in the registry).
+          // We treat task cards as visible when either:
+          //   a) the user explicitly enabled 'task' in their filter, OR
+          //   b) the filter is in its default state (no customisation)
+          const prefs = streamlinePrefs
+          if (!prefs.isCustomised) return true
+          return visibleTypes.value.has('task')
+        }
         if (!item.activity) return false
         return visibleTypes.value.has(item.activity.type)
       })
@@ -868,9 +879,26 @@ async function toggleReaction(activityId: string, emoji: string) {
   }
 }
 
+// Find the first task_created/task_assigned/task_reopened activity in the
+// feed that references a given task ID — used to attach reactions to task cards.
+function taskLinkedActivity(taskId: string): Activity | null {
+  if (!useFeed.value) return null
+  for (const item of feedItems.value) {
+    if (item.item_type !== 'activity' || !item.activity) continue
+    const a = item.activity as Activity
+    const meta = a.metadata as Record<string, unknown>
+    if (
+      ['task_created', 'task_assigned', 'task_reopened'].includes(a.type) &&
+      String(meta.task_id ?? '') === taskId
+    ) {
+      return a
+    }
+  }
+  return null
+}
+
 // ---------------------------------------------------------------------------
-// Soft-delete
-// ---------------------------------------------------------------------------
+// WebSocket real-time update
 function canDelete(act: Activity): boolean {
   if (act.is_deleted) return false
   const currentUserId = authStore.user ? String(authStore.user.id) : ''
@@ -1114,6 +1142,43 @@ defineExpose({ load: () => loadActivities(1) })
               :task="item._task"
               @refreshed="loadActivities(1)"
             />
+            <!-- Reactions — bound to the linked task_created/task_assigned activity -->
+            <template v-if="taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))">
+              <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                <button
+                  v-for="r in (taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))?.reactions ?? [])"
+                  :key="r.emoji"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
+                  :class="r.reacted_by_me
+                    ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-gray-300'"
+                  @click="toggleReaction(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id, r.emoji)"
+                >
+                  <span>{{ r.emoji }}</span>
+                  <span class="tabular-nums">{{ r.count }}</span>
+                </button>
+                <div class="relative">
+                  <button
+                    class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                    :title="t('leadDetail.addReaction')"
+                    @click="openEmojiPicker(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id)"
+                  >
+                    <FaceSmileIcon class="w-3.5 h-3.5" />
+                  </button>
+                  <div
+                    v-if="emojiPickerActivityId === taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))?.id"
+                    class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
+                  >
+                    <button
+                      v-for="emoji in COMMON_EMOJIS"
+                      :key="emoji"
+                      class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
+                      @click="toggleReaction(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id, emoji)"
+                    >{{ emoji }}</button>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
