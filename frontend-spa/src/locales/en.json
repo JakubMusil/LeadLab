@@ -1246,8 +1246,6 @@
     "typeMessage": "Message",
     "typeTodoItems": "Todo items"
   },
-    "typeMessage": "Message"
-  },
   "sequences": {
     "title": "Email Sequences",
     "description": "Multi-step drip campaigns triggered by lead status changes. Configure sequences and schedule automated sends for your contacts.",
