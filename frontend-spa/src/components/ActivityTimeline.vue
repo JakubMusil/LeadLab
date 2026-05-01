@@ -761,6 +761,18 @@ function fileUploadIcon(act: Activity): Component {
   return DocumentIcon
 }
 
+function fileUploadIsImage(act: Activity): boolean {
+  const mime = fileUploadMime(act)
+  const filename = fileUploadFilename(act).toLowerCase()
+  return mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/.test(filename)
+}
+
+function fileUploadIsVideo(act: Activity): boolean {
+  const mime = fileUploadMime(act)
+  const filename = fileUploadFilename(act).toLowerCase()
+  return mime.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv|m4v)$/.test(filename)
+}
+
 // ---------------------------------------------------------------------------
 // Event scheduled helpers (Fáze 7.3)
 // ---------------------------------------------------------------------------
@@ -1251,32 +1263,74 @@ defineExpose({ load: () => loadActivities(1) })
               </div>
             </div>
 
-            <!-- File upload card -->
-            <a
+            <!-- File upload card — three variants: image thumbnail, video player, generic file -->
+            <div
               v-if="item.type === 'file_upload' && fileUploadUrl(item as unknown as Activity)"
-              :href="fileUploadUrl(item as unknown as Activity)"
-              :target="fileUploadIsExternal(item as unknown as Activity) ? '_blank' : '_self'"
-              :rel="fileUploadIsExternal(item as unknown as Activity) ? 'noopener noreferrer' : undefined"
-              :download="fileUploadIsExternal(item as unknown as Activity) ? undefined : (fileUploadFilename(item as unknown as Activity) || true)"
-              class="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
+              class="mt-2"
               data-testid="file-upload-card"
               :data-activity-id="item.id"
               :data-source-kind="fileUploadSourceKind(item as unknown as Activity)"
             >
-              <component :is="fileUploadIcon(item as unknown as Activity)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {{ fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity) || t('fileUpload.untitled') }}
+              <!-- Image: thumbnail with link to full size -->
+              <template v-if="fileUploadIsImage(item as unknown as Activity)">
+                <a
+                  :href="fileUploadUrl(item as unknown as Activity)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="block"
+                >
+                  <img
+                    :src="fileUploadUrl(item as unknown as Activity)"
+                    :alt="fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity)"
+                    class="max-h-64 max-w-full rounded-xl border border-gray-200 dark:border-gray-600 object-cover hover:opacity-90 transition-opacity"
+                    loading="lazy"
+                  />
+                </a>
+                <p v-if="fileUploadFilename(item as unknown as Activity)" class="mt-1 text-xs text-gray-400 dark:text-gray-500 truncate">
+                  {{ fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity) }}
+                  <span v-if="fileUploadFormattedSize(item as unknown as Activity)" class="ml-1">· {{ fileUploadFormattedSize(item as unknown as Activity) }}</span>
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  <span v-if="fileUploadFilename(item as unknown as Activity)">{{ fileUploadFilename(item as unknown as Activity) }}</span>
-                  <span v-if="fileUploadFilename(item as unknown as Activity) && fileUploadFormattedSize(item as unknown as Activity)" class="mx-1">·</span>
-                  <span v-if="fileUploadFormattedSize(item as unknown as Activity)" class="tabular-nums">{{ fileUploadFormattedSize(item as unknown as Activity) }}</span>
-                  <span v-if="fileUploadIsExternal(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
-                  <span v-else-if="fileUploadFetchPending(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
+              </template>
+
+              <!-- Video: inline player -->
+              <template v-else-if="fileUploadIsVideo(item as unknown as Activity)">
+                <video
+                  :src="fileUploadUrl(item as unknown as Activity)"
+                  controls
+                  preload="metadata"
+                  class="max-h-64 max-w-full rounded-xl border border-gray-200 dark:border-gray-600"
+                />
+                <p v-if="fileUploadFilename(item as unknown as Activity)" class="mt-1 text-xs text-gray-400 dark:text-gray-500 truncate">
+                  {{ fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity) }}
+                  <span v-if="fileUploadFormattedSize(item as unknown as Activity)" class="ml-1">· {{ fileUploadFormattedSize(item as unknown as Activity) }}</span>
                 </p>
-              </div>
-            </a>
+              </template>
+
+              <!-- Generic file: icon + title + metadata -->
+              <template v-else>
+                <a
+                  :href="fileUploadUrl(item as unknown as Activity)"
+                  :target="fileUploadIsExternal(item as unknown as Activity) ? '_blank' : '_self'"
+                  :rel="fileUploadIsExternal(item as unknown as Activity) ? 'noopener noreferrer' : undefined"
+                  :download="fileUploadIsExternal(item as unknown as Activity) ? undefined : (fileUploadFilename(item as unknown as Activity) || true)"
+                  class="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
+                >
+                  <component :is="fileUploadIcon(item as unknown as Activity)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {{ fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity) || t('fileUpload.untitled') }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <span v-if="fileUploadFilename(item as unknown as Activity)">{{ fileUploadFilename(item as unknown as Activity) }}</span>
+                      <span v-if="fileUploadFilename(item as unknown as Activity) && fileUploadFormattedSize(item as unknown as Activity)" class="mx-1">·</span>
+                      <span v-if="fileUploadFormattedSize(item as unknown as Activity)" class="tabular-nums">{{ fileUploadFormattedSize(item as unknown as Activity) }}</span>
+                      <span v-if="fileUploadIsExternal(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
+                      <span v-else-if="fileUploadFetchPending(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
+                    </p>
+                  </div>
+                </a>
+              </template>
+            </div>
 
             <!-- Link card -->
             <a
