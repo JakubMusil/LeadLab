@@ -224,7 +224,7 @@ const visibleTypes = computed<Set<string>>(() => {
 // compatibility with bare task activities — `task` is a pseudo-type for which
 // no dedicated tool is registered, so include it whenever any task_* type is
 // visible).
-const _taskGroupTypes = ['task_assigned', 'task_completed', 'task_created'] as const
+const _taskGroupTypes = ['task_assigned', 'task_completed', 'task_created', 'task_reopened'] as const
 
 const filteredActivities = computed(() => {
   // If the user has hidden literally everything, render nothing.
@@ -343,6 +343,7 @@ const activityIconMap: Record<string, Component> = {
   sub_task_added: Squares2X2Icon,
   task_created: PlusCircleIcon,
   task_archived: ArchiveBoxIcon,
+  task_reopened: ArrowUturnLeftIcon,
   approval_requested: ShieldExclamationIcon,
   approval_resolved: ShieldCheckIcon,
   time_logged: ClockIcon,
@@ -390,6 +391,7 @@ function activityTypeLabel(type: string): string {
     task: t('leadDetail.typeTask'),
     task_assigned: t('leadDetail.typeTaskAssigned'),
     task_completed: t('leadDetail.typeTaskCompleted'),
+    task_reopened: t('leadDetail.typeTaskReopened'),
     status_change: t('leadDetail.typeStatusChange'),
     file_upload: t('leadDetail.typeFileUpload'),
     proposal_created: t('leadDetail.typeProposalCreated'),

@@ -1183,6 +1183,7 @@
     "noActivitiesForFilter": "Keine Aktivitäten entsprechen diesem Filter.",
     "typeTaskAssigned": "Aufgabe zugewiesen",
     "typeTaskCompleted": "Aufgabe abgeschlossen",
+    "typeTaskReopened": "Aufgabe wiedereröffnet",
     "typeStatusChange": "Statusänderung",
     "typeFileUpload": "Datei-Upload",
     "typeProposalCreated": "Angebot erstellt",

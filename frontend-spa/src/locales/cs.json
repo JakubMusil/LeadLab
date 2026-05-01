@@ -1191,6 +1191,7 @@
     "noActivitiesForFilter": "Žádné aktivity neodpovídají tomuto filtru.",
     "typeTaskAssigned": "Úkol přiřazen",
     "typeTaskCompleted": "Úkol dokončen",
+    "typeTaskReopened": "Úkol obnoven",
     "typeStatusChange": "Změna stavu",
     "typeFileUpload": "Nahrání souboru",
     "typeProposalCreated": "Nabídka vytvořena",

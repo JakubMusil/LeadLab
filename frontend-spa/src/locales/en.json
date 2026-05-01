@@ -1190,6 +1190,7 @@
     "noActivitiesForFilter": "No activities match this filter.",
     "typeTaskAssigned": "Task assigned",
     "typeTaskCompleted": "Task completed",
+    "typeTaskReopened": "Task reopened",
     "typeStatusChange": "Status change",
     "typeFileUpload": "File upload",
     "typeProposalCreated": "Proposal created",

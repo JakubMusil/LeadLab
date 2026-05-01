@@ -1183,6 +1183,7 @@
     "noActivitiesForFilter": "Brak aktywności pasujących do tego filtra.",
     "typeTaskAssigned": "Zadanie przypisane",
     "typeTaskCompleted": "Zadanie ukończone",
+    "typeTaskReopened": "Zadanie wznowione",
     "typeStatusChange": "Zmiana statusu",
     "typeFileUpload": "Przesyłanie pliku",
     "typeProposalCreated": "Oferta utworzona",

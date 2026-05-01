@@ -2311,7 +2311,7 @@ def reopen_task(request, task_id: str):
             Activity.objects.create(
                 lead=task.lead,
                 user=request.user,
-                type=ActivityType.TASK_CREATED,
+                type=ActivityType.TASK_REOPENED,
                 metadata=reopen_metadata,
             )
 

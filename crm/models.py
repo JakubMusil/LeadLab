@@ -69,6 +69,7 @@ class ActivityType(models.TextChoices):
     TASK_ASSIGNED = "task_assigned", "Task Assigned"
     TASK_COMPLETED = "task_completed", "Task Completed"
     TASK_ARCHIVED = "task_archived", "Task Archived"
+    TASK_REOPENED = "task_reopened", "Task Reopened"
     STREAMLINE_ITEMS_ADDED = "streamline_items_added", "Streamline Items Added"
     STREAMLINE_ITEM_RESOLVED = "streamline_item_resolved", "Streamline Item Resolved"
     STREAMLINE_ITEM_REOPENED = "streamline_item_reopened", "Streamline Item Reopened"

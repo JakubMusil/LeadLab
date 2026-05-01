@@ -858,6 +858,38 @@ class TaskArchivedTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
+# Task Reopened
+# ---------------------------------------------------------------------------
+
+class TaskReopenedTool(StreamlineTool):
+    activity_type = "task_reopened"
+    label = _("Task Reopened")
+    icon = "ArrowUturnLeftIcon"
+    category = "task"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "title": "Task ID"},
+                "title": {"type": "string", "title": "Task Title"},
+            },
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "task_id": activity.metadata.get("task_id", ""),
+            "title": activity.metadata.get("title", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Approval Requested
 # ---------------------------------------------------------------------------
 
@@ -2111,6 +2143,7 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     TaskAssignedTool(),
     TaskCompletedTool(),
     TaskArchivedTool(),
+    TaskReopenedTool(),
     PriorityChangeTool(),
     AssigneeChangeTool(),
     DueDateChangeTool(),
