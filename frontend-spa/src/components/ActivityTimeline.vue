@@ -1238,8 +1238,8 @@ defineExpose({ load: () => loadActivities(1) })
               <p v-if="eventScheduledDescription(item as unknown as Activity)" class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap" data-testid="event-scheduled-description">{{ eventScheduledDescription(item as unknown as Activity) }}</p>
             </div>
 
-            <!-- Reactions row -->
-            <div v-if="item.type === 'comment'" class="flex flex-wrap items-center gap-1.5 mt-2" data-testid="activity-reactions-row">
+            <!-- Reactions row — available for every activity type -->
+            <div class="flex flex-wrap items-center gap-1.5 mt-2" data-testid="activity-reactions-row">
               <button
                 v-for="r in ((item as unknown as Activity).reactions ?? [])"
                 :key="r.emoji"
