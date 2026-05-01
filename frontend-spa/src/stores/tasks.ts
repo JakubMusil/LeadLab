@@ -13,8 +13,6 @@ export interface TaskOut {
   proposal_title: string | null
   customer_id: string | null
   customer_name: string | null
-  parent_task_id: string | null
-  parent_task_title: string | null
   project_ids: string[]
   // Authorship
   assigned_to_id: string | null
@@ -59,12 +57,9 @@ export interface TaskOut {
   created_at: string
   created_by_id: string | null
   created_by_name: string | null
-  // Phase 3: subtask counters
-  subtask_count: number
-  subtasks_completed: number
-  // Phase 3: checklist counters
-  checklist_count: number
-  checklist_checked: number
+  // Streamline item counters (replaces legacy checklist + subtask counters)
+  streamline_count: number
+  streamline_resolved: number
   // Phase 6: time tracking
   estimated_minutes: number | null
   total_logged_minutes: number
@@ -175,7 +170,33 @@ export interface TaskFetchOpts {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3 types
+// Streamline Items (replaces legacy Checklist + Subtasks)
+// ---------------------------------------------------------------------------
+
+export interface StreamlineItemOut {
+  id: string
+  task_id: string
+  text: string
+  kind: 'todo' | 'subtask'
+  is_resolved: boolean
+  order: number
+  created_by_id: string | null
+  created_at: string
+  resolved_by_id: string | null
+  resolved_at: string | null
+}
+
+export interface StreamlineItemCreateIn {
+  text: string
+  kind?: 'todo' | 'subtask'
+}
+
+export interface StreamlineItemUpdateIn {
+  is_resolved: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 types (legacy — kept for TaskDependency only)
 // ---------------------------------------------------------------------------
 
 export interface SubtaskIn {
@@ -484,48 +505,49 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   // ---------------------------------------------------------------------------
-  // Phase 3: Subtasks
+  // Streamline Items (replaces legacy Checklist + Subtasks)
   // ---------------------------------------------------------------------------
 
-  async function fetchSubtasks(taskId: string): Promise<{ ok: boolean; data?: TaskOut[]; error?: string }> {
-    const res = await api.get<TaskOut[]>(`/api/v1/crm/tasks/${taskId}/subtasks`)
+  async function fetchStreamlineItems(
+    taskId: string,
+    kind?: 'todo' | 'subtask',
+  ): Promise<{ ok: boolean; data?: StreamlineItemOut[]; error?: string }> {
+    const url = kind
+      ? `/api/v1/crm/tasks/${taskId}/streamline_items?kind=${kind}`
+      : `/api/v1/crm/tasks/${taskId}/streamline_items`
+    const res = await api.get<StreamlineItemOut[]>(url)
     if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load subtasks.') }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load items.') }
   }
 
-  async function createSubtask(taskId: string, payload: SubtaskIn): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
-    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${taskId}/subtasks`, payload)
+  async function createStreamlineItems(
+    taskId: string,
+    payload: StreamlineItemCreateIn,
+  ): Promise<{ ok: boolean; data?: StreamlineItemOut[]; error?: string }> {
+    const res = await api.post<StreamlineItemOut[]>(`/api/v1/crm/tasks/${taskId}/items`, payload)
     if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create subtask.') }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to add items.') }
   }
 
-  // ---------------------------------------------------------------------------
-  // Phase 3: Checklist
-  // ---------------------------------------------------------------------------
-
-  async function fetchChecklist(taskId: string): Promise<{ ok: boolean; data?: ChecklistItemOut[]; error?: string }> {
-    const res = await api.get<ChecklistItemOut[]>(`/api/v1/crm/tasks/${taskId}/checklist`)
+  async function updateStreamlineItem(
+    itemId: string,
+    payload: StreamlineItemUpdateIn,
+  ): Promise<{ ok: boolean; data?: StreamlineItemOut; error?: string }> {
+    const res = await api.patch<StreamlineItemOut>(`/api/v1/crm/items/${itemId}`, payload)
     if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to load checklist.') }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update item.') }
   }
 
-  async function createChecklistItem(taskId: string, payload: ChecklistItemIn): Promise<{ ok: boolean; data?: ChecklistItemOut; error?: string }> {
-    const res = await api.post<ChecklistItemOut>(`/api/v1/crm/tasks/${taskId}/checklist`, payload)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create checklist item.') }
-  }
-
-  async function updateChecklistItem(taskId: string, itemId: string, payload: ChecklistItemUpdateIn): Promise<{ ok: boolean; data?: ChecklistItemOut; error?: string }> {
-    const res = await api.patch<ChecklistItemOut>(`/api/v1/crm/tasks/${taskId}/checklist/${itemId}`, payload)
-    if (res.ok) return { ok: true, data: res.data }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update checklist item.') }
-  }
-
-  async function deleteChecklistItem(taskId: string, itemId: string): Promise<{ ok: boolean; error?: string }> {
-    const res = await api.delete(`/api/v1/crm/tasks/${taskId}/checklist/${itemId}`)
+  async function deleteStreamlineItem(itemId: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/items/${itemId}`)
     if (res.ok) return { ok: true }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete checklist item.') }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete item.') }
   }
+
+  // ---------------------------------------------------------------------------
+  // Phase 3: Subtasks (REMOVED — use StreamlineItems with kind=subtask)
+  // Phase 3: Checklist (REMOVED — use StreamlineItems with kind=todo)
+  // ---------------------------------------------------------------------------
 
   // ---------------------------------------------------------------------------
   // Phase 3: Dependencies
@@ -826,15 +848,14 @@ export const useTasksStore = defineStore('tasks', () => {
     recordTaskOutcome,
     toggleFavourite,
     // Phase 3
-    fetchSubtasks,
-    createSubtask,
-    fetchChecklist,
-    createChecklistItem,
-    updateChecklistItem,
-    deleteChecklistItem,
     fetchDependencies,
     createDependency,
     deleteDependency,
+    // Streamline Items
+    fetchStreamlineItems,
+    createStreamlineItems,
+    updateStreamlineItem,
+    deleteStreamlineItem,
     // Phase 5
     deleteTask,
     archiveTask,

@@ -169,15 +169,6 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
         except User.DoesNotExist:
             logger.warning("create_task: assign_to_user_id %s not found", assign_to_user_id)
 
-    # Resolve parent task
-    parent_task = None
-    parent_task_id = action.get("parent_task_id", "")
-    if parent_task_id:
-        try:
-            parent_task = Task.objects.get(id=parent_task_id, firm=firm)
-        except Task.DoesNotExist:
-            logger.warning("create_task: parent_task_id %s not found", parent_task_id)
-
     task = Task.objects.create(
         firm=firm,
         lead=lead,
@@ -186,7 +177,6 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
         priority=priority,
         tags=tags,
         assigned_to=assigned_to,
-        parent_task=parent_task,
     )
     logger.info(
         "automation create_task: rule=%s created task '%s' (id=%s)%s",
@@ -1357,7 +1347,7 @@ def spawn_recurring_tasks():
     """
     import datetime as _dt
     from django.utils import timezone as _tz
-    from crm.models import Task, TaskChecklistItem
+    from crm.models import Task, StreamlineItem
 
     logger.info("spawn_recurring_tasks: starting")
     now = _tz.now()
@@ -1424,13 +1414,13 @@ def spawn_recurring_tasks():
                 recurrence_parent=root,
                 approval_required=root.approval_required,
             )
-            # Copy checklist items from root
-            for item in TaskChecklistItem.objects.filter(task=root).order_by("position"):
-                TaskChecklistItem.objects.create(
+            # Copy streamline items from root
+            for item in StreamlineItem.objects.filter(task=root).order_by("kind", "order", "created_at"):
+                StreamlineItem.objects.create(
                     task=new_task,
                     text=item.text,
-                    is_checked=False,
-                    position=item.position,
+                    kind=item.kind,
+                    order=item.order,
                     created_by=root.created_by,
                 )
             spawned += 1

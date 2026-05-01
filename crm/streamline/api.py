@@ -38,9 +38,7 @@ def _build_entity_toolbar() -> None:
                 "comment",
                 "file_upload",
                 "voice_memo",
-                "checklist_item_checked",
                 "time_logged",
-                "sub_task_added",
             ],
         }
     except Exception:

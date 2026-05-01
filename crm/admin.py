@@ -165,12 +165,7 @@ class ProposalTemplateAdmin(admin.ModelAdmin):
     inlines = [ProposalTemplateItemInline]
 
 
-@admin.register(TaskChecklistItem)
-class TaskChecklistItemAdmin(admin.ModelAdmin):
-    list_display = ("text", "task", "is_checked", "position", "created_by", "created_at")
-    list_filter = ("is_checked",)
-    search_fields = ("text", "task__title")
-    readonly_fields = ("created_at",)
+
 
 
 @admin.register(TaskDependency)

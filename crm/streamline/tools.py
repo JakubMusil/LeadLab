@@ -1859,6 +1859,124 @@ class UnpinnedTool(_SimpleLogTool):
 
 
 # ---------------------------------------------------------------------------
+# Streamline Items — unified TODO / sub-task actions
+# ---------------------------------------------------------------------------
+
+class StreamlineItemsAddedTool(StreamlineTool):
+    activity_type = "streamline_items_added"
+    label = _("Items Added")
+    icon = "PlusCircleIcon"
+    category = "task"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "title": "Items",
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": ["todo", "subtask"],
+                    "title": "Kind",
+                },
+                "count": {"type": "integer", "title": "Count"},
+            },
+            "required": ["items", "count"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass  # No side-effects; purely informational
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "items": activity.metadata.get("items", []),
+            "count": activity.metadata.get("count", 0),
+            "kind": activity.metadata.get("kind", "todo"),
+        }
+
+
+class StreamlineItemResolvedTool(StreamlineTool):
+    activity_type = "streamline_item_resolved"
+    label = _("Item Resolved")
+    icon = "CheckCircleIcon"
+    category = "task"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string", "title": "Item ID"},
+                "item_text": {"type": "string", "title": "Item Text"},
+                "kind": {
+                    "type": "string",
+                    "enum": ["todo", "subtask"],
+                    "title": "Kind",
+                },
+                "resolved": {"type": "boolean", "title": "Resolved"},
+            },
+            "required": ["item_text"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "item_id": activity.metadata.get("item_id", ""),
+            "item_text": activity.metadata.get("item_text", ""),
+            "kind": activity.metadata.get("kind", ""),
+            "resolved": activity.metadata.get("resolved", True),
+        }
+
+
+class StreamlineItemReopenedTool(StreamlineTool):
+    activity_type = "streamline_item_reopened"
+    label = _("Item Reopened")
+    icon = "ArrowUturnLeftIcon"
+    category = "task"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string", "title": "Item ID"},
+                "item_text": {"type": "string", "title": "Item Text"},
+                "kind": {
+                    "type": "string",
+                    "enum": ["todo", "subtask"],
+                    "title": "Kind",
+                },
+                "resolved": {"type": "boolean", "title": "Reopened"},
+            },
+            "required": ["item_text"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        pass
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "item_id": activity.metadata.get("item_id", ""),
+            "item_text": activity.metadata.get("item_text", ""),
+            "kind": activity.metadata.get("kind", ""),
+            "resolved": activity.metadata.get("resolved", False),
+        }
+
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -1887,14 +2005,12 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     TaskAssignedTool(),
     TaskCompletedTool(),
     TaskArchivedTool(),
-    SubTaskAddedTool(),
     PriorityChangeTool(),
     AssigneeChangeTool(),
     DueDateChangeTool(),
     ApprovalRequestedTool(),
     ApprovalResolvedTool(),
     TimeLoggedTool(),
-    ChecklistItemCheckedTool(),
     VoiceMemoTool(),
     ProposalCreatedTool(),
     ProposalAcceptedTool(),
@@ -1923,4 +2039,8 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     MentionTool(),
     PinnedTool(),
     UnpinnedTool(),
+    # Streamline Items (Phase 7 — unified TODO/subtasks)
+    StreamlineItemsAddedTool(),
+    StreamlineItemResolvedTool(),
+    StreamlineItemReopenedTool(),
 ]

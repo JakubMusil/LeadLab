@@ -941,7 +941,7 @@ class StreamlineItem(models.Model):
     )
     text = models.CharField(max_length=500)
     is_resolved = models.BooleanField(default=False, db_index=True)
-    position = models.PositiveSmallIntegerField(default=0, db_index=True)
+    order = models.PositiveSmallIntegerField(default=0, db_index=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -967,9 +967,9 @@ class StreamlineItem(models.Model):
     class Meta:
         verbose_name = "streamline item"
         verbose_name_plural = "streamline items"
-        ordering = ["kind", "position", "created_at"]
+        ordering = ["kind", "order", "created_at"]
         indexes = [
-            models.Index(fields=["task", "kind", "position"]),
+            models.Index(fields=["task", "kind", "order"]),
             models.Index(fields=["task", "kind", "is_resolved"]),
         ]
 

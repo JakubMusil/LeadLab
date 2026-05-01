@@ -173,9 +173,10 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         registered_types = {t.activity_type for t in all_tools()}
         expected_new = {
             "priority_change", "assignee_change", "due_date_change",
-            "sub_task_added", "task_created", "task_archived",
+            "task_created", "task_archived",
             "approval_requested", "approval_resolved", "time_logged",
-            "checklist_item_checked", "voice_memo",
+            "voice_memo",
+            "streamline_items_added", "streamline_item_resolved", "streamline_item_reopened",
         }
         self.assertTrue(expected_new.issubset(registered_types))
         # All registered tools also have a schema
@@ -274,14 +275,15 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         out = get_tool("due_date_change").render_payload(a)
         self.assertEqual(out["new_due_date"], "2024-02-01")
 
-    def test_sub_task_added_render(self):
+    def test_streamline_items_added_render(self):
         from crm.streamline.registry import get_tool
         a = self._build_activity(
-            ActivityType.SUB_TASK_ADDED,
-            metadata={"subtask_id": "abc", "subtask_title": "Write tests"},
+            ActivityType.STREAMLINE_ITEMS_ADDED,
+            metadata={"count": 3, "items": ["Buy milk", "Call Alice", "Fix bug"], "kind": "todo"},
         )
-        out = get_tool("sub_task_added").render_payload(a)
-        self.assertEqual(out["subtask_title"], "Write tests")
+        out = get_tool("streamline_items_added").render_payload(a)
+        self.assertEqual(out["count"], 3)
+        self.assertEqual(out["kind"], "todo")
 
     def test_task_created_render(self):
         from crm.streamline.registry import get_tool
@@ -319,14 +321,15 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         out = get_tool("time_logged").render_payload(a)
         self.assertEqual(out["minutes"], 45)
 
-    def test_checklist_item_checked_render(self):
+    def test_streamline_item_resolved_render(self):
         from crm.streamline.registry import get_tool
         a = self._build_activity(
-            ActivityType.CHECKLIST_ITEM_CHECKED,
-            metadata={"item_text": "Buy milk", "is_checked": True},
+            ActivityType.STREAMLINE_ITEM_RESOLVED,
+            metadata={"item_text": "Buy milk", "resolved": True, "kind": "todo"},
         )
-        out = get_tool("checklist_item_checked").render_payload(a)
-        self.assertTrue(out["is_checked"])
+        out = get_tool("streamline_item_resolved").render_payload(a)
+        self.assertTrue(out["resolved"])
+        self.assertEqual(out["item_text"], "Buy milk")
 
     def test_voice_memo_render(self):
         from crm.streamline.registry import get_tool

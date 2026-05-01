@@ -65,11 +65,8 @@ interface Task {
   created_at: string
   assigned_to_id?: string | null
   watcher_ids?: string[]
-  parent_task_id?: string | null
-  subtask_count?: number
-  subtasks_completed?: number
-  checklist_count?: number
-  checklist_checked?: number
+  streamline_count?: number
+  streamline_resolved?: number
 }
 interface ChecklistItem { id: string; text: string; is_checked: boolean; position: number }
 interface TaskDependency { id: string; from_task_id: string; from_task_title: string; to_task_id: string; to_task_title: string; type: 'blocks' | 'related_to' }
@@ -149,7 +146,7 @@ async function loadTasks() {
     const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100`)
     if (res.ok) {
       tasks.value = res.data.filter(
-        (task) => task.lead_id === leadId.value && !task.parent_task_id,
+        (task) => task.lead_id === leadId.value,
       )
     }
   } finally {
@@ -575,7 +572,7 @@ function getTabLabel(tab: string): string {
               </div>
               <!-- Expand/collapse button for tasks with subtasks or checklist -->
               <button
-                v-if="(task.subtask_count ?? 0) > 0 || (task.checklist_count ?? 0) > 0"
+                v-if="(task.streamline_count ?? 0) > 0"
                 class="flex-shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 @click="toggleExpand(task.id)"
               >
@@ -583,9 +580,7 @@ function getTabLabel(tab: string): string {
                   class="w-3.5 h-3.5 transition-transform"
                   :class="expandedTasks.has(task.id) ? 'rotate-180' : ''"
                 />
-                <span v-if="(task.subtask_count ?? 0) > 0" class="tabular-nums">{{ task.subtasks_completed ?? 0 }}/{{ task.subtask_count }}</span>
-                <span v-if="(task.checklist_count ?? 0) > 0 && (task.subtask_count ?? 0) > 0" class="text-gray-300">·</span>
-                <span v-if="(task.checklist_count ?? 0) > 0" class="tabular-nums">{{ task.checklist_checked ?? 0 }}/{{ task.checklist_count }} ✓</span>
+                <span class="tabular-nums">{{ task.streamline_resolved ?? 0 }}/{{ task.streamline_count }} ✓</span>
               </button>
             </div>
 

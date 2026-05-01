@@ -32,19 +32,31 @@
 - [ ] *(odloženo na pozdější krok pokud bude potřeba)* Aplikovat backend sanitizaci i na `Activity.content_text`, `Task.description_html`, `TaskTemplate.description_html` atd. — util je připraven, lze rozšířit plošně bez zásahu do schémat.
 
 ### Krok 3 — Nový `StreamlineItem` + tooly v backendu
-- [ ] Model `StreamlineItem` (`task` FK, `kind`, `text`, `is_resolved`, `resolved_at`, `resolved_by`, `created_at`, `created_by`, `order`).
-- [ ] Migrace, která přidá nový model a ODSTRANÍ legacy `TaskChecklistItem` + `Task.parent_task` (bez převodu dat — explicitně dle požadavku).
-- [ ] Endpointy: `POST /tasks/{id}/items` (multi-line split na řádky), `PATCH /items/{id}` (toggle resolved), `DELETE /items/{id}`.
-- [ ] Streamline tooly: `StreamlineItemsAddedTool`, `StreamlineItemResolvedTool`, `StreamlineItemReopenedTool` (nebo jeden tool s metadata.action).
-- [ ] Registrace v `BUILTIN_TOOLS`.
+- [x] Model `StreamlineItem` (`task` FK, `kind`, `text`, `is_resolved`, `resolved_at`, `resolved_by`, `created_at`, `created_by`, `order`).
+- [x] Migrace `0046_streamline_item_unification` — přidá `StreamlineItem`, odstraní `TaskChecklistItem`, odstraní `Task.parent_task`, aktualizuje `ActivityType` choices.
+- [x] Endpointy: `GET /tasks/{id}/streamline_items`, `POST /tasks/{id}/items` (multi-line split na řádky), `PATCH /items/{id}` (toggle resolved + audit), `DELETE /items/{id}`.
+- [x] Streamline tooly: `StreamlineItemsAddedTool`, `StreamlineItemResolvedTool`, `StreamlineItemReopenedTool` — registrovány v `BUILTIN_TOOLS`.
+- [x] Odstraněn legacy endpoint `GET/POST /tasks/{id}/checklist`, `PATCH/DELETE /tasks/{id}/checklist/{item_id}`.
+- [x] Odstraněny legacy endpointy `GET/POST /tasks/{id}/subtasks` (parent_task FK).
+- [x] `TaskOut` schema aktualizováno: odstraněno `parent_task_id`, `subtask_count`, `checklist_count` → přidáno `streamline_count`, `streamline_resolved`.
+- [x] `_task_out()`, `_copy_task()`, `spawn_recurring_tasks` aktualizovány na `StreamlineItem`.
+- [x] `realization_api.py`, `management_api.py` opraveny (odstraněn `parent_task` ze `select_related`).
+- [x] Streamline toolbar pro `task` entity: odstraněno `checklist_item_checked` a `sub_task_added`.
+- [x] Testy aktualizovány (`test_all_builtin_tools_registered`, `test_sub_task_added_render` → `test_streamline_items_added_render`, `test_checklist_item_checked_render` → `test_streamline_item_resolved_render`).
+- [x] Validace: 274/274 Django testů OK, `vue-tsc --noEmit` exit 0.
 
 ### Krok 4 — Frontend `<StreamlineItemList>`
-- [ ] Komponenta `StreamlineItemList.vue` s prop `kind` a `taskId`.
-- [ ] Multi-line `<textarea>` pro hromadné přidání (split na neprázdné řádky).
-- [ ] Checkbox toggle s optimistic update.
-- [ ] Zobrazení v `TaskDetailView.vue` (a kdekoli dalšího, kde dnes je checklist/subtasks).
-- [ ] Smazat staré komponenty/store sekce pro `checklist` a `subtasks`.
-- [ ] Lokalizace cs/en.
+- [x] Komponenta `StreamlineItemList.vue` s props `taskId`, `kind`, `resolved`, `total`.
+- [x] Multi-line `<textarea>` pro hromadné přidání (split na neprázdné řádky, Ctrl+Enter odeslání).
+- [x] Checkbox toggle s optimistic update + rollback při chybě.
+- [x] Zobrazení v `TaskDetailView.vue` — dvě instance (kind=todo, kind=subtask), old SUBTASKS + CHECKLIST sekce nahrazeny.
+- [x] Smazán starý add-subtask dropdown a všechna inline logika (loadSubtasks, loadChecklist, submitNewSubtask, toggleChecklistItem, …) z TaskDetailView.
+- [x] Store aktualizován: nové typy `StreamlineItemOut`, `StreamlineItemCreateIn`, `StreamlineItemUpdateIn`; nové akce `fetchStreamlineItems`, `createStreamlineItems`, `updateStreamlineItem`, `deleteStreamlineItem`; staré subtask/checklist akce odstraněny.
+- [x] `TaskOut` interface aktualizován: odstraněno `parent_task_id`, `subtask_count`, `checklist_count` → `streamline_count`, `streamline_resolved`.
+- [x] `LeadDetailView.vue` aktualizován: lokální Task interface a counter badge opraveny na nová pole.
+- [x] `tasks.spec.ts` (unit testy) aktualizován: mockTask odpovídá novému `TaskOut`.
+- [x] Lokalizace: nové klíče přidány do cs/en/de/pl (`streamlineTodos`, `streamlineSubtasks`, `streamlineProgress`, `streamlineAdd`, …).
+- [x] Validace: `vue-tsc --noEmit` exit 0, Django smoke testy OK.
 
 ### Krok 5 — Úklid a validace
 - [ ] Smazat / přepsat testy navázané na odstraněné modely (testy pro nesouvisející chování ZACHOVAT).
@@ -53,23 +65,18 @@
 
 ## Stav vypracování
 
-**Aktuálně:** Kroky 1 a 2 dokončeny. Čekám na potvrzení/úpravu předpokladů uživatelem před začátkem Kroku 3 (smazání legacy modelů bez migrace dat je nevratná operace — chci si být jistý zadáním).
+**Aktuálně:** Kroky 1–4 dokončeny. Zbývá Krok 5 — finální úklid a validace.
 
 **Hotovo:**
 - Plán a předpoklady zapsány do `plan.md`.
-- **Krok 1 (Kontrast):** viz checklist výše. Plugin Tailwind Typography registrovaný s WCAG-AA paletou; placeholder editor a popis úkolu opraveny; `RichTextDisplay` + sdílený `sanitizeHtml` util pro plošné konzistentní renderování.
-- **Krok 2 (Popis leadu + Safe HTML):**
-  - Backend `crm/sanitize.py` s bleach allow-listem.
-  - `Lead.description` sanitizace v create + update endpointech.
-  - `LeadsView.vue` modal — editor místo textarea (popis leadu nyní editovatelný přes editor i v modalu).
-  - 4× konsolidace lokálních `sanitizeHtml` na sdílený util.
-  - Backend testy 274/274 OK, frontend build + typecheck OK, lint na změněných souborech čistý.
+- **Krok 1 (Kontrast):** viz checklist výše.
+- **Krok 2 (Popis leadu + Safe HTML):** viz checklist výše.
+- **Krok 3 (StreamlineItem backend):** viz checklist výše.
+- **Krok 4 (Frontend StreamlineItemList):**
+  - Nová komponenta `StreamlineItemList.vue` — multi-line textarea vstup, optimistic checkbox toggle, delete, progress bar, dark mode, lokalizace.
+  - Store: nové typy a API akce; staré subtask/checklist akce odstraněny.
+  - TaskDetailView: nahrazeny obě sekce (SUBTASKS + CHECKLIST) dvěma instancemi `<StreamlineItemList>`.
+  - `vue-tsc --noEmit` exit 0.
 
 **Následuje:**
-- **Krok 3** — Nový `StreamlineItem` model + tooly + smazání legacy `TaskChecklistItem` a `Task.parent_task` bez data migrace. Před začátkem chci ideálně potvrzení od uživatele (bod níže), ale pokud nepřijde, budu pokračovat podle zapsaných pracovních předpokladů.
-
-**Otevřené body pro uživatele (viz "Pracovní předpoklady" výše):**
-1. Potvrzení že "akce" = `Task` (ano/ne).
-2. Položky bez assignee/deadline (jen text + resolved) — souhlas?
-3. Při hromadném vstupu — jeden agregovaný streamline záznam ("přidáno N položek") + N záznamů při toggle. Souhlas?
-4. Potvrzení že `Lead.description` plain-text data zůstanou tak, jak jsou (sanitizace plain text propustí beze změny — žádná data migrace nutná).
+- **Krok 5** — finální úklid: ActivityTimeline event typy, Vitest, lint, manuální průchod.

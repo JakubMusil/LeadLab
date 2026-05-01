@@ -40,7 +40,8 @@ from crm.models import (
     Realization,
     SavedView,
     Task,
-    TaskChecklistItem,
+    StreamlineItem,
+    StreamlineItemKind,
     TaskCustomField,
     TaskCustomFieldType,
     TaskCustomFieldValue,
@@ -1046,8 +1047,6 @@ class TaskOut(Schema):
     proposal_title: Optional[str]
     customer_id: Optional[str]
     customer_name: Optional[str]
-    parent_task_id: Optional[str]
-    parent_task_title: Optional[str]
     project_ids: List[str]
     # Authorship
     assigned_to_id: Optional[str]
@@ -1083,12 +1082,9 @@ class TaskOut(Schema):
     created_at: datetime
     created_by_id: Optional[str]
     created_by_name: Optional[str]
-    # Phase 3: subtask counters
-    subtask_count: int
-    subtasks_completed: int
-    # Phase 3: checklist counters
-    checklist_count: int
-    checklist_checked: int
+    # Streamline item counters (replaces legacy checklist + subtask counters)
+    streamline_count: int
+    streamline_resolved: int
     # Phase 6: time tracking
     estimated_minutes: Optional[int]
     total_logged_minutes: int
@@ -1256,14 +1252,6 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve created_by name for task %s: %s", t.id, exc)
 
-    # Resolve parent task title
-    parent_task_title: Optional[str] = None
-    if t.parent_task_id:
-        try:
-            parent_task_title = t.parent_task.title
-        except (AttributeError, Exception) as exc:
-            logger.debug("Could not resolve parent_task title for task %s: %s", t.id, exc)
-
     # Resolve is_favourite for the requesting user
     is_favourite = False
     if requesting_user and requesting_user.is_authenticated:
@@ -1272,23 +1260,14 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         except Exception:
             pass
 
-    # Phase 3: subtask counters
+    # Streamline item counters (replaces legacy checklist + subtask counters)
     try:
-        subtask_qs = Task.objects.filter(parent_task=t)
-        subtask_count = subtask_qs.count()
-        subtasks_completed = subtask_qs.filter(is_completed=True).count()
+        streamline_qs = StreamlineItem.objects.filter(task=t)
+        streamline_count = streamline_qs.count()
+        streamline_resolved = streamline_qs.filter(is_resolved=True).count()
     except Exception:
-        subtask_count = 0
-        subtasks_completed = 0
-
-    # Phase 3: checklist counters
-    try:
-        checklist_qs = TaskChecklistItem.objects.filter(task=t)
-        checklist_count = checklist_qs.count()
-        checklist_checked = checklist_qs.filter(is_checked=True).count()
-    except Exception:
-        checklist_count = 0
-        checklist_checked = 0
+        streamline_count = 0
+        streamline_resolved = 0
 
     # Phase 6: time tracking
     try:
@@ -1362,8 +1341,6 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "proposal_title": proposal_title,
         "customer_id": customer_id,
         "customer_name": customer_name,
-        "parent_task_id": str(t.parent_task_id) if t.parent_task_id else None,
-        "parent_task_title": parent_task_title,
         "project_ids": project_ids,
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "assigned_to_name": assigned_to_name,
@@ -1393,10 +1370,8 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "created_at": t.created_at,
         "created_by_id": str(t.created_by_id) if t.created_by_id else None,
         "created_by_name": created_by_name,
-        "subtask_count": subtask_count,
-        "subtasks_completed": subtasks_completed,
-        "checklist_count": checklist_count,
-        "checklist_checked": checklist_checked,
+        "streamline_count": streamline_count,
+        "streamline_resolved": streamline_resolved,
         # Phase 6
         "estimated_minutes": t.estimated_minutes,
         "total_logged_minutes": total_logged_minutes,
@@ -1688,9 +1663,8 @@ def list_tasks(
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
     qs = Task.objects.filter(firm=request.firm).select_related(
-        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
+        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer",
     )
-
     if assigned_to_id == "all":
         if not is_admin:
             qs = qs.filter(assigned_to=request.user)
@@ -2360,7 +2334,7 @@ def get_task(request, task_id: str):
 
     try:
         task = Task.objects.select_related(
-            "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
+            "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer",
         ).get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
@@ -2541,285 +2515,198 @@ def toggle_task_favourite(request, task_id: str):
 
 
 # ===========================================================================
-# PHASE 3 — SUBTASKS
+# PHASE 3 — STREAMLINE ITEMS (unified TODO / subtask list)
 # ===========================================================================
-
-def _get_task_depth(task: Task, max_depth: int = 3) -> int:
-    """Return the depth of *task* in the hierarchy (root = 1). Stops at max_depth+1."""
-    depth = 1
-    current = task
-    for _ in range(max_depth):
-        if current.parent_task_id is None:
-            break
-        try:
-            current = Task.objects.only("id", "parent_task_id").get(pk=current.parent_task_id)
-        except Task.DoesNotExist:
-            break
-        depth += 1
-    return depth
+# Legacy subtask endpoints (parent_task FK) have been removed.
+# Items are now managed via POST /tasks/{id}/items and PATCH/DELETE /items/{id}.
 
 
-class SubtaskIn(Schema):
-    title: str
-    description: str = ""
-    description_html: str = ""
-    assigned_to_id: Optional[str] = None
-    watcher_ids: List[str] = []
-    due_date: Optional[datetime] = None
-    priority: str = TaskPriority.MEDIUM
-    status: str = TaskStatus.TODO
-    tags: List[str] = []
-
-
-@router.get(
-    "/tasks/{task_id}/subtasks",
-    auth=django_auth,
-    response={200: List[TaskOut], 403: ErrorOut, 404: ErrorOut},
-)
-def list_subtasks(request, task_id: str):
-    """Return all direct subtasks of the specified task."""
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        task = Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    subtasks = Task.objects.filter(parent_task=task).select_related(
-        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer", "parent_task",
-    )
-    return 200, [_task_out(s, request.user) for s in subtasks]
-
-
-@router.post(
-    "/tasks/{task_id}/subtasks",
-    auth=django_auth,
-    response={201: TaskOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
-)
-def create_subtask(request, task_id: str, payload: SubtaskIn):
-    """Create a direct subtask under *task_id*. Maximum depth is 3."""
-    try:
-        require_membership(request, min_role=MembershipRole.WORKER)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    try:
-        parent = Task.objects.select_related("parent_task", "parent_task__parent_task").get(
-            id=task_id, firm=request.firm
-        )
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    # Enforce maximum depth of 3
-    parent_depth = _get_task_depth(parent)
-    if parent_depth >= 3:
-        return 400, {"detail": "Maximum subtask depth of 3 reached."}
-
-    # Validate priority and status
-    valid_priorities = [p.value for p in TaskPriority]
-    if payload.priority not in valid_priorities:
-        return 400, {"detail": f"Invalid priority. Choose from: {valid_priorities}"}
-    valid_statuses = [s.value for s in TaskStatus]
-    if payload.status not in valid_statuses:
-        return 400, {"detail": f"Invalid status. Choose from: {valid_statuses}"}
-
-    assigned_to = None
-    if payload.assigned_to_id:
-        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
-        if err:
-            return err
-
-    description_added_at = None
-    if payload.description_html:
-        description_added_at = tz.now()
-
-    with transaction.atomic():
-        subtask = Task.objects.create(
-            firm=request.firm,
-            parent_task=parent,
-            # Inherit entity links from parent
-            lead=parent.lead,
-            proposal=parent.proposal,
-            customer=parent.customer,
-            assigned_to=assigned_to,
-            created_by=request.user,
-            title=payload.title,
-            description=payload.description,
-            description_html=payload.description_html,
-            description_added_at=description_added_at,
-            due_date=payload.due_date,
-            priority=payload.priority,
-            status=payload.status,
-            tags=payload.tags,
-        )
-        watcher_err = _set_task_watchers(subtask, payload.watcher_ids, request.firm)
-        if watcher_err:
-            return watcher_err
-
-    broadcast_event(firm=request.firm, event='task.created', payload=_task_out(subtask, request.user))
-    # Phase 2: log subtask creation on parent's timeline
-    _log_timeline_event(
-        parent, ActivityType.SUB_TASK_ADDED, author=request.user,
-        metadata={"subtask_id": str(subtask.id), "title": subtask.title},
-    )
-    _log_timeline_event(subtask, ActivityType.TASK_CREATED, author=request.user)
-    return 201, _task_out(subtask, request.user)
 
 
 # ===========================================================================
 # PHASE 3 — CHECKLIST
 # ===========================================================================
 
-class ChecklistItemOut(Schema):
+class StreamlineItemOut(Schema):
     id: str
     task_id: str
     text: str
-    is_checked: bool
-    position: int
+    kind: str
+    is_resolved: bool
+    order: int
     created_by_id: Optional[str]
     created_at: datetime
+    resolved_by_id: Optional[str] = None
+    resolved_at: Optional[datetime] = None
 
 
-class ChecklistItemIn(Schema):
+class StreamlineItemCreateIn(Schema):
     text: str
-    position: int = 0
+    kind: Optional[str] = "todo"
 
 
-class ChecklistItemUpdateIn(Schema):
-    text: Optional[str] = None
-    is_checked: Optional[bool] = None
-    position: Optional[int] = None
+class StreamlineItemUpdateIn(Schema):
+    is_resolved: Optional[bool] = None
 
 
-def _checklist_item_out(item: TaskChecklistItem) -> dict:
+def _streamline_item_out(item: StreamlineItem) -> dict:
     return {
         "id": str(item.id),
         "task_id": str(item.task_id),
         "text": item.text,
-        "is_checked": item.is_checked,
-        "position": item.position,
+        "kind": item.kind,
+        "is_resolved": item.is_resolved,
+        "order": item.order,
         "created_by_id": str(item.created_by_id) if item.created_by_id else None,
         "created_at": item.created_at,
+        "resolved_by_id": str(item.resolved_by_id) if item.resolved_by_id else None,
+        "resolved_at": item.resolved_at,
     }
 
 
 @router.get(
-    "/tasks/{task_id}/checklist",
+    "/tasks/{task_id}/streamline_items",
     auth=django_auth,
-    response={200: List[ChecklistItemOut], 403: ErrorOut, 404: ErrorOut},
+    response={200: List[StreamlineItemOut], 403: ErrorOut, 404: ErrorOut},
 )
-def list_checklist_items(request, task_id: str):
-    """Return all checklist items for a task, ordered by position."""
+def list_streamline_items(request, task_id: str):
+    """Return all streamline items for a task, ordered by kind, order, created_at."""
     try:
         require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
-
     try:
         task = Task.objects.get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
-
-    items = TaskChecklistItem.objects.filter(task=task).order_by("position", "created_at")
-    return 200, [_checklist_item_out(i) for i in items]
+    items = StreamlineItem.objects.filter(task=task).order_by("kind", "order", "created_at")
+    return 200, [_streamline_item_out(i) for i in items]
 
 
 @router.post(
-    "/tasks/{task_id}/checklist",
+    "/tasks/{task_id}/items",
     auth=django_auth,
-    response={201: ChecklistItemOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    response={201: List[StreamlineItemOut], 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
-def create_checklist_item(request, task_id: str, payload: ChecklistItemIn):
-    """Add a new checklist item to a task."""
+def create_streamline_items(request, task_id: str, payload: StreamlineItemCreateIn):
+    """Add one or more streamline items to a task (multi-line text split)."""
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
-
     try:
         task = Task.objects.get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
-
-    if not payload.text.strip():
-        return 400, {"detail": "Checklist item text cannot be empty."}
-
-    item = TaskChecklistItem.objects.create(
-        task=task,
-        text=payload.text.strip(),
-        position=payload.position,
-        created_by=request.user,
-    )
-    return 201, _checklist_item_out(item)
+    text = payload.text.strip()
+    if not text:
+        return 400, {"detail": "Item text cannot be empty."}
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return 400, {"detail": "No valid items found."}
+    kind = payload.kind or "todo"
+    if kind not in [k.value for k in StreamlineItemKind]:
+        return 400, {"detail": f"Invalid kind. Choose from: {[k.value for k in StreamlineItemKind]}"}
+    items = []
+    for idx, line in enumerate(lines):
+        item = StreamlineItem.objects.create(
+            task=task,
+            text=line[:500],
+            kind=kind,
+            order=idx,
+            created_by=request.user,
+        )
+        items.append(item)
+    # Log activity
+    try:
+        from crm.models import Activity
+        Activity.objects.create(
+            firm=request.firm,
+            lead=task.lead,
+            realization=task.realization,
+            management=task.management,
+            customer=task.customer,
+            proposal=task.proposal,
+            task=task,
+            type="streamline_items_added",
+            metadata={"count": len(items), "items": [i.text for i in items], "kind": kind},
+            user=request.user,
+        )
+    except Exception:
+        pass
+    return 201, [_streamline_item_out(i) for i in items]
 
 
 @router.patch(
-    "/tasks/{task_id}/checklist/{item_id}",
+    "/items/{item_id}",
     auth=django_auth,
-    response={200: ChecklistItemOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    response={200: StreamlineItemOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
-def update_checklist_item(request, task_id: str, item_id: str, payload: ChecklistItemUpdateIn):
-    """Update a checklist item (text, is_checked, position)."""
+def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateIn):
+    """Toggle resolve status of a streamline item."""
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
-
     try:
-        Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
+        item = StreamlineItem.objects.get(id=item_id, task__firm=request.firm)
+    except StreamlineItem.DoesNotExist:
+        return 404, {"detail": "Streamline item not found."}
+    if payload.is_resolved is None:
+        return 400, {"detail": "is_resolved is required."}
+    item.is_resolved = payload.is_resolved
+    if payload.is_resolved:
+        item.resolved_by = request.user
+        item.resolved_at = tz.now()
+    else:
+        item.resolved_by = None
+        item.resolved_at = None
+    item.save(update_fields=["is_resolved", "resolved_by", "resolved_at"])
+    # Log activity
     try:
-        item = TaskChecklistItem.objects.get(id=item_id, task_id=task_id)
-    except TaskChecklistItem.DoesNotExist:
-        return 404, {"detail": "Checklist item not found."}
-
-    update_fields = []
-    if payload.text is not None:
-        if not payload.text.strip():
-            return 400, {"detail": "Checklist item text cannot be empty."}
-        item.text = payload.text.strip()
-        update_fields.append("text")
-    if payload.is_checked is not None:
-        item.is_checked = payload.is_checked
-        update_fields.append("is_checked")
-    if payload.position is not None:
-        item.position = payload.position
-        update_fields.append("position")
-
-    if update_fields:
-        item.save(update_fields=update_fields)
-    return 200, _checklist_item_out(item)
+        from crm.models import Activity
+        task = item.task
+        activity_type = "streamline_item_resolved" if payload.is_resolved else "streamline_item_reopened"
+        Activity.objects.create(
+            firm=request.firm,
+            lead=task.lead,
+            realization=task.realization,
+            management=task.management,
+            customer=task.customer,
+            proposal=task.proposal,
+            task=task,
+            type=activity_type,
+            metadata={
+                "item_id": str(item.id),
+                "item_text": item.text,
+                "kind": item.kind,
+                "resolved": payload.is_resolved,
+            },
+            user=request.user,
+        )
+    except Exception:
+        pass
+    return 200, _streamline_item_out(item)
 
 
 @router.delete(
-    "/tasks/{task_id}/checklist/{item_id}",
+    "/items/{item_id}",
     auth=django_auth,
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )
-def delete_checklist_item(request, task_id: str, item_id: str):
-    """Delete a checklist item."""
+def delete_streamline_item(request, item_id: str):
+    """Delete a streamline item."""
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
-
     try:
-        Task.objects.get(id=task_id, firm=request.firm)
-    except Task.DoesNotExist:
-        return 404, {"detail": "Task not found."}
-
-    try:
-        item = TaskChecklistItem.objects.get(id=item_id, task_id=task_id)
-    except TaskChecklistItem.DoesNotExist:
-        return 404, {"detail": "Checklist item not found."}
-
+        item = StreamlineItem.objects.get(id=item_id, task__firm=request.firm)
+    except StreamlineItem.DoesNotExist:
+        return 404, {"detail": "Streamline item not found."}
     item.delete()
     return 204, None
+
 
 
 # ===========================================================================
@@ -3098,14 +2985,13 @@ class TaskCopyIn(Schema):
     title: Optional[str] = None
 
 
-def _copy_task(original: Task, firm, created_by, title: str, parent_task=None) -> Task:
+def _copy_task(original: Task, firm, created_by, title: str) -> Task:
     """Create a copy of *original* under *firm*. Does not copy subtasks/checklist."""
     new_task = Task.objects.create(
         firm=firm,
         lead=original.lead,
         proposal=original.proposal,
         customer=original.customer,
-        parent_task=parent_task,
         created_by=created_by,
         assigned_to=original.assigned_to,
         title=title,
@@ -3130,21 +3016,7 @@ def _copy_task(original: Task, firm, created_by, title: str, parent_task=None) -
     return new_task
 
 
-def _copy_subtasks_recursive(original: Task, new_parent: Task, firm, created_by, depth: int = 1, max_depth: int = 3):
-    """
-    Recursively copy direct subtasks of *original* under *new_parent*.
 
-    Mirrors the 3-level depth limit enforced when creating subtasks
-    interactively.  *depth* starts at 1 (children of the root copy) and the
-    recursion stops when ``depth >= max_depth`` so that the copied hierarchy
-    never exceeds the allowed nesting level.
-    """
-    if depth >= max_depth:
-        return
-    for sub in Task.objects.filter(parent_task=original):
-        new_sub = _copy_task(sub, firm, created_by, title=sub.title, parent_task=new_parent)
-        _log_timeline_event(new_sub, ActivityType.TASK_CREATED, author=created_by)
-        _copy_subtasks_recursive(sub, new_sub, firm, created_by, depth=depth + 1, max_depth=max_depth)
 
 
 @router.post(
@@ -3171,18 +3043,15 @@ def copy_task(request, task_id: str, payload: TaskCopyIn):
     with transaction.atomic():
         new_task = _copy_task(original, request.firm, request.user, title=copy_title)
 
-        if payload.include_checklist:
-            for item in TaskChecklistItem.objects.filter(task=original).order_by("position", "created_at"):
-                TaskChecklistItem.objects.create(
+        if payload.include_checklist or payload.include_subtasks:
+            for item in StreamlineItem.objects.filter(task=original).order_by("kind", "order", "created_at"):
+                StreamlineItem.objects.create(
                     task=new_task,
                     text=item.text,
-                    position=item.position,
-                    is_checked=False,
+                    kind=item.kind,
+                    order=item.order,
                     created_by=request.user,
                 )
-
-        if payload.include_subtasks:
-            _copy_subtasks_recursive(original, new_task, request.firm, request.user)
 
         _log_timeline_event(new_task, ActivityType.TASK_CREATED, author=request.user)
 
@@ -3317,8 +3186,8 @@ def get_public_task(request, token: str):
         logger.debug("Could not resolve firm name for public task share %s: %s", token, exc)
 
     checklist = [
-        {"text": item.text, "is_checked": item.is_checked}
-        for item in TaskChecklistItem.objects.filter(task=task).order_by("position", "created_at")
+        {"text": item.text, "is_checked": item.is_resolved, "kind": item.kind, "order": item.order}
+        for item in StreamlineItem.objects.filter(task=task).order_by("kind", "order", "created_at")
     ]
 
     return 200, {
@@ -4172,15 +4041,16 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
             if watcher_err:
                 raise ValueError(f"Watcher error: {watcher_err}")
 
-        # Copy checklist items from template
+        # Copy streamline items from template
         checklist_items = tmpl.checklist_items if isinstance(tmpl.checklist_items, list) else []
         for item_data in checklist_items:
             text = str(item_data.get("text", "")).strip()
             if text:
-                TaskChecklistItem.objects.create(
+                StreamlineItem.objects.create(
                     task=task,
                     text=text,
-                    position=int(item_data.get("position", 0)),
+                    kind="todo",
+                    order=int(item_data.get("position", 0)),
                     created_by=request.user,
                 )
 

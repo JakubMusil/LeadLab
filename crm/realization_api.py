@@ -575,7 +575,7 @@ def list_realization_tasks(
     offset = (page - 1) * page_size
     tasks = (
         Task.objects.filter(realization=realization)
-        .select_related("assigned_to", "completed_by", "created_by", "lead", "proposal", "customer", "parent_task")
+        .select_related("assigned_to", "completed_by", "created_by", "lead", "proposal", "customer")
         .order_by("-created_at")[offset:offset + page_size]
     )
     return [_shared_task_out(t, request.user) for t in tasks]
