@@ -14,6 +14,7 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+import TaskCard from '@/components/TaskCard.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
   ChatBubbleLeftIcon,
@@ -107,6 +108,14 @@ interface Activity {
   reactions?: ReactionSummary[]
 }
 
+// Unified feed item — either an Activity or a Task (for Lead feed)
+interface FeedItem {
+  item_type: 'activity' | 'task'
+  created_at: string
+  activity: Activity | null
+  task: Record<string, unknown> | null
+}
+
 interface StreamlineTool {
   activity_type: string
   label: string
@@ -187,6 +196,9 @@ const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
+// Feed items for the unified lead feed (activities + tasks merged)
+const feedItems = ref<FeedItem[]>([])
+const useFeed = computed(() => props.entityType === 'lead')
 
 // Filter state — set of activity_type values that are currently visible.
 // Sourced from the streamline preferences store (per-user, persisted on the
@@ -217,6 +229,44 @@ const filteredActivities = computed(() => {
     }
     return false
   })
+})
+
+// ---------------------------------------------------------------------------
+// displayItems — unified list for the template v-for
+// Merges task feed items (for Lead) with filtered activity items.
+// Each item carries _type, _key and _created_at for template branching.
+// ---------------------------------------------------------------------------
+type DisplayItem = (Activity & { _type: 'activity'; _key: string; _created_at: string; _task?: never }) |
+  { _type: 'task'; _key: string; _created_at: string; _task: Record<string, unknown> } & Record<string, unknown>
+
+const displayItems = computed<DisplayItem[]>(() => {
+  if (useFeed.value) {
+    return feedItems.value
+      .filter((item) => {
+        if (item.item_type === 'task') return true
+        if (!item.activity) return false
+        return visibleTypes.value.has(item.activity.type)
+      })
+      .map((item): DisplayItem => {
+        if (item.item_type === 'task') {
+          return {
+            _type: 'task',
+            _key: `task-${(item.task as Record<string, unknown>)?.id}`,
+            _created_at: item.created_at,
+            _task: item.task as Record<string, unknown>,
+          } as DisplayItem
+        }
+        const act = item.activity as Activity
+        return { ...act, _type: 'activity', _key: act.id, _created_at: act.created_at } as DisplayItem
+      })
+  }
+  // Non-lead entities — plain activity list
+  return filteredActivities.value.map((a) => ({
+    ...a,
+    _type: 'activity' as const,
+    _key: a.id,
+    _created_at: a.created_at,
+  })) as DisplayItem[]
 })
 
 /**
@@ -415,7 +465,8 @@ function translateLeadStatus(status: string): string {
 // API helpers
 // ---------------------------------------------------------------------------
 function listUrl(page: number): string {
-  if (props.entityType === 'lead') return `/api/v1/crm/opportunities/${props.entityId}/activities?page=${page}&page_size=20`
+  // Lead uses the unified feed endpoint (Activity + Task merged)
+  if (props.entityType === 'lead') return `/api/v1/crm/opportunities/${props.entityId}/feed?page=${page}&page_size=20`
   if (props.entityType === 'realization') return `/api/v1/crm/realizations/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'customer') return `/api/v1/crm/directory/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'proposal') return `/api/v1/crm/proposals/${props.entityId}/activities?page=${page}&page_size=20`
@@ -438,12 +489,27 @@ function entityIdKey(): string {
 async function loadActivities(page = 1) {
   activitiesLoading.value = true
   try {
-    const res = await api.get<Activity[]>(listUrl(page))
-    if (res.ok) {
-      if (page === 1) activities.value = res.data
-      else activities.value = [...activities.value, ...res.data]
-      activitiesPage.value = page
-      activitiesHasMore.value = res.data.length === 20
+    if (useFeed.value) {
+      // Unified feed for Lead — merges Activity + Task
+      const res = await api.get<FeedItem[]>(listUrl(page))
+      if (res.ok) {
+        if (page === 1) feedItems.value = res.data
+        else feedItems.value = [...feedItems.value, ...res.data]
+        activitiesPage.value = page
+        activitiesHasMore.value = res.data.length === 20
+        // Keep activities in sync for WebSocket / reaction handling
+        activities.value = res.data
+          .filter((f) => f.item_type === 'activity' && f.activity)
+          .map((f) => f.activity as Activity)
+      }
+    } else {
+      const res = await api.get<Activity[]>(listUrl(page))
+      if (res.ok) {
+        if (page === 1) activities.value = res.data
+        else activities.value = [...activities.value, ...res.data]
+        activitiesPage.value = page
+        activitiesHasMore.value = res.data.length === 20
+      }
     }
   } finally {
     activitiesLoading.value = false
@@ -963,267 +1029,258 @@ defineExpose({ load: () => loadActivities(1) })
       <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
-    <div v-else-if="filteredActivities.length === 0" class="text-center py-10 text-gray-400 text-sm" data-testid="activity-timeline-empty">
+    <!-- Empty state -->
+    <div
+      v-else-if="displayItems.length === 0"
+      class="text-center py-10 text-gray-400 text-sm"
+      data-testid="activity-timeline-empty"
+    >
       {{ activities.length > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
+    <!-- Unified feed list — works for both Lead (Activity+Task) and other entities (Activity only) -->
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">
-      <div
-        v-for="act in filteredActivities"
-        :key="act.id"
-        class="flex items-start gap-3 p-4"
-        data-testid="activity-item"
-        :data-activity-id="act.id"
-        :data-activity-type="act.type"
-        :data-activity-internal="act.is_internal ? 'true' : 'false'"
-      >
-        <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-          :class="act.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-            : act.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-            : act.type === 'comment' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
+      <template v-for="item in displayItems" :key="item._key">
+
+        <!-- Task card row -->
+        <div
+          v-if="item._type === 'task'"
+          class="flex items-start gap-3 px-4 pt-3 pb-3"
+          data-testid="feed-task-item"
         >
-          <component :is="activityIcon(act.type)" class="w-4 h-4" />
+          <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+            <ClipboardDocumentListIcon class="w-4 h-4" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('tasks.task') }}</span>
+              <span class="text-xs text-gray-400">{{ formatTime(item._created_at) }}</span>
+            </div>
+            <TaskCard
+              :task="item._task"
+              @refreshed="loadActivities(1)"
+            />
+          </div>
         </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
-              {{ activityTypeLabel(act.type) }}
-              <template v-if="act.type === 'entity_change' && act.tool_payload && ((act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field)">
-                {{ (act.tool_payload as Record<string, string>).field_label || (act.tool_payload as Record<string, string>).field }}
-              </template>
-            </span>
-            <!-- Calendar / Task unification — status pill for scheduled activities (meeting/call/event) -->
-            <template v-if="act.type === 'meeting_scheduled' || act.type === 'call_scheduled' || act.type === 'event_scheduled'">
-              <span
-                v-if="(act.tool_payload as Record<string, unknown> | null)?.task_status"
-                data-testid="scheduled-task-status-badge"
-                class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide"
-                :class="scheduledTaskStatusBadgeClass(((act.tool_payload as Record<string, unknown>).task_status as string))"
-              >{{ t(`leadDetail.scheduledTaskStatus.${((act.tool_payload as Record<string, unknown>).task_status as string)}`) }}</span>
-            </template>
-            <span
-              v-if="act.is_internal"
-              data-testid="activity-internal-badge"
-              class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
-              :title="t('leadDetail.activityInternalTooltip')"
-            >{{ t('leadDetail.activityInternal') }}</span>
-            <span v-if="act.user_name" class="relative group/avatar flex items-center">
-              <span
-                class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"
-                :title="act.user_name"
-              >
-                <img
-                  v-if="act.user_avatar_url"
-                  :src="act.user_avatar_url"
-                  :alt="act.user_name"
-                  class="w-full h-full object-cover"
-                />
-                <template v-else>{{ userInitials(act.user_name) }}</template>
+
+        <!-- Activity row -->
+        <div
+          v-else
+          class="flex items-start gap-3 p-4"
+          data-testid="activity-item"
+          :data-activity-id="item.id"
+          :data-activity-type="item.type"
+          :data-activity-internal="item.is_internal ? 'true' : 'false'"
+        >
+          <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+            :class="item.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+              : item.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              : item.type === 'comment' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
+          >
+            <component :is="activityIcon(item.type)" class="w-4 h-4" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                {{ activityTypeLabel(item.type) }}
+                <template v-if="item.type === 'entity_change' && item.tool_payload && ((item.tool_payload as Record<string, string>).field_label || (item.tool_payload as Record<string, string>).field)">
+                  {{ (item.tool_payload as Record<string, string>).field_label || (item.tool_payload as Record<string, string>).field }}
+                </template>
               </span>
-              <!-- Tooltip bubble shown on hover -->
-              <span
-                class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
-              >{{ act.user_name }}</span>
-            </span>
-            <span class="text-xs text-gray-400">{{ formatTime(act.created_at) }}</span>
-          </div>
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <p v-if="act.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(act.content_text)" />
-          <p v-if="act.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            {{ t('leadDetail.statusChangedArrow', {
-              from: translateLeadStatus((act.metadata as Record<string, string>).old_status ?? ''),
-              to: translateLeadStatus((act.metadata as Record<string, string>).new_status ?? ''),
-            }) }}
-          </p>
-          <p v-else-if="act.type === 'task_completed' && (act.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            {{ (act.metadata as Record<string, string>).title }}
-          </p>
-          <p v-else-if="act.type === 'task_assigned' && (act.metadata as Record<string, string>).task_title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            {{ (act.metadata as Record<string, string>).task_title }}
-          </p>
-          <p v-else-if="act.type === 'entity_change' && act.tool_payload" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            <span class="line-through text-red-500 dark:text-red-400">{{ cleanFieldValue((act.tool_payload as Record<string, string>).old_value) }}</span>
-            →
-            <span class="font-medium text-green-600 dark:text-green-400">{{ cleanFieldValue((act.tool_payload as Record<string, string>).new_value) }}</span>
-          </p>
-          <RouterLink
-            v-if="act.type === 'proposal_created' && act.metadata?.proposal_id"
-            :to="`/app/proposals/${act.metadata.proposal_id}`"
-            class="text-xs text-red-600 hover:text-red-700 mt-0.5 inline-block"
-          >
-            {{ t('leadDetail.viewProposal') }} →
-          </RouterLink>
-
-          <!-- Voice memo player + (optional) transcript collapse -->
-          <div
-            v-if="act.type === 'voice_memo' && voiceMemoUrl(act)"
-            class="mt-2 space-y-1.5"
-            data-testid="voice-memo-player"
-            :data-activity-id="act.id"
-          >
-            <div class="flex items-center gap-2">
-              <audio
-                :src="voiceMemoUrl(act)"
-                controls
-                preload="metadata"
-                class="flex-1 min-w-0 max-w-md"
-              />
-              <span
-                v-if="voiceMemoDurationSeconds(act) !== null"
-                class="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0"
-                data-testid="voice-memo-duration"
-              >{{ formatVoiceMemoDuration(voiceMemoDurationSeconds(act)) }}</span>
-            </div>
-            <div
-              v-if="voiceMemoTranscript(act)"
-              data-testid="voice-memo-transcript-wrapper"
-            >
-              <button
-                type="button"
-                class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 inline-flex items-center gap-1"
-                data-testid="voice-memo-transcript-toggle"
-                @click="toggleTranscript(act.id)"
-              >
-                {{ expandedTranscriptIds.has(act.id)
-                  ? t('voiceMemo.hideTranscript')
-                  : t('voiceMemo.showTranscript') }}
-              </button>
-              <p
-                v-if="expandedTranscriptIds.has(act.id)"
-                class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
-                data-testid="voice-memo-transcript"
-              >{{ voiceMemoTranscript(act) }}</p>
-            </div>
-          </div>
-
-          <!-- File upload card (Fáze 7.2): icon + title + filename/size,
-               click downloads the file (or follows the external URL when
-               the user opted out of local storage). -->
-          <a
-            v-if="act.type === 'file_upload' && fileUploadUrl(act)"
-            :href="fileUploadUrl(act)"
-            :target="fileUploadIsExternal(act) ? '_blank' : '_self'"
-            :rel="fileUploadIsExternal(act) ? 'noopener noreferrer' : undefined"
-            :download="fileUploadIsExternal(act) ? undefined : (fileUploadFilename(act) || true)"
-            class="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
-            data-testid="file-upload-card"
-            :data-activity-id="act.id"
-            :data-source-kind="fileUploadSourceKind(act)"
-          >
-            <component :is="fileUploadIcon(act)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {{ fileUploadTitle(act) || fileUploadFilename(act) || t('fileUpload.untitled') }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                <span v-if="fileUploadFilename(act)">{{ fileUploadFilename(act) }}</span>
-                <span v-if="fileUploadFilename(act) && fileUploadFormattedSize(act)" class="mx-1">·</span>
-                <span v-if="fileUploadFormattedSize(act)" class="tabular-nums">{{ fileUploadFormattedSize(act) }}</span>
-                <span v-if="fileUploadIsExternal(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
-                <span v-else-if="fileUploadFetchPending(act)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
-              </p>
-            </div>
-          </a>
-
-          <!-- Event scheduled card (Fáze 7.3): date/time, location, attendees, description.
-               The status pill is rendered above (next to the type label) — this card only
-               carries the descriptive metadata. -->
-          <div
-            v-if="act.type === 'event_scheduled'"
-            class="mt-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 space-y-1"
-            data-testid="event-scheduled-card"
-            :data-activity-id="act.id"
-          >
-            <div
-              v-if="eventScheduledRange(act)"
-              class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
-              data-testid="event-scheduled-time"
-            >
-              <CalendarIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-              <span class="font-medium tabular-nums">{{ eventScheduledRange(act) }}</span>
-              <span
-                v-if="eventScheduledIsAllDay(act)"
-                class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide"
-                data-testid="event-scheduled-all-day-badge"
-              >{{ t('event.allDay') }}</span>
-            </div>
-            <div
-              v-if="eventScheduledLocation(act)"
-              class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-              data-testid="event-scheduled-location"
-            >
-              <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-              <span class="truncate">{{ eventScheduledLocation(act) }}</span>
-            </div>
-            <div
-              v-if="eventScheduledAttendees(act).length"
-              class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-              data-testid="event-scheduled-attendees"
-            >
-              <UsersIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-              <div class="flex flex-wrap gap-1">
+              <template v-if="item.type === 'meeting_scheduled' || item.type === 'call_scheduled' || item.type === 'event_scheduled'">
                 <span
-                  v-for="a in eventScheduledAttendees(act)"
-                  :key="a"
-                  class="inline-flex items-center px-2 py-0.5 rounded-lg bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 text-xs"
-                >{{ a }}</span>
+                  v-if="(item.tool_payload as Record<string, unknown> | null)?.task_status"
+                  data-testid="scheduled-task-status-badge"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide"
+                  :class="scheduledTaskStatusBadgeClass(((item.tool_payload as Record<string, unknown>).task_status as string))"
+                >{{ t(`leadDetail.scheduledTaskStatus.${((item.tool_payload as Record<string, unknown>).task_status as string)}`) }}</span>
+              </template>
+              <span
+                v-if="item.is_internal"
+                data-testid="activity-internal-badge"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
+                :title="t('leadDetail.activityInternalTooltip')"
+              >{{ t('leadDetail.activityInternal') }}</span>
+              <span v-if="item.user_name" class="relative group/avatar flex items-center">
+                <span
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full overflow-hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold flex-shrink-0 cursor-default"
+                  :title="item.user_name"
+                >
+                  <img
+                    v-if="item.user_avatar_url"
+                    :src="item.user_avatar_url"
+                    :alt="item.user_name"
+                    class="w-full h-full object-cover"
+                  />
+                  <template v-else>{{ userInitials(item.user_name) }}</template>
+                </span>
+                <span
+                  class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
+                >{{ item.user_name }}</span>
+              </span>
+              <span class="text-xs text-gray-400">{{ formatTime(item.created_at) }}</span>
+            </div>
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <p v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(item.content_text)" />
+            <p v-if="item.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              {{ t('leadDetail.statusChangedArrow', {
+                from: translateLeadStatus((item.metadata as Record<string, string>).old_status ?? ''),
+                to: translateLeadStatus((item.metadata as Record<string, string>).new_status ?? ''),
+              }) }}
+            </p>
+            <p v-else-if="item.type === 'task_completed' && (item.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              {{ (item.metadata as Record<string, string>).title }}
+            </p>
+            <p v-else-if="item.type === 'task_assigned' && (item.metadata as Record<string, string>).task_title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              {{ (item.metadata as Record<string, string>).task_title }}
+            </p>
+            <p v-else-if="item.type === 'entity_change' && item.tool_payload" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              <span class="line-through text-red-500 dark:text-red-400">{{ cleanFieldValue((item.tool_payload as Record<string, string>).old_value) }}</span>
+              →
+              <span class="font-medium text-green-600 dark:text-green-400">{{ cleanFieldValue((item.tool_payload as Record<string, string>).new_value) }}</span>
+            </p>
+            <RouterLink
+              v-if="item.type === 'proposal_created' && item.metadata?.proposal_id"
+              :to="`/app/proposals/${item.metadata.proposal_id}`"
+              class="text-xs text-red-600 hover:text-red-700 mt-0.5 inline-block"
+            >
+              {{ t('leadDetail.viewProposal') }} →
+            </RouterLink>
+
+            <!-- Voice memo player -->
+            <div
+              v-if="item.type === 'voice_memo' && voiceMemoUrl(item as unknown as Activity)"
+              class="mt-2 space-y-1.5"
+              data-testid="voice-memo-player"
+              :data-activity-id="item.id"
+            >
+              <div class="flex items-center gap-2">
+                <audio
+                  :src="voiceMemoUrl(item as unknown as Activity)"
+                  controls
+                  preload="metadata"
+                  class="flex-1 min-w-0 max-w-md"
+                />
+                <span
+                  v-if="voiceMemoDurationSeconds(item as unknown as Activity) !== null"
+                  class="text-xs text-gray-500 dark:text-gray-400 tabular-nums flex-shrink-0"
+                  data-testid="voice-memo-duration"
+                >{{ formatVoiceMemoDuration(voiceMemoDurationSeconds(item as unknown as Activity)) }}</span>
+              </div>
+              <div v-if="voiceMemoTranscript(item as unknown as Activity)" data-testid="voice-memo-transcript-wrapper">
+                <button
+                  type="button"
+                  class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 inline-flex items-center gap-1"
+                  data-testid="voice-memo-transcript-toggle"
+                  @click="toggleTranscript(item.id)"
+                >
+                  {{ expandedTranscriptIds.has(item.id) ? t('voiceMemo.hideTranscript') : t('voiceMemo.showTranscript') }}
+                </button>
+                <p
+                  v-if="expandedTranscriptIds.has(item.id)"
+                  class="mt-1 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
+                  data-testid="voice-memo-transcript"
+                >{{ voiceMemoTranscript(item as unknown as Activity) }}</p>
               </div>
             </div>
-            <p
-              v-if="eventScheduledDescription(act)"
-              class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap"
-              data-testid="event-scheduled-description"
-            >{{ eventScheduledDescription(act) }}</p>
-          </div>
 
-          <!-- Reactions row (visible only for comment activities) -->
-          <div
-            v-if="act.type === 'comment'"
-            class="flex flex-wrap items-center gap-1.5 mt-2"
-            data-testid="activity-reactions-row"
-          >
-            <button
-              v-for="r in (act.reactions ?? [])"
-              :key="r.emoji"
-              data-testid="activity-reaction-chip"
-              :data-emoji="r.emoji"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
-              :class="r.reacted_by_me
-                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
-                : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-gray-300'"
-              @click="toggleReaction(act.id, r.emoji)"
+            <!-- File upload card -->
+            <a
+              v-if="item.type === 'file_upload' && fileUploadUrl(item as unknown as Activity)"
+              :href="fileUploadUrl(item as unknown as Activity)"
+              :target="fileUploadIsExternal(item as unknown as Activity) ? '_blank' : '_self'"
+              :rel="fileUploadIsExternal(item as unknown as Activity) ? 'noopener noreferrer' : undefined"
+              :download="fileUploadIsExternal(item as unknown as Activity) ? undefined : (fileUploadFilename(item as unknown as Activity) || true)"
+              class="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-red-300 dark:hover:border-red-500/60 transition-colors"
+              data-testid="file-upload-card"
+              :data-activity-id="item.id"
+              :data-source-kind="fileUploadSourceKind(item as unknown as Activity)"
             >
-              <span>{{ r.emoji }}</span>
-              <span class="tabular-nums">{{ r.count }}</span>
-            </button>
-            <div class="relative">
+              <component :is="fileUploadIcon(item as unknown as Activity)" class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {{ fileUploadTitle(item as unknown as Activity) || fileUploadFilename(item as unknown as Activity) || t('fileUpload.untitled') }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <span v-if="fileUploadFilename(item as unknown as Activity)">{{ fileUploadFilename(item as unknown as Activity) }}</span>
+                  <span v-if="fileUploadFilename(item as unknown as Activity) && fileUploadFormattedSize(item as unknown as Activity)" class="mx-1">·</span>
+                  <span v-if="fileUploadFormattedSize(item as unknown as Activity)" class="tabular-nums">{{ fileUploadFormattedSize(item as unknown as Activity) }}</span>
+                  <span v-if="fileUploadIsExternal(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-external-badge">{{ t('fileUpload.externalLink') }}</span>
+                  <span v-else-if="fileUploadFetchPending(item as unknown as Activity)" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="file-upload-fetching-badge">{{ t('fileUpload.fetching') }}</span>
+                </p>
+              </div>
+            </a>
+
+            <!-- Event scheduled card -->
+            <div
+              v-if="item.type === 'event_scheduled'"
+              class="mt-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 space-y-1"
+              data-testid="event-scheduled-card"
+              :data-activity-id="item.id"
+            >
+              <div v-if="eventScheduledRange(item as unknown as Activity)" class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100" data-testid="event-scheduled-time">
+                <CalendarIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <span class="font-medium tabular-nums">{{ eventScheduledRange(item as unknown as Activity) }}</span>
+                <span v-if="eventScheduledIsAllDay(item as unknown as Activity)" class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] font-semibold uppercase tracking-wide" data-testid="event-scheduled-all-day-badge">{{ t('event.allDay') }}</span>
+              </div>
+              <div v-if="eventScheduledLocation(item as unknown as Activity)" class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300" data-testid="event-scheduled-location">
+                <MapPinIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <span class="truncate">{{ eventScheduledLocation(item as unknown as Activity) }}</span>
+              </div>
+              <div v-if="eventScheduledAttendees(item as unknown as Activity).length" class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300" data-testid="event-scheduled-attendees">
+                <UsersIcon class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="a in eventScheduledAttendees(item as unknown as Activity)" :key="a" class="inline-flex items-center px-2 py-0.5 rounded-lg bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 text-xs">{{ a }}</span>
+                </div>
+              </div>
+              <p v-if="eventScheduledDescription(item as unknown as Activity)" class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap" data-testid="event-scheduled-description">{{ eventScheduledDescription(item as unknown as Activity) }}</p>
+            </div>
+
+            <!-- Reactions row -->
+            <div v-if="item.type === 'comment'" class="flex flex-wrap items-center gap-1.5 mt-2" data-testid="activity-reactions-row">
               <button
-                data-testid="activity-add-reaction"
-                class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
-                :title="t('leadDetail.addReaction')"
-                @click="openEmojiPicker(act.id)"
+                v-for="r in ((item as unknown as Activity).reactions ?? [])"
+                :key="r.emoji"
+                data-testid="activity-reaction-chip"
+                :data-emoji="r.emoji"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
+                :class="r.reacted_by_me
+                  ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-gray-300'"
+                @click="toggleReaction(item.id, r.emoji)"
               >
-                <FaceSmileIcon class="w-3.5 h-3.5" />
+                <span>{{ r.emoji }}</span>
+                <span class="tabular-nums">{{ r.count }}</span>
               </button>
-              <div
-                v-if="emojiPickerActivityId === act.id"
-                data-testid="activity-emoji-picker"
-                class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
-              >
+              <div class="relative">
                 <button
-                  v-for="emoji in COMMON_EMOJIS"
-                  :key="emoji"
-                  data-testid="activity-emoji-option"
-                  :data-emoji="emoji"
-                  class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
-                  @click="toggleReaction(act.id, emoji)"
-                >{{ emoji }}</button>
+                  data-testid="activity-add-reaction"
+                  class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                  :title="t('leadDetail.addReaction')"
+                  @click="openEmojiPicker(item.id)"
+                >
+                  <FaceSmileIcon class="w-3.5 h-3.5" />
+                </button>
+                <div
+                  v-if="emojiPickerActivityId === item.id"
+                  data-testid="activity-emoji-picker"
+                  class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
+                >
+                  <button
+                    v-for="emoji in COMMON_EMOJIS"
+                    :key="emoji"
+                    data-testid="activity-emoji-option"
+                    :data-emoji="emoji"
+                    class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
+                    @click="toggleReaction(item.id, emoji)"
+                  >{{ emoji }}</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
 
     <button

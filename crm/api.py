@@ -840,6 +840,102 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
     return 200, [_activity_out(a, request.user) for a in activities]
 
 
+# ---------------------------------------------------------------------------
+# Unified feed — Activities + Tasks merged into one chronological timeline
+# ---------------------------------------------------------------------------
+
+class FeedItemOut(Schema):
+    """
+    A single item in the unified entity feed.
+
+    ``item_type`` distinguishes between an Activity record (``"activity"``)
+    and a Task record (``"task"``).  The ``activity`` / ``task`` fields are
+    mutually exclusive — exactly one is populated.
+    """
+    item_type: str   # "activity" | "task"
+    created_at: datetime
+    activity: Optional[Dict[str, Any]] = None
+    task: Optional[Dict[str, Any]] = None
+
+
+def _feed_item_from_activity(a: "Activity", requesting_user=None) -> dict:
+    return {
+        "item_type": "activity",
+        "created_at": a.created_at,
+        "activity": _activity_out(a, requesting_user),
+        "task": None,
+    }
+
+
+def _feed_item_from_task(t: "Task", requesting_user=None) -> dict:
+    return {
+        "item_type": "task",
+        "created_at": t.created_at,
+        "activity": None,
+        "task": _task_out(t, requesting_user),
+    }
+
+
+@router.get(
+    "/opportunities/{lead_id}/feed",
+    auth=django_auth,
+    response={200: List[FeedItemOut], 403: ErrorOut, 404: ErrorOut},
+)
+def get_lead_feed(request, lead_id: str, page: int = 1, page_size: int = 20):
+    """
+    Unified chronological feed for a Lead — merges Activities and Tasks into
+    one list sorted by ``created_at`` descending.
+
+    Activities are the standard Streamline records (comments, calls, emails,
+    file uploads, etc.).  Tasks are surfaced as rich cards so the user can see
+    and interact with them inline without leaving the Lead detail.
+
+    Pagination works over the merged set — ``page_size`` items total per page.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = Lead.objects.get(id=lead_id, firm=request.firm)
+    except Lead.DoesNotExist:
+        return 404, {"detail": "Lead not found."}
+
+    offset = (page - 1) * page_size
+
+    # Fetch both sets — slightly over-fetch then merge & sort in Python.
+    # For typical page sizes (20) this is negligible; for very active leads
+    # with thousands of records a keyset-pagination approach would be better,
+    # but that optimisation can be added later without breaking the contract.
+    fetch_size = page_size * 2 + 10  # generous buffer for the merge window
+
+    activities = list(
+        Activity.objects.filter(lead=lead)
+        .select_related("user")
+        .prefetch_related("reactions")
+        .order_by("-created_at")[:offset + fetch_size]
+    )
+    tasks = list(
+        Task.objects.filter(lead=lead, is_archived=False)
+        .select_related("assigned_to", "completed_by", "created_by")
+        .order_by("-created_at")[:offset + fetch_size]
+    )
+
+    # Merge and sort
+    feed: list[dict] = []
+    for a in activities:
+        feed.append(_feed_item_from_activity(a, request.user))
+    for t in tasks:
+        feed.append(_feed_item_from_task(t, request.user))
+
+    feed.sort(key=lambda x: x["created_at"], reverse=True)
+
+    # Apply pagination window
+    page_items = feed[offset: offset + page_size]
+    return 200, page_items
+
+
 @router.get("/tasks/{task_id}/activities", auth=django_auth, response={200: List[ActivityOut], 403: ErrorOut, 404: ErrorOut})
 def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 20):
     """Return the unified Streamline activity timeline for a Task, newest first (paginated).
@@ -2360,7 +2456,10 @@ class TaskDocumentOut(Schema):
     created_at: datetime
 
 
-def _task_document_out(doc: Document) -> dict:
+def _task_document_out(doc: Document, request=None) -> dict:
+    file_url = doc.file.url if doc.file.name else ""
+    if file_url and request is not None:
+        file_url = request.build_absolute_uri(file_url)
     return {
         "id": str(doc.id),
         "task_id": str(doc.task_id) if doc.task_id else "",
@@ -2368,7 +2467,7 @@ def _task_document_out(doc: Document) -> dict:
         "original_filename": doc.name,
         "content_type": doc.content_type or "",
         "size_bytes": doc.size_bytes,
-        "url": doc.file.url if doc.file.name else "",
+        "url": file_url,
         "created_at": doc.created_at,
     }
 
@@ -2394,7 +2493,7 @@ def list_task_documents(request, task_id: str, page: int = 1, page_size: int = 5
     docs = Document.objects.filter(task=task, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
-    return 200, [_task_document_out(d) for d in docs]
+    return 200, [_task_document_out(d, request) for d in docs]
 
 
 @router.post(
@@ -2441,13 +2540,13 @@ def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
             metadata={
                 "document_id": str(doc.id),
                 "filename": doc.name,
-                "url": doc.file.url,
+                "url": request.build_absolute_uri(doc.file.url),
                 "size_bytes": doc.size_bytes,
                 "content_type": doc.content_type,
             },
         )
 
-    return 201, _task_document_out(doc)
+    return 201, _task_document_out(doc, request)
 
 
 @router.delete(
@@ -4149,7 +4248,10 @@ class AttachmentOut(Schema):
     created_at: datetime
 
 
-def _attachment_out(doc: Document) -> dict:
+def _attachment_out(doc: Document, request=None) -> dict:
+    file_url = doc.file.url if doc.file.name else ""
+    if file_url and request is not None:
+        file_url = request.build_absolute_uri(file_url)
     return {
         "id": str(doc.id),
         "lead_id": str(doc.lead_id),
@@ -4158,7 +4260,7 @@ def _attachment_out(doc: Document) -> dict:
         "original_filename": doc.name,
         "content_type": doc.content_type,
         "size_bytes": doc.size_bytes,
-        "url": doc.file.url if doc.file.name else "",
+        "url": file_url,
         "created_at": doc.created_at,
     }
 
@@ -4184,7 +4286,7 @@ def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
     docs = Document.objects.filter(lead=lead, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
-    return 200, [_attachment_out(d) for d in docs]
+    return 200, [_attachment_out(d, request) for d in docs]
 
 
 @router.post(
@@ -4230,12 +4332,12 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
             metadata={
                 "document_id": str(doc.id),
                 "filename": doc.name,
-                "url": doc.file.url,
+                "url": request.build_absolute_uri(doc.file.url),
                 "size_bytes": doc.size_bytes,
             },
         )
 
-    return 201, _attachment_out(doc)
+    return 201, _attachment_out(doc, request)
 
 
 @router.delete(
@@ -4449,7 +4551,7 @@ def upload_voice_memo(
 
     return 201, {
         "document_id": str(doc.id),
-        "url": doc.file.url if doc.file.name else "",
+        "url": request.build_absolute_uri(doc.file.url) if doc.file.name else "",
         "size_bytes": doc.size_bytes,
         "content_type": doc.content_type,
         "filename": doc.name,
@@ -4598,7 +4700,7 @@ def upload_file_blobs(
         results.append(
             {
                 "document_id": str(doc.id),
-                "url": doc.file.url if doc.file.name else "",
+                "url": request.build_absolute_uri(doc.file.url) if doc.file.name else "",
                 "filename": doc.name,
                 "content_type": doc.content_type,
                 "size_bytes": doc.size_bytes,
