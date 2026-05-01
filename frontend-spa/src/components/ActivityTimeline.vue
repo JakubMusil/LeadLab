@@ -1277,6 +1277,9 @@ defineExpose({ load: () => loadActivities(1) })
             <p v-else-if="item.type === 'task_completed' && (item.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {{ (item.metadata as Record<string, string>).title }}
             </p>
+            <p v-else-if="item.type === 'task_reopened' && (item.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              {{ (item.metadata as Record<string, string>).title }}
+            </p>
             <p v-else-if="item.type === 'task_assigned' && (item.metadata as Record<string, string>).task_title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {{ (item.metadata as Record<string, string>).task_title }}
             </p>
