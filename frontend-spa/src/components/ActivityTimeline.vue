@@ -398,6 +398,7 @@ function activityTypeLabel(type: string): string {
     link: t('leadDetail.typeLink'),
     voice_memo: t('leadDetail.typeVoiceMemo'),
     system_note: t('leadDetail.typeSystemNote'),
+    todo_items_added: t('leadDetail.typeTodoItems'),
   }
   if (map[type]) return map[type]
   const tool = streamlineTools.value.find((t) => t.activity_type === type)
