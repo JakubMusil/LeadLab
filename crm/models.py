@@ -72,6 +72,7 @@ class ActivityType(models.TextChoices):
     STREAMLINE_ITEMS_ADDED = "streamline_items_added", "Streamline Items Added"
     STREAMLINE_ITEM_RESOLVED = "streamline_item_resolved", "Streamline Item Resolved"
     STREAMLINE_ITEM_REOPENED = "streamline_item_reopened", "Streamline Item Reopened"
+    TODO_ITEMS_ADDED = "todo_items_added", "Todo Items Added"
     PRIORITY_CHANGE = "priority_change", "Priority Change"
     ASSIGNEE_CHANGE = "assignee_change", "Assignee Change"
     DUE_DATE_CHANGE = "due_date_change", "Due Date Change"
@@ -289,6 +290,7 @@ class Lead(TenantModel):
         # Planning
         "meeting_scheduled",
         "task",
+        "todo_items",
         # Files & references
         "file_upload",
         "voice_memo",

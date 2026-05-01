@@ -138,6 +138,7 @@ const activityTypeLabelKey: Record<string, string> = {
   voice_memo: 'leadDetail.typeVoiceMemo',
   system_note: 'leadDetail.typeSystemNote',
   file_upload: 'leadDetail.typeFileUpload',
+  todo_items: 'leadDetail.typeTodoItems',
   // Pseudo-tool for the unified messaging composer (no real activity_type).
   message: 'leadDetail.typeMessage',
 }
@@ -161,6 +162,7 @@ const activityTypeHelpKey: Record<string, string> = {
   voice_memo: 'leadDetail.toolHelp.voice_memo',
   system_note: 'leadDetail.toolHelp.system_note',
   task: 'leadDetail.toolHelp.task',
+  todo_items: 'leadDetail.toolHelp.todo_items',
   message: 'leadDetail.toolHelp.message',
 }
 
@@ -203,7 +205,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'planning',
     labelKey: 'leadDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'event_scheduled', 'task'],
+    activityTypes: ['meeting_scheduled', 'event_scheduled', 'task', 'todo_items'],
     accent: 'blue',
   },
   {
@@ -402,6 +404,7 @@ const MULTILINE_FIELD_KEYS = new Set([
   'description',
   'notes',
   'message',
+  'text',
 ])
 
 interface SchemaProp {

@@ -1241,9 +1241,11 @@
       "voice_memo": "Hlasová poznámka — nahrajte zvuk přes mikrofon, můžete pauznout, uložit nebo zahodit. Název souboru a délku ukládáme za vás.",
       "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
       "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku.",
+      "todo_items": "Zadejte úkoly — každý řádek = jeden nový úkol. Všechny budou přidány najednou.",
       "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže."
     },
-    "typeMessage": "Zpráva"
+    "typeMessage": "Zpráva",
+    "typeTodoItems": "Todo úkoly"
   },
   "sequences": {
     "title": "E-mailové sekvence",

@@ -1240,8 +1240,12 @@
       "voice_memo": "Voice memo — record audio with your microphone; you can pause, save, or discard. Filename and duration are stored for you.",
       "system_note": "System-style note, e.g. \"Imported from CSV\" or \"Merged from duplicate lead\".",
       "task": "Creates a task linked to this opportunity. Optionally add a description or mention.",
-      "message": "Log or send an email, SMS, WhatsApp or chat message — pick the channel below."
+      "todo_items": "Enter tasks — each line = one new task. All will be created at once.",
+      "message": "Log or send an email, SMS, WhatsApp or chat — pick the channel below."
     },
+    "typeMessage": "Message",
+    "typeTodoItems": "Todo items"
+  },
     "typeMessage": "Message"
   },
   "sequences": {

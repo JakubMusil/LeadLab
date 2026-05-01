@@ -1975,6 +1975,112 @@ class StreamlineItemReopenedTool(StreamlineTool):
         }
 
 
+# ---------------------------------------------------------------------------
+# Todo Items Added — bulk task creation from the entity Streamline toolbar
+# ---------------------------------------------------------------------------
+
+class TodoItemsAddedTool(StreamlineTool):
+    """
+    Creates one Task per non-empty line of ``metadata.text`` and logs a
+    single ``todo_items_added`` activity onto the parent entity's timeline.
+
+    Each created Task is also pre-populated with a single ``StreamlineItem``
+    (kind=todo) so the task detail already shows the item as a todo entry.
+
+    The activity's ``metadata`` is structured as::
+
+        {
+            "text": "<raw multi-line text>",
+            "titles": ["line1", "line2", ...],   # filled by process_action
+            "count":  3,                          # filled by process_action
+            "task_ids": ["uuid", ...]             # filled by process_action
+        }
+    """
+
+    activity_type = "todo_items_added"
+    label = _("Todo Items")
+    icon = "ClipboardDocumentListIcon"
+    category = "task"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "title": "Items",
+                    "x-multiline": True,
+                },
+            },
+            "required": ["text"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        from django.utils import timezone as _tz
+        from crm.models import Task, StreamlineItem
+
+        metadata = payload.get("metadata") or {}
+        raw_text = metadata.get("text", "")
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+        if not lines:
+            return
+
+        firm = context.get("firm") or getattr(entity, "firm", None)
+        user = context.get("user")
+        if firm is None:
+            return
+
+        # Resolve entity FK kwargs for Task creation
+        lead = getattr(activity, "lead", None)
+        realization = getattr(activity, "realization", None)
+        management = getattr(activity, "management", None)
+        customer = getattr(activity, "customer", None)
+        proposal = getattr(activity, "proposal", None)
+
+        task_ids: list[str] = []
+        for title in lines:
+            task = Task.objects.create(
+                firm=firm,
+                lead=lead,
+                realization=realization,
+                management=management,
+                customer=customer,
+                proposal=proposal,
+                title=title[:255],
+                status="todo",
+                priority="medium",
+                created_by=user,
+                assigned_to=user,
+            )
+            StreamlineItem.objects.create(
+                task=task,
+                text=title[:500],
+                kind="todo",
+                order=0,
+                created_by=user,
+            )
+            task_ids.append(str(task.id))
+
+        # Patch the activity metadata in-place with the resolved data
+        activity.metadata = {
+            **activity.metadata,
+            "titles": lines,
+            "count": len(lines),
+            "task_ids": task_ids,
+        }
+        activity.save(update_fields=["metadata"])
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "titles": activity.metadata.get("titles", []),
+            "count": activity.metadata.get("count", 0),
+            "task_ids": activity.metadata.get("task_ids", []),
+            "text": activity.metadata.get("text", ""),
+        }
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -2043,4 +2149,6 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     StreamlineItemsAddedTool(),
     StreamlineItemResolvedTool(),
     StreamlineItemReopenedTool(),
+    # Todo Items — bulk task creation from entity toolbar
+    TodoItemsAddedTool(),
 ]

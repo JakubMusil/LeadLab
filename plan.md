@@ -65,7 +65,7 @@
 
 ## Stav vypracování
 
-**Aktuálně:** Kroky 1–4 dokončeny. Zbývá Krok 5 — finální úklid a validace.
+**Aktuálně:** Kroky 1–4 dokončeny + bonus Todo Items tool. Zbývá Krok 5 — finální úklid a validace.
 
 **Hotovo:**
 - Plán a předpoklady zapsány do `plan.md`.
@@ -77,6 +77,13 @@
   - Store: nové typy a API akce; staré subtask/checklist akce odstraněny.
   - TaskDetailView: nahrazeny obě sekce (SUBTASKS + CHECKLIST) dvěma instancemi `<StreamlineItemList>`.
   - `vue-tsc --noEmit` exit 0.
+- **Bonus — TodoItemsAddedTool (bulk task creation z entity toolbaru):**
+  - Nový `ActivityType.TODO_ITEMS_ADDED` + `TodoItemsAddedTool` v `crm/streamline/tools.py`.
+  - `process_action` vytvoří jeden `Task` + jeden `StreamlineItem` (kind=todo) pro každý neprázdný řádek.
+  - `Lead.TOOLBAR_TOOLS` rozšířen o `"todo_items"` (sekce Planning).
+  - `EntitySidebarActionPicker`: `todo_items` v kategoriích + labelech + helpTextech; `text` přidáno do `MULTILINE_FIELD_KEYS` → textarea.
+  - Migrace `0047` aplikována. Lokalizace cs/en/de/pl doplněna.
+  - Backend testy OK, `vue-tsc --noEmit` exit 0.
 
 **Následuje:**
 - **Krok 5** — finální úklid: ActivityTimeline event typy, Vitest, lint, manuální průchod.

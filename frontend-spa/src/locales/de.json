@@ -1240,9 +1240,11 @@
       "voice_memo": "Sprachnotiz — Audio über das Mikrofon aufnehmen, Aufnahme pausieren, speichern oder verwerfen. Dateiname und Dauer werden für Sie verwaltet.",
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
       "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
+      "todo_items": "Aufgaben eingeben — jede Zeile = eine neue Aufgabe. Alle werden auf einmal erstellt.",
       "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
     },
-    "typeMessage": "Nachricht"
+    "typeMessage": "Nachricht",
+    "typeTodoItems": "Todo-Aufgaben"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

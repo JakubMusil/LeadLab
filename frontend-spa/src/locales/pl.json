@@ -1240,9 +1240,11 @@
       "voice_memo": "Notatka głosowa — nagraj dźwięk za pomocą mikrofonu; możesz wstrzymać, zapisać lub odrzucić. Nazwę pliku i długość zapisujemy automatycznie.",
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
       "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
+      "todo_items": "Wpisz zadania — każda linia = jedno nowe zadanie. Wszystkie zostaną utworzone naraz.",
       "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
     },
-    "typeMessage": "Wiadomość"
+    "typeMessage": "Wiadomość",
+    "typeTodoItems": "Zadania todo"
   },
   "sequences": {
     "title": "Sekwencje e-mail",
