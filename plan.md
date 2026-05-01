@@ -84,6 +84,13 @@
   - `EntitySidebarActionPicker`: `todo_items` v kategoriích + labelech + helpTextech; `text` přidáno do `MULTILINE_FIELD_KEYS` → textarea.
   - Migrace `0047` aplikována. Lokalizace cs/en/de/pl doplněna.
   - Backend testy OK, `vue-tsc --noEmit` exit 0.
+- **Bonus — Unified entity feed (Activity + Task):**
+  - Nový endpoint `GET /opportunities/{id}/feed` — merges Activity + Task záznamy do jednoho chronologického feedu (`FeedItemOut` s `item_type` diskriminátorem).
+  - `ActivityTimeline.vue`: Lead entita přepnuta na feed endpoint; nový `displayItems` computed; `TaskCard.vue` renderována inline jako rich karta mezi aktivitami.
+  - Nová komponenta `TaskCard.vue` — complete toggle, priority dot, status badge, due date, assignee, progress bar StreamlineItems.
+- **Fix: File upload 404:**
+  - `urls.py`: přidána `django.views.static.serve` route pro `/media/` fungující i v produkci.
+  - Všechny endpointy vracející URL souborů opraveny na `request.build_absolute_uri()`.
 
 **Následuje:**
-- **Krok 5** — finální úklid: ActivityTimeline event typy, Vitest, lint, manuální průchod.
+- **Krok 5** — finální úklid: Vitest, lint, manuální průchod.
