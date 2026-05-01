@@ -400,6 +400,18 @@ class Activity(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    # Soft-delete — the record is kept for audit purposes; content_text and
+    # metadata are cleared, but a tombstone entry remains in the timeline.
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="deleted_activities",
+    )
+
     class Meta:
         verbose_name = "activity"
         verbose_name_plural = "activities"

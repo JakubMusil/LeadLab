@@ -9,6 +9,7 @@ import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
+import { useAuthStore } from '@/stores/auth'
 import { useStreamlinePreferencesStore } from '@/stores/streamlinePreferences'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
@@ -60,7 +61,9 @@ import {
   AtSymbolIcon,
   BookmarkIcon,
   BookmarkSlashIcon,
+  ArrowUturnLeftIcon,
   FaceSmileIcon,
+  TrashIcon,
   DocumentCurrencyDollarIcon,
 } from '@heroicons/vue/24/outline'
 
@@ -79,6 +82,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const { on, off } = useWebSocket()
 const firmStore = useFirmStore()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // ---------------------------------------------------------------------------
@@ -106,6 +110,10 @@ interface Activity {
   created_at: string
   tool_payload: Record<string, unknown> | null
   reactions?: ReactionSummary[]
+  // soft-delete
+  is_deleted?: boolean
+  deleted_at?: string | null
+  deleted_by_name?: string | null
 }
 
 // Unified feed item — either an Activity or a Task (for Lead feed)
@@ -171,8 +179,9 @@ const heroIconMap: Record<string, Component> = {
   AtSymbolIcon,
   BookmarkIcon,
   BookmarkSlashIcon,
+  ArrowUturnLeftIcon,
+  TrashIcon,
 }
-
 // ---------------------------------------------------------------------------
 // Team members for @mentions
 // ---------------------------------------------------------------------------
@@ -846,6 +855,36 @@ async function toggleReaction(activityId: string, emoji: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Soft-delete
+// ---------------------------------------------------------------------------
+function canDelete(act: Activity): boolean {
+  if (act.is_deleted) return false
+  const currentUserId = authStore.user ? String(authStore.user.id) : ''
+  const isAuthor = act.user_id ? act.user_id === currentUserId : false
+  const isAdmin = ['admin', 'owner'].includes(authStore.membership?.role ?? '')
+  return isAuthor || isAdmin
+}
+
+async function deleteActivity(activityId: string) {
+  const res = await api.delete<Activity>(`/api/v1/crm/activities/${activityId}`)
+  if (!res.ok) {
+    toast.error(t('leadDetail.activityDeleteFailed'))
+    return
+  }
+  // Replace in-place with tombstone from response
+  const updated = res.data as Activity
+  const replaceInList = (list: Activity[]) => {
+    const idx = list.findIndex((a) => a.id === activityId)
+    if (idx !== -1) list[idx] = updated
+  }
+  replaceInList(activities.value)
+  if (useFeed.value) {
+    const fi = feedItems.value.find((f) => f.item_type === 'activity' && f.activity?.id === activityId)
+    if (fi) fi.activity = updated
+  }
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket real-time update
 // ---------------------------------------------------------------------------
 function onWsActivityCreated(payload: Record<string, unknown>) {
@@ -1067,12 +1106,29 @@ defineExpose({ load: () => loadActivities(1) })
         <!-- Activity row -->
         <div
           v-else
-          class="flex items-start gap-3 p-4"
+          class="flex items-start gap-3 p-4 group/row"
           data-testid="activity-item"
           :data-activity-id="item.id"
           :data-activity-type="item.type"
           :data-activity-internal="item.is_internal ? 'true' : 'false'"
         >
+          <!-- Tombstone — soft-deleted activity -->
+          <template v-if="(item as unknown as Activity).is_deleted">
+            <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 bg-gray-100 dark:bg-gray-700 text-gray-400">
+              <TrashIcon class="w-4 h-4" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs text-gray-400 dark:text-gray-500 italic">
+                {{ t('leadDetail.activityDeleted', {
+                  user: (item as unknown as Activity).deleted_by_name ?? t('leadDetail.unknownUser'),
+                  date: formatTime((item as unknown as Activity).deleted_at ?? item.created_at),
+                }) }}
+              </p>
+            </div>
+          </template>
+
+          <!-- Normal activity content -->
+          <template v-else>
           <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
             :class="item.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
               : item.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -1121,6 +1177,15 @@ defineExpose({ load: () => loadActivities(1) })
                 >{{ item.user_name }}</span>
               </span>
               <span class="text-xs text-gray-400">{{ formatTime(item.created_at) }}</span>
+              <!-- Delete button — visible on hover for author or admin -->
+              <button
+                v-if="canDelete(item as unknown as Activity)"
+                class="ml-auto opacity-0 group-hover/row:opacity-100 transition-opacity text-gray-300 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
+                :title="t('leadDetail.deleteActivity')"
+                @click.stop="deleteActivity(item.id)"
+              >
+                <TrashIcon class="w-3.5 h-3.5" />
+              </button>
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
             <p v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(item.content_text)" />
@@ -1213,6 +1278,29 @@ defineExpose({ load: () => loadActivities(1) })
               </div>
             </a>
 
+            <!-- Link card -->
+            <a
+              v-if="item.type === 'link' && (item.tool_payload as Record<string,unknown> | null)?.url"
+              :href="(item.tool_payload as Record<string,string>).url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-2 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 hover:border-blue-300 dark:hover:border-blue-500/60 transition-colors"
+              data-testid="link-card"
+            >
+              <LinkIcon class="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-blue-600 dark:text-blue-400 truncate hover:underline">
+                  {{ (item.tool_payload as Record<string,string>).title || (item.tool_payload as Record<string,string>).url }}
+                </p>
+                <p v-if="(item.tool_payload as Record<string,string>).description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                  {{ (item.tool_payload as Record<string,string>).description }}
+                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                  {{ (item.tool_payload as Record<string,string>).url }}
+                </p>
+              </div>
+            </a>
+
             <!-- Event scheduled card -->
             <div
               v-if="item.type === 'event_scheduled'"
@@ -1280,6 +1368,7 @@ defineExpose({ load: () => loadActivities(1) })
               </div>
             </div>
           </div>
+          </template><!-- end normal activity content -->
         </div>
       </template>
     </div>

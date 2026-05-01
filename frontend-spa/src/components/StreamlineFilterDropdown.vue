@@ -70,11 +70,12 @@ watch(open, (isOpen) => {
 // Grouping
 // ---------------------------------------------------------------------------
 
-const CATEGORY_ORDER: string[] = ['communication', 'task', 'commerce', 'system', 'ai', 'meta']
+const CATEGORY_ORDER: string[] = ['communication', 'task', 'planning', 'commerce', 'system', 'ai', 'meta']
 
 const categoryLabel: Record<string, string> = {
   communication: 'streamlineFilter.categoryCommunication',
   task: 'streamlineFilter.categoryTask',
+  planning: 'streamlineFilter.categoryPlanning',
   commerce: 'streamlineFilter.categoryCommerce',
   system: 'streamlineFilter.categorySystem',
   ai: 'streamlineFilter.categoryAi',

@@ -731,11 +731,12 @@ class ActivityOut(Schema):
     tool_payload: Optional[Dict[str, Any]] = None
     # Aggregated emoji reactions for this activity
     reactions: List[Dict[str, Any]] = []
-    # Calendar / Task unification — when an activity is linked to a parent
-    # Task (e.g. ``meeting_scheduled``/``call_scheduled`` and their auto-
-    # expiry follow-ups), this exposes the Task ID so the SPA can render
-    # status badges or navigate to the Task without a second request.
+    # Calendar / Task unification
     task_id: Optional[str] = None
+    # Soft-delete tombstone
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by_name: Optional[str] = None
 
 
 class ActivityIn(Schema):
@@ -801,6 +802,9 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
         "task_id": str(a.task_id) if a.task_id else None,
+        "is_deleted": a.is_deleted,
+        "deleted_at": a.deleted_at,
+        "deleted_by_name": _user_display_name(a.deleted_by) if a.deleted_by_id else None,
     }
 
 
@@ -1123,6 +1127,60 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
         "user_ids": [str(uid) for uid in user_ids],
         "reacted_by_me": qs.filter(user=request.user).exists(),
     }
+
+
+@router.delete(
+    "/activities/{activity_id}",
+    auth=django_auth,
+    response={200: ActivityOut, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_activity(request, activity_id: str):
+    """
+    Soft-delete an Activity.
+
+    - The author (``activity.user``) can delete their own activities.
+    - Admins and owners can delete any activity.
+
+    The record is NOT removed from the database. Instead:
+    - ``is_deleted = True``, ``deleted_at`` and ``deleted_by`` are set.
+    - ``content_text`` and ``metadata`` are cleared so no sensitive content
+      remains visible, but the tombstone entry stays in the timeline.
+
+    The response returns the updated (tombstoned) ``ActivityOut`` so the
+    frontend can replace the item in-place without a reload.
+    """
+    try:
+        membership = require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except Activity.DoesNotExist:
+        return 404, {"detail": "Activity not found."}
+
+    # Permission: author or admin/owner
+    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_author = activity.user_id and str(activity.user_id) == str(request.user.id)
+    if not is_author and not is_admin:
+        return 403, {"detail": "You can only delete your own activities."}
+
+    if activity.is_deleted:
+        return 200, _activity_out(activity, request.user)
+
+    activity.is_deleted = True
+    activity.deleted_at = tz.now()
+    activity.deleted_by = request.user
+    activity.content_text = ""
+    activity.metadata = {}
+    activity.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "content_text", "metadata"])
+
+    broadcast_event(
+        firm=request.firm,
+        event="activity.deleted",
+        payload={"id": str(activity.id), "entity_type": activity.entity_type, "entity_id": activity.entity_id},
+    )
+    return 200, _activity_out(activity, request.user)
 
 
 # ===========================================================================

@@ -1502,7 +1502,7 @@ class LinkTool(_SimpleLogTool):
     label = _("Link")
     icon = "LinkIcon"
     category = "system"
-    default_visibility = "secondary"
+    default_visibility = "important"
     schema_properties = {
         "url": {"type": "string", "format": "uri", "title": "URL"},
         "title": {"type": "string", "title": "Title"},
