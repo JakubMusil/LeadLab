@@ -223,12 +223,15 @@ function toggleTaskWatcher(userId: string) {
   else newTaskWatcherIds.value.push(userId)
 }
 
-async function completeTask(id: string) {
-  const res = await api.post<Task>(`/api/v1/crm/tasks/${id}/complete`)
+async function completeTask(id: string, isCompleted: boolean) {
+  const url = isCompleted
+    ? `/api/v1/crm/tasks/${id}/reopen`
+    : `/api/v1/crm/tasks/${id}/complete`
+  const res = await api.post<Task>(url)
   if (res.ok) {
     const idx = tasks.value.findIndex((task) => task.id === id)
     if (idx !== -1) tasks.value[idx] = res.data
-    toast.success(t('leadDetail.taskCompleted'))
+    toast.success(isCompleted ? t('tasks.taskReopened') : t('leadDetail.taskCompleted'))
   } else {
     toast.error(t('leadDetail.taskCompleteFailed'))
   }
@@ -545,9 +548,9 @@ function getTabLabel(tab: string): string {
             <div class="flex items-start gap-3 p-4">
               <button
                 class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
-                :class="task.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
-                :disabled="task.is_completed"
-                @click="completeTask(task.id)"
+                :class="task.is_completed ? 'bg-green-500 border-green-500 text-white hover:bg-green-400' : 'border-gray-300 hover:border-green-400'"
+                :title="task.is_completed ? t('tasks.reopen') : t('tasks.markDone')"
+                @click="completeTask(task.id, task.is_completed)"
               >
                 <CheckIcon v-if="task.is_completed" class="w-3 h-3" />
               </button>

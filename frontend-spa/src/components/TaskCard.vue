@@ -79,8 +79,9 @@ const itemsProgress = computed(() => {
 // Actions
 // ---------------------------------------------------------------------------
 async function toggleComplete() {
-  if (props.task.is_completed) return
-  const res = await tasksStore.completeTask(props.task.id)
+  const res = props.task.is_completed
+    ? await tasksStore.reopenTask(props.task.id)
+    : await tasksStore.completeTask(props.task.id)
   if (res.ok) emit('refreshed')
   else toast.error(res.error ?? t('tasks.completeFailed'))
 }
@@ -101,10 +102,9 @@ function openDetail() {
       <button
         class="mt-0.5 flex-shrink-0 transition-colors"
         :class="task.is_completed
-          ? 'text-green-500 cursor-default'
+          ? 'text-green-500 hover:text-gray-400'
           : 'text-gray-300 hover:text-green-500'"
-        :disabled="task.is_completed"
-        :title="task.is_completed ? t('tasks.completed') : t('tasks.markDone')"
+        :title="task.is_completed ? t('tasks.reopen') : t('tasks.markDone')"
         @click.stop="toggleComplete"
       >
         <CheckCircleSolid v-if="task.is_completed" class="w-5 h-5" />

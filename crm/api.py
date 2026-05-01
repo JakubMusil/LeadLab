@@ -2226,6 +2226,41 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
     return 200, _task_out(task, request.user)
 
 
+@router.post("/tasks/{task_id}/reopen", auth=django_auth, response={200: TaskOut, 403: ErrorOut, 404: ErrorOut})
+def reopen_task(request, task_id: str):
+    """Mark a completed Task as not completed (reopen it)."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        task = Task.objects.get(id=task_id, firm=request.firm)
+    except Task.DoesNotExist:
+        return 404, {"detail": "Task not found."}
+
+    if not task.is_completed:
+        return 200, _task_out(task, request.user)
+
+    with transaction.atomic():
+        task.is_completed = False
+        task.completed_at = None
+        task.completed_by = None
+        task.status = TaskStatus.TODO
+        task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
+        reopen_metadata = {"task_id": str(task.id), "title": task.title}
+        if task.lead_id:
+            Activity.objects.create(
+                lead=task.lead,
+                user=request.user,
+                type=ActivityType.TASK_CREATED,
+                metadata=reopen_metadata,
+            )
+
+    broadcast_event(firm=request.firm, event='task.updated', payload=_task_out(task, request.user))
+    return 200, _task_out(task, request.user)
+
+
 # ---------------------------------------------------------------------------
 # Task detail (single task)
 # ---------------------------------------------------------------------------

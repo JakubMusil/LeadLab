@@ -463,12 +463,14 @@ function cancelEditDescription() {
 const completing = ref(false)
 
 async function completeTask() {
-  if (!task.value || task.value.is_completed) return
+  if (!task.value) return
   completing.value = true
-  const result = await tasksStore.completeTask(task.value.id)
+  const result = task.value.is_completed
+    ? await tasksStore.reopenTask(task.value.id)
+    : await tasksStore.completeTask(task.value.id)
   completing.value = false
   if (result.ok) {
-    toast.success(t('tasks.taskCompleted'))
+    toast.success(task.value.is_completed ? t('tasks.taskReopened') : t('tasks.taskCompleted'))
     await loadTask()
   } else {
     toast.error(result.error ?? t('tasks.completeFailed'))
@@ -1093,11 +1095,11 @@ onUnmounted(() => {
           <button
             class="w-6 h-6 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
             :class="task.is_completed
-              ? 'bg-blue-500 border-blue-500 text-white cursor-default'
+              ? 'bg-blue-500 border-blue-500 text-white hover:bg-blue-400'
               : 'border-gray-300 hover:border-blue-400'"
-            :disabled="task.is_completed || completing"
-            :title="task.is_completed ? '' : t('tasks.complete')"
-            @click="!task.is_completed && completeTask()"
+            :disabled="completing"
+            :title="task.is_completed ? t('tasks.reopen') : t('tasks.complete')"
+            @click="completeTask()"
           >
             <span v-if="task.is_completed" class="text-sm">✓</span>
           </button>
@@ -1156,9 +1158,14 @@ onUnmounted(() => {
                 >
                   {{ completing ? '…' : t('tasks.complete') }}
                 </button>
-                <span v-if="task.is_completed" class="px-3 py-1.5 rounded-xl bg-green-50 text-xs text-green-600 font-medium">
-                  ✓ {{ t('tasks.done') }}
-                </span>
+                <button
+                  v-if="task.is_completed"
+                  class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  :disabled="completing"
+                  @click="completeTask"
+                >
+                  {{ completing ? '…' : t('tasks.reopen') }}
+                </button>
 
                 <!-- Action menu -->
                 <div class="relative">

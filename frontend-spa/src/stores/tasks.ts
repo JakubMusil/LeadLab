@@ -451,6 +451,16 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to complete task.') }
   }
 
+  async function reopenTask(id: string): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/reopen`)
+    if (res.ok) {
+      const idx = tasks.value.findIndex((t) => t.id === id)
+      if (idx !== -1) tasks.value[idx] = res.data
+      return { ok: true }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to reopen task.') }
+  }
+
   async function completeTaskWithFollowUp(
     id: string,
     followUp?: FollowUpTaskIn,
@@ -844,6 +854,7 @@ export const useTasksStore = defineStore('tasks', () => {
     createTask,
     updateTask,
     completeTask,
+    reopenTask,
     completeTaskWithFollowUp,
     recordTaskOutcome,
     toggleFavourite,
