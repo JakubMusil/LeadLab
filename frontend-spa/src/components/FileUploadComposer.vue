@@ -25,6 +25,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
+import { api } from '@/api'
 import {
   ArrowUpTrayIcon,
   LinkIcon,
@@ -173,17 +174,7 @@ async function submit() {
     // then emit one activity payload per returned entry.
     const fd = new FormData()
     for (const file of selectedFiles.value) fd.append('files', file)
-    const res = await fetch(props.uploadUrl, {
-      method: 'POST',
-      credentials: 'include',
-      body: fd,
-    })
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => null)
-      toast.error(errorData?.detail ?? t('fileUpload.uploadFailed'))
-      return
-    }
-    const body = (await res.json()) as {
+    const res = await api.postForm<{
       files: Array<{
         url: string
         filename: string
@@ -191,7 +182,12 @@ async function submit() {
         size_bytes: number
         document_id: string
       }>
+    }>(props.uploadUrl, fd)
+    if (!res.ok) {
+      toast.error((res.data as { detail?: string })?.detail ?? t('fileUpload.uploadFailed'))
+      return
     }
+    const body = res.data
     // The user-facing title applies to all files in this batch — when
     // the user uploads multiple files at once they're treated as
     // siblings under the same logical "upload" event.

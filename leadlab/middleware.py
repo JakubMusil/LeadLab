@@ -38,6 +38,9 @@ class ContentSecurityPolicyMiddleware:
             "img-src": getattr(settings, "CSP_IMG_SRC", "'self' data: blob:"),
             "connect-src": getattr(settings, "CSP_CONNECT_SRC", "'self'"),
             "worker-src": getattr(settings, "CSP_WORKER_SRC", "'self' blob:"),
+            # media-src must explicitly allow blob: for voice memo playback
+            # (MediaRecorder produces blob: URLs that <audio> needs to load).
+            "media-src": getattr(settings, "CSP_MEDIA_SRC", "'self' blob:"),
         }
 
         report_uri = getattr(settings, "CSP_REPORT_URI", "")

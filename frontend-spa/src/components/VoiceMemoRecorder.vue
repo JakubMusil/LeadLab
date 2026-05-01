@@ -21,6 +21,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
+import { api } from '@/api'
 import {
   MicrophoneIcon,
   PauseIcon,
@@ -217,25 +218,20 @@ async function saveRecording() {
   fd.append('file', recordedBlob.value, filename)
 
   try {
-    const res = await fetch(props.uploadUrl, {
-      method: 'POST',
-      credentials: 'include',
-      body: fd,
-    })
+    const res = await api.postForm<{
+      url: string
+      size_bytes: number
+      filename: string
+      content_type: string
+    }>(props.uploadUrl, fd)
     if (!res.ok) {
-      const errorData = await res.json().catch(() => null)
-      const message = errorData?.detail ?? t('voiceMemo.uploadFailed')
+      const message = (res.data as { detail?: string })?.detail ?? t('voiceMemo.uploadFailed')
       errorMessage.value = message
       toast.error(message)
       phase.value = 'review'
       return
     }
-    const uploaded = (await res.json()) as {
-      url: string
-      size_bytes: number
-      filename: string
-      content_type: string
-    }
+    const uploaded = res.data
     emit('submit', {
       url: uploaded.url,
       filename: uploaded.filename,

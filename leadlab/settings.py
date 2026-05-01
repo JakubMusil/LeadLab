@@ -332,6 +332,7 @@ CSP_FONT_SRC = os.environ.get("CSP_FONT_SRC", "'self' https://fonts.gstatic.com"
 CSP_IMG_SRC = os.environ.get("CSP_IMG_SRC", "'self' data: blob:")
 CSP_CONNECT_SRC = os.environ.get("CSP_CONNECT_SRC", "'self' wss: ws:")
 CSP_WORKER_SRC = os.environ.get("CSP_WORKER_SRC", "'self' blob:")
+CSP_MEDIA_SRC = os.environ.get("CSP_MEDIA_SRC", "'self' blob:")
 CSP_REPORT_URI = os.environ.get("CSP_REPORT_URI", "")
 
 # ---------------------------------------------------------------------------
