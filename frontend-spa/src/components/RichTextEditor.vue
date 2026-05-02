@@ -496,7 +496,12 @@ defineExpose({ getMentionedIds })
   display: flex;
   align-items: flex-start;
   gap: 0.375rem;
-  padding: 0.1rem 0;
+  padding: 0.2rem 0.375rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+}
+.tiptap ul[data-type="taskList"] > li:hover {
+  background-color: rgba(0, 0, 0, 0.03);
 }
 .tiptap ul[data-type="taskList"] > li > label {
   flex: 0 0 auto;
@@ -517,9 +522,13 @@ defineExpose({ getMentionedIds })
   flex: 1 1 auto;
   min-width: 0;
 }
+.tiptap ul[data-type="taskList"] > li > div p {
+  transition: color 0.15s ease;
+}
 .tiptap ul[data-type="taskList"] > li[data-checked="true"] > div p {
   text-decoration: line-through;
-  opacity: 0.5;
+  text-decoration-color: #9ca3af;
+  color: #9ca3af;
 }
 </style>
 
