@@ -10,6 +10,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
+import { useClipboard } from '@/composables/useClipboard'
 import { useStreamlinePreferencesStore } from '@/stores/streamlinePreferences'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
@@ -89,6 +90,11 @@ const { on, off } = useWebSocket()
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const { copiedId: permalinkCopiedId, copyToClipboard: copyPermalink } = useClipboard()
+
+function itemPermalinkUrl(itemId: string): string {
+  return window.location.origin + window.location.pathname + '#' + itemId
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1136,6 +1142,12 @@ onMounted(async () => {
     streamlinePrefs.load(),
   ])
   on('activity.created', onWsActivityCreated)
+  // Scroll to anchor if URL has a hash pointing to an activity/task item
+  if (window.location.hash) {
+    await nextTick()
+    const el = document.getElementById(window.location.hash.slice(1))
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 })
 
 onUnmounted(() => {
@@ -1316,7 +1328,8 @@ defineExpose({ load: () => loadActivities(1) })
         <!-- Task card row -->
         <div
           v-if="item._type === 'task'"
-          class="flex items-start gap-3 px-4 pt-3 pb-3"
+          :id="String((item._task as TaskOut).id)"
+          class="flex items-start gap-3 px-4 pt-3 pb-3 scroll-mt-4 group/taskrow"
           data-testid="feed-task-item"
         >
           <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
@@ -1326,6 +1339,18 @@ defineExpose({ load: () => loadActivities(1) })
             <div class="flex items-center gap-2 pt-3 flex-wrap">
               <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
               <span class="text-xs text-gray-400">{{ formatTime(item._created_at) }}</span>
+              <!-- Permalink button -->
+              <button
+                class="ml-auto opacity-0 group-hover/taskrow:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 relative"
+                :title="permalinkCopiedId === String((item._task as TaskOut).id) ? 'Zkopírováno!' : 'Kopírovat odkaz'"
+                @click.stop="copyPermalink(itemPermalinkUrl(String((item._task as TaskOut).id)), String((item._task as TaskOut).id))"
+              >
+                <LinkIcon class="w-3.5 h-3.5" />
+                <span
+                  v-if="permalinkCopiedId === String((item._task as TaskOut).id)"
+                  class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none z-10"
+                >Zkopírováno!</span>
+              </button>
             </div>
             <TaskCard
               :task="item._task"
@@ -1374,7 +1399,8 @@ defineExpose({ load: () => loadActivities(1) })
         <!-- Activity row -->
         <div
           v-else
-          class="flex items-start gap-3 p-4 group/row"
+          :id="item.id"
+          class="flex items-start gap-3 p-4 group/row scroll-mt-4"
           data-testid="activity-item"
           :data-activity-id="item.id"
           :data-activity-type="item.type"
@@ -1451,6 +1477,17 @@ defineExpose({ load: () => loadActivities(1) })
               </span>
               <!-- Action buttons -->
               <div class="ml-auto opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center gap-2">
+                <button
+                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 relative"
+                  :title="permalinkCopiedId === item.id ? 'Zkopírováno!' : 'Kopírovat odkaz'"
+                  @click.stop="copyPermalink(itemPermalinkUrl(item.id), item.id)"
+                >
+                  <LinkIcon class="w-3.5 h-3.5" />
+                  <span
+                    v-if="permalinkCopiedId === item.id"
+                    class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none z-10"
+                  >Zkopírováno!</span>
+                </button>
                 <button
                   v-if="canEdit(item as unknown as Activity)"
                   class="text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"

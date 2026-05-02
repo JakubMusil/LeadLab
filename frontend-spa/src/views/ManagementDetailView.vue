@@ -21,7 +21,10 @@ import {
   DocumentTextIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ShieldExclamationIcon,
+  LinkIcon,
 } from '@heroicons/vue/24/outline'
+import { useClipboard } from '@/composables/useClipboard'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,6 +32,8 @@ const store = useManagementStore()
 const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()
+const { copiedId: permalinkCopiedId, copyToClipboard } = useClipboard()
+const currentPageUrl = computed(() => window.location.href)
 
 const recordId = computed(() => route.params.id as string)
 
@@ -333,8 +338,20 @@ async function deleteDocument() {
 
     <template v-else-if="record">
       <!-- Title -->
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis">
-        Správa - {{ record.title }}
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2 min-w-0">
+        <ShieldExclamationIcon class="w-6 h-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+        <span class="truncate">{{ record.title }}</span>
+        <button
+          class="ml-1 flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/permalink"
+          :title="permalinkCopiedId === 'page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
+          @click="copyToClipboard(currentPageUrl, 'page')"
+        >
+          <LinkIcon class="w-4 h-4" />
+          <span
+            v-if="permalinkCopiedId === 'page'"
+            class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none"
+          >Zkopírováno!</span>
+        </button>
       </h1>
 
       <!-- Progress bar -->

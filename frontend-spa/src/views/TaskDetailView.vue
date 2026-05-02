@@ -30,6 +30,7 @@ import {
   XCircleIcon,
   MinusCircleIcon,
 } from '@heroicons/vue/24/outline'
+import { useClipboard } from '@/composables/useClipboard'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,6 +39,8 @@ const firmStore = useFirmStore()
 const tasksStore = useTasksStore()
 const toast = useToast()
 const { t } = useI18n()
+const { copiedId: permalinkCopiedId, copyToClipboard } = useClipboard()
+const currentPageUrl = computed(() => window.location.href)
 
 const taskId = computed(() => route.params.id as string)
 
@@ -1155,6 +1158,18 @@ onUnmounted(() => {
 
               <!-- Action buttons -->
               <div class="flex gap-2 flex-shrink-0 items-center">
+                <!-- Permalink -->
+                <button
+                  class="transition-colors text-gray-300 hover:text-gray-500 dark:hover:text-gray-300 relative group/permalink"
+                  :title="permalinkCopiedId === 'page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
+                  @click="copyToClipboard(currentPageUrl, 'page')"
+                >
+                  <LinkIcon class="w-4 h-4" />
+                  <span
+                    v-if="permalinkCopiedId === 'page'"
+                    class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none z-10"
+                  >Zkopírováno!</span>
+                </button>
                 <!-- Favourite -->
                 <button
                   class="transition-colors"
