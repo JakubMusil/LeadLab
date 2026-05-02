@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
+import { TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const toast = useToast()
 const firmStore = useFirmStore()
@@ -590,7 +591,7 @@ function lastRunLabel(rule: AutomationRule): string {
             placeholder="value"
             class="flex-1 min-w-[100px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
           />
-          <button class="text-gray-300 hover:text-red-400 text-sm flex-shrink-0" @click="removeCondition(i)">✕</button>
+          <button class="text-gray-300 hover:text-red-400 flex-shrink-0" @click="removeCondition(i)"><XMarkIcon class="w-4 h-4" /></button>
         </div>
       </div>
 
@@ -620,7 +621,7 @@ function lastRunLabel(rule: AutomationRule): string {
             >
               <option v-for="(label, key) in ACTION_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
             </select>
-            <button class="text-gray-300 hover:text-red-400 text-sm flex-shrink-0" @click="removeAction(i)">✕</button>
+            <button class="text-gray-300 hover:text-red-400 flex-shrink-0" @click="removeAction(i)"><XMarkIcon class="w-4 h-4" /></button>
           </div>
 
           <!-- send_email fields -->
@@ -904,7 +905,7 @@ function lastRunLabel(rule: AutomationRule): string {
               class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-400 text-xs transition-colors"
               :aria-label="`Delete rule ${rule.name}`"
               @click="deleteRule(rule)"
-            >🗑</button>
+            ><TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
 

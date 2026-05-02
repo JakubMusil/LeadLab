@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@/composables/useToast'
+import { CheckIcon, XMarkIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 const { toasts } = useToast()
 </script>
 
@@ -18,9 +19,9 @@ const { toasts } = useToast()
         role="alert"
         aria-live="assertive"
       >
-        <span v-if="toast.type === 'success'">✓</span>
-        <span v-else-if="toast.type === 'error'">✕</span>
-        <span v-else>ℹ</span>
+        <CheckIcon v-if="toast.type === 'success'" class="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <XMarkIcon v-else-if="toast.type === 'error'" class="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <InformationCircleIcon v-else class="w-4 h-4 flex-shrink-0 mt-0.5" />
         <span>{{ toast.message }}</span>
       </div>
     </TransitionGroup>

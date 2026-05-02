@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
+import { DocumentIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const toast = useToast()
 const firmStore = useFirmStore()
@@ -145,7 +146,7 @@ onMounted(() => {
 
     <!-- Empty -->
     <div v-else-if="propTemplates.length === 0" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-10 text-center">
-      <p class="text-4xl mb-3">📄</p>
+      <DocumentIcon class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
       <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No proposal templates yet</p>
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Create your first template below to speed up proposal creation.</p>
     </div>
@@ -212,8 +213,7 @@ onMounted(() => {
                   <button
                     class="text-gray-300 hover:text-red-500 transition-colors"
                     :aria-label="`Delete item ${item.description}`"
-                    @click="deleteTmplItem(tmpl, item.id!)"
-                  >✕</button>
+                    @click="deleteTmplItem(tmpl, item.id!)"><XMarkIcon class="w-4 h-4" /></button>
                 </td>
               </tr>
             </tbody>

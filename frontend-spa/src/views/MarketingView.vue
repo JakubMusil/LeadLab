@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { Component } from 'vue'
+import { CheckIcon, FunnelIcon, UserGroupIcon, ChartBarIcon } from '@heroicons/vue/24/outline'
 
 const faqOpen = ref<number | null>(null)
 
-const features = [
+const features: { icon: Component; title: string; description: string }[] = [
   {
-    icon: '◎',
+    icon: FunnelIcon,
     title: 'Lead Management',
     description: 'Track every sales opportunity through a visual kanban pipeline with customisable stages.',
   },
   {
-    icon: '👥',
+    icon: UserGroupIcon,
     title: 'Team Collaboration',
     description: 'Invite your team, assign leads, and stay in sync with real-time notifications.',
   },
   {
-    icon: '📊',
+    icon: ChartBarIcon,
     title: 'Analytics & Reporting',
     description: 'Understand your pipeline velocity, conversion rates, and team performance at a glance.',
   },
@@ -107,7 +109,7 @@ const faqs = [
         <h2 class="text-3xl font-bold text-gray-900 text-center mb-12">Everything your team needs</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div v-for="f in features" :key="f.title" class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div class="text-4xl mb-4">{{ f.icon }}</div>
+            <component :is="f.icon" class="w-10 h-10 mb-4 text-red-500" />
             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ f.title }}</h3>
             <p class="text-gray-500 text-sm leading-relaxed">{{ f.description }}</p>
           </div>
@@ -125,11 +127,11 @@ const faqs = [
           <div class="text-4xl font-extrabold text-gray-900 mb-1">$0</div>
           <div class="text-gray-400 text-sm mb-6">Forever free</div>
           <ul class="space-y-3 mb-8 text-sm text-gray-700">
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Unlimited leads</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Up to 2 team members</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Basic pipeline</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> CSV import</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Email support</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited leads</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Up to 2 team members</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Basic pipeline</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> CSV import</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Email support</li>
           </ul>
           <a href="/app/register" class="block text-center px-6 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors">
             Get started free
@@ -142,12 +144,12 @@ const faqs = [
           <div class="text-4xl font-extrabold text-gray-900 mb-1">$29</div>
           <div class="text-gray-400 text-sm mb-6">per workspace / month</div>
           <ul class="space-y-3 mb-8 text-sm text-gray-700">
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Everything in Free</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Unlimited team members</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Advanced analytics</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Custom branding</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> API access & webhooks</li>
-            <li class="flex gap-2"><span class="text-green-500">✓</span> Priority support</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Everything in Free</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited team members</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Advanced analytics</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Custom branding</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> API access & webhooks</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Priority support</li>
           </ul>
           <a href="/app/register" class="block text-center px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors">
             Start Pro trial

@@ -11,6 +11,7 @@ import {
 } from '@/stores/management'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
+import { PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const store = useManagementStore()
@@ -243,12 +244,10 @@ function selectCustomer(c: CustomerOut) {
             <div class="flex justify-end gap-1 mt-2">
               <button
                 @click.stop="openEdit(r)"
-                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"
-              >✎</button>
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"><PencilSquareIcon class="w-4 h-4" /></button>
               <button
                 @click.stop="confirmDeleteId = r.id"
-                class="text-gray-400 hover:text-red-600 text-xs"
-              >✕</button>
+                class="text-gray-400 hover:text-red-600 text-xs"><XMarkIcon class="w-4 h-4" /></button>
             </div>
           </div>
         </div>
@@ -292,8 +291,8 @@ function selectCustomer(c: CustomerOut) {
               <span v-else class="text-gray-400">—</span>
             </td>
             <td class="px-4 py-3 text-right">
-              <button @click.stop="openEdit(r)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mr-2">✎</button>
-              <button @click.stop="confirmDeleteId = r.id" class="text-gray-400 hover:text-red-600">✕</button>
+              <button @click.stop="openEdit(r)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mr-2"><PencilSquareIcon class="w-4 h-4" /></button>
+              <button @click.stop="confirmDeleteId = r.id" class="text-gray-400 hover:text-red-600"><XMarkIcon class="w-4 h-4" /></button>
             </td>
           </tr>
           <tr v-if="store.records.length === 0">

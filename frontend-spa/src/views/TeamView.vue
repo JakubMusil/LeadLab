@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
+import { XMarkIcon, UserIcon } from '@heroicons/vue/24/outline'
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
@@ -179,8 +180,7 @@ onMounted(loadTeam)
             v-if="canManage && m.role !== 'owner' && m.user_email !== authStore.user?.email"
             class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 text-xs"
             :aria-label="`Remove ${m.user_full_name || m.user_email}`"
-            @click="confirmRemoveId = m.id"
-          >✕</button>
+            @click="confirmRemoveId = m.id"><XMarkIcon class="w-4 h-4" /></button>
         </div>
       </div>
     </div>
@@ -236,7 +236,7 @@ onMounted(loadTeam)
   <Teleport to="body">
     <div v-if="confirmRemoveId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmRemoveId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Remove member confirmation">
-        <div class="text-3xl mb-3" aria-hidden="true">👤</div>
+        <UserIcon class="w-10 h-10 mx-auto mb-3 text-gray-400" aria-hidden="true" />
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('team.removeMemberTitle') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('team.removeMemberDesc') }}</p>
         <div class="flex gap-3">

@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import { CheckIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -827,7 +828,7 @@ watch(
                             {{ fmt(item.total) }}
                           </td>
                           <td class="py-1 pl-1">
-                            <button class="text-xs text-green-600 hover:text-green-700 px-1" @click="updateItem(item)" title="Save">✓</button>
+                            <button class="text-xs text-green-600 hover:text-green-700 px-1" @click="updateItem(item)" title="Save"><CheckIcon class="w-3.5 h-3.5" /></button>
                           </td>
                         </template>
                         <template v-else>
@@ -839,7 +840,7 @@ watch(
                           <td class="py-1.5 pl-2 text-right text-xs font-medium text-gray-700">{{ fmt(item.total) }}</td>
                           <td class="py-1.5 pl-1 flex items-center gap-0.5">
                             <button class="text-xs text-gray-400 hover:text-blue-500 px-1" @click="editingItemId = item.id" title="Edit">✏</button>
-                            <button class="text-xs text-gray-400 hover:text-red-500 px-1" @click="deleteItem(item.id)" title="Delete">🗑</button>
+                            <button class="text-xs text-gray-400 hover:text-red-500 px-1" @click="deleteItem(item.id)" title="Delete"><TrashIcon class="w-3.5 h-3.5" /></button>
                           </td>
                         </template>
                       </tr>

@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
+import { TrashIcon, PencilSquareIcon, ArrowTopRightOnSquareIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const store = useCustomersStore()
@@ -175,10 +176,10 @@ const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextCustomer = ref<CustomerOut | null>(null)
 
 const CUSTOMER_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
-  { id: 'view', label: t('customers.contextView'), icon: '↗' },
-  { id: 'edit', label: t('customers.contextEdit'), icon: '✎' },
+  { id: 'view', label: t('customers.contextView'), icon: ArrowTopRightOnSquareIcon },
+  { id: 'edit', label: t('customers.contextEdit'), icon: PencilSquareIcon },
   { id: 'divider1', label: '', divider: true },
-  { id: 'delete', label: t('customers.contextDelete'), icon: '🗑', danger: true },
+  { id: 'delete', label: t('customers.contextDelete'), icon: TrashIcon, danger: true },
 ])
 
 function onRowContextMenu(e: MouseEvent, customer: CustomerOut) {
@@ -359,8 +360,8 @@ function exportCsv() {
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('customers.editAria')" @click.stop="openEdit(c)">✎</button>
-                <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('customers.deleteAria')" @click.stop="confirmDeleteId = c.id">🗑</button>
+                <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('customers.editAria')" @click.stop="openEdit(c)"><PencilSquareIcon class="w-4 h-4" /></button>
+                <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('customers.deleteAria')" @click.stop="confirmDeleteId = c.id"><TrashIcon class="w-4 h-4" /></button>
               </div>
             </td>
           </tr>
@@ -402,13 +403,13 @@ function exportCsv() {
                 class="flex-1 py-2 rounded-xl text-sm font-medium border transition-colors"
                 :class="formType === 'person' ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                 @click="formType = 'person'"
-              >👤 {{ t('customers.typePerson') }}</button>
+              ><UserIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('customers.typePerson') }}</button>
               <button
                 type="button"
                 class="flex-1 py-2 rounded-xl text-sm font-medium border transition-colors"
                 :class="formType === 'company' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                 @click="formType = 'company'"
-              >🏢 {{ t('customers.typeCompany') }}</button>
+              ><BuildingOfficeIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('customers.typeCompany') }}</button>
             </div>
           </div>
 
@@ -512,7 +513,7 @@ function exportCsv() {
   <Teleport to="body">
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete customer confirmation">
-        <div class="text-3xl mb-3" aria-hidden="true">🗑</div>
+        <div class="flex justify-center mb-3" aria-hidden="true"><TrashIcon class="w-10 h-10 text-red-400" /></div>
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('customers.deleteTitle') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('customers.deleteDesc') }}</p>
         <div class="flex gap-3">

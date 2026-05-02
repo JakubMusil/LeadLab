@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useTasksStore, type TaskTemplateOut, type TaskTemplateIn, type TaskTemplateUpdateIn } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
+import { TrashIcon, ClipboardDocumentListIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -261,8 +262,9 @@ onMounted(() => { loadTemplates() })
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          📋 {{ t('taskTemplates.title') }}
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <ClipboardDocumentListIcon class="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          {{ t('taskTemplates.title') }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t('taskTemplates.subtitle') }}</p>
       </div>
@@ -285,12 +287,11 @@ onMounted(() => { loadTemplates() })
     <!-- Empty -->
     <div
       v-else-if="templates.length === 0"
-      class="py-16 text-center text-gray-400 dark:text-gray-500"
-    >
-      <div class="text-5xl mb-4">📋</div>
-      <p class="text-base font-medium mb-2">{{ t('taskTemplates.noTemplates') }}</p>
-      <p class="text-sm">{{ t('taskTemplates.noTemplatesHint') }}</p>
-    </div>
+      <div class="flex flex-col items-center py-16 text-gray-400 dark:text-gray-500">
+        <ClipboardDocumentListIcon class="w-14 h-14 mb-4 opacity-40" />
+        <p class="text-base font-medium mb-2">{{ t('taskTemplates.noTemplates') }}</p>
+        <p class="text-sm">{{ t('taskTemplates.noTemplatesHint') }}</p>
+      </div>
 
     <!-- Template list -->
     <div v-else class="space-y-3">
@@ -333,13 +334,13 @@ onMounted(() => { loadTemplates() })
               class="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 text-xs hover:border-blue-400 hover:text-blue-500 transition-colors"
               :title="t('taskTemplates.edit')"
               @click="openEditModal(tmpl)"
-            >✏️</button>
+            ><PencilSquareIcon class="w-4 h-4" /></button>
             <button
               class="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-400 text-xs hover:border-red-400 hover:text-red-500 transition-colors"
               :title="t('taskTemplates.delete')"
               :disabled="deletingId === tmpl.id"
               @click="confirmDelete(tmpl.id)"
-            >🗑</button>
+            ><TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -349,7 +350,10 @@ onMounted(() => { loadTemplates() })
     <Teleport to="body">
       <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showCreateModal = false">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">📋 {{ t('taskTemplates.createTemplate') }}</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <ClipboardDocumentListIcon class="w-5 h-5 text-gray-500" />
+            {{ t('taskTemplates.createTemplate') }}
+          </h2>
 
           <div v-if="createError" class="text-red-500 text-sm">{{ createError }}</div>
 
@@ -422,7 +426,10 @@ onMounted(() => { loadTemplates() })
     <Teleport to="body">
       <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showEditModal = false">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">✏️ {{ t('taskTemplates.editTemplate') }}</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <PencilSquareIcon class="w-5 h-5 text-gray-500" />
+            {{ t('taskTemplates.editTemplate') }}
+          </h2>
 
           <div v-if="editError" class="text-red-500 text-sm">{{ editError }}</div>
 

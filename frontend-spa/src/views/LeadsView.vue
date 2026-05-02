@@ -10,6 +10,7 @@ import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,11 +143,11 @@ const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextLead = ref<LeadOut | null>(null)
 
 const LEAD_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
-  { id: 'view', label: t('leads.viewDetail'), icon: '↗' },
-  { id: 'edit', label: t('leads.edit'), icon: '✎' },
-  { id: 'change_status', label: t('leads.changeStatus'), icon: '🔄' },
+  { id: 'view', label: t('leads.viewDetail'), icon: ArrowTopRightOnSquareIcon },
+  { id: 'edit', label: t('leads.edit'), icon: PencilSquareIcon },
+  { id: 'change_status', label: t('leads.changeStatus'), icon: ArrowsRightLeftIcon },
   { id: 'divider1', label: '', divider: true },
-  { id: 'delete', label: t('leads.delete'), icon: '🗑', danger: true },
+  { id: 'delete', label: t('leads.delete'), icon: TrashIcon, danger: true },
 ])
 
 function onRowContextMenu(e: MouseEvent, lead: LeadOut) {
@@ -471,7 +472,7 @@ function exportPdf() {
             :title="`Delete view: ${view.name}`"
             :aria-label="`Delete saved view ${view.name}`"
             @click="deleteSavedView(view.id)"
-          >✕</button>
+          ><XMarkIcon class="w-3.5 h-3.5" /></button>
         </div>
       </div>
 
@@ -481,12 +482,12 @@ function exportPdf() {
           class="px-3 py-1.5 transition-colors"
           :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'table'"
-        >☰ {{ t('leads.table') }}</button>
+        ><Bars3Icon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('leads.table') }}</button>
         <button
           class="px-3 py-1.5 transition-colors"
           :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="viewMode = 'kanban'"
-        >⊞ {{ t('leads.kanban') }}</button>
+        ><Squares2X2Icon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('leads.kanban') }}</button>
       </div>
 
       <!-- Filters (table only) -->
@@ -633,8 +634,8 @@ function exportPdf() {
               <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)">✎</button>
-                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = lead.id">🗑</button>
+                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = lead.id"><TrashIcon class="w-4 h-4" /></button>
                 </div>
               </td>
             </tr>
@@ -698,7 +699,7 @@ function exportPdf() {
                   @click="goToDetail(lead.id)"
                 >{{ lead.title }}</button>
                 <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                  <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 text-xs" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)">✎</button>
+                  <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               <div class="flex items-center gap-2 mt-2 flex-wrap">
@@ -777,7 +778,7 @@ function exportPdf() {
                   class="px-2 text-gray-400 hover:text-red-500"
                   title="Clear customer"
                   @click="clearCustomer"
-                >✕</button>
+                ><XMarkIcon class="w-4 h-4" /></button>
               </div>
               <!-- Suggestions dropdown -->
               <div
@@ -898,7 +899,7 @@ function exportPdf() {
   <Teleport to="body">
     <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete lead confirmation">
-        <div class="text-3xl mb-3" aria-hidden="true">🗑</div>
+        <div class="flex justify-center mb-3" aria-hidden="true"><TrashIcon class="w-10 h-10 text-red-400" /></div>
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('leads.deleteTitle') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('leads.deleteText') }}</p>
         <div class="flex gap-3">

@@ -4,6 +4,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, docFileIconColor, fmtDocBytes } from '@/types/documents'
+import { TrashIcon, FolderOpenIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 const toast = useToast()
 const { t } = useI18n()
 
@@ -156,7 +157,7 @@ onMounted(loadDocuments)
       v-else-if="filtered.length === 0"
       class="text-center py-16"
     >
-      <div class="text-5xl mb-4">📁</div>
+      <FolderOpenIcon class="w-14 h-14 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
       <p class="text-gray-500 dark:text-gray-400 text-lg">
         {{ searchQuery ? t('documents.noResults') : t('documents.empty') }}
       </p>
@@ -221,12 +222,12 @@ onMounted(loadDocuments)
                   rel="noopener noreferrer"
                   :title="t('documents.download')"
                   class="text-gray-400 hover:text-blue-500 transition-colors"
-                >⬇</a>
+                ><ArrowDownTrayIcon class="w-4 h-4" /></a>
                 <button
                   @click="confirmDelete(doc.id)"
                   :title="t('documents.delete')"
                   class="text-gray-400 hover:text-red-500 transition-colors"
-                >🗑</button>
+                ><TrashIcon class="w-4 h-4" /></button>
               </div>
             </td>
           </tr>

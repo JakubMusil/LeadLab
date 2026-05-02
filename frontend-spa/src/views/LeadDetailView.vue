@@ -23,6 +23,7 @@ import {
   CloudArrowUpIcon,
   PaperClipIcon,
   ChevronDownIcon,
+  XMarkIcon,
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -925,7 +926,7 @@ async function openContactDetail(id: string | null) {
         <button
           class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           @click="showContactModal = false"
-        >✕</button>
+        ><XMarkIcon class="w-5 h-5" /></button>
 
         <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Detail kontaktu</h3>
 

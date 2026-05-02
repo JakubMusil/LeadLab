@@ -8,9 +8,9 @@ import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
-
 import { useAuthStore } from '@/stores/auth'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+import { XMarkIcon, BuildingOfficeIcon, UserIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -469,8 +469,9 @@ onMounted(async () => {
 
     <template v-else-if="store.currentCustomer">
       <!-- Title -->
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ store.currentCustomer.type === 'company' ? '🏢 Společnost' : '👤 Osoba' }} - {{ [store.currentCustomer.first_name, store.currentCustomer.last_name].filter(Boolean).join(' ') }}
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
+        <component :is="store.currentCustomer.type === 'company' ? BuildingOfficeIcon : UserIcon" class="w-6 h-6 text-gray-500 flex-shrink-0" />
+        {{ store.currentCustomer.type === 'company' ? 'Společnost' : 'Osoba' }} - {{ [store.currentCustomer.first_name, store.currentCustomer.last_name].filter(Boolean).join(' ') }}
       </h1>
 
       <!-- 2-column layout from the start -->
@@ -580,7 +581,7 @@ onMounted(async () => {
                     :to="`/app/directory/${store.currentCustomer.company_id}`"
                     class="text-red-600 hover:underline dark:text-red-400 block"
                   >
-                    🏢 {{ availableCompanies.find(c => c.id === store.currentCustomer!.company_id)?.first_name ?? t('customers.viewCompany') }}
+                    <BuildingOfficeIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ availableCompanies.find(c => c.id === store.currentCustomer!.company_id)?.first_name ?? t('customers.viewCompany') }}
                   </RouterLink>
                 </dd>
               </div>
@@ -659,7 +660,7 @@ onMounted(async () => {
                 class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
               >
                 {{ tag }}
-                <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">✕</button>
+                <button class="text-gray-400 hover:text-red-500 ml-1" :disabled="tagsLoading" @click="removeTag(tag)"><XMarkIcon class="w-3.5 h-3.5" /></button>
               </span>
               <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noTags') }}</span>
             </div>
@@ -682,7 +683,7 @@ onMounted(async () => {
               <div v-for="(val, key) in store.currentCustomer.metadata" :key="key" class="flex items-center gap-3 py-2 group">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-32 flex-shrink-0 truncate">{{ key }}</span>
                 <span class="text-sm text-gray-500 dark:text-gray-400 flex-1 truncate">{{ val }}</span>
-                <button class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700" :disabled="metaLoading" @click="removeMetadata(key)">✕</button>
+                <button class="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700" :disabled="metaLoading" @click="removeMetadata(key)"><XMarkIcon class="w-3.5 h-3.5" /></button>
               </div>
             </div>
             <div v-else class="text-sm text-gray-400 dark:text-gray-500 mb-3">{{ t('customers.noCustomFields') }}</div>

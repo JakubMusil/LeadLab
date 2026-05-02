@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import GanttView from '@/components/GanttView.vue'
 import TaskTableView from '@/components/TaskTableView.vue'
+import { TrashIcon, CheckIcon, XMarkIcon, ArchiveBoxIcon, MapPinIcon, StarIcon, BellIcon, Bars3Icon, ViewColumnsIcon, ChartBarIcon, Squares2X2Icon, UserIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -453,7 +454,7 @@ onMounted(async () => {
           : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
         @click="displayMode = mode"
       >
-        {{ ({ list: '☰ ' + t('tasks.viewList'), kanban: '⬛ ' + t('tasks.viewKanban'), gantt: '📊 ' + t('tasks.viewGantt'), table: '⊞ ' + t('tasks.viewTable') } as Record<string, string>)[mode] }}
+        <component :is="({ list: Bars3Icon, kanban: ViewColumnsIcon, gantt: ChartBarIcon, table: Squares2X2Icon } as Record<string, object>)[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ ({ list: t('tasks.viewList'), kanban: t('tasks.viewKanban'), gantt: t('tasks.viewGantt'), table: t('tasks.viewTable') } as Record<string, string>)[mode] }}
       </button>
     </div>
 
@@ -528,15 +529,15 @@ onMounted(async () => {
       <div class="flex items-center gap-3 ml-auto flex-wrap">
         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
           <input type="checkbox" v-model="showFavourites" class="rounded" />
-          ⭐ {{ t('tasks.favourites') }}
+          <StarIcon class="w-4 h-4 text-yellow-400" /> {{ t('tasks.favourites') }}
         </label>
         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
           <input type="checkbox" v-model="showPinned" class="rounded" />
-          📌 {{ t('tasks.pinned') }}
+          <MapPinIcon class="w-4 h-4" /> {{ t('tasks.pinned') }}
         </label>
         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
           <input type="checkbox" v-model="showArchived" class="rounded" />
-          🗄 {{ t('tasks.archived') }}
+          <ArchiveBoxIcon class="w-4 h-4" /> {{ t('tasks.archived') }}
         </label>
         <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
           <input type="checkbox" v-model="showCompleted" class="rounded" />
@@ -551,10 +552,10 @@ onMounted(async () => {
       class="flex items-center gap-3 mb-4 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
     >
       <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ selectedTaskIds.size }} {{ t('tasks.selected') }}</span>
-      <button class="px-3 py-1 rounded-lg bg-green-500 text-white text-xs hover:bg-green-600" :disabled="batchAction_submitting" @click="doBatchAction('complete')">✓ {{ t('tasks.complete') }}</button>
-      <button class="px-3 py-1 rounded-lg bg-gray-500 text-white text-xs hover:bg-gray-600" :disabled="batchAction_submitting" @click="doBatchAction('archive')">🗄 {{ t('tasks.archive') }}</button>
-      <button class="px-3 py-1 rounded-lg bg-red-500 text-white text-xs hover:bg-red-600" :disabled="batchAction_submitting" @click="doBatchAction('delete')">🗑 {{ t('tasks.deleteTask') }}</button>
-      <button class="ml-auto text-xs text-gray-500 hover:text-gray-700" @click="clearSelection">✕ {{ t('tasks.clearSelection') }}</button>
+      <button class="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-500 text-white text-xs hover:bg-green-600" :disabled="batchAction_submitting" @click="doBatchAction('complete')"><CheckIcon class="w-3.5 h-3.5" /> {{ t('tasks.complete') }}</button>
+      <button class="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-500 text-white text-xs hover:bg-gray-600" :disabled="batchAction_submitting" @click="doBatchAction('archive')"><ArchiveBoxIcon class="w-3.5 h-3.5" /> {{ t('tasks.archive') }}</button>
+      <button class="flex items-center gap-1 px-3 py-1 rounded-lg bg-red-500 text-white text-xs hover:bg-red-600" :disabled="batchAction_submitting" @click="doBatchAction('delete')"><TrashIcon class="w-3.5 h-3.5" /> {{ t('tasks.deleteTask') }}</button>
+      <button class="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700" @click="clearSelection"><XMarkIcon class="w-3.5 h-3.5" /> {{ t('tasks.clearSelection') }}</button>
     </div>
 
     <!-- Loading state -->
@@ -596,14 +597,14 @@ onMounted(async () => {
           :title="task.is_completed ? '' : t('tasks.complete')"
           @click="!task.is_completed && startComplete(task)"
         >
-          <span v-if="task.is_completed" class="text-xs">✓</span>
+          <span v-if="task.is_completed" class="flex items-center justify-center w-full h-full"><CheckIcon class="w-3 h-3" /></span>
         </button>
 
         <!-- Task info -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span v-if="task.is_favourite" class="text-yellow-400 text-sm">⭐</span>
-            <span v-if="task.is_pinned" class="text-yellow-500 text-sm">📌</span>
+            <StarIcon v-if="task.is_favourite" class="w-4 h-4 text-yellow-400 flex-shrink-0" />
+            <MapPinIcon v-if="task.is_pinned" class="w-4 h-4 text-amber-500 flex-shrink-0" />
             <RouterLink
               :to="`/app/tasks/${task.id}`"
               class="text-sm font-medium hover:underline"
@@ -656,7 +657,7 @@ onMounted(async () => {
             >🏷 {{ tag }}</span>
             <!-- Assignee -->
             <span v-if="task.assigned_to_name" class="text-xs text-gray-500 dark:text-gray-400">
-              👤 {{ task.assigned_to_name }}
+              <UserIcon class="w-3.5 h-3.5 inline-block mr-0.5 align-text-bottom" />{{ task.assigned_to_name }}
             </span>
             <!-- Due date -->
             <span
@@ -664,7 +665,7 @@ onMounted(async () => {
               class="text-xs"
               :class="isOverdue(task) ? 'text-red-500 font-semibold' : 'text-gray-400'"
             >
-              📅 {{ formatDate(task.due_date) }}
+              <CalendarDaysIcon class="w-3.5 h-3.5 inline-block mr-0.5 align-text-bottom" />{{ formatDate(task.due_date) }}
               <template v-if="task.due_date_end"> – {{ formatDate(task.due_date_end) }}</template>
               <span v-if="isOverdue(task)" class="ml-1">({{ t('tasks.overdue') }})</span>
             </span>
@@ -749,8 +750,8 @@ onMounted(async () => {
               </RouterLink>
             </div>
             <div class="flex flex-wrap items-center gap-1.5 text-xs">
-              <span v-if="task.is_favourite" class="text-yellow-400">⭐</span>
-              <span v-if="task.is_pinned" class="text-yellow-500">📌</span>
+              <StarIcon v-if="task.is_favourite" class="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <MapPinIcon v-if="task.is_pinned" class="w-4 h-4 text-amber-500 flex-shrink-0" />
               <span
                 v-if="task.priority && task.priority !== 'none'"
                 :class="{
@@ -761,9 +762,9 @@ onMounted(async () => {
                 }"
               >⚠ {{ { low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'), high: t('tasks.priorityHigh'), critical: t('tasks.priorityCritical') }[task.priority] ?? task.priority }}</span>
               <span v-if="task.due_date" class="text-gray-400" :class="isOverdue(task) ? 'text-red-500 font-semibold' : ''">
-                📅 {{ formatDate(task.due_date) }}
+                <CalendarDaysIcon class="w-3.5 h-3.5 inline-block mr-0.5 align-text-bottom" />{{ formatDate(task.due_date) }}
               </span>
-              <span v-if="task.assigned_to_name" class="text-gray-400">👤 {{ task.assigned_to_name }}</span>
+              <span v-if="task.assigned_to_name" class="text-gray-400"><UserIcon class="w-3.5 h-3.5 inline-block mr-0.5 align-text-bottom" />{{ task.assigned_to_name }}</span>
             </div>
             <div v-if="(task.tags ?? []).length > 0" class="flex flex-wrap gap-1 mt-1.5">
               <span v-for="tag in (task.tags ?? []).slice(0, 2)" :key="tag" class="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs">🏷 {{ tag }}</span>
@@ -928,7 +929,7 @@ onMounted(async () => {
                   :checked="newTaskWatcherIds.includes(m.user_id)"
                   @change="toggleWatcher(newTaskWatcherIds, m.user_id)"
                 />
-                🔔 {{ memberLabel(m) }}
+                <BellIcon class="w-3.5 h-3.5 flex-shrink-0" /> {{ memberLabel(m) }}
               </label>
             </div>
           </div>
@@ -1072,7 +1073,7 @@ onMounted(async () => {
                   :checked="editWatcherIds.includes(m.user_id)"
                   @change="toggleWatcher(editWatcherIds, m.user_id)"
                 />
-                🔔 {{ memberLabel(m) }}
+                <BellIcon class="w-3.5 h-3.5 flex-shrink-0" /> {{ memberLabel(m) }}
               </label>
             </div>
           </div>
@@ -1173,7 +1174,7 @@ onMounted(async () => {
                   :checked="followUpWatcherIds.includes(m.user_id)"
                   @change="toggleWatcher(followUpWatcherIds, m.user_id)"
                 />
-                🔔 {{ memberLabel(m) }}
+                <BellIcon class="w-3.5 h-3.5 flex-shrink-0" /> {{ memberLabel(m) }}
               </label>
             </div>
           </div>

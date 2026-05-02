@@ -76,7 +76,7 @@ async function initGantt() {
           <div class="details-container" style="padding:8px;min-width:160px;font-family:sans-serif">
             <p style="font-weight:600;margin:0 0 4px">${found.title}</p>
             <p style="font-size:11px;color:#666;margin:0 0 2px">${found.status} · ${found.priority}</p>
-            ${found.assigned_to_name ? `<p style="font-size:11px;color:#888;margin:0">👤 ${found.assigned_to_name}</p>` : ''}
+            ${found.assigned_to_name ? `<p style="font-size:11px;color:#888;margin:0">${found.assigned_to_name}</p>` : ''}
           </div>
         `
       },

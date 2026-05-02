@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 import { useI18n } from '@/composables/useI18n'
+import { DocumentIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -489,7 +490,7 @@ async function exportToFakturoid() {
               :disabled="fakturoidExporting || !revenues.length"
               @click="exportToFakturoid"
               title="Create invoice in Fakturoid from all visible revenue items"
-            >{{ fakturoidExporting ? 'Exporting…' : '📄 Fakturoid invoice' }}</button>
+            >{{ fakturoidExporting ? 'Exporting…' : '' }}<DocumentIcon v-if="!fakturoidExporting" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ fakturoidExporting ? '' : 'Fakturoid invoice' }}</button>
             <button class="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               @click="showRevenueForm = !showRevenueForm">+ Add revenue</button>
           </div>

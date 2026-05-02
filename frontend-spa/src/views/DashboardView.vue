@@ -12,6 +12,21 @@ import {
 } from 'chart.js'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useI18n } from '@/composables/useI18n'
+import type { Component } from 'vue'
+import {
+  ChatBubbleLeftIcon,
+  EnvelopeIcon,
+  InboxArrowDownIcon,
+  PhoneIcon,
+  UsersIcon,
+  ArrowsRightLeftIcon,
+  PaperClipIcon,
+  ClipboardDocumentListIcon,
+  CheckCircleIcon,
+  MapPinIcon,
+  XMarkIcon,
+  Squares2X2Icon,
+} from '@heroicons/vue/24/outline'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
 
@@ -111,14 +126,20 @@ const visibleWidgets = computed(() =>
     .sort((a, b) => a.order - b.order),
 )
 
-const activityIcons: Record<string, string> = {
-  comment: '💬', email_out: '📧', email_in: '📥', call: '📞',
-  meeting: '🤝', status_change: '🔄', file_upload: '📎',
-  task_assigned: '📋', task_completed: '✅',
+const activityIcons: Record<string, Component> = {
+  comment: ChatBubbleLeftIcon,
+  email_out: EnvelopeIcon,
+  email_in: InboxArrowDownIcon,
+  call: PhoneIcon,
+  meeting: UsersIcon,
+  status_change: ArrowsRightLeftIcon,
+  file_upload: PaperClipIcon,
+  task_assigned: ClipboardDocumentListIcon,
+  task_completed: CheckCircleIcon,
 }
 
-function activityIcon(type: string) {
-  return activityIcons[type] ?? '📌'
+function activityIcon(type: string): Component {
+  return activityIcons[type] ?? MapPinIcon
 }
 
 function formatTime(ts: string) {
@@ -220,7 +241,7 @@ function hideSetupBanner() {
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm px-2 py-1"
           @click="hideSetupBanner"
           aria-label="Dismiss banner"
-        >✕</button>
+        ><XMarkIcon class="w-4 h-4" /></button>
       </div>
     </div>
 
@@ -232,7 +253,7 @@ function hideSetupBanner() {
         @click="showLayoutEditor = !showLayoutEditor"
         :aria-expanded="showLayoutEditor"
       >
-        <span aria-hidden="true">⊞</span>
+        <Squares2X2Icon class="w-4 h-4" aria-hidden="true" />
         {{ t('dashboard.customiseLayout') }}
       </button>
     </div>
@@ -339,7 +360,7 @@ function hideSetupBanner() {
               </div>
               <ul class="space-y-3 overflow-y-auto max-h-56">
                 <li v-for="act in stats.recent_activities" :key="act.id" class="flex items-start gap-2.5">
-                  <span class="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{{ activityIcon(act.type) }}</span>
+                  <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
                       <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
@@ -373,7 +394,7 @@ function hideSetupBanner() {
               </div>
               <ul class="space-y-3">
                 <li v-for="act in stats.recent_activities" :key="act.id" class="flex items-start gap-2.5">
-                  <span class="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{{ activityIcon(act.type) }}</span>
+                  <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
                       <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
