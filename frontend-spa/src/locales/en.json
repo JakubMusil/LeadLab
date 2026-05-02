@@ -83,7 +83,7 @@
     "page": "Page {n}",
     "prev": "← Prev",
     "next": "Next →",
-    "saveView": "🔖 Save view",
+    "saveView": "Save view",
     "saveCurrentView": "Save current view",
     "viewName": "View name",
     "viewNamePlaceholder": "e.g. New Web Opportunities",
@@ -130,9 +130,9 @@
     "viewDeleted": "View deleted.",
     "searching": "Searching…",
     "overdueLabel": "⚠ overdue",
-    "importCsv": "⬆ Import CSV",
-    "exportCsv": "⬇ CSV",
-    "exportPdf": "⬇ PDF",
+    "importCsv": "Import CSV",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
     "customerCreated": "Contact created.",
     "failedToCreateCustomer": "Failed to create contact.",
     "statusNew": "New",
@@ -141,7 +141,9 @@
     "statusNegotiation": "Negotiation",
     "statusWon": "Won",
     "statusLost": "Lost",
-    "statusCanceled": "Canceled"
+    "statusCanceled": "Canceled",
+    "list": "List",
+    "actions": "Actions"
   },
   "settings": {
     "title": "Settings",

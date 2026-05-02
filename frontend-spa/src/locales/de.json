@@ -83,7 +83,7 @@
     "page": "Seite {n}",
     "prev": "← Zurück",
     "next": "Weiter →",
-    "saveView": "🔖 Ansicht speichern",
+    "saveView": "Ansicht speichern",
     "saveCurrentView": "Aktuelle Ansicht speichern",
     "viewName": "Ansichtsname",
     "viewNamePlaceholder": "z.B. Neue Web-Chancen",
@@ -130,9 +130,9 @@
     "viewDeleted": "Ansicht gelöscht.",
     "searching": "Suche…",
     "overdueLabel": "⚠ überfällig",
-    "importCsv": "⬆ CSV importieren",
-    "exportCsv": "⬇ CSV",
-    "exportPdf": "⬇ PDF",
+    "importCsv": "CSV importieren",
+    "exportCsv": "CSV exportieren",
+    "exportPdf": "PDF exportieren",
     "customerCreated": "Kunde erstellt.",
     "failedToCreateCustomer": "Kunde konnte nicht erstellt werden.",
     "statusNew": "Neu",
@@ -141,7 +141,9 @@
     "statusNegotiation": "Verhandlung",
     "statusWon": "Gewonnen",
     "statusLost": "Verloren",
-    "statusCanceled": "Abgebrochen"
+    "statusCanceled": "Abgebrochen",
+    "list": "Liste",
+    "actions": "Aktionen"
   },
   "settings": {
     "title": "Einstellungen",
