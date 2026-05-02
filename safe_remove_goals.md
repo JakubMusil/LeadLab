@@ -240,7 +240,7 @@ Veškeré `window.confirm()` / `confirm()` volání v SPA jsou odstraněna a nah
 
 ### Priorita 2 — UX / Admin
 
-4. **Admin „Undo" / Restore endpoint**: `POST /api/v1/crm/xxx/{id}/restore` — obnoví smazaný záznam (smaže `is_deleted`, `deleted_at` atd.) pro adminisrátory.
+4. **Admin „Undo" / Restore endpoint**: `POST /api/v1/crm/xxx/{id}/restore` — obnoví smazaný záznam (smaže `is_deleted`, `deleted_at` atd.) pro administrátory.
 5. **Koš (Trash) view v UI**: Stránka zobrazující soft-deleted záznamy s možností obnovení nebo okamžitého hard-delete (pro adminy).
 
 ### Priorita 3 — Robustnost
