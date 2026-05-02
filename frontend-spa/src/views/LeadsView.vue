@@ -4,24 +4,49 @@ import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
+import Dropdown from '@/components/ui/Dropdown.vue'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
-import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
 const store = useLeadsStore()
 const savedViewsStore = useSavedViewsStore()
 const customersStore = useCustomersStore()
+const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()
 
-type ViewMode = 'table' | 'kanban'
+type ViewMode = 'table' | 'kanban' | 'list'
+
+const viewModeStorageKey = computed(() => `leadlab_leads_displaymode_u${authStore.user?.id ?? 'guest'}`)
+
 const viewMode = ref<ViewMode>('table')
+
+watch(viewModeStorageKey, (key) => {
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored === 'table' || stored === 'kanban' || stored === 'list') {
+      viewMode.value = stored
+    }
+  } catch {
+    // ignore
+  }
+}, { immediate: true })
+
+watch(viewMode, (mode) => {
+  try {
+    localStorage.setItem(viewModeStorageKey.value, mode)
+  } catch {
+    // ignore
+  }
+})
 const filterStatus = ref((route.query.status as string) ?? '')
 const filterSource = ref('')
 const showModal = ref(false)
@@ -445,6 +470,13 @@ function exportCsv() {
 function exportPdf() {
   window.location.href = '/api/v1/integrations/export/pipeline.pdf'
 }
+
+const actionsDropdownItems = computed(() => [
+  { label: t('leads.saveView'), onClick: () => { showSaveViewDialog.value = true } },
+  { label: t('leads.importCsv'), onClick: () => { importInput.value?.click() } },
+  { label: t('leads.exportCsv'), onClick: exportCsv },
+  { label: t('leads.exportPdf'), onClick: exportPdf },
+])
 </script>
 
 <template>
@@ -462,10 +494,10 @@ function exportPdf() {
         >
           <button
             class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-l-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          :title="view.name"
+            :title="view.name"
             @click="router.push(`/app/leads?view=${view.id}`)"
           >
-            🔖 {{ view.name }}
+            <BookmarkIcon class="w-3.5 h-3.5" /> {{ view.name }}
           </button>
           <button
             class="px-1.5 py-1 text-xs font-medium rounded-r-xl border border-l-0 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
@@ -476,22 +508,23 @@ function exportPdf() {
         </div>
       </div>
 
-      <!-- View toggle -->
-      <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden text-sm">
+      <!-- View toggle (Task-list style) -->
+      <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
         <button
-          class="px-3 py-1.5 transition-colors"
-          :class="viewMode === 'table' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-          @click="viewMode = 'table'"
-        ><Bars3Icon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('leads.table') }}</button>
-        <button
-          class="px-3 py-1.5 transition-colors"
-          :class="viewMode === 'kanban' ? 'bg-red-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-          @click="viewMode = 'kanban'"
-        ><Squares2X2Icon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('leads.kanban') }}</button>
+          v-for="mode in (['table', 'kanban', 'list'] as const)"
+          :key="mode"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="viewMode === mode
+            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+          @click="viewMode = mode"
+        >
+          <component :is="({ table: Bars3Icon, kanban: Squares2X2Icon, list: ListBulletIcon } as Record<string, object>)[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ ({ table: t('leads.table'), kanban: t('leads.kanban'), list: t('leads.list') } as Record<string, string>)[mode] }}
+        </button>
       </div>
 
-      <!-- Filters (table only) -->
-      <template v-if="viewMode === 'table'">
+      <!-- Filters (table & list views) -->
+      <template v-if="viewMode !== 'kanban'">
         <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
           <option value="">{{ t('leads.allStatuses') }}</option>
           <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
@@ -505,14 +538,6 @@ function exportPdf() {
           <option value="social">{{ t('leads.sourceSocial') }}</option>
           <option value="other">{{ t('leads.sourceOther') }}</option>
         </select>
-        <!-- Save current view -->
-        <button
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          title="Save current filters as a view"
-          @click="showSaveViewDialog = true"
-        >
-          🔖 {{ t('leads.saveView') }}
-        </button>
       </template>
 
       <button
@@ -520,25 +545,19 @@ function exportPdf() {
         @click="openCreate"
       >{{ t('leads.newLead') }}</button>
 
-      <!-- Import / Export -->
-      <label
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-        :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
-        title="Import leads from CSV"
-      >
-        {{ t('leads.importCsv') }}
-        <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
-      </label>
-      <button
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        title="Export leads as CSV"
-        @click="exportCsv"
-      >{{ t('leads.exportCsv') }}</button>
-      <button
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        title="Export pipeline summary as PDF"
-        @click="exportPdf"
-      >{{ t('leads.exportPdf') }}</button>
+      <!-- Actions dropdown (import / export / save view) -->
+      <Dropdown :items="actionsDropdownItems" placement="right">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          <span>{{ t('leads.actions') }}</span>
+          <ChevronDownIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      </Dropdown>
+
+      <!-- Hidden file input for CSV import -->
+      <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
     </div>
 
     <!-- Loading -->
@@ -661,8 +680,82 @@ function exportPdf() {
       </div>
     </template>
 
+    <!-- LIST VIEW -->
+    <template v-else-if="viewMode === 'list'">
+      <div v-if="store.leads.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('leads.noLeadsFound') }}</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
+          <template v-if="filterStatus || filterSource">{{ t('leads.filterSubtitle') }}</template>
+          <template v-else>{{ t('leads.pipelineSubtitle') }}</template>
+        </p>
+        <button
+          v-if="!filterStatus && !filterSource"
+          class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
+          @click="openCreate"
+        >{{ t('leads.createFirst') }}</button>
+      </div>
+      <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
+        <div
+          v-for="lead in store.leads"
+          :key="lead.id"
+          class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
+          @click="goToDetail(lead.id)"
+          @contextmenu="onRowContextMenu($event, lead)"
+        >
+          <!-- Status indicator dot -->
+          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="getStatusMeta(lead.status).color.split(' ')[0]" :aria-label="statusLabel(lead.status)" />
+
+          <!-- Title -->
+          <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            {{ lead.title }}
+            <span v-if="overdueTasks.has(lead.id)" class="text-red-500 text-xs ml-1" title="Overdue task" aria-label="Overdue task">⚠</span>
+          </span>
+
+          <!-- Status badge -->
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(lead.status).color">
+            {{ statusLabel(lead.status) }}
+          </span>
+
+          <!-- Source -->
+          <span class="hidden md:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-20 truncate">{{ sourceLabel(lead.source) }}</span>
+
+          <!-- Value -->
+          <span class="hidden lg:block text-xs text-gray-600 dark:text-gray-300 flex-shrink-0 w-24 text-right">{{ fmtValue(lead) }}</span>
+
+          <!-- Score -->
+          <span class="hidden xl:block flex-shrink-0"><LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" /></span>
+
+          <!-- Date -->
+          <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>
+            <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+            <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click="confirmDeleteId = lead.id"><TrashIcon class="w-4 h-4" /></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex justify-between items-center px-4 py-3">
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('leads.page', { n: store.page }) }}</span>
+        <div class="flex gap-2">
+          <button
+            v-if="store.page > 1"
+            class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page - 1 })"
+          >{{ t('leads.prev') }}</button>
+          <button
+            v-if="store.hasMore"
+            class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page + 1 })"
+          >{{ t('leads.next') }}</button>
+        </div>
+      </div>
+    </template>
+
     <!-- KANBAN VIEW -->
-    <template v-else>
+    <template v-else-if="viewMode === 'kanban'">
       <div class="flex gap-4 overflow-x-auto pb-4 min-h-96">
         <div
           v-for="s in LEAD_STATUSES"

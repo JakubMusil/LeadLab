@@ -83,7 +83,7 @@
     "page": "Strana {n}",
     "prev": "← Předchozí",
     "next": "Další →",
-    "saveView": "🔖 Uložit pohled",
+    "saveView": "Uložit pohled",
     "saveCurrentView": "Uložit aktuální pohled",
     "viewName": "Název pohledu",
     "viewNamePlaceholder": "např. Nové weby",
@@ -130,9 +130,9 @@
     "viewDeleted": "Pohled smazán.",
     "searching": "Vyhledávání…",
     "overdueLabel": "⚠ po termínu",
-    "importCsv": "⬆ Importovat CSV",
-    "exportCsv": "⬇ CSV",
-    "exportPdf": "⬇ PDF",
+    "importCsv": "Importovat CSV",
+    "exportCsv": "Exportovat CSV",
+    "exportPdf": "Exportovat PDF",
     "customerCreated": "Kontakt vytvořen.",
     "failedToCreateCustomer": "Nepodařilo se vytvořit kontakt.",
     "statusNew": "Nový",
@@ -141,7 +141,9 @@
     "statusNegotiation": "Vyjednávání",
     "statusWon": "Vyhrán",
     "statusLost": "Prohrán",
-    "statusCanceled": "Zrušen"
+    "statusCanceled": "Zrušen",
+    "list": "Seznam",
+    "actions": "Akce"
   },
   "settings": {
     "title": "Nastavení",
