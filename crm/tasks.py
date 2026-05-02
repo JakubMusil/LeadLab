@@ -1866,3 +1866,58 @@ def fetch_remote_file_for_activity(self, activity_id: str):
             activity.save(update_fields=["metadata"])
         except Exception:  # pragma: no cover — last-ditch safety
             pass
+
+
+# ---------------------------------------------------------------------------
+# Soft-delete purge task (Phase 5)
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, name="crm.tasks.purge_soft_deleted_records")
+def purge_soft_deleted_records(self):
+    """
+    Hard-delete soft-deleted records whose ``purge_after`` timestamp has elapsed.
+
+    Runs nightly via Celery Beat (configured in settings.CELERY_BEAT_SCHEDULE).
+    For Document records with a physical file, the file is deleted before the
+    DB row is removed.
+    """
+    from django.utils import timezone as tz
+    from crm.models import (
+        Customer,
+        Lead,
+        Task,
+        Realization,
+        Management,
+        Activity,
+    )
+
+    now = tz.now()
+    total = 0
+
+    models_to_purge = [
+        ("Customer", Customer),
+        ("Lead", Lead),
+        ("Task", Task),
+        ("Realization", Realization),
+        ("Management", Management),
+    ]
+
+    for label, Model in models_to_purge:
+        qs = Model.all_objects.filter(is_deleted=True, purge_after__lte=now)
+        count, _ = qs.delete()
+        if count:
+            logger.info("purge_soft_deleted_records: deleted %d %s record(s)", count, label)
+        total += count
+
+    # Activity: uses its own is_deleted field (not SoftDeleteMixin) so
+    # we use the standard manager directly.
+    act_qs = Activity.objects.filter(
+        is_deleted=True, purge_after__isnull=False, purge_after__lte=now
+    )
+    act_count, _ = act_qs.delete()
+    if act_count:
+        logger.info("purge_soft_deleted_records: deleted %d Activity record(s)", act_count)
+    total += act_count
+
+    logger.info("purge_soft_deleted_records: total %d record(s) hard-deleted", total)
+    return {"purged": total}

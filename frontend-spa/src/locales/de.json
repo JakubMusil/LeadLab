@@ -2083,5 +2083,11 @@
     "start": "Beginn",
     "end": "Ende",
     "description": "Beschreibung"
+  },
+  "deleteModal": {
+    "title": "Wirklich löschen?",
+    "message": "Diese Aktion kann nicht rückgängig gemacht werden. Der Eintrag wird dauerhaft entfernt.",
+    "confirm": "Löschen",
+    "cancel": "Abbrechen"
   }
 }

@@ -2083,5 +2083,11 @@
     "start": "Start",
     "end": "Koniec",
     "description": "Opis"
+  },
+  "deleteModal": {
+    "title": "Potwierdzenie usunięcia",
+    "message": "Tej akcji nie można cofnąć. Rekord zostanie trwale usunięty.",
+    "confirm": "Usuń",
+    "cancel": "Anuluj"
   }
 }

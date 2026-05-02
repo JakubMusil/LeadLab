@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import { XMarkIcon, BuildingOfficeIcon, UserIcon, LinkIcon } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -249,13 +250,18 @@ async function saveEdit() {
 }
 
 async function deleteCustomer() {
-  if (!confirm(t('customers.deleteText'))) return
-  const result = await store.deleteCustomer(customerId.value)
-  if (result.ok) {
-    toast.success(t('customers.deleted'))
-    router.push('/app/directory')
-  } else {
-    toast.error(t('customers.failedToDelete'))
+  deleteCustomerLoading.value = true
+  try {
+    const result = await store.deleteCustomer(customerId.value)
+    if (result.ok) {
+      toast.success(t('customers.deleted'))
+      router.push('/app/directory')
+    } else {
+      toast.error(t('customers.failedToDelete'))
+    }
+  } finally {
+    deleteCustomerLoading.value = false
+    showDeleteCustomerModal.value = false
   }
 }
 
@@ -409,6 +415,8 @@ const docsLoading = ref(false)
 const docsUploading = ref(false)
 const docFileInputRef = ref<HTMLInputElement | null>(null)
 const deleteDocId = ref<string | null>(null)
+const showDeleteCustomerModal = ref(false)
+const deleteCustomerLoading = ref(false)
 
 async function loadDocuments() {
   docsLoading.value = true
@@ -628,7 +636,7 @@ onMounted(async () => {
             </dl>
             <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('customers.edit') }}</button>
-              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteCustomer">{{ t('customers.delete') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="showDeleteCustomerModal = true">{{ t('customers.delete') }}</button>
             </div>
           </div>
 
@@ -855,4 +863,13 @@ onMounted(async () => {
       </div>
     </Teleport>
   </div>
+
+  <ConfirmDeleteModal
+    :open="showDeleteCustomerModal"
+    :title="t('customers.deleteTitle')"
+    :message="t('customers.deleteText')"
+    :loading="deleteCustomerLoading"
+    @confirm="deleteCustomer"
+    @cancel="showDeleteCustomerModal = false"
+  />
 </template>

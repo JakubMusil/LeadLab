@@ -31,6 +31,7 @@ import {
   MinusCircleIcon,
 } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -2219,20 +2220,14 @@ onUnmounted(() => {
     </Teleport>
 
     <!-- Delete Confirm Modal -->
-    <Teleport to="body">
-      <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showDeleteConfirm = false">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.deleteTask') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('tasks.deleteConfirm') }}</p>
-          <div class="flex gap-3 justify-end pt-2">
-            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showDeleteConfirm = false">{{ t('tasks.cancel') }}</button>
-            <button class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60" :disabled="deleting" @click="confirmDelete">
-              {{ deleting ? '…' : t('tasks.deleteTask') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <ConfirmDeleteModal
+      :open="showDeleteConfirm"
+      :title="t('tasks.deleteTask')"
+      :message="t('tasks.deleteConfirm')"
+      :loading="deleting"
+      @confirm="confirmDelete"
+      @cancel="showDeleteConfirm = false"
+    />
 
     <!-- Phase 7: Recurrence Modal -->
     <Teleport to="body">

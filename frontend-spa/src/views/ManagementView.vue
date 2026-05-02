@@ -11,12 +11,15 @@ import {
 } from '@/stores/management'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const router = useRouter()
 const store = useManagementStore()
 const customersStore = useCustomersStore()
 const toast = useToast()
+const { t } = useI18n()
 
 type ViewMode = 'kanban' | 'table'
 const viewMode = ref<ViewMode>('kanban')
@@ -404,25 +407,12 @@ function selectCustomer(c: CustomerOut) {
     </div>
 
     <!-- Delete confirmation -->
-    <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Smazat záznam?</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Tato akce je nevratná.</p>
-        <div class="flex justify-end gap-2">
-          <button
-            @click="confirmDeleteId = null"
-            class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-          >
-            Zrušit
-          </button>
-          <button
-            @click="handleDelete(confirmDeleteId!)"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
-          >
-            Smazat
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDeleteModal
+      :open="!!confirmDeleteId"
+      :title="t('management.deleteTitle')"
+      :message="t('management.deleteConfirm')"
+      @confirm="handleDelete(confirmDeleteId!)"
+      @cancel="confirmDeleteId = null"
+    />
   </div>
 </template>

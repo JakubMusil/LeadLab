@@ -66,6 +66,7 @@ from firms.auth import (
 from firms.models import Membership
 
 from crm.events import broadcast_event
+from crm.soft_delete import perform_soft_delete
 
 router = Router(tags=["crm"])
 
@@ -264,7 +265,7 @@ def delete_customer(request, customer_id: str):
     except Customer.DoesNotExist:
         return 404, {"detail": "Customer not found."}
 
-    customer.delete()
+    perform_soft_delete(customer, request.user)
     return 204, None
 
 
@@ -773,7 +774,7 @@ def delete_lead(request, lead_id: str):
     except Lead.DoesNotExist:
         return 404, {"detail": "Lead not found."}
 
-    lead.delete()
+    perform_soft_delete(lead, request.user)
     broadcast_event(firm=request.firm, event='lead.deleted', payload={'id': lead_id})
     return 204, None
 
@@ -1263,7 +1264,10 @@ def delete_activity(request, activity_id: str):
     activity.deleted_by = request.user
     activity.content_text = ""
     activity.metadata = {}
-    activity.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "content_text", "metadata"])
+    from django.conf import settings as _settings
+    purge_days = getattr(_settings, "SOFT_DELETE_PURGE_DAYS", 30)
+    activity.purge_after = activity.deleted_at + dt.timedelta(days=purge_days)
+    activity.save(update_fields=["is_deleted", "deleted_at", "deleted_by", "content_text", "metadata", "purge_after"])
 
     broadcast_event(
         firm=request.firm,
@@ -3267,7 +3271,7 @@ def delete_task_dependency(request, task_id: str, dependency_id: str):
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )
 def delete_task(request, task_id: str):
-    """Permanently delete a task. Requires ADMIN role."""
+    """Soft-delete a task. Requires ADMIN role."""
     try:
         require_membership(request, min_role=MembershipRole.ADMIN)
     except Exception as exc:
@@ -3278,7 +3282,7 @@ def delete_task(request, task_id: str):
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
 
-    task.delete()
+    perform_soft_delete(task, request.user)
     return 204, None
 
 
