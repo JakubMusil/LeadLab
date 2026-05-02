@@ -2123,6 +2123,46 @@ class TodoItemsAddedTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
+# Milestone
+# ---------------------------------------------------------------------------
+
+class MilestoneTool(StreamlineTool):
+    activity_type = "milestone"
+    label = _("Milestone")
+    icon = "FlagIcon"
+    category = "planning"
+    default_visibility = "important"
+
+    def get_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "title": "Name"},
+                "date": {"type": "string", "format": "date", "title": "Date"},
+                "content_text": {"type": "string", "title": "Description"},
+            },
+            "required": ["name"],
+        }
+
+    def process_action(
+        self, activity: "Activity", entity: Any, payload: dict, context: dict
+    ) -> None:
+        meta = payload.get("metadata") or {}
+        activity.metadata = {
+            **activity.metadata,
+            "name": meta.get("name", ""),
+            "date": meta.get("date", ""),
+        }
+        activity.save(update_fields=["metadata"])
+
+    def render_payload(self, activity: "Activity") -> dict:
+        return {
+            "name": activity.metadata.get("name", ""),
+            "date": activity.metadata.get("date", ""),
+        }
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -2191,4 +2231,6 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     StreamlineItemReopenedTool(),
     # Todo Items — bulk task creation from entity toolbar
     TodoItemsAddedTool(),
+    # Milestone — replaces dedicated milestone UI in Realization detail
+    MilestoneTool(),
 ]

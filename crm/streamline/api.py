@@ -30,7 +30,7 @@ def _build_entity_toolbar() -> None:
         from crm.models import Lead, Realization, Management
         _ENTITY_TOOLBAR = {
             "lead": Lead.TOOLBAR_TOOLS,
-            "realization": ["comment", "task", "proposal"],
+            "realization": ["comment", "task", "milestone", "proposal"],
             "management": ["comment", "task", "proposal"],
             "customer": ["comment", "call", "meeting", "email_out", "task"],
             "proposal": ["comment", "task"],

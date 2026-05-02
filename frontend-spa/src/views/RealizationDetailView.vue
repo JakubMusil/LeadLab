@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRealizationsStore, REALIZATION_STATUSES, getRealizationStatusMeta, type MilestoneOut } from '@/stores/realizations'
+import { useRealizationsStore, REALIZATION_STATUSES, getRealizationStatusMeta } from '@/stores/realizations'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
@@ -9,8 +9,15 @@ import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
-
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+import {
+  TrashIcon,
+  FolderOpenIcon,
+  WrenchScrewdriverIcon,
+  DocumentTextIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -171,10 +178,6 @@ function getStatusHexColor(status: string) {
   }
 }
 
-type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals' | 'documents'
-const activeTab = ref<Tab>('overview')
-
-
 // ActivityTimeline ref — used to reload feed after sidebar quick-action submits.
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
@@ -182,17 +185,12 @@ const editingTitle = ref(false)
 const titleDraft = ref('')
 const savingTitle = ref(false)
 
-// Milestone form
-const showMilestoneForm = ref(false)
-const milestoneFormName = ref('')
-const milestoneFormDate = ref('')
-const milestoneFormDesc = ref('')
-const milestoneFormLoading = ref(false)
-
 // Linked proposals
 interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
 const linkedProposals = ref<ProposalOut[]>([])
 const proposalsLoading = ref(false)
+const showProposals = ref(false)
+const showDocuments = ref(false)
 
 const realization = computed(() => store.currentRealization)
 
@@ -248,61 +246,6 @@ async function updateStatus(status: string) {
   if (!realization.value) return
   await store.updateRealization(realization.value.id, { status })
 }
-
-// Milestones
-async function createMilestone() {
-  if (!realization.value || !milestoneFormName.value.trim() || !milestoneFormDate.value) return
-  milestoneFormLoading.value = true
-  try {
-    await api.post(
-      `/api/v1/crm/realizations/${realization.value.id}/milestones`,
-      {
-        name: milestoneFormName.value.trim(),
-        date: milestoneFormDate.value,
-        description: milestoneFormDesc.value,
-      },
-    )
-    await store.fetchRealization(realization.value.id)
-    toast.success(t('realizations.milestoneAdded'))
-    milestoneFormName.value = ''
-    milestoneFormDate.value = ''
-    milestoneFormDesc.value = ''
-    showMilestoneForm.value = false
-  } catch {
-    toast.error(t('realizations.failedToAddMilestone'))
-  } finally {
-    milestoneFormLoading.value = false
-  }
-}
-
-async function toggleMilestone(m: MilestoneOut) {
-  if (!realization.value) return
-  try {
-    await api.patch(
-      `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
-      { is_completed: !m.is_completed },
-    )
-    await store.fetchRealization(realization.value.id)
-  } catch {
-    toast.error(t('common.error'))
-  }
-}
-
-async function deleteMilestone(m: MilestoneOut) {
-  if (!realization.value) return
-  try {
-    await api.delete(
-      `/api/v1/crm/realizations/${realization.value.id}/milestones/${m.id}`,
-    )
-    await store.fetchRealization(realization.value.id)
-    toast.success(t('realizations.milestoneDeleted'))
-  } catch {
-    toast.error(t('common.error'))
-  }
-}
-
-const completedMilestones = computed(() => realization.value?.milestones.filter((m) => m.is_completed).length ?? 0)
-const totalMilestones = computed(() => realization.value?.milestones.length ?? 0)
 
 async function loadLinkedProposals() {
   proposalsLoading.value = true
@@ -371,6 +314,7 @@ onMounted(async () => {
   await loadTools()
   await store.fetchRealization(realizationId.value)
   await loadLinkedProposals()
+  await loadDocuments()
 })</script>
 
 <template>
@@ -388,23 +332,12 @@ onMounted(async () => {
 
     <template v-else-if="realization">
       <!-- Title -->
-      <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
-          🛠 Realizace - {{ realization.title }}
-        </h1>
-        <div class="flex-shrink-0">
-          <select
-            :value="realization.status"
-            @change="updateStatus(($event.target as HTMLSelectElement).value)"
-            :class="getRealizationStatusMeta(realization.status).color"
-            class="rounded-lg px-3 py-1.5 text-sm font-medium border-0 cursor-pointer focus:ring-2 focus:ring-red-500 outline-none"
-          >
-            <option v-for="s in REALIZATION_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
-        </div>
-      </div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
+        <WrenchScrewdriverIcon class="w-6 h-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+        Realizace - {{ realization.title }}
+      </h1>
 
-      <!-- Progress bar exactly like Lead Detail -->
+      <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
         <div class="flex items-center justify-between gap-1 select-none">
           <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
@@ -426,31 +359,10 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Tabs exactly like Lead Detail -->
-      <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        <button
-          v-for="tab in [
-            { id: 'overview', label: t('realizations.tabOverview') },
-            { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
-            { id: 'tasks', label: t('realizations.tabTasks') },
-            { id: 'proposals', label: t('realizations.tabProposals') },
-            { id: 'documents', label: `${t('realizations.tabDocuments')} (${documents.length})` },
-          ]"
-          :key="tab.id"
-          @click="activeTab = tab.id as Tab; if (tab.id === 'documents' && documents.length === 0) loadDocuments()"
-          :class="activeTab === tab.id
-            ? 'border-b-2 border-red-600 text-red-600'
-            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-          class="px-4 py-3 text-sm font-medium"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
+      <!-- 2-column layout — identical to Lead detail -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Overview tab: streamline left + sidebar right -->
-      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Left Column: Activity Feed & Presets Switcher from Lead Detail -->
+        <!-- Left Column: Activity Feed & Presets Switcher -->
         <div class="lg:col-span-2">
           <!-- Switchers: Přehled + user presets + Filtry -->
           <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
@@ -487,7 +399,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Quick action to save custom filter as shortcut if it's selected -->
+          <!-- Quick action to save custom filter as shortcut -->
           <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
             <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
             <input
@@ -516,276 +428,199 @@ onMounted(async () => {
           />
         </div>
 
+        <!-- Right Column: Sidebar -->
+        <div class="space-y-4">
 
-      <!-- Right: sidebar (quick actions + description + milestones progress + meta) -->
-      <div class="space-y-4">
+          <!-- Realization details card -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+              {{ realization.title }}
+            </h2>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-center">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.colStatus') }}</dt>
+                <dd>
+                  <select
+                    :value="realization.status"
+                    @change="updateStatus(($event.target as HTMLSelectElement).value)"
+                    :class="getRealizationStatusMeta(realization.status).color"
+                    class="rounded-lg px-2 py-1 text-xs font-medium border-0 cursor-pointer focus:ring-2 focus:ring-red-500 outline-none"
+                  >
+                    <option v-for="s in REALIZATION_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
+                  </select>
+                </dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(realization.created_at).toLocaleDateString('cs-CZ') }}</dd>
+              </div>
+              <div v-if="realization.customer_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.colCustomer') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ realization.customer_name }}</dd>
+              </div>
+              <div v-if="realization.lead_title" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.opportunityLabel') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ realization.lead_title }}</dd>
+              </div>
+              <div v-if="realization.assigned_to_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.assignedToLabel') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ realization.assigned_to_name }}</dd>
+              </div>
+              <div v-if="realization.start_date" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.startLabel') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ realization.start_date }}</dd>
+              </div>
+              <div v-if="realization.end_date" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.endLabel') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ realization.end_date }}</dd>
+              </div>
+              <!-- Inline-editable description -->
+              <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div class="flex items-center justify-between mb-1">
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.descLabel') }}</dt>
+                  <button
+                    v-if="!editingDescription"
+                    class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    @click="startEditDescription"
+                  >{{ t('realizations.edit') }}</button>
+                </div>
+                <template v-if="editingDescription">
+                  <textarea
+                    v-model="descriptionDraft"
+                    rows="4"
+                    class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 dark:focus:border-red-500 resize-y"
+                    :placeholder="t('realizations.descPlaceholder')"
+                  />
+                  <div class="flex justify-end gap-2 mt-1.5">
+                    <button class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="cancelEditDescription">{{ t('common.cancel') }}</button>
+                    <button
+                      :disabled="savingDescription"
+                      class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                      @click="saveDescription"
+                    >{{ savingDescription ? t('realizations.saving') : t('common.save') }}</button>
+                  </div>
+                </template>
+                <dd
+                  v-else-if="realization.description"
+                  class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap cursor-pointer"
+                  @click="startEditDescription"
+                >{{ realization.description }}</dd>
+                <dd
+                  v-else
+                  class="text-xs text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
+                  @click="startEditDescription"
+                >{{ t('realizations.descPlaceholder') }}</dd>
+              </div>
+            </dl>
+          </div>
 
-        <!-- Quick actions (unified Streamline composer) -->
-        <EntitySidebarActionPicker
-          entity-type="realization"
-          :entity-id="realizationId"
-          @activity-added="activityTimelineRef?.load()"
-        />
+          <!-- Quick actions card -->
+          <EntitySidebarActionPicker
+            entity-type="realization"
+            :entity-id="realizationId"
+            @activity-added="activityTimelineRef?.load()"
+          />
 
-        <!-- Description -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ t('realizations.descLabel') }}</h3>
+          <!-- Proposals section -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
             <button
-              v-if="!editingDescription"
-              class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-              @click="startEditDescription"
-            >{{ t('realizations.edit') }}</button>
+              class="w-full flex items-center justify-between p-4 text-sm font-semibold text-gray-700 dark:text-gray-300"
+              @click="showProposals = !showProposals"
+            >
+              <span class="flex items-center gap-2">
+                <DocumentTextIcon class="w-4 h-4" />
+                {{ t('realizations.tabProposals') }} <span v-if="linkedProposals.length" class="text-xs font-normal text-gray-400">({{ linkedProposals.length }})</span>
+              </span>
+              <ChevronUpIcon v-if="showProposals" class="w-4 h-4 text-gray-400" />
+              <ChevronDownIcon v-else class="w-4 h-4 text-gray-400" />
+            </button>
+            <div v-if="showProposals" class="px-4 pb-4 space-y-2">
+              <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+                <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+              </div>
+              <div v-else-if="linkedProposals.length === 0" class="text-xs text-gray-400 py-2">{{ t('realizations.noProposals') }}</div>
+              <RouterLink
+                v-for="p in linkedProposals"
+                v-else
+                :key="p.id"
+                :to="`/app/proposals/${p.id}`"
+                class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              >
+                <span class="flex-1 text-xs font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+              </RouterLink>
+              <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700 block pt-1">{{ t('realizations.allProposals') }} →</RouterLink>
+            </div>
           </div>
-          <template v-if="editingDescription">
-            <textarea
-              v-model="descriptionDraft"
-              rows="4"
-              class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 dark:focus:border-red-500 resize-y"
-              :placeholder="t('realizations.descPlaceholder')"
-            />
-            <div class="flex justify-end gap-2 mt-1.5">
+
+          <!-- Documents section -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <button
+              class="w-full flex items-center justify-between p-4 text-sm font-semibold text-gray-700 dark:text-gray-300"
+              @click="showDocuments = !showDocuments"
+            >
+              <span class="flex items-center gap-2">
+                <FolderOpenIcon class="w-4 h-4" />
+                {{ t('realizations.tabDocuments') }} <span v-if="documents.length" class="text-xs font-normal text-gray-400">({{ documents.length }})</span>
+              </span>
+              <ChevronUpIcon v-if="showDocuments" class="w-4 h-4 text-gray-400" />
+              <ChevronDownIcon v-else class="w-4 h-4 text-gray-400" />
+            </button>
+            <div v-if="showDocuments" class="px-4 pb-4 space-y-2">
+              <div v-if="docsLoading" class="animate-pulse space-y-2">
+                <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+              </div>
+              <div v-else-if="documents.length === 0" class="flex flex-col items-center py-4 gap-2">
+                <FolderOpenIcon class="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('realizations.noDocs') }}</p>
+              </div>
+              <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-2 py-2 group">
+                  <span class="text-sm flex-shrink-0">{{ docFileIcon(doc.content_type) }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
+                       class="text-xs font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
+                      {{ doc.name }}
+                    </a>
+                    <p class="text-[10px] text-gray-400">{{ fmtDocBytes(doc.size_bytes) }}</p>
+                  </div>
+                  <button
+                    @click="deleteDocId = doc.id"
+                    class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                    :aria-label="t('common.delete')"
+                  >
+                    <TrashIcon class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
               <button
-                class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                @click="cancelEditDescription"
-              >{{ t('common.cancel') }}</button>
-              <button
-                :disabled="savingDescription"
-                class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-                @click="saveDescription"
-              >{{ savingDescription ? t('realizations.saving') : t('common.save') }}</button>
-            </div>
-          </template>
-          <p
-            v-else-if="realization.description"
-            class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap cursor-pointer"
-            @click="startEditDescription"
-          >{{ realization.description }}</p>
-          <p
-            v-else
-            class="text-sm text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
-            @click="startEditDescription"
-          >{{ t('realizations.descPlaceholder') }}</p>
-        </div>
-
-        <!-- Milestones progress -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('realizations.milestonesTitle') }}</h3>
-          <div v-if="totalMilestones > 0">
-            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <span>{{ completedMilestones }} / {{ totalMilestones }} {{ t('realizations.completed') }}</span>
-              <span>{{ Math.round((completedMilestones / totalMilestones) * 100) }}%</span>
-            </div>
-            <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-green-500 rounded-full transition-all"
-                :style="{ width: `${Math.round((completedMilestones / totalMilestones) * 100)}%` }"
-              />
+                @click="docFileInputRef?.click()"
+                :disabled="docsUploading"
+                class="w-full text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
+              >
+                {{ docsUploading ? t('common.uploading') : t('common.upload') }}
+              </button>
+              <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
             </div>
           </div>
-          <p v-else class="text-sm text-gray-400">{{ t('realizations.noMilestones') }}</p>
         </div>
+      </div>
+    </template>
 
-        <!-- Customer -->
-        <div v-if="realization.customer_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.colCustomer') }}</div>
-          <div class="text-sm text-gray-900 dark:text-white">{{ realization.customer_name }}</div>
-        </div>
+    <div v-else class="text-center py-12 text-gray-400 dark:text-gray-500">{{ t('realizations.notFound') }}</div>
+  </div>
 
-        <!-- Lead -->
-        <div v-if="realization.lead_title" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.opportunityLabel') }}</div>
-          <div class="text-sm text-gray-900 dark:text-white truncate">{{ realization.lead_title }}</div>
-        </div>
-
-        <!-- Assigned to -->
-        <div v-if="realization.assigned_to_name" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('realizations.assignedToLabel') }}</div>
-          <div class="text-sm text-gray-900 dark:text-white">{{ realization.assigned_to_name }}</div>
-        </div>
-
-        <!-- Dates -->
-        <div v-if="realization.start_date || realization.end_date" class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 space-y-2">
-          <div v-if="realization.start_date">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.startLabel') }}</div>
-            <div class="text-sm text-gray-900 dark:text-white">{{ realization.start_date }}</div>
-          </div>
-          <div v-if="realization.end_date">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('realizations.endLabel') }}</div>
-            <div class="text-sm text-gray-900 dark:text-white">{{ realization.end_date }}</div>
-          </div>
+  <!-- Delete document confirm -->
+  <Teleport to="body">
+    <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
+        <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('realizations.confirmDeleteDoc') }}</p>
+        <div class="flex gap-3 justify-end">
+          <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('common.cancel') }}</button>
+          <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('common.delete') }}</button>
         </div>
       </div>
     </div>
-
-    <!-- Milestones tab -->
-    <div v-if="activeTab === 'milestones'" class="space-y-4">
-      <div class="flex justify-between items-center">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('realizations.milestonesTitle') }}</h2>
-        <button
-          @click="showMilestoneForm = !showMilestoneForm"
-          class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg"
-        >
-          + {{ t('realizations.addMilestone') }}
-        </button>
-      </div>
-
-      <!-- Milestone form -->
-      <div v-if="showMilestoneForm" class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Název *</label>
-            <input
-              v-model="milestoneFormName"
-              type="text"
-              placeholder="Název milníku"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.dateLabel') }}</label>
-            <input
-              v-model="milestoneFormDate"
-              type="date"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-            />
-          </div>
-        </div>
-        <input
-          v-model="milestoneFormDesc"
-          type="text"
-:placeholder="t('realizations.optionalDesc')"
-          class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-        />
-        <div class="flex gap-2">
-          <button
-            @click="createMilestone"
-            :disabled="milestoneFormLoading"
-            class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
-          >
-            {{ milestoneFormLoading ? 'Ukládám…' : 'Přidat' }}
-          </button>
-          <button @click="showMilestoneForm = false" class="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg">
-            Zrušit
-          </button>
-        </div>
-      </div>
-
-      <!-- Milestone list -->
-      <div class="space-y-2">
-        <div
-          v-for="m in realization.milestones"
-          :key="m.id"
-          class="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700"
-        >
-          <button
-            @click="toggleMilestone(m)"
-            :class="m.is_completed ? 'bg-green-500 text-white' : 'border-2 border-gray-300 dark:border-gray-600'"
-            class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs"
-          >
-            <span v-if="m.is_completed">✓</span>
-          </button>
-          <div class="flex-1 min-w-0">
-            <p :class="m.is_completed ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'" class="text-sm font-medium">
-              {{ m.name }}
-            </p>
-            <p v-if="m.description" class="text-xs text-gray-500 mt-0.5">{{ m.description }}</p>
-          </div>
-          <span class="text-xs text-gray-400 flex-shrink-0">{{ m.date }}</span>
-          <button
-            @click="deleteMilestone(m)"
-            class="text-gray-400 hover:text-red-600 text-xs flex-shrink-0"
-          >✕</button>
-        </div>
-        <p v-if="realization.milestones.length === 0" class="text-sm text-gray-400 text-center py-4">
-          Žádné milníky. Přidejte první.
-        </p>
-      </div>
-    </div>
-
-    <!-- Tasks tab -->
-    <div v-if="activeTab === 'tasks'">
-      <p class="text-sm text-gray-500">Propojení úkolů s realizací bude dostupné v další verzi.</p>
-    </div>
-
-    <!-- Proposals tab -->
-    <div v-if="activeTab === 'proposals'" class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Nabídky</h2>
-        <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">Všechny nabídky</RouterLink>
-      </div>
-      <div v-if="proposalsLoading" class="animate-pulse space-y-2">
-        <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
-      </div>
-      <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">{{ t('realizations.noProposals') }}</div>
-      <div v-else class="space-y-2">
-        <RouterLink
-          v-for="p in linkedProposals"
-          :key="p.id"
-          :to="`/app/proposals/${p.id}`"
-          class="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
-          <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
-          <span class="text-xs text-gray-500 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
-        </RouterLink>
-      </div>
-    </div>
-
-    <!-- Documents tab -->
-    <div v-if="activeTab === 'documents'" class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Dokumenty</h2>
-        <button
-          @click="docFileInputRef?.click()"
-          :disabled="docsUploading"
-          class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
-        >
-          {{ docsUploading ? t('common.uploading') : t('common.upload') }}
-        </button>
-        <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
-      </div>
-
-      <div v-if="docsLoading" class="animate-pulse space-y-2">
-        <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-      </div>
-
-      <div v-else-if="documents.length === 0" class="text-center py-12">
-        <div class="text-4xl mb-3">📁</div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('realizations.noDocs') }}</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('realizations.uploadHint') }}</p>
-      </div>
-
-      <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-        <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-3 p-3 group">
-          <span class="text-xl">{{ docFileIcon(doc.content_type) }}</span>
-          <div class="flex-1 min-w-0">
-            <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
-               class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
-              {{ doc.name }}
-            </a>
-            <p class="text-xs text-gray-400">{{ fmtDocBytes(doc.size_bytes) }} · {{ doc.uploaded_by_name || '—' }} · {{ new Date(doc.created_at).toLocaleDateString('cs-CZ') }}</p>
-          </div>
-          <button
-            @click="deleteDocId = doc.id"
-            class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-sm transition-opacity"
-          >🗑</button>
-        </div>
-      </div>
-
-      <!-- Delete confirm -->
-      <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-          <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('realizations.confirmDeleteDoc') }}</p>
-          <div class="flex gap-3 justify-end">
-            <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('common.cancel') }}</button>
-            <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('common.delete') }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </template>
-  <div v-else class="text-center py-12 text-gray-400 dark:text-gray-500">{{ t('realizations.notFound') }}</div>
-</div>
+  </Teleport>
 </template>
 
