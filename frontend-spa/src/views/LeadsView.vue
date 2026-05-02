@@ -25,13 +25,20 @@ const { t } = useI18n()
 
 type ViewMode = 'table' | 'kanban' | 'list'
 
-const viewModeStorageKey = computed(() => `leadlab_leads_displaymode_u${authStore.user?.id ?? 'guest'}`)
+const VIEW_MODES = ['table', 'kanban', 'list'] as const
+
+const viewModeIcons: Record<ViewMode, object> = {
+  table: Bars3Icon,
+  kanban: Squares2X2Icon,
+  list: ListBulletIcon,
+}
 
 const viewMode = ref<ViewMode>('table')
 
-watch(viewModeStorageKey, (key) => {
+watch(() => authStore.user?.id, (userId) => {
+  if (!userId) return
   try {
-    const stored = localStorage.getItem(key)
+    const stored = localStorage.getItem(`leadlab_leads_displaymode_u${userId}`)
     if (stored === 'table' || stored === 'kanban' || stored === 'list') {
       viewMode.value = stored
     }
@@ -41,8 +48,10 @@ watch(viewModeStorageKey, (key) => {
 }, { immediate: true })
 
 watch(viewMode, (mode) => {
+  const userId = authStore.user?.id
+  if (!userId) return
   try {
-    localStorage.setItem(viewModeStorageKey.value, mode)
+    localStorage.setItem(`leadlab_leads_displaymode_u${userId}`, mode)
   } catch {
     // ignore
   }
@@ -511,7 +520,7 @@ const actionsDropdownItems = computed(() => [
       <!-- View toggle (Task-list style) -->
       <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
         <button
-          v-for="mode in (['table', 'kanban', 'list'] as const)"
+          v-for="mode in VIEW_MODES"
           :key="mode"
           class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
           :class="viewMode === mode
@@ -519,7 +528,7 @@ const actionsDropdownItems = computed(() => [
             : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
           @click="viewMode = mode"
         >
-          <component :is="({ table: Bars3Icon, kanban: Squares2X2Icon, list: ListBulletIcon } as Record<string, object>)[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ ({ table: t('leads.table'), kanban: t('leads.kanban'), list: t('leads.list') } as Record<string, string>)[mode] }}
+          <component :is="viewModeIcons[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t(`leads.${mode}`) }}
         </button>
       </div>
 
