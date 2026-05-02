@@ -1246,7 +1246,10 @@
       "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
     },
     "typeMessage": "Wiadomość",
-    "typeTodoItems": "Zadania todo"
+    "typeTodoItems": "Zadania todo",
+    "typeChecklist": "Lista kontrolna",
+    "checklistCheck": "Oznacz jako wykonane",
+    "checklistUncheck": "Odznacz"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

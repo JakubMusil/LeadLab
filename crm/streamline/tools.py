@@ -2123,42 +2123,82 @@ class TodoItemsAddedTool(StreamlineTool):
 
 
 # ---------------------------------------------------------------------------
-# Milestone
+# Checklist (Odškrtávací seznam)
 # ---------------------------------------------------------------------------
 
-class MilestoneTool(StreamlineTool):
-    activity_type = "milestone"
-    label = _("Milestone")
-    icon = "FlagIcon"
-    category = "planning"
+def _parse_checklist_text(raw_text: str) -> list[dict]:
+    """
+    Parse a multiline checklist text into a list of item dicts.
+
+    Each line may start with an optional ``[x]`` (done) or ``[ ]`` (not done)
+    prefix.  Lines without a prefix default to undone.  Blank lines are skipped.
+
+    Returns a list of ``{"text": str, "done": bool}`` dicts.
+    """
+    items = []
+    for line in raw_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("[x] ") or line.startswith("[X] "):
+            items.append({"text": line[4:], "done": True})
+        elif line.startswith("[ ] "):
+            items.append({"text": line[4:], "done": False})
+        else:
+            items.append({"text": line, "done": False})
+    return items
+
+
+def _items_to_edit_text(items: list[dict]) -> str:
+    """Serialise items back to a textarea-friendly string (one item per line)."""
+    lines = []
+    for item in items:
+        prefix = "[x] " if item.get("done") else "[ ] "
+        lines.append(prefix + item["text"])
+    return "\n".join(lines)
+
+
+class ChecklistTool(StreamlineTool):
+    activity_type = "checklist"
+    label = _("Checklist")
+    icon = "ClipboardDocumentCheckIcon"
+    category = "task"
     default_visibility = "important"
 
     def get_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "title": "Name"},
-                "date": {"type": "string", "format": "date", "title": "Date"},
-                "content_text": {"type": "string", "title": "Description"},
+                "title": {"type": "string", "title": _("Title")},
+                "text": {
+                    "type": "string",
+                    "title": _("Items"),
+                    "x-multiline": True,
+                },
             },
-            "required": ["name"],
+            "required": ["title"],
         }
 
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
         meta = payload.get("metadata") or {}
+        title = meta.get("title", "")
+        raw_text = meta.get("text", "")
+        items = _parse_checklist_text(raw_text)
+        edit_text = _items_to_edit_text(items)
         activity.metadata = {
             **activity.metadata,
-            "name": meta.get("name", ""),
-            "date": meta.get("date", ""),
+            "title": title,
+            "items": items,
+            "text": edit_text,
         }
         activity.save(update_fields=["metadata"])
 
     def render_payload(self, activity: "Activity") -> dict:
         return {
-            "name": activity.metadata.get("name", ""),
-            "date": activity.metadata.get("date", ""),
+            "title": activity.metadata.get("title", ""),
+            "items": activity.metadata.get("items", []),
         }
 
 
@@ -2231,6 +2271,6 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     StreamlineItemReopenedTool(),
     # Todo Items — bulk task creation from entity toolbar
     TodoItemsAddedTool(),
-    # Milestone — replaces dedicated milestone UI in Realization detail
-    MilestoneTool(),
+    # Checklist — interactive checklist in the streamline feed
+    ChecklistTool(),
 ]
