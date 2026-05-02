@@ -527,6 +527,17 @@ function entityIdKey(): string {
   return 'management_id'
 }
 
+// Build the upload URL for inline comment attachments.
+// The /api/v1/crm/file-uploads/upload endpoint accepts entity ID params
+// (lead_id, customer_id, etc.) but does NOT accept task_id — tasks
+// belong to a parent entity whose ID is not surfaced here — so inline
+// file upload is only enabled for the five supported entity types.
+const commentUploadUrl = computed<string | undefined>(() => {
+  if (props.entityType === 'task') return undefined
+  const params = new URLSearchParams({ [`${props.entityType}_id`]: props.entityId })
+  return `/api/v1/crm/file-uploads/upload?${params.toString()}`
+})
+
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
@@ -1178,6 +1189,7 @@ defineExpose({ load: () => loadActivities(1) })
           :placeholder="selectedActionType === 'comment' ? t('leadDetail.commentPlaceholder') : t('leadDetail.notePlaceholder')"
           :disabled="activitySubmitting"
           :members="selectedActionType === 'comment' ? teamMembers : []"
+          :upload-url="selectedActionType === 'comment' ? commentUploadUrl : undefined"
         />
         <div class="flex items-center justify-between gap-2">
           <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 select-none cursor-pointer">
