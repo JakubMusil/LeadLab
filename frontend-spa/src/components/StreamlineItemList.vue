@@ -22,6 +22,7 @@ import { ref, onMounted } from 'vue'
 import { useTasksStore, type StreamlineItemOut } from '@/stores/tasks'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
+import { TrashIcon, CheckIcon, ClipboardDocumentListIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   taskId: string
@@ -143,7 +144,7 @@ const accentClass = props.kind === 'todo'
   <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
     <!-- Header -->
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      {{ kind === 'todo' ? '☑️' : '📋' }}
+      <component :is="kind === 'todo' ? ClipboardDocumentCheckIcon : ClipboardDocumentListIcon" class="w-5 h-5 text-gray-500 dark:text-gray-400 inline-block mr-1 align-text-bottom" />
       {{ kind === 'todo' ? t('tasks.streamlineTodos') : t('tasks.streamlineSubtasks') }}
       <span v-if="total > 0" class="text-sm font-normal text-gray-400 ml-1">
         ({{ resolved }}/{{ total }})
@@ -200,7 +201,7 @@ const accentClass = props.kind === 'todo'
             :disabled="togglingId === item.id"
             @click="toggleItem(item)"
           >
-            <span v-if="item.is_resolved" class="text-xs">✓</span>
+            <span v-if="item.is_resolved" class="flex items-center justify-center"><CheckIcon class="w-3 h-3" /></span>
             <span v-else-if="togglingId === item.id" class="text-xs text-gray-400">…</span>
           </button>
 
@@ -223,7 +224,7 @@ const accentClass = props.kind === 'todo'
             class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             :title="t('tasks.delete')"
             @click="deleteItem(item.id)"
-          >🗑</button>
+          ><TrashIcon class="w-3.5 h-3.5" /></button>
         </li>
       </ul>
 

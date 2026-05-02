@@ -10,11 +10,12 @@
  * Or trigger programmatically via the exposed `open(x, y)` method.
  */
 import { ref, onMounted, onUnmounted } from 'vue'
+import type { Component } from 'vue'
 
 export interface ContextMenuItem {
   id: string
   label: string
-  icon?: string
+  icon?: string | Component
   danger?: boolean
   disabled?: boolean
   divider?: boolean
@@ -108,7 +109,8 @@ defineExpose({ open, close })
             role="menuitem"
             @click="handleAction(item.id)"
           >
-            <span v-if="item.icon" class="w-4 text-center flex-shrink-0">{{ item.icon }}</span>
+            <span v-if="item.icon && typeof item.icon === 'string'" class="w-4 text-center flex-shrink-0">{{ item.icon }}</span>
+            <component v-else-if="item.icon" :is="item.icon" class="w-4 h-4 flex-shrink-0" />
             {{ item.label }}
           </button>
         </template>

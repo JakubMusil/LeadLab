@@ -187,6 +187,7 @@ const heroIconMap: Record<string, Component> = {
   BookmarkIcon,
   BookmarkSlashIcon,
   ArrowUturnLeftIcon,
+  FlagIcon,
   TrashIcon,
 }
 // ---------------------------------------------------------------------------
@@ -1284,6 +1285,7 @@ defineExpose({ load: () => loadActivities(1) })
             :class="item.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
               : item.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
               : item.type === 'comment' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
+              : item.type === 'milestone' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
           >
             <component :is="activityIcon(item.type)" class="w-4 h-4" />
@@ -1381,6 +1383,17 @@ defineExpose({ load: () => loadActivities(1) })
             >
               {{ t('leadDetail.viewProposal') }} →
             </RouterLink>
+
+            <!-- Milestone card -->
+            <div
+              v-if="item.type === 'milestone' && item.tool_payload"
+              class="mt-1 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+            >
+              <span class="font-medium">{{ (item.tool_payload as Record<string, string>).name }}</span>
+              <span v-if="(item.tool_payload as Record<string, string>).date" class="text-xs text-gray-400">
+                {{ (item.tool_payload as Record<string, string>).date }}
+              </span>
+            </div>
 
             <!-- Voice memo player -->
             <div

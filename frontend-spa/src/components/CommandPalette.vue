@@ -6,17 +6,31 @@
  * Triggered by the keyboard shortcut; closed with Escape or click-outside.
  */
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import type { Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { useLeadsStore } from '@/stores/leads'
 import { useCustomersStore } from '@/stores/customers'
 import { api } from '@/api'
+import {
+  Squares2X2Icon,
+  FunnelIcon,
+  UsersIcon,
+  CalendarDaysIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  FolderOpenIcon,
+  DocumentIcon,
+  UserIcon,
+  BuildingOfficeIcon,
+} from '@heroicons/vue/24/outline'
 
 interface CommandItem {
   id: string
   label: string
   description?: string
-  icon: string
+  icon: Component
   action: () => void
   category: 'navigation' | 'lead' | 'customer' | 'document' | 'recent'
 }
@@ -43,14 +57,14 @@ const selectedIndex = ref(0)
 const documents = ref<DocumentOut[]>([])
 
 const navCommands = computed<CommandItem[]>(() => [
-  { id: 'nav-dashboard', label: t('nav.overview'), icon: '⊞', category: 'navigation', action: () => router.push('/app/dashboard') },
-  { id: 'nav-opportunities', label: t('nav.leads'), icon: '◎', category: 'navigation', action: () => router.push('/app/opportunities') },
-  { id: 'nav-directory', label: t('nav.customers'), icon: '👥', category: 'navigation', action: () => router.push('/app/directory') },
-  { id: 'nav-calendar', label: t('nav.calendar'), icon: '📅', category: 'navigation', action: () => router.push('/app/calendar') },
-  { id: 'nav-team', label: t('nav.team'), icon: '🤝', category: 'navigation', action: () => router.push('/app/team') },
-  { id: 'nav-analytics', label: t('nav.analytics'), icon: '📊', category: 'navigation', action: () => router.push('/app/analytics') },
-  { id: 'nav-settings', label: t('nav.settings'), icon: '⚙', category: 'navigation', action: () => router.push('/app/settings') },
-  { id: 'nav-documents', label: t('nav.documents'), icon: '📁', category: 'navigation', action: () => router.push('/app/documents') },
+  { id: 'nav-dashboard', label: t('nav.overview'), icon: Squares2X2Icon, category: 'navigation', action: () => router.push('/app/dashboard') },
+  { id: 'nav-opportunities', label: t('nav.leads'), icon: FunnelIcon, category: 'navigation', action: () => router.push('/app/opportunities') },
+  { id: 'nav-directory', label: t('nav.customers'), icon: UsersIcon, category: 'navigation', action: () => router.push('/app/directory') },
+  { id: 'nav-calendar', label: t('nav.calendar'), icon: CalendarDaysIcon, category: 'navigation', action: () => router.push('/app/calendar') },
+  { id: 'nav-team', label: t('nav.team'), icon: UserGroupIcon, category: 'navigation', action: () => router.push('/app/team') },
+  { id: 'nav-analytics', label: t('nav.analytics'), icon: ChartBarIcon, category: 'navigation', action: () => router.push('/app/analytics') },
+  { id: 'nav-settings', label: t('nav.settings'), icon: Cog6ToothIcon, category: 'navigation', action: () => router.push('/app/settings') },
+  { id: 'nav-documents', label: t('nav.documents'), icon: FolderOpenIcon, category: 'navigation', action: () => router.push('/app/documents') },
 ])
 
 const leadItems = computed<CommandItem[]>(() =>
@@ -58,7 +72,7 @@ const leadItems = computed<CommandItem[]>(() =>
     id: `lead-${l.id}`,
     label: l.title,
     description: `Lead · ${l.status}`,
-    icon: '◎',
+    icon: FunnelIcon,
     category: 'lead' as const,
     action: () => router.push(`/app/opportunities/${l.id}`),
   })),
@@ -69,7 +83,7 @@ const customerItems = computed<CommandItem[]>(() =>
     id: `customer-${c.id}`,
     label: `${c.first_name} ${c.last_name}`.trim(),
     description: c.company_name || (c.type === 'company' ? t('commandPalette.company') : t('commandPalette.contact')),
-    icon: c.type === 'company' ? '🏢' : '👤',
+    icon: c.type === 'company' ? BuildingOfficeIcon : UserIcon,
     category: 'customer' as const,
     action: () => router.push(`/app/directory/${c.id}`),
   })),
@@ -80,7 +94,7 @@ const documentItems = computed<CommandItem[]>(() =>
     id: `doc-${doc.id}`,
     label: doc.name,
     description: `Document · ${doc.lead_title ?? doc.customer_name ?? doc.realization_title ?? t('commandPalette.unlinked')}`,
-    icon: '📄',
+    icon: DocumentIcon,
     category: 'document' as const,
     action: () => router.push('/app/documents'),
   })),
@@ -229,7 +243,7 @@ onMounted(async () => {
           @click="selectItem(item)"
           @mouseenter="selectedIndex = index"
         >
-          <span class="text-base flex-shrink-0">{{ item.icon }}</span>
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium truncate">{{ item.label }}</div>
             <div v-if="item.description" class="text-xs truncate" :class="index === selectedIndex ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'">

@@ -12,6 +12,24 @@ import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import TaskOutcomeModal from '@/components/TaskOutcomeModal.vue'
 import StreamlineItemList from '@/components/StreamlineItemList.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import type { Component } from 'vue'
+import {
+  CheckIcon,
+  CheckCircleIcon,
+  MapPinIcon,
+  ArchiveBoxIcon,
+  StarIcon,
+  ClipboardDocumentListIcon,
+  TrashIcon,
+  BellIcon,
+  XMarkIcon,
+  ClockIcon,
+  ArrowTopRightOnSquareIcon,
+  LinkIcon,
+  DocumentIcon,
+  XCircleIcon,
+  MinusCircleIcon,
+} from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -940,14 +958,14 @@ const approvalStatusColor = computed(() => {
   return map[task.value.approval_status] ?? 'text-gray-400'
 })
 
-const approvalStatusIcon = computed(() => {
-  const map: Record<string, string> = {
-    none: '○',
-    pending: '⏳',
-    approved: '✅',
-    rejected: '❌',
+const approvalStatusIcon = computed((): Component => {
+  const map: Record<string, Component> = {
+    none: MinusCircleIcon,
+    pending: ClockIcon,
+    approved: CheckCircleIcon,
+    rejected: XCircleIcon,
   }
-  return map[task.value?.approval_status ?? 'none'] ?? '○'
+  return map[task.value?.approval_status ?? 'none'] ?? MinusCircleIcon
 })
 
 // ---------------------------------------------------------------------------
@@ -1062,12 +1080,12 @@ onUnmounted(() => {
             {{ formatDate(task.created_at) }}
           </span>
           <span v-if="task.is_completed && task.completed_by_name" class="flex items-center gap-1">
-            <span class="text-green-500">✓</span>
+            <CheckIcon class="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
             {{ t('tasks.completedBy') }} <span class="font-medium text-gray-600 dark:text-gray-300">{{ task.completed_by_name }}</span>
             {{ formatDate(task.completed_at) }}
           </span>
-          <span v-if="task.is_pinned" class="text-yellow-500">📌 {{ t('tasks.pinned') }}</span>
-          <span v-if="task.is_archived" class="text-gray-400">🗄 {{ t('tasks.archived') }}</span>
+          <span v-if="task.is_pinned" class="flex items-center gap-1 text-yellow-500"><MapPinIcon class="w-3.5 h-3.5" /> {{ t('tasks.pinned') }}</span>
+          <span v-if="task.is_archived" class="flex items-center gap-1 text-gray-400"><ArchiveBoxIcon class="w-3.5 h-3.5" /> {{ t('tasks.archived') }}</span>
         </div>
 
         <!-- PR4: outcome prompt banner for calendar tasks -->
@@ -1076,7 +1094,7 @@ onUnmounted(() => {
           class="rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 flex items-start gap-3"
           role="status"
         >
-          <span class="text-2xl flex-shrink-0" aria-hidden="true">⏰</span>
+          <ClockIcon class="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
               {{ t('taskOutcome.headerPicker') }}
@@ -1104,7 +1122,7 @@ onUnmounted(() => {
             :title="task.is_completed ? t('tasks.reopen') : t('tasks.complete')"
             @click="completeTask()"
           >
-            <span v-if="task.is_completed" class="text-sm">✓</span>
+            <CheckIcon class="w-3.5 h-3.5" />
           </button>
 
           <div class="flex-1 min-w-0">
@@ -1139,12 +1157,12 @@ onUnmounted(() => {
               <div class="flex gap-2 flex-shrink-0 items-center">
                 <!-- Favourite -->
                 <button
-                  class="text-lg leading-none transition-colors"
+                  class="transition-colors"
                   :class="task.is_favourite ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'"
                   :title="task.is_favourite ? t('tasks.unfavourite') : t('tasks.favourite')"
                   :disabled="togglingFavourite"
                   @click="toggleFavourite"
-                >⭐</button>
+                ><StarIcon class="w-5 h-5" /></button>
 
                 <button
                   v-if="!task.is_completed"
@@ -1182,27 +1200,27 @@ onUnmounted(() => {
                     class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg z-30 min-w-[200px] py-1"
                   >
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="togglePin">
-                      <span>📌</span>
+                      <MapPinIcon class="w-4 h-4 flex-shrink-0" />
                       {{ task.is_pinned ? t('tasks.unpin') : t('tasks.pin') }}
                     </button>
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="openCopyModal">
-                      <span>📋</span> {{ t('tasks.copyTask') }}
+                      <ClipboardDocumentListIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.copyTask') }}
                     </button>
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="openMoveModal">
-                      <span>↗️</span> {{ t('tasks.moveTask') }}
+                      <ArrowTopRightOnSquareIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.moveTask') }}
                     </button>
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="toggleArchive">
-                      <span>🗄</span> {{ task.is_archived ? t('tasks.unarchive') : t('tasks.archive') }}
+                      <ArchiveBoxIcon class="w-4 h-4 flex-shrink-0" /> {{ task.is_archived ? t('tasks.unarchive') : t('tasks.archive') }}
                     </button>
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="sharePublicLink">
-                      <span>🔗</span> {{ t('tasks.sharePublicLink') }}
+                      <LinkIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.sharePublicLink') }}
                     </button>
                     <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2" @click="exportPdf">
-                      <span>📄</span> {{ t('tasks.exportPdf') }}
+                      <DocumentIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.exportPdf') }}
                     </button>
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
                     <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2" @click="showDeleteConfirm = true; showActionMenu = false">
-                      <span>🗑</span> {{ t('tasks.deleteTask') }}
+                      <TrashIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.deleteTask') }}
                     </button>
                   </div>
                   <!-- Click outside overlay -->
@@ -1282,7 +1300,7 @@ onUnmounted(() => {
               <!-- Watchers -->
               <div v-if="task.watcher_ids.length" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.watchers') }}</span>
-                <span>🔔 {{ task.watcher_ids.length }}</span>
+                <span class="flex items-center gap-1"><BellIcon class="w-3.5 h-3.5" /> {{ task.watcher_ids.length }}</span>
               </div>
             </div>
           </div>
@@ -1303,7 +1321,7 @@ onUnmounted(() => {
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-            🔗 {{ t('tasks.dependencies') }}
+            <LinkIcon class="w-5 h-5 text-gray-500" /> {{ t('tasks.dependencies') }}
           </h2>
           <button
             class="text-xs text-blue-500 hover:text-blue-600 font-medium"
@@ -1344,8 +1362,8 @@ onUnmounted(() => {
                 </RouterLink>
                 <button
                   class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeDependency(dep.id)"
-                >✕</button>
+                  @click="removeDependency(dep.id)">
+                <XMarkIcon class="w-4 h-4" /></button>
               </li>
             </ul>
           </div>
@@ -1353,7 +1371,7 @@ onUnmounted(() => {
           <!-- Blocked by -->
           <div v-if="blockedBy.length" class="mb-3">
             <p class="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-1.5">
-              ⛔ {{ t('tasks.dependencyBlockedBy') }}
+            <XCircleIcon class="w-4 h-4 text-red-600 dark:text-red-400 inline-block mr-1 align-text-bottom" /> {{ t('tasks.dependencyBlockedBy') }}
             </p>
             <ul class="space-y-1.5">
               <li
@@ -1369,8 +1387,8 @@ onUnmounted(() => {
                 </RouterLink>
                 <button
                   class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeDependency(dep.id)"
-                >✕</button>
+                  @click="removeDependency(dep.id)">
+                <XMarkIcon class="w-4 h-4" /></button>
               </li>
             </ul>
           </div>
@@ -1394,8 +1412,8 @@ onUnmounted(() => {
                 </RouterLink>
                 <button
                   class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeDependency(dep.id)"
-                >✕</button>
+                  @click="removeDependency(dep.id)">
+                <XMarkIcon class="w-4 h-4" /></button>
               </li>
             </ul>
           </div>
@@ -1403,7 +1421,7 @@ onUnmounted(() => {
           <!-- Subtask / Navazující úkol -->
           <div v-if="subtaskDeps.length" class="mb-3">
             <p class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1.5">
-              🔗 {{ t('tasks.dependencySubtask') }}
+              <LinkIcon class="w-4 h-4 flex-shrink-0" /> {{ t('tasks.dependencySubtask') }}
             </p>
             <ul class="space-y-1.5">
               <li
@@ -1419,8 +1437,8 @@ onUnmounted(() => {
                 </RouterLink>
                 <button
                   class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  @click="removeDependency(dep.id)"
-                >✕</button>
+                  @click="removeDependency(dep.id)">
+                <XMarkIcon class="w-4 h-4" /></button>
               </li>
             </ul>
           </div>
@@ -1449,7 +1467,7 @@ onUnmounted(() => {
                   ? 'bg-purple-100 border-purple-400 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                   : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
                 @click="selectedDepType = 'subtask'"
-              >🔗 {{ t('tasks.dependencyTypeSubtask') }}</button>
+              ><LinkIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t('tasks.dependencyTypeSubtask') }}</button>
             </div>
 
             <!-- Task search -->
@@ -1666,8 +1684,8 @@ onUnmounted(() => {
               <button
                 class="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs text-red-400 hover:text-red-600 flex-shrink-0 px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                 :title="t('tasks.deleteTimeLog')"
-                @click="removeTimeLog(log.id)"
-              >🗑</button>
+                @click="removeTimeLog(log.id)">
+              <TrashIcon class="w-4 h-4" /></button>
             </div>
           </div>
         </div>
@@ -1755,7 +1773,7 @@ onUnmounted(() => {
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            ✅ {{ t('tasks.approval') }}
+            <CheckCircleIcon class="w-5 h-5 text-green-500" /> {{ t('tasks.approval') }}
           </h2>
           <!-- Request approval button (only when not yet pending/approved) -->
           <button
@@ -1769,8 +1787,8 @@ onUnmounted(() => {
 
         <!-- Status badge row -->
         <div class="flex flex-wrap items-center gap-3 mb-3">
-          <span :class="['text-sm font-semibold', approvalStatusColor]">
-            {{ approvalStatusIcon }} {{ t(`tasks.approvalStatus_${task!.approval_status}`) }}
+          <span :class="['text-sm font-semibold flex items-center gap-1', approvalStatusColor]">
+            <component :is="approvalStatusIcon" class="w-4 h-4" /> {{ t(`tasks.approvalStatus_${task!.approval_status}`) }}
           </span>
           <span v-if="task!.approval_requested_from_name" class="text-sm text-gray-500 dark:text-gray-400">
             → {{ task!.approval_requested_from_name }}
@@ -1961,7 +1979,7 @@ onUnmounted(() => {
         v-if="task!.watcher_ids.length"
         class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 mb-6 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
       >
-        <span class="font-medium">🔔 {{ t('tasks.watchersSection') }}</span>
+        <span class="font-medium flex items-center gap-1"><BellIcon class="w-4 h-4" /> {{ t('tasks.watchersSection') }}</span>
         <div class="flex flex-wrap gap-1">
           <span
             v-for="wid in task!.watcher_ids"
@@ -2102,7 +2120,7 @@ onUnmounted(() => {
                   :checked="editWatcherIds.includes(m.user_id)"
                   @change="toggleWatcher(editWatcherIds, m.user_id)"
                 />
-                🔔 {{ memberLabel(m) }}
+                <BellIcon class="w-3.5 h-3.5" /> {{ memberLabel(m) }}
               </label>
             </div>
           </div>
@@ -2287,7 +2305,7 @@ onUnmounted(() => {
     <Teleport to="body">
       <div v-if="showApprovalRequestModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showApprovalRequestModal = false">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">✅ {{ t('tasks.requestApproval') }}</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2"><CheckCircleIcon class="w-5 h-5 text-green-500" /> {{ t('tasks.requestApproval') }}</h2>
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.approver') }}</label>
             <select
@@ -2316,7 +2334,7 @@ onUnmounted(() => {
     <Teleport to="body">
       <div v-if="showApprovalRejectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showApprovalRejectModal = false">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">❌ {{ t('tasks.rejectApproval') }}</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2"><XCircleIcon class="w-5 h-5 text-red-500" /> {{ t('tasks.rejectApproval') }}</h2>
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.rejectionNote') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
             <textarea

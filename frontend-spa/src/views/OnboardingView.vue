@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFirmStore } from '@/stores/firm'
 import { api } from '@/api'
+import { CheckIcon, MinusCircleIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const firmStore = useFirmStore()
@@ -133,7 +134,7 @@ function finish() {
                 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400': idx + 1 > currentStep,
               }"
             >
-              <span v-if="idx + 1 < currentStep">✓</span>
+              <CheckIcon v-if="idx + 1 < currentStep" class="w-3.5 h-3.5" />
               <span v-else>{{ idx + 1 }}</span>
             </div>
             <span
@@ -250,25 +251,25 @@ function finish() {
         <!-- Step 5: Complete -->
         <div v-else-if="currentStep === 5">
           <div class="text-center mb-6">
-            <div class="text-5xl mb-3" aria-hidden="true">🎉</div>
+            <CheckCircleIcon class="w-14 h-14 mx-auto mb-3 text-green-500" aria-hidden="true" />
             <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">You're all set!</h1>
             <p class="text-gray-500 dark:text-gray-400 text-sm">Here's a summary of what you completed:</p>
           </div>
           <ul class="space-y-2 mb-6">
             <li class="flex items-center gap-3 text-sm">
-              <span :class="completedSteps.workspace ? 'text-green-600' : 'text-gray-400'" aria-hidden="true">{{ completedSteps.workspace ? '✓' : '○' }}</span>
+              <span :class="completedSteps.workspace ? 'text-green-600' : 'text-gray-400'" aria-hidden="true"><component :is="completedSteps.workspace ? CheckIcon : MinusCircleIcon" class="w-3.5 h-3.5" /></span>
               <span :class="completedSteps.workspace ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Workspace created</span>
             </li>
             <li class="flex items-center gap-3 text-sm">
-              <span :class="completedSteps.team ? 'text-green-600' : 'text-gray-400'" aria-hidden="true">{{ completedSteps.team ? '✓' : '○' }}</span>
+              <span :class="completedSteps.team ? 'text-green-600' : 'text-gray-400'" aria-hidden="true"><component :is="completedSteps.team ? CheckIcon : MinusCircleIcon" class="w-3.5 h-3.5" /></span>
               <span :class="completedSteps.team ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Team invited</span>
             </li>
             <li class="flex items-center gap-3 text-sm">
-              <span :class="completedSteps.leads ? 'text-green-600' : 'text-gray-400'" aria-hidden="true">{{ completedSteps.leads ? '✓' : '○' }}</span>
+              <span :class="completedSteps.leads ? 'text-green-600' : 'text-gray-400'" aria-hidden="true"><component :is="completedSteps.leads ? CheckIcon : MinusCircleIcon" class="w-3.5 h-3.5" /></span>
               <span :class="completedSteps.leads ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Leads imported</span>
             </li>
             <li class="flex items-center gap-3 text-sm">
-              <span class="text-green-600" aria-hidden="true">✓</span>
+              <CheckIcon class="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
               <span class="text-gray-900 dark:text-gray-100">Pipeline configured</span>
             </li>
           </ul>

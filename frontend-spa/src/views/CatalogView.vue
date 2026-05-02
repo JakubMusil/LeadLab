@@ -6,6 +6,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useFirmStore } from '@/stores/firm'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 
 const toast = useToast()
@@ -500,8 +501,8 @@ onMounted(() => {
       <button
         v-if="searchQuery"
         class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-        @click="searchQuery = ''; onSearchChange()"
-      >✕</button>
+        @click="searchQuery = ''; onSearchChange()">
+      <XMarkIcon class="w-4 h-4" /></button>
     </div>
 
     <!-- Loading -->

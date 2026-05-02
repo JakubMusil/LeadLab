@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { useI18n } from '@/composables/useI18n'
+import { CheckCircleIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 
@@ -90,7 +91,7 @@ async function handleSubmit() {
 
         <!-- Success -->
         <div v-else-if="state === 'success'" class="text-center">
-          <div class="text-4xl mb-4">🎉</div>
+          <CheckCircleIcon class="w-12 h-12 mx-auto mb-4 text-green-500" />
           <h2 class="text-xl font-semibold text-gray-900 mb-2">{{ t('acceptInvite.joinedTitle') }}</h2>
           <p class="text-gray-500 text-sm">{{ t('acceptInvite.redirectingToSignIn') }}</p>
         </div>

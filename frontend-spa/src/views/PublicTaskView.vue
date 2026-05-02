@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api'
+import { CheckIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const token = route.params.token as string
@@ -131,7 +132,7 @@ onMounted(async () => {
               <li v-for="(item, idx) in task.checklist" :key="idx" class="flex items-center gap-2 text-sm">
                 <span class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
                   :class="item.is_checked ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300'">
-                  <span v-if="item.is_checked" class="text-xs">✓</span>
+                  <CheckIcon v-if="item.is_checked" class="w-3.5 h-3.5" />
                 </span>
                 <span :class="item.is_checked ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'">{{ item.text }}</span>
               </li>

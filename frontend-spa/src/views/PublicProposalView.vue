@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api'
+import { DocumentIcon, ClockIcon, ClipboardDocumentListIcon, CheckCircleIcon, HandRaisedIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const token = computed(() => route.params.token as string)
@@ -112,7 +113,7 @@ onMounted(loadProposal)
     <!-- Error -->
     <div v-else-if="error" class="flex items-center justify-center min-h-screen p-6">
       <div class="text-center max-w-sm">
-        <div class="text-4xl mb-4">📄</div>
+        <DocumentIcon class="w-12 h-12 mx-auto mb-4 text-gray-400" />
         <h1 class="text-xl font-semibold text-gray-900 mb-2">Proposal unavailable</h1>
         <p class="text-sm text-gray-500">{{ error }}</p>
       </div>
@@ -144,19 +145,19 @@ onMounted(loadProposal)
               <span
                 v-if="proposal.status === 'accepted'"
                 class="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-sm font-semibold bg-green-100 text-green-700"
-              >✓ Accepted</span>
+              ><CheckIcon class="w-4 h-4" /> Accepted</span>
               <span
                 v-else-if="proposal.status === 'rejected'"
                 class="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-sm font-semibold bg-red-100 text-red-700"
-              >✗ Rejected</span>
+              ><XMarkIcon class="w-4 h-4" /> Rejected</span>
               <span
                 v-else-if="proposal.is_expired"
                 class="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-sm font-semibold bg-orange-100 text-orange-700"
-              >⏰ Expired</span>
+              ><ClockIcon class="w-4 h-4" /> Expired</span>
               <span
                 v-else
                 class="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-sm font-semibold bg-blue-100 text-blue-700"
-              >📋 Awaiting Response</span>
+              ><ClipboardDocumentListIcon class="w-4 h-4" /> Awaiting Response</span>
             </div>
           </div>
         </div>
@@ -265,7 +266,7 @@ onMounted(loadProposal)
             :disabled="responding"
             @click="respond('reject')"
           >
-            {{ responding && responseAction === 'reject' ? 'Processing…' : '✗ Decline' }}
+            {{ responding && responseAction === 'reject' ? 'Processing…' : 'Decline' }}
           </button>
         </div>
       </div>
@@ -276,7 +277,7 @@ onMounted(loadProposal)
         class="rounded-2xl border p-6 mb-6 text-center"
         :class="responseAction === 'accept' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'"
       >
-        <div class="text-3xl mb-2">{{ responseAction === 'accept' ? '🎉' : '👋' }}</div>
+        <component :is="responseAction === 'accept' ? CheckCircleIcon : HandRaisedIcon" class="w-10 h-10 mx-auto mb-2" :class="responseAction === 'accept' ? 'text-green-500' : 'text-red-400'" />
         <p
           class="text-base font-semibold"
           :class="responseAction === 'accept' ? 'text-green-700' : 'text-red-700'"
@@ -288,7 +289,7 @@ onMounted(loadProposal)
 
       <!-- Expired notice -->
       <div v-if="proposal.is_expired" class="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-center text-sm text-orange-700">
-        ⏰ This proposal link has expired. Please contact the sender to request a new link.
+        <ClockIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" /> This proposal link has expired. Please contact the sender to request a new link.
       </div>
 
       <!-- Footer -->

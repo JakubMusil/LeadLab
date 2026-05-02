@@ -9,6 +9,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { setLocale, useI18n } from '@/composables/useI18n'
 import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
+import { CheckIcon, TrashIcon, StarIcon } from '@heroicons/vue/24/outline'
 
 const leadScoringStore = useLeadScoringStore()
 
@@ -742,7 +743,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           :class="isPro ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-600'"
           class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold"
         >
-          <span v-if="isPro">⭐ Pro</span>
+          <span v-if="isPro" class="flex items-center gap-1"><StarIcon class="w-4 h-4 text-yellow-400" /> Pro</span>
           <span v-else>Free</span>
         </div>
         <span v-if="isPro && firmStore.activeFirm?.subscription_active" class="text-xs text-green-600 font-medium">Active</span>
@@ -751,11 +752,11 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
       <!-- Pro features list for free tier -->
       <ul v-if="!isPro" class="space-y-1 mb-5 text-xs text-gray-500">
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Custom branding (logo + color)</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> White-label client portal</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Unlimited proposals & templates</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Advanced automations & plugins</li>
-        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Priority support</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Custom branding (logo + color)</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> White-label client portal</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited proposals & templates</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Advanced automations & plugins</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Priority support</li>
       </ul>
 
       <!-- Already Pro message -->
@@ -1109,8 +1110,8 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           <button
             class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 text-xs"
             :aria-label="`Delete scoring rule for ${rule.field}`"
-            @click="removeScoringRule(rule.id)"
-          >🗑</button>
+            @click="removeScoringRule(rule.id)">
+          <TrashIcon class="w-4 h-4" /></button>
         </li>
       </ul>
 
@@ -1206,8 +1207,8 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
             >{{ t('tasks.cfSettings_editBtn') }}</button>
             <button
               class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-              @click="deleteCF(cf)"
-            >🗑</button>
+              @click="deleteCF(cf)">
+            <TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
       </div>

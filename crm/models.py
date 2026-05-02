@@ -313,6 +313,7 @@ class Lead(TenantModel):
         "call_scheduled",
         "event_scheduled",
         "task",
+        "milestone",
         "proposal",
         "todo_items_added",
         # Files & references

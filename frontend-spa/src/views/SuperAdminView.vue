@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 interface FirmRow {
   id: string
@@ -94,7 +95,7 @@ onMounted(loadFirms)
               >{{ firm.subscription_tier }}</span>
             </td>
             <td class="px-4 py-3">
-              <span :class="firm.subscription_active ? 'text-green-600' : 'text-red-500'" aria-hidden="true">{{ firm.subscription_active ? '✓' : '✗' }}</span>
+              <component :is="firm.subscription_active ? CheckIcon : XMarkIcon" :class="firm.subscription_active ? 'text-green-600' : 'text-red-500'" class="w-4 h-4" aria-hidden="true" />
             </td>
             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ firm.member_count }}</td>
             <td class="px-4 py-3">

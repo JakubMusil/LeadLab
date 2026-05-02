@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 interface Props {
   modelValueFrom?: string
@@ -77,7 +78,7 @@ const hasValue = computed(() => localFrom.value || localTo.value)
       aria-label="Clear date range"
       title="Clear"
     >
-      ✕
+      <XMarkIcon class="w-4 h-4" />
     </button>
   </div>
 </template>

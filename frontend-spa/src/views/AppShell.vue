@@ -35,6 +35,13 @@ import {
   PuzzlePieceIcon,
   ArchiveBoxIcon,
   RectangleStackIcon,
+  XMarkIcon,
+  TrashIcon,
+  ChatBubbleLeftIcon,
+  CheckCircleIcon,
+  PlusCircleIcon,
+  PencilSquareIcon,
+  BellIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -269,17 +276,19 @@ function eventLabel(event: string): string {
   return map[event] ?? event
 }
 
-function eventIcon(event: string): string {
-  const map: Record<string, string> = {
-    'lead.created': '◎',
-    'lead.updated': '✎',
-    'lead.deleted': '🗑',
-    'activity.created': '💬',
-    'task.completed': '✅',
-    'task.outcome_prompt': '⏰',
-    'task.expired': '⌛',
+import type { Component } from 'vue'
+
+function eventIcon(event: string): Component {
+  const map: Record<string, Component> = {
+    'lead.created': PlusCircleIcon,
+    'lead.updated': PencilSquareIcon,
+    'lead.deleted': TrashIcon,
+    'activity.created': ChatBubbleLeftIcon,
+    'task.completed': CheckCircleIcon,
+    'task.outcome_prompt': ClockIcon,
+    'task.expired': ClockIcon,
   }
-  return map[event] ?? '🔔'
+  return map[event] ?? BellIcon
 }
 
 function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
@@ -537,7 +546,7 @@ function formatNotifTime(ts: string): string {
                     class="text-xs text-red-600 hover:underline"
                     @click="notifStore.markAllRead()"
                   >{{ t('appShell.markAllRead') }}</button>
-                  <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none" aria-label="Close notifications" @click="notifOpen = false">✕</button>
+                  <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close notifications" @click="notifOpen = false"><XMarkIcon class="w-5 h-5" /></button>
                 </div>
 
                 <!-- Notification list -->
@@ -546,7 +555,7 @@ function formatNotifTime(ts: string): string {
                     <div v-for="i in 4" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
                   </div>
                   <div v-else-if="notifStore.notifications.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <div class="text-4xl mb-3" aria-hidden="true">🔔</div>
+                    <BellIcon class="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden="true" />
                     <p class="text-sm">{{ t('appShell.noNotifications') }}</p>
                   </div>
                   <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700" role="list">
@@ -556,7 +565,7 @@ function formatNotifTime(ts: string): string {
                       class="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       :class="n.is_read ? '' : 'bg-red-50/40 dark:bg-red-900/10'"
                     >
-                      <span class="text-lg flex-shrink-0 mt-0.5" aria-hidden="true">{{ eventIcon(n.event) }}</span>
+                      <component :is="eventIcon(n.event)" class="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                       <div class="min-w-0 flex-1">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{{ eventLabel(n.event) }}</p>
                         <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate">{{ notifTitle(n) }}</p>
@@ -597,7 +606,7 @@ function formatNotifTime(ts: string): string {
               @click="switchFirm(String(firm.id))"
             >
               <span class="flex-1 truncate">{{ firm.name }}</span>
-              <span v-if="firm.id === firmStore.activeFirm?.id" class="text-red-600 text-xs" aria-hidden="true">✓</span>
+              <span v-if="firm.id === firmStore.activeFirm?.id" aria-hidden="true"><CheckCircleIcon class="w-3.5 h-3.5 text-red-600" /></span>
             </button>
           </div>
         </div>
@@ -632,7 +641,7 @@ function formatNotifTime(ts: string): string {
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             aria-label="Close shortcuts help"
             @click="shortcutHelpOpen = false"
-          >✕</button>
+          ><XMarkIcon class="w-5 h-5" /></button>
         </div>
         <ul class="space-y-2" role="list">
           <li v-for="sc in SHORTCUTS" :key="sc.keys" class="flex items-center justify-between gap-4">

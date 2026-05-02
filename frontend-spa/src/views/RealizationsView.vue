@@ -14,6 +14,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
+import { PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const store = useRealizationsStore()
@@ -209,12 +210,10 @@ function selectCustomer(c: CustomerOut) {
               <div class="flex gap-1 ml-auto">
                 <button
                   @click.stop="openEdit(r)"
-                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"
-                >✎</button>
+                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"><PencilSquareIcon class="w-4 h-4" /></button>
                 <button
                   @click.stop="confirmDeleteId = r.id"
-                  class="text-gray-400 hover:text-red-600 text-xs"
-                >✕</button>
+                  class="text-gray-400 hover:text-red-600 text-xs"><XMarkIcon class="w-4 h-4" /></button>
               </div>
             </div>
           </div>
@@ -250,8 +249,8 @@ function selectCustomer(c: CustomerOut) {
             <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ r.customer_name ?? '—' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ r.end_date ?? '—' }}</td>
             <td class="px-4 py-3 text-right">
-              <button @click.stop="openEdit(r)" class="text-gray-400 hover:text-gray-600 mr-2">✎</button>
-              <button @click.stop="confirmDeleteId = r.id" class="text-gray-400 hover:text-red-600">✕</button>
+              <button @click.stop="openEdit(r)" class="text-gray-400 hover:text-gray-600 mr-2"><PencilSquareIcon class="w-4 h-4" /></button>
+              <button @click.stop="confirmDeleteId = r.id" class="text-gray-400 hover:text-red-600"><XMarkIcon class="w-4 h-4" /></button>
             </td>
           </tr>
           <tr v-if="store.realizations.length === 0">
