@@ -11,7 +11,6 @@
  *  - Emoji picker
  *  - Text color and background (highlight) color pickers
  *  - Link insertion
- *  - Table insertion
  *  - Image and file attachment upload (images inline, files as download links)
  *  - Exposes plain-text and HTML content via v-model (HTML)
  *  - Exposes getMentionedIds() for the parent to extract mentioned user IDs
@@ -29,16 +28,11 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
 import { Link } from '@tiptap/extension-link'
-import { Table } from '@tiptap/extension-table'
-import { TableRow } from '@tiptap/extension-table-row'
-import { TableHeader } from '@tiptap/extension-table-header'
-import { TableCell } from '@tiptap/extension-table-cell'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import {
   PaperClipIcon,
   ClipboardDocumentCheckIcon,
   LinkIcon,
-  TableCellsIcon,
 } from '@heroicons/vue/24/outline'
 
 export interface MentionUser {
@@ -310,14 +304,6 @@ function onLinkInputKeydown(e: KeyboardEvent) {
 }
 
 // ---------------------------------------------------------------------------
-// Table insertion
-// ---------------------------------------------------------------------------
-
-function insertTable() {
-  editor.value?.chain().focus().insertTable({ rows: 2, cols: 3, withHeaderRow: true }).run()
-}
-
-// ---------------------------------------------------------------------------
 // Tiptap editor setup
 // ---------------------------------------------------------------------------
 
@@ -334,10 +320,6 @@ const editor = useEditor({
     Color,
     Highlight.configure({ multicolor: true }),
     Link.configure({ openOnClick: false }),
-    Table.configure({ resizable: false }),
-    TableRow,
-    TableHeader,
-    TableCell,
     Mention.configure({
       HTMLAttributes: { class: 'mention' },
       suggestion: {
@@ -663,17 +645,6 @@ defineExpose({ getMentionedIds })
         </div>
       </div>
 
-      <!-- Table -->
-      <button
-        type="button"
-        class="p-1 rounded w-6 h-6 flex items-center justify-center transition-colors text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400"
-        :disabled="disabled"
-        title="Insert table"
-        aria-label="Insert table"
-        @click="insertTable"
-      >
-        <TableCellsIcon class="w-3.5 h-3.5" />
-      </button>
       <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
 
       <!-- Undo -->
@@ -857,46 +828,6 @@ defineExpose({ getMentionedIds })
   text-decoration: line-through;
   text-decoration-color: #9ca3af;
   color: #9ca3af;
-}
-
-/* Table styling */
-.tiptap table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5rem 0;
-  table-layout: fixed;
-}
-.tiptap table td,
-.tiptap table th {
-  border: 1px solid #d1d5db;
-  padding: 0.3rem 0.5rem;
-  vertical-align: top;
-  min-width: 2rem;
-  box-sizing: border-box;
-  position: relative;
-}
-.dark .tiptap table td,
-.dark .tiptap table th {
-  border-color: #4b5563;
-}
-.tiptap table th {
-  background-color: #f9fafb;
-  font-weight: 600;
-  text-align: left;
-}
-.dark .tiptap table th {
-  background-color: #1f2937;
-}
-.tiptap table .selectedCell:after {
-  background: rgba(59, 130, 246, 0.15);
-  content: '';
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
 }
 
 /* Link styling */

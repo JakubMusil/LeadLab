@@ -334,7 +334,7 @@ const activityTypeLabel = computed(() => {
         >
           <div
             v-if="modelValue"
-            class="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[90vh]"
+            class="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[90vh]"
             @click.stop
           >
             <!-- Header -->
