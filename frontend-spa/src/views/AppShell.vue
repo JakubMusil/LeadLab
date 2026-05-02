@@ -197,25 +197,25 @@ const navSections = computed(() => [
     items: [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
-      { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
+      { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
+      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
       { label: t('nav.proposals'), icon: DocumentDuplicateIcon, path: '/app/proposals' },
+      { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
     ],
   },
   {
     label: t('appShell.sectionProjects'),
     items: [
-      { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
-      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
       { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
+      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
     ],
   },
   {
     label: t('appShell.sectionInsights'),
     items: [
       { label: t('nav.analytics'), icon: ChartBarIcon, path: '/app/analytics' },
-      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
       { label: t('nav.sequences'), icon: EnvelopeIcon, path: '/app/sequences' },
       { label: t('appShell.sectionAutomations'), icon: BoltIcon, path: '/app/automations' },
       ...pluginRegistry.flatMap((p) => p.navItems ?? []).filter((i) => i.path !== '/app/sequences'),
@@ -228,6 +228,11 @@ const navSections = computed(() => [
       { label: t('nav.taskTemplates'), icon: DocumentDuplicateIcon, path: '/app/task-templates' },
       { label: t('appShell.sectionProposalTemplates'), icon: RectangleStackIcon, path: '/app/proposal-templates' },
       { label: t('appShell.sectionCatalog'), icon: ArchiveBoxIcon, path: '/app/catalog' },
+    ],
+  },
+  {
+    label: t('appShell.sectionSettings'),
+    items: [
       { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
       { label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' },
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },

@@ -1578,9 +1578,9 @@
   "appShell": {
     "skipToContent": "Přejít na obsah",
     "workspace": "Workspace",
-    "sectionCrm": "CRM",
+    "sectionCrm": "Obchod a zakázky",
     "sectionErp": "Projekty",
-    "sectionInsights": "Přehledy",
+    "sectionInsights": "Chytré nástroje",
     "sectionWorkspace": "Konfigurace",
     "sectionPlugins": "Pluginy",
     "sectionProposalTemplates": "Šablony nabídek",
@@ -1604,8 +1604,9 @@
     "notifTaskOutcomePrompt": "Jak to dopadlo?",
     "notifTaskExpired": "Úkol po termínu",
     "notifLeadDeleted": "Příležitost {id} smazána",
-    "sectionProjects": "Projekty",
-    "sectionConfig": "Konfigurace"
+    "sectionProjects": "Řízení práce",
+    "sectionConfig": "Zdroje a šablony",
+    "sectionSettings": "Nastavení"
   },
   "catalog": {
     "title": "Katalog položek",

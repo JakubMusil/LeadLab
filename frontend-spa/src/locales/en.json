@@ -1577,9 +1577,9 @@
   "appShell": {
     "skipToContent": "Skip to content",
     "workspace": "Workspace",
-    "sectionCrm": "CRM",
+    "sectionCrm": "Business & Orders",
     "sectionErp": "Projects",
-    "sectionInsights": "Insights",
+    "sectionInsights": "Smart Tools",
     "sectionWorkspace": "Configuration",
     "sectionPlugins": "Plugins",
     "sectionProposalTemplates": "Proposal Templates",
@@ -1603,8 +1603,9 @@
     "notifTaskOutcomePrompt": "How did this go?",
     "notifTaskExpired": "Task expired",
     "notifLeadDeleted": "Opportunity {id} deleted",
-    "sectionProjects": "Projects",
-    "sectionConfig": "Configuration"
+    "sectionProjects": "Work Management",
+    "sectionConfig": "Resources & Templates",
+    "sectionSettings": "Settings"
   },
   "catalog": {
     "title": "Item Catalog",
