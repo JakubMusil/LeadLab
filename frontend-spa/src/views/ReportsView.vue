@@ -579,12 +579,12 @@ async function exportToFakturoid() {
 
   <ConfirmDeleteModal
     :open="!!confirmDeleteExpenseId"
-    @confirm="deleteExpense(confirmDeleteExpenseId!); confirmDeleteExpenseId = null"
+    @confirm="() => { const id = confirmDeleteExpenseId; confirmDeleteExpenseId = null; if (id) deleteExpense(id) }"
     @cancel="confirmDeleteExpenseId = null"
   />
   <ConfirmDeleteModal
     :open="!!confirmDeleteRevenueId"
-    @confirm="deleteRevenue(confirmDeleteRevenueId!); confirmDeleteRevenueId = null"
+    @confirm="() => { const id = confirmDeleteRevenueId; confirmDeleteRevenueId = null; if (id) deleteRevenue(id) }"
     @cancel="confirmDeleteRevenueId = null"
   />
 </template>

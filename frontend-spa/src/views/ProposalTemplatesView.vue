@@ -266,7 +266,7 @@ onMounted(() => {
 
   <ConfirmDeleteModal
     :open="!!confirmDeleteTemplateId"
-    @confirm="deletePropTemplate(confirmDeleteTemplateId!); confirmDeleteTemplateId = null"
+    @confirm="() => { const id = confirmDeleteTemplateId; confirmDeleteTemplateId = null; if (id) deletePropTemplate(id) }"
     @cancel="confirmDeleteTemplateId = null"
   />
 </template>
