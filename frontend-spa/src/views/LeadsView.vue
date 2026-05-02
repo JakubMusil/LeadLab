@@ -9,6 +9,7 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
+import { ConfirmDeleteModal } from '@/components/ui'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
@@ -990,19 +991,13 @@ const actionsDropdownItems = computed(() => [
   </Teleport>
 
   <!-- Delete confirm -->
-  <Teleport to="body">
-    <div v-if="confirmDeleteId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmDeleteId = null">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Delete lead confirmation">
-        <div class="flex justify-center mb-3" aria-hidden="true"><TrashIcon class="w-10 h-10 text-red-400" /></div>
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('leads.deleteTitle') }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('leads.deleteText') }}</p>
-        <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmDeleteId = null">{{ t('leads.cancel') }}</button>
-          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="confirmDelete(confirmDeleteId!)">{{ t('leads.delete') }}</button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteId"
+    :title="t('leads.deleteTitle')"
+    :message="t('leads.deleteText')"
+    @confirm="confirmDelete(confirmDeleteId!)"
+    @cancel="confirmDeleteId = null"
+  />
 
   <!-- Global status popup backdrop -->
   <div v-if="statusPopupId" class="fixed inset-0 z-5" @click="statusPopupId = null" />

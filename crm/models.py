@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import models
 
 from firms.models import Firm
+from crm.soft_delete import SoftDeleteMixin
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +126,7 @@ class ProposalStatus(models.TextChoices):
 # Customer (Address Book)
 # ---------------------------------------------------------------------------
 
-class Customer(TenantModel):
+class Customer(SoftDeleteMixin, TenantModel):
     """
     A contact in the address book. A single Customer can be linked to many
     Leads inside the same Firm.
@@ -199,7 +200,7 @@ class Customer(TenantModel):
 # Lead
 # ---------------------------------------------------------------------------
 
-class Lead(TenantModel):
+class Lead(SoftDeleteMixin, TenantModel):
     """
     The central entity of the CRM — an inbound or outbound opportunity.
 
@@ -441,6 +442,11 @@ class Activity(models.Model):
         on_delete=models.SET_NULL,
         related_name="deleted_activities",
     )
+    purge_after = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Scheduled timestamp for hard-delete. Null means never purge automatically.",
+    )
 
     class Meta:
         verbose_name = "activity"
@@ -622,7 +628,7 @@ CALENDAR_TASK_KINDS = frozenset({TaskKind.CALL, TaskKind.MEETING, TaskKind.EVENT
 # Task
 # ---------------------------------------------------------------------------
 
-class Task(TenantModel):
+class Task(SoftDeleteMixin, TenantModel):
     """
     A to-do item that can optionally be linked to a Lead, Proposal, Customer,
     or exist independently. Completion is tracked explicitly so that we can
@@ -2432,7 +2438,7 @@ class RealizationStatus(models.TextChoices):
     CANCELLED = "cancelled", "Zrušeno"
 
 
-class Realization(TenantModel):
+class Realization(SoftDeleteMixin, TenantModel):
     """
     A production/service Kanban entity automatically created when a Lead
     transitions to "Won".  Models the delivery phase:
@@ -2548,7 +2554,7 @@ class ManagementStatus(models.TextChoices):
     CLOSED = "closed", "Uzavřeno"
 
 
-class Management(TenantModel):
+class Management(SoftDeleteMixin, TenantModel):
     """
     Post-realization service entity.  Tracks SLA, warranties, retention and
     ongoing customer care after a Realization completes.

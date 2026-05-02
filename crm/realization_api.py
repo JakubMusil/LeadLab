@@ -28,6 +28,7 @@ from crm.models import (
 )
 from crm.api import _user_display_name, _activity_out as _shared_activity_out, _task_out as _shared_task_out, TaskOut as _SharedTaskOut
 from crm.events import broadcast_event
+from crm.soft_delete import perform_soft_delete
 from firms.auth import require_active_subscription, require_membership
 
 realization_router = Router(tags=["realizations"])
@@ -341,7 +342,7 @@ def delete_realization(request, realization_id: str):
         raise errors.HttpError(404, "Realization not found")
 
     broadcast_event(firm=firm, event="realization.deleted", payload={"id": realization_id})
-    realization.delete()
+    perform_soft_delete(realization, request.user)
     return 204, None
 
 

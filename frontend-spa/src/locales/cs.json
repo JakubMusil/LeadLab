@@ -2094,5 +2094,11 @@
     "start": "Začátek",
     "end": "Konec",
     "description": "Popis"
+  },
+  "deleteModal": {
+    "title": "Opravdu smazat?",
+    "message": "Tuto akci nelze vzít zpět. Záznam bude trvale odstraněn.",
+    "confirm": "Smazat",
+    "cancel": "Zrušit"
   }
 }

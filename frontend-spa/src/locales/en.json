@@ -2093,5 +2093,11 @@
     "start": "Start",
     "end": "End",
     "description": "Description"
+  },
+  "deleteModal": {
+    "title": "Confirm deletion",
+    "message": "This action cannot be undone. The record will be permanently removed.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
   }
 }

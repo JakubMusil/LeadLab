@@ -155,7 +155,15 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.auto_expire_scheduled_tasks',
         'schedule': crontab(minute='*/15'),
     },
+    # Safe-remove — hard-delete records whose purge_after has elapsed
+    'purge-soft-deleted-records': {
+        'task': 'crm.tasks.purge_soft_deleted_records',
+        'schedule': crontab(hour=3, minute=0),
+    },
 }
+
+# Safe-remove: number of days before a soft-deleted record is hard-deleted.
+SOFT_DELETE_PURGE_DAYS = int(os.environ.get("SOFT_DELETE_PURGE_DAYS", "30"))
 
 # Stripe
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
