@@ -162,6 +162,8 @@ const newWebhookCreating = ref(false)
 const webhookDeliveries = ref<Record<string, WebhookDelivery[]>>({})
 const webhookDeliveriesLoading = ref<Record<string, boolean>>({})
 const webhookDeliveriesOpen = ref<Record<string, boolean>>({})
+const pendingRevokeToken = ref<APIToken | null>(null)
+const pendingDeleteWebhook = ref<WebhookEndpoint | null>(null))
 
 async function toggleWebhookDeliveries(wh: WebhookEndpoint) {
   const id = wh.id
@@ -335,15 +337,21 @@ async function createToken() {
 
 async function revokeToken(token: APIToken) {
   if (!firmStore.activeFirm) return
-  if (!confirm(`Revoke token "${token.name}"? This cannot be undone.`)) return
+  pendingRevokeToken.value = token
+}
+
+async function executeRevokeToken() {
+  const token = pendingRevokeToken.value
+  pendingRevokeToken.value = null
+  if (!token || !firmStore.activeFirm) return
   const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/tokens/${token.id}`)
   if (res.ok || res.status === 204) {
     tokens.value = tokens.value.map((t) =>
       t.id === token.id ? { ...t, is_active: false, revoked_at: new Date().toISOString() } : t
     )
-    toast.success('Token revoked.')
+    toast.success(t('settings.tokenRevoked'))
   } else {
-    toast.error('Failed to revoke token.')
+    toast.error(t('settings.failedToRevokeToken'))
   }
 }
 
@@ -404,13 +412,19 @@ async function toggleWebhook(wh: WebhookEndpoint) {
 
 async function deleteWebhook(wh: WebhookEndpoint) {
   if (!firmStore.activeFirm) return
-  if (!confirm(`Delete webhook for "${wh.url}"?`)) return
+  pendingDeleteWebhook.value = wh
+}
+
+async function executeDeleteWebhook() {
+  const wh = pendingDeleteWebhook.value
+  pendingDeleteWebhook.value = null
+  if (!wh || !firmStore.activeFirm) return
   const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/webhooks/${wh.id}`)
   if (res.ok || res.status === 204) {
     webhooks.value = webhooks.value.filter((w) => w.id !== wh.id)
-    toast.success('Webhook deleted.')
+    toast.success(t('settings.webhookDeleted'))
   } else {
-    toast.error('Failed to delete webhook.')
+    toast.error(t('settings.failedToDeleteWebhook'))
   }
 }
 
@@ -1291,5 +1305,20 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
     :message="t('tasks.cfSettings_deleteConfirm').replace('{name}', confirmDeleteCFName ?? '')"
     @confirm="doDeleteCF(confirmDeleteCFId!); confirmDeleteCFId = null; confirmDeleteCFName = null"
     @cancel="confirmDeleteCFId = null; confirmDeleteCFName = null"
+  />
+
+  <ConfirmDeleteModal
+    :open="!!pendingRevokeToken"
+    :title="t('settings.confirmRevokeToken').replace('{name}', pendingRevokeToken?.name ?? '')"
+    :confirm-label="t('settings.revokeBtn')"
+    @confirm="executeRevokeToken"
+    @cancel="pendingRevokeToken = null"
+  />
+
+  <ConfirmDeleteModal
+    :open="!!pendingDeleteWebhook"
+    :message="t('settings.confirmDeleteWebhook').replace('{url}', pendingDeleteWebhook?.url ?? '')"
+    @confirm="executeDeleteWebhook"
+    @cancel="pendingDeleteWebhook = null"
   />
 </template>

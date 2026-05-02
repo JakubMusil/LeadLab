@@ -45,6 +45,7 @@ const error = ref('')
 const responding = ref(false)
 const responded = ref(false)
 const responseAction = ref<'accept' | 'reject' | null>(null)
+const pendingAction = ref<'accept' | 'reject' | null>(null)
 
 async function loadProposal() {
   loading.value = true
@@ -64,7 +65,11 @@ async function loadProposal() {
 
 async function respond(action: 'accept' | 'reject') {
   if (!proposal.value || responding.value) return
-  if (!confirm(action === 'accept' ? 'Accept this proposal?' : 'Reject this proposal?')) return
+  if (!pendingAction.value) {
+    pendingAction.value = action
+    return
+  }
+  pendingAction.value = null
   responding.value = true
   const res = await api.post<PublicProposal>(`/api/v1/crm/public/proposals/${token.value}/respond`, {
     action,
@@ -253,7 +258,7 @@ onMounted(loadProposal)
         class="bg-white rounded-2xl border border-gray-100 p-6 mb-6"
       >
         <h2 class="text-sm font-semibold text-gray-900 mb-4">Your Response</h2>
-        <div class="flex gap-3">
+        <div v-if="!pendingAction" class="flex gap-3">
           <button
             class="flex-1 py-3 rounded-xl text-sm font-semibold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
             :disabled="responding"
@@ -268,6 +273,25 @@ onMounted(loadProposal)
           >
             {{ responding && responseAction === 'reject' ? 'Processing…' : 'Decline' }}
           </button>
+        </div>
+        <div v-else>
+          <p class="text-sm text-gray-600 mb-4">
+            {{ pendingAction === 'accept' ? 'Are you sure you want to accept this proposal?' : 'Are you sure you want to decline this proposal?' }}
+          </p>
+          <div class="flex gap-3">
+            <button
+              class="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+              @click="pendingAction = null"
+            >Cancel</button>
+            <button
+              class="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-colors"
+              :class="pendingAction === 'accept' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-600 hover:bg-red-700'"
+              :disabled="responding"
+              @click="respond(pendingAction!)"
+            >
+              {{ pendingAction === 'accept' ? '✓ Confirm Accept' : 'Confirm Decline' }}
+            </button>
+          </div>
         </div>
       </div>
 

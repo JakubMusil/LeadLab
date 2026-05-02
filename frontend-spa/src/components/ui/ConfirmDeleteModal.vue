@@ -9,11 +9,13 @@ const props = withDefaults(
     title?: string
     message?: string
     loading?: boolean
+    confirmLabel?: string
   }>(),
   {
     title: undefined,
     message: undefined,
     loading: false,
+    confirmLabel: undefined,
   },
 )
 
@@ -49,7 +51,7 @@ const { t } = useI18n()
         :loading="loading"
         @click="emit('confirm')"
       >
-        {{ t('deleteModal.confirm') }}
+        {{ confirmLabel ?? t('deleteModal.confirm') }}
       </Button>
     </template>
   </Modal>

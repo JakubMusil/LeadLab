@@ -133,6 +133,7 @@ const selectedCatalogIds = ref<string[]>([])
 // Public link
 const publicLinkCopied = ref(false)
 const sendingProposal = ref(false)
+const confirmSendOpen = ref(false)
 
 // Preview panel
 const showPreview = ref(false)
@@ -467,7 +468,12 @@ function contextLabel(p: Proposal): string {
 // -----------------------------------------------------------------------
 async function sendProposal() {
   if (!currentProposal.value) return
-  if (!confirm('Mark this proposal as Sent and generate a public link?')) return
+  confirmSendOpen.value = true
+}
+
+async function executeSendProposal() {
+  if (!currentProposal.value) return
+  confirmSendOpen.value = false
   sendingProposal.value = true
   const res = await api.post<Proposal>(`/api/v1/crm/proposals/${currentProposal.value.id}/send`)
   sendingProposal.value = false
@@ -981,6 +987,14 @@ watch(
       </div>
     </div>
   </div>
+
+  <ConfirmDeleteModal
+    :open="confirmSendOpen"
+    :title="t('builder.sendConfirm')"
+    :confirm-label="t('builder.send')"
+    @confirm="executeSendProposal"
+    @cancel="confirmSendOpen = false"
+  />
 
   <ConfirmDeleteModal
     :open="!!confirmDeleteProposalId"
