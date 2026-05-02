@@ -28,6 +28,7 @@ import {
   PaperAirplaneIcon,
   InboxArrowDownIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   CheckCircleIcon,
   CheckIcon,
   ArrowsRightLeftIcon,
@@ -156,6 +157,7 @@ const heroIconMap: Record<string, Component> = {
   ArrowsRightLeftIcon,
   PaperClipIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   CheckCircleIcon,
   CheckIcon,
   DocumentTextIcon,
@@ -187,7 +189,6 @@ const heroIconMap: Record<string, Component> = {
   BookmarkIcon,
   BookmarkSlashIcon,
   ArrowUturnLeftIcon,
-  FlagIcon,
   TrashIcon,
 }
 // ---------------------------------------------------------------------------
@@ -377,6 +378,7 @@ const activityIconMap: Record<string, Component> = {
   approval_resolved: ShieldCheckIcon,
   time_logged: ClockIcon,
   checklist_item_checked: CheckIcon,
+  checklist: ClipboardDocumentCheckIcon,
   voice_memo: MicrophoneIcon,
   // Phase 6 bonus tools
   sms_out: DevicePhoneMobileIcon,
@@ -439,6 +441,7 @@ function activityTypeLabel(type: string): string {
     voice_memo: t('leadDetail.typeVoiceMemo'),
     system_note: t('leadDetail.typeSystemNote'),
     todo_items_added: t('leadDetail.typeTodoItems'),
+    checklist: t('leadDetail.typeChecklist'),
   }
   if (map[type]) return map[type]
   const tool = streamlineTools.value.find((t) => t.activity_type === type)
@@ -940,6 +943,31 @@ function taskLinkedActivity(taskId: string): Activity | null {
 }
 
 // ---------------------------------------------------------------------------
+// Checklist item toggle
+// ---------------------------------------------------------------------------
+
+async function toggleChecklistItem(activityId: string, itemIndex: number) {
+  const res = await api.post<Activity>(
+    `/api/v1/crm/activities/${activityId}/checklist-items/${itemIndex}/toggle`,
+    {},
+  )
+  if (!res.ok) {
+    toast.error(t('leadDetail.activityFailed'))
+    return
+  }
+  const updated = res.data as Activity
+  const replaceInList = (list: Activity[]) => {
+    const idx = list.findIndex((a) => a.id === activityId)
+    if (idx !== -1) list[idx] = updated
+  }
+  replaceInList(activities.value)
+  if (useFeed.value) {
+    const fi = feedItems.value.find((f) => f.item_type === 'activity' && f.activity?.id === activityId)
+    if (fi) fi.activity = updated
+  }
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket real-time update
 function canDelete(act: Activity): boolean {
   if (act.is_deleted) return false
@@ -956,7 +984,7 @@ function canEdit(act: Activity): boolean {
   if (act.is_deleted) return false
   const currentUserId = authStore.user ? String(authStore.user.id) : ''
   const isAuthor = act.user_id ? act.user_id === currentUserId : false
-  return isAuthor && ['comment', 'call', 'meeting'].includes(act.type)
+  return isAuthor && ['comment', 'call', 'meeting', 'checklist'].includes(act.type)
 }
 
 // ── Modal-based edit ────────────────────────────────────────────────────────
@@ -1285,7 +1313,7 @@ defineExpose({ load: () => loadActivities(1) })
             :class="item.type === 'task_completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
               : item.type === 'status_change' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
               : item.type === 'comment' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
-              : item.type === 'milestone' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+              : item.type === 'checklist' ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'"
           >
             <component :is="activityIcon(item.type)" class="w-4 h-4" />
@@ -1384,15 +1412,37 @@ defineExpose({ load: () => loadActivities(1) })
               {{ t('leadDetail.viewProposal') }} →
             </RouterLink>
 
-            <!-- Milestone card -->
+            <!-- Checklist card -->
             <div
-              v-if="item.type === 'milestone' && item.tool_payload"
-              class="mt-1 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+              v-if="item.type === 'checklist' && item.tool_payload"
+              class="mt-2 space-y-1"
             >
-              <span class="font-medium">{{ (item.tool_payload as Record<string, string>).name }}</span>
-              <span v-if="(item.tool_payload as Record<string, string>).date" class="text-xs text-gray-400">
-                {{ (item.tool_payload as Record<string, string>).date }}
-              </span>
+              <p v-if="(item.tool_payload as Record<string, unknown>).title" class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {{ (item.tool_payload as Record<string, unknown>).title }}
+              </p>
+              <ul class="space-y-1">
+                <li
+                  v-for="(chItem, chIdx) in ((item.tool_payload as Record<string, unknown>).items as Array<{ text: string; done: boolean }> | undefined) ?? []"
+                  :key="chIdx"
+                  class="flex items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    class="flex-shrink-0 w-4 h-4 rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400"
+                    :class="chItem.done
+                      ? 'bg-teal-500 border-teal-500 text-white'
+                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'"
+                    :title="chItem.done ? t('leadDetail.checklistUncheck', 'Odznačit') : t('leadDetail.checklistCheck', 'Označit')"
+                    @click.stop="toggleChecklistItem(item.id, chIdx)"
+                  >
+                    <CheckIcon v-if="chItem.done" class="w-3 h-3 mx-auto" />
+                  </button>
+                  <span
+                    class="text-sm"
+                    :class="chItem.done ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'"
+                  >{{ chItem.text }}</span>
+                </li>
+              </ul>
             </div>
 
             <!-- Voice memo player -->

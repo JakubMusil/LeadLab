@@ -821,7 +821,8 @@ class ActivityOut(Schema):
     edited_at: Optional[datetime] = None
 
 class ActivityUpdateIn(Schema):
-    content_text: str
+    content_text: str = ""
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class ActivityIn(Schema):
@@ -1311,7 +1312,7 @@ def update_activity(request, activity_id: str, payload: ActivityUpdateIn):
 
     # Must be an editable type
     from crm.models import ActivityType
-    allowed_types = [ActivityType.COMMENT, ActivityType.CALL, ActivityType.MEETING]
+    allowed_types = [ActivityType.COMMENT, ActivityType.CALL, ActivityType.MEETING, ActivityType.CHECKLIST]
     if activity.type not in allowed_types:
         return 400, {"detail": "This type of activity cannot be edited."}
 
@@ -1320,13 +1321,74 @@ def update_activity(request, activity_id: str, payload: ActivityUpdateIn):
         return 400, {"detail": "Cannot edit a deleted activity."}
 
     from django.utils import timezone as tz
-    activity.content_text = payload.content_text
+    update_fields = ["is_edited", "edited_at"]
+
+    if activity.type == ActivityType.CHECKLIST:
+        # For checklist, re-parse the text into items and update metadata
+        if payload.metadata is not None:
+            from crm.streamline.tools import _parse_checklist_text, _items_to_edit_text
+            meta = dict(activity.metadata or {})
+            title = payload.metadata.get("title", meta.get("title", ""))
+            raw_text = payload.metadata.get("text", "")
+            items = _parse_checklist_text(raw_text)
+            edit_text = _items_to_edit_text(items)
+            meta.update({"title": title, "items": items, "text": edit_text})
+            activity.metadata = meta
+            update_fields.append("metadata")
+    else:
+        activity.content_text = payload.content_text
+        update_fields.append("content_text")
+
     activity.is_edited = True
     activity.edited_at = tz.now()
-    activity.save(update_fields=["content_text", "is_edited", "edited_at"])
+    activity.save(update_fields=update_fields)
 
     # We do not broadcast event for edits right now, frontend relies on page reload or 
     # the request response updating the local cache.
+
+    return 200, _activity_out(activity, request.user)
+
+
+@router.post(
+    "/activities/{activity_id}/checklist-items/{item_index}/toggle",
+    auth=django_auth,
+    response={200: ActivityOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def toggle_checklist_item(request, activity_id: str, item_index: int):
+    """
+    Toggle the done/undone state of a single checklist item.
+
+    Any authenticated firm member may toggle items (not just the activity author),
+    because checklists are collaborative by nature.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except Activity.DoesNotExist:
+        return 404, {"detail": "Activity not found."}
+
+    from crm.models import ActivityType
+    if activity.type != ActivityType.CHECKLIST:
+        return 400, {"detail": "Activity is not a checklist."}
+
+    if activity.is_deleted:
+        return 400, {"detail": "Cannot modify a deleted activity."}
+
+    meta = dict(activity.metadata or {})
+    items = list(meta.get("items", []))
+    if item_index < 0 or item_index >= len(items):
+        return 400, {"detail": "Item index out of range."}
+
+    items[item_index] = {**items[item_index], "done": not items[item_index].get("done", False)}
+    from crm.streamline.tools import _items_to_edit_text
+    meta["items"] = items
+    meta["text"] = _items_to_edit_text(items)
+    activity.metadata = meta
+    activity.save(update_fields=["metadata"])
 
     return 200, _activity_out(activity, request.user)
 

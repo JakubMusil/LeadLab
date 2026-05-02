@@ -255,9 +255,21 @@ async function save() {
   if (toolRequiresText.value && !hasPlainText.value) return
 
   submitting.value = true
-  const res = await api.patch<Activity>(`/api/v1/crm/activities/${props.activity.id}`, {
-    content_text: contentText.value,
-  })
+
+  let body: Record<string, unknown>
+  if (props.activity.type === 'checklist') {
+    // For checklist, send metadata (title + text) instead of content_text
+    const meta: Record<string, unknown> = {}
+    for (const prop of schemaPropsAll.value) {
+      const val = extraFields.value[prop.key]
+      if (val !== undefined && val !== null && val !== '') meta[prop.key] = val
+    }
+    body = { metadata: meta }
+  } else {
+    body = { content_text: contentText.value }
+  }
+
+  const res = await api.patch<Activity>(`/api/v1/crm/activities/${props.activity.id}`, body)
   submitting.value = false
 
   if (res.ok) {
@@ -279,6 +291,7 @@ const activityTypeLabelKey: Record<string, string> = {
   comment: 'leadDetail.typeComment',
   call: 'leadDetail.typeCall',
   meeting: 'leadDetail.typeMeeting',
+  checklist: 'leadDetail.typeChecklist',
 }
 
 const activityTypeLabel = computed(() => {

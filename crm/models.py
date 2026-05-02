@@ -109,6 +109,7 @@ class ActivityType(models.TextChoices):
     MENTION = "mention", "Mention"
     PINNED = "pinned", "Pinned"
     UNPINNED = "unpinned", "Unpinned"
+    CHECKLIST = "checklist", "Checklist"
 
 
 class ProposalStatus(models.TextChoices):
@@ -313,7 +314,7 @@ class Lead(TenantModel):
         "call_scheduled",
         "event_scheduled",
         "task",
-        "milestone",
+        "checklist",
         "proposal",
         "todo_items_added",
         # Files & references

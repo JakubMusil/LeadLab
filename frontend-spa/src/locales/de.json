@@ -1246,7 +1246,10 @@
       "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
     },
     "typeMessage": "Nachricht",
-    "typeTodoItems": "Todo-Aufgaben"
+    "typeTodoItems": "Todo-Aufgaben",
+    "typeChecklist": "Checkliste",
+    "checklistCheck": "Als erledigt markieren",
+    "checklistUncheck": "Markierung aufheben"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

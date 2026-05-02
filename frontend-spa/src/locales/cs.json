@@ -1257,7 +1257,10 @@
       "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže."
     },
     "typeMessage": "Zpráva",
-    "typeTodoItems": "Hromadné úkoly"
+    "typeTodoItems": "Hromadné úkoly",
+    "typeChecklist": "Odškrtávací seznam",
+    "checklistCheck": "Označit jako hotové",
+    "checklistUncheck": "Odznačit"
   },
   "sequences": {
     "title": "E-mailové sekvence",
