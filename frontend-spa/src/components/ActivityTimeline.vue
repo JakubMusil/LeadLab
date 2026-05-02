@@ -1771,7 +1771,7 @@ defineExpose({ load: () => loadActivities(1) })
   height: 0.9rem;
   cursor: pointer;
   accent-color: var(--brand-color);
-  pointer-events: none; /* click is handled by the parent li via event delegation */
+  pointer-events: none; /* click is intercepted at the container level and filtered by target element */
 }
 .comment-content :deep(ul[data-type="taskList"] > li > label > span) {
   display: none;
