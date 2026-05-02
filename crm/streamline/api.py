@@ -31,8 +31,8 @@ def _build_entity_toolbar() -> None:
         _ENTITY_TOOLBAR = {
             "lead": Lead.TOOLBAR_TOOLS,
             "realization": ["comment", "task", "milestone", "proposal"],
-            "management": ["comment", "task", "proposal"],
-            "customer": ["comment", "call", "meeting", "email_out", "task"],
+            "management": ["comment", "task", "milestone", "proposal"],
+            "customer": ["comment", "call", "meeting", "email_out", "milestone", "task"],
             "proposal": ["comment", "task"],
             "task": [
                 "comment",
