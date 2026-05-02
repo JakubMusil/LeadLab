@@ -519,7 +519,7 @@ defineExpose({ getMentionedIds })
 }
 .tiptap ul[data-type="taskList"] > li[data-checked="true"] > div p {
   text-decoration: line-through;
-  color: #9ca3af;
+  opacity: 0.5;
 }
 </style>
 

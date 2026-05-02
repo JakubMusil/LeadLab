@@ -976,7 +976,12 @@ async function onCommentContentClick(e: MouseEvent, activityId: string, currentH
   const li = target.closest('li[data-type="taskItem"]')
   if (!li) return
 
-  // Intercept this click — we handle the state change ourselves via the API
+  // Only intercept clicks on the checkbox area (label or input), not on task text/links
+  const onCheckboxArea = !!target.closest('label') ||
+    (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox')
+  if (!onCheckboxArea) return
+
+  // We handle the toggle ourselves via the API — prevent the native checkbox flip
   e.preventDefault()
   e.stopPropagation()
 
@@ -1454,7 +1459,12 @@ defineExpose({ load: () => loadActivities(1) })
             </div>
             
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none comment-content" v-html="sanitizeHtml(item.content_text)" @click.capture="onCommentContentClick($event, item.id, item.content_text)" />
+            <div
+              v-if="item.content_text"
+              class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none comment-content"
+              v-html="sanitizeHtml(item.content_text)"
+              @click.capture="onCommentContentClick($event, item.id, item.content_text)"
+            />
             <p v-if="item.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {{ t('leadDetail.statusChangedArrow', {
                 from: translateLeadStatus((item.metadata as Record<string, string>).old_status ?? ''),
