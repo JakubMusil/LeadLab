@@ -13,9 +13,15 @@ import { api } from '@/api'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
-
 import { useAuthStore } from '@/stores/auth'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+import {
+  TrashIcon,
+  FolderOpenIcon,
+  DocumentTextIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const router = useRouter()
@@ -182,9 +188,6 @@ function getStatusHexColor(status: string) {
 // ActivityTimeline ref (used to reload feed after sidebar quick-action submits).
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
-type Tab = 'overview' | 'tasks' | 'proposals' | 'documents'
-const activeTab = ref<Tab>('overview')
-
 const editingTitle = ref(false)
 const titleDraft = ref('')
 const savingTitle = ref(false)
@@ -193,6 +196,8 @@ const savingTitle = ref(false)
 interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
 const linkedProposals = ref<ProposalOut[]>([])
 const proposalsLoading = ref(false)
+const showProposals = ref(false)
+const showDocuments = ref(false)
 
 async function loadLinkedProposals() {
   proposalsLoading.value = true
@@ -218,6 +223,7 @@ onMounted(async () => {
   await loadTools()
   await store.fetchRecord(recordId.value)
   await loadLinkedProposals()
+  await loadDocuments()
 })
 
 
@@ -327,44 +333,11 @@ async function deleteDocument() {
 
     <template v-else-if="record">
       <!-- Title -->
-      <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-        <div class="flex-1 min-w-0">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
-            📋 Správa - {{ record.title }}
-          </h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis">
+        Správa - {{ record.title }}
+      </h1>
 
-          <!-- Metadata -->
-          <div class="flex flex-wrap items-center gap-3 mt-2">
-            <span
-              :class="getManagementStatusMeta(record.status).color"
-              class="px-2 py-0.5 rounded-full text-xs font-medium"
-            >
-              {{ getManagementStatusMeta(record.status).label }}
-            </span>
-            <span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-              {{ MANAGEMENT_TYPES.find(t => t.value === record?.type)?.label ?? record.type }}
-            </span>
-            <span
-              v-if="record.expires_at"
-              :class="slaBadgeClass(record.sla_color)"
-              class="text-xs px-2 py-0.5 rounded font-medium"
-            >
-              {{ slaLabel(record.expires_at, record.sla_color) }}
-            </span>
-          </div>
-        </div>
-        <div class="flex-shrink-0">
-          <select
-            :value="record.status"
-            @change="updateStatus(($event.target as HTMLSelectElement).value)"
-            class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-          >
-            <option v-for="s in MANAGEMENT_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Progress bar exactly like Lead Detail -->
+      <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
         <div class="flex items-center justify-between gap-1 select-none">
           <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
@@ -386,25 +359,10 @@ async function deleteDocument() {
         </div>
       </div>
 
-      <!-- Tabs exactly like Lead Detail -->
-      <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        <button
-          v-for="tab in (['overview', 'tasks', 'proposals', 'documents'] as Tab[])"
-          :key="tab"
-          @click="activeTab = tab; if (tab === 'documents' && documents.length === 0) loadDocuments()"
-          :class="activeTab === tab
-            ? 'border-b-2 border-red-600 text-red-600 dark:text-red-400'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-          class="px-4 py-3 text-sm font-medium capitalize transition-colors"
-        >
-          {{ tab === 'overview' ? t('management.tabOverview') : tab === 'tasks' ? t('management.tabTasks') : tab === 'proposals' ? t('management.tabProposals') : `${t('management.tabDocuments')} (${documents.length})` }}
-        </button>
-      </div>
+      <!-- 2-column layout — identical to Lead detail -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Overview tab: streamline left + sidebar right -->
-      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Left Column: Activity Feed & Presets Switcher from Lead Detail -->
+        <!-- Left Column: Activity Feed & Presets Switcher -->
         <div class="lg:col-span-2">
           <!-- Switchers: Přehled + user presets + Filtry -->
           <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
@@ -441,7 +399,7 @@ async function deleteDocument() {
             </div>
           </div>
 
-          <!-- Quick action to save custom filter as shortcut if it's selected -->
+          <!-- Quick action to save custom filter as shortcut -->
           <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
             <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
             <input
@@ -470,150 +428,177 @@ async function deleteDocument() {
           />
         </div>
 
-
-        <!-- Right: toolbox -->
+        <!-- Right Column: Sidebar -->
         <div class="space-y-4">
-          <!-- Quick actions (unified Streamline composer) -->
+
+          <!-- Management details card -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+              {{ record.title }}
+            </h2>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-center">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.colStatus') }}</dt>
+                <dd>
+                  <select
+                    :value="record.status"
+                    @change="updateStatus(($event.target as HTMLSelectElement).value)"
+                    class="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                  >
+                    <option v-for="s in MANAGEMENT_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
+                  </select>
+                </dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.colType') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ MANAGEMENT_TYPES.find(tp => tp.value === record?.type)?.label ?? record.type }}</dd>
+              </div>
+              <div v-if="record.expires_at" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.slaExpiry') }}</dt>
+                <dd>
+                  <span :class="slaBadgeClass(record.sla_color)" class="text-xs px-1.5 py-0.5 rounded font-medium">
+                    {{ slaLabel(record.expires_at, record.sla_color) }}
+                  </span>
+                </dd>
+              </div>
+              <div v-if="record.customer_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.customer') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ record.customer_name }}</dd>
+              </div>
+              <div v-if="record.realization_title" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.realization') }}</dt>
+                <dd>
+                  <button
+                    @click="router.push(`/app/realizations/${record.realization_id}`)"
+                    class="text-xs text-red-600 dark:text-red-400 hover:underline text-right truncate max-w-[10rem] block"
+                  >
+                    {{ record.realization_title }}
+                  </button>
+                </dd>
+              </div>
+              <div v-if="record.assigned_to_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.assigned') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ record.assigned_to_name }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.created') }}</dt>
+                <dd class="text-xs text-gray-600 dark:text-gray-400">{{ formatDateTime(record.created_at) }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.updated') }}</dt>
+                <dd class="text-xs text-gray-600 dark:text-gray-400">{{ formatDateTime(record.updated_at) }}</dd>
+              </div>
+              <div v-if="record.notes" class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <dt class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('management.notes') }}</dt>
+                <dd class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ record.notes }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Quick actions card -->
           <EntitySidebarActionPicker
             entity-type="management"
             :entity-id="recordId"
             @activity-added="activityTimelineRef?.load()"
           />
 
-          <!-- Notes -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{{ t('management.notes') }}</h3>
-            <p v-if="record.notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ record.notes }}</p>
-            <p v-else class="text-sm text-gray-400 italic">{{ t('management.noNotes') }}</p>
-          </div>
-
-          <!-- Created / Updated -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <div>{{ t('management.created') }}: {{ formatDateTime(record.created_at) }}</div>
-            <div>{{ t('management.updated') }}: {{ formatDateTime(record.updated_at) }}</div>
-          </div>
-
-          <!-- Customer -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.customer') }}</div>
-            <div v-if="record.customer_name" class="text-sm text-gray-900 dark:text-white">{{ record.customer_name }}</div>
-            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassigned') }}</div>
-          </div>
-
-          <!-- Realization -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.realization') }}</div>
-            <div v-if="record.realization_title">
-              <button
-                @click="router.push(`/app/realizations/${record.realization_id}`)"
-                class="text-sm text-red-600 dark:text-red-400 hover:underline text-left"
-              >
-                {{ record.realization_title }}
-              </button>
-            </div>
-            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassignedF') }}</div>
-          </div>
-
-          <!-- Assigned to -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.assigned') }}</div>
-            <div v-if="record.assigned_to_name" class="text-sm text-gray-900 dark:text-white">{{ record.assigned_to_name }}</div>
-            <div v-else class="text-sm text-gray-400 italic">{{ t('management.unassignedN') }}</div>
-          </div>
-
-          <!-- SLA / Expiry -->
-          <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">{{ t('management.slaExpiry') }}</div>
-            <div v-if="record.expires_at">
-              <div class="text-sm text-gray-900 dark:text-white mb-1">{{ formatDateTime(record.expires_at) }}</div>
-              <span :class="slaBadgeClass(record.sla_color)" class="text-xs px-2 py-0.5 rounded font-medium">
-                {{ slaLabel(record.expires_at, record.sla_color) }}
+          <!-- Proposals section -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <button
+              class="w-full flex items-center justify-between p-4 text-sm font-semibold text-gray-700 dark:text-gray-300"
+              @click="showProposals = !showProposals"
+            >
+              <span class="flex items-center gap-2">
+                <DocumentTextIcon class="w-4 h-4" />
+                {{ t('management.proposals') }} <span v-if="linkedProposals.length" class="text-xs font-normal text-gray-400">({{ linkedProposals.length }})</span>
               </span>
+              <ChevronUpIcon v-if="showProposals" class="w-4 h-4 text-gray-400" />
+              <ChevronDownIcon v-else class="w-4 h-4 text-gray-400" />
+            </button>
+            <div v-if="showProposals" class="px-4 pb-4 space-y-2">
+              <div v-if="proposalsLoading" class="animate-pulse space-y-2">
+                <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+              </div>
+              <div v-else-if="linkedProposals.length === 0" class="text-xs text-gray-400 py-2">{{ t('management.noProposals') }}</div>
+              <RouterLink
+                v-for="p in linkedProposals"
+                v-else
+                :key="p.id"
+                :to="`/app/proposals/${p.id}`"
+                class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              >
+                <span class="flex-1 text-xs font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
+              </RouterLink>
+              <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700 block pt-1">{{ t('management.allProposals') }} →</RouterLink>
             </div>
-            <div v-else class="text-sm text-gray-400 italic">{{ t('management.notSet') }}</div>
           </div>
-        </div>
-      </div>
 
-      <!-- Tasks tab placeholder -->
-      <div v-else-if="activeTab === 'tasks'" class="text-center py-12 text-gray-400 dark:text-gray-500">
-        <p class="text-sm">{{ t('management.tasksPlaceholder') }}</p>
-      </div>
-
-      <!-- Proposals tab -->
-      <div v-else-if="activeTab === 'proposals'" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('management.proposals') }}</h3>
-          <RouterLink to="/app/proposals" class="text-xs text-red-600 hover:text-red-700">{{ t('management.allProposals') }}</RouterLink>
-        </div>
-        <div v-if="proposalsLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl" />
-        </div>
-        <div v-else-if="linkedProposals.length === 0" class="text-sm text-gray-400 text-center py-8">
-          {{ t('management.noProposals') }}
-        </div>
-        <div v-else class="space-y-2">
-          <RouterLink
-            v-for="p in linkedProposals"
-            :key="p.id"
-            :to="`/app/proposals/${p.id}`"
-            class="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.title }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
-            <span class="text-xs text-gray-500 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- Documents tab -->
-      <div v-else-if="activeTab === 'documents'" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('management.documents') }}</h3>
-          <button
-            @click="docFileInputRef?.click()"
-            :disabled="docsUploading"
-            class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
-          >
-            {{ docsUploading ? t('management.uploading') : t('management.uploadBtn') }}
-          </button>
-          <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
-        </div>
-
-        <div v-if="docsLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-
-        <div v-else-if="documents.length === 0" class="text-center py-10">
-          <div class="text-4xl mb-2">📁</div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('management.noDocuments') }}</p>
-        </div>
-
-        <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-          <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-3 p-3 group">
-            <span class="text-xl">{{ docFileIcon(doc.content_type) }}</span>
-            <div class="flex-1 min-w-0">
-              <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
-                 class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
-                {{ doc.name }}
-              </a>
-              <p class="text-xs text-gray-400">{{ fmtDocBytes(doc.size_bytes) }} · {{ new Date(doc.created_at).toLocaleDateString('cs-CZ') }}</p>
-            </div>
-            <button @click="deleteDocId = doc.id" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-sm transition-opacity">🗑</button>
-          </div>
-        </div>
-
-        <!-- Delete confirm -->
-        <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-            <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('management.confirmDocDelete') }}</p>
-            <div class="flex gap-3 justify-end">
-              <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('management.cancelBtn') }}</button>
-              <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('management.deleteBtn') }}</button>
+          <!-- Documents section -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <button
+              class="w-full flex items-center justify-between p-4 text-sm font-semibold text-gray-700 dark:text-gray-300"
+              @click="showDocuments = !showDocuments"
+            >
+              <span class="flex items-center gap-2">
+                <FolderOpenIcon class="w-4 h-4" />
+                {{ t('management.tabDocuments') }} <span v-if="documents.length" class="text-xs font-normal text-gray-400">({{ documents.length }})</span>
+              </span>
+              <ChevronUpIcon v-if="showDocuments" class="w-4 h-4 text-gray-400" />
+              <ChevronDownIcon v-else class="w-4 h-4 text-gray-400" />
+            </button>
+            <div v-if="showDocuments" class="px-4 pb-4 space-y-2">
+              <div v-if="docsLoading" class="animate-pulse space-y-2">
+                <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+              </div>
+              <div v-else-if="documents.length === 0" class="flex flex-col items-center py-4 gap-2">
+                <FolderOpenIcon class="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('management.noDocuments') }}</p>
+              </div>
+              <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-2 py-2 group">
+                  <span class="text-sm flex-shrink-0">{{ docFileIcon(doc.content_type) }}</span>
+                  <div class="flex-1 min-w-0">
+                    <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
+                       class="text-xs font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
+                      {{ doc.name }}
+                    </a>
+                    <p class="text-[10px] text-gray-400">{{ fmtDocBytes(doc.size_bytes) }}</p>
+                  </div>
+                  <button
+                    @click="deleteDocId = doc.id"
+                    class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity flex-shrink-0"
+                    :aria-label="t('management.deleteBtn')"
+                  >
+                    <TrashIcon class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <button
+                @click="docFileInputRef?.click()"
+                :disabled="docsUploading"
+                class="w-full text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
+              >
+                {{ docsUploading ? t('management.uploading') : t('management.uploadBtn') }}
+              </button>
+              <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
             </div>
           </div>
         </div>
       </div>
     </template>
   </div>
+
+  <!-- Delete document confirm -->
+  <Teleport to="body">
+    <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
+        <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('management.confirmDocDelete') }}</p>
+        <div class="flex gap-3 justify-end">
+          <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('management.cancelBtn') }}</button>
+          <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('management.deleteBtn') }}</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
