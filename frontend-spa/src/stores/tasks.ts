@@ -184,6 +184,8 @@ export interface StreamlineItemOut {
   created_at: string
   resolved_by_id: string | null
   resolved_at: string | null
+  is_deleted?: boolean
+  deleted_by_name?: string | null
 }
 
 export interface StreamlineItemCreateIn {

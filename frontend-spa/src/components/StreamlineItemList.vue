@@ -235,7 +235,7 @@ const accentClass = props.kind === 'todo'
           <template v-else>
             <div class="flex items-center gap-2 py-2 text-gray-400 dark:text-gray-500 text-sm line-through">
               <span>{{ item.text }}</span>
-              <span class="text-xs no-underline" style="text-decoration: none;">
+              <span class="text-xs no-underline">
                 — {{ t('tasks.streamlineDeleted') }}{{ item.deleted_by_name ? ' ' + t('tasks.streamlineDeletedBy').replace('{name}', item.deleted_by_name) : '' }}
               </span>
             </div>
