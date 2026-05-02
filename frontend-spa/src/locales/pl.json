@@ -878,6 +878,8 @@
     "streamlineDeleteFailed": "Nie udało się usunąć elementu.",
     "streamlineDeleted": "Usunięto",
     "streamlineDeletedBy": "przez {name}",
+    "streamlineHideDeleted": "Ukryj usunięte",
+    "streamlineShowDeleted": "Pokaż usunięte",
     "dependencies": "Zależności",
     "dependencyBlocks": "Blokuje",
     "dependencyBlockedBy": "Zablokowane przez",

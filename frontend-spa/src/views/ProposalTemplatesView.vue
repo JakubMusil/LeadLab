@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { DocumentIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const toast = useToast()
 const firmStore = useFirmStore()
@@ -45,6 +46,7 @@ const newTmplItemDesc = ref('')
 const newTmplItemQty = ref(1)
 const newTmplItemPrice = ref(0)
 const addingTmplItem = ref(false)
+const confirmDeleteTemplateId = ref<string | null>(null)
 
 // ---------------------------------------------------------------------------
 // API calls
@@ -78,7 +80,6 @@ async function createPropTemplate() {
 }
 
 async function deletePropTemplate(id: string) {
-  if (!confirm('Delete this template?')) return
   const res = await api.delete(`/api/v1/crm/proposal-templates/${id}`)
   if (res.ok || res.status === 204) {
     propTemplates.value = propTemplates.value.filter((t) => t.id !== id)
@@ -175,7 +176,7 @@ onMounted(() => {
           >{{ expandedTemplate === tmpl.id ? '▲ Close' : '▼ Expand' }}</button>
           <button
             class="text-xs text-red-400 hover:text-red-600 border border-red-200 dark:border-red-800 rounded-lg px-2 py-1"
-            @click="deletePropTemplate(tmpl.id)"
+            @click="confirmDeleteTemplateId = tmpl.id"
           >Delete</button>
         </div>
 
@@ -262,4 +263,10 @@ onMounted(() => {
       >{{ newTemplateCreating ? 'Creating…' : '+ Create Template' }}</button>
     </div>
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteTemplateId"
+    @confirm="() => { const id = confirmDeleteTemplateId; confirmDeleteTemplateId = null; if (id) deletePropTemplate(id) }"
+    @cancel="confirmDeleteTemplateId = null"
+  />
 </template>

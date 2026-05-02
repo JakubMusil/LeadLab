@@ -882,6 +882,8 @@
     "streamlineDeleteFailed": "Nepodařilo se smazat položku.",
     "streamlineDeleted": "Odstraněno",
     "streamlineDeletedBy": "uživatelem {name}",
+    "streamlineHideDeleted": "Skrýt odstraněné",
+    "streamlineShowDeleted": "Zobrazit odstraněné",
     "dependencies": "Závislosti",
     "dependencyBlocks": "Blokuje",
     "dependencyBlockedBy": "Blokován",

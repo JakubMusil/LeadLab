@@ -5,6 +5,7 @@ import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 import { useI18n } from '@/composables/useI18n'
 import { DocumentIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -71,6 +72,10 @@ const revenueLoading = ref(false)
 
 // Active tab
 const activeTab = ref<'overview' | 'expenses' | 'revenues'>('overview')
+
+// Confirm-delete modals
+const confirmDeleteExpenseId = ref<string | null>(null)
+const confirmDeleteRevenueId = ref<string | null>(null)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -146,7 +151,6 @@ async function addExpense() {
 }
 
 async function deleteExpense(id: string) {
-  if (!confirm('Delete this expense?')) return
   const res = await api.delete(`/api/v1/erp/expenses/${id}`)
   if (res.ok || res.status === 204) {
     expenses.value = expenses.value.filter(e => e.id !== id)
@@ -183,7 +187,6 @@ async function addRevenue() {
 }
 
 async function deleteRevenue(id: string) {
-  if (!confirm('Delete this revenue item?')) return
   const res = await api.delete(`/api/v1/erp/revenues/${id}`)
   if (res.ok || res.status === 204) {
     revenues.value = revenues.value.filter(r => r.id !== id)
@@ -470,7 +473,7 @@ async function exportToFakturoid() {
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ e.recurrence }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ e.lead_title ?? e.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
-                  <button class="text-sm text-red-500 hover:text-red-700" @click="deleteExpense(e.id)">Delete</button>
+                  <button class="text-sm text-red-500 hover:text-red-700" @click="confirmDeleteExpenseId = e.id">Delete</button>
                 </td>
               </tr>
             </tbody>
@@ -564,7 +567,7 @@ async function exportToFakturoid() {
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ r.recurrence }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ r.lead_title ?? r.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
-                  <button class="text-sm text-red-500 hover:text-red-700" @click="deleteRevenue(r.id)">Delete</button>
+                  <button class="text-sm text-red-500 hover:text-red-700" @click="confirmDeleteRevenueId = r.id">Delete</button>
                 </td>
               </tr>
             </tbody>
@@ -573,6 +576,17 @@ async function exportToFakturoid() {
       </div>
     </template>
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteExpenseId"
+    @confirm="() => { const id = confirmDeleteExpenseId; confirmDeleteExpenseId = null; if (id) deleteExpense(id) }"
+    @cancel="confirmDeleteExpenseId = null"
+  />
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteRevenueId"
+    @confirm="() => { const id = confirmDeleteRevenueId; confirmDeleteRevenueId = null; if (id) deleteRevenue(id) }"
+    @cancel="confirmDeleteRevenueId = null"
+  />
 </template>
 
 <style scoped>

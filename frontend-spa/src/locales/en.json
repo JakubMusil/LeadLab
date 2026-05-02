@@ -881,6 +881,8 @@
     "streamlineDeleteFailed": "Failed to delete item.",
     "streamlineDeleted": "Deleted",
     "streamlineDeletedBy": "by {name}",
+    "streamlineHideDeleted": "Hide deleted",
+    "streamlineShowDeleted": "Show deleted",
     "dependencies": "Dependencies",
     "dependencyBlocks": "Blocks",
     "dependencyBlockedBy": "Blocked by",

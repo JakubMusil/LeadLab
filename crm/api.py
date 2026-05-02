@@ -2852,7 +2852,7 @@ def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )
 def delete_task_document(request, task_id: str, document_id: str):
-    """Delete a document attached to a task. Only uploader or admin/owner may delete."""
+    """Soft-delete a document attached to a task. Only uploader or admin/owner may delete."""
     try:
         membership = require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
@@ -2872,8 +2872,7 @@ def delete_task_document(request, task_id: str, document_id: str):
     if str(doc.uploaded_by_id) != str(request.user.id) and not is_admin:
         return 403, {"detail": "You can only delete your own documents."}
 
-    doc.file.delete(save=False)
-    doc.delete()
+    perform_soft_delete(doc, request.user)
     return 204, None
 
 
@@ -4656,9 +4655,9 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
 )
 def delete_attachment(request, lead_id: str, attachment_id: str):
     """
-    Delete a file attachment from a Lead.
+    Soft-delete a file attachment from a Lead.
 
-    Removes both the database record and the physical file from storage.
+    Marks the record as deleted; the physical file is removed by the purge task.
     Requires at least Admin role.
     """
     try:
@@ -4676,8 +4675,7 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
     except Document.DoesNotExist:
         return 404, {"detail": "Attachment not found."}
 
-    doc.file.delete(save=False)
-    doc.delete()
+    perform_soft_delete(doc, request.user)
     return 204, None
 
 
