@@ -13,6 +13,9 @@ export function sanitizeHtml(html: string | null | undefined): string {
   return DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     // Allow TipTap task-list attributes so checklist items render correctly
-    ADD_ATTR: ['data-checked', 'data-type'],
+    // Allow style for text/background color (Color + Highlight extensions)
+    // Allow link attributes for the Link extension
+    // Allow colwidth for the Table extension
+    ADD_ATTR: ['data-checked', 'data-type', 'style', 'target', 'rel', 'download', 'colwidth', 'data-colwidth'],
   })
 }
