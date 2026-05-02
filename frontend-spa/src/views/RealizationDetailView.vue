@@ -10,6 +10,8 @@ import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 
+import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+
 const route = useRoute()
 const router = useRouter()
 const store = useRealizationsStore()
@@ -19,8 +21,159 @@ const { t } = useI18n()
 
 const realizationId = computed(() => route.params.id as string)
 
+const selectedShortcutId = ref('overview')
+const customFilters = ref<Set<string>>(new Set())
+const newShortcutName = ref('')
+const allTools = ref<any[]>([])
+
+interface ShortcutPreset {
+  id: string
+  name: string
+  visible_activity_types: string[]
+}
+const shortcuts = ref<ShortcutPreset[]>([])
+
+const shortcutsKey = computed(() => {
+  const userId = authStore.user?.id || 'guest'
+  return `realization_shortcuts_u${userId}`
+})
+
+function loadShortcuts() {
+  const data = localStorage.getItem(shortcutsKey.value)
+  if (data) {
+    try {
+      shortcuts.value = JSON.parse(data)
+    } catch {
+      shortcuts.value = []
+    }
+  } else {
+    shortcuts.value = [
+      { id: 'sc-tasks', name: 'Úkoly', visible_activity_types: ['task', 'task_assigned', 'task_completed', 'task_created', 'task_reopened'] },
+      { id: 'sc-files', name: 'Soubory', visible_activity_types: ['file_upload'] }
+    ]
+  }
+}
+
+function saveShortcutsToLocalStorage() {
+  localStorage.setItem(shortcutsKey.value, JSON.stringify(shortcuts.value))
+}
+
+function moveShortcut(fromIdx: number, toIdx: number) {
+  const arr = [...shortcuts.value]
+  const item = arr[fromIdx]
+  if (!item) return
+  arr.splice(fromIdx, 1)
+  arr.splice(toIdx, 0, item)
+  shortcuts.value = arr
+  saveShortcutsToLocalStorage()
+}
+
+function deleteShortcut(id: string) {
+  shortcuts.value = shortcuts.value.filter(s => s.id !== id)
+  saveShortcutsToLocalStorage()
+  if (selectedShortcutId.value === id) {
+    selectedShortcutId.value = 'overview'
+  }
+}
+
+async function loadTools() {
+  const res = await api.get<any[]>('/api/v1/streamline/tools')
+  if (res.ok) {
+    allTools.value = res.data
+  }
+}
+
+const availableTools = computed(() => {
+  const t = [...allTools.value]
+  if (!t.some((x) => x.activity_type === 'task')) {
+    t.push({
+      activity_type: 'task',
+      label: 'Úkoly',
+      category: 'task',
+      default_visibility: 'important',
+    })
+  }
+  return t
+})
+
+const importantToolsSet = computed(() => {
+  return new Set(availableTools.value.filter((t: any) => t.default_visibility === 'important').map((t: any) => t.activity_type))
+})
+
+const currentVisibleTypes = computed(() => {
+  if (selectedShortcutId.value === 'overview') {
+    return importantToolsSet.value
+  }
+  if (selectedShortcutId.value === 'custom') {
+    return customFilters.value
+  }
+  const preset = shortcuts.value.find(s => s.id === selectedShortcutId.value)
+  if (preset) {
+    return new Set(preset.visible_activity_types)
+  }
+  return importantToolsSet.value
+})
+
+function onCustomFilterChange(next: string[] | null) {
+  if (next === null) {
+    customFilters.value = importantToolsSet.value
+  } else {
+    customFilters.value = new Set(next)
+  }
+  selectedShortcutId.value = 'custom'
+}
+
+function saveCurrentAsShortcut() {
+  const name = newShortcutName.value.trim()
+  if (!name) return
+  const id = `sc-${Date.now()}`
+  shortcuts.value.push({
+    id,
+    name,
+    visible_activity_types: Array.from(customFilters.value),
+  })
+  saveShortcutsToLocalStorage()
+  selectedShortcutId.value = id
+  newShortcutName.value = ''
+}
+
+const displayedStatuses = computed(() => {
+  return REALIZATION_STATUSES.map(s => ({
+    value: s.value,
+    label: s.label
+  }))
+})
+
+const currentStatusIndex = computed(() => {
+  const current = store.currentRealization?.status || 'planned'
+  return displayedStatuses.value.findIndex((s) => s.value === current)
+})
+
+function getStatusBg(status: string) {
+  switch (status) {
+    case 'planned': return 'bg-gray-400'
+    case 'in_progress': return 'bg-blue-500'
+    case 'on_hold': return 'bg-yellow-500'
+    case 'done': return 'bg-green-500'
+    case 'cancelled': return 'bg-red-500'
+    default: return 'bg-indigo-500'
+  }
+}
+
+function getStatusHexColor(status: string) {
+  switch (status) {
+    case 'planned': return '#9ca3af'
+    case 'in_progress': return '#3b82f6'
+    case 'on_hold': return '#eab308'
+    case 'done': return '#22c55e'
+    case 'cancelled': return '#ef4444'
+    default: return '#6366f1'
+  }
+}
+
 type Tab = 'overview' | 'tasks' | 'milestones' | 'proposals' | 'documents'
 const activeTab = ref<Tab>('overview')
+
 
 // ActivityTimeline ref — used to reload feed after sidebar quick-action submits.
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
@@ -214,90 +367,155 @@ async function deleteDocument() {
 }
 
 onMounted(async () => {
+  loadShortcuts()
+  await loadTools()
   await store.fetchRealization(realizationId.value)
   await loadLinkedProposals()
 })</script>
 
 <template>
-  <div v-if="store.loadingDetail" class="p-6 text-center text-gray-500">{{ t('common.loading') }}</div>
+  <div class="p-6">
+    <!-- Back -->
+    <RouterLink to="/app/realizations" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
+      ← Realizace
+    </RouterLink>
 
-  <div v-else-if="!realization" class="p-6">
-    <p class="text-gray-500">{{ t('realizations.notFound') }}</p>
-    <button @click="router.push('/app/realizations')" class="mt-4 text-sm text-red-600 hover:underline">← Zpět</button>
-  </div>
+    <!-- Loading skeleton -->
+    <div v-if="store.loadingDetail" class="animate-pulse space-y-4">
+      <div class="h-8 bg-gray-200 rounded w-64" />
+      <div class="h-24 bg-gray-100 rounded-2xl" />
+    </div>
 
-  <div v-else class="p-6 space-y-6">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-1 text-sm text-gray-500">
-      <button @click="router.push('/app/realizations')" class="hover:text-gray-700 dark:hover:text-gray-300">{{ t('realizations.title') }}</button>
-      <span class="mx-1">›</span>
-      <span class="text-gray-700 dark:text-gray-300 truncate max-w-xs">{{ realization.title }}</span>
-    </nav>
-
-    <!-- Title + status header -->
-    <div class="flex items-start gap-4">
-      <div class="flex-1 min-w-0">
-        <div v-if="editingTitle" class="flex items-center gap-2">
-          <input
-            v-model="titleDraft"
-            @keyup.enter="saveTitle"
-            @keyup.escape="editingTitle = false"
-            class="text-2xl font-bold border-b-2 border-red-500 bg-transparent outline-none text-gray-900 dark:text-white w-full"
-            autofocus
-          />
-          <button @click="saveTitle" :disabled="savingTitle" class="text-sm text-red-600 hover:underline">{{ t('common.save') }}</button>
-          <button @click="editingTitle = false" class="text-sm text-gray-500 hover:underline">{{ t('common.cancel') }}</button>
-        </div>
-        <h1
-          v-else
-          class="text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:underline decoration-dotted"
-          @click="startEditTitle"
-        >
-          {{ realization.title }}
+    <template v-else-if="realization">
+      <!-- Title -->
+      <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
+          🛠 Realizace - {{ realization.title }}
         </h1>
+        <div class="flex-shrink-0">
+          <select
+            :value="realization.status"
+            @change="updateStatus(($event.target as HTMLSelectElement).value)"
+            :class="getRealizationStatusMeta(realization.status).color"
+            class="rounded-lg px-3 py-1.5 text-sm font-medium border-0 cursor-pointer focus:ring-2 focus:ring-red-500 outline-none"
+          >
+            <option v-for="s in REALIZATION_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Status selector -->
-      <div class="flex-shrink-0">
-        <select
-          :value="realization.status"
-          @change="updateStatus(($event.target as HTMLSelectElement).value)"
-          :class="getRealizationStatusMeta(realization.status).color"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium border-0 cursor-pointer focus:ring-2 focus:ring-red-500 outline-none"
+      <!-- Progress bar exactly like Lead Detail -->
+      <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
+        <div class="flex items-center justify-between gap-1 select-none">
+          <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
+            <div
+              class="w-full h-1.5 rounded-full transition-all duration-300"
+              :class="[
+                i <= currentStatusIndex ? getStatusBg(s.value) : 'bg-gray-200 dark:bg-gray-700',
+                i === currentStatusIndex ? 'scale-y-125' : ''
+              ]"
+              :style="i === currentStatusIndex ? { boxShadow: '0 0 0 2px ' + getStatusHexColor(s.value) + '80' } : {}"
+            />
+            <span
+              class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
+              :class="i <= currentStatusIndex ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
+            >
+              {{ s.label }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs exactly like Lead Detail -->
+      <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        <button
+          v-for="tab in [
+            { id: 'overview', label: t('realizations.tabOverview') },
+            { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
+            { id: 'tasks', label: t('realizations.tabTasks') },
+            { id: 'proposals', label: t('realizations.tabProposals') },
+            { id: 'documents', label: `${t('realizations.tabDocuments')} (${documents.length})` },
+          ]"
+          :key="tab.id"
+          @click="activeTab = tab.id as Tab; if (tab.id === 'documents' && documents.length === 0) loadDocuments()"
+          :class="activeTab === tab.id
+            ? 'border-b-2 border-red-600 text-red-600'
+            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+          class="px-4 py-3 text-sm font-medium"
         >
-          <option v-for="s in REALIZATION_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
-        </select>
+          {{ tab.label }}
+        </button>
       </div>
-    </div>
 
-    <!-- Tabs -->
-    <div class="flex border-b border-gray-200 dark:border-gray-700">
-      <button
-        v-for="tab in [
-          { id: 'overview', label: t('realizations.tabOverview') },
-          { id: 'milestones', label: `${t('realizations.tabMilestones')} (${totalMilestones})` },
-          { id: 'tasks', label: t('realizations.tabTasks') },
-          { id: 'proposals', label: t('realizations.tabProposals') },
-          { id: 'documents', label: `${t('realizations.tabDocuments')} (${documents.length})` },
-        ]"
-        :key="tab.id"
-        @click="activeTab = tab.id as Tab; if (tab.id === 'documents' && documents.length === 0) loadDocuments()"
-        :class="activeTab === tab.id
-          ? 'border-b-2 border-red-600 text-red-600'
-          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-        class="px-4 py-3 text-sm font-medium"
-      >
-        {{ tab.label }}
-      </button>
-    </div>
+      <!-- Overview tab: streamline left + sidebar right -->
+      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <!-- Overview tab: streamline left + sidebar right -->
-    <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Activity Feed & Presets Switcher from Lead Detail -->
+        <div class="lg:col-span-2">
+          <!-- Switchers: Přehled + user presets + Filtry -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+            <button
+              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === 'overview' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = 'overview'"
+            >
+              Přehled
+            </button>
 
-      <!-- Left: ActivityTimeline (streamline) -->
-      <div class="lg:col-span-2">
-        <ActivityTimeline ref="activityTimelineRef" entity-type="realization" :entity-id="realizationId" />
-      </div>
+            <!-- User defined shortcuts -->
+            <button
+              v-for="shortcut in shortcuts"
+              :key="shortcut.id"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === shortcut.id ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = shortcut.id"
+            >
+              {{ shortcut.name }}
+            </button>
+
+            <!-- Filtry button -->
+            <div class="relative flex items-center h-full">
+              <StreamlineFilterDropdown
+                :tools="availableTools"
+                :model-value="currentVisibleTypes"
+                :is-customised="selectedShortcutId === 'custom'"
+                :shortcuts="shortcuts"
+                @update:visible="onCustomFilterChange"
+                @delete-shortcut="deleteShortcut"
+                @move-shortcut="(payload) => moveShortcut(payload.fromIdx, payload.toIdx)"
+              />
+            </div>
+          </div>
+
+          <!-- Quick action to save custom filter as shortcut if it's selected -->
+          <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
+            <input
+              v-model="newShortcutName"
+              type="text"
+              placeholder="Název zkratky..."
+              class="text-xs rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <button
+              class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
+              :disabled="!newShortcutName.trim()"
+              @click="saveCurrentAsShortcut"
+            >
+              Uložit jako zkratku
+            </button>
+          </div>
+
+          <!-- Activity feed -->
+          <ActivityTimeline
+            ref="activityTimelineRef"
+            :hide-composer="true"
+            entity-type="realization"
+            :entity-id="realizationId"
+            :hide-filter-dropdown="true"
+            :override-visible-types="currentVisibleTypes"
+          />
+        </div>
+
 
       <!-- Right: sidebar (quick actions + description + milestones progress + meta) -->
       <div class="space-y-4">
@@ -566,5 +784,8 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-  </div>
+  </template>
+  <div v-else class="text-center py-12 text-gray-400 dark:text-gray-500">{{ t('realizations.notFound') }}</div>
+</div>
 </template>
+

@@ -30,8 +30,8 @@ def _build_entity_toolbar() -> None:
         from crm.models import Lead, Realization, Management
         _ENTITY_TOOLBAR = {
             "lead": Lead.TOOLBAR_TOOLS,
-            "realization": getattr(Realization, "TOOLBAR_TOOLS", ["comment", "task"]),
-            "management": getattr(Management, "TOOLBAR_TOOLS", ["comment", "task"]),
+            "realization": ["comment", "task", "proposal"],
+            "management": ["comment", "task", "proposal"],
             "customer": ["comment", "call", "meeting", "email_out", "task"],
             "proposal": ["comment", "task"],
             "task": [
@@ -136,6 +136,16 @@ def get_entity_toolbar(request, entity_type: str):
                 "activity_type": "task",
                 "label": str(_("Task")),
                 "icon": "ClipboardDocumentListIcon",
+                "channel": "none",
+                "direction": "none",
+                "form_schema": {"type": "object", "properties": {}},
+            })
+        elif activity_type == "proposal":
+            # Synthetic entry — handled specially by the frontend
+            result.append({
+                "activity_type": "proposal",
+                "label": str(_("Proposal")),
+                "icon": "DocumentTextIcon",
                 "channel": "none",
                 "direction": "none",
                 "form_schema": {"type": "object", "properties": {}},

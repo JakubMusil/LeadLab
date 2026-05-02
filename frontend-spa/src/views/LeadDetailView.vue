@@ -10,6 +10,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
@@ -34,8 +35,125 @@ const { on, off } = useWebSocket()
 const { t } = useI18n()
 
 const leadId = computed(() => route.params.id as string)
-type Tab = 'overview' | 'tasks' | 'files' | 'proposals'
-const activeTab = ref<Tab>('overview')
+
+const selectedShortcutId = ref('overview')
+const customFilters = ref<Set<string>>(new Set())
+const newShortcutName = ref('')
+const allTools = ref<any[]>([])
+
+interface ShortcutPreset {
+  id: string
+  name: string
+  visible_activity_types: string[]
+}
+const shortcuts = ref<ShortcutPreset[]>([])
+
+const shortcutsKey = computed(() => {
+  const userId = authStore.user?.id || 'guest'
+  return `leadlab_shortcuts_u${userId}`
+})
+
+function loadShortcuts() {
+  const data = localStorage.getItem(shortcutsKey.value)
+  if (data) {
+    try {
+      shortcuts.value = JSON.parse(data)
+    } catch {
+      shortcuts.value = []
+    }
+  } else {
+    // default shortcuts
+    shortcuts.value = [
+      { id: 'sc-tasks', name: 'Úkoly', visible_activity_types: ['task', 'task_assigned', 'task_completed', 'task_created', 'task_reopened'] },
+      { id: 'sc-files', name: 'Soubory', visible_activity_types: ['file_upload'] },
+      { id: 'sc-proposals', name: 'Proposals', visible_activity_types: ['proposal_created', 'proposal_accepted', 'proposal_rejected'] }
+    ]
+  }
+}
+
+function saveShortcutsToLocalStorage() {
+  localStorage.setItem(shortcutsKey.value, JSON.stringify(shortcuts.value))
+}
+
+function moveShortcut(fromIdx: number, toIdx: number) {
+  const arr = [...shortcuts.value]
+  const item = arr[fromIdx]
+  if (!item) return
+  arr.splice(fromIdx, 1)
+  arr.splice(toIdx, 0, item)
+  shortcuts.value = arr
+  saveShortcutsToLocalStorage()
+}
+
+function deleteShortcut(id: string) {
+  shortcuts.value = shortcuts.value.filter(s => s.id !== id)
+  saveShortcutsToLocalStorage()
+  if (selectedShortcutId.value === id) {
+    selectedShortcutId.value = 'overview'
+  }
+}
+
+async function loadTools() {
+  const res = await api.get<any[]>('/api/v1/streamline/tools')
+  if (res.ok) {
+    allTools.value = res.data
+  }
+}
+
+const availableTools = computed(() => {
+  const t = [...allTools.value]
+  if (!t.some((x) => x.activity_type === 'task')) {
+    t.push({
+      activity_type: 'task',
+      label: 'Úkoly',
+      category: 'task',
+      default_visibility: 'important',
+    })
+  }
+  return t
+})
+
+const importantToolsSet = computed(() => {
+  return new Set(availableTools.value.filter((t: any) => t.default_visibility === 'important').map((t: any) => t.activity_type))
+})
+
+const currentVisibleTypes = computed(() => {
+  if (selectedShortcutId.value === 'overview') {
+    return importantToolsSet.value
+  }
+  if (selectedShortcutId.value === 'custom') {
+    return customFilters.value
+  }
+  const preset = shortcuts.value.find(s => s.id === selectedShortcutId.value)
+  if (preset) {
+    return new Set(preset.visible_activity_types)
+  }
+  return importantToolsSet.value
+})
+
+function onCustomFilterChange(next: string[] | null) {
+  if (next === null) {
+    customFilters.value = importantToolsSet.value
+  } else {
+    customFilters.value = new Set(next)
+  }
+  selectedShortcutId.value = 'custom'
+}
+
+function saveCurrentAsShortcut() {
+  const name = newShortcutName.value.trim()
+  if (!name) return
+  const id = `sc-${Date.now()}`
+  shortcuts.value.push({
+    id,
+    name,
+    visible_activity_types: Array.from(customFilters.value),
+  })
+  saveShortcutsToLocalStorage()
+  selectedShortcutId.value = id
+  newShortcutName.value = ''
+}
+
 
 // Team members (for @mention in task composer on the Tasks tab)
 const teamMembers = ref<MentionUser[]>([])
@@ -105,6 +223,84 @@ const editCurrency = ref('')
 const editError = ref('')
 const editLoading = ref(false)
 const statusPopupOpen = ref(false)
+
+const editCompanyId = ref<string | null>(null)
+const editContactPersonId = ref<string | null>(null)
+const companies = ref<any[]>([])
+const contactPersons = ref<any[]>([])
+const loadingCompanies = ref(false)
+const loadingContactPersons = ref(false)
+
+async function loadCompanies() {
+  loadingCompanies.value = true
+  const res = await api.get<any[]>('/api/v1/crm/directory?type=company&page_size=200')
+  loadingCompanies.value = false
+  if (res.ok) companies.value = res.data
+}
+
+async function loadEmployeesForCompany(companyId: string) {
+  loadingContactPersons.value = true
+  const res = await api.get<any[]>(`/api/v1/crm/directory/${companyId}/employees`)
+  loadingContactPersons.value = false
+  if (res.ok) contactPersons.value = res.data
+}
+
+function onCompanyChange() {
+  if (editCompanyId.value) {
+    loadEmployeesForCompany(editCompanyId.value)
+  } else {
+    contactPersons.value = []
+    editContactPersonId.value = null
+  }
+}
+
+const displayedStatuses = computed(() => {
+  const current = store.currentLead?.status || 'new'
+  const base = [
+    { value: 'new', label: t('leads.statusNew') },
+    { value: 'contacted', label: t('leads.statusContacted') },
+    { value: 'proposal', label: t('leads.statusProposal') },
+    { value: 'negotiation', label: t('leads.statusNegotiation') },
+    { value: 'won', label: t('leads.statusWon') },
+  ]
+  if (current === 'lost') {
+    base.push({ value: 'lost', label: t('leads.statusLost') })
+  } else if (current === 'canceled') {
+    base.push({ value: 'canceled', label: t('leads.statusCanceled') })
+  }
+  return base
+})
+
+const currentStatusIndex = computed(() => {
+  const current = store.currentLead?.status || 'new'
+  return displayedStatuses.value.findIndex((s) => s.value === current)
+})
+
+function getStatusBg(status: string) {
+  switch (status) {
+    case 'new': return 'bg-gray-400'
+    case 'contacted': return 'bg-blue-500'
+    case 'proposal': return 'bg-yellow-500'
+    case 'negotiation': return 'bg-orange-500'
+    case 'won': return 'bg-green-500'
+    case 'lost': return 'bg-red-500'
+    case 'canceled': return 'bg-gray-500'
+    default: return 'bg-indigo-500'
+  }
+}
+
+function getStatusHexColor(status: string) {
+  switch (status) {
+    case 'new': return '#9ca3af'
+    case 'contacted': return '#3b82f6'
+    case 'proposal': return '#eab308'
+    case 'negotiation': return '#f97316'
+    case 'won': return '#22c55e'
+    case 'lost': return '#ef4444'
+    case 'canceled': return '#6b7280'
+    default: return '#6366f1'
+  }
+}
 
 // Inline description editing
 const editingDescription = ref(false)
@@ -318,6 +514,15 @@ function openEdit() {
   editValue.value = lead.value != null ? String(lead.value) : ''
   editCurrency.value = lead.currency
   editError.value = ''
+  editCompanyId.value = (lead as any).company_id ?? null
+  editContactPersonId.value = (lead as any).contact_person_id ?? null
+
+  if ((lead as any).company_id) {
+    loadEmployeesForCompany((lead as any).company_id)
+  } else {
+    contactPersons.value = []
+  }
+  loadCompanies()
   showEditModal.value = true
 }
 
@@ -331,6 +536,8 @@ async function submitEdit() {
     source: editSource.value,
     value: editValue.value ? parseFloat(editValue.value) : null,
     currency: editCurrency.value,
+    company_id: editCompanyId.value ?? null,
+    contact_person_id: editContactPersonId.value ?? null,
   })
   editLoading.value = false
   if (result.ok) {
@@ -354,8 +561,8 @@ async function deleteLead() {
 onMounted(async () => {
   await store.fetchLead(leadId.value)
   loadTeamMembers()
-  if (activeTab.value === 'tasks') await loadTasks()
-  else if (activeTab.value === 'files') await loadFiles()
+  loadShortcuts()
+  loadTools()
 
   on('lead.updated', onWsLeadUpdated)
 })
@@ -369,21 +576,20 @@ function onWsLeadUpdated(_payload: Record<string, unknown>) {
   // is a shared Pinia ref so the UI re-renders automatically.
 }
 
-async function switchTab(tab: Tab) {
-  activeTab.value = tab
-  if (tab === 'tasks' && tasks.value.length === 0) await loadTasks()
-  else if (tab === 'files' && files.value.length === 0) await loadFiles()
-  else if (tab === 'proposals') router.push(`/app/opportunities/${leadId.value}/proposals`)
-}
+const selectedContact = ref<any | null>(null)
+const showContactModal = ref(false)
+const loadingContactDetail = ref(false)
 
-function getTabLabel(tab: string): string {
-  const keyMap: Record<string, string> = {
-    overview: 'leadDetail.tabOverview',
-    tasks: 'leadDetail.tabTasks',
-    files: 'leadDetail.tabFiles',
+async function openContactDetail(id: string | null) {
+  if (!id) return
+  loadingContactDetail.value = true
+  showContactModal.value = true
+  selectedContact.value = null
+  const res = await api.get<any>(`/api/v1/crm/directory/${id}`)
+  loadingContactDetail.value = false
+  if (res.ok) {
+    selectedContact.value = res.data
   }
-  const key = keyMap[tab]
-  return key ? t(key) : tab.charAt(0).toUpperCase() + tab.slice(1)
 }
 </script>
 
@@ -401,34 +607,106 @@ function getTabLabel(tab: string): string {
     </div>
 
     <template v-else-if="store.currentLead">
-      <!-- Tabs -->
-      <div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
-        <button
-          v-for="tab in (['overview', 'tasks', 'files', 'proposals'] as Tab[])"
-          :key="tab"
-          class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize"
-          :class="activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-          @click="switchTab(tab)"
-        >{{ getTabLabel(tab) }}</button>
+      <!-- Title -->
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis">
+        Příležitost - {{ store.currentLead.title }}
+      </h1>
+
+      <!-- Progress bar -->
+      <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
+        <div class="flex items-center justify-between gap-1 select-none">
+          <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
+            <div
+              class="w-full h-1.5 rounded-full transition-all duration-300"
+              :class="[
+                i <= currentStatusIndex ? getStatusBg(s.value) : 'bg-gray-200 dark:bg-gray-700',
+                i === currentStatusIndex ? 'scale-y-125' : ''
+              ]"
+              :style="i === currentStatusIndex ? { boxShadow: '0 0 0 2px ' + getStatusHexColor(s.value) + '80' } : {}"
+            />
+            <span
+              class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
+              :class="i <= currentStatusIndex ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
+            >
+              {{ s.label }}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- OVERVIEW TAB: 2-column layout (stream + sidebar) -->
-      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 2-column layout from the start -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- Main: chronological activity stream with filter -->
+        <!-- Left Column: Activity Feed & Presets Switcher -->
         <div class="lg:col-span-2">
+          <!-- Switchers: Přehled + user presets + Filtry -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+            <button
+              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === 'overview' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = 'overview'"
+            >
+              Přehled
+            </button>
+
+            <!-- User defined shortcuts -->
+            <button
+              v-for="shortcut in shortcuts"
+              :key="shortcut.id"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === shortcut.id ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = shortcut.id"
+            >
+              {{ shortcut.name }}
+            </button>
+
+            <!-- Filtry button -->
+            <div class="relative flex items-center h-full">
+              <StreamlineFilterDropdown
+                :tools="availableTools"
+                :model-value="currentVisibleTypes"
+                :is-customised="selectedShortcutId === 'custom'"
+                :shortcuts="shortcuts"
+                @update:visible="onCustomFilterChange"
+                @delete-shortcut="deleteShortcut"
+                @move-shortcut="(payload) => moveShortcut(payload.fromIdx, payload.toIdx)"
+              />
+            </div>
+          </div>
+
+          <!-- Quick action to save custom filter as shortcut if it's selected -->
+          <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
+            <input
+              v-model="newShortcutName"
+              type="text"
+              placeholder="Název zkratky..."
+              class="text-xs rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <button
+              class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
+              :disabled="!newShortcutName.trim()"
+              @click="saveCurrentAsShortcut"
+            >
+              Uložit jako zkratku
+            </button>
+          </div>
+
+          <!-- Activity feed -->
           <ActivityTimeline
             ref="activityTimelineRef"
             :hide-composer="true"
             entity-type="lead"
             :entity-id="leadId"
+            :hide-filter-dropdown="true"
+            :override-visible-types="currentVisibleTypes"
           />
         </div>
 
-        <!-- Sidebar: lead details + quick actions -->
+        <!-- Right Column: Sidebar (details + actions) -->
         <div class="space-y-4">
 
-          <!-- Lead details card (shown first) -->
+          <!-- Lead details card -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
             <!-- Lead title as prominent heading (replaces "Detaily příležitosti" label) -->
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
@@ -475,9 +753,23 @@ function getTabLabel(tab: string): string {
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
               </div>
-              <div v-if="store.currentLead.created_by_name" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreatedBy') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem]">{{ store.currentLead.created_by_name }}</dd>
+              <div v-if="store.currentLead.company_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Společnost</dt>
+                <dd
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  @click="openContactDetail(store.currentLead.company_id)"
+                >
+                  {{ store.currentLead.company_name }}
+                </dd>
+              </div>
+              <div v-if="store.currentLead.contact_person_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Kontaktní osoba</dt>
+                <dd
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  @click="openContactDetail(store.currentLead.contact_person_id)"
+                >
+                  {{ store.currentLead.contact_person_name }}
+                </dd>
               </div>
               <!-- Inline-editable description -->
               <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -530,214 +822,9 @@ function getTabLabel(tab: string): string {
             :team-members="teamMembers"
             :attachment-upload-url="`/api/v1/crm/opportunities/${leadId}/attachments`"
             @activity-added="activityTimelineRef?.load()"
-            @file-uploaded="(f) => { files.unshift(f as FileItem) }"
+            @file-uploaded="(f) => { files.unshift(f as any) }"
           />
 
-        </div>
-      </div>
-
-      <!-- TASKS TAB -->
-      <div v-else-if="activeTab === 'tasks'" class="space-y-4">
-        <div v-if="tasksLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-        <div v-else-if="tasks.length === 0" class="text-center py-10 text-gray-400 text-sm">{{ t('leadDetail.noTasks') }}</div>
-        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-          <div v-for="task in tasks" :key="task.id">
-            <!-- Root task row -->
-            <div class="flex items-start gap-3 p-4">
-              <button
-                class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5"
-                :class="task.is_completed ? 'bg-green-500 border-green-500 text-white hover:bg-green-400' : 'border-gray-300 hover:border-green-400'"
-                :title="task.is_completed ? t('tasks.reopen') : t('tasks.markDone')"
-                @click="completeTask(task.id, task.is_completed)"
-              >
-                <CheckIcon v-if="task.is_completed" class="w-3 h-3" />
-              </button>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-900 dark:text-gray-100" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</p>
-                <!-- eslint-disable-next-line vue/no-v-html -->
-                <div v-if="task.description" class="text-xs text-gray-700 dark:text-gray-300 mt-0.5 prose prose-xs dark:prose-invert max-w-none" v-html="sanitizeHtml(task.description)" />
-                <div class="flex flex-wrap gap-3 mt-1 text-xs">
-                  <span v-if="task.due_date" class="inline-flex items-center gap-1" :class="!task.is_completed && new Date(task.due_date) < new Date() ? 'text-red-500 font-semibold' : 'text-gray-400'">
-                    <CalendarDaysIcon class="w-3.5 h-3.5" />
-                    {{ new Date(task.due_date).toLocaleDateString() }}
-                  </span>
-                  <span v-if="task.assigned_to_id" class="inline-flex items-center gap-1 text-blue-500">
-                    <UserIcon class="w-3.5 h-3.5" />
-                    {{ teamMembers.find(m => m.id === task.assigned_to_id)?.label ?? task.assigned_to_id }}
-                  </span>
-                  <span v-if="task.watcher_ids?.length" class="inline-flex items-center gap-1 text-gray-400 dark:text-gray-500">
-                    <BellIcon class="w-3.5 h-3.5" />
-                    {{ task.watcher_ids.length }}
-                  </span>
-                </div>
-              </div>
-              <!-- Expand/collapse button for tasks with subtasks or checklist -->
-              <button
-                v-if="(task.streamline_count ?? 0) > 0"
-                class="flex-shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                @click="toggleExpand(task.id)"
-              >
-                <ChevronDownIcon
-                  class="w-3.5 h-3.5 transition-transform"
-                  :class="expandedTasks.has(task.id) ? 'rotate-180' : ''"
-                />
-                <span class="tabular-nums">{{ task.streamline_resolved ?? 0 }}/{{ task.streamline_count }} ✓</span>
-              </button>
-            </div>
-
-            <!-- Tree details (expanded) -->
-            <div
-              v-if="expandedTasks.has(task.id)"
-              class="ml-8 mr-4 mb-3 border-l-2 border-gray-100 dark:border-gray-700 pl-4 space-y-3"
-            >
-              <div v-if="taskDetailsLoadingSet.has(task.id)" class="animate-pulse h-8 bg-gray-100 dark:bg-gray-700 rounded-lg" />
-              <template v-else-if="taskDetailsMap.has(task.id)">
-                <!-- Subtasks -->
-                <div v-if="taskDetailsMap.get(task.id)!.subtasks.length > 0">
-                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.subtasks') }}</p>
-                  <div class="space-y-1">
-                    <div
-                      v-for="sub in taskDetailsMap.get(task.id)!.subtasks"
-                      :key="sub.id"
-                      class="flex items-center gap-2 text-sm"
-                    >
-                      <span
-                        class="w-3.5 h-3.5 rounded-full border flex-shrink-0"
-                        :class="sub.is_completed ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
-                      />
-                      <span :class="sub.is_completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'">{{ sub.title }}</span>
-                      <span v-if="sub.due_date" class="text-xs text-gray-400 ml-auto flex-shrink-0">{{ new Date(sub.due_date).toLocaleDateString() }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Checklist -->
-                <div v-if="taskDetailsMap.get(task.id)!.checklist.length > 0">
-                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.checklist') }}</p>
-                  <div class="space-y-1">
-                    <div
-                      v-for="item in taskDetailsMap.get(task.id)!.checklist.slice().sort((a, b) => a.position - b.position)"
-                      :key="item.id"
-                      class="flex items-center gap-2 text-sm"
-                    >
-                      <span
-                        class="w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-white text-xs"
-                        :class="item.is_checked ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
-                      >{{ item.is_checked ? '✓' : '' }}</span>
-                      <span :class="item.is_checked ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'">{{ item.text }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Dependencies -->
-                <div v-if="taskDetailsMap.get(task.id)!.dependencies.length > 0">
-                  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('tasks.dependencies') }}</p>
-                  <div class="space-y-1">
-                    <div
-                      v-for="dep in taskDetailsMap.get(task.id)!.dependencies"
-                      :key="dep.id"
-                      class="flex items-center gap-2 text-sm"
-                    >
-                      <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
-                        :class="dep.type === 'blocks'
-                          ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
-                      >
-                        {{ dep.type === 'blocks' ? t('tasks.dependencyBlocks') : t('tasks.dependencyRelatedTo') }}
-                      </span>
-                      <span class="text-gray-700 dark:text-gray-300 truncate">
-                        {{ dep.from_task_id === task.id ? dep.to_task_title : dep.from_task_title }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FILES TAB -->
-      <div v-else-if="activeTab === 'files'" class="space-y-4">
-        <!-- Upload zone -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-          <div
-            class="flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-8 cursor-pointer transition-colors"
-            :class="isDraggingOver
-              ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
-              : 'border-gray-200 dark:border-gray-600 hover:border-red-300 dark:hover:border-red-500'"
-            role="button"
-            aria-label="File upload drop zone. Click or drag and drop files here."
-            tabindex="0"
-            @click="fileInput?.click()"
-            @keydown.enter="fileInput?.click()"
-            @dragover.prevent="isDraggingOver = true"
-            @dragleave.prevent="isDraggingOver = false"
-            @drop.prevent="onFileDrop"
-          >
-            <CloudArrowUpIcon class="w-10 h-10 mb-3" :class="isDraggingOver ? 'text-red-400' : 'text-gray-300 dark:text-gray-600'" aria-hidden="true" />
-            <span class="text-sm font-medium" :class="isDraggingOver ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
-              {{ isDraggingOver ? t('leadDetail.dropToUpload') : t('leadDetail.clickOrDrop') }}
-            </span>
-            <span class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('leadDetail.maxSize') }}</span>
-            <input ref="fileInput" type="file" class="hidden" aria-hidden="true" @change="uploadFile" />
-          </div>
-
-          <!-- Progress bar -->
-          <div v-if="uploadingFile" class="mt-3">
-            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-              <span>{{ t('leadDetail.uploading') }}</span>
-              <span>{{ uploadProgress }}%</span>
-            </div>
-            <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-red-500 rounded-full transition-all duration-200"
-                :style="{ width: `${uploadProgress}%` }"
-                role="progressbar"
-                :aria-valuenow="uploadProgress"
-                aria-valuemin="0"
-                aria-valuemax="100"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div v-if="filesLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-        <div v-else-if="files.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
-          <div class="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
-            <PaperClipIcon class="w-6 h-6 text-gray-400" aria-hidden="true" />
-          </div>
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ t('leadDetail.noFiles') }}</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('leadDetail.noFilesHint') }}</p>
-        </div>
-        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-          <div v-for="file in files" :key="file.id" class="flex items-center gap-3 p-4 group">
-            <!-- Image preview or file icon -->
-            <div class="w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <img
-                v-if="file.content_type.startsWith('image/')"
-                :src="file.url"
-                :alt="file.original_filename"
-                class="w-full h-full object-cover"
-              />
-              <DocumentIcon v-else class="w-5 h-5 text-gray-400" aria-hidden="true" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <a :href="file.url" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">{{ file.original_filename }}</a>
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ fmtBytes(file.size_bytes) }} · {{ new Date(file.created_at).toLocaleDateString() }}</p>
-            </div>
-            <button
-              class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 transition-opacity"
-              :aria-label="`Delete ${file.original_filename}`"
-              @click="deleteFile(file.id)"
-            >
-              <TrashIcon class="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
     </template>
@@ -756,6 +843,37 @@ function getTabLabel(tab: string): string {
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormTitle') }}</label>
             <input v-model="editTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
+
+          <!-- Company & Contact Person Selection -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Společnost</label>
+              <select
+                v-model="editCompanyId"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                @change="onCompanyChange"
+              >
+                <option :value="null">-- Žádná společnost --</option>
+                <option v-for="c in companies" :key="c.id" :value="c.id">
+                  {{ c.company_name || [c.first_name, c.last_name].filter(Boolean).join(' ') }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Kontaktní osoba</label>
+              <select
+                v-model="editContactPersonId"
+                :disabled="!editCompanyId"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 disabled:opacity-50"
+              >
+                <option :value="null">-- Žádná kontaktní osoba --</option>
+                <option v-for="cp in contactPersons" :key="cp.id" :value="cp.id">
+                  {{ [cp.first_name, cp.last_name].filter(Boolean).join(' ') }}
+                </option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
             <textarea v-model="editDescription" rows="2" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
@@ -796,6 +914,74 @@ function getTabLabel(tab: string): string {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Contact Detail Modal -->
+  <Teleport to="body">
+    <div v-if="showContactModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showContactModal = false">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 relative" role="dialog" aria-modal="true" aria-label="Contact Details">
+        <button
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          @click="showContactModal = false"
+        >✕</button>
+
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Detail kontaktu</h3>
+
+        <div v-if="loadingContactDetail" class="animate-pulse space-y-3">
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+        </div>
+
+        <div v-else-if="selectedContact" class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+          <div v-if="selectedContact.company_name" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">Název firmy</span>
+            <span class="font-semibold text-gray-900 dark:text-gray-100 text-right">{{ selectedContact.company_name }}</span>
+          </div>
+          <div v-if="selectedContact.first_name || selectedContact.last_name" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">Jméno</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">
+              {{ [selectedContact.first_name, selectedContact.last_name].filter(Boolean).join(' ') }}
+            </span>
+          </div>
+          <div v-if="selectedContact.email" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">E-mail</span>
+            <a :href="`mailto:${selectedContact.email}`" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ selectedContact.email }}</a>
+          </div>
+          <div v-if="selectedContact.phone" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">Telefon</span>
+            <a :href="`tel:${selectedContact.phone}`" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ selectedContact.phone }}</a>
+          </div>
+          <div v-if="selectedContact.website" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">Web</span>
+            <a :href="selectedContact.website" target="_blank" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ selectedContact.website }}</a>
+          </div>
+          <div v-if="selectedContact.ico" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">IČO</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ selectedContact.ico }}</span>
+          </div>
+          <div v-if="selectedContact.dic" class="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+            <span class="text-xs text-gray-400">DIČ</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ selectedContact.dic }}</span>
+          </div>
+          <div v-if="selectedContact.address_street || selectedContact.address_city" class="flex flex-col border-b border-gray-100 dark:border-gray-800 pb-2 gap-1">
+            <span class="text-xs text-gray-400">Adresa</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">
+              {{ [selectedContact.address_street, selectedContact.address_city, selectedContact.address_zip].filter(Boolean).join(', ') }}
+            </span>
+          </div>
+        </div>
+
+        <div v-else class="text-center text-sm text-gray-500 py-4">Kontakt nebyl nalezen.</div>
+
+        <div class="flex pt-4">
+          <button
+            class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 transition-colors"
+            @click="showContactModal = false"
+          >Zavřít</button>
+        </div>
       </div>
     </div>
   </Teleport>

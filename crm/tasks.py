@@ -178,6 +178,15 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
         tags=tags,
         assigned_to=assigned_to,
     )
+    
+    # Log the creation activity so the task can accept reactions
+    from crm.api import _log_timeline_event
+    from crm.models import ActivityType
+    
+    # We don't have the user object in context typically, so we leave author=None
+    # or resolve it if available. Let's just log it safely.
+    _log_timeline_event(task, ActivityType.TASK_CREATED, author=None)
+    
     logger.info(
         "automation create_task: rule=%s created task '%s' (id=%s)%s",
         getattr(rule, 'id', 'unknown'), title, task.id,

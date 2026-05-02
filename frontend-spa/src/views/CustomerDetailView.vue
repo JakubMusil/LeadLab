@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
@@ -9,16 +9,137 @@ import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 
+import { useAuthStore } from '@/stores/auth'
+import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
+
 const route = useRoute()
+const router = useRouter()
 const store = useCustomersStore()
 const toast = useToast()
+const authStore = useAuthStore()
 const { t } = useI18n()
 
 const customerId = computed(() => route.params.id as string)
 
-// Tabs
-type Tab = 'overview' | 'tasks' | 'files'
-const activeTab = ref<Tab>('overview')
+const selectedShortcutId = ref('overview')
+const customFilters = ref<Set<string>>(new Set())
+const newShortcutName = ref('')
+const allTools = ref<any[]>([])
+
+interface ShortcutPreset {
+  id: string
+  name: string
+  visible_activity_types: string[]
+}
+const shortcuts = ref<ShortcutPreset[]>([])
+
+const shortcutsKey = computed(() => {
+  const userId = authStore.user?.id || 'guest'
+  return `customer_shortcuts_u${userId}`
+})
+
+function loadShortcuts() {
+  const data = localStorage.getItem(shortcutsKey.value)
+  if (data) {
+    try {
+      shortcuts.value = JSON.parse(data)
+    } catch {
+      shortcuts.value = []
+    }
+  } else {
+    // default shortcuts
+    shortcuts.value = [
+      { id: 'sc-tasks', name: 'Úkoly', visible_activity_types: ['task', 'task_assigned', 'task_completed', 'task_created', 'task_reopened'] },
+      { id: 'sc-files', name: 'Soubory', visible_activity_types: ['file_upload'] },
+      { id: 'sc-proposals', name: 'Proposals', visible_activity_types: ['proposal_created', 'proposal_accepted', 'proposal_rejected'] }
+    ]
+  }
+}
+
+function saveShortcutsToLocalStorage() {
+  localStorage.setItem(shortcutsKey.value, JSON.stringify(shortcuts.value))
+}
+
+function moveShortcut(fromIdx: number, toIdx: number) {
+  const arr = [...shortcuts.value]
+  const item = arr[fromIdx]
+  if (!item) return
+  arr.splice(fromIdx, 1)
+  arr.splice(toIdx, 0, item)
+  shortcuts.value = arr
+  saveShortcutsToLocalStorage()
+}
+
+
+function deleteShortcut(id: string) {
+  shortcuts.value = shortcuts.value.filter(s => s.id !== id)
+  saveShortcutsToLocalStorage()
+  if (selectedShortcutId.value === id) {
+    selectedShortcutId.value = 'overview'
+  }
+}
+
+async function loadTools() {
+  const res = await api.get<any[]>('/api/v1/streamline/tools')
+  if (res.ok) {
+    allTools.value = res.data
+  }
+}
+
+const availableTools = computed(() => {
+  const t = [...allTools.value]
+  if (!t.some((x) => x.activity_type === 'task')) {
+    t.push({
+      activity_type: 'task',
+      label: 'Úkoly',
+      category: 'task',
+      default_visibility: 'important',
+    })
+  }
+  return t
+})
+
+const importantToolsSet = computed(() => {
+  return new Set(availableTools.value.filter((t: any) => t.default_visibility === 'important').map((t: any) => t.activity_type))
+})
+
+const currentVisibleTypes = computed(() => {
+  if (selectedShortcutId.value === 'overview') {
+    return importantToolsSet.value
+  }
+  if (selectedShortcutId.value === 'custom') {
+    return customFilters.value
+  }
+  const preset = shortcuts.value.find(s => s.id === selectedShortcutId.value)
+  if (preset) {
+    return new Set(preset.visible_activity_types)
+  }
+  return importantToolsSet.value
+})
+
+function onCustomFilterChange(next: string[] | null) {
+  if (next === null) {
+    customFilters.value = importantToolsSet.value
+  } else {
+    customFilters.value = new Set(next)
+  }
+  selectedShortcutId.value = 'custom'
+}
+
+function saveCurrentAsShortcut() {
+  const name = newShortcutName.value.trim()
+  if (!name) return
+  const id = `sc-${Date.now()}`
+  shortcuts.value.push({
+    id,
+    name,
+    visible_activity_types: Array.from(customFilters.value),
+  })
+  saveShortcutsToLocalStorage()
+  selectedShortcutId.value = id
+  newShortcutName.value = ''
+}
+
 
 // ActivityTimeline ref (used to reload feed after sidebar quick-action submits).
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
@@ -67,7 +188,9 @@ interface ProposalOut { id: string; title: string; status: string; total_value: 
 const linkedProposals = ref<ProposalOut[]>([])
 const proposalsLoading = ref(false)
 
-function startEdit() {
+const showEditModal = ref(false)
+
+function openEdit() {
   const c = store.currentCustomer
   if (!c) return
   editFirstName.value = c.first_name
@@ -84,11 +207,11 @@ function startEdit() {
   editAddressZip.value = c.address_zip
   editAddressCountry.value = c.address_country
   editError.value = ''
-  editing.value = true
+  showEditModal.value = true
 }
 
 function cancelEdit() {
-  editing.value = false
+  showEditModal.value = false
 }
 
 async function saveEdit() {
@@ -115,10 +238,21 @@ async function saveEdit() {
   })
   editLoading.value = false
   if (result.ok) {
-    editing.value = false
+    showEditModal.value = false
     toast.success(t('customers.updated'))
   } else {
     editError.value = result.error ?? t('customers.failedToUpdate')
+  }
+}
+
+async function deleteCustomer() {
+  if (!confirm(t('customers.deleteText'))) return
+  const result = await store.deleteCustomer(customerId.value)
+  if (result.ok) {
+    toast.success(t('customers.deleted'))
+    router.push('/app/directory')
+  } else {
+    toast.error(t('customers.failedToDelete'))
   }
 }
 
@@ -308,13 +442,11 @@ async function deleteDocument() {
   if (res.ok) documents.value = documents.value.filter(d => d.id !== id)
 }
 
-async function switchTab(tab: Tab) {
-  activeTab.value = tab
-  if (tab === 'tasks' && linkedTasks.value.length === 0) await loadLinkedTasks()
-  else if (tab === 'files' && documents.value.length === 0) await loadDocuments()
-}
+
 
 onMounted(async () => {
+  loadShortcuts()
+  await loadTools()
   await store.fetchCustomers({ page: 1 })
   await store.fetchCustomer(customerId.value)
   await loadLinkedLeads()
@@ -322,136 +454,178 @@ onMounted(async () => {
   await loadEmployees()
 })
 </script>
-
 <template>
-  <div class="p-6 space-y-5">
-    <RouterLink to="/app/directory" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600">
+  <div class="p-6">
+    <!-- Back -->
+    <RouterLink to="/app/directory" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
       ← {{ t('customers.title') }}
     </RouterLink>
 
-    <!-- Skeleton -->
+    <!-- Loading skeleton -->
     <div v-if="store.loadingDetail" class="animate-pulse space-y-4">
-      <div class="h-32 bg-gray-100 rounded-2xl" />
+      <div class="h-8 bg-gray-200 rounded w-64" />
+      <div class="h-24 bg-gray-100 rounded-2xl" />
     </div>
 
     <template v-else-if="store.currentCustomer">
-      <!-- Contact card -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-        <div class="flex items-start justify-between gap-4 flex-wrap">
-          <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-semibold flex-shrink-0"
-              :class="store.currentCustomer.type === 'company' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'">
-              {{ store.currentCustomer.type === 'company' ? '🏢' : store.currentCustomer.first_name[0]?.toUpperCase() ?? '?' }}
-            </div>
-            <div>
-              <template v-if="!editing">
-                <div class="flex items-center gap-2 mb-0.5">
-                  <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {{ [store.currentCustomer.first_name, store.currentCustomer.last_name].filter(Boolean).join(' ') }}
-                  </h2>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                    :class="store.currentCustomer.type === 'company' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'">
-                    {{ store.currentCustomer.type === 'company' ? t('customers.typeCompany') : t('customers.typePerson') }}
-                  </span>
-                </div>
-                <p v-if="store.currentCustomer.company_name" class="text-sm text-gray-500 dark:text-gray-400">{{ store.currentCustomer.company_name }}</p>
-                <!-- Company link for persons -->
-                <RouterLink
-                  v-if="store.currentCustomer.company_id"
-                  :to="`/app/directory/${store.currentCustomer.company_id}`"
-                  class="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                >🏢 {{ availableCompanies.find(c => c.id === store.currentCustomer!.company_id)?.first_name ?? t('customers.viewCompany') }}</RouterLink>
-                <div class="flex items-center gap-3 mt-2 flex-wrap">
-                  <a v-if="store.currentCustomer.email" :href="`mailto:${store.currentCustomer.email}`" class="text-sm text-blue-600 hover:underline flex items-center gap-1 dark:text-blue-400">
-                    📧 {{ store.currentCustomer.email }}
-                  </a>
-                  <a v-if="store.currentCustomer.phone" :href="`tel:${store.currentCustomer.phone}`" class="text-sm text-green-600 hover:underline flex items-center gap-1">
-                    📞 {{ store.currentCustomer.phone }}
-                  </a>
-                  <a v-if="store.currentCustomer.website" :href="store.currentCustomer.website" target="_blank" rel="noopener" class="text-sm text-purple-600 hover:underline flex items-center gap-1">
-                    🌐 {{ store.currentCustomer.website }}
-                  </a>
-                </div>
-                <!-- IČO / DIČ -->
-                <div v-if="store.currentCustomer.ico || store.currentCustomer.dic" class="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span v-if="store.currentCustomer.ico">IČO: <strong>{{ store.currentCustomer.ico }}</strong></span>
-                  <span v-if="store.currentCustomer.dic">DIČ: <strong>{{ store.currentCustomer.dic }}</strong></span>
-                </div>
-                <!-- Address -->
-                <div v-if="store.currentCustomer.address_street || store.currentCustomer.address_city" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  📍 {{ [store.currentCustomer.address_street, store.currentCustomer.address_zip, store.currentCustomer.address_city, store.currentCustomer.address_country].filter(Boolean).join(', ') }}
-                </div>
-              </template>
-              <template v-else>
-                <div v-if="editError" class="mb-2 text-sm text-red-600 dark:text-red-400">{{ editError }}</div>
-                <div class="grid grid-cols-2 gap-2">
-                  <input v-model="editFirstName" :placeholder="store.currentCustomer.type === 'company' ? t('customers.companyNameLabel') : t('customers.firstName')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-if="store.currentCustomer.type === 'person'" v-model="editLastName" :placeholder="t('customers.lastName')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editEmail" type="email" :placeholder="t('customers.email')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editPhone" type="tel" :placeholder="t('customers.phone')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editCompany" :placeholder="t('customers.company')" class="col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editWebsite" type="url" placeholder="https://" class="col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-if="store.currentCustomer.type === 'company'" v-model="editIco" :placeholder="t('customers.ico')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-if="store.currentCustomer.type === 'company'" v-model="editDic" :placeholder="t('customers.dic')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <!-- Employer company for persons -->
-                  <div v-if="store.currentCustomer.type === 'person'" class="col-span-2">
-                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('customers.employerCompany') }}</label>
-                    <select v-model="editCompanyId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400">
-                      <option value="">— {{ t('customers.noCompany') }} —</option>
-                      <option v-for="comp in availableCompanies" :key="comp.id" :value="comp.id">{{ comp.first_name }}</option>
-                    </select>
-                  </div>
-                  <input v-model="editAddressStreet" :placeholder="t('customers.addressStreet')" class="col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editAddressCity" :placeholder="t('customers.addressCity')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editAddressZip" :placeholder="t('customers.addressZip')" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                  <input v-model="editAddressCountry" :placeholder="t('customers.addressCountry')" class="col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
-                </div>
-                <div class="flex gap-2 mt-2">
-                  <button :disabled="editLoading" class="px-3 py-1.5 bg-red-600 text-white rounded-xl text-sm hover:bg-red-700 disabled:opacity-50" @click="saveEdit">{{ editLoading ? t('customers.saving') : t('customers.save') }}</button>
-                  <button class="px-3 py-1.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-300" @click="cancelEdit">{{ t('customers.cancel') }}</button>
-                </div>
-              </template>
+      <!-- Title -->
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 whitespace-nowrap overflow-hidden text-ellipsis">
+        {{ store.currentCustomer.type === 'company' ? '🏢 Společnost' : '👤 Osoba' }} - {{ [store.currentCustomer.first_name, store.currentCustomer.last_name].filter(Boolean).join(' ') }}
+      </h1>
+
+      <!-- 2-column layout from the start -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Activity Feed & Presets Switcher -->
+        <div class="lg:col-span-2">
+          <!-- Switchers: Přehled + user presets + Filtry -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+            <button
+              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === 'overview' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = 'overview'"
+            >
+              Přehled
+            </button>
+
+            <!-- User defined shortcuts -->
+            <button
+              v-for="shortcut in shortcuts"
+              :key="shortcut.id"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === shortcut.id ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = shortcut.id"
+            >
+              {{ shortcut.name }}
+            </button>
+
+            <!-- Filtry button -->
+            <div class="relative flex items-center h-full">
+              <StreamlineFilterDropdown
+                :tools="availableTools"
+                :model-value="currentVisibleTypes"
+                :is-customised="selectedShortcutId === 'custom'"
+                :shortcuts="shortcuts"
+                @update:visible="onCustomFilterChange"
+                @delete-shortcut="deleteShortcut"
+                @move-shortcut="(payload) => moveShortcut(payload.fromIdx, payload.toIdx)"
+              />
             </div>
           </div>
-          <button v-if="!editing" class="px-3 py-1.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="startEdit">{{ t('customers.edit') }}</button>
+
+          <!-- Quick action to save custom filter as shortcut if it's selected -->
+          <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
+            <input
+              v-model="newShortcutName"
+              type="text"
+              placeholder="Název zkratky..."
+              class="text-xs rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <button
+              class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
+              :disabled="!newShortcutName.trim()"
+              @click="saveCurrentAsShortcut"
+            >
+              Uložit jako zkratku
+            </button>
+          </div>
+
+          <!-- Activity feed -->
+          <ActivityTimeline
+            ref="activityTimelineRef"
+            :hide-composer="true"
+            entity-type="customer"
+            :entity-id="customerId"
+            :hide-filter-dropdown="true"
+            :override-visible-types="currentVisibleTypes"
+          />
         </div>
-      </div>
 
-      <!-- Tab bar -->
-      <div class="flex gap-1 border-b border-gray-200 dark:border-gray-700">
-        <button
-          v-for="tab in (['overview', 'tasks', 'files'] as Tab[])"
-          :key="tab"
-          @click="switchTab(tab)"
-          :class="activeTab === tab
-            ? 'border-b-2 border-red-600 text-red-600 dark:text-red-400'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-          class="px-4 py-2 text-sm font-medium transition-colors"
-        >
-          {{ tab === 'overview' ? t('customers.tabOverview') : tab === 'tasks' ? t('customers.tabTasks') : `${t('customers.tabFiles')} (${documents.length})` }}
-        </button>
-      </div>
 
-      <!-- OVERVIEW TAB: 2-column layout (timeline + sidebar) -->
-      <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Left: ActivityTimeline -->
-        <div class="lg:col-span-2">
-          <ActivityTimeline ref="activityTimelineRef" entity-type="customer" :entity-id="customerId" />
-        </div>
-
-        <!-- Right: sidebar (quick actions + employees + tags + metadata + linked entities) -->
+        <!-- Right Column: Sidebar -->
         <div class="space-y-4">
+          <!-- Contact Details Card -->
+          <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+              {{ [store.currentCustomer.first_name, store.currentCustomer.last_name].filter(Boolean).join(' ') }}
+            </h2>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('customers.email') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">
+                  <a v-if="store.currentCustomer.email" :href="`mailto:${store.currentCustomer.email}`" class="text-red-600 hover:underline dark:text-red-400">
+                    {{ store.currentCustomer.email }}
+                  </a>
+                  <span v-else class="text-gray-400 dark:text-gray-600 italic">—</span>
+                </dd>
+              </div>
 
-          <!-- Quick actions (unified Streamline composer) -->
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('customers.phone') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">
+                  <a v-if="store.currentCustomer.phone" :href="`tel:${store.currentCustomer.phone}`" class="text-red-600 hover:underline dark:text-red-400">
+                    {{ store.currentCustomer.phone }}
+                  </a>
+                  <span v-else class="text-gray-400 dark:text-gray-600 italic">—</span>
+                </dd>
+              </div>
+
+              <div v-if="store.currentCustomer.company_name || store.currentCustomer.company_id" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('customers.company') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">
+                  <span v-if="store.currentCustomer.company_name">{{ store.currentCustomer.company_name }}</span>
+                  <RouterLink
+                    v-if="store.currentCustomer.company_id"
+                    :to="`/app/directory/${store.currentCustomer.company_id}`"
+                    class="text-red-600 hover:underline dark:text-red-400 block"
+                  >
+                    🏢 {{ availableCompanies.find(c => c.id === store.currentCustomer!.company_id)?.first_name ?? t('customers.viewCompany') }}
+                  </RouterLink>
+                </dd>
+              </div>
+
+              <div v-if="store.currentCustomer.website" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('customers.website') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">
+                  <a :href="store.currentCustomer.website" target="_blank" rel="noopener" class="text-red-600 hover:underline dark:text-red-400">
+                    {{ store.currentCustomer.website }}
+                  </a>
+                </dd>
+              </div>
+
+              <div v-if="store.currentCustomer.ico" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">IČO</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">{{ store.currentCustomer.ico }}</dd>
+              </div>
+
+              <div v-if="store.currentCustomer.dic" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">DIČ</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[12rem] text-right">{{ store.currentCustomer.dic }}</dd>
+              </div>
+
+              <div v-if="store.currentCustomer.address_street || store.currentCustomer.address_city" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Adresa</dt>
+                <dd class="text-xs text-gray-700 dark:text-gray-300 text-right max-w-[12rem] truncate">
+                  {{ [store.currentCustomer.address_street, store.currentCustomer.address_zip, store.currentCustomer.address_city, store.currentCustomer.address_country].filter(Boolean).join(', ') }}
+                </dd>
+              </div>
+            </dl>
+            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('customers.edit') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteCustomer">{{ t('customers.delete') }}</button>
+            </div>
+          </div>
+
+          <!-- Quick actions card -->
           <EntitySidebarActionPicker
             entity-type="customer"
             :entity-id="customerId"
             @activity-added="activityTimelineRef?.load()"
           />
 
-          <!-- Employees (for companies) -->
-          <div v-if="store.currentCustomer.type === 'company'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <!-- Employees card (for companies) -->
+          <div v-if="store.currentCustomer.type === 'company'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.employees') }}</h3>
             <div v-if="employeesLoading" class="animate-pulse space-y-2">
               <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
@@ -476,7 +650,7 @@ onMounted(async () => {
           </div>
 
           <!-- Tags -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.tagsSection') }}</h3>
             <div class="flex flex-wrap gap-2 mb-3">
               <span
@@ -485,7 +659,7 @@ onMounted(async () => {
                 class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
               >
                 {{ tag }}
-                <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">×</button>
+                <button class="text-gray-400 hover:text-red-500 ml-1 text-xs" :disabled="tagsLoading" @click="removeTag(tag)">✕</button>
               </span>
               <span v-if="store.currentCustomer.tags.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noTags') }}</span>
             </div>
@@ -501,8 +675,8 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Metadata -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <!-- Metadata / Custom Fields -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.customFields') }}</h3>
             <div v-if="Object.keys(store.currentCustomer.metadata).length > 0" class="divide-y divide-gray-50 dark:divide-gray-700 mb-3">
               <div v-for="(val, key) in store.currentCustomer.metadata" :key="key" class="flex items-center gap-3 py-2 group">
@@ -520,7 +694,7 @@ onMounted(async () => {
           </div>
 
           <!-- Linked Leads -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.linkedLeads') }}</h3>
             <div v-if="leadsLoading" class="animate-pulse space-y-2">
               <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
@@ -541,12 +715,12 @@ onMounted(async () => {
           </div>
 
           <!-- Linked Proposals -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <div class="flex items-center justify-between mb-3">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('proposals.title') }}</h3>
               <RouterLink
                 :to="`/app/proposals`"
-                class="text-xs text-red-600 hover:text-red-700"
+                class="text-xs text-red-600 hover:text-red-700 font-medium"
               >{{ t('proposals.allProposals') }}</RouterLink>
             </div>
             <div v-if="proposalsLoading" class="animate-pulse space-y-2">
@@ -569,84 +743,101 @@ onMounted(async () => {
 
         </div>
       </div>
-
-      <!-- TASKS TAB -->
-      <div v-else-if="activeTab === 'tasks'" class="space-y-4">
-        <div v-if="tasksLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-        <div v-else-if="linkedTasks.length === 0" class="text-center py-10 text-sm text-gray-400 dark:text-gray-500">
-          {{ t('customers.noTasks') }}
-        </div>
-        <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
-          <RouterLink
-            v-for="task in linkedTasks"
-            :key="task.id"
-            :to="`/app/tasks/${task.id}`"
-            class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-          >
-            <span
-              class="w-4 h-4 rounded-full border flex-shrink-0"
-              :class="task.is_completed ? 'bg-green-400 border-green-400' : 'border-gray-300 dark:border-gray-600'"
-            />
-            <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate" :class="task.is_completed ? 'line-through text-gray-400' : ''">{{ task.title }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusColor(task.status)">{{ task.status }}</span>
-            <span v-if="task.due_date" class="text-xs text-gray-500 dark:text-gray-400">{{ new Date(task.due_date).toLocaleDateString() }}</span>
-            <span v-if="task.assigned_to_name" class="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[8rem]">{{ task.assigned_to_name }}</span>
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- FILES TAB -->
-      <div v-else-if="activeTab === 'files'" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('customers.documents') }}</h3>
-          <button
-            @click="docFileInputRef?.click()"
-            :disabled="docsUploading"
-            class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
-          >
-            {{ docsUploading ? t('customers.uploading') : t('customers.uploadBtn') }}
-          </button>
-          <input ref="docFileInputRef" type="file" multiple class="hidden" @change="onDocFileSelected" />
-        </div>
-
-        <div v-if="docsLoading" class="animate-pulse space-y-2">
-          <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
-        </div>
-
-        <div v-else-if="documents.length === 0" class="text-center py-10">
-          <div class="text-4xl mb-2">📁</div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('customers.noDocuments') }}</p>
-        </div>
-
-        <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-          <div v-for="doc in documents" :key="doc.id" class="flex items-center gap-3 p-3 group">
-            <span class="text-xl">{{ docFileIcon(doc.content_type) }}</span>
-            <div class="flex-1 min-w-0">
-              <a :href="doc.file_url" target="_blank" rel="noopener noreferrer"
-                 class="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-red-600 truncate block">
-                {{ doc.name }}
-              </a>
-              <p class="text-xs text-gray-400">{{ fmtDocBytes(doc.size_bytes) }} · {{ new Date(doc.created_at).toLocaleDateString('cs-CZ') }}</p>
-            </div>
-            <button @click="deleteDocId = doc.id" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-sm transition-opacity">🗑</button>
-          </div>
-        </div>
-
-        <!-- Delete confirm -->
-        <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-            <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('customers.confirmDocDelete') }}</p>
-            <div class="flex gap-3 justify-end">
-              <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('customers.cancel') }}</button>
-              <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('customers.delete') }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
     </template>
 
     <div v-else class="text-center py-12 text-gray-400 dark:text-gray-500">{{ t('customers.notFound') }}</div>
+
+
+    <!-- Edit Modal Teleport exactly like Lead Detail -->
+    <Teleport to="body">
+      <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-customer-title">
+          <h3 id="edit-customer-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('customers.editTitle') }}</h3>
+          <div v-if="editError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ editError }}</div>
+          <form class="space-y-3" @submit.prevent="saveEdit">
+            <div class="grid grid-cols-2 gap-2">
+              <div :class="store.currentCustomer!.type === 'company' ? 'col-span-2' : ''">
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ store.currentCustomer!.type === 'company' ? t('customers.companyNameLabel') : t('customers.firstName') }}
+                </label>
+                <input v-model="editFirstName" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+              <div v-if="store.currentCustomer!.type === 'person'">
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.lastName') }}</label>
+                <input v-model="editLastName" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.email') }}</label>
+                <input v-model="editEmail" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.phone') }}</label>
+                <input v-model="editPhone" type="tel" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.company') }}</label>
+              <input v-model="editCompany" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+
+            <div v-if="store.currentCustomer!.type === 'person'">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.employerCompany') }}</label>
+              <select v-model="editCompanyId" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400">
+                <option value="">— {{ t('customers.noCompany') }} —</option>
+                <option v-for="comp in availableCompanies" :key="comp.id" :value="comp.id">{{ comp.first_name }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.website') }}</label>
+              <input v-model="editWebsite" type="url" placeholder="https://" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+
+            <div v-if="store.currentCustomer!.type === 'company'" class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.ico') }}</label>
+                <input v-model="editIco" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.dic') }}</label>
+                <input v-model="editDic" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressStreet') }}</label>
+              <input v-model="editAddressStreet" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressCity') }}</label>
+                <input v-model="editAddressCity" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressZip') }}</label>
+                <input v-model="editAddressZip" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.addressCountry') }}</label>
+              <input v-model="editAddressCountry" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400" />
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4">
+              <button type="button" class="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-300" @click="cancelEdit">{{ t('customers.cancel') }}</button>
+              <button type="submit" :disabled="editLoading" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
+                {{ editLoading ? t('customers.saving') : t('customers.save') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

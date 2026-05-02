@@ -53,12 +53,12 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'status_breakdown', visible: true, order: 3 },
 ]
 
-const WIDGET_LABELS: Record<WidgetId, string> = {
-  stat_cards: 'Stat Cards',
-  pipeline_chart: 'Pipeline Chart',
-  recent_activity: 'Recent Activity',
-  status_breakdown: 'Status Breakdown',
-}
+const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
+  stat_cards: t('dashboard.statCards'),
+  pipeline_chart: t('dashboard.pipelineByStatus'),
+  recent_activity: t('dashboard.recentActivity'),
+  status_breakdown: t('dashboard.statusBreakdown'),
+}))
 
 const firmStore = useFirmStore()
 const stats = ref<StatsData | null>(null)
@@ -68,10 +68,11 @@ const showLayoutEditor = ref(false)
 const savingLayout = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-const STATUS_LABELS: Record<string, string> = {
-  new: 'New', contacted: 'Contacted', proposal: 'Proposal',
-  negotiation: 'Negotiation', won: 'Won', lost: 'Lost', canceled: 'Canceled',
-}
+const STATUS_LABELS = computed<Record<string, string>>(() => ({
+  new: t('leads.statusNew'), contacted: t('leads.statusContacted'),
+  proposal: t('leads.statusProposal'), negotiation: t('leads.statusNegotiation'),
+  won: t('leads.statusWon'), lost: t('leads.statusLost'), canceled: t('leads.statusCanceled'),
+}))
 
 const STATUS_COLORS: Record<string, string> = {
   new: '#6b7280', contacted: '#3b82f6', proposal: '#eab308',
@@ -82,7 +83,7 @@ const chartData = computed(() => {
   if (!stats.value) return { labels: [], datasets: [] }
   const entries = Object.entries(stats.value.leads_by_status)
   return {
-    labels: entries.map(([k]) => STATUS_LABELS[k] ?? k),
+    labels: entries.map(([k]) => STATUS_LABELS.value[k] ?? k),
     datasets: [
       {
         data: entries.map(([, v]) => v),
@@ -187,23 +188,40 @@ onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
 })
 
+const dismissSetupBanner = ref(false)
+
 const showSetupBanner = computed(() => {
+  if (dismissSetupBanner.value) return false
   if (!firmStore.activeFirm) return false
   return !localStorage.getItem('onboarding_complete_' + firmStore.activeFirm.id)
 })
+
+function hideSetupBanner() {
+  dismissSetupBanner.value = true
+  if (firmStore.activeFirm) {
+    localStorage.setItem('onboarding_complete_' + firmStore.activeFirm.id, '1')
+  }
+}
 </script>
 
 <template>
   <div class="p-6 space-y-6">
     <!-- Setup banner -->
-    <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4">
+    <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4 relative">
       <div>
         <div class="text-sm font-semibold text-red-900 dark:text-red-100">{{ t('dashboard.completeSetup') }}</div>
         <div class="text-xs text-red-700 dark:text-red-300 mt-0.5">{{ t('dashboard.setupBannerText') }}</div>
       </div>
-      <RouterLink to="/app/onboarding" class="flex-shrink-0 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
-        {{ t('dashboard.continueSetup') }}
-      </RouterLink>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <RouterLink to="/app/onboarding" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
+          {{ t('dashboard.continueSetup') }}
+        </RouterLink>
+        <button
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm px-2 py-1"
+          @click="hideSetupBanner"
+          aria-label="Dismiss banner"
+        >✕</button>
+      </div>
     </div>
 
     <!-- Dashboard header with layout button -->

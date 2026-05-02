@@ -56,6 +56,28 @@ const newCustomerEmail = ref('')
 const newCustomerPhone = ref('')
 const selectedCustomerLabel = ref('')
 
+// Company & Contact Person inside lead form
+const formCompanyId = ref<string | null>(null)
+const formContactPersonId = ref<string | null>(null)
+const companies = ref<CustomerOut[]>([])
+const contactPersons = ref<CustomerOut[]>([])
+const loadingCompanies = ref(false)
+const loadingContactPersons = ref(false)
+
+async function loadCompanies() {
+  loadingCompanies.value = true
+  const res = await api.get<CustomerOut[]>('/api/v1/crm/directory?type=company&page_size=200')
+  loadingCompanies.value = false
+  if (res.ok) companies.value = res.data
+}
+
+async function loadEmployeesForCompany(companyId: string) {
+  loadingContactPersons.value = true
+  const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory/${companyId}/employees`)
+  loadingContactPersons.value = false
+  if (res.ok) contactPersons.value = res.data
+}
+
 let customerSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 async function searchCustomers(query: string) {
@@ -188,8 +210,12 @@ function openCreate() {
   formValue.value = ''
   formCurrency.value = 'CZK'
   formError.value = ''
+  formCompanyId.value = null
+  formContactPersonId.value = null
+  contactPersons.value = []
   clearCustomer()
   showNewCustomerForm.value = false
+  loadCompanies()
   showModal.value = true
 }
 
@@ -211,8 +237,25 @@ function openEdit(lead: LeadOut) {
   } else {
     clearCustomer()
   }
+  formCompanyId.value = lead.company_id ?? null
+  formContactPersonId.value = lead.contact_person_id ?? null
+  if (lead.company_id) {
+    loadEmployeesForCompany(lead.company_id)
+  } else {
+    contactPersons.value = []
+  }
   showNewCustomerForm.value = false
+  loadCompanies()
   showModal.value = true
+}
+
+function onCompanyChange() {
+  if (formCompanyId.value) {
+    loadEmployeesForCompany(formCompanyId.value)
+  } else {
+    contactPersons.value = []
+    formContactPersonId.value = null
+  }
 }
 
 async function submitForm() {
@@ -227,6 +270,8 @@ async function submitForm() {
     value: formValue.value ? parseFloat(formValue.value) : null,
     currency: formCurrency.value,
     customer_id: formCustomerId.value ?? null,
+    company_id: formCompanyId.value ?? null,
+    contact_person_id: formContactPersonId.value ?? null,
   }
   let result
   if (editingLead.value) {
@@ -774,6 +819,37 @@ function exportPdf() {
               </div>
             </div>
           </div>
+
+          <!-- Company & Contact Person Selection -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Společnost</label>
+              <select
+                v-model="formCompanyId"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                @change="onCompanyChange"
+              >
+                <option :value="null">-- Žádná společnost --</option>
+                <option v-for="c in companies" :key="c.id" :value="c.id">
+                  {{ c.company_name || [c.first_name, c.last_name].filter(Boolean).join(' ') }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Kontaktní osoba</label>
+              <select
+                v-model="formContactPersonId"
+                :disabled="!formCompanyId"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 disabled:opacity-50"
+              >
+                <option :value="null">-- Žádná kontaktní osoba --</option>
+                <option v-for="cp in contactPersons" :key="cp.id" :value="cp.id">
+                  {{ [cp.first_name, cp.last_name].filter(Boolean).join(' ') }}
+                </option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.descriptionField') }}</label>
             <RichTextEditor v-model="formDescription" />

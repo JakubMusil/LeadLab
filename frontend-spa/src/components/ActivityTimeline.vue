@@ -5,7 +5,7 @@
  * Works identically for Lead, Realization, Management, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
-import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, type Component } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -16,6 +16,8 @@ import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import TaskCard from '@/components/TaskCard.vue'
+import ActivityEditModal from '@/components/ActivityEditModal.vue'
+import type { TaskOut } from '@/stores/tasks'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
   ChatBubbleLeftIcon,
@@ -74,6 +76,8 @@ const props = defineProps<{
   entityType: 'lead' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
   entityId: string
   hideComposer?: boolean
+  hideFilterDropdown?: boolean
+  overrideVisibleTypes?: Set<string>
 }>()
 
 // ---------------------------------------------------------------------------
@@ -114,6 +118,9 @@ interface Activity {
   is_deleted?: boolean
   deleted_at?: string | null
   deleted_by_name?: string | null
+  // edit
+  is_edited?: boolean
+  edited_at?: string | null
 }
 
 // Unified feed item — either an Activity or a Task (for Lead feed)
@@ -216,8 +223,11 @@ const useFeed = computed(() => props.entityType === 'lead')
 const streamlinePrefs = useStreamlinePreferencesStore()
 
 const visibleTypes = computed<Set<string>>(() => {
+  if (props.overrideVisibleTypes) {
+    return props.overrideVisibleTypes
+  }
   // Build effective visible set from saved prefs + tool defaults.
-  return streamlinePrefs.effectiveVisible(streamlineTools.value)
+  return streamlinePrefs.effectiveVisible(filterDropdownTools.value)
 })
 
 // Activity types covered by the synthetic "task" group (kept for backwards
@@ -246,7 +256,7 @@ const filteredActivities = computed(() => {
 // Each item carries _type, _key and _created_at for template branching.
 // ---------------------------------------------------------------------------
 type DisplayItem = (Activity & { _type: 'activity'; _key: string; _created_at: string; _task?: never }) |
-  { _type: 'task'; _key: string; _created_at: string; _task: Record<string, unknown> } & Record<string, unknown>
+  { _type: 'task'; _key: string; _created_at: string; _task: TaskOut } & Record<string, unknown>
 
 const displayItems = computed<DisplayItem[]>(() => {
   if (useFeed.value) {
@@ -254,14 +264,6 @@ const displayItems = computed<DisplayItem[]>(() => {
       .filter((item) => {
         if (item.item_type === 'task') {
           // Task cards are controlled by the 'task' pseudo-type in the filter.
-          // If the user has never customised the filter, visibleTypes contains
-          // all 'important' activity types but NOT the 'task' pseudo-type
-          // (which has no default_visibility in the registry).
-          // We treat task cards as visible when either:
-          //   a) the user explicitly enabled 'task' in their filter, OR
-          //   b) the filter is in its default state (no customisation)
-          const prefs = streamlinePrefs
-          if (!prefs.isCustomised) return true
           return visibleTypes.value.has('task')
         }
         if (!item.activity) return false
@@ -273,7 +275,7 @@ const displayItems = computed<DisplayItem[]>(() => {
             _type: 'task',
             _key: `task-${(item.task as Record<string, unknown>)?.id}`,
             _created_at: item.created_at,
-            _task: item.task as Record<string, unknown>,
+            _task: item.task as unknown as TaskOut,
           } as DisplayItem
         }
         const act = item.activity as Activity
@@ -323,6 +325,21 @@ const taskSubmitting = ref(false)
 // Streamline Tool Registry
 // ---------------------------------------------------------------------------
 const streamlineTools = ref<StreamlineTool[]>([])
+
+const filterDropdownTools = computed<StreamlineTool[]>(() => {
+  const tools = [...streamlineTools.value]
+  if (useFeed.value && !tools.some((t) => t.activity_type === 'task')) {
+    tools.push({
+      activity_type: 'task',
+      label: t('leadDetail.typeTask'),
+      icon: 'ClipboardDocumentListIcon',
+      category: 'task',
+      default_visibility: 'important',
+      form_schema: { type: 'object' },
+    })
+  }
+  return tools
+})
 
 async function loadStreamlineTools() {
   const res = await api.get<StreamlineTool[]>('/api/v1/streamline/tools')
@@ -860,6 +877,31 @@ function openEmojiPicker(activityId: string) {
   emojiPickerActivityId.value = emojiPickerActivityId.value === activityId ? null : activityId
 }
 
+const fetchedTaskActivities = ref<Record<string, Activity | null>>({})
+
+async function ensureTaskLinkedActivity(taskId: string) {
+  if (fetchedTaskActivities.value[taskId] !== undefined) return
+  const local = taskLinkedActivity(taskId)
+  if (local) {
+    fetchedTaskActivities.value = { ...fetchedTaskActivities.value, [taskId]: local }
+    return
+  }
+  const res = await api.get<Activity[]>(`/api/v1/crm/tasks/${taskId}/activities`)
+  fetchedTaskActivities.value = {
+    ...fetchedTaskActivities.value,
+    [taskId]: res.ok && res.data.length > 0 ? (res.data[0] as Activity) : null
+  } as Record<string, Activity | null>
+}
+
+watch(displayItems, (items) => {
+  if (!items) return
+  for (const item of items) {
+    if (item._type === 'task' && item._task) {
+      ensureTaskLinkedActivity(String(item._task.id))
+    }
+  }
+}, { immediate: true })
+
 async function toggleReaction(activityId: string, emoji: string) {
   const res = await api.post<ReactionSummary>(`/api/v1/crm/activities/${activityId}/reactions`, { emoji })
   emojiPickerActivityId.value = null
@@ -867,7 +909,8 @@ async function toggleReaction(activityId: string, emoji: string) {
     toast.error(t('leadDetail.activityFailed'))
     return
   }
-  const activity = activities.value.find((a) => a.id === activityId)
+  const activity = activities.value.find((a) => a.id === activityId) ||
+                   Object.values(fetchedTaskActivities.value).find((a) => a?.id === activityId)
   if (!activity) return
   if (!activity.reactions) activity.reactions = []
   const idx = activity.reactions.findIndex((r) => r.emoji === emoji)
@@ -879,18 +922,16 @@ async function toggleReaction(activityId: string, emoji: string) {
   }
 }
 
-// Find the first task_created/task_assigned/task_reopened activity in the
-// feed that references a given task ID — used to attach reactions to task cards.
 function taskLinkedActivity(taskId: string): Activity | null {
   if (!useFeed.value) return null
   for (const item of feedItems.value) {
     if (item.item_type !== 'activity' || !item.activity) continue
     const a = item.activity as Activity
     const meta = a.metadata as Record<string, unknown>
-    if (
-      ['task_created', 'task_assigned', 'task_reopened'].includes(a.type) &&
-      String(meta.task_id ?? '') === taskId
-    ) {
+    if (String(meta.task_id ?? '') === taskId) {
+      return a
+    }
+    if (Array.isArray(meta.task_ids) && meta.task_ids.map(String).includes(taskId)) {
       return a
     }
   }
@@ -903,8 +944,39 @@ function canDelete(act: Activity): boolean {
   if (act.is_deleted) return false
   const currentUserId = authStore.user ? String(authStore.user.id) : ''
   const isAuthor = act.user_id ? act.user_id === currentUserId : false
-  const isAdmin = ['admin', 'owner'].includes(authStore.membership?.role ?? '')
+  const isAdmin = ['admin', 'owner'].includes(
+    // @ts-expect-error - membership is dynamically populated on some auth flows, bypassing for now
+    authStore.membership?.role ?? ''
+  )
   return isAuthor || isAdmin
+}
+
+function canEdit(act: Activity): boolean {
+  if (act.is_deleted) return false
+  const currentUserId = authStore.user ? String(authStore.user.id) : ''
+  const isAuthor = act.user_id ? act.user_id === currentUserId : false
+  return isAuthor && ['comment', 'call', 'meeting'].includes(act.type)
+}
+
+// ── Modal-based edit ────────────────────────────────────────────────────────
+const editModalOpen = ref(false)
+const editingActivity = ref<Activity | null>(null)
+
+function startEditing(act: Activity) {
+  editingActivity.value = act
+  editModalOpen.value = true
+}
+
+function onActivityEdited(updated: Activity) {
+  const replaceInList = (list: Activity[]) => {
+    const idx = list.findIndex((a) => a.id === updated.id)
+    if (idx !== -1) list[idx] = updated
+  }
+  replaceInList(activities.value)
+  if (useFeed.value) {
+    const fi = feedItems.value.find((f) => f.item_type === 'activity' && f.activity?.id === updated.id)
+    if (fi) fi.activity = updated
+  }
 }
 
 async function deleteActivity(activityId: string) {
@@ -1098,9 +1170,9 @@ defineExpose({ load: () => loadActivities(1) })
     <!-- ================================================================ -->
 
     <!-- Filter dropdown -->
-    <div class="flex items-center justify-end">
+    <div v-if="!hideFilterDropdown" class="flex items-center justify-end">
       <StreamlineFilterDropdown
-        :tools="streamlineTools"
+        :tools="filterDropdownTools"
         :model-value="visibleTypes"
         :is-customised="streamlinePrefs.isCustomised"
         @update:visible="onFilterChange"
@@ -1134,7 +1206,7 @@ defineExpose({ load: () => loadActivities(1) })
             <ClipboardDocumentListIcon class="w-4 h-4" />
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-2 pt-3 flex-wrap">
               <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
               <span class="text-xs text-gray-400">{{ formatTime(item._created_at) }}</span>
             </div>
@@ -1143,16 +1215,16 @@ defineExpose({ load: () => loadActivities(1) })
               @refreshed="loadActivities(1)"
             />
             <!-- Reactions — bound to the linked task_created/task_assigned activity -->
-            <template v-if="taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))">
+            <template v-if="fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]">
               <div class="flex flex-wrap items-center gap-1.5 mt-2">
                 <button
-                  v-for="r in (taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))?.reactions ?? [])"
+                  v-for="r in (fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]?.reactions ?? [])"
                   :key="r.emoji"
                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors"
                   :class="r.reacted_by_me
                     ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300'
                     : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:border-gray-300'"
-                  @click="toggleReaction(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id, r.emoji)"
+                  @click="toggleReaction(fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]!.id, r.emoji)"
                 >
                   <span>{{ r.emoji }}</span>
                   <span class="tabular-nums">{{ r.count }}</span>
@@ -1161,19 +1233,19 @@ defineExpose({ load: () => loadActivities(1) })
                   <button
                     class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
                     :title="t('leadDetail.addReaction')"
-                    @click="openEmojiPicker(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id)"
+                    @click="openEmojiPicker(fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]!.id)"
                   >
                     <FaceSmileIcon class="w-3.5 h-3.5" />
                   </button>
                   <div
-                    v-if="emojiPickerActivityId === taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))?.id"
+                    v-if="emojiPickerActivityId === fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]?.id"
                     class="absolute z-20 mt-1 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg p-1 flex gap-0.5"
                   >
                     <button
                       v-for="emoji in COMMON_EMOJIS"
                       :key="emoji"
                       class="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-base"
-                      @click="toggleReaction(taskLinkedActivity(String((item._task as Record<string,unknown>).id ?? ''))!.id, emoji)"
+                      @click="toggleReaction(fetchedTaskActivities[String((item._task as TaskOut).id ?? '')]!.id, emoji)"
                     >{{ emoji }}</button>
                   </div>
                 </div>
@@ -1255,17 +1327,31 @@ defineExpose({ load: () => loadActivities(1) })
                   class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
                 >{{ item.user_name }}</span>
               </span>
-              <span class="text-xs text-gray-400">{{ formatTime(item.created_at) }}</span>
-              <!-- Delete button — visible on hover for author or admin -->
-              <button
-                v-if="canDelete(item as unknown as Activity)"
-                class="ml-auto opacity-0 group-hover/row:opacity-100 transition-opacity text-gray-300 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
-                :title="t('leadDetail.deleteActivity')"
-                @click.stop="deleteActivity(item.id)"
-              >
-                <TrashIcon class="w-3.5 h-3.5" />
-              </button>
+              <span class="text-xs text-gray-400">
+                {{ formatTime(item.created_at) }}
+                <span v-if="item.is_edited" class="italic ml-1" :title="item.edited_at ? formatTime(item.edited_at) : ''">(upraveno)</span>
+              </span>
+              <!-- Action buttons -->
+              <div class="ml-auto opacity-0 group-hover/row:opacity-100 transition-opacity flex items-center gap-2">
+                <button
+                  v-if="canEdit(item as unknown as Activity)"
+                  class="text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+                  :title="t('leadDetail.editActivity', 'Upravit')"
+                  @click.stop="startEditing(item as unknown as Activity)"
+                >
+                  <PencilSquareIcon class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  v-if="canDelete(item as unknown as Activity)"
+                  class="text-gray-300 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
+                  :title="t('leadDetail.deleteActivity')"
+                  @click.stop="deleteActivity(item.id)"
+                >
+                  <TrashIcon class="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
+            
             <!-- eslint-disable-next-line vue/no-v-html -->
             <p v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(item.content_text)" />
             <p v-if="item.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
@@ -1504,4 +1590,12 @@ defineExpose({ load: () => loadActivities(1) })
       @click="loadActivities(activitiesPage + 1)"
     >{{ t('leadDetail.loadMore') }}</button>
   </div>
+
+  <!-- Activity edit modal -->
+  <ActivityEditModal
+    v-model="editModalOpen"
+    :activity="editingActivity"
+    :entity-type="props.entityType"
+    @saved="(act) => onActivityEdited(act as unknown as Activity)"
+  />
 </template>

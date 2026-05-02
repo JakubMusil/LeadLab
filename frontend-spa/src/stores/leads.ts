@@ -19,6 +19,10 @@ export interface LeadOut {
   updated_at: string
   created_by_id: string | null
   created_by_name: string | null
+  company_id: string | null
+  company_name: string | null
+  contact_person_id: string | null
+  contact_person_name: string | null
 }
 
 export interface LeadIn {
@@ -30,6 +34,8 @@ export interface LeadIn {
   assigned_to_id?: string | null
   value?: number | null
   currency?: string
+  company_id?: string | null
+  contact_person_id?: string | null
 }
 
 export interface LeadFilters {

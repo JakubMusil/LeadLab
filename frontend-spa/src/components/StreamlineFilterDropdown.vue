@@ -23,6 +23,12 @@ export interface StreamlineToolItem {
   default_visibility: 'important' | 'secondary'
 }
 
+export interface ShortcutPreset {
+  id: string
+  name: string
+  visible_activity_types: string[]
+}
+
 const props = defineProps<{
   /** All registered tools, used to build the dropdown sections. */
   tools: StreamlineToolItem[]
@@ -30,14 +36,31 @@ const props = defineProps<{
   modelValue: Set<string>
   /** Whether the user has customised the filter (drives "Reset" availability). */
   isCustomised: boolean
+  shortcuts?: ShortcutPreset[]
 }>()
 
 const emit = defineEmits<{
   // Toggle a single type / replace the full set; pass `null` to reset to defaults.
   (e: 'update:visible', value: string[] | null): void
+  (e: 'delete-shortcut', id: string): void
+  (e: 'move-shortcut', payload: { fromIdx: number; toIdx: number }): void
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+function toolLabel(tool: StreamlineToolItem): string {
+  const camel = tool.activity_type.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+  const key = `leadDetail.type${camel.charAt(0).toUpperCase()}${camel.slice(1)}`
+  if (te(key)) return t(key)
+
+  if (tool.activity_type === 'call') return t('leadDetail.typeCall')
+  if (tool.activity_type === 'task') return t('leadDetail.typeTask')
+  if (tool.activity_type === 'meeting') return t('leadDetail.typeMeeting')
+  if (tool.activity_type === 'comment') return t('leadDetail.typeComment')
+  if (tool.activity_type === 'todo_items_added') return t('leadDetail.typeTodoItems')
+
+  return tool.label
+}
 
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
@@ -243,13 +266,51 @@ const hiddenCount = computed(() => totalCount.value - visibleCount.value)
           >
             <CheckIcon v-if="isVisible(tool.activity_type)" class="w-3 h-3" aria-hidden="true" />
           </span>
-          <span class="flex-1 text-gray-700 dark:text-gray-200">{{ tool.label }}</span>
+          <span class="flex-1 text-gray-700 dark:text-gray-200">{{ toolLabel(tool) }}</span>
           <span
             v-if="tool.default_visibility === 'secondary'"
             class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500"
             :title="t('streamlineFilter.secondaryHint')"
           >{{ t('streamlineFilter.secondaryBadge') }}</span>
         </button>
+      </div>
+
+      <!-- Shortcuts management -->
+      <div v-if="shortcuts && shortcuts.length > 0" class="border-t border-gray-100 dark:border-gray-700 mt-2 pt-2 px-1">
+        <div class="px-2 pb-1.5 text-[10px] uppercase tracking-wider font-semibold text-gray-400 dark:text-gray-500">
+          Správa zkratek
+        </div>
+        <div class="space-y-1">
+          <div
+            v-for="(shortcut, idx) in shortcuts"
+            :key="shortcut.id"
+            class="flex items-center justify-between px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded text-xs text-gray-700 dark:text-gray-300"
+          >
+            <span class="truncate max-w-[120px]">{{ shortcut.name }}</span>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                v-if="idx > 0"
+                type="button"
+                class="p-0.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                title="Posunout nahoru"
+                @click.stop="emit('move-shortcut', { fromIdx: idx, toIdx: idx - 1 })"
+              >↑</button>
+              <button
+                v-if="idx < shortcuts.length - 1"
+                type="button"
+                class="p-0.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                title="Posunout dolů"
+                @click.stop="emit('move-shortcut', { fromIdx: idx, toIdx: idx + 1 })"
+              >↓</button>
+              <button
+                type="button"
+                class="p-0.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+                title="Smazat"
+                @click.stop="emit('delete-shortcut', shortcut.id)"
+              >×</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

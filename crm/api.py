@@ -306,6 +306,11 @@ class LeadOut(Schema):
     updated_at: datetime
     created_by_id: Optional[str]
     created_by_name: Optional[str]
+    # Company & contact person from address book
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    contact_person_id: Optional[str] = None
+    contact_person_name: Optional[str] = None
 
 
 class LeadIn(Schema):
@@ -317,6 +322,8 @@ class LeadIn(Schema):
     assigned_to_id: Optional[str] = None
     value: Optional[Decimal] = None
     currency: str = "CZK"
+    company_id: Optional[str] = None
+    contact_person_id: Optional[str] = None
 
 
 class LeadUpdateIn(Schema):
@@ -327,6 +334,9 @@ class LeadUpdateIn(Schema):
     assigned_to_id: Optional[str] = None
     value: Optional[Decimal] = None
     currency: Optional[str] = None
+    customer_id: Optional[str] = None
+    company_id: Optional[str] = None
+    contact_person_id: Optional[str] = None
 
 
 def _compute_lead_score(lead: Lead, rules: list) -> int:
@@ -380,6 +390,23 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
             created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
         except Exception:
             pass
+    # Company & contact person
+    company_id = str(lead.company_id) if lead.company_id else None
+    company_name: Optional[str] = None
+    contact_person_id = str(lead.contact_person_id) if lead.contact_person_id else None
+    contact_person_name: Optional[str] = None
+    if lead.company_id:
+        try:
+            co = lead.company
+            company_name = co.company_name or f"{co.first_name} {co.last_name}".strip()
+        except Exception:
+            pass
+    if lead.contact_person_id:
+        try:
+            cp = lead.contact_person
+            contact_person_name = f"{cp.first_name} {cp.last_name}".strip() or cp.email
+        except Exception:
+            pass
     return {
         "id": str(lead.id),
         "firm_id": str(lead.firm_id),
@@ -396,6 +423,10 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         "updated_at": lead.updated_at,
         "created_by_id": str(lead.created_by_id) if lead.created_by_id else None,
         "created_by_name": created_by_name,
+        "company_id": company_id,
+        "company_name": company_name,
+        "contact_person_id": contact_person_id,
+        "contact_person_name": contact_person_name,
     }
 
 
@@ -578,6 +609,20 @@ def create_lead(request, payload: LeadIn):
         except Customer.DoesNotExist:
             return 400, {"detail": "Customer not found in this Firm."}
 
+    company = None
+    if payload.company_id:
+        try:
+            company = Customer.objects.get(id=payload.company_id, firm=request.firm, type="company")
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Company not found in this Firm."}
+
+    contact_person = None
+    if payload.contact_person_id:
+        try:
+            contact_person = Customer.objects.get(id=payload.contact_person_id, firm=request.firm)
+        except Customer.DoesNotExist:
+            return 400, {"detail": "Contact person not found in this Firm."}
+
     assigned_to = None
     if payload.assigned_to_id:
         from users.models import User
@@ -591,6 +636,8 @@ def create_lead(request, payload: LeadIn):
     lead = Lead.objects.create(
         firm=request.firm,
         customer=customer,
+        company=company,
+        contact_person=contact_person,
         assigned_to=assigned_to,
         title=payload.title,
         description=sanitize_html(payload.description),
@@ -646,8 +693,40 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
     # Handle status change — create an Activity in the same transaction
     new_status = update_data.pop("status", None)
 
-    # Sanitize rich-text description before persisting (defense-in-depth on
-    # top of the frontend's DOMPurify — protects email/push/export renderers).
+    # Resolve FK overrides (company, contact_person, customer, assigned_to)
+    # These cannot be set via setattr(lead, "company_id", ...) reliably through
+    # the loop below — we pop and resolve them explicitly.
+    if "company_id" in update_data:
+        cid = update_data.pop("company_id")
+        if cid:
+            try:
+                lead.company = Customer.objects.get(id=cid, firm=request.firm, type="company")
+            except Customer.DoesNotExist:
+                return 400, {"detail": "Company not found."}
+        else:
+            lead.company = None
+
+    if "contact_person_id" in update_data:
+        cpid = update_data.pop("contact_person_id")
+        if cpid:
+            try:
+                lead.contact_person = Customer.objects.get(id=cpid, firm=request.firm)
+            except Customer.DoesNotExist:
+                return 400, {"detail": "Contact person not found."}
+        else:
+            lead.contact_person = None
+
+    if "customer_id" in update_data:
+        cust_id = update_data.pop("customer_id")
+        if cust_id:
+            try:
+                lead.customer = Customer.objects.get(id=cust_id, firm=request.firm)
+            except Customer.DoesNotExist:
+                return 400, {"detail": "Customer not found."}
+        else:
+            lead.customer = None
+
+    # Sanitize rich-text description before persisting
     if "description" in update_data:
         update_data["description"] = sanitize_html(update_data["description"])
 
@@ -737,6 +816,12 @@ class ActivityOut(Schema):
     is_deleted: bool = False
     deleted_at: Optional[datetime] = None
     deleted_by_name: Optional[str] = None
+    # Edit tracking
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
+
+class ActivityUpdateIn(Schema):
+    content_text: str
 
 
 class ActivityIn(Schema):
@@ -805,6 +890,8 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "is_deleted": a.is_deleted,
         "deleted_at": a.deleted_at,
         "deleted_by_name": _user_display_name(a.deleted_by) if a.deleted_by_id else None,
+        "is_edited": a.is_edited,
+        "edited_at": a.edited_at,
     }
 
 
@@ -959,8 +1046,20 @@ def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 
         return 404, {"detail": "Task not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(task=task).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
-    return 200, [_activity_out(a, request.user) for a in activities]
+    from django.db.models import Q
+    activities = Activity.objects.filter(
+        Q(task=task) | Q(metadata__task_id=str(task.id))
+    ).select_related('user').prefetch_related('reactions').order_by("-created_at")
+    
+    # Self-healing: if a task has no activities (e.g. created by old automation),
+    # create a TASK_CREATED activity so the frontend can anchor reactions to it.
+    if not activities.exists() and page == 1:
+        from crm.models import ActivityType
+        _log_timeline_event(task, ActivityType.TASK_CREATED, author=request.user)
+        activities = Activity.objects.filter(task=task).select_related('user').prefetch_related('reactions').order_by("-created_at")
+
+    page_items = activities[offset:offset + page_size]
+    return 200, [_activity_out(a, request.user) for a in page_items]
 
 
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
@@ -1180,6 +1279,55 @@ def delete_activity(request, activity_id: str):
         event="activity.deleted",
         payload={"id": str(activity.id), "entity_type": activity.entity_type, "entity_id": activity.entity_id},
     )
+    return 200, _activity_out(activity, request.user)
+
+
+@router.patch(
+    "/activities/{activity_id}",
+    auth=django_auth,
+    response={200: ActivityOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_activity(request, activity_id: str, payload: ActivityUpdateIn):
+    """
+    Edit the content of a user-generated Activity.
+    
+    Only the original author can edit their own activity.
+    Only specific types (COMMENT, CALL, MEETING) are allowed to be edited.
+    System-generated activities are immutable.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except Activity.DoesNotExist:
+        return 404, {"detail": "Activity not found."}
+
+    # Must be the author
+    if activity.user_id is None or str(activity.user_id) != str(request.user.id):
+        return 403, {"detail": "Only the author can edit this activity."}
+
+    # Must be an editable type
+    from crm.models import ActivityType
+    allowed_types = [ActivityType.COMMENT, ActivityType.CALL, ActivityType.MEETING]
+    if activity.type not in allowed_types:
+        return 400, {"detail": "This type of activity cannot be edited."}
+
+    # Cannot edit deleted activities
+    if activity.is_deleted:
+        return 400, {"detail": "Cannot edit a deleted activity."}
+
+    from django.utils import timezone as tz
+    activity.content_text = payload.content_text
+    activity.is_edited = True
+    activity.edited_at = tz.now()
+    activity.save(update_fields=["content_text", "is_edited", "edited_at"])
+
+    # We do not broadcast event for edits right now, frontend relies on page reload or 
+    # the request response updating the local cache.
+
     return 200, _activity_out(activity, request.user)
 
 

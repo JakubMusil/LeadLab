@@ -64,7 +64,7 @@ class CommentTool(StreamlineTool):
         _User = get_user_model()
         mentioned_users = (
             _User.objects.filter(id__in=[str(uid) for uid in mention_ids])
-            .filter(membership__firm=firm)
+            .filter(memberships__firm=firm)
             .exclude(id=user.id)
             .distinct()
         )
@@ -1401,7 +1401,7 @@ class CallScheduledTool(_ScheduledActivityTool):
     """
 
     activity_type = "call_scheduled"
-    label = _("Call Scheduled")
+    label = _("Naplánovaný hovor")
     icon = "PhoneIcon"
     category = "communication"
     default_visibility = "important"
@@ -2030,7 +2030,7 @@ class TodoItemsAddedTool(StreamlineTool):
     """
 
     activity_type = "todo_items_added"
-    label = _("Todo Items")
+    label = _("Hromadné úkoly")
     icon = "ClipboardDocumentListIcon"
     category = "task"
     default_visibility = "important"
@@ -2052,7 +2052,8 @@ class TodoItemsAddedTool(StreamlineTool):
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
         from django.utils import timezone as _tz
-        from crm.models import Task, StreamlineItem
+        from crm.models import Task
+        from django.contrib.auth import get_user_model
 
         metadata = payload.get("metadata") or {}
         raw_text = metadata.get("text", "")
@@ -2072,6 +2073,16 @@ class TodoItemsAddedTool(StreamlineTool):
         customer = getattr(activity, "customer", None)
         proposal = getattr(activity, "proposal", None)
 
+        _User = get_user_model()
+        assignee_id = metadata.get("assigned_to_id")
+        assigned_to = None
+        if assignee_id:
+            assigned_to = _User.objects.filter(id=assignee_id, memberships__firm=firm).first()
+
+        due_date = metadata.get("due_date")
+        watcher_ids = metadata.get("watcher_ids", [])
+        watchers = list(_User.objects.filter(id__in=watcher_ids, memberships__firm=firm)) if watcher_ids else []
+
         task_ids: list[str] = []
         for title in lines:
             task = Task.objects.create(
@@ -2085,15 +2096,12 @@ class TodoItemsAddedTool(StreamlineTool):
                 status="todo",
                 priority="medium",
                 created_by=user,
-                assigned_to=user,
+                assigned_to=assigned_to,
+                due_date=due_date,
             )
-            StreamlineItem.objects.create(
-                task=task,
-                text=title[:500],
-                kind="todo",
-                order=0,
-                created_by=user,
-            )
+            if watchers:
+                task.watchers.add(*watchers)
+
             task_ids.append(str(task.id))
 
         # Patch the activity metadata in-place with the resolved data
@@ -2172,7 +2180,6 @@ BUILTIN_TOOLS: list[StreamlineTool] = [
     ProposalViewedTool(),
     AiSummaryTool(),
     AiSuggestedActionTool(),
-    SystemNoteTool(),
     TagAddedTool(),
     TagRemovedTool(),
     MentionTool(),

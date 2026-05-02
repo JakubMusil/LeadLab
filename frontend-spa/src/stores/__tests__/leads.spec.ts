@@ -35,6 +35,10 @@ const mockLead = {
   updated_at: '2025-01-01T00:00:00Z',
   created_by_id: null,
   created_by_name: null,
+  company_id: null,
+  company_name: null,
+  contact_person_id: null,
+  contact_person_name: null,
 }
 
 describe('useLeadsStore', () => {

@@ -524,7 +524,7 @@ const depSearchQuery = ref('')
 const depSearchResults = ref<TaskOut[]>([])
 const depSearchLoading = ref(false)
 const selectedDepTaskId = ref('')
-const selectedDepType = ref<'blocks' | 'related_to'>('blocks')
+const selectedDepType = ref<'blocks' | 'related_to' | 'subtask'>('blocks')
 const depSubmitting = ref(false)
 
 async function loadDependencies() {
@@ -543,6 +543,9 @@ const blockedBy = computed(() =>
 )
 const relatedTo = computed(() =>
   dependencies.value.filter((d) => d.type === 'related_to')
+)
+const subtaskDeps = computed(() =>
+  dependencies.value.filter((d) => d.type === 'subtask')
 )
 
 let depSearchTimer: ReturnType<typeof setTimeout> | null = null
@@ -1295,14 +1298,6 @@ onUnmounted(() => {
         @refreshed="onStreamlineRefreshed"
       />
 
-      <!-- ===================== PODÚKOLY ===================== -->
-      <StreamlineItemList
-        :task-id="taskId"
-        kind="subtask"
-        :resolved="0"
-        :total="0"
-        @refreshed="onStreamlineRefreshed"
-      />
 
       <!-- ===================== ZÁVISLOSTI ===================== -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
@@ -1405,6 +1400,31 @@ onUnmounted(() => {
             </ul>
           </div>
 
+          <!-- Subtask / Navazující úkol -->
+          <div v-if="subtaskDeps.length" class="mb-3">
+            <p class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1.5">
+              🔗 {{ t('tasks.dependencySubtask') }}
+            </p>
+            <ul class="space-y-1.5">
+              <li
+                v-for="dep in subtaskDeps"
+                :key="dep.id"
+                class="flex items-center gap-2 group"
+              >
+                <RouterLink
+                  :to="`/app/tasks/${dep.from_task_id === taskId ? dep.to_task_id : dep.from_task_id}`"
+                  class="flex-1 text-sm text-gray-700 dark:text-gray-200 hover:text-blue-500 truncate"
+                >
+                  {{ dep.from_task_id === taskId ? dep.to_task_title : dep.from_task_title }}
+                </RouterLink>
+                <button
+                  class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click="removeDependency(dep.id)"
+                >✕</button>
+              </li>
+            </ul>
+          </div>
+
           <!-- Add dependency form -->
           <div v-if="showAddDepForm" class="mt-3 border border-blue-200 dark:border-blue-800 rounded-xl p-3 space-y-2">
             <!-- Type selector -->
@@ -1423,6 +1443,13 @@ onUnmounted(() => {
                   : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
                 @click="selectedDepType = 'related_to'"
               >↔ {{ t('tasks.dependencyTypeRelatedTo') }}</button>
+              <button
+                class="flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                :class="selectedDepType === 'subtask'
+                  ? 'bg-purple-100 border-purple-400 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                @click="selectedDepType = 'subtask'"
+              >🔗 {{ t('tasks.dependencyTypeSubtask') }}</button>
             </div>
 
             <!-- Task search -->

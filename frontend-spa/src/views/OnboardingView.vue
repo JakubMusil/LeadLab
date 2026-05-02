@@ -56,6 +56,9 @@ async function handleCreateWorkspace() {
   workspaceLoading.value = false
   if (result.ok) {
     workspaceCreated.value = true
+    if (firmStore.activeFirm) {
+      localStorage.setItem('onboarding_complete_' + firmStore.activeFirm.id, '1')
+    }
     currentStep.value = 2
   } else {
     workspaceError.value = result.error ?? 'Failed to create workspace.'
@@ -80,6 +83,9 @@ async function handleInvite() {
 }
 
 function skipStep() {
+  if (firmStore.activeFirm) {
+    localStorage.setItem('onboarding_complete_' + firmStore.activeFirm.id, '1')
+  }
   if (currentStep.value < totalSteps) currentStep.value++
 }
 

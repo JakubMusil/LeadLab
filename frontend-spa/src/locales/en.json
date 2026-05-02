@@ -40,6 +40,7 @@
     "pipelineByStatus": "Pipeline by Status",
     "recentActivity": "Recent Activity",
     "statusBreakdown": "Status Breakdown",
+    "statCards": "Summary Cards",
     "noRecentActivity": "No recent activity",
     "conversion": "{rate}% conversion",
     "inAddressBook": "in address book",
@@ -885,6 +886,8 @@
     "dependencyType": "Type",
     "dependencyTypeBlocks": "Blocks",
     "dependencyTypeRelatedTo": "Related to",
+    "dependencyTypeSubtask": "Subtask",
+    "dependencySubtask": "Subtasks",
     "selectTask": "Select task…",
     "dependencyCreated": "Dependency added.",
     "dependencyCreateFailed": "Failed to add dependency.",
@@ -1143,6 +1146,7 @@
     "editFormOwner": "Assign To",
     "fileUploadFailed": "Upload failed.",
     "taskTitle": "Task title",
+    "taskTitleBulk": "Each line = one task…",
     "activityFailed": "Failed to add activity.",
     "activityDeleteFailed": "Failed to delete activity.",
     "deleteActivity": "Delete",
@@ -1252,7 +1256,7 @@
       "message": "Log or send an email, SMS, WhatsApp or chat — pick the channel below."
     },
     "typeMessage": "Message",
-    "typeTodoItems": "Todo items"
+    "typeTodoItems": "Bulk tasks"
   },
   "sequences": {
     "title": "Email Sequences",

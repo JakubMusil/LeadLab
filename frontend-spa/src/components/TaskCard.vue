@@ -8,11 +8,12 @@
  * Props:
  *   task — full TaskOut object from the feed endpoint
  */
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { useTasksStore } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
+import type { StreamlineItemOut } from '@/stores/tasks'
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -34,6 +35,9 @@ const router = useRouter()
 const { t } = useI18n()
 const tasksStore = useTasksStore()
 const toast = useToast()
+
+// Streamline items for this task
+const streamlineItems = ref<StreamlineItemOut[]>([])
 
 // ---------------------------------------------------------------------------
 // Computed helpers
@@ -75,9 +79,41 @@ const itemsProgress = computed(() => {
   return { total, done, pct: Math.round((done / total) * 100) }
 })
 
+// Filter for todo items only
+const todoItems = computed(() => {
+  return streamlineItems.value.filter(item => item.kind === 'todo')
+})
+
+// ---------------------------------------------------------------------------
+// Effects
+// ---------------------------------------------------------------------------
+// Fetch streamline items when task changes
+watch(() => props.task.id, async () => {
+  if (props.task.id) {
+    const res = await tasksStore.fetchStreamlineItems(props.task.id)
+    if (res.ok) {
+      streamlineItems.value = res.data ?? []
+    } else {
+      toast.error(res.error ?? 'Failed to load streamline items')
+    }
+  }
+}, { immediate: true })
+
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
+async function toggleItem(item: StreamlineItemOut) {
+  const originalStatus = item.is_resolved
+  item.is_resolved = !originalStatus
+  const res = await tasksStore.updateStreamlineItem(item.id, { is_resolved: item.is_resolved })
+  if (!res.ok) {
+    item.is_resolved = originalStatus
+    toast.error(res.error ?? t('tasks.completeFailed'))
+  } else {
+    emit('refreshed')
+  }
+}
+
 async function toggleComplete() {
   const res = props.task.is_completed
     ? await tasksStore.reopenTask(props.task.id)
@@ -177,22 +213,43 @@ function openDetail() {
       </button>
     </div>
 
-    <!-- Streamline items progress bar -->
-    <div
-      v-if="itemsProgress"
-      class="px-3 pb-2.5"
-    >
-      <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 mb-1">
-        <span>{{ itemsProgress.done }}/{{ itemsProgress.total }} {{ t('tasks.streamlineProgress').replace('{done}', '').replace('{total}', '') }}</span>
-        <span>{{ itemsProgress.pct }}%</span>
+      <!-- Streamline items progress bar -->
+      <div
+        v-if="itemsProgress"
+        class="px-3 pb-2.5"
+      >
+        <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 mb-1">
+          <span>{{ itemsProgress.done }}/{{ itemsProgress.total }} {{ t('tasks.streamlineProgress').replace('{done}', '').replace('{total}', '') }}</span>
+          <span>{{ itemsProgress.pct }}%</span>
+        </div>
+        <div class="w-full h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+          <div
+            class="h-full rounded-full transition-all"
+            :class="task.is_completed ? 'bg-green-500' : 'bg-blue-500'"
+            :style="{ width: `${itemsProgress.pct}%` }"
+          />
+        </div>
+        
+        <!-- Todo items list -->
+        <div v-if="todoItems.length > 0" class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+          <div class="text-[11px] text-gray-500 dark:text-gray-400">
+            <div v-for="item in todoItems" :key="item.id" class="flex items-start mb-1 last:mb-0">
+              <input
+                type="checkbox"
+                :checked="item.is_resolved"
+                @change="toggleItem(item)"
+                class="mt-0.5 flex-shrink-0 h-3 w-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              >
+              <span 
+                class="ml-2 flex-1 break-all whitespace-pre-wrap cursor-pointer"
+                :class="item.is_resolved ? 'line-through text-gray-400' : ''"
+                @click="toggleItem(item)"
+              >
+                {{ item.text }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="w-full h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-        <div
-          class="h-full rounded-full transition-all"
-          :class="task.is_completed ? 'bg-green-500' : 'bg-blue-500'"
-          :style="{ width: `${itemsProgress.pct}%` }"
-        />
-      </div>
-    </div>
   </div>
 </template>

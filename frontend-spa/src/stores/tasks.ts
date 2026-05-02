@@ -238,14 +238,14 @@ export interface TaskDependencyOut {
   from_task_title: string
   to_task_id: string
   to_task_title: string
-  type: 'blocks' | 'related_to'
+  type: 'blocks' | 'related_to' | 'subtask'
   created_by_id: string | null
   created_at: string
 }
 
 export interface TaskDependencyIn {
   to_task_id: string
-  type?: 'blocks' | 'related_to'
+  type?: 'blocks' | 'related_to' | 'subtask'
 }
 
 // ---------------------------------------------------------------------------

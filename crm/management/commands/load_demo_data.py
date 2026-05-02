@@ -9,7 +9,7 @@ Usage:
     python manage.py load_demo_data [--email <owner-email>] [--password <password>]
 
 If the email already exists the command attaches the demo workspace to that
-account instead of creating a new user.  Running the command a second time for
+account instead of creating a new user. Running the command a second time for
 the same owner email is safe — it will skip objects that already exist.
 """
 
@@ -26,6 +26,7 @@ from crm.models import (
     Activity,
     ActivityType,
     Customer,
+    ContactType,
     Lead,
     LeadSource,
     LeadStatus,
@@ -43,195 +44,140 @@ User = get_user_model()
 # Sample data fixtures
 # ---------------------------------------------------------------------------
 
-CUSTOMERS = [
+CUSTOMERS_COMPANIES = [
     {
-        "first_name": "Alice",
-        "last_name": "Johnson",
-        "email": "alice.johnson@example.com",
-        "phone": "+1 555-0101",
-        "company_name": "Bright Future LLC",
-        "tags": ["enterprise", "vip"],
+        "company_name": "Tesla Motors Europe",
+        "email": "partners@tesla.com",
+        "phone": "+420 800 123 456",
+        "ico": "11223344",
+        "dic": "CZ11223344",
+        "address_street": "Průmyslová 1",
+        "address_city": "Praha",
+        "address_zip": "10000",
+        "address_country": "Czech Republic",
+        "website": "https://www.tesla.com",
+        "type": ContactType.COMPANY,
+        "tags": ["enterprise", "automotive", "vip"],
     },
     {
-        "first_name": "Bob",
-        "last_name": "Smith",
-        "email": "bob.smith@example.com",
-        "phone": "+1 555-0102",
-        "company_name": "Smith & Partners",
-        "tags": ["smb"],
+        "company_name": "Avast Software",
+        "email": "enterprise@avast.com",
+        "phone": "+420 800 987 654",
+        "ico": "44332211",
+        "dic": "CZ44332211",
+        "address_street": "Pikrtova 1737/1A",
+        "address_city": "Praha",
+        "address_zip": "14000",
+        "address_country": "Czech Republic",
+        "website": "https://www.avast.com",
+        "type": ContactType.COMPANY,
+        "tags": ["enterprise", "software"],
     },
     {
-        "first_name": "Carol",
-        "last_name": "Williams",
-        "email": "carol.williams@example.com",
-        "phone": "+1 555-0103",
-        "company_name": "Williams Group",
-        "tags": ["prospect"],
+        "company_name": "Seznam.cz, a.s.",
+        "email": "obchod@seznam.cz",
+        "phone": "+420 234 694 111",
+        "ico": "26168685",
+        "dic": "CZ26168685",
+        "address_street": "Radlická 3294/10",
+        "address_city": "Praha 5",
+        "address_zip": "15000",
+        "address_country": "Czech Republic",
+        "website": "https://www.seznam.cz",
+        "type": ContactType.COMPANY,
+        "tags": ["tech", "smb", "marketing"],
+    },
+]
+
+CUSTOMERS_PERSONS = [
+    {
+        "first_name": "Elon",
+        "last_name": "Musk",
+        "email": "elon@tesla.com",
+        "phone": "+420 777 123 456",
+        "company_index": 0,
+        "type": ContactType.PERSON,
+        "tags": ["vip", "decision-maker"],
     },
     {
-        "first_name": "David",
-        "last_name": "Brown",
-        "email": "david.brown@example.com",
-        "phone": "+1 555-0104",
-        "company_name": "Brown Industries",
-        "tags": ["enterprise"],
+        "first_name": "Ondřej",
+        "last_name": "Vlček",
+        "email": "ondrej.vlcek@avast.com",
+        "phone": "+420 777 987 654",
+        "company_index": 1,
+        "type": ContactType.PERSON,
+        "tags": ["decision-maker"],
     },
     {
-        "first_name": "Emma",
-        "last_name": "Davis",
-        "email": "emma.davis@example.com",
-        "phone": "+1 555-0105",
-        "company_name": "Davis Digital",
-        "tags": ["startup", "prospect"],
-    },
-    {
-        "first_name": "Frank",
-        "last_name": "Miller",
-        "email": "frank.miller@example.com",
-        "phone": "+1 555-0106",
-        "company_name": "Miller Tech",
-        "tags": ["enterprise", "prospect"],
-    },
-    {
-        "first_name": "Grace",
-        "last_name": "Wilson",
-        "email": "grace.wilson@example.com",
-        "phone": "+1 555-0107",
-        "company_name": "Wilson & Co",
-        "tags": ["smb", "vip"],
+        "first_name": "Ivo",
+        "last_name": "Lukačovič",
+        "email": "ivo@seznam.cz",
+        "phone": "+420 777 111 222",
+        "company_index": 2,
+        "type": ContactType.PERSON,
+        "tags": ["founder"],
     },
 ]
 
 LEADS = [
     {
-        "title": "Enterprise CRM rollout — Bright Future",
-        "description": "Evaluate LeadLab for a 200-seat deployment across three offices.",
+        "title": "Zavádění CRM - Tesla Motors Europe",
+        "description": "Zhodnocení LeadLab pro mezinárodní nasazení s 200 uživateli.",
         "status": LeadStatus.NEGOTIATION,
         "source": LeadSource.REFERRAL,
         "value": Decimal("48000.00"),
-        "currency": "USD",
-        "customer_index": 0,
+        "currency": "EUR",
+        "company_index": 0,
+        "contact_person_index": 0,
     },
     {
-        "title": "Website redesign consultation",
-        "description": "Consulting engagement to modernise their public site and integrate CRM.",
+        "title": "Konzultace k redesignu webu - Avast",
+        "description": "Návrh nové struktury firemních stránek a propojení na CRM systém.",
         "status": LeadStatus.PROPOSAL,
         "source": LeadSource.WEB,
         "value": Decimal("12500.00"),
-        "currency": "USD",
-        "customer_index": 1,
+        "currency": "CZK",
+        "company_index": 1,
+        "contact_person_index": 1,
     },
     {
-        "title": "Annual software license renewal",
-        "description": "Renewal of the Pro plan for the next 12 months.",
+        "title": "Roční licence a podpora - Seznam.cz",
+        "description": "Obnova balíčku pro profesionální marketingové týmy.",
         "status": LeadStatus.WON,
         "source": LeadSource.EMAIL,
         "value": Decimal("3600.00"),
-        "currency": "USD",
-        "customer_index": 2,
-    },
-    {
-        "title": "Inbound — Brown Industries cold outreach",
-        "description": "Responded to LinkedIn campaign; interested in sales automation features.",
-        "status": LeadStatus.CONTACTED,
-        "source": LeadSource.SOCIAL,
-        "value": Decimal("9000.00"),
-        "currency": "USD",
-        "customer_index": 3,
-    },
-    {
-        "title": "Startup onboarding package — Davis Digital",
-        "description": "Small team looking for an affordable CRM to replace spreadsheets.",
-        "status": LeadStatus.NEW,
-        "source": LeadSource.WEB,
-        "value": Decimal("1200.00"),
-        "currency": "USD",
-        "customer_index": 4,
-    },
-    {
-        "title": "Lost — competitor selected",
-        "description": "Prospect chose a competitor after a 3-week evaluation.",
-        "status": LeadStatus.LOST,
-        "source": LeadSource.COLD_CALL,
-        "value": Decimal("7500.00"),
-        "currency": "USD",
-        "customer_index": 1,
-    },
-    {
-        "title": "Miller Tech — cloud migration project",
-        "description": "Full migration from on-premise ERP to cloud-hosted solution.",
-        "status": LeadStatus.PROPOSAL,
-        "source": LeadSource.REFERRAL,
-        "value": Decimal("32000.00"),
-        "currency": "USD",
-        "customer_index": 5,
-    },
-    {
-        "title": "Wilson & Co — monthly retainer",
-        "description": "Ongoing support and CRM customisation retainer agreement.",
-        "status": LeadStatus.WON,
-        "source": LeadSource.EMAIL,
-        "value": Decimal("2400.00"),
-        "currency": "USD",
-        "customer_index": 6,
-    },
-    {
-        "title": "Canceled — budget freeze",
-        "description": "Client paused all vendor negotiations due to internal budget review.",
-        "status": LeadStatus.CANCELED,
-        "source": LeadSource.OTHER,
-        "value": Decimal("5000.00"),
-        "currency": "USD",
-        "customer_index": 3,
+        "currency": "EUR",
+        "company_index": 2,
+        "contact_person_index": 2,
     },
 ]
 
-# Activities per lead index (activities are attached to the lead at that position).
 ACTIVITIES_BY_LEAD = {
     0: [
-        ("Introduced LeadLab via introductory call — positive reception.", ActivityType.CALL),
-        ("Sent product overview deck and pricing sheet.", ActivityType.EMAIL_OUT),
-        ("Follow-up email: confirmed interest in Pro plan.", ActivityType.EMAIL_IN),
-        ("Demo session scheduled for next Tuesday.", ActivityType.MEETING),
-        ("Proposal draft sent for review.", ActivityType.EMAIL_OUT),
-        ("Received signed contract — deal closed!", ActivityType.COMMENT),
+        ("Úvodní hovor s Elonem Musk o požadavcích na LeadLab.", ActivityType.CALL),
+        ("Zasláno produktové demo a předběžná cenová nabídka.", ActivityType.EMAIL_OUT),
+        ("Elon potvrdil zájem o testování prémiového tarifu.", ActivityType.EMAIL_IN),
     ],
     1: [
-        ("Initial discovery call completed.", ActivityType.CALL),
-        ("Sent portfolio samples and case studies.", ActivityType.EMAIL_OUT),
-        ("Client requested a revised scope document.", ActivityType.EMAIL_IN),
+        ("Zahájen discovery proces k redesignu.", ActivityType.CALL),
+        ("Odeslány příklady dřívějších projektů.", ActivityType.EMAIL_OUT),
     ],
     2: [
-        ("Renewal reminder sent 60 days before expiry.", ActivityType.EMAIL_OUT),
-        ("Client confirmed renewal — invoice raised.", ActivityType.EMAIL_IN),
-    ],
-    3: [
-        ("First contact via LinkedIn message.", ActivityType.COMMENT),
-        ("Scheduled introductory call for next week.", ActivityType.MEETING),
-    ],
-    6: [
-        ("Referral introduction call with Miller Tech CTO.", ActivityType.CALL),
-        ("Sent high-level migration roadmap for review.", ActivityType.EMAIL_OUT),
+        ("Zasláno upozornění na obnovení ročního tarifu.", ActivityType.EMAIL_OUT),
+        ("Zákazník potvrdil zaplacení faktury.", ActivityType.EMAIL_IN),
     ],
 }
 
 TASKS = [
-    # (title, lead_index, days_offset, priority, status)
-    ("Send follow-up email", 0, 3, TaskPriority.HIGH, TaskStatus.TODO),
-    ("Prepare demo environment", 0, 7, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS),
-    ("Schedule stakeholder call", 0, 5, TaskPriority.HIGH, TaskStatus.TODO),
-    ("Review proposal feedback", 1, 2, TaskPriority.MEDIUM, TaskStatus.TODO),
-    ("Update CRM with call notes", 0, 1, TaskPriority.LOW, TaskStatus.DONE),
-    ("Send revised scope document", 1, 4, TaskPriority.HIGH, TaskStatus.TODO),
-    ("Confirm renewal invoice details", 2, 1, TaskPriority.MEDIUM, TaskStatus.DONE),
-    ("Prepare Miller Tech migration plan", 6, 10, TaskPriority.CRITICAL, TaskStatus.IN_PROGRESS),
-    ("Draft retainer agreement for Wilson & Co", 7, 3, TaskPriority.MEDIUM, TaskStatus.TODO),
+    ("Odeslat doplňující nabídku pro Teslu", 0, 3, TaskPriority.HIGH, TaskStatus.TODO),
+    ("Připravit demo prezentaci pro Avast", 1, 7, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS),
+    ("Připravit licenční smlouvu pro Seznam.cz", 2, 2, TaskPriority.HIGH, TaskStatus.TODO),
 ]
 
 PROJECTS = [
-    "Q3 Pipeline",
-    "Key Account Management",
-    "Renewals & Retention",
+    "Q3 Obchodní Plán",
+    "Klíčoví Zákazníci",
+    "Předplatné a Retence",
 ]
 
 
@@ -288,9 +234,8 @@ class Command(BaseCommand):
         if user_created:
             user.set_password(password)
             user.save()
-            self.stdout.write(self.style.SUCCESS(f"Created user: {email}  (password: {password})"))
+            self.stdout.write(self.style.SUCCESS(f"Created user: {email} (password: {password})"))
         else:
-            # Always sync password and superadmin flags on existing user
             user.set_password(password)
             user.is_staff = superadmin
             user.is_superuser = superadmin
@@ -310,28 +255,56 @@ class Command(BaseCommand):
             defaults={"role": MembershipRole.OWNER},
         )
 
-        # ---- customers ----
-        customers = []
-        for data in CUSTOMERS:
-            customer, created = Customer.objects.get_or_create(
+        # ---- companies ----
+        companies = []
+        for data in CUSTOMERS_COMPANIES:
+            company, created = Customer.objects.get_or_create(
+                firm=firm,
+                email=data["email"],
+                defaults={
+                    "company_name": data["company_name"],
+                    "phone": data["phone"],
+                    "ico": data["ico"],
+                    "dic": data["dic"],
+                    "address_street": data["address_street"],
+                    "address_city": data["address_city"],
+                    "address_zip": data["address_zip"],
+                    "address_country": data["address_country"],
+                    "website": data["website"],
+                    "type": data["type"],
+                    "tags": data["tags"],
+                },
+            )
+            companies.append(company)
+            if created:
+                self.stdout.write(f" + Company: {company.company_name}")
+
+        # ---- persons ----
+        persons = []
+        for data in CUSTOMERS_PERSONS:
+            linked_company = companies[data["company_index"]]
+            person, created = Customer.objects.get_or_create(
                 firm=firm,
                 email=data["email"],
                 defaults={
                     "first_name": data["first_name"],
                     "last_name": data["last_name"],
                     "phone": data["phone"],
-                    "company_name": data["company_name"],
+                    "company": linked_company,
+                    "company_name": linked_company.company_name,
+                    "type": data["type"],
                     "tags": data["tags"],
                 },
             )
-            customers.append(customer)
+            persons.append(person)
             if created:
-                self.stdout.write(f"  + Customer: {customer.first_name} {customer.last_name}")
+                self.stdout.write(f" + Person: {person.first_name} {person.last_name}")
 
         # ---- leads ----
         leads = []
         for i, data in enumerate(LEADS):
-            customer = customers[data["customer_index"]]
+            company = companies[data["company_index"]]
+            contact_person = persons[data["contact_person_index"]]
             lead, created = Lead.objects.get_or_create(
                 firm=firm,
                 title=data["title"],
@@ -341,13 +314,14 @@ class Command(BaseCommand):
                     "source": data["source"],
                     "value": data["value"],
                     "currency": data["currency"],
-                    "customer": customer,
+                    "company": company,
+                    "contact_person": contact_person,
                     "assigned_to": user,
                 },
             )
             leads.append(lead)
             if created:
-                self.stdout.write(f"  + Lead: {lead.title[:60]}")
+                self.stdout.write(f" + Lead: {lead.title}")
 
         # ---- activities ----
         for lead_index, activity_list in ACTIVITIES_BY_LEAD.items():
@@ -363,15 +337,13 @@ class Command(BaseCommand):
                     type=atype,
                     content_text=body,
                 )
-            self.stdout.write(f"  + {len(activity_list)} activities on '{target_lead.title[:40]}'")
+            self.stdout.write(f" + {len(activity_list)} activities on '{target_lead.title}'")
 
         # ---- projects ----
-        projects = []
         for project_name in PROJECTS:
             project, created = Project.objects.get_or_create(firm=firm, name=project_name)
-            projects.append(project)
             if created:
-                self.stdout.write(f"  + Project: {project_name}")
+                self.stdout.write(f" + Project: {project_name}")
 
         # ---- tasks ----
         now = timezone.now()
@@ -392,11 +364,6 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                self.stdout.write(f"  + Task: {title}")
+                self.stdout.write(f" + Task: {title}")
 
         self.stdout.write(self.style.SUCCESS("\nDemo data loaded successfully!"))
-        self.stdout.write(
-            f"\nLogin at /app/ with:\n"
-            f"  Email:    {email}\n"
-            f"  Password: {password}\n"
-        )

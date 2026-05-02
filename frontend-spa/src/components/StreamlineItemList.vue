@@ -94,10 +94,13 @@ async function toggleItem(item: StreamlineItemOut) {
   // Optimistic update
   const idx = items.value.findIndex((i) => i.id === item.id)
   if (idx !== -1) {
-    items.value[idx] = {
-      ...items.value[idx],
-      is_resolved: newVal,
-      resolved_at: newVal ? new Date().toISOString() : null,
+    const old = items.value[idx]
+    if (old) {
+      items.value[idx] = {
+        ...old,
+        is_resolved: newVal,
+        resolved_at: newVal ? new Date().toISOString() : null,
+      }
     }
   }
   const res = await store.updateStreamlineItem(item.id, { is_resolved: newVal })

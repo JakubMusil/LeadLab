@@ -40,6 +40,7 @@
     "pipelineByStatus": "Pipeline według statusu",
     "recentActivity": "Ostatnia aktywność",
     "statusBreakdown": "Podział według statusu",
+    "statCards": "Karty podsumowania",
     "noRecentActivity": "Brak ostatniej aktywności",
     "conversion": "{rate}% konwersja",
     "inAddressBook": "w książce adresowej",

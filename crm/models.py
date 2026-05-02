@@ -214,6 +214,26 @@ class Lead(TenantModel):
         on_delete=models.SET_NULL,
         related_name="leads",
     )
+    # Company from the address book (Customer of type=company)
+    company = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="company_leads",
+        limit_choices_to={"type": "company"},
+        help_text="The company (from the address book) this lead belongs to.",
+    )
+    # Individual contact person (must be an employee of the selected company)
+    contact_person = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="contact_person_leads",
+        limit_choices_to={"type": "person"},
+        help_text="The specific contact person at the company for this lead.",
+    )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(
@@ -290,8 +310,11 @@ class Lead(TenantModel):
         "whatsapp_in",
         # Planning
         "meeting_scheduled",
+        "call_scheduled",
+        "event_scheduled",
         "task",
-        "todo_items",
+        "proposal",
+        "todo_items_added",
         # Files & references
         "file_upload",
         "voice_memo",
@@ -399,6 +422,11 @@ class Activity(models.Model):
             "level — this field is purely a flag."
         ),
     )
+    
+    # Edit tracking
+    is_edited = models.BooleanField(default=False, db_index=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     # Soft-delete — the record is kept for audit purposes; content_text and
@@ -1000,6 +1028,7 @@ class StreamlineItem(models.Model):
 class TaskDependencyType(models.TextChoices):
     BLOCKS = "blocks", "Blocks"
     RELATED_TO = "related_to", "Related To"
+    SUBTASK = "subtask", "Subtask"
 
 
 class TaskDependency(models.Model):

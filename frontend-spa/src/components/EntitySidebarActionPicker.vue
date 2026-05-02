@@ -1,3 +1,4 @@
+<!-- Updated for todo_items_added -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, type Component } from 'vue'
 import { api } from '@/api'
@@ -139,6 +140,7 @@ const activityTypeLabelKey: Record<string, string> = {
   system_note: 'leadDetail.typeSystemNote',
   file_upload: 'leadDetail.typeFileUpload',
   todo_items: 'leadDetail.typeTodoItems',
+  proposal: 'leadDetail.typeProposal',
   // Pseudo-tool for the unified messaging composer (no real activity_type).
   message: 'leadDetail.typeMessage',
 }
@@ -205,7 +207,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'planning',
     labelKey: 'leadDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'event_scheduled', 'task', 'todo_items'],
+    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'proposal', 'todo_items_added'],
     accent: 'blue',
   },
   {
@@ -367,6 +369,11 @@ const sidebarTaskWatcherIds = ref<string[]>([])
 const sidebarTaskDescription = ref('')
 const sidebarTaskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const sidebarTaskSubmitting = ref(false)
+
+// Proposal quick-create state
+const sidebarProposalTitle = ref('')
+const sidebarProposalCurrency = ref('CZK')
+const sidebarProposalSubmitting = ref(false)
 
 // Fields that appear ABOVE the rich-text body (e.g. email subject / recipient).
 // Generic across tools — anything that semantically scopes the body goes on top.
@@ -530,8 +537,11 @@ function openSidebarAction(type: string) {
   // Pre-initialise schema keys so Vue's Proxy reactivity tracks them from start.
   const tool = toolbarTools.value.find((x) => x.activity_type === type)
   sidebarExtraFields.value = _initFieldsForTool(tool ?? null)
-  if (type === 'task') {
+  if (type === 'task' || type === 'todo_items_added') {
     sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
+  } else if (type === 'proposal') {
+    sidebarProposalTitle.value = ''
+    sidebarProposalCurrency.value = 'CZK'
   }
 }
 
@@ -878,40 +888,88 @@ function sidebarCancelFileUpload() {
 async function sidebarAddTask() {
   if (!sidebarTaskTitle.value.trim()) return
   sidebarTaskSubmitting.value = true
-  const payload: Record<string, unknown> = {
-    [entityIdField.value]: props.entityId,
-    title: sidebarTaskTitle.value.trim(),
-    assigned_to_id: sidebarTaskAssigneeId.value || null,
-    watcher_ids: sidebarTaskWatcherIds.value,
-  }
-  if (sidebarTaskDueDate.value) payload.due_date = new Date(sidebarTaskDueDate.value).toISOString()
-  const res = await api.post('/api/v1/crm/tasks', payload)
-  if (res.ok) {
-    // If a description was entered, post it as the first comment on the parent timeline.
-    const descText = sidebarTaskDescription.value
-    if (descText && descText.replace(/<[^>]*>/g, '').trim()) {
-      const mentionedIds = sidebarTaskEditorRef.value?.getMentionedIds() ?? []
-      const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
-      await api.post('/api/v1/crm/activities', {
-        [entityIdField.value]: props.entityId,
-        type: 'comment',
-        content_text: descText,
-        metadata,
-      })
+
+  if (sidebarActionType.value === 'todo_items_added') {
+    const payload: Record<string, unknown> = {
+      [entityIdField.value]: props.entityId,
+      type: 'todo_items_added',
+      content_text: '',
+      metadata: {
+        text: sidebarTaskTitle.value.trim(),
+        assigned_to_id: sidebarTaskAssigneeId.value || null,
+        watcher_ids: sidebarTaskWatcherIds.value,
+        due_date: sidebarTaskDueDate.value ? new Date(sidebarTaskDueDate.value).toISOString() : null,
+      }
     }
-    sidebarTaskTitle.value = ''
-    sidebarTaskDueDate.value = ''
-    sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
-    sidebarTaskWatcherIds.value = []
-    sidebarTaskDescription.value = ''
-    sidebarActionType.value = ''
-    emit('task-created')
-    emit('activity-added')
-    toast.success(t('leadDetail.taskCreated'))
+    const res = await api.post('/api/v1/crm/activities', payload)
+    if (res.ok) {
+      sidebarTaskTitle.value = ''
+      sidebarTaskDueDate.value = ''
+      sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
+      sidebarTaskWatcherIds.value = []
+      sidebarActionType.value = ''
+      emit('activity-added')
+      toast.success(t('leadDetail.activityAdded'))
+    } else {
+      toast.error(t('leadDetail.activityFailed'))
+    }
   } else {
-    toast.error(t('leadDetail.taskFailed'))
+    const payload: Record<string, unknown> = {
+      [entityIdField.value]: props.entityId,
+      title: sidebarTaskTitle.value.trim(),
+      assigned_to_id: sidebarTaskAssigneeId.value || null,
+      watcher_ids: sidebarTaskWatcherIds.value,
+    }
+    if (sidebarTaskDueDate.value) payload.due_date = new Date(sidebarTaskDueDate.value).toISOString()
+    const res = await api.post('/api/v1/crm/tasks', payload)
+    if (res.ok) {
+      // If a description was entered, post it as the first comment on the parent timeline.
+      const descText = sidebarTaskDescription.value
+      if (descText && descText.replace(/<[^>]*>/g, '').trim()) {
+        const mentionedIds = sidebarTaskEditorRef.value?.getMentionedIds() ?? []
+        const metadata: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
+        await api.post('/api/v1/crm/activities', {
+          [entityIdField.value]: props.entityId,
+          type: 'comment',
+          content_text: descText,
+          metadata,
+        })
+      }
+      sidebarTaskTitle.value = ''
+      sidebarTaskDueDate.value = ''
+      sidebarTaskAssigneeId.value = authStore.user ? String(authStore.user.id) : ''
+      sidebarTaskWatcherIds.value = []
+      sidebarTaskDescription.value = ''
+      sidebarActionType.value = ''
+      emit('task-created')
+      emit('activity-added')
+      toast.success(t('leadDetail.taskCreated'))
+    } else {
+      toast.error(t('leadDetail.taskFailed'))
+    }
   }
   sidebarTaskSubmitting.value = false
+}
+
+async function sidebarAddProposal() {
+  if (!sidebarProposalTitle.value.trim()) return
+  sidebarProposalSubmitting.value = true
+  const payload: Record<string, unknown> = {
+    title: sidebarProposalTitle.value.trim(),
+    currency: sidebarProposalCurrency.value,
+    [entityIdField.value]: props.entityId,
+  }
+  const res = await api.post('/api/v1/crm/proposals', payload)
+  if (res.ok) {
+    sidebarProposalTitle.value = ''
+    sidebarProposalCurrency.value = 'CZK'
+    sidebarActionType.value = ''
+    emit('activity-added')
+    toast.success(t('proposals.successCreate') || 'Proposal created')
+  } else {
+    toast.error(t('proposals.errorCreate') || 'Failed to create proposal')
+  }
+  sidebarProposalSubmitting.value = false
 }
 
 function toggleSidebarTaskWatcher(userId: string) {
@@ -1039,7 +1097,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
     </div>
 
     <!-- Step 2a: activity form (comment / call / meeting / email / sms / etc.) -->
-    <div v-else-if="sidebarActionType !== 'task'" class="space-y-2">
+    <div v-else-if="sidebarActionType !== 'task' && sidebarActionType !== 'todo_items_added' && sidebarActionType !== 'proposal'" class="space-y-2">
       <div class="flex items-center gap-2 mb-1">
         <component :is="sidebarActionIcon" class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
         <span class="text-sm font-medium text-gray-700 dark:text-gray-300" data-testid="entity-sidebar-action-current">
@@ -1136,29 +1194,36 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         </div>
       </div>
 
-      <!-- "Header" fields: subject, to, from, channel, … — shown above the body -->
-      <template v-for="prop in sidebarSchemaPropsTop" :key="prop.key">
-        <div :data-field="prop.key">
-          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            {{ prop.title }}<span v-if="sidebarRequiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
-          </label>
-          <select
-            v-if="prop.enum"
-            v-model="sidebarExtraFields[prop.key]"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-          >
-            <option value="">{{ t('leadDetail.selectOption') }}</option>
-            <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-          <input
-            v-else
-            v-model="sidebarExtraFields[prop.key]"
-            :type="inputTypeFor(prop)"
-            :placeholder="placeholderFor(prop)"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-          />
-        </div>
-      </template>
+       <!-- "Header" fields: subject, to, from, channel, … — shown above the body -->
+       <template v-for="prop in sidebarSchemaPropsTop" :key="prop.key">
+         <div :data-field="prop.key">
+           <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+             {{ prop.title }}<span v-if="sidebarRequiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
+           </label>
+           <select
+             v-if="prop.enum"
+             v-model="sidebarExtraFields[prop.key]"
+             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+           >
+             <option value="">{{ t('leadDetail.selectOption') }}</option>
+             <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
+           </select>
+           <textarea
+             v-else-if="isMultilineProp(prop)"
+             v-model="sidebarExtraFields[prop.key]"
+             :placeholder="placeholderFor(prop)"
+             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+             rows="3"
+           />
+           <input
+             v-else
+             v-model="sidebarExtraFields[prop.key]"
+             :type="inputTypeFor(prop)"
+             :placeholder="placeholderFor(prop)"
+             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+           />
+         </div>
+       </template>
 
       <!-- Message body (rich text) — only when tool schema includes content_text -->
       <RichTextEditor
@@ -1274,22 +1339,38 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
     </div>
 
     <!-- Step 2b: task quick-create form -->
-    <div v-else class="space-y-2">
+    <div v-else-if="sidebarActionType === 'task' || sidebarActionType === 'todo_items_added'" class="space-y-2">
       <div class="flex items-center gap-2 mb-1">
         <ClipboardDocumentListIcon class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('leadDetail.typeTask') }}</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ sidebarActionType === 'task' ? t('leadDetail.typeTask') : t('leadDetail.typeTodoItems') }}
+        </span>
         <button
           class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           @click="closeSidebarAction"
         >← {{ t('leadDetail.changeType') }}</button>
       </div>
       <p
-        v-if="t('leadDetail.toolHelp.task') !== 'leadDetail.toolHelp.task'"
+        v-if="sidebarActionType === 'task' && t('leadDetail.toolHelp.task') !== 'leadDetail.toolHelp.task'"
         class="text-xs text-gray-500 dark:text-gray-400 mb-2 px-0.5 leading-snug"
       >
         {{ t('leadDetail.toolHelp.task') }}
       </p>
+      <p
+        v-if="sidebarActionType === 'todo_items_added' && t('leadDetail.toolHelp.todo_items') !== 'leadDetail.toolHelp.todo_items'"
+        class="text-xs text-gray-500 dark:text-gray-400 mb-2 px-0.5 leading-snug"
+      >
+        {{ t('leadDetail.toolHelp.todo_items') }}
+      </p>
+      <textarea
+        v-if="sidebarActionType === 'todo_items_added'"
+        v-model="sidebarTaskTitle"
+        rows="4"
+        :placeholder="t('leadDetail.taskTitleBulk')"
+        class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
+      />
       <input
+        v-else
         v-model="sidebarTaskTitle"
         type="text"
         :placeholder="t('leadDetail.taskTitle')"
@@ -1326,7 +1407,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
           </label>
         </div>
       </div>
-      <div>
+      <div v-if="sidebarActionType === 'task'">
         <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           {{ t('leadDetail.descriptionLabel') }}
         </label>
@@ -1345,6 +1426,52 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
           class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           @click="sidebarAddTask"
         >{{ sidebarTaskSubmitting ? '…' : t('leadDetail.addTask') }}</button>
+      </div>
+    </div>
+
+    <!-- Step 2c: proposal quick-create form -->
+    <div v-else-if="sidebarActionType === 'proposal'" class="space-y-3">
+      <div class="flex items-center gap-2 mb-1">
+        <DocumentTextIcon class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ t('proposals.newProposal') || 'New Proposal' }}
+        </span>
+        <button
+          class="ml-auto text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          @click="closeSidebarAction"
+        >← {{ t('leadDetail.changeType') }}</button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('proposals.nameLabel') || 'Name' }}</label>
+        <input
+          v-model="sidebarProposalTitle"
+          type="text"
+          :placeholder="t('proposals.namePlaceholder') || 'Proposal title...'"
+          class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+        />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('proposals.currency') || 'Currency' }}</label>
+        <select
+          v-model="sidebarProposalCurrency"
+          class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
+        >
+          <option>CZK</option>
+          <option>EUR</option>
+          <option>USD</option>
+          <option>GBP</option>
+          <option>PLN</option>
+        </select>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button
+          :disabled="sidebarProposalSubmitting || !sidebarProposalTitle.trim()"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+          @click="sidebarAddProposal"
+        >{{ sidebarProposalSubmitting ? '…' : (t('proposals.create') || 'Create') }}</button>
       </div>
     </div>
   </div>
