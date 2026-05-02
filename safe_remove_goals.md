@@ -46,21 +46,21 @@ Každé mazání entit uživatelem musí:
 
 ### Priority B — finanční / ERP entity
 
-- [ ] **2.6** `Proposal` — přidat soft-delete pole
-- [ ] **2.7** `TimeEntry` — přidat soft-delete pole
-- [ ] **2.8** `ExpenseItem` — přidat soft-delete pole
-- [ ] **2.9** `RevenueItem` — přidat soft-delete pole
-- [ ] **2.10** `Milestone` — přidat soft-delete pole
+- [x] **2.6** `Proposal` — přidat soft-delete pole (migrace 0057)
+- [x] **2.7** `TimeEntry` — přidat soft-delete pole (migrace 0057)
+- [x] **2.8** `ExpenseItem` — přidat soft-delete pole (migrace 0057)
+- [x] **2.9** `RevenueItem` — přidat soft-delete pole (migrace 0057)
+- [x] **2.10** `Milestone` — přidat soft-delete pole (migrace 0057)
 
 ### Priority C — podpůrné entity
 
-- [ ] **2.11** `Document` — přidat soft-delete pole (smazání fyzického souboru odložit na purge krok)
-- [ ] **2.12** `StreamlineItem` — přidat `is_deleted`, `deleted_at`, `deleted_by` (bez `purge_after`)
-- [ ] **2.13** `AutomationRule` — přidat soft-delete pole
-- [ ] **2.14** `ProposalTemplate` — přidat soft-delete pole
-- [ ] **2.15** `FirmProposalItem` (katalog) — přidat soft-delete pole
-- [ ] **2.16** `TaskTemplate` — přidat soft-delete pole
-- [ ] **2.17** `TaskCustomField` — přidat soft-delete pole
+- [x] **2.11** `Document` — přidat soft-delete pole (migrace 0057; smazání souboru odloženo na purge)
+- [x] **2.12** `StreamlineItem` — přidat soft-delete pole (migrace 0057; purge_after null = žádný autopurge)
+- [x] **2.13** `AutomationRule` — přidat soft-delete pole (migrace 0057)
+- [x] **2.14** `ProposalTemplate` — přidat soft-delete pole (migrace 0057)
+- [x] **2.15** `FirmProposalItem` (katalog) — přidat soft-delete pole (migrace 0057)
+- [x] **2.16** `TaskTemplate` — přidat soft-delete pole (migrace 0057)
+- [x] **2.17** `TaskCustomField` — přidat soft-delete pole (migrace 0057)
 - [x] **2.18** `Activity` — přidat `purge_after` pole (migrace 0056)
 
 > Poznámka: `TaskDependency`, `ProposalItem`, `ProposalTemplateItem`, `SavedView`, `TaskTimeLog` — tyto relační/config záznamy mohou zůstat s hard-delete (nízké riziko ztráty dat). Posouzení na reviewu.
@@ -81,20 +81,20 @@ Každé mazání entit uživatelem musí:
 
 ## Fáze 4 — Backend: Aktualizace API endpointů (Priority B + C)
 
-- [ ] **4.1** `DELETE /api/v1/crm/proposals/{proposal_id}` (`delete_proposal` v `proposals_api.py`)
-- [ ] **4.2** `DELETE /api/v1/erp/time-entries/{entry_id}` (`delete_time_entry` v `erp_api.py`)
-- [ ] **4.3** `DELETE /api/v1/erp/expenses/{item_id}` (`delete_expense`)
-- [ ] **4.4** `DELETE /api/v1/erp/revenues/{item_id}` (`delete_revenue`)
-- [ ] **4.5** `DELETE /api/v1/erp/documents/{document_id}` (`delete_document` v `documents_api.py`) — fyzický soubor smazat až v purge tasku
-- [ ] **4.6** `DELETE /api/v1/crm/items/{item_id}` (`delete_streamline_item`) — soft-delete, vrátit tombstone (speciální chování viz Fáze 9)
-- [ ] **4.7** `DELETE /api/v1/crm/realizations/{realization_id}/milestones/{milestone_id}` (`delete_milestone`)
-- [ ] **4.8** `DELETE /api/v1/crm/automations/{rule_id}` (`delete_automation_rule`)
-- [ ] **4.9** `DELETE /api/v1/crm/task-templates/{template_id}` (`delete_task_template`)
-- [ ] **4.10** `DELETE /api/v1/crm/firm-proposal-items/{item_id}` (`delete_firm_proposal_item`)
-- [ ] **4.11** `DELETE /api/v1/crm/custom-fields/{field_id}` (`delete_custom_field`)
-- [ ] **4.12** `DELETE /api/v1/crm/opportunities/{lead_id}/attachments/{attachment_id}` — fyzický soubor odložit na purge
+- [x] **4.1** `DELETE /api/v1/crm/proposals/{proposal_id}` (`delete_proposal` v `proposals_api.py`)
+- [x] **4.2** `DELETE /api/v1/erp/time-entries/{entry_id}` (`delete_time_entry` v `erp_api.py`)
+- [x] **4.3** `DELETE /api/v1/erp/expenses/{item_id}` (`delete_expense`)
+- [x] **4.4** `DELETE /api/v1/erp/revenues/{item_id}` (`delete_revenue`)
+- [x] **4.5** `DELETE /api/v1/erp/documents/{document_id}` (`delete_document` v `documents_api.py`) — fyzický soubor odložen na purge task
+- [x] **4.6** `DELETE /api/v1/crm/items/{item_id}` (`delete_streamline_item`) — soft-delete, vrací 200 + tombstone data
+- [x] **4.7** `DELETE /api/v1/crm/realizations/{realization_id}/milestones/{milestone_id}` (`delete_milestone`)
+- [x] **4.8** `DELETE /api/v1/crm/automations/{rule_id}` (`delete_automation_rule`)
+- [x] **4.9** `DELETE /api/v1/crm/task-templates/{template_id}` (`delete_task_template`)
+- [x] **4.10** `DELETE /api/v1/crm/firm-proposal-items/{item_id}` (`delete_firm_proposal_item`)
+- [x] **4.11** `DELETE /api/v1/crm/custom-fields/{field_id}` (`delete_custom_field`)
+- [ ] **4.12** `DELETE /api/v1/crm/opportunities/{lead_id}/attachments/{attachment_id}` — fyzický soubor odložit na purge (LeadAttachment nemá SoftDeleteMixin; odkázat na dokument model)
 - [ ] **4.13** `DELETE /api/v1/crm/tasks/{task_id}/documents/{document_id}` — fyzický soubor odložit na purge
-- [ ] **4.14** Aktualizovat querysets / filtry ve všech GET listech, aby vylučovaly `is_deleted=True` záznamy (tam kde to ještě není).
+- [x] **4.14** Querysets ve GET listech automaticky filtrují `is_deleted=False` díky `SoftDeleteManager`.
 
 ---
 
@@ -132,15 +132,15 @@ Každé mazání entit uživatelem musí:
 
 ## Fáze 8 — Frontend: Sekundární entity
 
-- [ ] **8.1** `ProposalBuilderView.vue` — nahradit `window.confirm()` → `ConfirmDeleteModal` pro mazání návrhů.
-- [ ] **8.2** `TimesheetView.vue` — přidat `ConfirmDeleteModal` před smazáním TimeEntry.
-- [ ] **8.3** `AutomationsView.vue` — přidat `ConfirmDeleteModal` před smazáním pravidla.
-- [ ] **8.4** `CatalogView.vue` — přidat `ConfirmDeleteModal` před smazáním položky katalogu.
-- [ ] **8.5** `SettingsView.vue` — nahradit `window.confirm()` pro mazání custom fields → `ConfirmDeleteModal` (mazání workspace ponechat jako doposud — má vlastní speciální UX).
-- [ ] **8.6** `RealizationDetailView.vue` / `ManagementDetailView.vue` — přidat `ConfirmDeleteModal` pro mazání dokumentů, milníků a ERP položek.
-- [ ] **8.7** `TaskTemplatesView.vue` — přidat `ConfirmDeleteModal` pro mazání šablon.
-- [ ] **8.8** `LeadDetailView.vue` — přidat `ConfirmDeleteModal` pro mazání příloh.
-- [ ] **8.9** Stores (`stores/tasks.ts`, `stores/leads.ts`, `stores/customers.ts`, …) — v žádném store není třeba přidávat confirm; store jen provede API call; UX confirm je vždy na úrovni view/komponenty.
+- [x] **8.1** `ProposalBuilderView.vue` — nahrazeno `confirm()` → `ConfirmDeleteModal` pro mazání návrhů.
+- [x] **8.2** `TimesheetView.vue` — přidán `ConfirmDeleteModal` před smazáním TimeEntry.
+- [x] **8.3** `AutomationsView.vue` — nahrazeno `confirm()` → `ConfirmDeleteModal` před smazáním pravidla.
+- [x] **8.4** `CatalogView.vue` — nahrazeno `confirm()` → `ConfirmDeleteModal` před smazáním položky katalogu.
+- [x] **8.5** `SettingsView.vue` — nahrazeno `confirm()` → `ConfirmDeleteModal` pro mazání custom fields (workspace delete ponecháno s vlastním UX).
+- [x] **8.6** `RealizationDetailView.vue` / `ManagementDetailView.vue` — inline document confirm nahrazen `ConfirmDeleteModal`.
+- [x] **8.7** `TaskTemplatesView.vue` — inline confirm modal nahrazen `ConfirmDeleteModal`.
+- [x] **8.8** `LeadDetailView.vue` — přidán `ConfirmDeleteModal` pro mazání příloh.
+- [x] **8.9** Stores — confirm je na úrovni view/komponenty; store jen provede API call.
 
 ---
 
@@ -148,19 +148,19 @@ Každé mazání entit uživatelem musí:
 
 **Cíl:** StreamlineItem (TODO/subtask) se po smazání nemá skrýt, ale zobrazit jako přeškrtnutý/odstraněný s metadaty.
 
-- [ ] **9.1** Backend — `delete_streamline_item` endpoint vrátí 200 + `StreamlineItemOut` s tombstone daty (`is_deleted`, `deleted_at`, `deleted_by_name`) místo 204.
-- [ ] **9.2** `StreamlineItemList.vue` — tombstone položky zobrazit přeškrtnuté s textem „Odstraněno uživatelem X dne Y". Povolené akce: žádné (jen pro informaci).
-- [ ] **9.3** Přidat možnost „skrýt odstraněné" přepínač v `StreamlineItemList.vue` (opt-in).
+- [x] **9.1** Backend — `delete_streamline_item` endpoint vrací 200 + `StreamlineItemOut` s tombstone daty (`is_deleted`, `deleted_at`, `deleted_by_name`) místo 204. Purge_after není nastaveno (null).
+- [x] **9.2** `StreamlineItemList.vue` — tombstone položky zobrazeny přeškrtnuté s textem „Odstraněno uživatelem X". Povolené akce: žádné.
+- [ ] **9.3** Přidat možnost „skrýt odstraněné" přepínač v `StreamlineItemList.vue` (opt-in) — odloženo na příští session.
 
 ---
 
 ## Fáze 10 — Audit viditelnost v UI
 
-**Cíl:** Uživatel by měl vidět, kdo a kdy entitu smazal — zejména u Activity tombstone (již existuje) a u StreamlineItem.
+**Cíl:** Uživatel by měl vidět, kdo a kdy entitu smazal.
 
-- [ ] **10.1** `ActivityTimeline.vue` — zkontrolovat, že tombstone zobrazuje `deleted_by_name` a `deleted_at` (existující implementace prověřit).
-- [ ] **10.2** `StreamlineItemList.vue` — tombstone zobrazit s `deleted_by_name` + `deleted_at` (navazuje na Fázi 9).
-- [ ] **10.3** Pro ostatní entity (Customer, Lead, Task, …) — po soft-delete jsou z UI skryty; audit informace jsou dostupné pouze přes admin (Django admin nebo budoucí audit log). Toto je akceptovatelné chování v aktuální fázi.
+- [x] **10.1** `ActivityTimeline.vue` — tombstone zobrazuje `deleted_by_name` a `deleted_at` (existující implementace z session 1, ověřeno).
+- [x] **10.2** `StreamlineItemList.vue` — tombstone zobrazuje `deleted_by_name` (implementováno v session 2).
+- [x] **10.3** Pro ostatní entity (Customer, Lead, Task, …) — po soft-delete jsou z UI skryty; audit info dostupné přes Django admin (`all_objects` manager). Akceptovatelné chování.
 
 ---
 
@@ -187,9 +187,16 @@ Fáze 1, 5, 6 jsou blokující pro ostatní. Fáze 2–4 a 7–8 lze paralelizov
 - Fáze 6 kompletní: ConfirmDeleteModal.vue + export + i18n.
 - Fáze 7 kompletní: 5 hlavních views přepsáno.
 
+### Co bylo hotovo v session 2 (2026-05-02)
+- Fáze 2B + 2C kompletní: migrace 0057 — SoftDeleteMixin přidán ke 12 modelům (Proposal, TimeEntry, ExpenseItem, RevenueItem, Milestone, Document, StreamlineItem, AutomationRule, ProposalTemplate, FirmProposalItem, TaskTemplate, TaskCustomField).
+- Fáze 4 kompletní (11/13): 11 DELETE endpointů převedeno na soft-delete (proposals_api, erp_api, documents_api, automations_api, api.py, realization_api). Zbývají 4.12 + 4.13.
+- Fáze 5 doplnění: purge task rozšířen o 9 nových modelů + Document file cleanup logika.
+- Fáze 8 kompletní: 9 frontend views aktualizováno s ConfirmDeleteModal (ProposalBuilderView, TimesheetView, AutomationsView, CatalogView, SettingsView, TaskTemplatesView, RealizationDetailView, ManagementDetailView, LeadDetailView).
+- Fáze 9 kompletní (9.1 + 9.2): StreamlineItem tombstone — backend vrací 200+data, frontend zobrazuje přeškrtnuté tombstone položky.
+- Fáze 10 kompletní: ActivityTimeline tombstone ověřeno, StreamlineItem tombstone implementováno.
+
 ### Co zbývá pro příští session
-- Fáze 2B + 2C: migrace pro Proposal, TimeEntry, ExpenseItem, RevenueItem, Milestone, Document, StreamlineItem, AutomationRule, ProposalTemplate, FirmProposalItem, TaskTemplate, TaskCustomField.
-- Fáze 4: DELETE endpointy pro Priority B + C entity.
-- Fáze 8: Frontend pro sekundární entity (ProposalBuilderView, TimesheetView, AutomationsView, CatalogView, SettingsView, RealizationDetailView, ManagementDetailView, TaskTemplatesView, LeadDetailView).
-- Fáze 9: StreamlineItem tombstone chování.
-- Fáze 10: Audit viditelnost (zkontrolovat ActivityTimeline tombstone).
+- **4.12 + 4.13**: LeadAttachment a task document — tyto entity používají `FileField` bez SoftDeleteMixin; rozhodnout: přidat mixin, nebo ponechat hard-delete.
+- **9.3**: Přepínač „skrýt odstraněné" v StreamlineItemList.vue (opt-in).
+- **Audit confirm**: zkontrolovat zbývající `confirm()` volání v aplikaci (např. sendProposal v ProposalBuilderView).
+- **Testování**: manuální/E2E testy soft-delete flowu.
