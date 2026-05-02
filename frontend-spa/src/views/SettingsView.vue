@@ -10,6 +10,7 @@ import { storeToRefs } from 'pinia'
 import { setLocale, useI18n } from '@/composables/useI18n'
 import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
 import { CheckIcon, TrashIcon, StarIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const leadScoringStore = useLeadScoringStore()
 
@@ -528,6 +529,8 @@ const newCFSaving = ref(false)
 const newCFError = ref('')
 
 const editingCF = ref<TaskCustomFieldOut | null>(null)
+const confirmDeleteCFId = ref<string | null>(null)
+const confirmDeleteCFName = ref<string | null>(null)
 const editCFName = ref('')
 const editCFType = ref('text')
 const editCFOptions = ref('')
@@ -595,10 +598,14 @@ async function saveEditCF() {
   }
 }
 
-async function deleteCF(cf: TaskCustomFieldOut) {
-  if (!confirm(t('tasks.cfSettings_deleteConfirm').replace('{name}', cf.name))) return
-  await tasksStore.deleteCustomField(cf.id)
+async function doDeleteCF(id: string) {
+  await tasksStore.deleteCustomField(id)
   await loadCustomFields()
+}
+
+function deleteCF(cf: TaskCustomFieldOut) {
+  confirmDeleteCFId.value = cf.id
+  confirmDeleteCFName.value = cf.name
 }
 
 const cfFieldTypes = computed(() => [
@@ -1278,4 +1285,11 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
     </div>
 
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteCFId"
+    :message="t('tasks.cfSettings_deleteConfirm').replace('{name}', confirmDeleteCFName ?? '')"
+    @confirm="doDeleteCF(confirmDeleteCFId!); confirmDeleteCFId = null; confirmDeleteCFName = null"
+    @cancel="confirmDeleteCFId = null; confirmDeleteCFName = null"
+  />
 </template>

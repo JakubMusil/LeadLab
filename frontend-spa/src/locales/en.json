@@ -879,6 +879,8 @@
     "streamlineAddFailed": "Failed to add items.",
     "streamlineToggleFailed": "Failed to update item.",
     "streamlineDeleteFailed": "Failed to delete item.",
+    "streamlineDeleted": "Deleted",
+    "streamlineDeletedBy": "by {name}",
     "dependencies": "Dependencies",
     "dependencyBlocks": "Blocks",
     "dependencyBlockedBy": "Blocked by",

@@ -28,6 +28,7 @@ from crm.models import (
     AutomationRunStatus,
     AutomationTrigger,
 )
+from crm.soft_delete import perform_soft_delete
 from firms.auth import MembershipRole, PermissionDenied, require_membership
 
 logger = logging.getLogger(__name__)
@@ -558,7 +559,7 @@ def delete_automation_rule(request, rule_id: str):
         rule = AutomationRule.objects.get(id=rule_id, firm=request.firm)
     except AutomationRule.DoesNotExist:
         return 404, {"detail": "Automation rule not found."}
-    rule.delete()
+    perform_soft_delete(rule, request.user)
     return 204, None
 
 

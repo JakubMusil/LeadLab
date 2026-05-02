@@ -7,6 +7,7 @@ import { useFirmStore } from '@/stores/firm'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 
 const toast = useToast()
@@ -93,6 +94,7 @@ const editingId = ref<string | null>(null)
 const editItem = ref<CatalogItem | null>(null)
 const savingEdit = ref(false)
 const showEditNotes = ref(false)
+const confirmDeleteItemId = ref<string | null>(null)
 
 // Detail modal for view/edit
 const detailItem = ref<CatalogItem | null>(null)
@@ -207,8 +209,7 @@ async function saveEdit() {
   }
 }
 
-async function deleteItem(id: string) {
-  if (!confirm(t('catalog.confirmDelete'))) return
+async function doDeleteItem(id: string) {
   const res = await api.delete(`/api/v1/crm/firm-proposal-items/${id}`)
   if (res.ok || res.status === 204) {
     allItems.value = allItems.value.filter((i) => i.id !== id)
@@ -216,6 +217,10 @@ async function deleteItem(id: string) {
   } else {
     toast.error(t('catalog.failedToDelete'))
   }
+}
+
+function deleteItem(id: string) {
+  confirmDeleteItemId.value = id
 }
 
 // ---------------------------------------------------------------------------
@@ -768,4 +773,11 @@ onMounted(() => {
       The <em>Description</em> (or <em>Name</em>) column is required. All other columns are optional.
     </div>
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteItemId"
+    :message="t('catalog.confirmDelete')"
+    @confirm="doDeleteItem(confirmDeleteItemId!); confirmDeleteItemId = null"
+    @cancel="confirmDeleteItemId = null"
+  />
 </template>

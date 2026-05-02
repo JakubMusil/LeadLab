@@ -25,6 +25,7 @@ import {
   LinkIcon,
 } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -606,16 +607,10 @@ async function deleteDocument() {
     </template>
   </div>
 
-  <!-- Delete document confirm -->
-  <Teleport to="body">
-    <div v-if="deleteDocId" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="deleteDocId = null">
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-        <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('management.confirmDocDelete') }}</p>
-        <div class="flex gap-3 justify-end">
-          <button @click="deleteDocId = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">{{ t('management.cancelBtn') }}</button>
-          <button @click="deleteDocument" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg">{{ t('management.deleteBtn') }}</button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <ConfirmDeleteModal
+    :open="!!deleteDocId"
+    :message="t('management.confirmDocDelete')"
+    @confirm="deleteDocument"
+    @cancel="deleteDocId = null"
+  />
 </template>

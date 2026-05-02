@@ -971,7 +971,7 @@ class StreamlineItemKind(models.TextChoices):
     SUBTASK = "subtask", "Sub-task"
 
 
-class StreamlineItem(models.Model):
+class StreamlineItem(SoftDeleteMixin, models.Model):
     """A single TODO or sub-task item attached to a Task.
 
     Replaces the legacy ``TaskChecklistItem`` and ``Task.parent_task``
@@ -1381,7 +1381,7 @@ class SavedView(models.Model):
 # Proposal Template (reusable line-item sets, scoped to Firm)
 # ---------------------------------------------------------------------------
 
-class ProposalTemplate(TenantModel):
+class ProposalTemplate(SoftDeleteMixin, TenantModel):
     """
     A reusable proposal template scoped to a Firm.  Team members can apply a
     template to a new Proposal with one click to pre-populate line items and
@@ -1439,7 +1439,7 @@ class ProposalTemplateItem(models.Model):
 # FirmProposalItem (firm-wide catalog of pre-defined proposal line items)
 # ---------------------------------------------------------------------------
 
-class FirmProposalItem(TenantModel):
+class FirmProposalItem(SoftDeleteMixin, TenantModel):
     """
     A pre-defined line item belonging to a Firm's proposal catalog.
 
@@ -1479,7 +1479,7 @@ class FirmProposalItem(TenantModel):
 # Proposal (standalone entity — can link to Lead, Customer, Realization or Management)
 # ---------------------------------------------------------------------------
 
-class Proposal(TenantModel):
+class Proposal(SoftDeleteMixin, TenantModel):
     """
     A business proposal.  It can be linked to any combination of CRM entities
     (Lead, Customer, Realization, Management) — or exist completely standalone.
@@ -1790,7 +1790,7 @@ class AutomationRunStatus(models.TextChoices):
     SKIPPED = "skipped", "Skipped"
 
 
-class AutomationRule(TenantModel):
+class AutomationRule(SoftDeleteMixin, TenantModel):
     """
     A trigger → condition(s) → action(s) automation rule scoped to a Firm.
 
@@ -1900,7 +1900,7 @@ class AutomationRun(models.Model):
 # Phase 7 — Task Template
 # ---------------------------------------------------------------------------
 
-class TaskTemplate(TenantModel):
+class TaskTemplate(SoftDeleteMixin, TenantModel):
     """
     A reusable task template scoped to a Firm.
 
@@ -1975,7 +1975,7 @@ class TaskCustomFieldType(models.TextChoices):
     URL = "url", "URL"
 
 
-class TaskCustomField(TenantModel):
+class TaskCustomField(SoftDeleteMixin, TenantModel):
     """
     A custom field definition scoped to a Firm.  Fields appear in the
     task-detail sidebar under 'Vlastní pole'.
@@ -2168,7 +2168,7 @@ class TaskTimer(models.Model):
 # Phase 4.0 — Sitewide Time Tracking (TimeEntry)
 # ---------------------------------------------------------------------------
 
-class TimeEntry(TenantModel):
+class TimeEntry(SoftDeleteMixin, TenantModel):
     """
     A sitewide time-tracking record that can be linked to any CRM entity.
 
@@ -2279,7 +2279,7 @@ class ExpenseItemRecurrence(models.TextChoices):
     YEARLY = "yearly", "Yearly"
 
 
-class ExpenseItem(TenantModel):
+class ExpenseItem(SoftDeleteMixin, TenantModel):
     """
     A cost item linked to any CRM entity or standing alone.
 
@@ -2358,7 +2358,7 @@ class ExpenseItem(TenantModel):
 # Phase 4.0 — ERP Revenue Items
 # ---------------------------------------------------------------------------
 
-class RevenueItem(TenantModel):
+class RevenueItem(SoftDeleteMixin, TenantModel):
     """
     A revenue item linked to any CRM entity or standing alone.
 
@@ -2505,7 +2505,7 @@ class Realization(SoftDeleteMixin, TenantModel):
         return f"{self.title} [{self.get_status_display()}]"
 
 
-class Milestone(models.Model):
+class Milestone(SoftDeleteMixin, models.Model):
     """
     A key checkpoint within a Realization.  Milestones are surfaced in the
     Calendar view (via their ``date`` field).
@@ -2661,7 +2661,7 @@ def _voice_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
     return f"task_voice/{getattr(instance, 'timeline_entry_id', 'unknown')}/{filename}"
 
 
-class Document(TenantModel):
+class Document(SoftDeleteMixin, TenantModel):
     """
     A file attached to any CRM entity or existing standalone.
 

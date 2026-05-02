@@ -880,6 +880,8 @@
     "streamlineAddFailed": "Nepodařilo se přidat položky.",
     "streamlineToggleFailed": "Nepodařilo se změnit stav položky.",
     "streamlineDeleteFailed": "Nepodařilo se smazat položku.",
+    "streamlineDeleted": "Odstraněno",
+    "streamlineDeletedBy": "uživatelem {name}",
     "dependencies": "Závislosti",
     "dependencyBlocks": "Blokuje",
     "dependencyBlockedBy": "Blokován",

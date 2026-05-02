@@ -1889,6 +1889,16 @@ def purge_soft_deleted_records(self):
         Realization,
         Management,
         Activity,
+        Proposal,
+        TimeEntry,
+        ExpenseItem,
+        RevenueItem,
+        AutomationRule,
+        ProposalTemplate,
+        FirmProposalItem,
+        TaskTemplate,
+        TaskCustomField,
+        Document,
     )
 
     now = tz.now()
@@ -1900,6 +1910,15 @@ def purge_soft_deleted_records(self):
         ("Task", Task),
         ("Realization", Realization),
         ("Management", Management),
+        ("Proposal", Proposal),
+        ("TimeEntry", TimeEntry),
+        ("ExpenseItem", ExpenseItem),
+        ("RevenueItem", RevenueItem),
+        ("AutomationRule", AutomationRule),
+        ("ProposalTemplate", ProposalTemplate),
+        ("FirmProposalItem", FirmProposalItem),
+        ("TaskTemplate", TaskTemplate),
+        ("TaskCustomField", TaskCustomField),
     ]
 
     for label, Model in models_to_purge:
@@ -1918,6 +1937,19 @@ def purge_soft_deleted_records(self):
     if act_count:
         logger.info("purge_soft_deleted_records: deleted %d Activity record(s)", act_count)
     total += act_count
+
+    # Document: delete physical file before hard-deleting the DB row
+    doc_qs = Document.all_objects.filter(is_deleted=True, purge_after__lte=now)
+    for doc in doc_qs:
+        if doc.file:
+            try:
+                doc.file.delete(save=False)
+            except Exception:
+                pass
+    doc_count, _ = doc_qs.delete()
+    if doc_count:
+        logger.info("purge_soft_deleted_records: deleted %d Document record(s)", doc_count)
+    total += doc_count
 
     logger.info("purge_soft_deleted_records: total %d record(s) hard-deleted", total)
     return {"purged": total}

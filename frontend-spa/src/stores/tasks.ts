@@ -184,6 +184,8 @@ export interface StreamlineItemOut {
   created_at: string
   resolved_by_id: string | null
   resolved_at: string | null
+  is_deleted?: boolean
+  deleted_by_name?: string | null
 }
 
 export interface StreamlineItemCreateIn {
@@ -548,9 +550,9 @@ export const useTasksStore = defineStore('tasks', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to update item.') }
   }
 
-  async function deleteStreamlineItem(itemId: string): Promise<{ ok: boolean; error?: string }> {
+  async function deleteStreamlineItem(itemId: string): Promise<{ ok: boolean; data?: any; error?: string }> {
     const res = await api.delete(`/api/v1/crm/items/${itemId}`)
-    if (res.ok) return { ok: true }
+    if (res.ok) return { ok: true, data: res.data }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to delete item.') }
   }
 

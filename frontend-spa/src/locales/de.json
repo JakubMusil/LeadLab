@@ -876,6 +876,8 @@
     "streamlineAddFailed": "Einträge konnten nicht hinzugefügt werden.",
     "streamlineToggleFailed": "Eintrag konnte nicht aktualisiert werden.",
     "streamlineDeleteFailed": "Eintrag konnte nicht gelöscht werden.",
+    "streamlineDeleted": "Gelöscht",
+    "streamlineDeletedBy": "von {name}",
     "dependencies": "Abhängigkeiten",
     "dependencyBlocks": "Blockiert",
     "dependencyBlockedBy": "Blockiert durch",

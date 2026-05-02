@@ -122,7 +122,12 @@ async function toggleItem(item: StreamlineItemOut) {
 async function deleteItem(id: string) {
   const res = await store.deleteStreamlineItem(id)
   if (res.ok) {
-    items.value = items.value.filter((i) => i.id !== id)
+    const idx = items.value.findIndex((i) => i.id === id)
+    if (idx !== -1 && res.data) {
+      items.value[idx] = res.data
+    } else {
+      items.value = items.value.filter((i) => i.id !== id)
+    }
     emit('refreshed')
   } else {
     toast.error(res.error ?? t('tasks.streamlineDeleteFailed'))
@@ -132,6 +137,12 @@ async function deleteItem(id: string) {
 // ---------------------------------------------------------------------------
 // Computed helpers
 // ---------------------------------------------------------------------------
+function deletionLabel(item: any): string {
+  const base = t('tasks.streamlineDeleted')
+  if (!item.deleted_by_name) return base
+  return `${base} ${t('tasks.streamlineDeletedBy').replace('{name}', item.deleted_by_name)}`
+}
+
 const progressPct = () =>
   props.total > 0 ? Math.round((props.resolved / props.total) * 100) : 0
 
@@ -192,39 +203,49 @@ const accentClass = props.kind === 'todo'
           :key="item.id"
           class="flex items-center gap-2.5 group"
         >
-          <!-- Checkbox toggle -->
-          <button
-            class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
-            :class="item.is_resolved
-              ? `${accentClass.check} text-white`
-              : `border-gray-300 ${accentClass.hover}`"
-            :disabled="togglingId === item.id"
-            @click="toggleItem(item)"
-          >
-            <span v-if="item.is_resolved" class="flex items-center justify-center"><CheckIcon class="w-3 h-3" /></span>
-            <span v-else-if="togglingId === item.id" class="text-xs text-gray-400">…</span>
-          </button>
+          <template v-if="!item.is_deleted">
+            <!-- Checkbox toggle -->
+            <button
+              class="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
+              :class="item.is_resolved
+                ? `${accentClass.check} text-white`
+                : `border-gray-300 ${accentClass.hover}`"
+              :disabled="togglingId === item.id"
+              @click="toggleItem(item)"
+            >
+              <span v-if="item.is_resolved" class="flex items-center justify-center"><CheckIcon class="w-3 h-3" /></span>
+              <span v-else-if="togglingId === item.id" class="text-xs text-gray-400">…</span>
+            </button>
 
-          <!-- Text -->
-          <span
-            class="flex-1 text-sm text-gray-700 dark:text-gray-200"
-            :class="item.is_resolved ? 'line-through text-gray-400 dark:text-gray-500' : ''"
-          >{{ item.text }}</span>
+            <!-- Text -->
+            <span
+              class="flex-1 text-sm text-gray-700 dark:text-gray-200"
+              :class="item.is_resolved ? 'line-through text-gray-400 dark:text-gray-500' : ''"
+            >{{ item.text }}</span>
 
-          <!-- Resolved-by hint -->
-          <span
-            v-if="item.is_resolved && item.resolved_by_id"
-            class="text-xs text-gray-400 dark:text-gray-500 hidden group-hover:inline flex-shrink-0"
-          >
-            {{ item.resolved_at ? new Date(item.resolved_at).toLocaleDateString() : '' }}
-          </span>
+            <!-- Resolved-by hint -->
+            <span
+              v-if="item.is_resolved && item.resolved_by_id"
+              class="text-xs text-gray-400 dark:text-gray-500 hidden group-hover:inline flex-shrink-0"
+            >
+              {{ item.resolved_at ? new Date(item.resolved_at).toLocaleDateString() : '' }}
+            </span>
 
-          <!-- Delete button -->
-          <button
-            class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            :title="t('tasks.delete')"
-            @click="deleteItem(item.id)"
-          ><TrashIcon class="w-3.5 h-3.5" /></button>
+            <!-- Delete button -->
+            <button
+              class="text-xs text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              :title="t('tasks.delete')"
+              @click="deleteItem(item.id)"
+            ><TrashIcon class="w-3.5 h-3.5" /></button>
+          </template>
+          <template v-else>
+            <div class="flex items-center gap-2 py-2 text-gray-400 dark:text-gray-500 text-sm line-through">
+              <span>{{ item.text }}</span>
+              <span class="text-xs no-underline">
+                — {{ deletionLabel(item) }}
+              </span>
+            </div>
+          </template>
         </li>
       </ul>
 

@@ -15,6 +15,7 @@ from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
 from crm.models import Customer, Document, Lead, Management, Proposal, Realization, Task
+from crm.soft_delete import perform_soft_delete
 from firms.auth import require_active_subscription, require_membership
 
 documents_router = Router(tags=["documents"])
@@ -235,7 +236,7 @@ def get_document(request: HttpRequest, document_id: str):
 
 @documents_router.delete("/documents/{document_id}", auth=django_auth)
 def delete_document(request: HttpRequest, document_id: str):
-    """Delete a document by ID. The actual file is removed from storage."""
+    """Soft-delete a document. The physical file is removed by the purge task."""
     firm = _firm(request)
     member = require_membership(request, firm)
 
@@ -243,9 +244,5 @@ def delete_document(request: HttpRequest, document_id: str):
     if not doc:
         return 404, {"detail": "Document not found"}
 
-    # Delete the physical file from storage
-    if doc.file:
-        doc.file.delete(save=False)
-
-    doc.delete()
+    perform_soft_delete(doc, request.user)
     return {"success": True}

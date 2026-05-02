@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 import type { TimeEntryOut, TimeEntryIn } from '@/stores/timer'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,7 @@ function clearCustomer() {
 const editingId = ref<string | null>(null)
 const editDuration = ref<number>(0)
 const editDescription = ref<string>('')
+const confirmDeleteEntryId = ref<string | null>(null)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -220,8 +222,7 @@ async function saveEdit(entry: TimeEntryOut) {
   }
 }
 
-async function deleteEntry(id: string) {
-  if (!confirm('Delete this time entry?')) return
+async function doDeleteEntry(id: string) {
   const res = await api.delete(`/api/v1/erp/time-entries/${id}`)
   if (res.ok || res.status === 204) {
     entries.value = entries.value.filter(e => e.id !== id)
@@ -229,6 +230,10 @@ async function deleteEntry(id: string) {
   } else {
     showToast('Failed to delete entry')
   }
+}
+
+function deleteEntry(id: string) {
+  confirmDeleteEntryId.value = id
 }
 </script>
 
@@ -433,6 +438,12 @@ async function deleteEntry(id: string) {
       </table>
     </div>
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteEntryId"
+    @confirm="doDeleteEntry(confirmDeleteEntryId!); confirmDeleteEntryId = null"
+    @cancel="confirmDeleteEntryId = null"
+  />
 </template>
 
 <style scoped>

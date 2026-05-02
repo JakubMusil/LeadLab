@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { useTasksStore, type TaskTemplateOut, type TaskTemplateIn, type TaskTemplateUpdateIn } from '@/stores/tasks'
 import { useToast } from '@/composables/useToast'
 import { TrashIcon, ClipboardDocumentListIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -519,19 +520,10 @@ onMounted(() => { loadTemplates() })
     </Teleport>
 
     <!-- ===================== DELETE CONFIRM ===================== -->
-    <Teleport to="body">
-      <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showDeleteConfirm = false">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('taskTemplates.deleteTemplate') }}</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('taskTemplates.deleteConfirm') }}</p>
-          <div class="flex gap-3 justify-end pt-2">
-            <button class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showDeleteConfirm = false">{{ t('tasks.cancel') }}</button>
-            <button :disabled="!!deletingId" class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50" @click="executeDelete">
-              {{ deletingId ? '…' : t('taskTemplates.deleteTemplate') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <ConfirmDeleteModal
+      :open="showDeleteConfirm"
+      @confirm="executeDelete"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>

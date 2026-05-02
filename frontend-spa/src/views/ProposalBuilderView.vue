@@ -8,6 +8,7 @@ import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
 import { CheckIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -116,6 +117,7 @@ const newItemDiscount = ref(0)
 const newItemVat = ref(0)
 const addingItem = ref(false)
 const editingItemId = ref<string | null>(null)
+const confirmDeleteProposalId = ref<string | null>(null)
 
 // Templates
 const templates = ref<ProposalTemplate[]>([])
@@ -278,8 +280,7 @@ async function saveProposal() {
   }
 }
 
-async function deleteProposal(id: string) {
-  if (!confirm(t('builder.confirmDelete'))) return
+async function doDeleteProposal(id: string) {
   const res = await api.delete(`/api/v1/crm/proposals/${id}`)
   if (res.ok || res.status === 204) {
     proposals.value = proposals.value.filter((p) => p.id !== id)
@@ -295,6 +296,10 @@ async function deleteProposal(id: string) {
   } else {
     toast.error(t('builder.failedToDelete'))
   }
+}
+
+function deleteProposal(id: string) {
+  confirmDeleteProposalId.value = id
 }
 
 function selectProposal(p: Proposal) {
@@ -976,4 +981,11 @@ watch(
       </div>
     </div>
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteProposalId"
+    :message="t('builder.confirmDelete')"
+    @confirm="doDeleteProposal(confirmDeleteProposalId!); confirmDeleteProposalId = null"
+    @cancel="confirmDeleteProposalId = null"
+  />
 </template>

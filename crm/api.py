@@ -2934,6 +2934,9 @@ class StreamlineItemOut(Schema):
     created_at: datetime
     resolved_by_id: Optional[str] = None
     resolved_at: Optional[datetime] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by_name: Optional[str] = None
 
 
 class StreamlineItemCreateIn(Schema):
@@ -2957,6 +2960,9 @@ def _streamline_item_out(item: StreamlineItem) -> dict:
         "created_at": item.created_at,
         "resolved_by_id": str(item.resolved_by_id) if item.resolved_by_id else None,
         "resolved_at": item.resolved_at,
+        "is_deleted": item.is_deleted,
+        "deleted_at": item.deleted_at,
+        "deleted_by_name": item.deleted_by_name if item.is_deleted else None,
     }
 
 
@@ -2975,7 +2981,7 @@ def list_streamline_items(request, task_id: str):
         task = Task.objects.get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
-    items = StreamlineItem.objects.filter(task=task).order_by("kind", "order", "created_at")
+    items = StreamlineItem.all_objects.filter(task=task).order_by("kind", "order", "created_at")
     return 200, [_streamline_item_out(i) for i in items]
 
 
@@ -3088,7 +3094,7 @@ def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateI
 @router.delete(
     "/items/{item_id}",
     auth=django_auth,
-    response={204: None, 403: ErrorOut, 404: ErrorOut},
+    response={200: StreamlineItemOut, 403: ErrorOut, 404: ErrorOut},
 )
 def delete_streamline_item(request, item_id: str):
     """Delete a streamline item."""
@@ -3100,8 +3106,14 @@ def delete_streamline_item(request, item_id: str):
         item = StreamlineItem.objects.get(id=item_id, task__firm=request.firm)
     except StreamlineItem.DoesNotExist:
         return 404, {"detail": "Streamline item not found."}
-    item.delete()
-    return 204, None
+    # Manual soft-delete without purge_after: StreamlineItems are purged
+    # together with their parent Task rather than on an independent schedule.
+    from django.utils import timezone as tz
+    item.is_deleted = True
+    item.deleted_at = tz.now()
+    item.deleted_by = request.user
+    item.save(update_fields=["is_deleted", "deleted_at", "deleted_by"])
+    return 200, _streamline_item_out(item)
 
 
 
@@ -4355,7 +4367,7 @@ def delete_task_template(request, template_id: str):
     except TaskTemplate.DoesNotExist:
         return 404, {"detail": "Task template not found."}
 
-    tmpl.delete()
+    perform_soft_delete(tmpl, request.user)
     return 204, None
 
 
@@ -6274,7 +6286,7 @@ def delete_custom_field(request, field_id: str):
     except TaskCustomField.DoesNotExist:
         return 404, {"detail": "Custom field not found."}
 
-    cf.delete()
+    perform_soft_delete(cf, request.user)
     return 204, None
 
 
