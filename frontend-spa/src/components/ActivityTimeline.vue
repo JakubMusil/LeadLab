@@ -968,6 +968,77 @@ async function toggleChecklistItem(activityId: string, itemIndex: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Comment checklist item toggle (task-list embedded in comment HTML)
+// ---------------------------------------------------------------------------
+
+async function onCommentContentClick(e: MouseEvent, activityId: string, currentHtml: string) {
+  const target = e.target as HTMLElement
+  const li = target.closest('li[data-type="taskItem"]')
+  if (!li) return
+
+  // Intercept this click — we handle the state change ourselves via the API
+  e.preventDefault()
+  e.stopPropagation()
+
+  const container = e.currentTarget as HTMLElement
+  const allTaskItems = Array.from(container.querySelectorAll('li[data-type="taskItem"]'))
+  const index = allTaskItems.indexOf(li)
+  if (index === -1) return
+
+  const originalHtml = currentHtml
+
+  // Build the updated HTML by toggling data-checked on the nth task item
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(originalHtml, 'text/html')
+  const taskItems = doc.querySelectorAll('li[data-type="taskItem"]')
+  const taskItem = taskItems[index]
+  if (!taskItem) return
+
+  const wasChecked = taskItem.getAttribute('data-checked') === 'true'
+  taskItem.setAttribute('data-checked', wasChecked ? 'false' : 'true')
+  const checkbox = taskItem.querySelector('input[type="checkbox"]') as HTMLInputElement | null
+  if (checkbox) {
+    if (wasChecked) checkbox.removeAttribute('checked')
+    else checkbox.setAttribute('checked', '')
+  }
+  const updatedHtml = doc.body.innerHTML
+
+  // Optimistic update so the UI reacts immediately
+  const applyHtml = (html: string) => {
+    const idx = activities.value.findIndex((a) => a.id === activityId)
+    const act = idx !== -1 ? activities.value[idx] : undefined
+    if (act) act.content_text = html
+    if (useFeed.value) {
+      const fi = feedItems.value.find((f) => f.item_type === 'activity' && f.activity?.id === activityId)
+      if (fi?.activity) fi.activity.content_text = html
+    }
+  }
+  applyHtml(updatedHtml)
+
+  // Persist to backend via the existing activity PATCH endpoint
+  const res = await api.patch<Activity>(
+    `/api/v1/crm/activities/${activityId}`,
+    { content_text: updatedHtml },
+  )
+  if (!res.ok) {
+    // Revert on failure
+    applyHtml(originalHtml)
+    toast.error(t('leadDetail.activityFailed'))
+  } else {
+    const updated = res.data as Activity
+    const replaceInList = (list: Activity[]) => {
+      const i = list.findIndex((a) => a.id === activityId)
+      if (i !== -1) list[i] = updated
+    }
+    replaceInList(activities.value)
+    if (useFeed.value) {
+      const fi = feedItems.value.find((f) => f.item_type === 'activity' && f.activity?.id === activityId)
+      if (fi) fi.activity = updated
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket real-time update
 function canDelete(act: Activity): boolean {
   if (act.is_deleted) return false
@@ -1383,7 +1454,7 @@ defineExpose({ load: () => loadActivities(1) })
             </div>
             
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <p v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none" v-html="sanitizeHtml(item.content_text)" />
+            <div v-if="item.content_text" class="text-sm text-gray-700 dark:text-gray-300 mt-0.5 prose prose-sm dark:prose-invert max-w-none comment-content" v-html="sanitizeHtml(item.content_text)" @click.capture="onCommentContentClick($event, item.id, item.content_text)" />
             <p v-if="item.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {{ t('leadDetail.statusChangedArrow', {
                 from: translateLeadStatus((item.metadata as Record<string, string>).old_status ?? ''),
@@ -1662,3 +1733,44 @@ defineExpose({ load: () => loadActivities(1) })
     @saved="(act) => onActivityEdited(act as unknown as Activity)"
   />
 </template>
+
+<style scoped>
+/* Task-list (checklist) items embedded inside comment HTML rendered via v-html.
+   :deep() is required because v-html content bypasses scoped style encapsulation. */
+.comment-content :deep(ul[data-type="taskList"]) {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+.comment-content :deep(ul[data-type="taskList"] > li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 0.125rem 0;
+  cursor: pointer;
+}
+.comment-content :deep(ul[data-type="taskList"] > li > label) {
+  flex: 0 0 auto;
+  user-select: none;
+  padding-top: 0.2rem;
+  cursor: pointer;
+}
+.comment-content :deep(ul[data-type="taskList"] > li > label > input[type="checkbox"]) {
+  width: 0.9rem;
+  height: 0.9rem;
+  cursor: pointer;
+  accent-color: var(--brand-color);
+  pointer-events: none; /* click is handled by the parent li via event delegation */
+}
+.comment-content :deep(ul[data-type="taskList"] > li > label > span) {
+  display: none;
+}
+.comment-content :deep(ul[data-type="taskList"] > li > div) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.comment-content :deep(ul[data-type="taskList"] > li[data-checked="true"] > div p) {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+</style>

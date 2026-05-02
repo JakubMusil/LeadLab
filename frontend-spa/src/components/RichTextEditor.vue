@@ -18,8 +18,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
 import Image from '@tiptap/extension-image'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
-import { PaperClipIcon } from '@heroicons/vue/24/outline'
+import { PaperClipIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline'
 
 export interface MentionUser {
   id: string
@@ -162,6 +164,8 @@ const editor = useEditor({
     StarterKit,
     Image.configure({ inline: true, allowBase64: false }),
     Placeholder.configure({ placeholder: props.placeholder }),
+    TaskList,
+    TaskItem.configure({ nested: false }),
     Mention.configure({
       HTMLAttributes: { class: 'mention' },
       suggestion: {
@@ -334,6 +338,17 @@ defineExpose({ getMentionedIds })
       >
         1≡
       </button>
+      <button
+        type="button"
+        class="p-1 rounded w-6 h-6 flex items-center justify-center transition-colors"
+        :class="editor.isActive('taskList') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400'"
+        :disabled="disabled"
+        title="Checklist"
+        aria-label="Checklist"
+        @click="editor.chain().focus().toggleTaskList().run()"
+      >
+        <ClipboardDocumentCheckIcon class="w-3.5 h-3.5" />
+      </button>
       <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
       <button
         type="button"
@@ -469,6 +484,42 @@ defineExpose({ getMentionedIds })
   border-radius: 0.25rem;
   padding: 0 0.2em;
   font-weight: 500;
+}
+
+/* Task list (checklist) styling in the editor */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+.tiptap ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 0.1rem 0;
+}
+.tiptap ul[data-type="taskList"] > li > label {
+  flex: 0 0 auto;
+  user-select: none;
+  padding-top: 0.2rem;
+  cursor: pointer;
+}
+.tiptap ul[data-type="taskList"] > li > label > input[type="checkbox"] {
+  width: 0.9rem;
+  height: 0.9rem;
+  cursor: pointer;
+  accent-color: var(--brand-color);
+}
+.tiptap ul[data-type="taskList"] > li > label > span {
+  display: none;
+}
+.tiptap ul[data-type="taskList"] > li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tiptap ul[data-type="taskList"] > li[data-checked="true"] > div p {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 </style>
 
