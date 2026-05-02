@@ -18,7 +18,7 @@
  *   refreshed — parent should reload the task to update the counter fields
  */
 
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTasksStore, type StreamlineItemOut } from '@/stores/tasks'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
@@ -47,6 +47,13 @@ const loading = ref(false)
 const newText = ref('')
 const submitting = ref(false)
 const togglingId = ref<string | null>(null)
+const hideDeleted = ref(false)
+
+const visibleItems = computed(() =>
+  hideDeleted.value ? items.value.filter(i => !i.is_deleted) : items.value
+)
+
+const hasDeleted = computed(() => items.value.some(i => i.is_deleted))
 
 // ---------------------------------------------------------------------------
 // Load
@@ -154,13 +161,20 @@ const accentClass = props.kind === 'todo'
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
     <!-- Header -->
-    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      <component :is="kind === 'todo' ? ClipboardDocumentCheckIcon : ClipboardDocumentListIcon" class="w-5 h-5 text-gray-500 dark:text-gray-400 inline-block mr-1 align-text-bottom" />
-      {{ kind === 'todo' ? t('tasks.streamlineTodos') : t('tasks.streamlineSubtasks') }}
-      <span v-if="total > 0" class="text-sm font-normal text-gray-400 ml-1">
-        ({{ resolved }}/{{ total }})
-      </span>
-    </h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <component :is="kind === 'todo' ? ClipboardDocumentCheckIcon : ClipboardDocumentListIcon" class="w-5 h-5 text-gray-500 dark:text-gray-400 inline-block mr-1 align-text-bottom" />
+        {{ kind === 'todo' ? t('tasks.streamlineTodos') : t('tasks.streamlineSubtasks') }}
+        <span v-if="total > 0" class="text-sm font-normal text-gray-400 ml-1">
+          ({{ resolved }}/{{ total }})
+        </span>
+      </h2>
+      <button
+        v-if="hasDeleted"
+        class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 transition-colors"
+        @click="hideDeleted = !hideDeleted"
+      >{{ hideDeleted ? t('tasks.streamlineShowDeleted') : t('tasks.streamlineHideDeleted') }}</button>
+    </div>
 
     <!-- Progress bar -->
     <div v-if="total > 0" class="mb-4">
@@ -199,7 +213,7 @@ const accentClass = props.kind === 'todo'
       </div>
       <ul v-else class="space-y-1.5 mb-3">
         <li
-          v-for="item in items"
+          v-for="item in visibleItems"
           :key="item.id"
           class="flex items-center gap-2.5 group"
         >

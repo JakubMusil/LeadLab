@@ -878,6 +878,8 @@
     "streamlineDeleteFailed": "Eintrag konnte nicht gelöscht werden.",
     "streamlineDeleted": "Gelöscht",
     "streamlineDeletedBy": "von {name}",
+    "streamlineHideDeleted": "Gelöschte ausblenden",
+    "streamlineShowDeleted": "Gelöschte einblenden",
     "dependencies": "Abhängigkeiten",
     "dependencyBlocks": "Blockiert",
     "dependencyBlockedBy": "Blockiert durch",

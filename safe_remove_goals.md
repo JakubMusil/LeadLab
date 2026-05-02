@@ -92,8 +92,8 @@ Každé mazání entit uživatelem musí:
 - [x] **4.9** `DELETE /api/v1/crm/task-templates/{template_id}` (`delete_task_template`)
 - [x] **4.10** `DELETE /api/v1/crm/firm-proposal-items/{item_id}` (`delete_firm_proposal_item`)
 - [x] **4.11** `DELETE /api/v1/crm/custom-fields/{field_id}` (`delete_custom_field`)
-- [ ] **4.12** `DELETE /api/v1/crm/opportunities/{lead_id}/attachments/{attachment_id}` — fyzický soubor odložit na purge (LeadAttachment nemá SoftDeleteMixin; odkázat na dokument model)
-- [ ] **4.13** `DELETE /api/v1/crm/tasks/{task_id}/documents/{document_id}` — fyzický soubor odložit na purge
+- [x] **4.12** `DELETE /api/v1/crm/opportunities/{lead_id}/attachments/{attachment_id}` — soft-delete (Document má SoftDeleteMixin; fyzický soubor odložen na purge task)
+- [x] **4.13** `DELETE /api/v1/crm/tasks/{task_id}/documents/{document_id}` — soft-delete (Document má SoftDeleteMixin; fyzický soubor odložen na purge task)
 - [x] **4.14** Querysets ve GET listech automaticky filtrují `is_deleted=False` díky `SoftDeleteManager`.
 
 ---
@@ -150,7 +150,7 @@ Každé mazání entit uživatelem musí:
 
 - [x] **9.1** Backend — `delete_streamline_item` endpoint vrací 200 + `StreamlineItemOut` s tombstone daty (`is_deleted`, `deleted_at`, `deleted_by_name`) místo 204. Purge_after není nastaveno (null).
 - [x] **9.2** `StreamlineItemList.vue` — tombstone položky zobrazeny přeškrtnuté s textem „Odstraněno uživatelem X". Povolené akce: žádné.
-- [ ] **9.3** Přidat možnost „skrýt odstraněné" přepínač v `StreamlineItemList.vue` (opt-in) — odloženo na příští session.
+- [x] **9.3** Přidat možnost „skrýt odstraněné" přepínač v `StreamlineItemList.vue` (opt-in) — implementováno v session 3.
 
 ---
 
@@ -195,8 +195,12 @@ Fáze 1, 5, 6 jsou blokující pro ostatní. Fáze 2–4 a 7–8 lze paralelizov
 - Fáze 9 kompletní (9.1 + 9.2): StreamlineItem tombstone — backend vrací 200+data, frontend zobrazuje přeškrtnuté tombstone položky.
 - Fáze 10 kompletní: ActivityTimeline tombstone ověřeno, StreamlineItem tombstone implementováno.
 
+### Co bylo hotovo v session 3 (2026-05-02)
+- Fáze 4 kompletní (13/13): `delete_attachment` (4.12) a `delete_task_document` (4.13) převedeny na soft-delete. Document má SoftDeleteMixin, fyzické soubory odstraní purge task.
+- Fáze 8 doplnění: `ReportsView.vue` a `ProposalTemplatesView.vue` — `confirm()` nahrazeno `ConfirmDeleteModal`.
+- Fáze 9.3 kompletní: přepínač „Skrýt odstraněné" v `StreamlineItemList.vue`; zobrazuje se pouze pokud existují tombstone položky, přepíná `hideDeleted` flag a filtruje `visibleItems`. I18n klíče přidány do cs, en, de, pl.
+
 ### Co zbývá pro příští session
-- **4.12 + 4.13**: LeadAttachment a task document — tyto entity používají `FileField` bez SoftDeleteMixin; rozhodnout: přidat mixin, nebo ponechat hard-delete.
-- **9.3**: Přepínač „skrýt odstraněné" v StreamlineItemList.vue (opt-in).
-- **Audit confirm**: zkontrolovat zbývající `confirm()` volání v aplikaci (např. sendProposal v ProposalBuilderView).
-- **Testování**: manuální/E2E testy soft-delete flowu.
+- **Audit confirm**: `ProposalBuilderView.vue` — `confirm()` pro „Mark as Sent" (není delete, ale měl by mít vlastní modal potvrzení).
+- **Testování**: manuální/E2E testy soft-delete flowu a purge tasku.
+- **Přidat SoftDeleteMixin do Activity** — zkontrolovat, zda model Activity má všechna 4 pole (is_deleted, deleted_at, deleted_by, purge_after) nebo jen purge_after.
