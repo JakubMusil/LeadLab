@@ -1567,9 +1567,9 @@
   "appShell": {
     "skipToContent": "Zum Inhalt springen",
     "workspace": "Workspace",
-    "sectionCrm": "CRM",
+    "sectionCrm": "Vertrieb & Aufträge",
     "sectionErp": "Projekte",
-    "sectionInsights": "Erkenntnisse",
+    "sectionInsights": "Intelligente Werkzeuge",
     "sectionWorkspace": "Konfiguration",
     "sectionPlugins": "Plugins",
     "sectionProposalTemplates": "Angebotsvorlagen",
@@ -1593,8 +1593,9 @@
     "notifTaskOutcomePrompt": "Wie ist es gelaufen?",
     "notifTaskExpired": "Aufgabe abgelaufen",
     "notifLeadDeleted": "Chance {id} gelöscht",
-    "sectionProjects": "Projekte",
-    "sectionConfig": "Konfiguration"
+    "sectionProjects": "Arbeitsverwaltung",
+    "sectionConfig": "Ressourcen & Vorlagen",
+    "sectionSettings": "Einstellungen"
   },
   "catalog": {
     "title": "Artikelkatalog",
