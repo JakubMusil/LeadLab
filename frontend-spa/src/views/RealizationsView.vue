@@ -33,7 +33,6 @@ const confirmDeleteId = ref<string | null>(null)
 
 // Form fields
 const formTitle = ref('')
-const formDescription = ref('')
 const formStatus = ref('planned')
 const formCustomerId = ref<string | null>(null)
 const formCustomerQuery = ref('')
@@ -60,7 +59,6 @@ const reByStatus = computed(() => {
 function openCreate() {
   editingRealization.value = null
   formTitle.value = ''
-  formDescription.value = ''
   formStatus.value = 'planned'
   formCustomerId.value = null
   formCustomerQuery.value = ''
@@ -71,7 +69,6 @@ function openCreate() {
 function openEdit(r: RealizationOut) {
   editingRealization.value = r
   formTitle.value = r.title
-  formDescription.value = r.description
   formStatus.value = r.status
   formCustomerId.value = r.customer_id
   formCustomerQuery.value = r.customer_name ?? ''
@@ -89,7 +86,6 @@ async function submitForm() {
   try {
     const payload: RealizationIn = {
       title: formTitle.value.trim(),
-      description: formDescription.value,
       status: formStatus.value,
       customer_id: formCustomerId.value || null,
     }
@@ -277,16 +273,6 @@ function selectCustomer(c: CustomerOut) {
               type="text"
               :placeholder="t('realizations.namePlaceholder')"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('realizations.descLabel') }}</label>
-            <textarea
-              v-model="formDescription"
-              rows="3"
-              :placeholder="t('realizations.descPlaceholder')"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
             />
           </div>
 

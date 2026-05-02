@@ -17,7 +17,6 @@ export interface RealizationOut {
   id: string
   firm_id: string
   title: string
-  description: string
   status: string
   lead_id: string | null
   lead_title: string | null
@@ -34,7 +33,6 @@ export interface RealizationOut {
 
 export interface RealizationIn {
   title: string
-  description?: string
   status?: string
   lead_id?: string | null
   customer_id?: string | null

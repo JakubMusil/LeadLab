@@ -122,7 +122,6 @@ CUSTOMERS_PERSONS = [
 LEADS = [
     {
         "title": "Zavádění CRM - Tesla Motors Europe",
-        "description": "Zhodnocení LeadLab pro mezinárodní nasazení s 200 uživateli.",
         "status": LeadStatus.NEGOTIATION,
         "source": LeadSource.REFERRAL,
         "value": Decimal("48000.00"),
@@ -132,7 +131,6 @@ LEADS = [
     },
     {
         "title": "Konzultace k redesignu webu - Avast",
-        "description": "Návrh nové struktury firemních stránek a propojení na CRM systém.",
         "status": LeadStatus.PROPOSAL,
         "source": LeadSource.WEB,
         "value": Decimal("12500.00"),
@@ -142,7 +140,6 @@ LEADS = [
     },
     {
         "title": "Roční licence a podpora - Seznam.cz",
-        "description": "Obnova balíčku pro profesionální marketingové týmy.",
         "status": LeadStatus.WON,
         "source": LeadSource.EMAIL,
         "value": Decimal("3600.00"),
@@ -309,7 +306,6 @@ class Command(BaseCommand):
                 firm=firm,
                 title=data["title"],
                 defaults={
-                    "description": data["description"],
                     "status": data["status"],
                     "source": data["source"],
                     "value": data["value"],

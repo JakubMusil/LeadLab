@@ -70,7 +70,6 @@ const savingView = ref(false)
 
 // Form
 const formTitle = ref('')
-const formDescription = ref('')
 const formStatus = ref('new')
 const formSource = ref('web')
 const formValue = ref<string>('')
@@ -239,7 +238,6 @@ const leadsByStatus = computed(() => {
 function openCreate() {
   editingLead.value = null
   formTitle.value = ''
-  formDescription.value = ''
   formStatus.value = 'new'
   formSource.value = 'web'
   formValue.value = ''
@@ -257,7 +255,6 @@ function openCreate() {
 function openEdit(lead: LeadOut) {
   editingLead.value = lead
   formTitle.value = lead.title
-  formDescription.value = lead.description
   formStatus.value = lead.status
   formSource.value = lead.source
   formValue.value = lead.value != null ? String(lead.value) : ''
@@ -299,7 +296,6 @@ async function submitForm() {
   formError.value = ''
   const payload = {
     title: formTitle.value.trim(),
-    description: formDescription.value,
     status: formStatus.value,
     source: formSource.value,
     value: formValue.value ? parseFloat(formValue.value) : null,
@@ -953,10 +949,6 @@ const actionsDropdownItems = computed(() => [
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.descriptionField') }}</label>
-            <RichTextEditor v-model="formDescription" />
-          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.statusField') }}</label>

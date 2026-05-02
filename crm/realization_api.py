@@ -47,7 +47,6 @@ def _firm(request):
 
 class RealizationIn(Schema):
     title: str
-    description: str = ""
     status: str = RealizationStatus.PLANNED
     lead_id: Optional[str] = None
     customer_id: Optional[str] = None
@@ -58,7 +57,6 @@ class RealizationIn(Schema):
 
 class RealizationPatch(Schema):
     title: Optional[str] = None
-    description: Optional[str] = None
     status: Optional[str] = None
     lead_id: Optional[str] = None
     customer_id: Optional[str] = None
@@ -81,7 +79,6 @@ class RealizationOut(Schema):
     id: str
     firm_id: str
     title: str
-    description: str
     status: str
     lead_id: Optional[str]
     lead_title: Optional[str]
@@ -137,7 +134,6 @@ class RealizationOut(Schema):
             id=str(obj.id),
             firm_id=str(obj.firm_id),
             title=obj.title,
-            description=obj.description,
             status=obj.status,
             lead_id=str(obj.lead_id) if obj.lead_id else None,
             lead_title=lead_title,
@@ -226,7 +222,6 @@ def create_realization(request, payload: RealizationIn):
     realization = Realization.objects.create(
         firm=firm,
         title=payload.title,
-        description=payload.description,
         status=payload.status,
         lead=lead,
         customer=customer,
@@ -271,8 +266,6 @@ def update_realization(request, realization_id: str, payload: RealizationPatch):
 
     if payload.title is not None:
         realization.title = payload.title
-    if payload.description is not None:
-        realization.description = payload.description
     if payload.status is not None:
         realization.status = payload.status
     if payload.start_date is not None:

@@ -25,7 +25,6 @@ const mockLead = {
   firm_id: '1',
   customer_id: null,
   title: 'Deal with Acme',
-  description: '',
   status: 'new',
   source: 'web',
   assigned_to_id: null,

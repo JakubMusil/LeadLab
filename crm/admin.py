@@ -53,7 +53,7 @@ class CustomerAdmin(admin.ModelAdmin):
 class LeadAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "source", "assigned_to", "value", "currency", "firm", "created_at")
     list_filter = ("firm", "status", "source")
-    search_fields = ("title", "description")
+    search_fields = ("title",)
     autocomplete_fields = ["customer", "assigned_to"]
     readonly_fields = ("created_at", "updated_at")
     inlines = [ActivityInline, TaskInline]
