@@ -137,6 +137,12 @@ async function deleteItem(id: string) {
 // ---------------------------------------------------------------------------
 // Computed helpers
 // ---------------------------------------------------------------------------
+function deletionLabel(item: any): string {
+  const base = t('tasks.streamlineDeleted')
+  if (!item.deleted_by_name) return base
+  return `${base} ${t('tasks.streamlineDeletedBy').replace('{name}', item.deleted_by_name)}`
+}
+
 const progressPct = () =>
   props.total > 0 ? Math.round((props.resolved / props.total) * 100) : 0
 
@@ -236,7 +242,7 @@ const accentClass = props.kind === 'todo'
             <div class="flex items-center gap-2 py-2 text-gray-400 dark:text-gray-500 text-sm line-through">
               <span>{{ item.text }}</span>
               <span class="text-xs no-underline">
-                — {{ t('tasks.streamlineDeleted') }}{{ item.deleted_by_name ? ' ' + t('tasks.streamlineDeletedBy').replace('{name}', item.deleted_by_name) : '' }}
+                — {{ deletionLabel(item) }}
               </span>
             </div>
           </template>
