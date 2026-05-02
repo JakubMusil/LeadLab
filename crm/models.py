@@ -236,7 +236,6 @@ class Lead(TenantModel):
         help_text="The specific contact person at the company for this lead.",
     )
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
     status = models.CharField(
         max_length=20,
         choices=LeadStatus.choices,
@@ -315,8 +314,8 @@ class Lead(TenantModel):
         "event_scheduled",
         "task",
         "checklist",
-        "proposal",
         "todo_items_added",
+        "proposal",
         # Files & references
         "file_upload",
         "voice_memo",
@@ -2461,7 +2460,6 @@ class Realization(TenantModel):
 
     # Content
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
 
     # Workflow state
     status = models.CharField(

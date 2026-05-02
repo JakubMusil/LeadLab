@@ -127,6 +127,7 @@ const activityTypeLabelKey: Record<string, string> = {
   whatsapp_out: 'leadDetail.typeWhatsAppOut',
   whatsapp_in: 'leadDetail.typeWhatsAppIn',
   meeting_scheduled: 'leadDetail.typeMeetingScheduled',
+  call_scheduled: 'leadDetail.typeCallScheduled',
   event_scheduled: 'leadDetail.typeEventScheduled',
   link: 'leadDetail.typeLink',
   voice_memo: 'leadDetail.typeVoiceMemo',
@@ -200,7 +201,7 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'planning',
     labelKey: 'leadDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'proposal', 'todo_items_added'],
+    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'todo_items_added', 'proposal'],
     accent: 'blue',
   },
   {

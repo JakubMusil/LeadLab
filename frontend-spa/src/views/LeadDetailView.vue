@@ -221,7 +221,6 @@ const isDraggingOver = ref(false)
 // Edit form
 const showEditModal = ref(false)
 const editTitle = ref('')
-const editDescription = ref('')
 const editStatus = ref('')
 const editSource = ref('')
 const editValue = ref('')
@@ -306,34 +305,6 @@ function getStatusHexColor(status: string) {
     case 'canceled': return '#6b7280'
     default: return '#6366f1'
   }
-}
-
-// Inline description editing
-const editingDescription = ref(false)
-const inlineDescription = ref('')
-const descriptionEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
-const savingDescription = ref(false)
-
-function startEditDescription() {
-  inlineDescription.value = store.currentLead?.description ?? ''
-  editingDescription.value = true
-}
-
-async function saveDescription() {
-  if (!store.currentLead) return
-  savingDescription.value = true
-  const result = await store.updateLead(leadId.value, { description: inlineDescription.value })
-  savingDescription.value = false
-  if (result.ok) {
-    editingDescription.value = false
-    toast.success(t('leadDetail.updated'))
-  } else {
-    toast.error(result.error ?? t('leadDetail.failedToUpdate'))
-  }
-}
-
-function cancelEditDescription() {
-  editingDescription.value = false
 }
 
 function fmtBytes(b: number) {
@@ -514,7 +485,6 @@ function openEdit() {
   const lead = store.currentLead
   if (!lead) return
   editTitle.value = lead.title
-  editDescription.value = lead.description
   editStatus.value = lead.status
   editSource.value = lead.source
   editValue.value = lead.value != null ? String(lead.value) : ''
@@ -537,7 +507,6 @@ async function submitEdit() {
   editLoading.value = true
   const result = await store.updateLead(leadId.value, {
     title: editTitle.value.trim(),
-    description: editDescription.value,
     status: editStatus.value,
     source: editSource.value,
     value: editValue.value ? parseFloat(editValue.value) : null,
@@ -790,42 +759,6 @@ async function openContactDetail(id: string | null) {
                 </dd>
               </div>
               <!-- Inline-editable description -->
-              <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <div class="flex items-center justify-between mb-1">
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.description') }}</dt>
-                  <button
-                    v-if="!editingDescription"
-                    class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                    @click="startEditDescription"
-                  >{{ t('leadDetail.edit') }}</button>
-                </div>
-                <template v-if="editingDescription">
-                  <RichTextEditor
-                    ref="descriptionEditorRef"
-                    v-model="inlineDescription"
-                    :members="teamMembers"
-                    :upload-url="`/api/v1/crm/opportunities/${leadId}/attachments`"
-                    :placeholder="t('leadDetail.descriptionPlaceholder')"
-                    @file-uploaded="(f) => { files.unshift(f) }"
-                  />
-                  <div class="flex justify-end gap-2 mt-1.5">
-                    <button
-                      class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      @click="cancelEditDescription"
-                    >{{ t('leadDetail.editCancel') }}</button>
-                    <button
-                      :disabled="savingDescription"
-                      class="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50"
-                      @click="saveDescription"
-                    >{{ savingDescription ? t('leadDetail.saving') : t('leadDetail.save') }}</button>
-                  </div>
-                </template>
-                <!-- eslint-disable-next-line vue/no-v-html -->
-                <dd v-else-if="store.currentLead.description" class="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" v-html="sanitizeHtml(store.currentLead.description)" />
-                <dd v-else class="text-xs text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300" @click="startEditDescription">
-                  {{ t('leadDetail.descriptionPlaceholder') }}
-                </dd>
-              </div>
             </dl>
             <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('leadDetail.edit') }}</button>
@@ -892,10 +825,6 @@ async function openContactDetail(id: string | null) {
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-            <textarea v-model="editDescription" rows="2" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" />
-          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormStatus') }}</label>

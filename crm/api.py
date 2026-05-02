@@ -66,7 +66,6 @@ from firms.auth import (
 from firms.models import Membership
 
 from crm.events import broadcast_event
-from crm.sanitize import sanitize_html
 
 router = Router(tags=["crm"])
 
@@ -295,7 +294,6 @@ class LeadOut(Schema):
     firm_id: str
     customer_id: Optional[str]
     title: str
-    description: str
     status: str
     source: str
     assigned_to_id: Optional[str]
@@ -315,7 +313,6 @@ class LeadOut(Schema):
 
 class LeadIn(Schema):
     title: str
-    description: str = ""
     customer_id: Optional[str] = None
     status: str = LeadStatus.NEW
     source: str = LeadSource.WEB
@@ -328,7 +325,6 @@ class LeadIn(Schema):
 
 class LeadUpdateIn(Schema):
     title: Optional[str] = None
-    description: Optional[str] = None
     status: Optional[str] = None
     source: Optional[str] = None
     assigned_to_id: Optional[str] = None
@@ -412,7 +408,6 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         "firm_id": str(lead.firm_id),
         "customer_id": str(lead.customer_id) if lead.customer_id else None,
         "title": lead.title,
-        "description": lead.description,
         "status": lead.status,
         "source": lead.source,
         "assigned_to_id": str(lead.assigned_to_id) if lead.assigned_to_id else None,
@@ -640,7 +635,6 @@ def create_lead(request, payload: LeadIn):
         contact_person=contact_person,
         assigned_to=assigned_to,
         title=payload.title,
-        description=sanitize_html(payload.description),
         status=payload.status,
         source=payload.source,
         value=payload.value,
@@ -725,10 +719,6 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
                 return 400, {"detail": "Customer not found."}
         else:
             lead.customer = None
-
-    # Sanitize rich-text description before persisting
-    if "description" in update_data:
-        update_data["description"] = sanitize_html(update_data["description"])
 
     for field, value in update_data.items():
         setattr(lead, field, value)

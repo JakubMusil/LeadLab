@@ -1216,9 +1216,10 @@
     "typeSmsIn": "SMS (přijatá)",
     "typeWhatsAppOut": "WhatsApp (odeslaná)",
     "typeWhatsAppIn": "WhatsApp (přijatá)",
-    "typeMeetingScheduled": "Naplánovaná schůzka",
-    "typeCallScheduled": "Naplánovaný hovor",
-    "typeEventScheduled": "Naplánovaná událost",
+    "typeProposal": "Nabídka",
+    "typeMeetingScheduled": "Schůzka",
+    "typeCallScheduled": "Volání",
+    "typeEventScheduled": "Událost",
     "typeTaskExpired": "Úkol vypršel",
     "scheduledTaskStatus": {
       "todo": "Plánováno",

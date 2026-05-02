@@ -9,7 +9,6 @@ export interface LeadOut {
   firm_id: string
   customer_id: string | null
   title: string
-  description: string
   status: string
   source: string
   assigned_to_id: string | null
@@ -27,7 +26,6 @@ export interface LeadOut {
 
 export interface LeadIn {
   title: string
-  description?: string
   customer_id?: string | null
   status?: string
   source?: string

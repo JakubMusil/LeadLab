@@ -1205,9 +1205,10 @@
     "typeSmsIn": "SMS (empfangen)",
     "typeWhatsAppOut": "WhatsApp (gesendet)",
     "typeWhatsAppIn": "WhatsApp (empfangen)",
-    "typeMeetingScheduled": "Geplantes Meeting",
-    "typeCallScheduled": "Geplanter Anruf",
-    "typeEventScheduled": "Geplante Veranstaltung",
+    "typeProposal": "Angebot",
+    "typeMeetingScheduled": "Meeting",
+    "typeCallScheduled": "Anruf",
+    "typeEventScheduled": "Veranstaltung",
     "typeTaskExpired": "Aufgabe abgelaufen",
     "scheduledTaskStatus": {
       "todo": "Geplant",

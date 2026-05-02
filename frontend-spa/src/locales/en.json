@@ -1215,9 +1215,10 @@
     "typeSmsIn": "SMS (received)",
     "typeWhatsAppOut": "WhatsApp (sent)",
     "typeWhatsAppIn": "WhatsApp (received)",
-    "typeMeetingScheduled": "Meeting scheduled",
-    "typeCallScheduled": "Call scheduled",
-    "typeEventScheduled": "Event scheduled",
+    "typeProposal": "Proposal",
+    "typeMeetingScheduled": "Meeting",
+    "typeCallScheduled": "Call",
+    "typeEventScheduled": "Event",
     "typeTaskExpired": "Task expired",
     "scheduledTaskStatus": {
       "todo": "Scheduled",
