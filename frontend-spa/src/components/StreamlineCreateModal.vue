@@ -538,6 +538,15 @@ const fileUploadUrl = computed(() => {
   return `/api/v1/crm/file-uploads/upload?${params.toString()}`
 })
 
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+/** Safely convert a date-input string to ISO-8601; returns null for invalid/empty values. */
+function toIsoOrNull(dateStr: string): string | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? null : d.toISOString()
+}
+
 // ─── Submit handlers ──────────────────────────────────────────────────────────
 
 async function addActivity() {
@@ -643,7 +652,7 @@ async function addTask() {
         text: taskTitle.value.trim(),
         assigned_to_id: taskAssigneeId.value || null,
         watcher_ids: taskWatcherIds.value,
-        due_date: taskDueDate.value ? new Date(taskDueDate.value).toISOString() : null,
+        due_date: toIsoOrNull(taskDueDate.value),
       },
     })
     if (res.ok) {
@@ -660,7 +669,7 @@ async function addTask() {
       assigned_to_id: taskAssigneeId.value || null,
       watcher_ids: taskWatcherIds.value,
     }
-    if (taskDueDate.value) payload.due_date = new Date(taskDueDate.value).toISOString()
+    if (taskDueDate.value) payload.due_date = toIsoOrNull(taskDueDate.value)
     const res = await api.post('/api/v1/crm/tasks', payload)
     if (res.ok) {
       // Post the description as the first comment on the parent entity timeline.
