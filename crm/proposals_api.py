@@ -58,6 +58,7 @@ from crm.models import (
     ProposalTemplateItem,
     Realization,
 )
+from crm.soft_delete import perform_soft_delete
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
@@ -640,7 +641,7 @@ def delete_proposal(request, proposal_id: str):
     if not proposal:
         return 404, {"detail": "Proposal not found."}
 
-    proposal.delete()
+    perform_soft_delete(proposal, request.user)
     return 204, None
 
 
@@ -1139,7 +1140,7 @@ def delete_template(request, template_id: str):
     except ProposalTemplate.DoesNotExist:
         return 404, {"detail": "Template not found."}
 
-    tmpl.delete()
+    perform_soft_delete(tmpl, request.user)
     return 204, None
 
 
@@ -1589,5 +1590,5 @@ def delete_firm_proposal_item(request, item_id: str):
     except FirmProposalItem.DoesNotExist:
         return 404, {"detail": "Catalog item not found."}
 
-    item.delete()
+    perform_soft_delete(item, request.user)
     return 204, None

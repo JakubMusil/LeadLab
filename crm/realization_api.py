@@ -491,7 +491,7 @@ def delete_milestone(request, realization_id: str, milestone_id: str):
         from ninja import errors
         raise errors.HttpError(404, "Milestone not found")
 
-    milestone.delete()
+    perform_soft_delete(milestone, request.user)
     return 204, None
 
 

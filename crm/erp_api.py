@@ -17,6 +17,7 @@ from ninja import Router, Schema
 from ninja.security import django_auth
 
 from crm.models import Customer, ExpenseItem, Lead, Realization, RevenueItem, Task, TimeEntry
+from crm.soft_delete import perform_soft_delete
 from firms.auth import require_active_subscription, require_membership
 
 router = Router(tags=["erp"])
@@ -217,10 +218,11 @@ def update_time_entry(request, entry_id: str, payload: TimeEntryPatch):
 def delete_time_entry(request, entry_id: str):
     require_membership(request)
     firm = _firm(request)
-    deleted, _ = TimeEntry.objects.filter(pk=entry_id, firm=firm).delete()
-    if not deleted:
+    entry = TimeEntry.objects.filter(pk=entry_id, firm=firm).first()
+    if not entry:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
+    perform_soft_delete(entry, request.user)
     return 204, None
 
 
@@ -375,10 +377,11 @@ def update_expense(request, item_id: str, payload: ExpenseItemPatch):
 def delete_expense(request, item_id: str):
     require_membership(request)
     firm = _firm(request)
-    deleted, _ = ExpenseItem.objects.filter(pk=item_id, firm=firm).delete()
-    if not deleted:
+    entry = ExpenseItem.objects.filter(pk=item_id, firm=firm).first()
+    if not entry:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
+    perform_soft_delete(entry, request.user)
     return 204, None
 
 
@@ -526,10 +529,11 @@ def update_revenue(request, item_id: str, payload: RevenueItemPatch):
 def delete_revenue(request, item_id: str):
     require_membership(request)
     firm = _firm(request)
-    deleted, _ = RevenueItem.objects.filter(pk=item_id, firm=firm).delete()
-    if not deleted:
+    entry = RevenueItem.objects.filter(pk=item_id, firm=firm).first()
+    if not entry:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
+    perform_soft_delete(entry, request.user)
     return 204, None
 
 
