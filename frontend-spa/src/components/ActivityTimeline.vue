@@ -1754,8 +1754,8 @@ defineExpose({ load: () => loadActivities(1) })
 }
 .comment-content :deep(ul[data-type="taskList"] > li) {
   display: flex;
-  align-items: flex-start;
-  gap: 0.375rem;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.2rem 0.375rem;
   border-radius: 0.375rem;
   cursor: pointer;
@@ -1767,8 +1767,9 @@ defineExpose({ load: () => loadActivities(1) })
 .comment-content :deep(ul[data-type="taskList"] > li > label) {
   flex: 0 0 auto;
   user-select: none;
-  padding-top: 0.2rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 .comment-content :deep(ul[data-type="taskList"] > li > label > input[type="checkbox"]) {
   width: 0.9rem;
