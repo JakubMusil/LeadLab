@@ -1432,7 +1432,7 @@ defineExpose({ load: () => loadActivities(1) })
                     :class="chItem.done
                       ? 'bg-teal-500 border-teal-500 text-white'
                       : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'"
-                    :title="chItem.done ? t('leadDetail.checklistUncheck', 'Odznačit') : t('leadDetail.checklistCheck', 'Označit')"
+                    :title="chItem.done ? t('leadDetail.checklistUncheck', 'Uncheck') : t('leadDetail.checklistCheck', 'Check')"
                     @click.stop="toggleChecklistItem(item.id, chIdx)"
                   >
                     <CheckIcon v-if="chItem.done" class="w-3 h-3 mx-auto" />

@@ -2160,7 +2160,7 @@ def _items_to_edit_text(items: list[dict]) -> str:
 
 class ChecklistTool(StreamlineTool):
     activity_type = "checklist"
-    label = _("Odškrtávací seznam")
+    label = _("Checklist")
     icon = "ClipboardDocumentCheckIcon"
     category = "task"
     default_visibility = "important"
@@ -2169,10 +2169,10 @@ class ChecklistTool(StreamlineTool):
         return {
             "type": "object",
             "properties": {
-                "title": {"type": "string", "title": _("Název")},
+                "title": {"type": "string", "title": _("Title")},
                 "text": {
                     "type": "string",
-                    "title": _("Položky"),
+                    "title": _("Items"),
                     "x-multiline": True,
                 },
             },
