@@ -377,11 +377,11 @@ def update_expense(request, item_id: str, payload: ExpenseItemPatch):
 def delete_expense(request, item_id: str):
     require_membership(request)
     firm = _firm(request)
-    entry = ExpenseItem.objects.filter(pk=item_id, firm=firm).first()
-    if not entry:
+    item = ExpenseItem.objects.filter(pk=item_id, firm=firm).first()
+    if not item:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
-    perform_soft_delete(entry, request.user)
+    perform_soft_delete(item, request.user)
     return 204, None
 
 
@@ -529,11 +529,11 @@ def update_revenue(request, item_id: str, payload: RevenueItemPatch):
 def delete_revenue(request, item_id: str):
     require_membership(request)
     firm = _firm(request)
-    entry = RevenueItem.objects.filter(pk=item_id, firm=firm).first()
-    if not entry:
+    item = RevenueItem.objects.filter(pk=item_id, firm=firm).first()
+    if not item:
         from ninja import errors as ninja_errors
         raise ninja_errors.HttpError(404, "Not found")
-    perform_soft_delete(entry, request.user)
+    perform_soft_delete(item, request.user)
     return 204, None
 
 

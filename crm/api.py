@@ -3106,6 +3106,8 @@ def delete_streamline_item(request, item_id: str):
         item = StreamlineItem.objects.get(id=item_id, task__firm=request.firm)
     except StreamlineItem.DoesNotExist:
         return 404, {"detail": "Streamline item not found."}
+    # Manual soft-delete without purge_after: StreamlineItems are purged
+    # together with their parent Task rather than on an independent schedule.
     from django.utils import timezone as tz
     item.is_deleted = True
     item.deleted_at = tz.now()
