@@ -666,24 +666,13 @@ async function addTask() {
     const payload: Record<string, unknown> = {
       [entityIdField.value]: props.entityId,
       title: taskTitle.value.trim(),
+      description_html: taskDescription.value,
       assigned_to_id: taskAssigneeId.value || null,
       watcher_ids: taskWatcherIds.value,
     }
     if (taskDueDate.value) payload.due_date = toIsoOrNull(taskDueDate.value)
     const res = await api.post('/api/v1/crm/tasks', payload)
     if (res.ok) {
-      // Post the description as the first comment on the parent entity timeline.
-      const descText = taskDescription.value
-      if (descText && descText.replace(/<[^>]*>/g, '').trim()) {
-        const mentionedIds = taskEditorRef.value?.getMentionedIds() ?? []
-        const meta: Record<string, unknown> = mentionedIds.length ? { mentions: mentionedIds } : {}
-        await api.post('/api/v1/crm/activities', {
-          [entityIdField.value]: props.entityId,
-          type: 'comment',
-          content_text: descText,
-          metadata: meta,
-        })
-      }
       emit('task-created')
       emit('activity-added')
       toast.success(t('leadDetail.taskCreated'))
@@ -827,7 +816,7 @@ watch(
         >
           <div
             v-if="modelValue"
-            class="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[90vh]"
+            class="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[90vh]"
             @click.stop
           >
             <!-- Header -->
