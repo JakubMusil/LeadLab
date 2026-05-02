@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { XMarkIcon, UserIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
@@ -234,16 +235,13 @@ onMounted(loadTeam)
 
   <!-- Remove confirm -->
   <Teleport to="body">
-    <div v-if="confirmRemoveId" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="confirmRemoveId = null">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" role="dialog" aria-modal="true" aria-label="Remove member confirmation">
-        <UserIcon class="w-10 h-10 mx-auto mb-3 text-gray-400" aria-hidden="true" />
-        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ t('team.removeMemberTitle') }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ t('team.removeMemberDesc') }}</p>
-        <div class="flex gap-3">
-          <button class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-700 dark:text-gray-300" @click="confirmRemoveId = null">{{ t('team.cancel') }}</button>
-          <button class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700" @click="removeMember(confirmRemoveId!)">{{ t('team.remove') }}</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDeleteModal
+      :open="!!confirmRemoveId"
+      :title="t('team.removeMemberTitle')"
+      :message="t('team.removeMemberDesc')"
+      :confirm-label="t('team.remove')"
+      @confirm="removeMember(confirmRemoveId!)"
+      @cancel="confirmRemoveId = null"
+    />
   </Teleport>
 </template>

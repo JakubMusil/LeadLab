@@ -5,6 +5,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { type DocumentOut, docFileIcon, docFileIconColor, fmtDocBytes } from '@/types/documents'
 import { TrashIcon, FolderOpenIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 const toast = useToast()
 const { t } = useI18n()
 
@@ -236,24 +237,11 @@ onMounted(loadDocuments)
     </div>
 
     <!-- Delete confirm dialog -->
-    <div
-      v-if="deleteConfirmId"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      @click.self="deleteConfirmId = null"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
-        <p class="text-gray-800 dark:text-white font-medium mb-4">{{ t('documents.deleteConfirm') }}</p>
-        <div class="flex gap-3 justify-end">
-          <button
-            @click="deleteConfirmId = null"
-            class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >{{ t('common.cancel') }}</button>
-          <button
-            @click="doDelete"
-            class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-          >{{ t('common.delete') }}</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDeleteModal
+      :open="!!deleteConfirmId"
+      :message="t('documents.deleteConfirm')"
+      @confirm="doDelete"
+      @cancel="deleteConfirmId = null"
+    />
   </div>
 </template>

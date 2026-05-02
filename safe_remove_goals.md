@@ -204,3 +204,60 @@ Fáze 1, 5, 6 jsou blokující pro ostatní. Fáze 2–4 a 7–8 lze paralelizov
 - **Audit confirm**: `ProposalBuilderView.vue` — `confirm()` pro „Mark as Sent" (není delete, ale měl by mít vlastní modal potvrzení).
 - **Testování**: manuální/E2E testy soft-delete flowu a purge tasku.
 - **Přidat SoftDeleteMixin do Activity** — zkontrolovat, zda model Activity má všechna 4 pole (is_deleted, deleted_at, deleted_by, purge_after) nebo jen purge_after.
+
+### Co bylo hotovo v session 4 (2026-05-02)
+
+#### Zbývající `confirm()` volání — plně odstraněna
+- **`ConfirmDeleteModal.vue`** — přidán volitelný prop `confirmLabel` (pro non-delete akce jako Revoke/Remove/Send).
+- **`DocumentsView.vue`** — inline `<div>` confirm dialog nahrazen `<ConfirmDeleteModal>`.
+- **`CustomersView.vue`** — inline Teleport confirm dialog nahrazen `<ConfirmDeleteModal>`.
+- **`TeamView.vue`** — inline Teleport confirm dialog nahrazen `<ConfirmDeleteModal>` (s `confirmLabel="t('team.remove')"`).
+- **`ProposalBuilderView.vue`** — `confirm()` pro „Mark as Sent" nahrazen `<ConfirmDeleteModal>` (custom title + confirmLabel z i18n).
+- **`SettingsView.vue`** — 2× `confirm()` (revoke token + delete webhook) nahrazeny `<ConfirmDeleteModal>`. Přidány `pendingRevokeToken`, `pendingDeleteWebhook` refs a `executeRevokeToken`, `executeDeleteWebhook` funkce.
+- **`PublicProposalView.vue`** — `confirm()` pro accept/reject nabídky nahrazen dvoustupňovým inline UI (`pendingAction` ref, Cancel/Confirm tlačítka).
+
+#### Stav `Activity` modelu
+- Activity má všechna 4 soft-delete pole (`is_deleted`, `deleted_at`, `deleted_by`, `purge_after`) definována přímo v modelu (bez SoftDeleteMixin) — záměrné, protože Activity má specifické tombstone chování odlišné od ostatních modelů.
+- Purge task správně zahrnuje Activity (SoftDeleteManager není potřeba, purge task pracuje přímo s queryset filtrem).
+
+---
+
+## Výsledný stav projektu (po session 4)
+
+Veškeré `window.confirm()` / `confirm()` volání v SPA jsou odstraněna a nahrazena:
+1. `ConfirmDeleteModal` — pro smazání/odebrání/odvolání entit
+2. Inline dvoustupňové potvrzení — pro public view (PublicProposalView)
+
+---
+
+## Doporučený další postup
+
+### Priorita 1 — Testování (kritické)
+
+1. **Smoke testy soft-delete API**: Pro každý endpoint ověřit, že DELETE vrací 204, záznam má `is_deleted=True`, není viditelný v GET list, `purge_after` je nastaveno správně.
+2. **Purge task test**: Ověřit, že `purge_soft_deleted_records` správně maže záznamy po uplynutí lhůty, včetně fyzického smazání souborů (Document).
+3. **Frontend E2E**: Ověřit flow ConfirmDeleteModal pro hlavní entity (Customer, Lead, Task).
+
+### Priorita 2 — UX / Admin
+
+4. **Admin „Undo" / Restore endpoint**: `POST /api/v1/crm/xxx/{id}/restore` — obnoví smazaný záznam (smaže `is_deleted`, `deleted_at` atd.) pro adminisrátory.
+5. **Koš (Trash) view v UI**: Stránka zobrazující soft-deleted záznamy s možností obnovení nebo okamžitého hard-delete (pro adminy).
+
+### Priorita 3 — Robustnost
+
+6. **`SoftDeleteMixin` na `Activity`**: Pokud by se Activity někdy refaktorovalo, migrovat na `SoftDeleteMixin` pro konzistenci.
+7. **Kaskádové soft-delete**: Když se smaže Lead, auto-soft-delete jeho Activities? Aktuálně Activity je na `CASCADE` FK → hard-delete; zvážit ochranu.
+
+---
+
+## Možnosti k volitelným vylepšením v budoucnu
+
+- **🔄 Undo toast**: Po smazání zobrazit toast s tlačítkem „Zpět" (5 s okno) — volá nový restore endpoint. Výrazně zlepší UX.
+- **📦 Koš v navigaci**: Samostatná sekce „Koš" s filtrováním dle entity type, obnovením i trvalým smazáním.
+- **📊 Audit log view**: Admin stránka zobrazující historii soft-deletů s filtry (kdo, kdy, jaká entita).
+- **⚙️ Konfigurovatelná purge lhůta per-entity**: Např. Document = 90 dní, StreamlineItem = ∞, ostatní = 30 dní — nastavitelné přes admin nebo settings.
+- **🔔 Notifikace před purge**: E-mail/push notifikace uživateli 3 dny před automatickým hard-delete důležitých záznamů.
+- **🔒 Role-based restore**: Pouze admin/owner může obnovit záznamy; worker vidí jen tombstone.
+- **📝 Audit trail**: Rozšíření `Activity` o záznam při soft-delete (typ `ENTITY_DELETED`) s metadaty o smazané entitě pro kompletní audit historii.
+- **🧹 Bulk purge**: Možnost ručního spuštění purge tasku z admin UI nebo API endpointu (pro případ, kdy chce admin okamžitě uvolnit místo).
+- **🌐 I18n pro PublicProposalView**: Veřejná stránka nabídky je zatím v angličtině — přidat i18n pomocí locale URL parametru nebo browser language detection.
