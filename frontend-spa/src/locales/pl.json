@@ -876,6 +876,8 @@
     "streamlineAddFailed": "Nie udało się dodać elementów.",
     "streamlineToggleFailed": "Nie udało się zaktualizować elementu.",
     "streamlineDeleteFailed": "Nie udało się usunąć elementu.",
+    "streamlineDeleted": "Usunięto",
+    "streamlineDeletedBy": "przez {name}",
     "dependencies": "Zależności",
     "dependencyBlocks": "Blokuje",
     "dependencyBlockedBy": "Zablokowane przez",

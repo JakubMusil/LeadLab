@@ -28,6 +28,7 @@ import {
   LinkIcon,
 } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -213,6 +214,7 @@ const taskSubmitting = ref(false)
 interface FileItem { id: string; original_filename: string; content_type: string; size_bytes: number; url: string; created_at: string }
 const files = ref<FileItem[]>([])
 const filesLoading = ref(false)
+const confirmDeleteAttachmentId = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadingFile = ref(false)
 const uploadProgress = ref(0)
@@ -464,7 +466,7 @@ async function doUpload(file: File) {
   })
 }
 
-async function deleteFile(id: string) {
+async function doDeleteFile(id: string) {
   const res = await api.delete(`/api/v1/crm/opportunities/${leadId.value}/attachments/${id}`)
   if (res.ok || res.status === 204) {
     files.value = files.value.filter((f) => f.id !== id)
@@ -472,6 +474,10 @@ async function deleteFile(id: string) {
   } else {
     toast.error('Failed to delete file.')
   }
+}
+
+function deleteFile(id: string) {
+  confirmDeleteAttachmentId.value = id
 }
 
 async function changeStatus(newStatus: string) {
@@ -935,4 +941,10 @@ async function openContactDetail(id: string | null) {
 
   <!-- Status popup backdrop -->
   <div v-if="statusPopupOpen" class="fixed inset-0 z-5" @click="statusPopupOpen = false" />
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteAttachmentId"
+    @confirm="doDeleteFile(confirmDeleteAttachmentId!); confirmDeleteAttachmentId = null"
+    @cancel="confirmDeleteAttachmentId = null"
+  />
 </template>

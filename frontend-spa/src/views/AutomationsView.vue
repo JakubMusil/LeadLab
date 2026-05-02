@@ -6,6 +6,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 import { TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const toast = useToast()
 const firmStore = useFirmStore()
@@ -151,6 +152,8 @@ const firmMembers = ref<FirmMember[]>([])
 const automationsLoading = ref(false)
 const showTemplates = ref(false)
 const expandedRuleRuns = ref<string | null>(null)
+const confirmDeleteRuleId = ref<string | null>(null)
+const confirmDeleteRuleName = ref<string | null>(null)
 const ruleRunsMap = ref<Record<string, AutomationRun[]>>({})
 const ruleRunsLoading = ref(false)
 
@@ -322,16 +325,20 @@ async function toggleRule(rule: AutomationRule) {
   }
 }
 
-async function deleteRule(rule: AutomationRule) {
-  if (!confirm(t('automations.deleteConfirm', { name: rule.name }))) return
-  const res = await api.delete(`/api/v1/crm/automations/${rule.id}`)
+async function doDeleteRule(id: string) {
+  const res = await api.delete(`/api/v1/crm/automations/${id}`)
   if (res.ok || res.status === 204) {
-    automationRules.value = automationRules.value.filter((r) => r.id !== rule.id)
-    if (expandedRuleRuns.value === rule.id) expandedRuleRuns.value = null
+    automationRules.value = automationRules.value.filter((r) => r.id !== id)
+    if (expandedRuleRuns.value === id) expandedRuleRuns.value = null
     toast.success(t('automations.ruleDeleted'))
   } else {
     toast.error(t('automations.failedToDeleteRule'))
   }
+}
+
+function deleteRule(rule: AutomationRule) {
+  confirmDeleteRuleId.value = rule.id
+  confirmDeleteRuleName.value = rule.name
 }
 
 // ---------------------------------------------------------------------------
@@ -956,4 +963,11 @@ function lastRunLabel(rule: AutomationRule): string {
     </div>
 
   </div>
+
+  <ConfirmDeleteModal
+    :open="!!confirmDeleteRuleId"
+    :message="t('automations.deleteConfirm', { name: confirmDeleteRuleName ?? '' })"
+    @confirm="doDeleteRule(confirmDeleteRuleId!); confirmDeleteRuleId = null; confirmDeleteRuleName = null"
+    @cancel="confirmDeleteRuleId = null; confirmDeleteRuleName = null"
+  />
 </template>
