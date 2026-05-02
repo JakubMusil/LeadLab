@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 export function useClipboard() {
   const copiedId = ref<string | null>(null)
@@ -10,9 +10,19 @@ export function useClipboard() {
       if (_timer) clearTimeout(_timer)
       _timer = setTimeout(() => {
         copiedId.value = null
+        _timer = null
       }, 2000)
+    }).catch(() => {
+      // clipboard write failed (permission denied or insecure context) — no-op
     })
   }
+
+  onUnmounted(() => {
+    if (_timer) {
+      clearTimeout(_timer)
+      _timer = null
+    }
+  })
 
   return { copiedId, copyToClipboard }
 }
