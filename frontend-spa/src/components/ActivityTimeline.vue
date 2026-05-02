@@ -1756,8 +1756,13 @@ defineExpose({ load: () => loadActivities(1) })
   display: flex;
   align-items: flex-start;
   gap: 0.375rem;
-  padding: 0.125rem 0;
+  padding: 0.2rem 0.375rem;
+  border-radius: 0.375rem;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.comment-content :deep(ul[data-type="taskList"] > li:hover) {
+  background-color: rgba(0, 0, 0, 0.03);
 }
 .comment-content :deep(ul[data-type="taskList"] > li > label) {
   flex: 0 0 auto;
@@ -1779,8 +1784,12 @@ defineExpose({ load: () => loadActivities(1) })
   flex: 1 1 auto;
   min-width: 0;
 }
+.comment-content :deep(ul[data-type="taskList"] > li > div p) {
+  transition: color 0.15s ease;
+}
 .comment-content :deep(ul[data-type="taskList"] > li[data-checked="true"] > div p) {
   text-decoration: line-through;
-  opacity: 0.5;
+  text-decoration-color: #9ca3af;
+  color: #9ca3af;
 }
 </style>
