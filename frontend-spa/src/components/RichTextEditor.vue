@@ -281,8 +281,19 @@ function confirmLink() {
   if (!raw) {
     editor.value?.chain().focus().unsetLink().run()
   } else {
-    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
-    editor.value?.chain().focus().setLink({ href }).run()
+    // Validate URL using the URL constructor so mixed-case or exotic
+    // schemes (javascript:, data:, vbscript:) are correctly rejected.
+    try {
+      const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+      const parsed = new URL(withScheme)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return
+      }
+      editor.value?.chain().focus().setLink({ href: parsed.href }).run()
+    } catch {
+      // Malformed URL — do not set
+      return
+    }
   }
   showLinkInput.value = false
   linkInputValue.value = ''

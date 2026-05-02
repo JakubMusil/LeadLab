@@ -8,6 +8,18 @@ import DOMPurify from 'dompurify'
  * through this function, or — preferably — use the `<RichTextDisplay>`
  * component which wraps this together with consistent typography classes.
  */
+
+// Patterns stripped from style attribute values to block CSS injection.
+// Covers: url(), expression() (old IE), and JS/VBScript pseudo-protocols.
+const UNSAFE_STYLE_PATTERN = /url\s*\(|expression\s*\(|javascript\s*:|vbscript\s*:/gi
+
+DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+  if (data.attrName === 'style') {
+    // Strip dangerous CSS patterns from inline style values
+    data.attrValue = data.attrValue.replace(UNSAFE_STYLE_PATTERN, '')
+  }
+})
+
 export function sanitizeHtml(html: string | null | undefined): string {
   if (!html) return ''
   return DOMPurify.sanitize(html, {
