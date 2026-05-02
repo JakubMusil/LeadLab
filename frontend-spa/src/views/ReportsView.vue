@@ -490,7 +490,7 @@ async function exportToFakturoid() {
               :disabled="fakturoidExporting || !revenues.length"
               @click="exportToFakturoid"
               title="Create invoice in Fakturoid from all visible revenue items"
-            >{{ fakturoidExporting ? 'Exporting…' : '' }}<DocumentIcon v-if="!fakturoidExporting" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ fakturoidExporting ? '' : 'Fakturoid invoice' }}</button>
+            ><template v-if="fakturoidExporting">Exporting…</template><template v-else><DocumentIcon class="w-4 h-4 inline-block mr-1 align-text-bottom" />Fakturoid invoice</template></button>
             <button class="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               @click="showRevenueForm = !showRevenueForm">+ Add revenue</button>
           </div>
