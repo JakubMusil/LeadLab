@@ -11,6 +11,7 @@ import {
 } from '@/stores/management'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 import { PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 
@@ -18,6 +19,7 @@ const router = useRouter()
 const store = useManagementStore()
 const customersStore = useCustomersStore()
 const toast = useToast()
+const { t } = useI18n()
 
 type ViewMode = 'kanban' | 'table'
 const viewMode = ref<ViewMode>('kanban')
@@ -407,6 +409,8 @@ function selectCustomer(c: CustomerOut) {
     <!-- Delete confirmation -->
     <ConfirmDeleteModal
       :open="!!confirmDeleteId"
+      :title="t('management.deleteTitle')"
+      :message="t('management.deleteConfirm')"
       @confirm="handleDelete(confirmDeleteId!)"
       @cancel="confirmDeleteId = null"
     />
