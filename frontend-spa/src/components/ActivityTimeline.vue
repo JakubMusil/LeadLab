@@ -528,9 +528,10 @@ function entityIdKey(): string {
 }
 
 // Build the upload URL for inline comment attachments.
-// The file-uploads endpoint does not accept a task_id, so we skip it for
-// task-scoped timelines; in all other cases we pass the entity ID as a
-// query parameter so the resulting Document is linked to the right record.
+// The /api/v1/crm/file-uploads/upload endpoint accepts entity ID params
+// (lead_id, customer_id, etc.) but does NOT accept task_id — tasks
+// belong to a parent entity whose ID is not surfaced here — so inline
+// file upload is only enabled for the five supported entity types.
 const commentUploadUrl = computed<string | undefined>(() => {
   if (props.entityType === 'task') return undefined
   const params = new URLSearchParams({ [`${props.entityType}_id`]: props.entityId })

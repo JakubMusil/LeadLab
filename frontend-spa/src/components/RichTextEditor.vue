@@ -175,7 +175,7 @@ async function handleFileUpload(e: Event) {
       content_type: entry.content_type,
       size_bytes: entry.size_bytes,
       url: entry.url,
-      created_at: '',
+      created_at: new Date().toISOString(),
     })
   } catch {
     toast.error('Upload failed.')
@@ -250,20 +250,52 @@ function closePickersOnOutside(e: MouseEvent) {
   if (showHighlightPicker.value && !target.closest('[data-highlight-picker]')) {
     showHighlightPicker.value = false
   }
+  if (showLinkInput.value && !target.closest('[data-link-input]')) {
+    showLinkInput.value = false
+    linkInputValue.value = ''
+  }
 }
 
 onMounted(() => document.addEventListener('click', closePickersOnOutside, true))
 onUnmounted(() => document.removeEventListener('click', closePickersOnOutside, true))
 
 // ---------------------------------------------------------------------------
-// Link insertion
+// Link insertion — inline popup (accessible alternative to window.prompt)
 // ---------------------------------------------------------------------------
 
-function insertLink() {
-  const url = window.prompt('URL')?.trim()
-  if (!url) return
-  const href = /^https?:\/\//i.test(url) ? url : `https://${url}`
-  editor.value?.chain().focus().setLink({ href }).run()
+const showLinkInput = ref(false)
+const linkInputValue = ref('')
+const linkInputRef = ref<HTMLInputElement | null>(null)
+
+function openLinkInput() {
+  // Pre-fill with existing link href if cursor is inside a link
+  const existing = editor.value?.getAttributes('link').href ?? ''
+  linkInputValue.value = typeof existing === 'string' ? existing : ''
+  showLinkInput.value = true
+  // Focus the input on the next tick after the element is rendered
+  setTimeout(() => linkInputRef.value?.focus(), 50)
+}
+
+function confirmLink() {
+  const raw = linkInputValue.value.trim()
+  if (!raw) {
+    editor.value?.chain().focus().unsetLink().run()
+  } else {
+    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+    editor.value?.chain().focus().setLink({ href }).run()
+  }
+  showLinkInput.value = false
+  linkInputValue.value = ''
+}
+
+function onLinkInputKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    confirmLink()
+  } else if (e.key === 'Escape') {
+    showLinkInput.value = false
+    linkInputValue.value = ''
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -583,17 +615,42 @@ defineExpose({ getMentionedIds })
       <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
 
       <!-- Link -->
-      <button
-        type="button"
-        class="p-1 rounded w-6 h-6 flex items-center justify-center transition-colors"
-        :class="editor.isActive('link') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400'"
-        :disabled="disabled"
-        title="Insert link"
-        aria-label="Insert link"
-        @click="insertLink"
-      >
-        <LinkIcon class="w-3.5 h-3.5" />
-      </button>
+      <div class="relative" data-link-input>
+        <button
+          type="button"
+          class="p-1 rounded w-6 h-6 flex items-center justify-center transition-colors"
+          :class="editor.isActive('link') ? 'bg-[color:var(--brand-color)] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400'"
+          :disabled="disabled"
+          title="Insert link"
+          aria-label="Insert link"
+          :aria-expanded="showLinkInput"
+          @click.stop="openLinkInput"
+        >
+          <LinkIcon class="w-3.5 h-3.5" />
+        </button>
+        <!-- Link URL input popup -->
+        <div
+          v-if="showLinkInput"
+          class="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-2 flex items-center gap-1 min-w-[220px]"
+          role="dialog"
+          aria-label="Insert link"
+        >
+          <input
+            ref="linkInputRef"
+            v-model="linkInputValue"
+            type="url"
+            placeholder="https://…"
+            class="flex-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 focus:outline-none focus:border-[color:var(--brand-color)]"
+            aria-label="URL"
+            @keydown="onLinkInputKeydown"
+          />
+          <button
+            type="button"
+            class="px-2 py-1 rounded-lg bg-[color:var(--brand-color)] text-white text-xs font-medium"
+            @click.stop="confirmLink"
+          >OK</button>
+        </div>
+      </div>
 
       <!-- Table -->
       <button
