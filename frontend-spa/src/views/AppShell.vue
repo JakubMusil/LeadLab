@@ -29,8 +29,6 @@ import {
   DocumentDuplicateIcon,
   ClockIcon,
   DocumentChartBarIcon,
-  WrenchScrewdriverIcon,
-  ShieldExclamationIcon,
   FolderOpenIcon,
   PuzzlePieceIcon,
   ArchiveBoxIcon,
@@ -121,30 +119,6 @@ function onTaskExpired(payload: Record<string, unknown>) {
   notifStore.pushNotification('task.expired', payload)
 }
 
-function onRealizationCreated(payload: Record<string, unknown>) {
-  notifStore.pushNotification('realization.created', payload)
-}
-
-function onRealizationUpdated(payload: Record<string, unknown>) {
-  notifStore.pushNotification('realization.updated', payload)
-}
-
-function onRealizationDeleted(payload: Record<string, unknown>) {
-  notifStore.pushNotification('realization.deleted', payload)
-}
-
-function onManagementCreated(payload: Record<string, unknown>) {
-  notifStore.pushNotification('management.created', payload)
-}
-
-function onManagementUpdated(payload: Record<string, unknown>) {
-  notifStore.pushNotification('management.updated', payload)
-}
-
-function onManagementDeleted(payload: Record<string, unknown>) {
-  notifStore.pushNotification('management.deleted', payload)
-}
-
 onMounted(async () => {
   if (!authStore.user) await authStore.fetchMe()
   if (firmStore.firms.length === 0) await firmStore.fetchFirms()
@@ -158,12 +132,6 @@ onMounted(async () => {
   on('task.completed', onTaskCompleted)
   on('task.outcome_prompt', onTaskOutcomePrompt)
   on('task.expired', onTaskExpired)
-  on('realization.created', onRealizationCreated)
-  on('realization.updated', onRealizationUpdated)
-  on('realization.deleted', onRealizationDeleted)
-  on('management.created', onManagementCreated)
-  on('management.updated', onManagementUpdated)
-  on('management.deleted', onManagementDeleted)
 })
 
 onUnmounted(() => {
@@ -174,12 +142,6 @@ onUnmounted(() => {
   off('task.completed', onTaskCompleted)
   off('task.outcome_prompt', onTaskOutcomePrompt)
   off('task.expired', onTaskExpired)
-  off('realization.created', onRealizationCreated)
-  off('realization.updated', onRealizationUpdated)
-  off('realization.deleted', onRealizationDeleted)
-  off('management.created', onManagementCreated)
-  off('management.updated', onManagementUpdated)
-  off('management.deleted', onManagementDeleted)
 })
 
 // Keyboard shortcuts (no "new opportunity" trigger here – LeadsView handles that)
@@ -197,8 +159,6 @@ const navSections = computed(() => [
     items: [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
       { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
-      { label: t('nav.realizations'), icon: WrenchScrewdriverIcon, path: '/app/realizations' },
-      { label: t('nav.management'), icon: ShieldExclamationIcon, path: '/app/management' },
       { label: t('nav.proposals'), icon: DocumentDuplicateIcon, path: '/app/proposals' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
     ],

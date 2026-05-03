@@ -53,24 +53,6 @@ _CUSTOMER_FIELDS = [
     ("dic", "DIČ"),
 ]
 
-_REALIZATION_FIELDS = [
-    ("title", "Title"),
-    ("description", "Description"),
-    ("status", "Status"),
-    ("assigned_to_id", "Assigned To"),
-    ("start_date", "Start Date"),
-    ("end_date", "End Date"),
-]
-
-_MANAGEMENT_FIELDS = [
-    ("title", "Title"),
-    ("notes", "Notes"),
-    ("type", "Type"),
-    ("status", "Status"),
-    ("assigned_to_id", "Assigned To"),
-    ("expires_at", "Expires At"),
-]
-
 _PROPOSAL_FIELDS = [
     ("title", "Title"),
     ("status", "Status"),
@@ -196,13 +178,11 @@ class CrmConfig(AppConfig):
         # Register entity-change signals after models are fully loaded
         # -------------------------------------------------------------------
         from django.db.models.signals import pre_save, post_save
-        from crm.models import Lead, Customer, Realization, Management, Proposal
+        from crm.models import Lead, Customer, Proposal
 
         _entities = [
             (Lead, _LEAD_FIELDS, "lead"),
             (Customer, _CUSTOMER_FIELDS, "customer"),
-            (Realization, _REALIZATION_FIELDS, "realization"),
-            (Management, _MANAGEMENT_FIELDS, "management"),
             (Proposal, _PROPOSAL_FIELDS, "proposal"),
         ]
 

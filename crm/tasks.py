@@ -321,133 +321,6 @@ def _action_run_plugin(action: dict, context: dict, rule) -> None:
     logger.info("automation run_plugin_action: %s.%s executed", plugin_name, action_name)
 
 
-def _action_create_realization(action: dict, context: dict, rule: "AutomationRule") -> None:
-    """Create a Realization record when a lead is won."""
-    lead_id = context.get("lead_id")
-    firm_id = context.get("firm_id")
-
-    from crm.models import Lead, Realization
-    from firms.models import Firm
-
-    if not firm_id:
-        raise ValueError("create_realization: no firm_id in context")
-
-    try:
-        firm = Firm.objects.get(id=firm_id)
-    except Firm.DoesNotExist:
-        raise ValueError(f"create_realization: firm {firm_id} not found")
-
-    lead = None
-    customer = None
-    if lead_id:
-        try:
-            lead = Lead.objects.get(id=lead_id)
-            customer = lead.customer
-        except Lead.DoesNotExist:
-            pass
-
-    title_template = action.get("title_template", "Realization: {{lead_title}}")
-    lead_title = (lead.title if lead else "") or ""
-    customer_name = ""
-    if customer:
-        customer_name = f"{customer.first_name} {customer.last_name}".strip() or customer.company_name
-    title = title_template.replace("{{lead_title}}", lead_title).replace("{{customer_name}}", customer_name)
-
-    assigned_to = None
-    assign_to_user_id = action.get("assign_to_user_id")
-    if assign_to_user_id == "inherit" and lead and lead.assigned_to_id:
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            assigned_to = User.objects.get(id=lead.assigned_to_id)
-        except User.DoesNotExist:
-            pass
-    elif assign_to_user_id and assign_to_user_id != "inherit":
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            assigned_to = User.objects.get(id=assign_to_user_id)
-        except User.DoesNotExist:
-            logger.warning("create_realization: assign_to_user_id %s not found", assign_to_user_id)
-
-    realization = Realization.objects.create(
-        firm=firm,
-        lead=lead,
-        customer=customer,
-        title=title,
-        assigned_to=assigned_to,
-    )
-    logger.info(
-        "automation create_realization: rule=%s created realization '%s' (id=%s)",
-        rule.id, realization.title, realization.id,
-    )
-
-
-def _action_create_management(action: dict, context: dict, rule: "AutomationRule") -> None:
-    """Create a Management record when a Realization is completed."""
-    realization_id = context.get("realization_id")
-    firm_id = context.get("firm_id")
-
-    from crm.models import Realization, Management, ManagementType
-    from firms.models import Firm
-
-    if not firm_id:
-        raise ValueError("create_management: no firm_id in context")
-
-    try:
-        firm = Firm.objects.get(id=firm_id)
-    except Firm.DoesNotExist:
-        raise ValueError(f"create_management: firm {firm_id} not found")
-
-    realization = None
-    customer = None
-    if realization_id:
-        try:
-            realization = Realization.objects.get(id=realization_id)
-            customer = realization.customer
-        except Realization.DoesNotExist:
-            pass
-
-    title_template = action.get("title_template", "Správa: {{realization_title}}")
-    realization_title = (realization.title if realization else "") or ""
-    customer_name = ""
-    if customer:
-        customer_name = f"{customer.first_name} {customer.last_name}".strip() or getattr(customer, "company_name", "")
-    title = title_template.replace("{{realization_title}}", realization_title).replace("{{customer_name}}", customer_name)
-
-    mtype = action.get("management_type", ManagementType.CARE)
-
-    assigned_to = None
-    assign_to_user_id = action.get("assign_to_user_id")
-    if assign_to_user_id == "inherit" and realization and realization.assigned_to_id:
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            assigned_to = User.objects.get(id=realization.assigned_to_id)
-        except User.DoesNotExist:
-            pass
-    elif assign_to_user_id and assign_to_user_id != "inherit":
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            assigned_to = User.objects.get(id=assign_to_user_id)
-        except User.DoesNotExist:
-            logger.warning("create_management: assign_to_user_id %s not found", assign_to_user_id)
-
-    management = Management.objects.create(
-        firm=firm,
-        realization=realization,
-        customer=customer,
-        title=title,
-        type=mtype,
-        assigned_to=assigned_to,
-    )
-    logger.info(
-        "automation create_management: rule=%s created management '%s' (id=%s)",
-        rule.id, management.title, management.id,
-    )
-
-
 def _execute_rule(rule, context: dict) -> None:
     """Evaluate conditions and execute actions for a single AutomationRule."""
     from crm.models import AutomationRun, AutomationRunStatus
@@ -479,10 +352,6 @@ def _execute_rule(rule, context: dict) -> None:
                     _action_set_task_status(action, context)
                 elif action_type == "assign_tag":
                     _action_assign_tag(action, context)
-                elif action_type == "create_realization":
-                    _action_create_realization(action, context, rule)
-                elif action_type == "create_management":
-                    _action_create_management(action, context, rule)
                 else:
                     errors.append(f"Unknown action type: {action_type!r}")
             except Exception as exc:  # noqa: BLE001
@@ -681,12 +550,11 @@ def send_weekly_digest(self):
     from django.core.mail import send_mail
     from django.conf import settings
 
-    from crm.models import Lead, LeadStatus, Task, Realization, RealizationStatus, Management, ManagementStatus
+    from crm.models import Lead, LeadStatus, Task
     from firms.models import Firm, Membership
     from django.utils import timezone as tz
 
     now = tz.now()
-    seven_days = now + datetime.timedelta(days=7)
 
     for firm in Firm.objects.filter(is_active=True):
         recipients = list(
@@ -709,20 +577,6 @@ def send_weekly_digest(self):
         ).count()
         open_tasks = Task.objects.filter(firm=firm, is_completed=False).count()
 
-        # Phase 5.0 — Realization stats
-        total_realizations = Realization.objects.filter(firm=firm).count()
-        active_realizations = Realization.objects.filter(
-            firm=firm, status__in=[RealizationStatus.PLANNED, RealizationStatus.IN_PROGRESS]
-        ).count()
-        done_realizations = Realization.objects.filter(firm=firm, status=RealizationStatus.DONE).count()
-
-        # Phase 5.0 — SLA expiry stats
-        expiring_sla = Management.objects.filter(
-            firm=firm,
-            expires_at__isnull=False,
-            expires_at__lte=seven_days,
-        ).exclude(status=ManagementStatus.CLOSED).count()
-
         subject = f"[LeadLab] Weekly Pipeline Digest — {firm.name}"
         body = (
             f"Hi,\n\n"
@@ -732,12 +586,7 @@ def send_weekly_digest(self):
             f"  Active: {active}\n"
             f"  Won:    {won}\n"
             f"  Lost:   {lost}\n\n"
-            f"Realizace:\n"
-            f"  Total:  {total_realizations}\n"
-            f"  Active: {active_realizations}\n"
-            f"  Done:   {done_realizations}\n\n"
-            f"SLA expirující do 7 dní: {expiring_sla}\n"
-            f"Otevřené úkoly:          {open_tasks}\n\n"
+            f"Otevřené úkoly: {open_tasks}\n\n"
             f"Log in to LeadLab to see more details.\n\n"
             f"To unsubscribe from this digest, go to Settings → Notifications "
             f"and disable the weekly email.\n"
@@ -1185,95 +1034,6 @@ def check_lead_inactivity_automations(self):
 
 
 # ===========================================================================
-# Phase 4.6 — Check SLA Expiry Automations
-# ===========================================================================
-
-@shared_task(bind=True, max_retries=0)
-def check_sla_expiry_automations(self):
-    """
-    Periodic task: fire ``sla_expiring`` automations for Management records
-    whose SLA/warranty expiry is within the configured warning window.
-
-    Runs once per day.  ``trigger_config.warning_days`` (default: 3) controls
-    how far in advance the trigger fires.  Records that have already expired
-    also fire (warning_days = 0 means fire only on expiry day).
-    """
-    from django.utils import timezone as tz
-    from crm.models import AutomationRule, AutomationRun, AutomationRunStatus, Management
-
-    now = tz.now()
-
-    # Collect all firms with active sla_expiring rules
-    firm_ids = (
-        AutomationRule.objects
-        .filter(trigger="sla_expiring", is_active=True)
-        .values_list("firm_id", flat=True)
-        .distinct()
-    )
-
-    for firm_id in firm_ids:
-        rules = list(AutomationRule.objects.filter(
-            firm_id=firm_id, trigger="sla_expiring", is_active=True
-        ))
-        max_warning_days = max(
-            (int(r.trigger_config.get("warning_days", 3)) for r in rules),
-            default=3,
-        )
-        cutoff = now + datetime.timedelta(days=max_warning_days)
-
-        # Management records with expiry within the window (including already-expired)
-        records = Management.objects.filter(
-            firm_id=firm_id,
-            expires_at__isnull=False,
-            expires_at__lte=cutoff,
-        ).exclude(status="closed").select_related("realization", "customer", "assigned_to")
-
-        for record in records:
-            days_remaining = (record.expires_at - now).total_seconds() / 86400
-            customer_name = ""
-            customer_email = ""
-            if record.customer:
-                customer_name = (
-                    f"{record.customer.first_name} {record.customer.last_name}".strip()
-                )
-                customer_email = record.customer.email or ""
-
-            context = {
-                "management_id": str(record.id),
-                "management_title": record.title,
-                "management_type": record.type,
-                "management_status": record.status,
-                "realization_id": str(record.realization_id) if record.realization_id else "",
-                "realization_title": record.realization.title if record.realization else "",
-                "firm_id": str(firm_id),
-                "expires_at": record.expires_at.isoformat(),
-                "days_remaining": str(int(days_remaining)),
-                "assignee_email": record.assigned_to.email if record.assigned_to else "",
-                "assignee_name": (
-                    f"{record.assigned_to.first_name} {record.assigned_to.last_name}".strip()
-                    if record.assigned_to else ""
-                ),
-                "customer_email": customer_email,
-                "customer_name": customer_name,
-            }
-
-            for rule in rules:
-                warning_days = int(rule.trigger_config.get("warning_days", 3))
-                if days_remaining > warning_days:
-                    continue  # Not yet in this rule's window
-
-                # Skip if already fired for this record in the last 24 hours
-                already_ran = AutomationRun.objects.filter(
-                    rule=rule,
-                    triggered_at__gte=now - datetime.timedelta(hours=24),
-                ).filter(context__management_id=str(record.id)).exists()
-                if already_ran:
-                    continue
-
-                _execute_rule(rule, context)
-
-
-# ===========================================================================
 # Phase 7 — Spawn Recurring Task Instances
 # ===========================================================================
 
@@ -1514,7 +1274,7 @@ def auto_expire_scheduled_tasks(self):
             due_date__lte=now,
         )
         .exclude(status__in=list(terminal_statuses))
-        .select_related("firm", "assigned_to", "lead", "customer", "realization", "management", "proposal")
+        .select_related("firm", "assigned_to", "lead", "customer", "proposal")
     )
 
     expired_count = 0
@@ -1557,8 +1317,6 @@ def auto_expire_scheduled_tasks(self):
 
                 activity = Activity.objects.create(
                     lead=task.lead,
-                    realization=task.realization,
-                    management=task.management,
                     customer=task.customer,
                     proposal=task.proposal,
                     task=task,
@@ -1811,8 +1569,6 @@ def fetch_remote_file_for_activity(self, activity_id: str):
         for parent in (
             getattr(activity, "lead", None),
             getattr(activity, "customer", None),
-            getattr(activity, "realization", None),
-            getattr(activity, "management", None),
             getattr(activity, "proposal", None),
             getattr(activity, "task", None),
         ):
@@ -1826,8 +1582,6 @@ def fetch_remote_file_for_activity(self, activity_id: str):
             firm=firm,
             lead=getattr(activity, "lead", None),
             customer=getattr(activity, "customer", None),
-            realization=getattr(activity, "realization", None),
-            management=getattr(activity, "management", None),
             proposal=getattr(activity, "proposal", None),
             task=getattr(activity, "task", None),
             uploaded_by=getattr(activity, "user", None),
@@ -1887,8 +1641,6 @@ def purge_soft_deleted_records(self):
         Customer,
         Lead,
         Task,
-        Realization,
-        Management,
         Activity,
         Proposal,
         TimeEntry,
@@ -1909,8 +1661,6 @@ def purge_soft_deleted_records(self):
         ("Customer", Customer),
         ("Lead", Lead),
         ("Task", Task),
-        ("Realization", Realization),
-        ("Management", Management),
         ("Proposal", Proposal),
         ("TimeEntry", TimeEntry),
         ("ExpenseItem", ExpenseItem),

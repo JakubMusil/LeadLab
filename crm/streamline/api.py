@@ -27,11 +27,9 @@ def _build_entity_toolbar() -> None:
     """Populate ``_ENTITY_TOOLBAR`` from entity model class attributes."""
     global _ENTITY_TOOLBAR
     try:
-        from crm.models import Lead, Realization, Management
+        from crm.models import Lead
         _ENTITY_TOOLBAR = {
             "lead": Lead.TOOLBAR_TOOLS,
-            "realization": ["comment", "task", "checklist", "proposal"],
-            "management": ["comment", "task", "checklist", "proposal"],
             "customer": ["comment", "call", "meeting", "email_out", "checklist", "task"],
             "proposal": ["comment", "task"],
             "task": [
@@ -117,8 +115,7 @@ def get_entity_toolbar(request, entity_type: str):
     pre-registered tool element from the tool registry — no front-end
     hard-coding required.
 
-    ``entity_type`` must be one of: ``lead``, ``realization``, ``management``,
-    ``customer``, ``proposal``.
+    ``entity_type`` must be one of: ``lead``, ``customer``, ``proposal``.
 
     The special pseudo-type ``task`` (which creates a Task record rather than
     an Activity) is included in the list with a synthetic descriptor so the

@@ -81,26 +81,6 @@ const router = createRouter({
           meta: { title: 'Adresář Detail' },
         },
         {
-          path: 'realizations',
-          component: () => import('@/views/RealizationsView.vue'),
-          meta: { title: 'Realizace' },
-        },
-        {
-          path: 'realizations/:id',
-          component: () => import('@/views/RealizationDetailView.vue'),
-          meta: { title: 'Realizace Detail' },
-        },
-        {
-          path: 'management',
-          component: () => import('@/views/ManagementView.vue'),
-          meta: { title: 'Správa' },
-        },
-        {
-          path: 'management/:id',
-          component: () => import('@/views/ManagementDetailView.vue'),
-          meta: { title: 'Správa Detail' },
-        },
-        {
           path: 'tasks',
           component: () => import('@/views/TasksView.vue'),
           meta: { title: 'Tasks' },

@@ -33,11 +33,9 @@ from crm.models import (
     LeadScoringRule,
     LeadSource,
     LeadStatus,
-    Management,
     Notification,
     Project,
     Proposal,
-    Realization,
     SavedView,
     Task,
     StreamlineItem,
@@ -814,7 +812,7 @@ class ActivityOut(Schema):
     id: str
     entity_type: str
     entity_id: str
-    # Kept for backwards-compatibility — None for realization/management activities
+    # Kept for backwards-compatibility
     lead_id: Optional[str]
     user_id: Optional[str]
     user_name: Optional[str]
@@ -846,8 +844,6 @@ class ActivityUpdateIn(Schema):
 class ActivityIn(Schema):
     # Exactly one of the entity IDs must be provided.
     lead_id: Optional[str] = None
-    realization_id: Optional[str] = None
-    management_id: Optional[str] = None
     customer_id: Optional[str] = None
     proposal_id: Optional[str] = None
     task_id: Optional[str] = None
@@ -1084,9 +1080,9 @@ def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
-    Unified Action Hub endpoint — works for Lead, Realization, Management, Customer, and Proposal.
+    Unified Action Hub endpoint — works for Lead, Customer, and Proposal.
 
-    Exactly one of ``lead_id``, ``realization_id``, ``management_id``, ``customer_id``,
+    Exactly one of ``lead_id``, ``customer_id``,
     or ``proposal_id`` must be provided.  Dispatches to the registered ``StreamlineTool``
     for the given activity type, which handles all type-specific side-effects.
     """
@@ -1097,11 +1093,10 @@ def create_activity(request, payload: ActivityIn):
         return 403, {"detail": str(exc)}
 
     # --- resolve entity ---
-    if sum([bool(payload.lead_id), bool(payload.realization_id), bool(payload.management_id),
-            bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
-        return 400, {"detail": "Exactly one of lead_id, realization_id, management_id, customer_id, proposal_id, task_id must be provided."}
+    if sum([bool(payload.lead_id), bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
+        return 400, {"detail": "Exactly one of lead_id, customer_id, proposal_id, task_id must be provided."}
 
-    lead = realization = management = customer = proposal = task = None
+    lead = customer = proposal = task = None
     entity_title = ""
 
     if payload.lead_id:
@@ -1110,18 +1105,6 @@ def create_activity(request, payload: ActivityIn):
             entity_title = lead.title
         except Lead.DoesNotExist:
             return 400, {"detail": "Lead not found in this Firm."}
-    elif payload.realization_id:
-        try:
-            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
-            entity_title = realization.title
-        except Realization.DoesNotExist:
-            return 400, {"detail": "Realization not found in this Firm."}
-    elif payload.management_id:
-        try:
-            management = Management.objects.get(id=payload.management_id, firm=request.firm)
-            entity_title = management.title
-        except Management.DoesNotExist:
-            return 400, {"detail": "Management record not found in this Firm."}
     elif payload.customer_id:
         try:
             customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
@@ -1155,7 +1138,7 @@ def create_activity(request, payload: ActivityIn):
     except PayloadValidationError as exc:
         return 400, {"detail": str(exc)}
 
-    entity = lead or realization or management or customer or proposal or task
+    entity = lead or customer or proposal or task
     context = {
         "firm": request.firm,
         "user": request.user,
@@ -1165,8 +1148,6 @@ def create_activity(request, payload: ActivityIn):
     with transaction.atomic():
         activity = Activity.objects.create(
             lead=lead,
-            realization=realization,
-            management=management,
             customer=customer,
             proposal=proposal,
             task=task,
@@ -1199,8 +1180,8 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
     """
     Toggle an emoji reaction on any Activity (entity-agnostic).
 
-    Works for activities attached to any entity (lead, customer, realization,
-    management, proposal, task).  If the requesting user has already reacted
+    Works for activities attached to any entity (lead, customer,
+    proposal, task).  If the requesting user has already reacted
     with this emoji the reaction is removed; otherwise it is added.
 
     Returns the updated aggregate for this emoji.
@@ -1219,7 +1200,7 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
     # All entities the activity can reference live within a Firm scope; we
     # check every possible FK and reject if none match the requesting firm.
     firm_id = None
-    for related in (activity.lead, activity.realization, activity.management,
+    for related in (activity.lead,
                     activity.customer, activity.proposal, activity.task):
         if related is not None and getattr(related, "firm_id", None) is not None:
             firm_id = related.firm_id
@@ -1424,10 +1405,6 @@ class TaskOut(Schema):
     # Entity links
     lead_id: Optional[str]
     lead_title: Optional[str]
-    realization_id: Optional[str]
-    realization_title: Optional[str]
-    management_id: Optional[str]
-    management_title: Optional[str]
     proposal_id: Optional[str]
     proposal_title: Optional[str]
     customer_id: Optional[str]
@@ -1489,8 +1466,6 @@ class TaskOut(Schema):
 
 class TaskIn(Schema):
     lead_id: Optional[str] = None
-    realization_id: Optional[str] = None
-    management_id: Optional[str] = None
     proposal_id: Optional[str] = None
     customer_id: Optional[str] = None
     title: str
@@ -1554,26 +1529,6 @@ def _task_out(t: Task, requesting_user=None) -> dict:
             lead_title = t.lead.title
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
-
-    # Resolve realization title
-    realization_id = None
-    realization_title = None
-    if t.realization_id:
-        realization_id = str(t.realization_id)
-        try:
-            realization_title = t.realization.title
-        except (AttributeError, Exception) as exc:
-            logger.debug("Could not resolve realization title for task %s: %s", t.id, exc)
-
-    # Resolve management title
-    management_id = None
-    management_title = None
-    if t.management_id:
-        management_id = str(t.management_id)
-        try:
-            management_title = t.management.title
-        except (AttributeError, Exception) as exc:
-            logger.debug("Could not resolve management title for task %s: %s", t.id, exc)
 
     # Resolve proposal title
     proposal_id = None
@@ -1718,10 +1673,6 @@ def _task_out(t: Task, requesting_user=None) -> dict:
         "firm_id": str(t.firm_id),
         "lead_id": lead_id,
         "lead_title": lead_title,
-        "realization_id": realization_id,
-        "realization_title": realization_title,
-        "management_id": management_id,
-        "management_title": management_title,
         "proposal_id": proposal_id,
         "proposal_title": proposal_title,
         "customer_id": customer_id,
@@ -1846,10 +1797,6 @@ class CalendarTaskOut(Schema):
     # Entity link for click-through; exactly one is populated.
     lead_id: Optional[str]
     lead_title: Optional[str]
-    realization_id: Optional[str]
-    realization_title: Optional[str]
-    management_id: Optional[str]
-    management_title: Optional[str]
     customer_id: Optional[str]
     customer_name: Optional[str]
     proposal_id: Optional[str]
@@ -1876,10 +1823,6 @@ def _calendar_task_out(t: Task) -> dict:
         "assigned_to_name": _user_display_name(t.assigned_to),
         "lead_id": str(t.lead_id) if t.lead_id else None,
         "lead_title": t.lead.title if t.lead_id else None,
-        "realization_id": str(t.realization_id) if t.realization_id else None,
-        "realization_title": getattr(t.realization, "title", None) if t.realization_id else None,
-        "management_id": str(t.management_id) if t.management_id else None,
-        "management_title": getattr(t.management, "title", None) if t.management_id else None,
         "customer_id": str(t.customer_id) if t.customer_id else None,
         "customer_name": (
             f"{t.customer.first_name or ''} {t.customer.last_name or ''}".strip()
@@ -1975,7 +1918,7 @@ def list_calendar_tasks(
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
     qs = Task.objects.filter(firm=request.firm).select_related(
-        "lead", "realization", "management", "customer", "proposal", "assigned_to",
+        "lead", "customer", "proposal", "assigned_to",
     )
 
     # Window overlap: due_date <= end AND coalesce(due_date_end, due_date) >= start.
@@ -2106,20 +2049,6 @@ def create_task(request, payload: TaskIn):
         except Lead.DoesNotExist:
             return 400, {"detail": "Lead not found in this Firm."}
 
-    realization = None
-    if payload.realization_id:
-        try:
-            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
-        except Realization.DoesNotExist:
-            return 400, {"detail": "Realization not found in this Firm."}
-
-    management = None
-    if payload.management_id:
-        try:
-            management = Management.objects.get(id=payload.management_id, firm=request.firm)
-        except Management.DoesNotExist:
-            return 400, {"detail": "Management record not found in this Firm."}
-
     proposal = None
     if payload.proposal_id:
         try:
@@ -2157,8 +2086,6 @@ def create_task(request, payload: TaskIn):
         task = Task.objects.create(
             firm=request.firm,
             lead=lead,
-            realization=realization,
-            management=management,
             proposal=proposal,
             customer=customer,
             assigned_to=assigned_to,
@@ -2182,12 +2109,11 @@ def create_task(request, payload: TaskIn):
             projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
             task.projects.set(projects)
 
-        # Log activity on the linked entity (lead, realization, or management).
+        # Log activity on the linked entity (lead, customer, or proposal).
         # Mirrors the unified Streamline timeline contract: a TASK_ASSIGNED
         # event is emitted onto whichever entity owns the task so that the
-        # entity's detail timeline shows it. We log onto each linked entity
-        # independently — a task may be linked to both lead and realization.
-        primary_entity = lead or realization or management
+        # entity's detail timeline shows it.
+        primary_entity = lead or customer or proposal
         if primary_entity is not None:
             assignee_name = ""
             if payload.assigned_to_id:
@@ -2208,20 +2134,6 @@ def create_task(request, payload: TaskIn):
             if lead:
                 Activity.objects.create(
                     lead=lead,
-                    user=request.user,
-                    type=ActivityType.TASK_ASSIGNED,
-                    metadata=activity_metadata,
-                )
-            if realization:
-                Activity.objects.create(
-                    realization=realization,
-                    user=request.user,
-                    type=ActivityType.TASK_ASSIGNED,
-                    metadata=activity_metadata,
-                )
-            if management:
-                Activity.objects.create(
-                    management=management,
                     user=request.user,
                     type=ActivityType.TASK_ASSIGNED,
                     metadata=activity_metadata,
@@ -2432,28 +2344,11 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         task.completed_by = request.user
         task.status = TaskStatus.DONE
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
-        # Log Activity on every linked entity (lead, realization, management).
-        # Mirrors the per-entity pattern from create_task (19th iter): a task
-        # may be linked to multiple entities and each timeline must show the
-        # completion event independently.
+        # Log Activity on every linked entity (lead, customer, proposal).
         completion_metadata = {"task_id": str(task.id), "title": task.title}
         if task.lead_id:
             Activity.objects.create(
                 lead=task.lead,
-                user=request.user,
-                type=ActivityType.TASK_COMPLETED,
-                metadata=completion_metadata,
-            )
-        if task.realization_id:
-            Activity.objects.create(
-                realization=task.realization,
-                user=request.user,
-                type=ActivityType.TASK_COMPLETED,
-                metadata=completion_metadata,
-            )
-        if task.management_id:
-            Activity.objects.create(
-                management=task.management,
                 user=request.user,
                 type=ActivityType.TASK_COMPLETED,
                 metadata=completion_metadata,
@@ -2609,7 +2504,7 @@ def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
 
     try:
         task = Task.objects.select_related(
-            "lead", "realization", "management", "customer", "proposal",
+            "lead", "customer", "proposal",
         ).get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
@@ -2717,24 +2612,16 @@ def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
 def _task_entity_kwargs_iter(task: Task):
     """Yield ``Activity`` constructor kwargs for each linked CRM entity.
 
-    A task can be tied to several entities (lead/realization/management/
-    customer/proposal). We log a separate Activity per timeline so each
-    entity's history is self-contained. If no entity is linked we still
-    yield one empty dict so the Activity is created (orphan timeline).
+    A task can be tied to several entities (lead/customer/proposal).
+    We log a separate Activity per timeline so each entity's history
+    is self-contained. If no entity is linked we still yield one empty
+    dict so the Activity is created (orphan timeline).
     """
     yielded = False
     if task.lead_id:
         yield {"lead": task.lead}
         yielded = True
-    if task.realization_id:
-        yield {"realization": task.realization}
-        yielded = True
-    if task.management_id:
-        yield {"management": task.management}
-        yielded = True
-    if task.customer_id and not (task.lead_id or task.realization_id or task.management_id):
-        # Only attach to customer if no higher-level entity carries it,
-        # to avoid double-logging on the customer's aggregated timeline.
+    if task.customer_id and not task.lead_id:
         yield {"customer": task.customer}
         yielded = True
     if task.proposal_id and not yielded:
@@ -3051,8 +2938,6 @@ def create_streamline_items(request, task_id: str, payload: StreamlineItemCreate
         Activity.objects.create(
             firm=request.firm,
             lead=task.lead,
-            realization=task.realization,
-            management=task.management,
             customer=task.customer,
             proposal=task.proposal,
             task=task,
@@ -3098,8 +2983,6 @@ def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateI
         Activity.objects.create(
             firm=request.firm,
             lead=task.lead,
-            realization=task.realization,
-            management=task.management,
             customer=task.customer,
             proposal=task.proposal,
             task=task,
@@ -4727,9 +4610,9 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
 # size) entirely server-side and out of the user-facing form.
 #
 # The endpoint is entity-agnostic: it accepts an optional ``lead_id`` /
-# ``customer_id`` / ``realization_id`` / ``management_id`` / ``proposal_id``
-# query parameter so the resulting ``Document`` is correctly linked, but
-# linking is best-effort and the upload succeeds even without it.
+# ``customer_id`` / ``proposal_id`` query parameter so the resulting
+# ``Document`` is correctly linked, but linking is best-effort and the
+# upload succeeds even without it.
 # ===========================================================================
 
 # Audio payload limit — 25 MB is enough for a ~30 minute Opus recording
@@ -4757,8 +4640,6 @@ class _VoiceMemoEntities(NamedTuple):
 
     lead: Optional[Lead] = None
     customer: Optional[Customer] = None
-    realization: Optional[Realization] = None
-    management: Optional[Management] = None
     proposal: Optional[Proposal] = None
     error: Optional[str] = None
 
@@ -4768,8 +4649,6 @@ def _resolve_voice_memo_entity(
     *,
     lead_id: Optional[str],
     customer_id: Optional[str],
-    realization_id: Optional[str],
-    management_id: Optional[str],
     proposal_id: Optional[str],
 ) -> _VoiceMemoEntities:
     """Look up the optional parent entity for a voice-memo upload.
@@ -4777,7 +4656,7 @@ def _resolve_voice_memo_entity(
     When ``error`` is non-``None`` the caller should bail out with a 404
     response.  Tenants are enforced via ``firm=request.firm``.
     """
-    lead = customer = realization = management = proposal = None
+    lead = customer = proposal = None
     if lead_id:
         try:
             lead = Lead.objects.get(id=lead_id, firm=request.firm)
@@ -4788,16 +4667,6 @@ def _resolve_voice_memo_entity(
             customer = Customer.objects.get(id=customer_id, firm=request.firm)
         except Customer.DoesNotExist:
             return _VoiceMemoEntities(error="Customer not found.")
-    if realization_id:
-        try:
-            realization = Realization.objects.get(id=realization_id, firm=request.firm)
-        except Realization.DoesNotExist:
-            return _VoiceMemoEntities(error="Realization not found.")
-    if management_id:
-        try:
-            management = Management.objects.get(id=management_id, firm=request.firm)
-        except Management.DoesNotExist:
-            return _VoiceMemoEntities(error="Management not found.")
     if proposal_id:
         try:
             proposal = Proposal.objects.get(id=proposal_id, firm=request.firm)
@@ -4806,8 +4675,6 @@ def _resolve_voice_memo_entity(
     return _VoiceMemoEntities(
         lead=lead,
         customer=customer,
-        realization=realization,
-        management=management,
         proposal=proposal,
     )
 
@@ -4822,8 +4689,6 @@ def upload_voice_memo(
     file: UploadedFile = File(...),
     lead_id: Optional[str] = None,
     customer_id: Optional[str] = None,
-    realization_id: Optional[str] = None,
-    management_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
 ):
     """Persist a recorded voice-memo audio blob and return its URL.
@@ -4853,12 +4718,10 @@ def upload_voice_memo(
     if content_type and not content_type.startswith("audio/"):
         return 400, {"detail": "Only audio uploads are accepted on this endpoint."}
 
-    lead, customer, realization, management, proposal, error = _resolve_voice_memo_entity(
+    lead, customer, proposal, error = _resolve_voice_memo_entity(
         request,
         lead_id=lead_id,
         customer_id=customer_id,
-        realization_id=realization_id,
-        management_id=management_id,
         proposal_id=proposal_id,
     )
     if error:
@@ -4879,8 +4742,6 @@ def upload_voice_memo(
         firm=request.firm,
         lead=lead,
         customer=customer,
-        realization=realization,
-        management=management,
         proposal=proposal,
         uploaded_by=request.user,
         name=storage_name,
@@ -4948,22 +4809,13 @@ def _resolve_file_upload_entity(
     *,
     lead_id: Optional[str],
     customer_id: Optional[str],
-    realization_id: Optional[str],
-    management_id: Optional[str],
     proposal_id: Optional[str],
 ) -> _VoiceMemoEntities:
-    """Reuse the voice-memo entity resolver for file uploads.
-
-    Both endpoints accept the same optional parent-entity query params
-    and link the resulting Document identically; sharing the resolver
-    keeps the validation + tenant guard in one place.
-    """
+    """Reuse the voice-memo entity resolver for file uploads."""
     return _resolve_voice_memo_entity(
         request,
         lead_id=lead_id,
         customer_id=customer_id,
-        realization_id=realization_id,
-        management_id=management_id,
         proposal_id=proposal_id,
     )
 
@@ -4978,8 +4830,6 @@ def upload_file_blobs(
     files: List[UploadedFile] = File(...),
     lead_id: Optional[str] = None,
     customer_id: Optional[str] = None,
-    realization_id: Optional[str] = None,
-    management_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
 ):
     """Persist one or more uploaded binaries; return their stable URLs.
@@ -5013,8 +4863,6 @@ def upload_file_blobs(
         request,
         lead_id=lead_id,
         customer_id=customer_id,
-        realization_id=realization_id,
-        management_id=management_id,
         proposal_id=proposal_id,
     )
     if entities.error:
@@ -5028,8 +4876,6 @@ def upload_file_blobs(
             firm=request.firm,
             lead=entities.lead,
             customer=entities.customer,
-            realization=entities.realization,
-            management=entities.management,
             proposal=entities.proposal,
             uploaded_by=request.user,
             name=original_name,
@@ -5601,184 +5447,12 @@ def trends(request):
 
 
 # ---------------------------------------------------------------------------
-# Phase 4.5 — Realization metrics
-# ---------------------------------------------------------------------------
-
-class RealizationStatusRow(Schema):
-    status: str
-    count: int
-    avg_days: float
-
-
-class RealizationTrendRow(Schema):
-    week_start: str
-    created: int
-    completed: int
-
-
-class RealizationMetricsOut(Schema):
-    by_status: List[RealizationStatusRow]
-    trend: List[RealizationTrendRow]
-    total: int
-    completed_total: int
-
-
-@router.get(
-    "/reports/realization-metrics",
-    auth=django_auth,
-    response={200: RealizationMetricsOut, 403: ErrorOut},
-)
-def realization_metrics(request):
-    """
-    Realization pipeline metrics: count by status, average days in each status,
-    and a 12-week trend (created vs. completed).  Cached 5 minutes.
-    """
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    from crm.models import Realization, RealizationStatus
-
-    cache_key = f"analytics:realization_metrics:{request.firm.id}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return 200, cached
-
-    now = tz.now()
-    qs = Realization.objects.filter(firm=request.firm)
-
-    # Prefetch created_at and updated_at for all realizations once
-    all_items = list(qs.only("id", "status", "created_at", "updated_at"))
-
-    # Build per-status buckets
-    from collections import defaultdict
-    buckets: Dict[str, list] = defaultdict(list)
-    for item in all_items:
-        buckets[item.status].append(item)
-
-    completed_statuses = {RealizationStatus.DONE.value, RealizationStatus.CANCELLED.value}
-
-    # Count and average days per status
-    status_rows = []
-    for s in RealizationStatus:
-        items_in_status = buckets.get(s.value, [])
-        count = len(items_in_status)
-        if count == 0:
-            avg_days = 0.0
-        elif s.value in completed_statuses:
-            # avg time from creation to last update (approximation for completed duration)
-            total_days = sum(
-                (item.updated_at - item.created_at).total_seconds() / 86400
-                for item in items_in_status
-            )
-            avg_days = total_days / count
-        else:
-            # Active: time since creation until now
-            total_days = sum(
-                (now - item.created_at).total_seconds() / 86400
-                for item in items_in_status
-            )
-            avg_days = total_days / count
-        status_rows.append({"status": s.value, "count": count, "avg_days": round(avg_days, 1)})
-
-    # 12-week trend
-    twelve_weeks_ago = now - dt.timedelta(weeks=12)
-    trend = []
-    for week in range(12):
-        week_start = twelve_weeks_ago + dt.timedelta(weeks=week)
-        week_end = week_start + dt.timedelta(weeks=1)
-        created = qs.filter(created_at__gte=week_start, created_at__lt=week_end).count()
-        completed = qs.filter(
-            status=RealizationStatus.DONE,
-            updated_at__gte=week_start,
-            updated_at__lt=week_end,
-        ).count()
-        trend.append({
-            "week_start": week_start.date().isoformat(),
-            "created": created,
-            "completed": completed,
-        })
-
-    total = qs.count()
-    completed_total = qs.filter(status=RealizationStatus.DONE).count()
-
-    result = {
-        "by_status": status_rows,
-        "trend": trend,
-        "total": total,
-        "completed_total": completed_total,
-    }
-    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
-    return 200, result
-
-
-# ---------------------------------------------------------------------------
-# Phase 4.5 — SLA compliance
-# ---------------------------------------------------------------------------
-
-class SlaComplianceOut(Schema):
-    total: int
-    green: int    # expires_at > now + 7 days (or no expiry)
-    yellow: int   # expires_at in next 7 days
-    red: int      # already expired
-    no_expiry: int
-
-
-@router.get(
-    "/reports/sla-compliance",
-    auth=django_auth,
-    response={200: SlaComplianceOut, 403: ErrorOut},
-)
-def sla_compliance(request):
-    """
-    SLA compliance summary for Management records in the active firm.
-    Green = > 7 days remaining, Yellow = 1–7 days, Red = expired.
-    Cached 5 minutes.
-    """
-    try:
-        require_membership(request)
-    except Exception as exc:
-        return 403, {"detail": str(exc)}
-
-    from crm.models import Management, ManagementStatus
-
-    cache_key = f"analytics:sla_compliance:{request.firm.id}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return 200, cached
-
-    now = tz.now()
-    seven_days = now + dt.timedelta(days=7)
-
-    qs = Management.objects.filter(firm=request.firm).exclude(status=ManagementStatus.CLOSED)
-
-    total = qs.count()
-    no_expiry = qs.filter(expires_at__isnull=True).count()
-    with_expiry = qs.filter(expires_at__isnull=False)
-
-    red = with_expiry.filter(expires_at__lt=now).count()
-    yellow = with_expiry.filter(expires_at__gte=now, expires_at__lte=seven_days).count()
-    green = with_expiry.filter(expires_at__gt=seven_days).count()
-
-    result = {
-        "total": total,
-        "green": green,
-        "yellow": yellow,
-        "red": red,
-        "no_expiry": no_expiry,
-    }
-    cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
-    return 200, result
-
-
-# ---------------------------------------------------------------------------
 # Phase 4.5 — Profitability report
 # ---------------------------------------------------------------------------
 
 class ProfitabilityRow(Schema):
     entity_id: str
-    entity_type: str   # "realization" | "lead" | "customer"
+    entity_type: str   # "lead" | "customer" | "total"
     entity_title: str
     total_minutes: int
     total_expenses: float
@@ -5802,8 +5476,7 @@ def profitability_report(
     date_to: Optional[dt.date] = None,
 ):
     """
-    Profitability breakdown per Realization (and top-level per Lead / Customer
-    where no Realization exists).  Aggregates TimeEntry, ExpenseItem and
+    Profitability breakdown aggregated from TimeEntry, ExpenseItem and
     RevenueItem data.  Results are NOT cached (supports date filters).
     """
     try:
@@ -5811,48 +5484,9 @@ def profitability_report(
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    from crm.models import Realization, TimeEntry, ExpenseItem, RevenueItem
+    from crm.models import TimeEntry, ExpenseItem, RevenueItem
 
     firm = request.firm
-
-    def _filter_dates(qs, date_field_prefix=""):
-        if date_from:
-            qs = qs.filter(**{f"{date_field_prefix}__gte": date_from})
-        if date_to:
-            qs = qs.filter(**{f"{date_field_prefix}__lte": date_to})
-        return qs
-
-    # Aggregate per realization
-    realizationqs = Realization.objects.filter(firm=firm).order_by("-created_at")[:50]
-    rows = []
-
-    for r in realizationqs:
-        te = TimeEntry.objects.filter(firm=firm, realization=r)
-        ex = ExpenseItem.objects.filter(firm=firm, realization=r)
-        rev = RevenueItem.objects.filter(firm=firm, realization=r)
-
-        if date_from:
-            te = te.filter(started_at__date__gte=date_from)
-            ex = ex.filter(date__gte=date_from)
-            rev = rev.filter(date__gte=date_from)
-        if date_to:
-            te = te.filter(started_at__date__lte=date_to)
-            ex = ex.filter(date__lte=date_to)
-            rev = rev.filter(date__lte=date_to)
-
-        mins = te.aggregate(s=Sum("duration_minutes"))["s"] or 0
-        expenses = float(ex.aggregate(s=Sum("amount"))["s"] or 0)
-        revenues = float(rev.aggregate(s=Sum("amount"))["s"] or 0)
-
-        rows.append({
-            "entity_id": str(r.id),
-            "entity_type": "realization",
-            "entity_title": r.title,
-            "total_minutes": mins,
-            "total_expenses": expenses,
-            "total_revenues": revenues,
-            "profit_loss": revenues - expenses,
-        })
 
     # Totals
     all_te = TimeEntry.objects.filter(firm=firm)
@@ -5882,7 +5516,7 @@ def profitability_report(
         "profit_loss": total_revenues - total_expenses,
     }
 
-    return 200, {"rows": rows, "totals": totals}
+    return 200, {"rows": [], "totals": totals}
 
 
 # ---------------------------------------------------------------------------
