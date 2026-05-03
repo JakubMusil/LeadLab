@@ -139,7 +139,7 @@ export const useRecordsStore = defineStore('records', () => {
     }
   }
 
-  async function createRecord(payload: RecordIn): Promise<{ ok: boolean; data?: LeadOut; error?: string }> {
+  async function createRecord(payload: RecordIn): Promise<{ ok: boolean; data?: RecordOut; error?: string }> {
     const res = await api.post<RecordOut>('/api/v1/crm/records', payload)
     if (res.ok) {
       if (!records.value.find((l) => l.id === res.data.id)) {
@@ -150,7 +150,7 @@ export const useRecordsStore = defineStore('records', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to create record.') }
   }
 
-  async function updateRecord(id: string, payload: Partial<RecordIn>): Promise<{ ok: boolean; data?: LeadOut; error?: string }> {
+  async function updateRecord(id: string, payload: Partial<RecordIn>): Promise<{ ok: boolean; data?: RecordOut; error?: string }> {
     const res = await api.patch<RecordOut>(`/api/v1/crm/records/${id}`, payload)
     if (res.ok) {
       const idx = records.value.findIndex((l) => l.id === id)

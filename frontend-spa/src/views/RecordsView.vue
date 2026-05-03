@@ -46,7 +46,7 @@ const viewMode = ref<ViewMode>('list')
 watch(() => authStore.user?.id, (userId) => {
   if (!userId) return
   try {
-    const stored = localStorage.getItem(`leadlab_leads_displaymode_u${userId}`)
+    const stored = localStorage.getItem(`leadlab_records_displaymode_u${userId}`)
     if (stored === 'table' || stored === 'kanban' || stored === 'list') {
       viewMode.value = stored
     }
@@ -59,7 +59,7 @@ watch(viewMode, (mode) => {
   const userId = authStore.user?.id
   if (!userId) return
   try {
-    localStorage.setItem(`leadlab_leads_displaymode_u${userId}`, mode)
+    localStorage.setItem(`leadlab_records_displaymode_u${userId}`, mode)
   } catch {
     // ignore
   }
@@ -106,7 +106,7 @@ const {
   DEFAULT_SORT_FIELD, DEFAULT_SORT_DIR,
   visibleColumns, columnPickerOpen, isColVisible, toggleColumn, resetColumns,
 } = useListView<SortField, ColumnId>(
-  { storageKeyPrefix: 'leadlab_leads', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
+  { storageKeyPrefix: 'leadlab_records', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
   computed(() => authStore.user?.id),
 )
 
@@ -114,8 +114,8 @@ const STATUS_ORDER: Record<string, number> = {
   new: 1, contacted: 2, proposal: 3, negotiation: 4, won: 5, lost: 6, canceled: 7,
 }
 
-const sortedLeads = computed(() => {
-  return [...store.leads].sort((a, b) => {
+const sortedRecords = computed(() => {
+  return [...store.records].sort((a, b) => {
     let cmp = 0
     if (sortField.value === 'value') {
       // Null values sort to the end regardless of direction
@@ -503,7 +503,7 @@ onMounted(async () => {
 const leadsByStatus = computed(() => {
   const map: Record<string, RecordOut[]> = {}
   for (const s of RECORD_STATUSES) map[s.value] = []
-  for (const l of store.leads) {
+  for (const l of store.records) {
     if (map[l.status]) map[l.status]!.push(l)
     else map[l.status] = [l]
   }
@@ -613,7 +613,7 @@ async function changeStatus(leadId: string, newStatus: string) {
 }
 
 function goToDetail(id: string) {
-  router.push(`/app/opportunities/${id}`)
+  router.push(`/app/records/${id}`)
 }
 
 // Kanban drag state
@@ -696,7 +696,7 @@ async function saveCurrentView() {
   savingView.value = true
   const result = await savedViewsStore.createView({
     name: saveViewName.value.trim(),
-    entity: 'opportunities',
+    entity: 'records',
     filters: {
       ...(filterStatus.value ? { status: filterStatus.value } : {}),
       ...(filterSource.value ? { source: filterSource.value } : {}),
@@ -786,16 +786,16 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
 
       <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('opportunities').length > 0" class="flex items-center gap-1 flex-wrap">
+      <div v-if="savedViewsStore.viewsForEntity('records').length > 0" class="flex items-center gap-1 flex-wrap">
         <div
-          v-for="view in savedViewsStore.viewsForEntity('opportunities')"
+          v-for="view in savedViewsStore.viewsForEntity('records')"
           :key="view.id"
           class="flex items-center gap-0.5"
         >
           <button
             class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-l-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             :title="view.name"
-            @click="router.push(`/app/leads?view=${view.id}`)"
+            @click="router.push(`/app/records?view=${view.id}`)"
           >
             <BookmarkIcon class="w-3.5 h-3.5" /> {{ view.name }}
           </button>
@@ -948,13 +948,13 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
     </div>
 
     <!-- Loading -->
-    <div v-if="store.loading && store.leads.length === 0" class="animate-pulse space-y-2">
+    <div v-if="store.loading && store.records.length === 0" class="animate-pulse space-y-2">
       <div v-for="i in 5" :key="i" class="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
     <!-- TABLE VIEW -->
     <template v-else-if="viewMode === 'table'">
-      <div v-if="store.leads.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div v-if="store.records.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
         <div class="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
           <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1024,7 +1024,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
           </thead>
           <tbody>
             <tr
-              v-for="lead in sortedLeads"
+              v-for="lead in sortedRecords"
               :key="lead.id"
               class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
               @click.self="goToDetail(lead.id)"
@@ -1113,7 +1113,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
 
     <!-- LIST VIEW -->
     <template v-else-if="viewMode === 'list'">
-      <div v-if="store.leads.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div v-if="store.records.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('leads.noLeadsFound') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
           <template v-if="filterStatus || filterSource">{{ t('leads.filterSubtitle') }}</template>
@@ -1127,7 +1127,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
       </div>
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
         <div
-          v-for="lead in sortedLeads"
+          v-for="lead in sortedRecords"
           :key="lead.id"
           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
           @click="goToDetail(lead.id)"
