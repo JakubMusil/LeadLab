@@ -314,9 +314,15 @@ function selectPrimaryContact(c: CustomerOut) {
     formCompanyId.value = c.id
     formCustomerId.value = null
     loadEmployees(c.id)
+  } else if (c.company_id) {
+    // Person that belongs to a company → store as contact_person so they are visible in the lead detail
+    formContactPersonId.value = c.id
+    formCompanyId.value = c.company_id
+    formCustomerId.value = null
   } else {
+    // Standalone person (no company)
     formCustomerId.value = c.id
-    formCompanyId.value = c.company_id ?? null
+    formCompanyId.value = null
   }
 }
 
@@ -524,30 +530,39 @@ function openEdit(lead: LeadOut) {
   clearPrimaryContact()
   // Reconstruct primary contact from lead data
   const extLead = lead as LeadOut & { customer_name?: string; customer_email?: string; customer_phone?: string }
-  if (lead.customer_id) {
+  if (lead.contact_person_id && lead.company_id) {
+    // Person-with-company stored as contact_person + company (new format)
+    const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
+    selectedPrimaryContact.value = makeContactStub(
+      lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
+      '', '', lead.company_id, lead.company_name ?? '',
+    )
+    formContactPersonId.value = lead.contact_person_id
+    formCompanyId.value = lead.company_id
+    formCustomerId.value = null
+  } else if (lead.customer_id) {
+    // Standalone person (no company)
     const [firstName = '', ...rest] = (extLead.customer_name ?? '').split(' ')
     selectedPrimaryContact.value = makeContactStub(
       lead.customer_id, 'person', firstName, rest.join(' '),
       extLead.customer_email ?? '', extLead.customer_phone ?? '',
-      lead.company_id, lead.company_name ?? '',
     )
     formCustomerId.value = lead.customer_id
-    formCompanyId.value = lead.company_id ?? null
-    if (lead.company_id) loadEmployees(lead.company_id)
+    formCompanyId.value = null
   } else if (lead.company_id) {
+    // Company as primary (with optional secondary contact person)
     selectedPrimaryContact.value = makeContactStub(
       lead.company_id, 'company', '', '', '', '', null, lead.company_name ?? '',
     )
     formCompanyId.value = lead.company_id
     loadEmployees(lead.company_id)
-  }
-  // Reconstruct contact person
-  if (lead.contact_person_id) {
-    const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
-    selectedContactPerson.value = makeContactStub(
-      lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
-    )
-    formContactPersonId.value = lead.contact_person_id
+    if (lead.contact_person_id) {
+      const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
+      selectedContactPerson.value = makeContactStub(
+        lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
+      )
+      formContactPersonId.value = lead.contact_person_id
+    }
   }
   showModal.value = true
 }
