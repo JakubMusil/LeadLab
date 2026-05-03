@@ -4659,7 +4659,7 @@ def _resolve_voice_memo_entity(
     lead = customer = proposal = None
     if lead_id:
         try:
-            lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+            lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
         except PipelineRecord.DoesNotExist:
             return _VoiceMemoEntities(error="Record not found.")
     if customer_id:

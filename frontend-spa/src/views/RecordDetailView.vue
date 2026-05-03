@@ -533,7 +533,7 @@ async function deleteRecord() {
   const result = await store.deleteRecord(leadId.value)
   if (result.ok) {
     toast.success(t('leadDetail.deleted'))
-    router.push('/app/opportunities')
+    router.push('/app/records')
   } else {
     toast.error(result.error ?? 'Failed to delete.')
   }
@@ -577,7 +577,7 @@ async function openContactDetail(id: string | null) {
 <template>
   <div class="p-6">
     <!-- Back -->
-    <RouterLink to="/app/opportunities" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
+    <RouterLink to="/app/records" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
       {{ t('leadDetail.backToLeads') }}
     </RouterLink>
 
@@ -689,7 +689,7 @@ async function openContactDetail(id: string | null) {
           <ActivityTimeline
             ref="activityTimelineRef"
             :hide-composer="true"
-            entity-type="lead"
+            entity-type="record"
             :entity-id="leadId"
             :hide-filter-dropdown="true"
             :override-visible-types="currentVisibleTypes"
@@ -774,7 +774,7 @@ async function openContactDetail(id: string | null) {
 
           <!-- Quick actions card -->
           <EntitySidebarActionPicker
-            entity-type="lead"
+            entity-type="record"
             :entity-id="leadId"
             :team-members="teamMembers"
             :attachment-upload-url="`/api/v1/crm/records/${leadId}/attachments`"
