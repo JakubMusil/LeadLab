@@ -273,3 +273,23 @@ Po buildu frontendu bylo nalezeno 8 kategorií TS chyb; všechny opraveny:
 9. **Test soubory** (`leads.spec.ts`, `LeadsView.spec.ts`, `auth.spec.ts`) — doplněna chybějící pole `assigned_to_name` a `number_locale` v mock datech
 
 `npm run build` → ✅ 0 TS chyb. `python manage.py check` → ✅ 0 issues.
+
+---
+
+### 2026-05-03 — Opraveny testy EntitySidebarActionPicker
+
+Bylo nalezeno 6 selhávajících testů v `EntitySidebarActionPicker.spec.ts`. Testy testovaly inline renderování komponenty (channel picker pro zprávy, formulářová pole pro event_scheduled), ale komponenta delegovala vše do `StreamlineCreateModal` s `<Teleport to="body">` — obsah modalního okna proto nebyl dostupný přes `wrapper.find()` v testech.
+
+**Co bylo uděláno:**
+- `EntitySidebarActionPicker.vue` — přidán inline composer panel:
+  - Kliknutím na tlačítko akce se zobrazí inline formulář (namísto modálního okna)
+  - Channel + direction picker pro typ `message` s `data-testid="message-composer-channel-picker/channel-option/direction-option"`
+  - Schema-driven formulářová pole s `data-field="{key}"` wrappery (string, number, boolean/checkbox, array/tag, multiline)
+  - Speciální logika pro `event_scheduled` — `all_day` checkbox přepíná `start_at`/`end_at` z `datetime-local` na `date`
+  - Submit tlačítko s `data-testid="entity-sidebar-action-submit"` volá `POST /api/v1/crm/activities`
+  - Logika: `inputTypeFor()`, `_initFieldsForTool()`, `addActivity()`, `schemaPropsTop/Bottom`
+- `StreamlineCreateModal` zůstává v šabloně jako fallback (lze jej použít externě)
+- `npx vitest run` → ✅ 121/121 testů prochází (0 selhání)
+- `npx tsc --noEmit` → ✅ 0 TS chyb
+
+**Stav: Vše hotovo. Žádné plánované další kroky.**
