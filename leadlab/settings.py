@@ -145,11 +145,6 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.spawn_recurring_tasks',
         'schedule': crontab(hour=0, minute=5),
     },
-    # Phase 4.6 — SLA expiry automation checks once per day at 08:00 UTC
-    'automation-sla-expiry': {
-        'task': 'crm.tasks.check_sla_expiry_automations',
-        'schedule': crontab(hour=8, minute=30),
-    },
     # Calendar / Task unification — auto-close scheduled tasks past their grace
     'auto-expire-scheduled-tasks': {
         'task': 'crm.tasks.auto_expire_scheduled_tasks',

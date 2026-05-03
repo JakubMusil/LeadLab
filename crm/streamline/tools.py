@@ -1344,8 +1344,6 @@ class _ScheduledActivityTool(_SimpleLogTool):
             assigned_to=context.get("user"),
             created_by=context.get("user"),
             lead=activity.lead,
-            realization=activity.realization,
-            management=activity.management,
             customer=activity.customer,
             proposal=activity.proposal,
             metadata={
@@ -2068,8 +2066,6 @@ class TodoItemsAddedTool(StreamlineTool):
 
         # Resolve entity FK kwargs for Task creation
         lead = getattr(activity, "lead", None)
-        realization = getattr(activity, "realization", None)
-        management = getattr(activity, "management", None)
         customer = getattr(activity, "customer", None)
         proposal = getattr(activity, "proposal", None)
 
@@ -2088,8 +2084,6 @@ class TodoItemsAddedTool(StreamlineTool):
             task = Task.objects.create(
                 firm=firm,
                 lead=lead,
-                realization=realization,
-                management=management,
                 customer=customer,
                 proposal=proposal,
                 title=title[:255],

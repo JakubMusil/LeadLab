@@ -50,13 +50,11 @@ from crm.models import (
     Customer,
     FirmProposalItem,
     Lead,
-    Management,
     Proposal,
     ProposalItem,
     ProposalStatus,
     ProposalTemplate,
     ProposalTemplateItem,
-    Realization,
 )
 from crm.soft_delete import perform_soft_delete
 from firms.auth import (
@@ -106,8 +104,6 @@ class ProposalOut(Schema):
     id: str
     lead_id: Optional[str]
     customer_id: Optional[str]
-    realization_id: Optional[str]
-    management_id: Optional[str]
     firm_id: str
     title: str
     status: str
@@ -132,8 +128,6 @@ class ProposalIn(Schema):
     title: str
     lead_id: Optional[str] = None
     customer_id: Optional[str] = None
-    realization_id: Optional[str] = None
-    management_id: Optional[str] = None
     status: str = ProposalStatus.DRAFT
     expiry_date: Optional[str] = None
     currency: str = "CZK"
@@ -296,8 +290,6 @@ def _proposal_out(proposal: Proposal) -> dict:
         "id": str(proposal.id),
         "lead_id": str(proposal.lead_id) if proposal.lead_id else None,
         "customer_id": str(proposal.customer_id) if proposal.customer_id else None,
-        "realization_id": str(proposal.realization_id) if proposal.realization_id else None,
-        "management_id": str(proposal.management_id) if proposal.management_id else None,
         "firm_id": str(proposal.firm_id),
         "title": proposal.title,
         "status": proposal.status,
@@ -440,8 +432,7 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
     response={200: List[ProposalOut], 403: ErrorOut},
 )
 def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[str] = None,
-                       customer_id: Optional[str] = None, realization_id: Optional[str] = None,
-                       management_id: Optional[str] = None):
+                       customer_id: Optional[str] = None):
     """List all proposals for the active firm, with optional filters."""
     try:
         require_membership(request)
@@ -455,10 +446,6 @@ def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[
         qs = qs.filter(lead_id=lead_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
-    if realization_id:
-        qs = qs.filter(realization_id=realization_id)
-    if management_id:
-        qs = qs.filter(management_id=management_id)
     return 200, [_proposal_out(p) for p in qs]
 
 
@@ -479,8 +466,6 @@ def create_standalone_proposal(request, payload: ProposalIn):
     # Resolve optional entity links
     lead = None
     customer = None
-    realization = None
-    management = None
 
     if payload.lead_id:
         try:
@@ -492,23 +477,11 @@ def create_standalone_proposal(request, payload: ProposalIn):
             customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
         except Customer.DoesNotExist:
             return 404, {"detail": "Customer not found."}
-    if payload.realization_id:
-        try:
-            realization = Realization.objects.get(id=payload.realization_id, firm=request.firm)
-        except Realization.DoesNotExist:
-            return 404, {"detail": "Realization not found."}
-    if payload.management_id:
-        try:
-            management = Management.objects.get(id=payload.management_id, firm=request.firm)
-        except Management.DoesNotExist:
-            return 404, {"detail": "Management record not found."}
 
     proposal = Proposal.objects.create(
         firm=request.firm,
         lead=lead,
         customer=customer,
-        realization=realization,
-        management=management,
         title=payload.title,
         status=payload.status,
         expiry_date=payload.expiry_date or None,

@@ -393,9 +393,9 @@ class Lead(SoftDeleteMixin, TenantModel):
 class Activity(models.Model):
     """
     A timeline event linked to exactly one CRM entity
-    (Lead / Realization / Management).
+    (Lead / Customer).
 
-    Exactly one of ``lead``, ``realization``, ``management`` must be set.
+    Exactly one of ``lead``, ``customer``, ``proposal``, or ``task`` must be set.
     The ``entity_type`` property returns a canonical string so callers do not
     need to check all three FKs.
 
@@ -414,20 +414,6 @@ class Activity(models.Model):
     # Polymorphic entity reference — exactly one must be non-null.
     lead = models.ForeignKey(
         Lead,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="activities",
-    )
-    realization = models.ForeignKey(
-        "Realization",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="activities",
-    )
-    management = models.ForeignKey(
-        "Management",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
@@ -515,8 +501,6 @@ class Activity(models.Model):
         indexes = [
             models.Index(fields=["lead", "-created_at"]),
             models.Index(fields=["lead", "type"]),
-            models.Index(fields=["realization", "-created_at"], name="crm_activit_realiz_created_idx"),
-            models.Index(fields=["management", "-created_at"], name="crm_activit_mgmt_created_idx"),
             models.Index(fields=["customer", "-created_at"], name="crm_activit_cust_created_idx"),
             models.Index(fields=["proposal", "-created_at"], name="crm_activit_prop_created_idx"),
             models.Index(fields=["task", "-created_at"], name="crm_activit_task_created_idx"),
@@ -532,10 +516,6 @@ class Activity(models.Model):
         """Return the canonical entity type string for this activity."""
         if self.lead_id:
             return "lead"
-        if self.realization_id:
-            return "realization"
-        if self.management_id:
-            return "management"
         if self.customer_id:
             return "customer"
         if self.proposal_id:
@@ -549,10 +529,6 @@ class Activity(models.Model):
         """Return the UUID string of the linked entity."""
         if self.lead_id:
             return str(self.lead_id)
-        if self.realization_id:
-            return str(self.realization_id)
-        if self.management_id:
-            return str(self.management_id)
         if self.customer_id:
             return str(self.customer_id)
         if self.proposal_id:
@@ -577,8 +553,8 @@ class ActivityReaction(models.Model):
     A generic emoji reaction (e.g. 👍 ❤️ 😂) on an ``Activity``.
 
     Replaces the task-specific ``TaskCommentReaction`` so that any activity
-    in the unified Streamline timeline (lead / customer / task / realization /
-    management / proposal) can be reacted to.
+    in the unified Streamline timeline (lead / customer / task /
+    proposal) can be reacted to.
 
     The ``unique_together`` constraint ensures a user can add each emoji only
     once per activity; toggling sends the same request to remove it.
@@ -704,22 +680,6 @@ class Task(SoftDeleteMixin, TenantModel):
         blank=True,
         on_delete=models.CASCADE,
         related_name="tasks",
-    )
-    realization = models.ForeignKey(
-        "Realization",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="tasks",
-        help_text="Optional link to a Realization. SET_NULL on delete so task survives.",
-    )
-    management = models.ForeignKey(
-        "Management",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="tasks",
-        help_text="Optional link to a Management record. SET_NULL on delete so task survives.",
     )
     proposal = models.ForeignKey(
         "Proposal",
@@ -1540,13 +1500,13 @@ class FirmProposalItem(SoftDeleteMixin, TenantModel):
 
 
 # ---------------------------------------------------------------------------
-# Proposal (standalone entity — can link to Lead, Customer, Realization or Management)
+# Proposal (standalone entity — can link to Lead or Customer)
 # ---------------------------------------------------------------------------
 
 class Proposal(SoftDeleteMixin, TenantModel):
     """
     A business proposal.  It can be linked to any combination of CRM entities
-    (Lead, Customer, Realization, Management) — or exist completely standalone.
+    (Lead, Customer) — or exist completely standalone.
 
     ``public_token`` is a UUID used to construct the signed public URL;
     it is regenerated each time the proposal is re-sent so that old links expire.
@@ -1565,20 +1525,6 @@ class Proposal(SoftDeleteMixin, TenantModel):
     )
     customer = models.ForeignKey(
         Customer,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="proposals",
-    )
-    realization = models.ForeignKey(
-        "Realization",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="proposals",
-    )
-    management = models.ForeignKey(
-        "Management",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -1627,8 +1573,6 @@ class Proposal(SoftDeleteMixin, TenantModel):
         indexes = [
             models.Index(fields=["firm", "lead", "-created_at"]),
             models.Index(fields=["firm", "customer"]),
-            models.Index(fields=["firm", "realization"]),
-            models.Index(fields=["firm", "management"]),
             models.Index(fields=["firm", "status"]),
         ]
 
@@ -1841,11 +1785,7 @@ class AutomationTrigger(models.TextChoices):
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
     LEAD_INACTIVE = "lead_inactive", "Lead Inactive (N days)"
     WEBHOOK_RECEIVED = "webhook_received", "Custom Webhook Received"
-    # Phase 4.6 — new triggers
-    REALIZATION_STATUS_CHANGE = "realization_status_change", "Realization Status Changed"
-    SLA_EXPIRING = "sla_expiring", "SLA / Warranty Expiring (N days)"
     CONTACT_CREATED = "contact_created", "Contact Created"
-    MILESTONE_COMPLETED = "milestone_completed", "Milestone Completed"
 
 
 class AutomationRunStatus(models.TextChoices):
@@ -2278,14 +2218,6 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
         on_delete=models.SET_NULL,
         related_name="time_entries",
     )
-    realization = models.ForeignKey(
-        "Realization",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="time_entries",
-        help_text="Optional Realization this entry is linked to.",
-    )
 
     # Time data
     started_at = models.DateTimeField(
@@ -2333,7 +2265,6 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
             models.Index(fields=["firm", "lead"]),
             models.Index(fields=["firm", "customer"]),
             models.Index(fields=["firm", "task"]),
-            models.Index(fields=["firm", "realization"]),
         ]
 
     def __str__(self):
@@ -2548,212 +2479,6 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 4.1 — Realization
-# ---------------------------------------------------------------------------
-
-class RealizationStatus(models.TextChoices):
-    PLANNED = "planned", "Naplánováno"
-    IN_PROGRESS = "in_progress", "Probíhá"
-    ON_HOLD = "on_hold", "Pozastaveno"
-    DONE = "done", "Dokončeno"
-    CANCELLED = "cancelled", "Zrušeno"
-
-
-class Realization(SoftDeleteMixin, TenantModel):
-    """
-    A production/service Kanban entity automatically created when a Lead
-    transitions to "Won".  Models the delivery phase:
-    Opportunity → Realization → Management.
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    # Origin — the won opportunity (nullable for manually created realizations)
-    lead = models.ForeignKey(
-        Lead,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="realizations",
-        help_text="The winning opportunity that spawned this realization.",
-    )
-    customer = models.ForeignKey(
-        Customer,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="realizations",
-    )
-
-    # Content
-    title = models.CharField(max_length=255)
-
-    # Workflow state
-    status = models.CharField(
-        max_length=20,
-        choices=RealizationStatus.choices,
-        default=RealizationStatus.PLANNED,
-        db_index=True,
-    )
-
-    # Team
-    assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="assigned_realizations",
-    )
-
-    # Dates
-    start_date = models.DateField(null=True, blank=True, help_text="Planned or actual start date.")
-    end_date = models.DateField(null=True, blank=True, help_text="Planned or actual end date.")
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta(TenantModel.Meta):
-        verbose_name = "realization"
-        verbose_name_plural = "realizations"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["firm", "status"]),
-            models.Index(fields=["firm", "assigned_to"]),
-            models.Index(fields=["firm", "lead"]),
-        ]
-
-    def __str__(self):
-        return f"{self.title} [{self.get_status_display()}]"
-
-
-class Milestone(SoftDeleteMixin, models.Model):
-    """
-    A key checkpoint within a Realization.  Milestones are surfaced in the
-    Calendar view (via their ``date`` field).
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    realization = models.ForeignKey(
-        Realization,
-        on_delete=models.CASCADE,
-        related_name="milestones",
-    )
-    name = models.CharField(max_length=255)
-    date = models.DateField(db_index=True)
-    is_completed = models.BooleanField(default=False, db_index=True)
-    description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "milestone"
-        verbose_name_plural = "milestones"
-        ordering = ["date", "created_at"]
-        indexes = [
-            models.Index(fields=["realization", "date"]),
-        ]
-
-    def __str__(self):
-        done = "✓" if self.is_completed else "○"
-        return f"{done} {self.name} ({self.date})"
-
-
-# ---------------------------------------------------------------------------
-# Phase 4.2 — Management (post-realization service/SLA tracking)
-# ---------------------------------------------------------------------------
-
-class ManagementType(models.TextChoices):
-    SLA = "sla", "SLA"
-    WARRANTY = "warranty", "Záruka"
-    RETENTION = "retention", "Retence"
-    CARE = "care", "Péče"
-
-
-class ManagementStatus(models.TextChoices):
-    OPEN = "open", "Otevřeno"
-    IN_PROGRESS = "in_progress", "Řeší se"
-    WAITING = "waiting", "Čeká na zákazníka"
-    CLOSED = "closed", "Uzavřeno"
-
-
-class Management(SoftDeleteMixin, TenantModel):
-    """
-    Post-realization service entity.  Tracks SLA, warranties, retention and
-    ongoing customer care after a Realization completes.
-    Realization → Management.
-    """
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    # Origin — completed realization (nullable for manually created records)
-    realization = models.ForeignKey(
-        Realization,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="management_records",
-        help_text="The realization that spawned this management record.",
-    )
-    customer = models.ForeignKey(
-        Customer,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="management_records",
-    )
-
-    # Content
-    title = models.CharField(max_length=255)
-    notes = models.TextField(blank=True)
-
-    # Type and workflow state
-    type = models.CharField(
-        max_length=20,
-        choices=ManagementType.choices,
-        default=ManagementType.CARE,
-        db_index=True,
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=ManagementStatus.choices,
-        default=ManagementStatus.OPEN,
-        db_index=True,
-    )
-
-    # Team
-    assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="assigned_management",
-    )
-
-    # SLA / expiry tracking
-    expires_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="SLA or warranty expiry date/time.  Used for colour indicators and escalation triggers.",
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta(TenantModel.Meta):
-        verbose_name = "management"
-        verbose_name_plural = "management records"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["firm", "status"]),
-            models.Index(fields=["firm", "type"]),
-            models.Index(fields=["firm", "assigned_to"]),
-            models.Index(fields=["firm", "realization"]),
-        ]
-
-    def __str__(self):
-        return f"{self.title} [{self.get_status_display()}]"
-
-
-# ---------------------------------------------------------------------------
 # Phase 4.3 — Documents (centralised file management)
 # ---------------------------------------------------------------------------
 
@@ -2786,8 +2511,8 @@ class Document(SoftDeleteMixin, TenantModel):
     """
     A file attached to any CRM entity or existing standalone.
 
-    A Document can be linked to any combination of Lead, Customer, Realization,
-    Management, Task, or Proposal — or exist as a standalone firm document.
+    A Document can be linked to any combination of Lead, Customer,
+    Task, or Proposal — or exist as a standalone firm document.
 
     ``name``          — display name (defaults to original filename)
     ``file``          — the uploaded file (stored in MEDIA_ROOT/documents/)
@@ -2808,20 +2533,6 @@ class Document(SoftDeleteMixin, TenantModel):
     )
     customer = models.ForeignKey(
         Customer,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="documents",
-    )
-    realization = models.ForeignKey(
-        Realization,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="documents",
-    )
-    management = models.ForeignKey(
-        Management,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -2870,8 +2581,6 @@ class Document(SoftDeleteMixin, TenantModel):
             models.Index(fields=["firm", "-created_at"]),
             models.Index(fields=["firm", "lead"]),
             models.Index(fields=["firm", "customer"]),
-            models.Index(fields=["firm", "realization"]),
-            models.Index(fields=["firm", "management"]),
             models.Index(fields=["firm", "task"]),
         ]
 

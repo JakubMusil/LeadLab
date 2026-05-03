@@ -197,73 +197,6 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         ],
     },
     {
-        "id": "create_realization_lead_won",
-        "name": "Create Realization when lead is Won",
-        "description": (
-            "Automatically creates a Realization (delivery Kanban) "
-            "whenever an opportunity is marked as Won."
-        ),
-        "trigger": AutomationTrigger.LEAD_STATUS_CHANGE,
-        "trigger_config": {},
-        "conditions": [
-            {"field": "to_status", "operator": "eq", "value": "won"},
-        ],
-        "actions": [
-            {
-                "type": "create_realization",
-                "title_template": "Realization: {{lead_title}}",
-                "assign_to_user_id": "inherit",
-            }
-        ],
-    },
-    # Phase 4.6 — New CRM lifecycle templates
-    {
-        "id": "create_management_realization_done",
-        "name": "Create Management record when Realization is Done",
-        "description": (
-            "Automatically creates a Management (SLA/Správa) record "
-            "when a Realization transitions to the 'Done' status."
-        ),
-        "trigger": AutomationTrigger.REALIZATION_STATUS_CHANGE,
-        "trigger_config": {},
-        "conditions": [
-            {"field": "to_status", "operator": "eq", "value": "done"},
-        ],
-        "actions": [
-            {
-                "type": "create_management",
-                "title_template": "Správa: {{realization_title}}",
-                "management_type": "care",
-                "assign_to_user_id": "inherit",
-            }
-        ],
-    },
-    {
-        "id": "notify_assignee_sla_expiring",
-        "name": "Notify assignee when SLA is expiring (3 days)",
-        "description": (
-            "Sends an email reminder to the assigned person "
-            "3 days before a Management record's SLA/warranty expires."
-        ),
-        "trigger": AutomationTrigger.SLA_EXPIRING,
-        "trigger_config": {"warning_days": 3},
-        "conditions": [],
-        "actions": [
-            {
-                "type": "send_email",
-                "to": "assignee",
-                "subject": "⚠️ SLA expiruje za {{days_remaining}} dní — {{management_title}}",
-                "body": (
-                    "Dobrý den {{assignee_name}},\n\n"
-                    "Záznam Správy '{{management_title}}' má SLA/záruční lhůtu, "
-                    "která vyprší za {{days_remaining}} dní ({{expires_at}}).\n\n"
-                    "Přihlaste se do LeadLab a proveďte potřebné kroky.\n\n"
-                    "S pozdravem,\nLeadLab"
-                ),
-            }
-        ],
-    },
-    {
         "id": "notify_owner_new_contact",
         "name": "Notify owner when new contact is created",
         "description": "Sends the firm owner an email whenever a new contact is added to the directory.",
@@ -278,25 +211,6 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
                 "body": (
                     "V adresáři byl přidán nový kontakt: {{customer_name}} ({{customer_email}}).\n\n"
                     "Přihlaste se do LeadLab pro zobrazení detailu."
-                ),
-            }
-        ],
-    },
-    {
-        "id": "notify_assignee_milestone_completed",
-        "name": "Notify assignee when milestone is completed",
-        "description": "Sends a notification to the realization assignee when a milestone is marked as complete.",
-        "trigger": AutomationTrigger.MILESTONE_COMPLETED,
-        "trigger_config": {},
-        "conditions": [],
-        "actions": [
-            {
-                "type": "send_email",
-                "to": "assignee",
-                "subject": "✅ Milník dokončen: {{milestone_name}}",
-                "body": (
-                    "Milník '{{milestone_name}}' v realizaci '{{realization_title}}' byl dokončen.\n\n"
-                    "Přihlaste se do LeadLab pro zobrazení dalších kroků."
                 ),
             }
         ],
