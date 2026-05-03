@@ -1231,7 +1231,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "id": str(a.id),
         "entity_type": a.entity_type,
         "entity_id": a.entity_id,
-        "lead_id": str(a.lead_id) if a.lead_id else None,
+        "lead_id": str(a.record_id) if a.record_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
         "user_name": _user_display_name(a.user),
         "user_avatar_url": avatar_url,
@@ -1278,7 +1278,7 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
@@ -1421,9 +1421,9 @@ def list_task_activities(request, task_id: str, page: int = 1, page_size: int = 
 @router.post("/activities", auth=django_auth, response={201: ActivityOut, 400: ErrorOut, 403: ErrorOut})
 def create_activity(request, payload: ActivityIn):
     """
-    Unified Action Hub endpoint — works for Lead, Customer, and Proposal.
+    Unified Action Hub endpoint — works for Record, Customer, and Proposal.
 
-    Exactly one of ``lead_id``, ``customer_id``,
+    Exactly one of ``record_id``, ``customer_id``,
     or ``proposal_id`` must be provided.  Dispatches to the registered ``StreamlineTool``
     for the given activity type, which handles all type-specific side-effects.
     """
@@ -1434,16 +1434,16 @@ def create_activity(request, payload: ActivityIn):
         return 403, {"detail": str(exc)}
 
     # --- resolve entity ---
-    if sum([bool(payload.lead_id), bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
-        return 400, {"detail": "Exactly one of lead_id, customer_id, proposal_id, task_id must be provided."}
+    if sum([bool(payload.record_id), bool(payload.customer_id), bool(payload.proposal_id), bool(payload.task_id)]) != 1:
+        return 400, {"detail": "Exactly one of record_id, customer_id, proposal_id, task_id must be provided."}
 
-    lead = customer = proposal = task = None
+    record = customer = proposal = task = None
     entity_title = ""
 
-    if payload.lead_id:
+    if payload.record_id:
         try:
-            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
-            entity_title = lead.title
+            record = PipelineRecord.objects.get(id=payload.record_id, firm=request.firm)
+            entity_title = record.title
         except PipelineRecord.DoesNotExist:
             return 400, {"detail": "Record not found in this Firm."}
     elif payload.customer_id:
@@ -1479,7 +1479,7 @@ def create_activity(request, payload: ActivityIn):
     except PayloadValidationError as exc:
         return 400, {"detail": str(exc)}
 
-    entity = lead or customer or proposal or task
+    entity = record or customer or proposal or task
     context = {
         "firm": request.firm,
         "user": request.user,
@@ -1488,7 +1488,7 @@ def create_activity(request, payload: ActivityIn):
 
     with transaction.atomic():
         activity = Activity.objects.create(
-            record=lead,
+            record=record,
             customer=customer,
             proposal=proposal,
             task=task,
@@ -2162,8 +2162,8 @@ def _calendar_task_out(t: Task) -> dict:
         "is_all_day": bool(t.is_all_day),
         "assigned_to_id": str(t.assigned_to_id) if t.assigned_to_id else None,
         "assigned_to_name": _user_display_name(t.assigned_to),
-        "lead_id": str(t.lead_id) if t.lead_id else None,
-        "lead_title": t.lead.title if t.lead_id else None,
+        "lead_id": str(t.record_id) if t.record_id else None,
+        "lead_title": t.record.title if t.record_id else None,
         "customer_id": str(t.customer_id) if t.customer_id else None,
         "customer_name": (
             f"{t.customer.first_name or ''} {t.customer.last_name or ''}".strip()
@@ -2259,7 +2259,7 @@ def list_calendar_tasks(
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
     qs = Task.objects.filter(firm=request.firm).select_related(
-        "lead", "customer", "proposal", "assigned_to",
+        "record", "customer", "proposal", "assigned_to",
     )
 
     # Window overlap: due_date <= end AND coalesce(due_date_end, due_date) >= start.
@@ -2332,7 +2332,7 @@ def list_tasks(
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
     qs = Task.objects.filter(firm=request.firm).select_related(
-        "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer",
+        "record", "assigned_to", "completed_by", "created_by", "proposal", "customer",
     )
     if assigned_to_id == "all":
         if not is_admin:
@@ -2357,7 +2357,7 @@ def list_tasks(
     if is_pinned is not None:
         qs = qs.filter(is_pinned=is_pinned)
     if lead_id is not None:
-        qs = qs.filter(lead_id=lead_id)
+        qs = qs.filter(record_id=lead_id)
     if proposal_id is not None:
         qs = qs.filter(proposal_id=proposal_id)
     if customer_id is not None:
@@ -2687,7 +2687,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
         # Log Activity on every linked entity (lead, customer, proposal).
         completion_metadata = {"task_id": str(task.id), "title": task.title}
-        if task.lead_id:
+        if task.record_id:
             Activity.objects.create(
                 record=task.record,
                 user=request.user,
@@ -2774,7 +2774,7 @@ def reopen_task(request, task_id: str):
         task.status = TaskStatus.TODO
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
         reopen_metadata = {"task_id": str(task.id), "title": task.title}
-        if task.lead_id:
+        if task.record_id:
             Activity.objects.create(
                 record=task.record,
                 user=request.user,
@@ -2845,7 +2845,7 @@ def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
 
     try:
         task = Task.objects.select_related(
-            "lead", "customer", "proposal",
+            "record", "customer", "proposal",
         ).get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
@@ -2959,10 +2959,10 @@ def _task_entity_kwargs_iter(task: Task):
     dict so the Activity is created (orphan timeline).
     """
     yielded = False
-    if task.lead_id:
-        yield {"lead": task.lead}
+    if task.record_id:
+        yield {"record": task.record}
         yielded = True
-    if task.customer_id and not task.lead_id:
+    if task.customer_id and not task.record_id:
         yield {"customer": task.customer}
         yielded = True
     if task.proposal_id and not yielded:
@@ -2982,7 +2982,7 @@ def get_task(request, task_id: str):
 
     try:
         task = Task.objects.select_related(
-            "lead", "assigned_to", "completed_by", "created_by", "proposal", "customer",
+            "record", "assigned_to", "completed_by", "created_by", "proposal", "customer",
         ).get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
@@ -3691,7 +3691,7 @@ def copy_task(request, task_id: str, payload: TaskCopyIn):
 
     try:
         original = Task.objects.select_related(
-            "lead", "proposal", "customer", "assigned_to",
+            "record", "proposal", "customer", "assigned_to",
         ).prefetch_related("watchers", "projects").get(id=task_id, firm=request.firm)
     except Task.DoesNotExist:
         return 404, {"detail": "Task not found."}
@@ -4774,8 +4774,8 @@ def get_stats(request):
     total_customers = Customer.objects.filter(firm=request.firm).count()
 
     recent_activities = (
-        Activity.objects.filter(lead__firm=request.firm)
-        .select_related("lead", "user")
+        Activity.objects.filter(record__firm=request.firm)
+        .select_related("record", "user")
         .order_by("-created_at")[:10]
     )
 
@@ -4803,7 +4803,7 @@ _MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
 class AttachmentOut(Schema):
     id: str
-    lead_id: str
+    lead_id: Optional[str]
     firm_id: str
     uploaded_by_id: Optional[str]
     original_filename: str
@@ -4819,7 +4819,7 @@ def _attachment_out(doc: Document, request=None) -> dict:
         file_url = request.build_absolute_uri(file_url)
     return {
         "id": str(doc.id),
-        "lead_id": str(doc.lead_id),
+        "lead_id": str(doc.record_id) if doc.record_id else None,
         "firm_id": str(doc.firm_id),
         "uploaded_by_id": str(doc.uploaded_by_id) if doc.uploaded_by_id else None,
         "original_filename": doc.name,
@@ -4979,7 +4979,7 @@ class _VoiceMemoEntities(NamedTuple):
     inside the active firm tenant.
     """
 
-    lead: Optional[PipelineRecord] = None
+    record: Optional[PipelineRecord] = None
     customer: Optional[Customer] = None
     proposal: Optional[Proposal] = None
     error: Optional[str] = None
@@ -4988,7 +4988,7 @@ class _VoiceMemoEntities(NamedTuple):
 def _resolve_voice_memo_entity(
     request,
     *,
-    lead_id: Optional[str],
+    record_id: Optional[str],
     customer_id: Optional[str],
     proposal_id: Optional[str],
 ) -> _VoiceMemoEntities:
@@ -4997,10 +4997,10 @@ def _resolve_voice_memo_entity(
     When ``error`` is non-``None`` the caller should bail out with a 404
     response.  Tenants are enforced via ``firm=request.firm``.
     """
-    lead = customer = proposal = None
-    if lead_id:
+    record = customer = proposal = None
+    if record_id:
         try:
-            lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+            record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
         except PipelineRecord.DoesNotExist:
             return _VoiceMemoEntities(error="Record not found.")
     if customer_id:
@@ -5014,7 +5014,7 @@ def _resolve_voice_memo_entity(
         except Proposal.DoesNotExist:
             return _VoiceMemoEntities(error="Proposal not found.")
     return _VoiceMemoEntities(
-        lead=lead,
+        record=record,
         customer=customer,
         proposal=proposal,
     )
@@ -5028,7 +5028,7 @@ def _resolve_voice_memo_entity(
 def upload_voice_memo(
     request,
     file: UploadedFile = File(...),
-    lead_id: Optional[str] = None,
+    record_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
 ):
@@ -5059,9 +5059,9 @@ def upload_voice_memo(
     if content_type and not content_type.startswith("audio/"):
         return 400, {"detail": "Only audio uploads are accepted on this endpoint."}
 
-    lead, customer, proposal, error = _resolve_voice_memo_entity(
+    record, customer, proposal, error = _resolve_voice_memo_entity(
         request,
-        lead_id=lead_id,
+        record_id=record_id,
         customer_id=customer_id,
         proposal_id=proposal_id,
     )
@@ -5081,7 +5081,7 @@ def upload_voice_memo(
 
     doc = Document(
         firm=request.firm,
-        record=lead,
+        record=record,
         customer=customer,
         proposal=proposal,
         uploaded_by=request.user,
@@ -5148,14 +5148,14 @@ class FileUploadResponseOut(Schema):
 def _resolve_file_upload_entity(
     request,
     *,
-    lead_id: Optional[str],
+    record_id: Optional[str],
     customer_id: Optional[str],
     proposal_id: Optional[str],
 ) -> _VoiceMemoEntities:
     """Reuse the voice-memo entity resolver for file uploads."""
     return _resolve_voice_memo_entity(
         request,
-        lead_id=lead_id,
+        record_id=record_id,
         customer_id=customer_id,
         proposal_id=proposal_id,
     )
@@ -5169,7 +5169,7 @@ def _resolve_file_upload_entity(
 def upload_file_blobs(
     request,
     files: List[UploadedFile] = File(...),
-    lead_id: Optional[str] = None,
+    record_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
 ):
@@ -5202,7 +5202,7 @@ def upload_file_blobs(
 
     entities = _resolve_file_upload_entity(
         request,
-        lead_id=lead_id,
+        record_id=record_id,
         customer_id=customer_id,
         proposal_id=proposal_id,
     )
@@ -5215,7 +5215,7 @@ def upload_file_blobs(
         content_type = (upload.content_type or "application/octet-stream").lower()
         doc = Document(
             firm=request.firm,
-            record=entities.lead,
+            record=entities.record,
             customer=entities.customer,
             proposal=entities.proposal,
             uploaded_by=request.user,
@@ -5301,8 +5301,8 @@ def pipeline_summary(request):
 
 class ActivityFeedItemOut(Schema):
     id: str
-    lead_id: str
-    lead_title: str
+    lead_id: Optional[str]
+    lead_title: Optional[str]
     user_id: Optional[str]
     type: str
     content_text: str
@@ -5313,8 +5313,8 @@ class ActivityFeedItemOut(Schema):
 def _activity_feed_item_out(a: Activity) -> dict:
     return {
         "id": str(a.id),
-        "lead_id": str(a.lead_id),
-        "lead_title": a.lead.title,
+        "lead_id": str(a.record_id) if a.record_id else None,
+        "lead_title": a.record.title if a.record_id else None,
         "user_id": str(a.user_id) if a.user_id else None,
         "type": a.type,
         "content_text": a.content_text,
@@ -5345,8 +5345,8 @@ def activity_feed(
         return 403, {"detail": str(exc)}
 
     qs = (
-        Activity.objects.filter(lead__firm=request.firm)
-        .select_related("lead")
+        Activity.objects.filter(record__firm=request.firm)
+        .select_related("record")
         .order_by("-created_at")
     )
     if type:
@@ -5411,7 +5411,7 @@ def overdue_tasks(request, page: int = 1, page_size: int = 20):
             is_completed=False,
             due_date__lt=now,
         )
-        .select_related("lead")
+        .select_related("record")
         .order_by("due_date")
     )
     offset = (page - 1) * page_size
@@ -5542,9 +5542,9 @@ def pipeline_velocity(request):
 
     history_qs = (
         Activity.objects.filter(
-            lead__firm=request.firm,
+            record__firm=request.firm,
             type=ActivityType.STATUS_CHANGE,
-            lead__isnull=False,
+            record__isnull=False,
         )
         .values("lead_id", "metadata", "created_at")
         .order_by("lead_id", "created_at")
@@ -5702,7 +5702,7 @@ def team_performance(request):
         user = m.user
         leads_owned = PipelineRecord.objects.filter(firm=request.firm, assigned_to=user).count()
         tasks_completed = Task.objects.filter(firm=request.firm, assigned_to=user, is_completed=True).count()
-        activities_logged = Activity.objects.filter(lead__firm=request.firm, user=user).count()
+        activities_logged = Activity.objects.filter(record__firm=request.firm, user=user).count()
         result.append({
             "user_id": str(user.id),
             "email": user.email,

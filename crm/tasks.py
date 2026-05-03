@@ -390,7 +390,7 @@ def send_activity_email(self, activity_id: str):
     from crm.models import Activity, ActivityType
 
     try:
-        activity = Activity.objects.select_related("lead", "user").get(
+        activity = Activity.objects.select_related("record", "user").get(
             id=activity_id, type=ActivityType.EMAIL_OUT
         )
     except Activity.DoesNotExist:
@@ -873,7 +873,7 @@ def check_task_overdue_automations(self):
         overdue_tasks = (
             Task.objects
             .filter(firm_id=firm_id, is_completed=False, due_date__lte=cutoff)
-            .select_related("lead", "lead__customer", "assigned_to")
+            .select_related("record", "record__customer", "assigned_to")
         )
 
         # Get owner email (first OWNER of the firm)
@@ -1128,7 +1128,7 @@ def spawn_recurring_tasks():
         recurrence__isnull=False,
         recurrence_parent__isnull=True,  # only root tasks
         is_completed=True,
-    ).select_related("firm", "lead", "proposal", "customer", "assigned_to", "created_by")
+    ).select_related("firm", "record", "proposal", "customer", "assigned_to", "created_by")
 
     spawned = 0
     for root in root_tasks:
@@ -1274,7 +1274,7 @@ def auto_expire_scheduled_tasks(self):
             due_date__lte=now,
         )
         .exclude(status__in=list(terminal_statuses))
-        .select_related("firm", "assigned_to", "lead", "customer", "proposal")
+        .select_related("firm", "assigned_to", "record", "customer", "proposal")
     )
 
     expired_count = 0

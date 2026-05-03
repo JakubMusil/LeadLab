@@ -495,19 +495,19 @@ async function changeStatus(newStatus: string) {
 }
 
 function openEdit() {
-  const lead = store.currentRecord
-  if (!lead) return
-  editTitle.value = lead.title
-  editStatus.value = lead.status
-  editSource.value = lead.source
-  editValue.value = lead.value != null ? String(lead.value) : ''
-  editCurrency.value = lead.currency
+  const record = store.currentRecord
+  if (!record) return
+  editTitle.value = record.title
+  editStatus.value = record.status
+  editSource.value = record.source
+  editValue.value = record.value != null ? String(record.value) : ''
+  editCurrency.value = record.currency
   editError.value = ''
-  editCompanyId.value = (lead as any).company_id ?? null
-  editContactPersonId.value = (lead as any).contact_person_id ?? null
+  editCompanyId.value = (record as any).company_id ?? null
+  editContactPersonId.value = (record as any).contact_person_id ?? null
 
-  if ((lead as any).company_id) {
-    loadEmployeesForCompany((lead as any).company_id)
+  if ((record as any).company_id) {
+    loadEmployeesForCompany((record as any).company_id)
   } else {
     contactPersons.value = []
   }
@@ -658,7 +658,7 @@ onUnmounted(() => {
 })
 
 function onWsLeadUpdated(_payload: Record<string, unknown>) {
-  // The leads store is already updated by AppShell's WS handler; currentLead
+  // The records store is already updated by AppShell's WS handler; currentRecord
   // is a shared Pinia ref so the UI re-renders automatically.
 }
 
@@ -921,7 +921,7 @@ async function openContactDetail(id: string | null) {
             </div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <!-- Lead title as prominent heading (replaces "Detaily příležitosti" label) -->
+            <!-- Record title as prominent heading -->
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
               {{ store.currentRecord.title }}
             </h2>
@@ -1012,8 +1012,8 @@ async function openContactDetail(id: string | null) {
   <!-- Edit Modal -->
   <Teleport to="body">
     <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-lead-title">
-        <h3 id="edit-lead-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('leadDetail.editTitle') }}</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-record-title">
+        <h3 id="edit-record-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('leadDetail.editTitle') }}</h3>
         <div v-if="editError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ editError }}</div>
         <form class="space-y-3" @submit.prevent="submitEdit">
           <div>

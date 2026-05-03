@@ -30,7 +30,7 @@ interface ExpenseItemOut {
   currency: string
   date: string
   recurrence: string
-  lead_title: string | null
+  record_title: string | null
   customer_name: string | null
   user_name: string | null
   notes: string
@@ -43,7 +43,7 @@ interface RevenueItemOut {
   currency: string
   date: string
   recurrence: string
-  lead_title: string | null
+  record_title: string | null
   customer_name: string | null
   user_name: string | null
   notes: string
@@ -60,7 +60,7 @@ const toast = ref<string | null>(null)
 // Filters
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
-const filterLeadId = ref('')
+const filterRecordId = ref('')
 const filterCustomerId = ref('')
 
 // Expense form
@@ -97,7 +97,7 @@ function params() {
   const p = new URLSearchParams()
   if (filterDateFrom.value) p.set('date_from', filterDateFrom.value)
   if (filterDateTo.value) p.set('date_to', filterDateTo.value)
-  if (filterLeadId.value) p.set('lead_id', filterLeadId.value)
+  if (filterRecordId.value) p.set('record_id', filterRecordId.value)
   if (filterCustomerId.value) p.set('customer_id', filterCustomerId.value)
   return p.size ? '?' + p.toString() : ''
 }
@@ -203,7 +203,7 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
       ['Date', 'Title', 'Amount', 'Currency', 'Recurrence', 'Linked to', 'Notes'],
       ...expenses.value.map(e => [
         e.date, e.title, e.amount, e.currency, e.recurrence,
-        e.lead_title ?? e.customer_name ?? '', e.notes,
+        e.record_title ?? e.customer_name ?? '', e.notes,
       ]),
     ]
   } else if (type === 'revenues') {
@@ -211,7 +211,7 @@ function exportCSV(type: 'time' | 'expenses' | 'revenues') {
       ['Date', 'Title', 'Amount', 'Currency', 'Recurrence', 'Linked to', 'Notes'],
       ...revenues.value.map(r => [
         r.date, r.title, r.amount, r.currency, r.recurrence,
-        r.lead_title ?? r.customer_name ?? '', r.notes,
+        r.record_title ?? r.customer_name ?? '', r.notes,
       ]),
     ]
   }
@@ -311,7 +311,7 @@ async function exportToFakturoid() {
         class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
       <button class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors" @click="fetchAll">Apply</button>
       <button class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-        @click="filterDateFrom = ''; filterDateTo = ''; filterLeadId = ''; filterCustomerId = ''; fetchAll()">Clear</button>
+        @click="filterDateFrom = ''; filterDateTo = ''; filterRecordId = ''; filterCustomerId = ''; fetchAll()">Clear</button>
     </div>
 
     <!-- Loading -->
@@ -469,7 +469,7 @@ async function exportToFakturoid() {
                 <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ e.title }}</td>
                 <td class="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400">{{ formatAmount(e.amount, e.currency) }} {{ e.currency }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ e.recurrence }}</td>
-                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ e.lead_title ?? e.customer_name ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ e.record_title ?? e.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
                   <button class="text-sm text-red-500 hover:text-red-700" @click="confirmDeleteExpenseId = e.id">Delete</button>
                 </td>
@@ -562,7 +562,7 @@ async function exportToFakturoid() {
                 <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ r.title }}</td>
                 <td class="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400">{{ formatAmount(r.amount, r.currency) }} {{ r.currency }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ r.recurrence }}</td>
-                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ r.lead_title ?? r.customer_name ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ r.record_title ?? r.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
                   <button class="text-sm text-red-500 hover:text-red-700" @click="confirmDeleteRevenueId = r.id">Delete</button>
                 </td>

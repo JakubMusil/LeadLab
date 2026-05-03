@@ -27,8 +27,8 @@ const form = ref<{
   is_billable: boolean
   hourly_rate: string
   started_at: string
-  lead_id: string
-  lead_label: string
+  record_id: string
+  record_label: string
   customer_id: string
   customer_label: string
   task_id: string
@@ -39,8 +39,8 @@ const form = ref<{
   is_billable: true,
   hourly_rate: '',
   started_at: new Date().toISOString().substring(0, 16),
-  lead_id: '',
-  lead_label: '',
+  record_id: '',
+  record_label: '',
   customer_id: '',
   customer_label: '',
   task_id: '',
@@ -72,8 +72,8 @@ async function searchCustomers(q: string) {
 }
 
 function pickLead(item: { id: string; label: string }) {
-  form.value.lead_id = item.id
-  form.value.lead_label = item.label
+  form.value.record_id = item.id
+  form.value.record_label = item.label
   leadSearch.value = item.label
   leadResults.value = []
 }
@@ -86,8 +86,8 @@ function pickCustomer(item: { id: string; label: string }) {
 }
 
 function clearLead() {
-  form.value.lead_id = ''
-  form.value.lead_label = ''
+  form.value.record_id = ''
+  form.value.record_label = ''
   leadSearch.value = ''
   leadResults.value = []
 }
@@ -168,7 +168,7 @@ async function submitManualEntry() {
       is_billable: form.value.is_billable,
       hourly_rate: form.value.hourly_rate ? parseFloat(form.value.hourly_rate) : null,
       started_at: form.value.started_at ? new Date(form.value.started_at).toISOString() : null,
-      lead_id: form.value.lead_id || null,
+      record_id: form.value.record_id || null,
       customer_id: form.value.customer_id || null,
       task_id: form.value.task_id || null,
     }
@@ -183,8 +183,8 @@ async function submitManualEntry() {
         is_billable: true,
         hourly_rate: '',
         started_at: new Date().toISOString().substring(0, 16),
-        lead_id: '',
-        lead_label: '',
+        record_id: '',
+        record_label: '',
         customer_id: '',
         customer_label: '',
         task_id: '',
@@ -307,7 +307,7 @@ function deleteEntry(id: string) {
           <input v-model="leadSearch" type="text" placeholder="Search opportunities…"
             @input="searchLeads(leadSearch)"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-          <button v-if="form.lead_id" class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs" @click="clearLead"><XMarkIcon class="w-4 h-4" /></button>
+          <button v-if="form.record_id" class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs" @click="clearLead"><XMarkIcon class="w-4 h-4" /></button>
           <div v-if="leadResults.length" class="absolute z-10 w-full mt-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
             <button v-for="r in leadResults" :key="r.id"
               class="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -422,7 +422,7 @@ function deleteEntry(id: string) {
               <span v-else class="truncate block">{{ entry.description || '—' }}</span>
             </td>
             <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-              <span v-if="entry.lead_title" class="text-blue-600 dark:text-blue-400">{{ entry.lead_title }}</span>
+              <span v-if="entry.record_title" class="text-blue-600 dark:text-blue-400">{{ entry.record_title }}</span>
               <span v-else-if="entry.customer_name" class="text-purple-600 dark:text-purple-400">{{ entry.customer_name }}</span>
               <span v-else-if="entry.task_title" class="text-green-600 dark:text-green-400">{{ entry.task_title }}</span>
               <span v-else class="text-gray-400">—</span>

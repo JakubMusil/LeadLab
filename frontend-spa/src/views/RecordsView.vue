@@ -178,7 +178,7 @@ function buildFilters(page = 1) {
   }
 }
 
-function loadLeads(page = 1) {
+function loadRecords(page = 1) {
   return store.fetchRecords(buildFilters(page))
 }
 
@@ -192,10 +192,10 @@ function clearAdvancedFilters() {
   filterCategoryId.value = ''
   filterStageId.value = ''
   router.replace({ query: { ...route.query, category_id: undefined, stage_id: undefined } })
-  loadLeads()
+  loadRecords()
 }
 const showModal = ref(false)
-const editingLead = ref<RecordOut | null>(null)
+const editingRecord = ref<RecordOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const statusPopupId = ref<string | null>(null)
 
@@ -217,7 +217,7 @@ async function quickCreateRecord() {
   if (result.ok) {
     qcTitle.value = ''
     toast.success(t('leads.recordCreated'))
-    loadLeads()
+    loadRecords()
   } else {
     toast.error(result.error ?? t('leads.createFailed'))
   }
@@ -453,9 +453,9 @@ async function createAndSelectCompany() {
 
 // Context menu
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
-const contextLead = ref<RecordOut | null>(null)
+const contextRecord = ref<RecordOut | null>(null)
 
-const LEAD_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
+const RECORD_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
   { id: 'view', label: t('leads.viewDetail'), icon: ArrowTopRightOnSquareIcon },
   { id: 'edit', label: t('leads.edit'), icon: PencilSquareIcon },
   { id: 'change_status', label: t('leads.changeStatus'), icon: ArrowsRightLeftIcon },
@@ -463,37 +463,37 @@ const LEAD_CONTEXT_ITEMS = computed<ContextMenuItem[]>(() => [
   { id: 'delete', label: t('leads.delete'), icon: TrashIcon, danger: true },
 ])
 
-function onRowContextMenu(e: MouseEvent, lead: RecordOut) {
+function onRowContextMenu(e: MouseEvent, record: RecordOut) {
   e.preventDefault()
-  contextLead.value = lead
+  contextRecord.value = record
   contextMenuRef.value?.open(e.clientX, e.clientY)
 }
 
-function onRowLongPress(lead: RecordOut, e: TouchEvent) {
+function onRowLongPress(record: RecordOut, e: TouchEvent) {
   e.preventDefault()
   const touch = e.touches[0]
   if (!touch) return
-  contextLead.value = lead
+  contextRecord.value = record
   contextMenuRef.value?.open(touch.clientX, touch.clientY)
 }
 
 function onContextAction(id: string) {
-  const lead = contextLead.value
-  if (!lead) return
-  if (id === 'view') goToDetail(lead.id)
-  else if (id === 'edit') openEdit(lead)
-  else if (id === 'change_status') statusPopupId.value = lead.id
-  else if (id === 'delete') confirmDeleteId.value = lead.id
+  const record = contextRecord.value
+  if (!record) return
+  if (id === 'view') goToDetail(record.id)
+  else if (id === 'edit') openEdit(record)
+  else if (id === 'change_status') statusPopupId.value = record.id
+  else if (id === 'delete') confirmDeleteId.value = record.id
 }
 
-watch(filterStatus, () => { loadLeads() })
-watch(filterSource, () => { loadLeads() })
-watch(filterAssignedTo, () => { loadLeads() })
-watch(filterCreatedBy, () => { loadLeads() })
-watch(filterValueMin, () => { loadLeads() })
-watch(filterValueMax, () => { loadLeads() })
-watch(filterCreatedAfter, () => { loadLeads() })
-watch(filterCreatedBefore, () => { loadLeads() })
+watch(filterStatus, () => { loadRecords() })
+watch(filterSource, () => { loadRecords() })
+watch(filterAssignedTo, () => { loadRecords() })
+watch(filterCreatedBy, () => { loadRecords() })
+watch(filterValueMin, () => { loadRecords() })
+watch(filterValueMax, () => { loadRecords() })
+watch(filterCreatedAfter, () => { loadRecords() })
+watch(filterCreatedBefore, () => { loadRecords() })
 
 // Apply saved view from ?view= query param
 watch(() => route.query.view, async (viewId) => {
@@ -529,20 +529,20 @@ watch(() => route.query.view, async (viewId) => {
 
 onMounted(async () => {
   loadMembers()
-  loadLeads()
+  loadRecords()
   savedViewsStore.fetchViews()
   if (pipelineStore.categories.length === 0) {
     pipelineStore.fetchCategories()
   }
 })
 
-// React to category_id and stage_id query param changes (combined to avoid double loadLeads)
+// React to category_id and stage_id query param changes (combined to avoid double loadRecords)
 watch(
   [() => route.query.category_id, () => route.query.stage_id],
   ([catId, stageId]) => {
     filterCategoryId.value = (catId as string) ?? ''
     filterStageId.value = (stageId as string) ?? ''
-    loadLeads()
+    loadRecords()
   },
 )
 
@@ -576,7 +576,7 @@ const leadsByStage = computed(() => {
 })
 
 function openCreate() {
-  editingLead.value = null
+  editingRecord.value = null
   formTitle.value = ''
   formStatus.value = 'new'
   formSource.value = 'web'
@@ -587,49 +587,49 @@ function openCreate() {
   showModal.value = true
 }
 
-function openEdit(lead: RecordOut) {
-  editingLead.value = lead
-  formTitle.value = lead.title
-  formStatus.value = lead.status
-  formSource.value = lead.source
-  formValue.value = lead.value != null ? String(lead.value) : ''
-  formCurrency.value = lead.currency
+function openEdit(record: RecordOut) {
+  editingRecord.value = record
+  formTitle.value = record.title
+  formStatus.value = record.status
+  formSource.value = record.source
+  formValue.value = record.value != null ? String(record.value) : ''
+  formCurrency.value = record.currency
   formError.value = ''
   clearPrimaryContact()
-  // Reconstruct primary contact from lead data
-  const extLead = lead as RecordOut & { customer_name?: string; customer_email?: string; customer_phone?: string }
-  if (lead.contact_person_id && lead.company_id) {
+  // Reconstruct primary contact from record data
+  const extRecord = record as RecordOut & { customer_name?: string; customer_email?: string; customer_phone?: string }
+  if (record.contact_person_id && record.company_id) {
     // Person-with-company stored as contact_person + company (new format)
-    const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
+    const [cpFirst = '', ...cpRest] = (record.contact_person_name ?? '').split(' ')
     selectedPrimaryContact.value = makeContactStub(
-      lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
-      '', '', lead.company_id, lead.company_name ?? '',
+      record.contact_person_id, 'person', cpFirst, cpRest.join(' '),
+      '', '', record.company_id, record.company_name ?? '',
     )
-    formContactPersonId.value = lead.contact_person_id
-    formCompanyId.value = lead.company_id
+    formContactPersonId.value = record.contact_person_id
+    formCompanyId.value = record.company_id
     formCustomerId.value = null
-  } else if (lead.customer_id) {
+  } else if (record.customer_id) {
     // Standalone person (no company)
-    const [firstName = '', ...rest] = (extLead.customer_name ?? '').split(' ')
+    const [firstName = '', ...rest] = (extRecord.customer_name ?? '').split(' ')
     selectedPrimaryContact.value = makeContactStub(
-      lead.customer_id, 'person', firstName, rest.join(' '),
-      extLead.customer_email ?? '', extLead.customer_phone ?? '',
+      record.customer_id, 'person', firstName, rest.join(' '),
+      extRecord.customer_email ?? '', extRecord.customer_phone ?? '',
     )
-    formCustomerId.value = lead.customer_id
+    formCustomerId.value = record.customer_id
     formCompanyId.value = null
-  } else if (lead.company_id) {
+  } else if (record.company_id) {
     // Company as primary (with optional secondary contact person)
     selectedPrimaryContact.value = makeContactStub(
-      lead.company_id, 'company', '', '', '', '', null, lead.company_name ?? '',
+      record.company_id, 'company', '', '', '', '', null, record.company_name ?? '',
     )
-    formCompanyId.value = lead.company_id
-    loadEmployees(lead.company_id)
-    if (lead.contact_person_id) {
-      const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
+    formCompanyId.value = record.company_id
+    loadEmployees(record.company_id)
+    if (record.contact_person_id) {
+      const [cpFirst = '', ...cpRest] = (record.contact_person_name ?? '').split(' ')
       selectedContactPerson.value = makeContactStub(
-        lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
+        record.contact_person_id, 'person', cpFirst, cpRest.join(' '),
       )
-      formContactPersonId.value = lead.contact_person_id
+      formContactPersonId.value = record.contact_person_id
     }
   }
   showModal.value = true
@@ -650,15 +650,15 @@ async function submitForm() {
     contact_person_id: formContactPersonId.value ?? null,
   }
   let result
-  if (editingLead.value) {
-    result = await store.updateRecord(editingLead.value.id, payload)
+  if (editingRecord.value) {
+    result = await store.updateRecord(editingRecord.value.id, payload)
   } else {
     result = await store.createRecord(payload)
   }
   formLoading.value = false
   if (result.ok) {
     showModal.value = false
-    toast.success(editingLead.value ? t('leads.leadUpdated') : t('leads.leadCreated'))
+    toast.success(editingRecord.value ? t('leads.leadUpdated') : t('leads.leadCreated'))
   } else {
     formError.value = result.error ?? t('leads.errorOccurred')
   }
@@ -682,11 +682,11 @@ function goToDetail(id: string) {
 }
 
 // Kanban drag state
-const draggingLead = ref<RecordOut | null>(null)
+const draggingRecord = ref<RecordOut | null>(null)
 const dragOverStatus = ref<string | null>(null)
 
-function onDragStart(lead: RecordOut) {
-  draggingLead.value = lead
+function onDragStart(record: RecordOut) {
+  draggingRecord.value = record
 }
 function onDragOver(e: DragEvent, status: string) {
   e.preventDefault()
@@ -697,18 +697,18 @@ function onDragLeave() {
 }
 async function onDrop(status: string) {
   dragOverStatus.value = null
-  if (!draggingLead.value || draggingLead.value.status === status) {
-    draggingLead.value = null
+  if (!draggingRecord.value || draggingRecord.value.status === status) {
+    draggingRecord.value = null
     return
   }
-  const lead = draggingLead.value
-  draggingLead.value = null
-  await changeStatus(lead.id, status)
+  const record = draggingRecord.value
+  draggingRecord.value = null
+  await changeStatus(record.id, status)
 }
 
-function fmtValue(lead: RecordOut) {
-  if (lead.value == null) return ''
-  return formatAmount(lead.value, lead.currency)
+function fmtValue(record: RecordOut) {
+  if (record.value == null) return ''
+  return formatAmount(record.value, record.currency)
 }
 
 function statusLabel(value: string): string {
@@ -736,7 +736,7 @@ function sourceLabel(value: string): string {
   return map[value] ?? value
 }
 
-// Fetch lead tasks to check overdue
+// Fetch record tasks to check overdue
 const overdueTasks = ref<Set<string>>(new Set())
 async function checkOverdueTasks() {
   const res = await api.get<{ id: string; lead_id: string; due_date: string | null; is_completed: boolean }[]>(
@@ -808,7 +808,7 @@ async function onImportFile(e: Event) {
     )
     if (res.ok) {
       toast.success(t('leads.importStarted'))
-      setTimeout(() => loadLeads(), 2000)
+      setTimeout(() => loadRecords(), 2000)
     } else {
       const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('leads.importFailed')
       toast.error(msg)
@@ -838,9 +838,9 @@ const actionsDropdownItems = computed(() => [
 ])
 
 // Returns whether assignee should be shown separately from creator
-function showAssigneeAvatar(lead: RecordOut): boolean {
-  if (!lead.assigned_to_id) return false
-  return lead.assigned_to_id !== lead.created_by_id
+function showAssigneeAvatar(record: RecordOut): boolean {
+  if (!record.assigned_to_id) return false
+  return record.assigned_to_id !== record.created_by_id
 }
 </script>
 
@@ -1126,45 +1126,45 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
           </thead>
           <tbody>
             <tr
-              v-for="lead in sortedRecords"
-              :key="lead.id"
+              v-for="record in sortedRecords"
+              :key="record.id"
               class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
-              @click.self="goToDetail(lead.id)"
-              @contextmenu="onRowContextMenu($event, lead)"
+              @click.self="goToDetail(record.id)"
+              @contextmenu="onRowContextMenu($event, record)"
             >
-              <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-xs" @click="goToDetail(lead.id)">
+              <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-xs" @click="goToDetail(record.id)">
                 <div class="flex items-center gap-1.5">
-                  <span class="truncate">{{ lead.title }}</span>
-                  <span v-if="overdueTasks.has(lead.id)" title="Overdue task" class="text-red-500 text-xs flex-shrink-0" aria-label="Overdue task">⚠</span>
+                  <span class="truncate">{{ record.title }}</span>
+                  <span v-if="overdueTasks.has(record.id)" title="Overdue task" class="text-red-500 text-xs flex-shrink-0" aria-label="Overdue task">⚠</span>
                 </div>
               </td>
               <td v-if="isColVisible('status')" class="px-4 py-3">
                 <div class="relative">
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
-                    :class="getStatusMeta(lead.status).color"
-                    :aria-label="`Status: ${statusLabel(lead.status)}. Click to change.`"
-                    @click.stop="statusPopupId = statusPopupId === lead.id ? null : lead.id"
+                    :class="getStatusMeta(record.status).color"
+                    :aria-label="`Status: ${statusLabel(record.status)}. Click to change.`"
+                    @click.stop="statusPopupId = statusPopupId === record.id ? null : record.id"
                   >
-                    {{ statusLabel(lead.status) }}
+                    {{ statusLabel(record.status) }}
                     <span class="text-xs opacity-60" aria-hidden="true">▾</span>
                   </button>
                   <!-- Status popup -->
                   <div
-                    v-if="statusPopupId === lead.id"
+                    v-if="statusPopupId === record.id"
                     class="absolute z-10 top-8 left-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 min-w-36"
                     role="listbox"
-                    :aria-label="`Change status for ${lead.title}`"
+                    :aria-label="`Change status for ${record.title}`"
                     @click.stop
                   >
                     <button
                       v-for="s in RECORD_STATUSES"
                       :key="s.value"
                       class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-                      :class="s.value === lead.status ? 'font-semibold' : ''"
+                      :class="s.value === record.status ? 'font-semibold' : ''"
                       role="option"
-                      :aria-selected="s.value === lead.status"
-                      @click="changeStatus(lead.id, s.value)"
+                      :aria-selected="s.value === record.status"
+                      @click="changeStatus(record.id, s.value)"
                     >
                       <span class="w-2 h-2 rounded-full flex-shrink-0" :class="s.color.split(' ')[0]" aria-hidden="true" />
                       {{ statusLabel(s.value) }}
@@ -1172,22 +1172,22 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
                   </div>
                 </div>
               </td>
-              <td v-if="isColVisible('source')" class="px-4 py-3 text-gray-500 dark:text-gray-400" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
-              <td v-if="isColVisible('value')" class="px-4 py-3 text-gray-700 dark:text-gray-300" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
-              <td v-if="isColVisible('score')" class="px-4 py-3" @click="goToDetail(lead.id)">
+              <td v-if="isColVisible('source')" class="px-4 py-3 text-gray-500 dark:text-gray-400" @click="goToDetail(record.id)">{{ sourceLabel(record.source) }}</td>
+              <td v-if="isColVisible('value')" class="px-4 py-3 text-gray-700 dark:text-gray-300" @click="goToDetail(record.id)">{{ fmtValue(record) }}</td>
+              <td v-if="isColVisible('score')" class="px-4 py-3" @click="goToDetail(record.id)">
                 <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
               </td>
-              <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
-              <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(lead.id)">
+              <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(record.id)">{{ new Date(record.created_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(record.id)">
                 <div class="flex items-center gap-1">
-                  <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
-                  <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+                  <Avatar v-if="record.created_by_name" size="xs" :name="record.created_by_name" :title="t('leads.createdBy') + ': ' + record.created_by_name" />
+                  <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
                 </div>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
-                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = lead.id"><TrashIcon class="w-4 h-4" /></button>
+                  <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
                 </div>
               </td>
             </tr>
@@ -1201,12 +1201,12 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
             <button
               v-if="store.page > 1"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              @click="loadLeads(store.page - 1)"
+              @click="loadRecords(store.page - 1)"
             >{{ t('leads.prev') }}</button>
             <button
               v-if="store.hasMore"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              @click="loadLeads(store.page + 1)"
+              @click="loadRecords(store.page + 1)"
             >{{ t('leads.next') }}</button>
           </div>
         </div>
@@ -1229,48 +1229,48 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
       </div>
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
         <div
-          v-for="lead in sortedRecords"
-          :key="lead.id"
+          v-for="record in sortedRecords"
+          :key="record.id"
           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
-          @click="goToDetail(lead.id)"
-          @contextmenu="onRowContextMenu($event, lead)"
+          @click="goToDetail(record.id)"
+          @contextmenu="onRowContextMenu($event, record)"
         >
           <!-- Status indicator dot -->
-          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="getStatusMeta(lead.status).color.split(' ')[0]" :aria-label="statusLabel(lead.status)" />
+          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="getStatusMeta(record.status).color.split(' ')[0]" :aria-label="statusLabel(record.status)" />
 
           <!-- Title -->
           <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-            {{ lead.title }}
-            <span v-if="overdueTasks.has(lead.id)" class="text-red-500 text-xs ml-1" title="Overdue task" aria-label="Overdue task">⚠</span>
+            {{ record.title }}
+            <span v-if="overdueTasks.has(record.id)" class="text-red-500 text-xs ml-1" title="Overdue task" aria-label="Overdue task">⚠</span>
           </span>
 
           <!-- Status badge -->
-          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(lead.status).color">
-            {{ statusLabel(lead.status) }}
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(record.status).color">
+            {{ statusLabel(record.status) }}
           </span>
 
           <!-- Source -->
-          <span class="hidden md:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-20 truncate">{{ sourceLabel(lead.source) }}</span>
+          <span class="hidden md:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-20 truncate">{{ sourceLabel(record.source) }}</span>
 
           <!-- Value -->
-          <span class="hidden lg:block text-xs text-gray-600 dark:text-gray-300 flex-shrink-0 w-24 text-right">{{ fmtValue(lead) }}</span>
+          <span class="hidden lg:block text-xs text-gray-600 dark:text-gray-300 flex-shrink-0 w-24 text-right">{{ fmtValue(record) }}</span>
 
           <!-- Score -->
           <span class="hidden xl:block flex-shrink-0"><LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" /></span>
 
           <!-- Date -->
-          <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
+          <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(record.created_at).toLocaleDateString() }}</span>
 
           <!-- User avatars (creator + assignee if different) -->
           <div class="hidden sm:flex items-center gap-1 flex-shrink-0" @click.stop>
-            <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
-            <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+            <Avatar v-if="record.created_by_name" size="xs" :name="record.created_by_name" :title="t('leads.createdBy') + ': ' + record.created_by_name" />
+            <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
           </div>
 
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>
             <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
-            <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click="confirmDeleteId = lead.id"><TrashIcon class="w-4 h-4" /></button>
+            <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -1282,12 +1282,12 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="loadLeads(store.page - 1)"
+            @click="loadRecords(store.page - 1)"
           >{{ t('leads.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="loadLeads(store.page + 1)"
+            @click="loadRecords(store.page + 1)"
           >{{ t('leads.next') }}</button>
         </div>
       </div>
@@ -1315,16 +1315,16 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
             <!-- Cards -->
             <div class="flex-1 space-y-2 min-h-16 rounded-xl bg-gray-50 dark:bg-gray-700/30 p-1">
               <div
-                v-for="lead in leadsByStage[stage.id]"
-                :key="lead.id"
+                v-for="record in leadsByStage[stage.id]"
+                :key="record.id"
                 class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-pointer shadow-sm hover:shadow transition-shadow group"
-                @click="goToDetail(lead.id)"
-                @contextmenu="onRowContextMenu($event, lead)"
+                @click="goToDetail(record.id)"
+                @contextmenu="onRowContextMenu($event, record)"
               >
-                <div class="text-xs font-medium text-gray-900 dark:text-gray-100 leading-snug">{{ lead.title }}</div>
+                <div class="text-xs font-medium text-gray-900 dark:text-gray-100 leading-snug">{{ record.title }}</div>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <span v-if="fmtValue(lead)" class="text-xs text-gray-500">{{ fmtValue(lead) }}</span>
-                  <span v-if="lead.expires_at" class="text-xs" :class="pipelineStore.getSlaColor(lead.expires_at)">{{ lead.expires_at }}</span>
+                  <span v-if="fmtValue(record)" class="text-xs text-gray-500">{{ fmtValue(record) }}</span>
+                  <span v-if="record.expires_at" class="text-xs" :class="pipelineStore.getSlaColor(record.expires_at)">{{ record.expires_at }}</span>
                 </div>
               </div>
               <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-400 dark:text-gray-500 py-6">{{ t('leads.noRecordsInStage') }}</div>
@@ -1358,26 +1358,26 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
               :class="dragOverStatus === s.value ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'"
             >
               <div
-                v-for="lead in leadsByStatus[s.value]"
-                :key="lead.id"
+                v-for="record in leadsByStatus[s.value]"
+                :key="record.id"
                 class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
                 draggable="true"
-                @dragstart="onDragStart(lead)"
-                @contextmenu="onRowContextMenu($event, lead)"
+                @dragstart="onDragStart(record)"
+                @contextmenu="onRowContextMenu($event, record)"
               >
                 <div class="flex items-start justify-between gap-2">
                   <button
                     class="text-xs font-medium text-gray-900 dark:text-gray-100 text-left hover:text-red-600 transition-colors leading-snug"
-                    @click="goToDetail(lead.id)"
-                  >{{ lead.title }}</button>
+                    @click="goToDetail(record.id)"
+                  >{{ record.title }}</button>
                   <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
                     <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <span v-if="fmtValue(lead)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(lead) }}</span>
+                  <span v-if="fmtValue(record)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(record) }}</span>
                   <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
-                  <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
+                  <span v-if="overdueTasks.has(record.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
                 </div>
               </div>
               <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
@@ -1389,7 +1389,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
   </div>
 
   <!-- Context menu -->
-  <ContextMenu ref="contextMenuRef" :items="LEAD_CONTEXT_ITEMS" @action="onContextAction" />
+  <ContextMenu ref="contextMenuRef" :items="RECORD_CONTEXT_ITEMS" @action="onContextAction" />
 
   <!-- Save view dialog -->
   <Teleport to="body">
@@ -1428,8 +1428,8 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
   <!-- Create/Edit Modal -->
   <Teleport to="body">
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingLead ? t('leads.editTitle') : t('leads.newTitle')">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingLead ? t('leads.editTitle') : t('leads.newTitle') }}</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" :aria-label="editingRecord ? t('leads.editTitle') : t('leads.newTitle')">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ editingRecord ? t('leads.editTitle') : t('leads.newTitle') }}</h3>
         <div v-if="formError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ formError }}</div>
         <form class="space-y-3" @submit.prevent="submitForm">
           <div>
@@ -1662,7 +1662,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
           <div class="flex gap-3 pt-2">
             <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showModal = false">{{ t('leads.cancel') }}</button>
             <button type="submit" :disabled="formLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ formLoading ? t('leads.saving') : (editingLead ? t('leads.save') : t('leads.create')) }}
+              {{ formLoading ? t('leads.saving') : (editingRecord ? t('leads.save') : t('leads.create')) }}
             </button>
           </div>
         </form>

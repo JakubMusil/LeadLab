@@ -2,7 +2,7 @@
 /**
  * ActivityTimeline — unified timeline composer + feed.
  *
- * Works identically for Lead, Realization, Management, Customer, and Proposal.
+ * Works identically for Record, Customer, and Proposal.
  * The consumer just passes entityType + entityId.
  */
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, type Component } from 'vue'
@@ -76,7 +76,7 @@ import {
 // Props
 // ---------------------------------------------------------------------------
 const props = defineProps<{
-  entityType: 'lead' | 'record' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
+  entityType: 'record' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
   entityId: string
   hideComposer?: boolean
   hideFilterDropdown?: boolean
@@ -221,9 +221,9 @@ const activities = ref<Activity[]>([])
 const activitiesLoading = ref(false)
 const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
-// Feed items for the unified lead feed (activities + tasks merged)
+// Feed items for the unified record feed (activities + tasks merged)
 const feedItems = ref<FeedItem[]>([])
-const useFeed = computed(() => props.entityType === 'lead' || props.entityType === 'record')
+const useFeed = computed(() => props.entityType === 'record')
 
 // Filter state — set of activity_type values that are currently visible.
 // Sourced from the streamline preferences store (per-user, persisted on the
@@ -261,7 +261,7 @@ const filteredActivities = computed(() => {
 
 // ---------------------------------------------------------------------------
 // displayItems — unified list for the template v-for
-// Merges task feed items (for Lead) with filtered activity items.
+// Merges task feed items (for Record) with filtered activity items.
 // Each item carries _type, _key and _created_at for template branching.
 // ---------------------------------------------------------------------------
 type DisplayItem = (Activity & { _type: 'activity'; _key: string; _created_at: string; _task?: never }) |
@@ -516,7 +516,7 @@ function translateLeadStatus(status: string): string {
 // API helpers
 // ---------------------------------------------------------------------------
 function listUrl(page: number): string {
-  // Lead uses the unified feed endpoint (Activity + Task merged)
+  // Record uses the unified feed endpoint (Activity + Task merged)
   if (props.entityType === 'record') return `/api/v1/crm/records/${props.entityId}/feed?page=${page}&page_size=20`
   if (props.entityType === 'realization') return `/api/v1/crm/realizations/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'customer') return `/api/v1/crm/directory/${props.entityId}/activities?page=${page}&page_size=20`
@@ -526,7 +526,6 @@ function listUrl(page: number): string {
 }
 
 function entityIdKey(): string {
-  if (props.entityType === 'lead') return 'lead_id'
   if (props.entityType === 'record') return 'record_id'
   if (props.entityType === 'realization') return 'realization_id'
   if (props.entityType === 'customer') return 'customer_id'
@@ -1331,7 +1330,7 @@ defineExpose({ load: () => loadActivities(1) })
       {{ activities.length > 0 ? t('leadDetail.noActivitiesForFilter') : t('leadDetail.noActivities') }}
     </div>
 
-    <!-- Unified feed list — works for both Lead (Activity+Task) and other entities (Activity only) -->
+    <!-- Unified feed list — works for both Record (Activity+Task) and other entities (Activity only) -->
     <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700" data-testid="activity-timeline-list">
       <template v-for="item in displayItems" :key="item._key">
 

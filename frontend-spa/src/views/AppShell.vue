@@ -73,19 +73,19 @@ const { on, off } = useWebSocket()
 // ---------------------------------------------------------------------------
 
 function onLeadCreated(payload: Record<string, unknown>) {
-  const lead = payload as unknown as RecordOut
-  if (!leadsStore.records.find((l) => l.id === lead.id)) {
-    leadsStore.records.unshift(lead)
+  const record = payload as unknown as RecordOut
+  if (!leadsStore.records.find((r) => r.id === record.id)) {
+    leadsStore.records.unshift(record)
   }
   notifStore.pushNotification('record.created', payload)
   fetchCategoryCounts()
 }
 
 function onLeadUpdated(payload: Record<string, unknown>) {
-  const lead = payload as unknown as RecordOut
-  const idx = leadsStore.records.findIndex((l) => l.id === lead.id)
-  if (idx !== -1) leadsStore.records[idx] = lead
-  if (leadsStore.currentRecord?.id === lead.id) leadsStore.currentRecord = lead
+  const record = payload as unknown as RecordOut
+  const idx = leadsStore.records.findIndex((r) => r.id === record.id)
+  if (idx !== -1) leadsStore.records[idx] = record
+  if (leadsStore.currentRecord?.id === record.id) leadsStore.currentRecord = record
   notifStore.pushNotification('record.updated', payload)
 }
 
@@ -160,7 +160,7 @@ onUnmounted(() => {
   off('category.updated', pipelineStore.handleCategoryUpdated)
 })
 
-// Keyboard shortcuts (no "new opportunity" trigger here – LeadsView handles that)
+// Keyboard shortcuts (no "new opportunity" trigger here – RecordsView handles that)
 useKeyboardShortcuts()
 
 const userInitials = computed(() => {
@@ -382,7 +382,7 @@ function formatNotifTime(ts: string): string {
                 <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
               </RouterLink>
 
-              <!-- Saved views for Leads -->
+              <!-- Saved views for Records -->
               <template v-if="sidebarOpen && item.path === '/app/records' && savedViewsStore.viewsForEntity('records').length > 0">
                 <RouterLink
                   v-for="view in savedViewsStore.viewsForEntity('records')"
