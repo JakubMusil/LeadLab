@@ -13,6 +13,7 @@ import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import { XMarkIcon, BuildingOfficeIcon, UserIcon, LinkIcon } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
 import { ConfirmDeleteModal } from '@/components/ui'
+import { useMoney } from '@/composables/useMoney'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,7 @@ const toast = useToast()
 const authStore = useAuthStore()
 const { t } = useI18n()
 const { copiedId: permalinkCopiedId, copyToClipboard } = useClipboard()
+const { formatAmount, formatAmountPlain } = useMoney()
 const currentPageUrl = computed(() => window.location.href)
 
 const customerId = computed(() => route.params.id as string)
@@ -732,7 +734,7 @@ onMounted(async () => {
               >
                 <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(lead.status)">{{ lead.status }}</span>
-                <span v-if="lead.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ lead.value }} {{ lead.currency }}</span>
+                <span v-if="lead.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ formatAmount(lead.value, lead.currency) }}</span>
               </RouterLink>
             </div>
           </div>
@@ -759,7 +761,7 @@ onMounted(async () => {
               >
                 <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.title }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ Number(p.total_value).toFixed(2) }} {{ p.currency }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ formatAmountPlain(Number(p.total_value), p.currency) }}</span>
               </RouterLink>
             </div>
           </div>

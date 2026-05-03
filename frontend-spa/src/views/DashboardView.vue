@@ -6,6 +6,7 @@ import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/sto
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { Bar } from 'vue-chartjs'
+import { useMoney } from '@/composables/useMoney'
 import {
   Chart as ChartJS,
   BarElement,
@@ -57,6 +58,7 @@ interface StatsData {
   won_value: number
   conversion_rate: number
   recent_activities: ActivityItem[]
+  mixed_currencies?: boolean
 }
 
 interface WidgetConfig {
@@ -90,6 +92,7 @@ const authStore = useAuthStore()
 const leadsStore = useLeadsStore()
 const toast = useToast()
 const router = useRouter()
+const { formatAmount } = useMoney()
 const stats = ref<StatsData | null>(null)
 const loading = ref(false)
 const widgets = ref<WidgetConfig[]>([...DEFAULT_WIDGETS])
@@ -173,7 +176,7 @@ function formatTime(ts: string) {
 }
 
 function fmtCurrency(val: number) {
-  return new Intl.NumberFormat(undefined, { style: 'decimal', maximumFractionDigits: 0 }).format(val)
+  return formatAmount(val)
 }
 
 async function loadStats() {
@@ -420,6 +423,7 @@ function hideSetupBanner() {
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.pipeline') }}</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ fmtCurrency(stats.pipeline_value) }}</div>
             <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('dashboard.won', { value: fmtCurrency(stats.won_value) }) }}</div>
+            <div v-if="stats.mixed_currencies" class="text-xs text-amber-600 mt-1">{{ t('currencySettings.warningMixedCurrencies', { currency: firmStore.activeFirm?.default_currency }) }}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.openTasks') }}</div>

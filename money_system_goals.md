@@ -782,12 +782,12 @@ export function useMoney() {
 - [x] Management command `backfill_canonical_amounts` (`crm/management/commands/backfill_canonical_amounts.py`)
 - [x] i18n klíče `exchangeRates` v `cs.json`, `en.json`, `de.json`, `pl.json`
 
-### P3 – Konzistence zbývajících views (PŘÍŠTÍ FÁZE)
-- [ ] Refaktorovat `ReportsView.vue` (local `formatMoney` → `formatAmount`, `ref('CZK')` → firmCurrency, amount inputs → `<MoneyInput>`)
-- [ ] Refaktorovat `StreamlineCreateModal.vue` (stejné jako ProposalsView)
-- [ ] Refaktorovat `PublicProposalView.vue` (`fmt()` → `formatAmountPlain`)
-- [ ] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2)` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
-- [ ] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, zobrazit varování při `mixed_currencies: true`)
+### P3 – Konzistence zbývajících views ✅ HOTOVO
+- [x] Refaktorovat `ReportsView.vue` (lokální `formatMoney` → `formatAmount`, `ref('CZK')` → `firmCurrency`, text inputs → `CurrencySelect`, `createProposalFromReport` hardcoded `'CZK'` → `firmCurrency`)
+- [x] Refaktorovat `StreamlineCreateModal.vue` (`ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`)
+- [x] Refaktorovat `PublicProposalView.vue` (`fmt()` lokální `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu)
+- [x] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
+- [x] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty)
 
 ### P4 – Budoucí rozšíření
 - [ ] Křížové kurzy (cross-rate přes EUR pivot) v `get_rate()`
@@ -828,9 +828,14 @@ export function useMoney() {
 - `views/ProposalBuilderView.vue` – refaktoring: `CURRENCIES` const odstraněna, `ref('CZK')` → `firmCurrency`, `<option>` select → `CurrencySelect`, `fmt()` → `formatAmountPlain`
 - `views/SettingsView.vue` – přidána sekce „Měny a formátování" (CurrencySelect, locale dropdown, live preview, exchange_rate_mode radio, uložení přes `PATCH /api/v1/firms/{id}/currency`); **přidána sekce „Kurzy měn"** (tabulka aktivních kurzů, editace poznámky, smazání, záložka historie, formulář přidání nového kurzu s CurrencySelect, preview read-only pole, recalc trigger)
 - `locales/cs.json`, `en.json`, `de.json`, `pl.json` – přidány sekce `currencies` (překlady názvů měn), `currencySettings` (překlady UI labelů) a **`exchangeRates`** (překlady tabulky a formuláře kurzů)
+- `views/ReportsView.vue` – refaktoring: lokální `formatMoney` → `formatAmount`, `ref('CZK')` → `firmCurrency`, text currency inputs → `CurrencySelect`, `createProposalFromReport` hardcoded `'CZK'` → `firmCurrency`
+- `components/StreamlineCreateModal.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`
+- `views/PublicProposalView.vue` – refaktoring: lokální `fmt()` `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu
+- `views/CustomerDetailView.vue` – refaktoring: `.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`
+- `views/DashboardView.vue` – refaktoring: `Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty
 
-### Příští fáze: P3 – Konzistence zbývajících views
-Refaktoring `ReportsView.vue`, `StreamlineCreateModal.vue`, `PublicProposalView.vue`, `CustomerDetailView.vue`, `DashboardView.vue` – nahradit lokální formátovací funkce a hardcoded `ref('CZK')` za `useMoney()` composable. Dashboard dostane varování při `mixed_currencies: true`.
+### Příští fáze: P4 – Budoucí rozšíření
+Viz sekce P4 níže. Doporučené pořadí: export kurzů do CSV, webhook notifikace při výpadku ECB, per-user locale preference.
 
 ---
 

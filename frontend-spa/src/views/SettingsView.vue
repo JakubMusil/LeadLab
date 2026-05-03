@@ -288,6 +288,11 @@ async function saveEditNote(rateId: string) {
   }
 }
 
+function toggleExchangeRateHistory() {
+  showExchangeRateHistory.value = !showExchangeRateHistory.value
+  if (showExchangeRateHistory.value) loadExchangeRatesHistory()
+}
+
 // Billing
 const billingLoading = ref(false)
 const billingError = ref('')
@@ -1045,7 +1050,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       <!-- History toggle -->
       <button
         class="text-xs text-gray-500 hover:text-gray-700 mb-4 underline"
-        @click="showExchangeRateHistory = !showExchangeRateHistory; if (showExchangeRateHistory) loadExchangeRatesHistory()"
+        @click="toggleExchangeRateHistory"
       >
         {{ showExchangeRateHistory ? t('exchangeRates.hideHistory') : t('exchangeRates.showHistory') }}
       </button>
