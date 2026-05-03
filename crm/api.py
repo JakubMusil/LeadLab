@@ -25,6 +25,8 @@ from crm.models import (
     Activity,
     ActivityReaction,
     ActivityType,
+    Category,
+    CategoryField,
     Checkpoint,
     ContactType,
     Customer,
@@ -38,6 +40,7 @@ from crm.models import (
     Project,
     Proposal,
     SavedView,
+    Stage,
     Task,
     StreamlineItem,
     StreamlineItemKind,
@@ -711,21 +714,20 @@ def create_record(request, payload: RecordIn):
         except User.DoesNotExist:
             return 400, {"detail": "Assigned user not found."}
 
-    from crm.models import Category as CategoryModel, Stage as StageModel
     category = None
     if payload.category_id:
         try:
-            category = CategoryModel.objects.get(id=payload.category_id, firm=request.firm)
-        except CategoryModel.DoesNotExist:
+            category = Category.objects.get(id=payload.category_id, firm=request.firm)
+        except Category.DoesNotExist:
             return 400, {"detail": "Category not found in this Firm."}
 
     current_stage = None
     if payload.current_stage_id:
         try:
-            current_stage = StageModel.objects.get(id=payload.current_stage_id)
+            current_stage = Stage.objects.get(id=payload.current_stage_id)
             if category and current_stage.category_id != category.id:
                 return 400, {"detail": "Stage does not belong to the specified category."}
-        except StageModel.DoesNotExist:
+        except Stage.DoesNotExist:
             return 400, {"detail": "Stage not found."}
 
     parent = None
@@ -735,18 +737,17 @@ def create_record(request, payload: RecordIn):
         except PipelineRecord.DoesNotExist:
             return 400, {"detail": "Parent record not found."}
 
-    import datetime as _dt
     start_date = None
     if payload.start_date:
         try:
-            start_date = _dt.date.fromisoformat(payload.start_date)
+            start_date = dt.date.fromisoformat(payload.start_date)
         except ValueError:
             return 400, {"detail": "Invalid start_date format. Use YYYY-MM-DD."}
 
     end_date = None
     if payload.end_date:
         try:
-            end_date = _dt.date.fromisoformat(payload.end_date)
+            end_date = dt.date.fromisoformat(payload.end_date)
         except ValueError:
             return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
 
@@ -853,10 +854,9 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     if "category_id" in update_data:
         cat_id = update_data.pop("category_id")
         if cat_id:
-            from crm.models import Category as CategoryModel
             try:
-                lead.category = CategoryModel.objects.get(id=cat_id, firm=request.firm)
-            except CategoryModel.DoesNotExist:
+                lead.category = Category.objects.get(id=cat_id, firm=request.firm)
+            except Category.DoesNotExist:
                 return 400, {"detail": "Category not found."}
         else:
             lead.category = None
@@ -864,13 +864,12 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     if "current_stage_id" in update_data:
         stage_id = update_data.pop("current_stage_id")
         if stage_id:
-            from crm.models import Stage as StageModel
             try:
-                stage = StageModel.objects.get(id=stage_id)
+                stage = Stage.objects.get(id=stage_id)
                 if lead.category_id and stage.category_id != lead.category_id:
                     return 400, {"detail": "Stage does not belong to the record's category."}
                 lead.current_stage = stage
-            except StageModel.DoesNotExist:
+            except Stage.DoesNotExist:
                 return 400, {"detail": "Stage not found."}
         else:
             lead.current_stage = None
@@ -888,9 +887,8 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     if "start_date" in update_data:
         sd = update_data.pop("start_date")
         if sd:
-            import datetime as _dt
             try:
-                lead.start_date = _dt.date.fromisoformat(sd)
+                lead.start_date = dt.date.fromisoformat(sd)
             except ValueError:
                 return 400, {"detail": "Invalid start_date format. Use YYYY-MM-DD."}
         else:
@@ -899,9 +897,8 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     if "end_date" in update_data:
         ed = update_data.pop("end_date")
         if ed:
-            import datetime as _dt
             try:
-                lead.end_date = _dt.date.fromisoformat(ed)
+                lead.end_date = dt.date.fromisoformat(ed)
             except ValueError:
                 return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
         else:
@@ -1043,11 +1040,10 @@ def create_checkpoint(request, record_id: str, payload: CheckpointIn):
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
-    import datetime as _dt
     date = None
     if payload.date:
         try:
-            date = _dt.date.fromisoformat(payload.date)
+            date = dt.date.fromisoformat(payload.date)
         except ValueError:
             return 400, {"detail": "Invalid date format. Use YYYY-MM-DD."}
 
@@ -1087,9 +1083,8 @@ def update_checkpoint(request, record_id: str, checkpoint_id: str, payload: Chec
     if "date" in update_data:
         d = update_data.pop("date")
         if d:
-            import datetime as _dt
             try:
-                cp.date = _dt.date.fromisoformat(d)
+                cp.date = dt.date.fromisoformat(d)
             except ValueError:
                 return 400, {"detail": "Invalid date format. Use YYYY-MM-DD."}
         else:

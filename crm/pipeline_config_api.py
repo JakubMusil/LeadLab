@@ -441,10 +441,10 @@ def list_fields(request, category_id: str):
 @pipeline_config_router.post(
     "/categories/{category_id}/fields/{field_key}",
     auth=django_auth,
-    response={201: CategoryFieldOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    response={200: CategoryFieldOut, 201: CategoryFieldOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
 def create_field(request, category_id: str, field_key: str, payload: CategoryFieldUpdateIn):
-    """Enable a field for a category (idempotent — updates if already exists)."""
+    """Enable or update a field for a category. Returns 201 on creation, 200 if already exists."""
     try:
         require_membership(request, min_role=MembershipRole.ADMIN)
     except PermissionDenied as exc:
