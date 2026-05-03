@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
 import { useSavedViewsStore } from '@/stores/savedViews'
@@ -86,8 +86,10 @@ function memberLabel(m: Member) {
 // Sort state (client-side sort of current page)
 // ---------------------------------------------------------------------------
 type SortField = 'title' | 'status' | 'source' | 'value' | 'created_at'
-const sortField = ref<SortField>('created_at')
-const sortDir = ref<'asc' | 'desc'>('desc')
+const DEFAULT_SORT_FIELD: SortField = 'created_at'
+const DEFAULT_SORT_DIR: 'asc' | 'desc' = 'desc'
+const sortField = ref<SortField>(DEFAULT_SORT_FIELD)
+const sortDir = ref<'asc' | 'desc'>(DEFAULT_SORT_DIR)
 
 function setSort(field: SortField) {
   if (sortField.value === field) {
@@ -197,6 +199,12 @@ function toggleColumn(id: ColumnId) {
 function resetColumns() {
   visibleColumns.value = [...DEFAULT_VISIBLE_COLS]
 }
+
+function closeColumnPicker() {
+  columnPickerOpen.value = false
+}
+onMounted(() => document.addEventListener('click', closeColumnPicker))
+onBeforeUnmount(() => document.removeEventListener('click', closeColumnPicker))
 
 // ---------------------------------------------------------------------------
 // Advanced filters
@@ -715,7 +723,7 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
 </script>
 
 <template>
-  <div class="p-6" @click="columnPickerOpen = false">
+  <div class="p-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
@@ -1201,7 +1209,7 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
           <p class="text-xs text-gray-500 dark:text-gray-400">
             {{ t('leads.saveViewDescription', { status: filterStatus || t('leads.filterAll'), source: filterSource || t('leads.filterAll') }) }}
             <template v-if="hasActiveAdvancedFilters()"> + {{ t('leads.saveViewAdvanced') }}</template>
-            <template v-if="sortField !== 'created_at' || sortDir !== 'desc'"> · {{ t('leads.saveViewSort', { field: t(`leads.col_${sortField}`), dir: t(`leads.sort_${sortDir}`) }) }}</template>
+            <template v-if="sortField !== DEFAULT_SORT_FIELD || sortDir !== DEFAULT_SORT_DIR"> · {{ t('leads.saveViewSort', { field: t(`leads.col_${sortField}`), dir: t(`leads.sort_${sortDir}`) }) }}</template>
           </p>
           <p class="text-xs text-gray-400 dark:text-gray-500">
             {{ t('leads.saveViewColumns', { n: visibleColumns.length }) }}
