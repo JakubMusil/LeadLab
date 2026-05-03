@@ -1310,7 +1310,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
       <div v-else class="space-y-3">
         <p class="text-sm text-gray-700">
-          {{ t('settings.deleteWorkspaceConfirm').replace('{name}', firmStore.activeFirm?.name ?? '') }}
+          {{ t('settings.deleteWorkspaceConfirm', { name: firmStore.activeFirm?.name ?? '' }) }}
         </p>
         <input
           v-model="confirmDeleteText"
