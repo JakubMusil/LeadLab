@@ -110,7 +110,7 @@ export function useMoney() {
   const currencies = computed(() =>
     SUPPORTED_CURRENCIES.map((c) => ({
       code: c.code,
-      label: `${c.code} – ${c.names[uiLocale.value] ?? c.names['en']}`,
+      label: `${c.code} – ${c.names[uiLocale.value] ?? c.names.en}`,
     })).sort((a, b) => a.label.localeCompare(b.label))
   )
 

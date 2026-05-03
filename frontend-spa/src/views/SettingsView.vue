@@ -166,7 +166,7 @@ async function saveCurrencySettings() {
       currencySuccess.value = true
       setTimeout(() => { currencySuccess.value = false }, 3000)
     } else {
-      currencyError.value = ((res.data as unknown) as Record<string, string>)?.detail ?? 'Failed to save currency settings.'
+      currencyError.value = ((res.data as unknown) as { detail?: string })?.detail ?? 'Failed to save currency settings.'
     }
   } finally {
     currencyLoading.value = false
