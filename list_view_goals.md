@@ -124,8 +124,25 @@ Stránka `/app/opportunities` (mapuje na `LeadsView.vue`) zobrazuje tabulku / se
 - [x] Frontend: SavedView ukládá a obnovuje pokročilé filtry
 - [x] Locale: přidány klíče advancedFilters, filterAll, filterAssignedTo, filterCreatedBy, filterValueMin/Max, filterCreatedAfter/Before, clearFilters, saveViewDescription/Advanced do cs/en/de/pl
 
-**Co se dělá v příští relaci (Relace 3):**
-- Rozšířit `SavedView` model/schema o `columns`, `sort_by`, `sort_dir`
-- UI pro výběr viditelných sloupců (checkbox dropdown v záhlaví tabulky)
-- Uložit výběr sloupců do SavedView nebo localStorage
-- Obnovit celý pohled (filtry + sort + sloupce) z uložené záložky
+### Relace 3 – DOKONČENA (2026-05-03)
+
+**Hotovo:**
+- [x] Backend (`crm/models.py`): přidáno `columns = JSONField(default=list)` do `SavedView`
+- [x] Migration `0058_savedview_columns.py`
+- [x] Backend (`crm/api.py`): `columns: List[str]` přidáno do `SavedViewOut`, `SavedViewIn`, `_saved_view_out()`, `create_saved_view()`
+- [x] Store (`savedViews.ts`): `columns: string[]` přidáno do obou TS interfaces
+- [x] Frontend: definice `TABLE_COLUMNS` (6 sloupců, každý s `defaultVisible`)
+- [x] Frontend: `visibleColumns` ref s localStorage persistencí per uživatel (klíč `leadlab_leads_cols_u{userId}`)
+- [x] Frontend: `isColVisible()`, `toggleColumn()`, `resetColumns()` funkce
+- [x] Frontend: column picker dropdown (AdjustmentsHorizontalIcon v záhlaví tabulky) – checkboxy, reset tlačítko, zavírá se kliknutím mimo
+- [x] Frontend: tabulka (`<th>` + `<td>`) reaguje na `visibleColumns` přes `v-if` – bez responsivních hidden tříd
+- [x] Frontend: `saveCurrentView()` ukládá `sort_by`, `sort_dir`, `columns`
+- [x] Frontend: obnovení pohledu ze SavedView obnovuje sort + columns (s validací allowlistem)
+- [x] Frontend: dialog uložení pohledu zobrazuje info o sortu a počtu sloupců
+- [x] Locale: přidány klíče `colPicker`, `resetColumns`, `saveViewSort`, `saveViewColumns`, `sort_asc/desc`, `col_*` do cs/en/de/pl
+
+**Co se dělá v příští relaci (Relace 4):**
+- Composable `useListView(entity, columns, defaultFilters)` – zapouzdření filter/sort/columns/localStorage
+- Generická `SmartListTable.vue` (přijímá column definitions, renderuje thead + tbody)
+- Refaktorovat `LeadsView.vue` na `useListView`
+- Aplikovat na `RealizationsView.vue` (pilotní druhé použití)

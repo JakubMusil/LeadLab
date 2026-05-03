@@ -14,7 +14,7 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
-import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
 import Avatar from '@/components/ui/Avatar.vue'
 
 const route = useRoute()
@@ -130,6 +130,73 @@ const sortedLeads = computed(() => {
     return sortDir.value === 'asc' ? cmp : -cmp
   })
 })
+
+// ---------------------------------------------------------------------------
+// Column visibility
+// ---------------------------------------------------------------------------
+type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'users'
+
+interface ColumnDef {
+  id: ColumnId
+  labelKey: string
+  defaultVisible: boolean
+}
+
+const TABLE_COLUMNS: ColumnDef[] = [
+  { id: 'status', labelKey: 'colStatus', defaultVisible: true },
+  { id: 'source', labelKey: 'colSource', defaultVisible: true },
+  { id: 'value', labelKey: 'colValue', defaultVisible: true },
+  { id: 'score', labelKey: 'colScore', defaultVisible: false },
+  { id: 'created_at', labelKey: 'colCreated', defaultVisible: true },
+  { id: 'users', labelKey: 'colUsers', defaultVisible: true },
+]
+
+const DEFAULT_VISIBLE_COLS: ColumnId[] = TABLE_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id)
+const visibleColumns = ref<ColumnId[]>([...DEFAULT_VISIBLE_COLS])
+const columnPickerOpen = ref(false)
+
+// Load column prefs from localStorage
+watch(() => authStore.user?.id, (userId) => {
+  if (!userId) return
+  try {
+    const stored = localStorage.getItem(`leadlab_leads_cols_u${userId}`)
+    if (stored) {
+      const parsed = JSON.parse(stored) as ColumnId[]
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        visibleColumns.value = parsed
+      }
+    }
+  } catch {
+    // ignore
+  }
+}, { immediate: true })
+
+watch(visibleColumns, (cols) => {
+  const userId = authStore.user?.id
+  if (!userId) return
+  try {
+    localStorage.setItem(`leadlab_leads_cols_u${userId}`, JSON.stringify(cols))
+  } catch {
+    // ignore
+  }
+}, { deep: true })
+
+function isColVisible(id: ColumnId): boolean {
+  return visibleColumns.value.includes(id)
+}
+
+function toggleColumn(id: ColumnId) {
+  const idx = visibleColumns.value.indexOf(id)
+  if (idx === -1) {
+    visibleColumns.value = [...visibleColumns.value, id]
+  } else {
+    visibleColumns.value = visibleColumns.value.filter((c) => c !== id)
+  }
+}
+
+function resetColumns() {
+  visibleColumns.value = [...DEFAULT_VISIBLE_COLS]
+}
 
 // ---------------------------------------------------------------------------
 // Advanced filters
@@ -350,6 +417,20 @@ watch(() => route.query.view, async (viewId) => {
     filterCreatedAfter.value = (v.filters.created_after as string) ?? ''
     filterCreatedBefore.value = (v.filters.created_before as string) ?? ''
     if (hasActiveAdvancedFilters()) showAdvancedFilters.value = true
+    // Restore sort
+    const validSortFields: SortField[] = ['title', 'status', 'source', 'value', 'created_at']
+    if (v.sort_by && validSortFields.includes(v.sort_by as SortField)) {
+      sortField.value = v.sort_by as SortField
+    }
+    if (v.sort_dir === 'asc' || v.sort_dir === 'desc') {
+      sortDir.value = v.sort_dir
+    }
+    // Restore columns
+    if (Array.isArray(v.columns) && v.columns.length > 0) {
+      const validCols = TABLE_COLUMNS.map((c) => c.id)
+      const restored = v.columns.filter((c) => validCols.includes(c as ColumnId)) as ColumnId[]
+      if (restored.length > 0) visibleColumns.value = restored
+    }
   }
 }, { immediate: true })
 
@@ -561,6 +642,9 @@ async function saveCurrentView() {
       ...(filterCreatedAfter.value ? { created_after: filterCreatedAfter.value } : {}),
       ...(filterCreatedBefore.value ? { created_before: filterCreatedBefore.value } : {}),
     },
+    sort_by: sortField.value,
+    sort_dir: sortDir.value,
+    columns: visibleColumns.value,
   })
   savingView.value = false
   if (result) {
@@ -631,7 +715,7 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="p-6" @click="columnPickerOpen = false">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
@@ -827,13 +911,50 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
           <thead>
             <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('title')">{{ t('leads.colTitle') }} <span class="opacity-60">{{ sortIcon('title') }}</span></th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('status')">{{ t('leads.colStatus') }} <span class="opacity-60">{{ sortIcon('status') }}</span></th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('source')">{{ t('leads.colSource') }} <span class="opacity-60">{{ sortIcon('source') }}</span></th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('value')">{{ t('leads.colValue') }} <span class="opacity-60">{{ sortIcon('value') }}</span></th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">{{ t('leads.colScore') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('created_at')">{{ t('leads.colCreated') }} <span class="opacity-60">{{ sortIcon('created_at') }}</span></th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('leads.colUsers') }}</th>
-              <th class="px-4 py-3" />
+              <th v-if="isColVisible('status')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('status')">{{ t('leads.colStatus') }} <span class="opacity-60">{{ sortIcon('status') }}</span></th>
+              <th v-if="isColVisible('source')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('source')">{{ t('leads.colSource') }} <span class="opacity-60">{{ sortIcon('source') }}</span></th>
+              <th v-if="isColVisible('value')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('value')">{{ t('leads.colValue') }} <span class="opacity-60">{{ sortIcon('value') }}</span></th>
+              <th v-if="isColVisible('score')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colScore') }}</th>
+              <th v-if="isColVisible('created_at')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('created_at')">{{ t('leads.colCreated') }} <span class="opacity-60">{{ sortIcon('created_at') }}</span></th>
+              <th v-if="isColVisible('users')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colUsers') }}</th>
+              <!-- Column picker -->
+              <th class="px-4 py-3 text-right">
+                <div class="relative inline-block">
+                  <button
+                    type="button"
+                    class="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    :title="t('leads.colPicker')"
+                    :aria-label="t('leads.colPicker')"
+                    @click.stop="columnPickerOpen = !columnPickerOpen"
+                  >
+                    <AdjustmentsHorizontalIcon class="w-4 h-4" />
+                  </button>
+                  <!-- Column picker dropdown -->
+                  <div
+                    v-if="columnPickerOpen"
+                    class="absolute right-0 top-8 z-20 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-2 min-w-44"
+                    @click.stop
+                  >
+                    <div class="px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                      <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colPicker') }}</span>
+                      <button type="button" class="text-xs text-red-500 hover:text-red-700" @click="resetColumns">{{ t('leads.resetColumns') }}</button>
+                    </div>
+                    <label
+                      v-for="col in TABLE_COLUMNS"
+                      :key="col.id"
+                      class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="checkbox"
+                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        :checked="isColVisible(col.id)"
+                        @change="toggleColumn(col.id)"
+                      />
+                      {{ t(`leads.${col.labelKey}`) }}
+                    </label>
+                  </div>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -850,7 +971,7 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
                   <span v-if="overdueTasks.has(lead.id)" title="Overdue task" class="text-red-500 text-xs flex-shrink-0" aria-label="Overdue task">⚠</span>
                 </div>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="isColVisible('status')" class="px-4 py-3">
                 <div class="relative">
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
@@ -884,13 +1005,13 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
-              <td class="px-4 py-3 text-gray-700 dark:text-gray-300 hidden lg:table-cell" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
-              <td class="px-4 py-3 hidden xl:table-cell" @click="goToDetail(lead.id)">
+              <td v-if="isColVisible('source')" class="px-4 py-3 text-gray-500 dark:text-gray-400" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
+              <td v-if="isColVisible('value')" class="px-4 py-3 text-gray-700 dark:text-gray-300" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
+              <td v-if="isColVisible('score')" class="px-4 py-3" @click="goToDetail(lead.id)">
                 <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
               </td>
-              <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
-              <td class="px-4 py-3 hidden md:table-cell" @click="goToDetail(lead.id)">
+              <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(lead.id)">
                 <div class="flex items-center gap-1">
                   <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
                   <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
@@ -1080,6 +1201,10 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
           <p class="text-xs text-gray-500 dark:text-gray-400">
             {{ t('leads.saveViewDescription', { status: filterStatus || t('leads.filterAll'), source: filterSource || t('leads.filterAll') }) }}
             <template v-if="hasActiveAdvancedFilters()"> + {{ t('leads.saveViewAdvanced') }}</template>
+            <template v-if="sortField !== 'created_at' || sortDir !== 'desc'"> · {{ t('leads.saveViewSort', { field: t(`leads.col_${sortField}`), dir: t(`leads.sort_${sortDir}`) }) }}</template>
+          </p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            {{ t('leads.saveViewColumns', { n: visibleColumns.length }) }}
           </p>
         </div>
         <div class="flex gap-3 pt-4">

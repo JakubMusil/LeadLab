@@ -6067,6 +6067,7 @@ class SavedViewOut(Schema):
     filters: Dict[str, Any]
     sort_by: str
     sort_dir: str
+    columns: List[str]
     created_at: datetime
 
 
@@ -6076,6 +6077,7 @@ class SavedViewIn(Schema):
     filters: Dict[str, Any] = {}
     sort_by: str = ""
     sort_dir: str = "asc"
+    columns: List[str] = []
 
 
 def _saved_view_out(v: SavedView) -> dict:
@@ -6086,6 +6088,7 @@ def _saved_view_out(v: SavedView) -> dict:
         "filters": v.filters,
         "sort_by": v.sort_by,
         "sort_dir": v.sort_dir,
+        "columns": v.columns if isinstance(v.columns, list) else [],
         "created_at": v.created_at,
     }
 
@@ -6133,6 +6136,7 @@ def create_saved_view(request, payload: SavedViewIn):
             filters=payload.filters,
             sort_by=payload.sort_by,
             sort_dir=payload.sort_dir,
+            columns=payload.columns,
         )
     except Exception:
         return 400, {"detail": "A saved view with this name already exists for this entity."}
