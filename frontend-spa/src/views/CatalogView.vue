@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useFirmStore } from '@/stores/firm'
+import { useMoney } from '@/composables/useMoney'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
@@ -13,6 +14,7 @@ import { ConfirmDeleteModal } from '@/components/ui'
 const toast = useToast()
 const { t } = useI18n()
 const firmStore = useFirmStore()
+const { formatAmountPlain } = useMoney()
 
 // ---------------------------------------------------------------------------
 // Types
@@ -587,7 +589,7 @@ onMounted(() => {
                   <span v-if="item.sku" class="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded px-1.5 py-0.5">{{ item.sku }}</span>
                   <span v-else class="text-xs text-gray-300 dark:text-gray-600">—</span>
                 </td>
-                <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300 font-medium">{{ Number(item.unit_price).toFixed(2) }}</td>
+                <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300 font-medium">{{ formatAmountPlain(item.unit_price) }}</td>
                 <td class="px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">{{ item.quantity }}</td>
                 <td class="px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">{{ item.discount }}%</td>
                 <td class="px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">{{ item.vat_rate }}%</td>

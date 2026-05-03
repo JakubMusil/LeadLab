@@ -3,11 +3,13 @@ import { ref, onMounted } from 'vue'
 import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
+import { useMoney } from '@/composables/useMoney'
 import { DocumentIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 
 const toast = useToast()
 const firmStore = useFirmStore()
+const { formatAmountPlain } = useMoney()
 
 // ---------------------------------------------------------------------------
 // Types
@@ -209,7 +211,7 @@ onMounted(() => {
               <tr v-for="item in tmpl.items" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="py-2 text-gray-700 dark:text-gray-300">{{ item.description }}</td>
                 <td class="py-2 text-right text-gray-500 dark:text-gray-400">{{ item.quantity }}</td>
-                <td class="py-2 text-right text-gray-500 dark:text-gray-400">{{ Number(item.unit_price).toFixed(2) }}</td>
+                <td class="py-2 text-right text-gray-500 dark:text-gray-400">{{ formatAmountPlain(item.unit_price) }}</td>
                 <td class="py-2 text-right">
                   <button
                     class="text-gray-300 hover:text-red-500 transition-colors"
