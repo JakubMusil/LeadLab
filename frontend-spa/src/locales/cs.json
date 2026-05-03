@@ -337,14 +337,14 @@
     "addingRule": "Přidávám…",
     "addRuleBtn": "+ Přidat pravidlo",
     "profileSection": "Profil",
-    "workspaceSection": "Workspace",
+    "workspaceSection": "Pracovní prostor",
     "dangerZoneSection": "Nebezpečná zóna",
     "billingSection": "Fakturace",
     "apiTokensSection": "API tokeny",
     "webhooksSection": "Odchozí webhooky",
     "calendarFeedSection": "Kalendářní feed",
     "notificationsSection": "Oznámení",
-    "brandingSection": "Branding",
+    "brandingSection": "Vizuální identita",
     "languageSection": "Jazyk",
     "leadScoringSection": "Pravidla skórování příležitostí",
     "upload": "Nahrát",
@@ -390,7 +390,9 @@
     "proLabelBadge": "⭐ Pro",
     "freeLabelBadge": "Zdarma",
     "slug": "Slug:",
-    "subscription": "Předplatné:"
+    "subscription": "Předplatné:",
+    "tabUser": "Uživatel",
+    "tabWorkspace": "Pracovní prostor"
   },
   "proposals": {
     "title": "Nabídky",

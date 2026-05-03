@@ -97,6 +97,9 @@ const workspaceLoading = ref(false)
 const workspaceError = ref('')
 const workspaceSuccess = ref(false)
 
+// Settings tab: 'user' | 'workspace'
+const activeTab = ref<'user' | 'workspace'>('user')
+
 // Danger zone
 const confirmDeleteWorkspace = ref(false)
 const dangerLoading = ref(false)
@@ -312,7 +315,7 @@ async function startCheckout() {
   } else {
     billingError.value =
       ((res.data as unknown) as Record<string, string> | null)?.detail ??
-      'Failed to start checkout. Please try again.'
+      t('settings.failedToStartCheckout')
   }
 }
 
@@ -394,7 +397,7 @@ async function loadIcalUrl() {
   if (res.ok && res.data?.url) {
     icalUrl.value = `${window.location.origin}${res.data.url}`
   } else {
-    toast.error('Failed to generate calendar feed URL.')
+    toast.error(t('settings.failedToGenerateCalendar'))
   }
 }
 
@@ -429,11 +432,11 @@ async function toggleDigest() {
     digestEnabled.value = res.data.weekly_digest_enabled
     toast.success(
       res.data.weekly_digest_enabled
-        ? 'Weekly digest enabled.'
-        : 'Weekly digest disabled.',
+        ? t('settings.weeklyDigestEnabled')
+        : t('settings.weeklyDigestDisabled'),
     )
   } else {
-    toast.error('Failed to update digest preference.')
+    toast.error(t('settings.failedToUpdateDigest'))
   }
 }
 
@@ -446,7 +449,7 @@ const ruleLoading = ref(false)
 
 async function addScoringRule() {
   if (!newRuleOperand.value.toString().trim()) {
-    ruleError.value = 'Operand is required.'
+    ruleError.value = t('settings.operandRequired')
     return
   }
   ruleError.value = ''
@@ -455,7 +458,7 @@ async function addScoringRule() {
   // coerce numeric operands
   if (newRuleField.value === 'value_gte' || newRuleField.value === 'last_activity_days_lte') {
     const n = parseFloat(String(operand))
-    if (isNaN(n)) { ruleError.value = 'Operand must be a number for this field.'; ruleLoading.value = false; return }
+    if (isNaN(n)) { ruleError.value = t('settings.operandMustBeNumber'); ruleLoading.value = false; return }
     operand = n
   }
   const result = await leadScoringStore.createRule({
@@ -465,17 +468,17 @@ async function addScoringRule() {
   })
   ruleLoading.value = false
   if (result) {
-    toast.success('Scoring rule added.')
+    toast.success(t('settings.scoringRuleAdded'))
     newRuleOperand.value = ''
     newRuleScoreDelta.value = 10
   } else {
-    ruleError.value = 'Failed to add rule.'
+    ruleError.value = t('settings.failedToAddRule')
   }
 }
 
 async function removeScoringRule(id: string) {
   await leadScoringStore.deleteRule(id)
-  toast.success('Rule deleted.')
+  toast.success(t('settings.ruleDeleted'))
 }
 
 onMounted(() => {
@@ -526,9 +529,9 @@ async function createToken() {
     createdTokenValue.value = res.data.token
     newTokenName.value = ''
     tokens.value.unshift(res.data)
-    toast.success('API token created. Copy it now — it will not be shown again.')
+    toast.success(t('settings.tokenCreated'))
   } else {
-    toast.error('Failed to create token.')
+    toast.error(t('settings.failedToCreateToken'))
   }
 }
 
@@ -555,7 +558,7 @@ async function executeRevokeToken() {
 function copyToken() {
   if (!createdTokenValue.value) return
   navigator.clipboard.writeText(createdTokenValue.value).then(() => {
-    toast.success('Token copied to clipboard.')
+    toast.success(t('settings.tokenCopied'))
   })
 }
 
@@ -586,9 +589,9 @@ async function createWebhook() {
     webhooks.value.unshift(res.data)
     newWebhookUrl.value = ''
     newWebhookEvents.value = ''
-    toast.success('Webhook endpoint created.')
+    toast.success(t('settings.webhookCreated'))
   } else {
-    toast.error('Failed to create webhook.')
+    toast.error(t('settings.failedToCreateWebhook'))
   }
 }
 
@@ -601,9 +604,9 @@ async function toggleWebhook(wh: WebhookEndpoint) {
   if (res.ok && res.data) {
     const idx = webhooks.value.findIndex((w) => w.id === wh.id)
     if (idx !== -1) webhooks.value.splice(idx, 1, res.data)
-    toast.success(res.data.is_active ? 'Webhook enabled.' : 'Webhook disabled.')
+    toast.success(res.data.is_active ? t('settings.webhookEnabled') : t('settings.webhookDisabled'))
   } else {
-    toast.error('Failed to update webhook.')
+    toast.error(t('settings.failedToUpdateWebhook'))
   }
 }
 
@@ -639,10 +642,10 @@ async function saveProfile() {
   if (res.ok && res.data) {
     authStore.user = res.data as typeof authStore.user
     profileSuccess.value = true
-    toast.success('Profile updated.')
+    toast.success(t('settings.profileUpdated'))
     setTimeout(() => { profileSuccess.value = false }, 3000)
   } else {
-    profileError.value = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Failed to update profile.'
+    profileError.value = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('settings.failedToUpdateProfile')
   }
 }
 
@@ -675,15 +678,15 @@ async function uploadAvatar() {
   avatarLoading.value = false
   if (res.ok && res.data) {
     authStore.user = res.data as typeof authStore.user
-    toast.success('Avatar updated.')
+    toast.success(t('settings.avatarUpdated'))
   } else {
-    toast.error('Failed to upload avatar.')
+    toast.error(t('settings.failedToUploadAvatar'))
   }
 }
 
 async function saveWorkspaceName() {
   if (!firmStore.activeFirm) return
-  if (!workspaceName.value.trim()) { workspaceError.value = 'Name is required.'; return }
+  if (!workspaceName.value.trim()) { workspaceError.value = t('settings.workspaceNameRequired'); return }
   workspaceLoading.value = true
   workspaceError.value = ''
   workspaceSuccess.value = false
@@ -705,17 +708,17 @@ async function saveWorkspaceName() {
       Object.assign(af, { name: res.data.name })
     }
     workspaceSuccess.value = true
-    toast.success('Workspace renamed.')
+    toast.success(t('settings.workspaceRenamed'))
     setTimeout(() => { workspaceSuccess.value = false }, 3000)
   } else {
-    workspaceError.value = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Failed to rename workspace.'
+    workspaceError.value = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('settings.failedToRenameWorkspace')
   }
 }
 
 async function deleteWorkspace() {
   if (!firmStore.activeFirm) return
   if (confirmDeleteText.value !== firmStore.activeFirm.name) {
-    toast.error('Workspace name does not match.')
+    toast.error(t('settings.workspaceNameMismatch'))
     return
   }
   dangerLoading.value = true
@@ -725,12 +728,12 @@ async function deleteWorkspace() {
     firmStore.firms = firmStore.firms.filter((f) => f.id !== firmStore.activeFirm!.id)
     firmStore.activeFirm = firmStore.firms[0] ?? null
     localStorage.removeItem('firmId')
-    toast.success('Workspace deleted.')
+    toast.success(t('settings.workspaceDeleted'))
     if (!firmStore.activeFirm) {
       await router.push('/app/onboarding')
     }
   } else {
-    toast.error(((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Failed to delete workspace.')
+    toast.error(((res.data as unknown) as Record<string, string> | null)?.detail ?? t('settings.failedToDeleteWorkspace'))
   }
 }
 
@@ -857,9 +860,26 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 <template>
   <div class="p-6 space-y-5">
 
+    <!-- Tab switcher -->
+    <div class="flex gap-1 bg-gray-100 rounded-2xl p-1 w-fit">
+      <button
+        :class="activeTab === 'user' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'user'"
+      >{{ t('settings.tabUser') }}</button>
+      <button
+        :class="activeTab === 'workspace' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'workspace'"
+      >{{ t('settings.tabWorkspace') }}</button>
+    </div>
+
+    <!-- ==================== USER TAB ==================== -->
+    <div v-show="activeTab === 'user'">
+
     <!-- Profile -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-4">Profile</h2>
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('settings.profileSection') }}</h2>
 
       <!-- Avatar -->
       <div class="flex items-center gap-4 mb-5">
@@ -869,7 +889,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         </div>
         <div>
           <label class="cursor-pointer text-sm text-red-600 hover:text-red-700 font-medium">
-            Change avatar
+            {{ t('settings.changeAvatar') }}
             <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
           </label>
           <button
@@ -877,31 +897,31 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
             :disabled="avatarLoading"
             class="ml-3 text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-50 disabled:opacity-50"
             @click="uploadAvatar"
-          >{{ avatarLoading ? 'Uploading…' : 'Upload' }}</button>
-          <p class="text-xs text-gray-400 mt-1">JPEG, PNG, GIF, WebP — max 20 MB</p>
+          >{{ avatarLoading ? t('settings.uploading') : t('settings.upload') }}</button>
+          <p class="text-xs text-gray-400 mt-1">{{ t('settings.avatarFormat') }}</p>
         </div>
       </div>
 
       <div v-if="profileError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ profileError }}</div>
-      <div v-if="profileSuccess" class="mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700">Profile updated successfully.</div>
+      <div v-if="profileSuccess" class="mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700">{{ t('settings.profileUpdatedSuccess') }}</div>
 
       <form class="space-y-3" @submit.prevent="saveProfile">
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">First Name</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('settings.firstName') }}</label>
             <input v-model="profileFirstName" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('settings.lastName') }}</label>
             <input v-model="profileLastName" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Email</label>
+          <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('settings.email') }}</label>
           <input :value="authStore.user?.email" type="email" disabled class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Timezone</label>
+          <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('settings.timezone') }}</label>
           <input v-model="profileTimezone" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="Europe/Prague" />
         </div>
         <div>
@@ -916,29 +936,133 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           <p class="text-xs text-gray-400 mt-1">{{ t('profile.numberLocaleHelp') }}</p>
         </div>
         <button type="submit" :disabled="profileLoading" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-          {{ profileLoading ? 'Saving…' : 'Save Profile' }}
+          {{ profileLoading ? t('settings.saving') : t('settings.saveProfile') }}
         </button>
       </form>
     </div>
 
+    <!-- Language -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('settings.languageSection') }}</h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t('settings.languageDesc') }}</p>
+      </div>
+      <div class="flex gap-3">
+        <button
+          v-for="lang in [{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }, { code: 'de', label: '🇩🇪 Deutsch' }, { code: 'pl', label: '🇵🇱 Polski' }]"
+          :key="lang.code"
+          :class="currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+          class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          @click="changeLocale(lang.code)"
+        >{{ lang.label }}</button>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">{{ t('settings.notificationsSection') }}</h2>
+      <p class="text-xs text-gray-500 mb-4">{{ t('settings.notificationsDesc') }}</p>
+      <div class="flex items-center justify-between py-3 border-b border-gray-50">
+        <div>
+          <div class="text-sm font-medium text-gray-800">{{ t('settings.weeklyDigestTitle') }}</div>
+          <div class="text-xs text-gray-400 mt-0.5">{{ t('settings.weeklyDigestSubtitle') }}</div>
+        </div>
+        <button
+          :disabled="digestLoading"
+          :class="digestEnabled ? 'bg-green-600' : 'bg-gray-200'"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
+          role="switch"
+          :aria-checked="digestEnabled"
+          :aria-label="t('settings.weeklyDigestTitle')"
+          @click="toggleDigest"
+        >
+          <span
+            :class="digestEnabled ? 'translate-x-6' : 'translate-x-1'"
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+          />
+        </button>
+      </div>
+
+      <!-- Push notifications -->
+      <div class="flex items-center justify-between py-3">
+        <div>
+          <div class="text-sm font-medium text-gray-800">{{ t('settings.browserPushTitle') }}</div>
+          <div class="text-xs text-gray-400 mt-0.5">
+            {{ t('settings.browserPushSubtitle') }}
+          </div>
+          <div v-if="!pushSupported" class="text-xs text-amber-600 mt-0.5">
+            {{ t('settings.browserPushNotSupported') }}
+          </div>
+        </div>
+        <button
+          v-if="pushSupported"
+          :disabled="pushLoading"
+          :class="pushSubscribed ? 'bg-green-600' : 'bg-gray-200'"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
+          role="switch"
+          :aria-checked="pushSubscribed"
+          :aria-label="t('settings.browserPushTitle')"
+          @click="pushSubscribed ? unsubscribePush() : subscribePush()"
+        >
+          <span
+            :class="pushSubscribed ? 'translate-x-6' : 'translate-x-1'"
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+          />
+        </button>
+      </div>
+    </div>
+
+    <!-- Calendar Feed (iCal) -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">{{ t('settings.calendarFeedSection') }}</h2>
+      <p class="text-xs text-gray-500 mb-4">{{ t('settings.calendarFeedDesc') }}</p>
+      <div v-if="!icalUrl">
+        <button
+          :disabled="icalLoading"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+          @click="loadIcalUrl"
+        >{{ icalLoading ? t('settings.generating') : t('settings.generateFeedUrl') }}</button>
+      </div>
+      <div v-else class="space-y-2">
+        <div class="flex items-center gap-2">
+          <input
+            :value="icalUrl"
+            readonly
+            class="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-600 select-all cursor-text focus:outline-none"
+            @click="($event.target as HTMLInputElement).select()"
+          />
+          <button
+            class="px-3 py-2 text-sm font-medium rounded-xl border flex-shrink-0 transition-colors"
+            :class="icalCopied ? 'bg-green-600 text-white border-green-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
+            @click="copyIcalUrl"
+          >{{ icalCopied ? t('settings.copied') : t('settings.copyBtn') }}</button>
+        </div>
+        <p class="text-xs text-gray-400">{{ t('settings.calendarFeedReadOnly') }}</p>
+      </div>
+    </div>
+
+    </div>
+    <!-- ==================== WORKSPACE TAB ==================== -->
+    <div v-show="activeTab === 'workspace'">
+
     <!-- Workspace -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-4">Workspace</h2>
-      <div class="text-xs text-gray-500 mb-1">Slug: <span class="font-mono">{{ firmStore.activeFirm?.slug }}</span></div>
-      <div class="text-xs text-gray-500 mb-3">Subscription: <span class="capitalize">{{ firmStore.activeFirm?.subscription_tier }}</span></div>
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('settings.workspaceSection') }}</h2>
+      <div class="text-xs text-gray-500 mb-1">{{ t('settings.slugLabel') }} <span class="font-mono">{{ firmStore.activeFirm?.slug }}</span></div>
+      <div class="text-xs text-gray-500 mb-3">{{ t('settings.subscriptionLabel') }} <span class="capitalize">{{ firmStore.activeFirm?.subscription_tier }}</span></div>
 
       <div v-if="workspaceError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ workspaceError }}</div>
-      <div v-if="workspaceSuccess" class="mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700">Workspace renamed.</div>
+      <div v-if="workspaceSuccess" class="mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700">{{ t('settings.workspaceRenamedMsg') }}</div>
 
       <form class="flex gap-2" @submit.prevent="saveWorkspaceName">
         <input
           v-model="workspaceName"
           type="text"
           class="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-          placeholder="Workspace name"
+          :placeholder="t('settings.workspaceNamePlaceholder')"
         />
         <button type="submit" :disabled="workspaceLoading" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-          {{ workspaceLoading ? 'Saving…' : 'Rename' }}
+          {{ workspaceLoading ? t('settings.saving') : t('settings.renameBtn') }}
         </button>
       </form>
     </div>
@@ -1176,17 +1300,17 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
     <!-- Danger zone -->
     <div class="bg-white rounded-2xl border border-red-200 p-5">
-      <h2 class="text-sm font-semibold text-red-600 mb-4">Danger Zone</h2>
+      <h2 class="text-sm font-semibold text-red-600 mb-4">{{ t('settings.dangerZoneSection') }}</h2>
 
       <button
         v-if="!confirmDeleteWorkspace"
         class="px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm hover:bg-red-50"
         @click="confirmDeleteWorkspace = true"
-      >Delete Workspace…</button>
+      >{{ t('settings.deleteWorkspaceBtn') }}</button>
 
       <div v-else class="space-y-3">
         <p class="text-sm text-gray-700">
-          This will permanently delete the <strong>{{ firmStore.activeFirm?.name }}</strong> workspace and all its data. Type the workspace name to confirm.
+          {{ t('settings.deleteWorkspaceConfirm', { name: firmStore.activeFirm?.name ?? '' }) }}
         </p>
         <input
           v-model="confirmDeleteText"
@@ -1195,19 +1319,19 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           class="w-full rounded-xl border border-red-300 px-3 py-2 text-sm focus:outline-none focus:border-red-500"
         />
         <div class="flex gap-2">
-          <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="confirmDeleteWorkspace = false; confirmDeleteText = ''">Cancel</button>
+          <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="confirmDeleteWorkspace = false; confirmDeleteText = ''">{{ t('common.cancel') }}</button>
           <button
             :disabled="dangerLoading || confirmDeleteText !== firmStore.activeFirm?.name"
             class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50"
             @click="deleteWorkspace"
-          >{{ dangerLoading ? 'Deleting…' : 'Delete Workspace' }}</button>
+          >{{ dangerLoading ? t('settings.deleting') : t('settings.deleteWorkspace') }}</button>
         </div>
       </div>
     </div>
 
     <!-- Billing -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-4">Billing</h2>
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('settings.billingSection') }}</h2>
 
       <!-- Current plan badge -->
       <div class="flex items-center gap-3 mb-4">
@@ -1215,26 +1339,24 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           :class="isPro ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-600'"
           class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold"
         >
-          <span v-if="isPro" class="flex items-center gap-1"><StarIcon class="w-4 h-4 text-yellow-400" /> Pro</span>
-          <span v-else>Free</span>
+          <span v-if="isPro" class="flex items-center gap-1"><StarIcon class="w-4 h-4 text-yellow-400" /> {{ t('settings.proLabelBadge') }}</span>
+          <span v-else>{{ t('settings.freeLabelBadge') }}</span>
         </div>
-        <span v-if="isPro && firmStore.activeFirm?.subscription_active" class="text-xs text-green-600 font-medium">Active</span>
-        <span v-else-if="isPro && !firmStore.activeFirm?.subscription_active" class="text-xs text-red-500 font-medium">Inactive</span>
+        <span v-if="isPro && firmStore.activeFirm?.subscription_active" class="text-xs text-green-600 font-medium">{{ t('settings.activeLabel') }}</span>
+        <span v-else-if="isPro && !firmStore.activeFirm?.subscription_active" class="text-xs text-red-500 font-medium">{{ t('settings.inactiveLabel') }}</span>
       </div>
 
       <!-- Pro features list for free tier -->
       <ul v-if="!isPro" class="space-y-1 mb-5 text-xs text-gray-500">
-        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Custom branding (logo + color)</li>
-        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> White-label client portal</li>
-        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited proposals & templates</li>
-        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Advanced automations & plugins</li>
-        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Priority support</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> {{ t('settings.proFeatureBranding') }}</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> {{ t('settings.proFeatureWhiteLabel') }}</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> {{ t('settings.proFeatureProposals') }}</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> {{ t('settings.proFeatureAutomations') }}</li>
+        <li class="flex items-center gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> {{ t('settings.proFeatureSupport') }}</li>
       </ul>
 
       <!-- Already Pro message -->
-      <p v-if="isPro" class="text-sm text-gray-600 mb-4">
-        Your workspace is on the <strong>Pro</strong> plan. To manage or cancel your subscription, please contact support or visit the Stripe customer portal.
-      </p>
+      <p v-if="isPro" class="text-sm text-gray-600 mb-4">{{ t('settings.proProText') }}</p>
 
       <!-- Error -->
       <div v-if="billingError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ billingError }}</div>
@@ -1246,29 +1368,26 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         class="px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-60 transition-colors"
         @click="startCheckout"
       >
-        {{ billingLoading ? 'Redirecting…' : 'Upgrade to Pro' }}
+        {{ billingLoading ? t('settings.redirecting') : t('settings.upgradeToPro') }}
       </button>
     </div>
 
     <!-- API Tokens -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">API Tokens</h2>
-      <p class="text-xs text-gray-500 mb-4">
-        Generate bearer tokens to authenticate API requests without a browser session.
-        Use <code class="font-mono bg-gray-100 px-1 rounded">Authorization: Bearer &lt;token&gt;</code> in your HTTP client.
-      </p>
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">{{ t('settings.apiTokensSection') }}</h2>
+      <p class="text-xs text-gray-500 mb-4">{{ t('settings.apiTokensDesc') }}</p>
 
       <!-- Created token banner -->
       <div v-if="createdTokenValue" class="mb-4 rounded-xl bg-green-50 border border-green-200 p-4">
-        <p class="text-xs font-semibold text-green-800 mb-2">Token created — copy it now. It will not be shown again.</p>
+        <p class="text-xs font-semibold text-green-800 mb-2">{{ t('settings.tokenCreatedBanner') }}</p>
         <div class="flex items-center gap-2">
           <code class="flex-1 text-xs font-mono bg-white border border-green-200 rounded-lg px-3 py-2 break-all select-all">{{ createdTokenValue }}</code>
           <button
             class="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 flex-shrink-0"
             @click="copyToken"
-          >Copy</button>
+          >{{ t('settings.copyBtn') }}</button>
         </div>
-        <button class="mt-2 text-xs text-green-700 underline" @click="createdTokenValue = null">Dismiss</button>
+        <button class="mt-2 text-xs text-green-700 underline" @click="createdTokenValue = null">{{ t('common.dismiss') }}</button>
       </div>
 
       <!-- Create form -->
@@ -1276,19 +1395,19 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         <input
           v-model="newTokenName"
           type="text"
-          placeholder="Token name (e.g. CI/CD pipeline)"
+          :placeholder="t('settings.tokenNamePlaceholder')"
           class="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
         />
         <button
           type="submit"
           :disabled="newTokenCreating || !newTokenName.trim()"
           class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-        >{{ newTokenCreating ? 'Creating…' : 'Create' }}</button>
+        >{{ newTokenCreating ? t('settings.tokenCreating') : t('settings.createBtn') }}</button>
       </form>
 
       <!-- Token list -->
-      <div v-if="tokensLoading" class="text-sm text-gray-400">Loading…</div>
-      <div v-else-if="tokens.length === 0" class="text-sm text-gray-400">No API tokens yet.</div>
+      <div v-if="tokensLoading" class="text-sm text-gray-400">{{ t('common.loading') }}</div>
+      <div v-else-if="tokens.length === 0" class="text-sm text-gray-400">{{ t('settings.noTokens') }}</div>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="token in tokens" :key="token.id" class="flex items-center justify-between py-3 gap-3">
           <div class="min-w-0">
@@ -1297,91 +1416,88 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
               <span
                 :class="token.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 class="text-xs px-2 py-0.5 rounded-full"
-              >{{ token.is_active ? 'Active' : 'Revoked' }}</span>
+              >{{ token.is_active ? t('settings.tokenActiveLabel') : t('settings.tokenRevokedLabel2') }}</span>
             </div>
             <p class="text-xs text-gray-400 font-mono mt-0.5">{{ token.prefix }}…</p>
             <p class="text-xs text-gray-400 mt-0.5">
-              Created {{ new Date(token.created_at).toLocaleDateString() }}
-              <template v-if="token.last_used_at"> · Last used {{ new Date(token.last_used_at).toLocaleDateString() }}</template>
+              {{ t('settings.colCreated') }} {{ new Date(token.created_at).toLocaleDateString() }}
+              <template v-if="token.last_used_at"> · {{ t('settings.colLastUsed') }} {{ new Date(token.last_used_at).toLocaleDateString() }}</template>
             </p>
           </div>
           <button
             v-if="token.is_active"
             class="flex-shrink-0 text-xs text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50"
             @click="revokeToken(token)"
-          >Revoke</button>
+          >{{ t('settings.revokeBtn') }}</button>
         </li>
       </ul>
     </div>
 
     <!-- Outbound Webhooks -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">Outbound Webhooks</h2>
-      <p class="text-xs text-gray-500 mb-4">
-        Receive signed POST requests when CRM events occur.
-        Leave the events field empty to subscribe to all events.
-      </p>
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">{{ t('settings.webhooksSection') }}</h2>
+      <p class="text-xs text-gray-500 mb-4">{{ t('settings.webhooksDesc') }}</p>
 
       <!-- Create form -->
       <form class="space-y-2 mb-4" @submit.prevent="createWebhook">
         <input
           v-model="newWebhookUrl"
           type="url"
-          placeholder="https://your-server.com/webhook"
+          :placeholder="t('settings.webhookUrlPlaceholder')"
           class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
         />
         <input
           v-model="newWebhookEvents"
           type="text"
-          placeholder="Events (comma-separated, e.g. lead.created,activity.created)"
+          :placeholder="t('settings.webhookEventsPlaceholder')"
           class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
         />
         <button
           type="submit"
           :disabled="newWebhookCreating || !newWebhookUrl.trim()"
           class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-        >{{ newWebhookCreating ? 'Adding…' : 'Add Endpoint' }}</button>
+        >{{ newWebhookCreating ? t('settings.adding') : t('settings.addEndpointBtn') }}</button>
       </form>
 
       <!-- Webhook list -->
-      <div v-if="webhooksLoading" class="text-sm text-gray-400">Loading…</div>
-      <div v-else-if="webhooks.length === 0" class="text-sm text-gray-400">No webhook endpoints configured.</div>
+      <div v-if="webhooksLoading" class="text-sm text-gray-400">{{ t('common.loading') }}</div>
+      <div v-else-if="webhooks.length === 0" class="text-sm text-gray-400">{{ t('settings.noWebhooks') }}</div>
       <ul v-else class="divide-y divide-gray-100">
         <li v-for="wh in webhooks" :key="wh.id" class="py-3">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="text-sm font-mono text-gray-800 break-all">{{ wh.url }}</p>
               <p class="text-xs text-gray-400 mt-0.5">
-                Events: <span class="font-medium">{{ wh.events.length ? wh.events.join(', ') : 'all' }}</span>
+                {{ t('settings.colEvents') }}: <span class="font-medium">{{ wh.events.length ? wh.events.join(', ') : t('streamlineFilter.all') }}</span>
               </p>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <button
                 class="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 hover:bg-gray-50"
                 @click="toggleWebhookDeliveries(wh)"
-              >{{ webhookDeliveriesOpen[wh.id] ? 'Hide log' : 'View log' }}</button>
+              >{{ webhookDeliveriesOpen[wh.id] ? t('settings.hideLog') : t('settings.viewLog') }}</button>
               <button
                 :class="wh.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
                 class="text-xs px-2 py-1 rounded-lg"
                 @click="toggleWebhook(wh)"
-              >{{ wh.is_active ? 'Active' : 'Disabled' }}</button>
+              >{{ wh.is_active ? t('settings.webhookActiveLabel') : t('settings.webhookDisabledLabel2') }}</button>
               <button
                 class="text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1 hover:bg-red-50"
                 @click="deleteWebhook(wh)"
-              >Delete</button>
+              >{{ t('common.delete') }}</button>
             </div>
           </div>
           <!-- Delivery log -->
           <div v-if="webhookDeliveriesOpen[wh.id]" class="mt-3 rounded-xl border border-gray-100 bg-gray-50 overflow-hidden">
-            <div v-if="webhookDeliveriesLoading[wh.id]" class="px-3 py-2 text-xs text-gray-400">Loading…</div>
-            <div v-else-if="!webhookDeliveries[wh.id]?.length" class="px-3 py-2 text-xs text-gray-400">No deliveries recorded yet.</div>
+            <div v-if="webhookDeliveriesLoading[wh.id]" class="px-3 py-2 text-xs text-gray-400">{{ t('common.loading') }}</div>
+            <div v-else-if="!webhookDeliveries[wh.id]?.length" class="px-3 py-2 text-xs text-gray-400">{{ t('settings.noDeliveries') }}</div>
             <table v-else class="w-full text-xs">
               <thead>
                 <tr class="border-b border-gray-200 text-gray-500">
-                  <th class="px-3 py-2 text-left font-medium">Event</th>
-                  <th class="px-3 py-2 text-left font-medium">Status</th>
-                  <th class="px-3 py-2 text-left font-medium">Duration</th>
-                  <th class="px-3 py-2 text-left font-medium">Delivered</th>
+                  <th class="px-3 py-2 text-left font-medium">{{ t('settings.colEvent') }}</th>
+                  <th class="px-3 py-2 text-left font-medium">{{ t('settings.colStatus') }}</th>
+                  <th class="px-3 py-2 text-left font-medium">{{ t('settings.colDuration') }}</th>
+                  <th class="px-3 py-2 text-left font-medium">{{ t('settings.colDelivered') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -1403,107 +1519,21 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       </ul>
     </div>
 
-    <!-- Calendar Feed (iCal) -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">Calendar Feed</h2>
-      <p class="text-xs text-gray-500 mb-4">
-        Subscribe to your tasks in any calendar app (Google Calendar, Apple Calendar, Outlook).
-        The feed updates automatically as tasks are added or completed.
-      </p>
-      <div v-if="!icalUrl">
-        <button
-          :disabled="icalLoading"
-          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-          @click="loadIcalUrl"
-        >{{ icalLoading ? 'Generating…' : 'Generate Feed URL' }}</button>
-      </div>
-      <div v-else class="space-y-2">
-        <div class="flex items-center gap-2">
-          <input
-            :value="icalUrl"
-            readonly
-            class="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-600 select-all cursor-text focus:outline-none"
-            @click="($event.target as HTMLInputElement).select()"
-          />
-          <button
-            class="px-3 py-2 text-sm font-medium rounded-xl border flex-shrink-0 transition-colors"
-            :class="icalCopied ? 'bg-green-600 text-white border-green-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
-            @click="copyIcalUrl"
-          >{{ icalCopied ? 'Copied!' : 'Copy' }}</button>
-        </div>
-        <p class="text-xs text-gray-400">Add this URL as a subscribed calendar. The feed is read-only.</p>
-      </div>
-    </div>
-
-    <!-- Notifications -->
-    <div class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">Notifications</h2>
-      <p class="text-xs text-gray-500 mb-4">Manage email and push notification preferences for this workspace.</p>
-      <div class="flex items-center justify-between py-3 border-b border-gray-50">
-        <div>
-          <div class="text-sm font-medium text-gray-800">Weekly pipeline digest</div>
-          <div class="text-xs text-gray-400 mt-0.5">A summary email with pipeline stats, sent every Monday.</div>
-        </div>
-        <button
-          :disabled="digestLoading"
-          :class="digestEnabled ? 'bg-green-600' : 'bg-gray-200'"
-          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
-          role="switch"
-          :aria-checked="digestEnabled"
-          aria-label="Toggle weekly digest"
-          @click="toggleDigest"
-        >
-          <span
-            :class="digestEnabled ? 'translate-x-6' : 'translate-x-1'"
-            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-          />
-        </button>
-      </div>
-
-      <!-- Push notifications -->
-      <div class="flex items-center justify-between py-3">
-        <div>
-          <div class="text-sm font-medium text-gray-800">Browser push notifications</div>
-          <div class="text-xs text-gray-400 mt-0.5">
-            Receive alerts when a task is due or a new lead is assigned to you.
-          </div>
-          <div v-if="!pushSupported" class="text-xs text-amber-600 mt-0.5">
-            Not supported in this browser.
-          </div>
-        </div>
-        <button
-          v-if="pushSupported"
-          :disabled="pushLoading"
-          :class="pushSubscribed ? 'bg-green-600' : 'bg-gray-200'"
-          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 flex-shrink-0"
-          role="switch"
-          :aria-checked="pushSubscribed"
-          aria-label="Toggle push notifications"
-          @click="pushSubscribed ? unsubscribePush() : subscribePush()"
-        >
-          <span
-            :class="pushSubscribed ? 'translate-x-6' : 'translate-x-1'"
-            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-          />
-        </button>
-      </div>
-    </div>
-
     <!-- Branding (Pro) -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
       <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Branding</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Customise the logo and brand colour for your workspace. Available on Pro.</p>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('settings.brandingSection') }}</h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t('settings.brandingDesc') }}</p>
       </div>
 
       <div v-if="!isPro" class="rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
-        Upgrade to <strong>Pro</strong> to unlock white-label branding.
+        {{ t('settings.upgradeToBranding') }}
       </div>
 
       <template v-else>
         <!-- Logo upload -->
         <div class="space-y-2">
-          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Logo</label>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('settings.logoLabel') }}</label>
           <div class="flex items-center gap-4">
             <img
               v-if="brandLogoPreview || firmStore.activeFirm?.logo_url"
@@ -1511,14 +1541,14 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
               alt="Logo preview"
               class="h-12 w-auto rounded-lg border border-gray-200"
             />
-            <div v-else class="h-12 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs text-gray-400">No logo</div>
+            <div v-else class="h-12 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs text-gray-400">{{ t('settings.noLogoLabel') }}</div>
             <input ref="brandLogoInput" type="file" accept="image/*" class="hidden" @change="onBrandLogoChange" />
-            <button class="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700" @click="brandLogoInput?.click()">Upload…</button>
+            <button class="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700" @click="brandLogoInput?.click()">{{ t('settings.uploadLogo2') }}</button>
           </div>
         </div>
         <!-- Colour picker -->
         <div class="space-y-2">
-          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Brand colour</label>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('settings.brandColourLabel') }}</label>
           <div class="flex items-center gap-3">
             <input v-model="brandColor" type="color" class="h-9 w-14 cursor-pointer rounded-lg border border-gray-200 p-1" />
             <span class="text-xs font-mono text-gray-600 dark:text-gray-400">{{ brandColor }}</span>
@@ -1529,41 +1559,22 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           :disabled="brandSaving"
           class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           @click="saveBranding"
-        >{{ brandSaving ? 'Saving…' : 'Save branding' }}</button>
+        >{{ brandSaving ? t('settings.saving') : t('settings.saveBrandingBtn') }}</button>
         <p v-if="brandError" class="text-xs text-red-600">{{ brandError }}</p>
-        <p v-if="brandSuccess" class="text-xs text-green-600">Branding saved!</p>
+        <p v-if="brandSuccess" class="text-xs text-green-600">{{ t('settings.brandingSavedMsg') }}</p>
       </template>
-    </div>
-
-    <!-- Language -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
-      <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Language</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Choose your preferred UI language.</p>
-      </div>
-      <div class="flex gap-3">
-        <button
-          v-for="lang in [{ code: 'en', label: '🇬🇧 English' }, { code: 'cs', label: '🇨🇿 Čeština' }, { code: 'de', label: '🇩🇪 Deutsch' }, { code: 'pl', label: '🇵🇱 Polski' }]"
-          :key="lang.code"
-          :class="currentLocale === lang.code ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-          class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-          @click="changeLocale(lang.code)"
-        >{{ lang.label }}</button>
-      </div>
     </div>
 
     <!-- ===== LEAD SCORING ===== -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Lead Scoring Rules</h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">
-        Configure weighted rules that compute a 0–100 score for each lead. Scores appear as colour-coded badges in Leads and Kanban views.
-      </p>
+      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('settings.leadScoringRules') }}</h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">{{ t('settings.leadScoringDesc2') }}</p>
 
       <!-- Existing rules -->
       <div v-if="leadScoringStore.loading" class="animate-pulse space-y-2 mb-4">
         <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
       </div>
-      <div v-else-if="leadScoringStore.rules.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">No rules yet. Add your first rule below.</div>
+      <div v-else-if="leadScoringStore.rules.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">{{ t('settings.noRulesYet') }}</div>
       <ul v-else class="space-y-2 mb-5">
         <li
           v-for="rule in leadScoringStore.rules"
@@ -1589,17 +1600,17 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
       <!-- Add new rule -->
       <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-        <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3">Add rule</h3>
+        <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3">{{ t('settings.addRuleSection') }}</h3>
         <div v-if="ruleError" class="mb-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ ruleError }}</div>
         <div class="flex flex-wrap gap-2 items-end">
           <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Field</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('settings.fieldLabel') }}</label>
             <select v-model="newRuleField" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
               <option v-for="f in SCORING_FIELDS" :key="f.value" :value="f.value">{{ f.label }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Value</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('settings.valueLabel') }}</label>
             <input
               v-model="newRuleOperand"
               type="text"
@@ -1608,7 +1619,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Score delta</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('settings.scoreDelta') }}</label>
             <input
               v-model.number="newRuleScoreDelta"
               type="number"
@@ -1621,7 +1632,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
             class="px-4 py-1.5 bg-[color:var(--brand-color)] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             @click="addScoringRule"
           >
-            {{ ruleLoading ? 'Adding…' : '+ Add rule' }}
+            {{ ruleLoading ? t('settings.addingRuleBtn') : t('settings.addRuleBtnLabel') }}
           </button>
         </div>
       </div>
@@ -1629,7 +1640,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
 
     <!-- ====================================================== -->
-    <!-- Phase 8: Custom Fields                                  -->
+    <!-- Custom Fields                                           -->
     <!-- ====================================================== -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
       <div class="flex items-center justify-between mb-4">
@@ -1748,6 +1759,9 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         </div>
       </Teleport>
     </div>
+
+    </div>
+    <!-- ==================== END WORKSPACE TAB ==================== -->
 
   </div>
 

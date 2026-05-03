@@ -390,7 +390,9 @@
     "proLabelBadge": "⭐ Pro",
     "freeLabelBadge": "Free",
     "slug": "Slug:",
-    "subscription": "Subscription:"
+    "subscription": "Subscription:",
+    "tabUser": "User",
+    "tabWorkspace": "Workspace"
   },
   "proposals": {
     "title": "Proposals",

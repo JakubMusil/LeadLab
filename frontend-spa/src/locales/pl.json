@@ -344,7 +344,7 @@
     "webhooksSection": "Wychodzące webhooki",
     "calendarFeedSection": "Kanał kalendarza",
     "notificationsSection": "Powiadomienia",
-    "brandingSection": "Branding",
+    "brandingSection": "Identyfikacja wizualna",
     "languageSection": "Język",
     "leadScoringSection": "Reguły punktacji szans",
     "upload": "Prześlij",
@@ -390,7 +390,9 @@
     "proLabelBadge": "⭐ Pro",
     "freeLabelBadge": "Darmowy",
     "slug": "Slug:",
-    "subscription": "Subskrypcja:"
+    "subscription": "Subskrypcja:",
+    "tabUser": "Użytkownik",
+    "tabWorkspace": "Przestrzeń robocza"
   },
   "proposals": {
     "title": "Oferty",
