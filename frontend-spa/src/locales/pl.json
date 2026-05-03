@@ -188,7 +188,7 @@
     "icoField": "NIP",
     "firstNamePlaceholder": "Imię *",
     "lastNamePlaceholder": "Nazwisko",
-    "noEmployeesFound": "Nie znaleziono pracowników"
+    "noEmployeesFound": "Nie znaleziono pracowników",
     "statusNew": "Nowy",
     "statusContacted": "Skontaktowany",
     "statusProposal": "Oferta",

@@ -188,7 +188,7 @@
     "icoField": "USt-IdNr.",
     "firstNamePlaceholder": "Vorname *",
     "lastNamePlaceholder": "Nachname",
-    "noEmployeesFound": "Keine Mitarbeiter gefunden"
+    "noEmployeesFound": "Keine Mitarbeiter gefunden",
     "statusNew": "Neu",
     "statusContacted": "Kontaktiert",
     "statusProposal": "Angebot",
