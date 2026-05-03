@@ -3,6 +3,7 @@
 import { ref, computed, watch, onMounted, type Component } from 'vue'
 import { api } from '@/api'
 import { useI18n } from '@/composables/useI18n'
+import { useToast } from '@/composables/useToast'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import type { MentionUser } from '@/components/RichTextEditor.vue'
 import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
@@ -92,6 +93,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const toast = useToast()
 
 // Map icon name strings (from the Streamline Tool Registry) to Heroicon components.
 const heroIconMap: Record<string, Component> = {
@@ -515,8 +517,12 @@ async function addActivity() {
   })
   activitySubmitting.value = false
   if (res.ok) {
+    toast.success(t('leads.activityAdded'))
     emit('activity-added')
     activeActionType.value = ''
+  } else {
+    const msg = (res.data as { detail?: string } | null)?.detail ?? t('leads.activityFailed')
+    toast.error(msg)
   }
 }
 

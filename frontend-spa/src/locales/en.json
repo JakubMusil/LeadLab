@@ -198,7 +198,10 @@
     "statusLost": "Lost",
     "statusCanceled": "Canceled",
     "list": "List",
-    "actions": "Actions"
+    "actions": "Actions",
+    "activityAdded": "Activity added.",
+    "activityFailed": "Failed to add activity.",
+    "noRecordsInStage": "No records in this stage"
   },
   "settings": {
     "title": "Settings",

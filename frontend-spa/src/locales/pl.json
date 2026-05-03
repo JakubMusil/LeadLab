@@ -198,7 +198,10 @@
     "statusLost": "Przegrany",
     "statusCanceled": "Anulowany",
     "list": "Lista",
-    "actions": "Akcje"
+    "actions": "Akcje",
+    "activityAdded": "Aktywność dodana.",
+    "activityFailed": "Nie udało się dodać aktywności.",
+    "noRecordsInStage": "Brak rekordów na tym etapie"
   },
   "settings": {
     "title": "Ustawienia",

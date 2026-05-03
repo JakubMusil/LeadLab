@@ -320,11 +320,9 @@ function fmtBytes(b: number) {
 async function loadTasks() {
   tasksLoading.value = true
   try {
-    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100`)
+    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100&lead_id=${encodeURIComponent(leadId.value)}`)
     if (res.ok) {
-      tasks.value = res.data.filter(
-        (task) => task.lead_id === leadId.value,
-      )
+      tasks.value = res.data
     }
   } finally {
     tasksLoading.value = false
@@ -708,8 +706,8 @@ async function openContactDetail(id: string | null) {
       <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
         <!-- Stage-based progress bar (when category is set) -->
-        <template v-if="store.currentRecord && store.currentRecord.category_id && currentStages.length > 0">
-          <div class="flex items-center justify-between gap-1 select-none">
+        <template v-if="store.currentRecord && store.currentRecord.category_id">
+          <div v-if="currentStages.length > 0" class="flex items-center justify-between gap-1 select-none">
             <div v-for="(stage, i) in currentStages" :key="stage.id" class="flex-1 flex flex-col gap-1.5 items-center relative">
               <div
                 class="w-full h-1.5 rounded-full transition-all duration-300"
@@ -728,6 +726,7 @@ async function openContactDetail(id: string | null) {
               </span>
             </div>
           </div>
+          <div v-else class="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
         </template>
         <!-- Status-based progress bar (no category) -->
         <template v-else>

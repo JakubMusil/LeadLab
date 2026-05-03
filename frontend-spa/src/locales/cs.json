@@ -198,7 +198,10 @@
     "statusLost": "Prohrán",
     "statusCanceled": "Zrušen",
     "list": "Seznam",
-    "actions": "Akce"
+    "actions": "Akce",
+    "activityAdded": "Aktivita přidána.",
+    "activityFailed": "Nepodařilo se přidat aktivitu.",
+    "noRecordsInStage": "Žádné záznamy v této fázi"
   },
   "settings": {
     "title": "Nastavení",

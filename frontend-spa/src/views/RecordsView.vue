@@ -152,7 +152,7 @@ const filterValueMax = ref('')
 const filterCreatedAfter = ref('')
 const filterCreatedBefore = ref('')
 const filterCategoryId = ref((route.query.category_id as string) ?? '')
-const filterStageId = ref('')
+const filterStageId = ref((route.query.stage_id as string) ?? '')
 const showAdvancedFilters = ref(false)
 
 function hasActiveAdvancedFilters() {
@@ -189,6 +189,9 @@ function clearAdvancedFilters() {
   filterValueMax.value = ''
   filterCreatedAfter.value = ''
   filterCreatedBefore.value = ''
+  filterCategoryId.value = ''
+  filterStageId.value = ''
+  router.replace({ query: { ...route.query, category_id: undefined, stage_id: undefined } })
   loadLeads()
 }
 const showModal = ref(false)
@@ -509,12 +512,15 @@ onMounted(async () => {
   }
 })
 
-// React to category_id query param changes (e.g. from sidebar nav)
-watch(() => route.query.category_id, (catId) => {
-  filterCategoryId.value = (catId as string) ?? ''
-  filterStageId.value = ''
-  loadLeads()
-})
+// React to category_id and stage_id query param changes (combined to avoid double loadLeads)
+watch(
+  [() => route.query.category_id, () => route.query.stage_id],
+  ([catId, stageId]) => {
+    filterCategoryId.value = (catId as string) ?? ''
+    filterStageId.value = (stageId as string) ?? ''
+    loadLeads()
+  },
+)
 
 const leadsByStatus = computed(() => {
   const map: Record<string, RecordOut[]> = {}
@@ -827,14 +833,14 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
         <button
           class="px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
           :class="!filterCategoryId ? 'bg-white shadow text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700'"
-          @click="filterCategoryId = ''; filterStageId = ''; loadLeads()"
+          @click="router.replace({ query: { ...route.query, category_id: undefined, stage_id: undefined } })"
         >{{ t('pipeline.allCategories') }}</button>
         <button
           v-for="cat in pipelineStore.categories.filter((c) => c.is_active)"
           :key="cat.id"
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
           :class="filterCategoryId === cat.id ? 'bg-white shadow text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700'"
-          @click="filterCategoryId = cat.id; filterStageId = ''; loadLeads()"
+          @click="router.replace({ query: { ...route.query, category_id: cat.id, stage_id: undefined } })"
         >
           <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: cat.color || '#94A3B8' }"></span>
           {{ cat.name }}
@@ -1281,7 +1287,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
                   <span v-if="lead.expires_at" class="text-xs" :class="pipelineStore.getSlaColor(lead.expires_at)">{{ lead.expires_at }}</span>
                 </div>
               </div>
-              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 py-4">—</div>
+              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-400 dark:text-gray-500 py-6">{{ t('leads.noRecordsInStage') }}</div>
             </div>
           </div>
         </div>
