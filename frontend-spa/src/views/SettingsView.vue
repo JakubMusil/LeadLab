@@ -875,7 +875,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
     </div>
 
     <!-- ==================== USER TAB ==================== -->
-    <div v-show="activeTab === 'user'">
+    <div v-show="activeTab === 'user'" class="space-y-4">
 
     <!-- Profile -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
@@ -1043,7 +1043,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
     </div>
     <!-- ==================== WORKSPACE TAB ==================== -->
-    <div v-show="activeTab === 'workspace'">
+    <div v-show="activeTab === 'workspace'" class="space-y-4">
 
     <!-- Workspace -->
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
@@ -1295,37 +1295,6 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         </div>
         <p v-if="newRateError" class="text-xs text-red-600 mt-2">{{ newRateError }}</p>
         <p v-if="newRateSuccess" class="text-xs text-green-600 mt-2">{{ t('exchangeRates.rateSaved') }}</p>
-      </div>
-    </div>
-
-    <!-- Danger zone -->
-    <div class="bg-white rounded-2xl border border-red-200 p-5">
-      <h2 class="text-sm font-semibold text-red-600 mb-4">{{ t('settings.dangerZoneSection') }}</h2>
-
-      <button
-        v-if="!confirmDeleteWorkspace"
-        class="px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm hover:bg-red-50"
-        @click="confirmDeleteWorkspace = true"
-      >{{ t('settings.deleteWorkspaceBtn') }}</button>
-
-      <div v-else class="space-y-3">
-        <p class="text-sm text-gray-700">
-          {{ t('settings.deleteWorkspaceConfirm', { name: firmStore.activeFirm?.name ?? '' }) }}
-        </p>
-        <input
-          v-model="confirmDeleteText"
-          type="text"
-          :placeholder="firmStore.activeFirm?.name"
-          class="w-full rounded-xl border border-red-300 px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-        />
-        <div class="flex gap-2">
-          <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="confirmDeleteWorkspace = false; confirmDeleteText = ''">{{ t('common.cancel') }}</button>
-          <button
-            :disabled="dangerLoading || confirmDeleteText !== firmStore.activeFirm?.name"
-            class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-            @click="deleteWorkspace"
-          >{{ dangerLoading ? t('settings.deleting') : t('settings.deleteWorkspace') }}</button>
-        </div>
       </div>
     </div>
 
@@ -1758,6 +1727,37 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           </div>
         </div>
       </Teleport>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="bg-white rounded-2xl border border-red-200 p-5">
+      <h2 class="text-sm font-semibold text-red-600 mb-4">{{ t('settings.dangerZoneSection') }}</h2>
+
+      <button
+        v-if="!confirmDeleteWorkspace"
+        class="px-4 py-2 border border-red-300 text-red-600 rounded-xl text-sm hover:bg-red-50"
+        @click="confirmDeleteWorkspace = true"
+      >{{ t('settings.deleteWorkspaceBtn') }}</button>
+
+      <div v-else class="space-y-3">
+        <p class="text-sm text-gray-700">
+          {{ t('settings.deleteWorkspaceConfirm', { name: firmStore.activeFirm?.name ?? '' }) }}
+        </p>
+        <input
+          v-model="confirmDeleteText"
+          type="text"
+          :placeholder="firmStore.activeFirm?.name"
+          class="w-full rounded-xl border border-red-300 px-3 py-2 text-sm focus:outline-none focus:border-red-500"
+        />
+        <div class="flex gap-2">
+          <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="confirmDeleteWorkspace = false; confirmDeleteText = ''">{{ t('common.cancel') }}</button>
+          <button
+            :disabled="dangerLoading || confirmDeleteText !== firmStore.activeFirm?.name"
+            class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+            @click="deleteWorkspace"
+          >{{ dangerLoading ? t('settings.deleting') : t('settings.deleteWorkspace') }}</button>
+        </div>
+      </div>
     </div>
 
     </div>
