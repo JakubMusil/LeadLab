@@ -415,7 +415,7 @@ function formatNotifTime(ts: string): string {
                     v-if="categoryCounts[cat.id]"
                     class="ml-auto flex-shrink-0 min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center text-white"
                     :style="{ backgroundColor: cat.color || '#94A3B8' }"
-                    aria-label="`${categoryCounts[cat.id]} aktivních záznamů`"
+                    :aria-label="t('pipeline.categoryCountLabel', { count: categoryCounts[cat.id] })"
                   >{{ categoryCounts[cat.id] }}</span>
                 </RouterLink>
               </template>

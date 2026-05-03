@@ -427,7 +427,10 @@
     "stageDeleteFailed": "Status kann nicht gelöscht werden.",
     "stageDeleted": "Status gelöscht.",
     "confirmDeleteCategory": "Kategorie wirklich löschen?",
-    "confirmDeleteStage": "Status wirklich löschen?"
+    "confirmDeleteStage": "Status wirklich löschen?",
+    "stageDragHandle": "Zum Neuanordnen ziehen",
+    "categoryCountLabel": "{count} aktive Einträge",
+    "quickCreatePlaceholderInCategory": "Schnell zu „{category}" hinzufügen…"
   },
   "proposals": {
     "title": "Angebote",

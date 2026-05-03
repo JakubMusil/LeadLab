@@ -427,7 +427,10 @@
     "stageDeleteFailed": "Nie można usunąć etapu.",
     "stageDeleted": "Etap usunięty.",
     "confirmDeleteCategory": "Czy na pewno usunąć tę kategorię?",
-    "confirmDeleteStage": "Czy na pewno usunąć ten etap?"
+    "confirmDeleteStage": "Czy na pewno usunąć ten etap?",
+    "stageDragHandle": "Przeciągnij, aby zmienić kolejność",
+    "categoryCountLabel": "{count} aktywnych rekordów",
+    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}"…"
   },
   "proposals": {
     "title": "Oferty",

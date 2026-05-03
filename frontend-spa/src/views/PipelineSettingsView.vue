@@ -394,7 +394,7 @@ async function onStageDragEnd() {
                 class="flex items-center gap-3 p-3 border border-gray-100 rounded-lg bg-white group"
               >
                 <!-- Drag handle -->
-                <span class="stage-drag-handle cursor-grab text-gray-300 hover:text-gray-500 flex-shrink-0" title="Přetáhnout pro změnu pořadí">
+                <span class="stage-drag-handle cursor-grab text-gray-300 hover:text-gray-500 flex-shrink-0" :title="t('pipeline.stageDragHandle')">
                   <Bars3Icon class="w-4 h-4" />
                 </span>
 

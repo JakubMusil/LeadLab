@@ -964,7 +964,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
       <input
         v-model="qcTitle"
         type="text"
-        :placeholder="currentCategory ? `${t('leads.quickCreatePlaceholder')} v „${currentCategory.name}"…` : t('leads.quickCreatePlaceholder')"
+        :placeholder="currentCategory ? t('pipeline.quickCreatePlaceholderInCategory', { category: currentCategory.name }) : t('leads.quickCreatePlaceholder')"
         class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-red-400 dark:focus:border-red-500"
         @keyup.enter="quickCreateRecord"
       />
