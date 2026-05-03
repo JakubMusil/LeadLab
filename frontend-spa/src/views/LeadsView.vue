@@ -111,7 +111,13 @@ const sortedLeads = computed(() => {
   return [...store.leads].sort((a, b) => {
     let cmp = 0
     if (sortField.value === 'value') {
-      cmp = (a.value ?? -Infinity) - (b.value ?? -Infinity)
+      // Null values sort to the end regardless of direction
+      const av = a.value ?? null
+      const bv = b.value ?? null
+      if (av === null && bv === null) cmp = 0
+      else if (av === null) cmp = 1
+      else if (bv === null) cmp = -1
+      else cmp = av - bv
     } else if (sortField.value === 'status') {
       cmp = (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0)
     } else if (sortField.value === 'created_at') {
@@ -144,13 +150,15 @@ function hasActiveAdvancedFilters() {
 }
 
 function buildFilters(page = 1) {
+  const valueMin = filterValueMin.value ? parseFloat(filterValueMin.value) : undefined
+  const valueMax = filterValueMax.value ? parseFloat(filterValueMax.value) : undefined
   return {
     status: filterStatus.value,
     source: filterSource.value,
     assigned_to: filterAssignedTo.value || undefined,
     created_by: filterCreatedBy.value || undefined,
-    value_min: filterValueMin.value ? parseFloat(filterValueMin.value) : undefined,
-    value_max: filterValueMax.value ? parseFloat(filterValueMax.value) : undefined,
+    value_min: valueMin != null && !isNaN(valueMin) ? valueMin : undefined,
+    value_max: valueMax != null && !isNaN(valueMax) ? valueMax : undefined,
     created_after: filterCreatedAfter.value || undefined,
     created_before: filterCreatedBefore.value || undefined,
     page,

@@ -386,8 +386,8 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         try:
             cb = lead.created_by
             created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not resolve created_by name for lead %s: %s", lead.id, exc)
     assigned_to_name: Optional[str] = None
     if lead.assigned_to_id:
         try:
