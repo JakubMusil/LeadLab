@@ -24,6 +24,16 @@ export interface RecordOut {
   company_name: string | null
   contact_person_id: string | null
   contact_person_name: string | null
+  // Pipeline fields
+  category_id: string | null
+  current_stage_id: string | null
+  current_stage_name: string | null
+  parent_id: string | null
+  start_date: string | null
+  end_date: string | null
+  expires_at: string | null
+  notes: string
+  extra_data: Record<string, unknown>
 }
 
 export interface RecordIn {
@@ -36,6 +46,15 @@ export interface RecordIn {
   currency?: string
   company_id?: string | null
   contact_person_id?: string | null
+  // Pipeline fields
+  category_id?: string | null
+  current_stage_id?: string | null
+  parent_id?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  expires_at?: string | null
+  notes?: string
+  extra_data?: Record<string, unknown>
 }
 
 export interface RecordFilters {
@@ -51,6 +70,10 @@ export interface RecordFilters {
   sort_dir?: 'asc' | 'desc'
   page?: number
   page_size?: number
+  // Pipeline filters
+  category_id?: string
+  stage_id?: string
+  parent_id?: string
 }
 
 export const RECORD_STATUSES = [
@@ -104,6 +127,9 @@ export const useRecordsStore = defineStore('records', () => {
       if (filters.created_before) params.set('created_before', filters.created_before)
       if (filters.sort_by) params.set('sort_by', filters.sort_by)
       if (filters.sort_dir) params.set('sort_dir', filters.sort_dir)
+      if (filters.category_id) params.set('category_id', filters.category_id)
+      if (filters.stage_id) params.set('stage_id', filters.stage_id)
+      if (filters.parent_id) params.set('parent_id', filters.parent_id)
       const p = filters.page ?? 1
       const ps = filters.page_size ?? pageSize.value
       params.set('page', String(p))

@@ -126,6 +126,11 @@ const router = createRouter({
           meta: { title: 'Settings' },
         },
         {
+          path: 'settings/pipeline',
+          component: () => import('@/views/PipelineSettingsView.vue'),
+          meta: { title: 'Pipeline Settings' },
+        },
+        {
           path: 'analytics',
           component: () => import('@/views/AnalyticsView.vue'),
           meta: { title: 'Analytics' },

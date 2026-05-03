@@ -14,9 +14,9 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 | 1 | Smazat Realization + Management | ✅ |
 | 2 | Přejmenovat Lead → PipelineRecord + nové modely | ✅ |
 | 3 | API – Category/Stage konfigurace + Records CRUD | ✅ |
-| 4 | Seed command + onboarding hook | ⬜ |
+| 4 | Seed command + onboarding hook | ✅ |
 | 5 | Frontend stores + API klient | ✅ |
-| 6 | Settings UI pro správu kategorií a stages | ⬜ |
+| 6 | Settings UI pro správu kategorií a stages | ✅ |
 | 7 | RecordsView + RecordDetailView (vzor: LeadsView) | ✅ |
 | 8 | AppShell navigace + Router update | ✅ |
 
@@ -124,39 +124,39 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 
 ---
 
-### Fáze 4 — Seed command + onboarding hook ⬜
+### Fáze 4 — Seed command + onboarding hook ✅
 
-- [ ] `crm/management/commands/seed_pipeline_categories.py` — vytvoří 3 výchozí kategorie (Příležitosti, Realizace, Správa) s odpovídajícími stages pro danou firmu
-- [ ] `firms/api.py` nebo signal `post_save` na Firm — zavolat seed command při vytvoření nové firmy
-
----
-
-### Fáze 5 — Frontend stores + API klient ⬜
-
-- [ ] `frontend-spa/src/stores/pipeline.ts` — Pinia store: `categories`, `stages`, `records`, `currentRecord`; helpers `getStageProgress()`, `getSlaColor()`
-- [ ] `frontend-spa/src/api/index.ts` — přidat volání pro `/api/v1/crm/categories`, `/api/v1/crm/records`, checkpoints
+- [x] `crm/management/commands/seed_pipeline_categories.py` — vytvoří 3 výchozí kategorie (Příležitosti, Realizace, Správa) s odpovídajícími stages pro danou firmu
+- [x] `firms/api.py` `create_firm` — zavolat `seed_for_firm()` při vytvoření nové firmy
 
 ---
 
-### Fáze 6 — Settings UI pro správu kategorií a stages ⬜
+### Fáze 5 — Frontend stores + API klient ✅
 
-- [ ] Nová sekce nebo tab v SettingsView.vue pro správu pipeline
-- [ ] Dvoupanelové rozložení: vlevo seznam kategorií (drag-and-drop), vpravo editace stages a polí
-- [ ] Route `/app/settings/pipeline`
-
----
-
-### Fáze 7 — RecordsView + RecordDetailView ⬜
-
-- [ ] `RecordsView.vue` — vzor z `LeadsView.vue`; výběr kategorie v hlavičce; dynamické kanban sloupce; `useListView` composable reuse
-- [ ] `RecordDetailView.vue` — vzor z `LeadDetailView.vue`; stage changer; stage progressbar; Checkpoints panel; podmíněné sekce dle CategoryField
+- [x] `frontend-spa/src/stores/pipeline.ts` — Pinia store: `categories`, `stages`, `records`, `currentRecord`; helpers `getStageProgress()`, `getSlaColor()`; CRUD pro Category a Stage
+- [x] `frontend-spa/src/stores/records.ts` — rozšířen `RecordOut` a `RecordIn` o pipeline pole (category_id, current_stage_id, parent_id, start_date, end_date, expires_at, notes, extra_data); `RecordFilters` doplněn o category_id, stage_id, parent_id
 
 ---
 
-### Fáze 8 — AppShell + Router ⬜
+### Fáze 6 — Settings UI pro správu kategorií a stages ✅
 
-- [ ] `router/index.ts` — routes `/app/records` → `RecordsView`, `/app/records/:id` → `RecordDetailView`
-- [ ] `AppShell.vue` — dynamická navigace kategorií z pipeline store; WS handlery `record.*`, `category.updated`
+- [x] `frontend-spa/src/views/PipelineSettingsView.vue` — dvoupanelové rozložení: vlevo seznam kategorií, vpravo editace stages a polí
+- [x] Route `/app/settings/pipeline` přidána do `router/index.ts`
+- [x] Tlačítko "Pipeline" v SettingsView naviguje na `/app/settings/pipeline`
+
+---
+
+### Fáze 7 — RecordsView + RecordDetailView ✅
+
+- [x] `RecordsView.vue` — import `usePipelineStore`; category selector v hlavičce; `filterCategoryId`/`filterStageId` filtry; `leadsByStage` computed; stage-based kanban sloupce; watch `category_id` query param
+- [x] `RecordDetailView.vue` — opraveno `store.currentLead` → `store.currentRecord`; import `usePipelineStore`; Checkpoints panel (load/add/toggle/delete); Stage changer (klikatelné stage buttony); Stage progressbar (stage-based nebo status-based)
+
+---
+
+### Fáze 8 — AppShell + Router ✅
+
+- [x] `router/index.ts` — `/app/records`, `/app/records/:id` routes (již byly z Fáze 2); přidána `/app/settings/pipeline`
+- [x] `AppShell.vue` — import `usePipelineStore`; `fetchCategories()` v `onMounted`; dynamická navigace kategorií pod "Records" (barevné puntíky); WS handlery přejmenovat `lead.*` → `record.*`; `category.updated` WS handler → `pipelineStore.handleCategoryUpdated()`
 
 ---
 
@@ -229,3 +229,29 @@ Protože jde o dev prostředí bez produkčních dat, je přejmenování čisté
 - `python manage.py check` → 0 issues
 
 **Následuje:** Fáze 4 — Seed command + onboarding hook (seed_pipeline_categories management command, signal na Firm)
+
+---
+
+### 2026-05-03 — Fáze 4–8 dokončeny
+
+**Fáze 4** — Seed command + onboarding hook:
+- Nový soubor `crm/management/commands/seed_pipeline_categories.py`: vytváří 3 výchozí kategorie (Příležitosti / Realizace / Správa) se stages a field konfigurací; `seed_for_firm(firm)` helper bezpečně re-entrantní (get_or_create)
+- `firms/api.py` `create_firm` — volá `seed_for_firm(firm)` v rámci stávající transakce po vytvoření firmy
+
+**Fáze 5** — Frontend stores + API klient:
+- Nový soubor `frontend-spa/src/stores/pipeline.ts`: Pinia store s `categories`, `allStages`; CRUD pro Category a Stage; helpers `getStageProgress()` a `getSlaColor()`; `handleCategoryUpdated()` pro WS
+- `frontend-spa/src/stores/records.ts`: `RecordOut` a `RecordIn` rozšířeny o pipeline pole; `RecordFilters` o `category_id`, `stage_id`, `parent_id`; `fetchRecords` přenáší nové filtry
+
+**Fáze 6** — Settings UI:
+- Nový soubor `frontend-spa/src/views/PipelineSettingsView.vue`: dvoupanelové rozložení (kategorie vlevo, stages+fields vpravo); inline editace názvů; color picker; přidání/mazání kategorií a stages; potvrzovací dialogy pro mazání
+- Route `/app/settings/pipeline` přidána do `router/index.ts`
+- Tlačítko "Pipeline" v SettingsView naviguje na novou view
+
+**Fáze 7** — RecordsView + RecordDetailView:
+- `RecordsView.vue`: import `usePipelineStore`; category selector v hlavičce; `filterCategoryId`/`filterStageId`; `leadsByStage` computed; stage-based kanban (barevné sloupce dle stages); watch `category_id` query param; načítání kategorií v onMounted
+- `RecordDetailView.vue`: opraven `store.currentLead` → `store.currentRecord` (21 výskytů); import `usePipelineStore`; Checkpoints panel (load/add/toggle/delete); Stage changer (klikatelné buttony s barvami); Stage progressbar (stage-based nebo fallback status-based)
+
+**Fáze 8** — AppShell + Router:
+- `AppShell.vue`: import `usePipelineStore`; `fetchCategories()` v `onMounted`; dynamická navigace kategorií pod "Records" (barevné tečky, link na `/app/records?category_id=…`); WS event registry přejmenováno `lead.*` → `record.*`; handler `category.updated` → `pipelineStore.handleCategoryUpdated()`; eventLabel a eventIcon mapy aktualizovány
+
+**Všechny fáze 1–8 dokončeny. ✅**

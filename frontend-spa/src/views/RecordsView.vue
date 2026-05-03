@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordOut } from '@/stores/records'
+import { usePipelineStore } from '@/stores/pipeline'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
@@ -23,6 +24,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 const route = useRoute()
 const router = useRouter()
 const store = useRecordsStore()
+const pipelineStore = usePipelineStore()
 const savedViewsStore = useSavedViewsStore()
 const customersStore = useCustomersStore()
 const authStore = useAuthStore()
@@ -149,6 +151,8 @@ const filterValueMin = ref('')
 const filterValueMax = ref('')
 const filterCreatedAfter = ref('')
 const filterCreatedBefore = ref('')
+const filterCategoryId = ref((route.query.category_id as string) ?? '')
+const filterStageId = ref('')
 const showAdvancedFilters = ref(false)
 
 function hasActiveAdvancedFilters() {
@@ -168,6 +172,8 @@ function buildFilters(page = 1) {
     value_max: valueMax != null && !isNaN(valueMax) ? valueMax : undefined,
     created_after: filterCreatedAfter.value || undefined,
     created_before: filterCreatedBefore.value || undefined,
+    category_id: filterCategoryId.value || undefined,
+    stage_id: filterStageId.value || undefined,
     page,
   }
 }
@@ -498,6 +504,16 @@ onMounted(async () => {
   loadMembers()
   loadLeads()
   savedViewsStore.fetchViews()
+  if (pipelineStore.categories.length === 0) {
+    pipelineStore.fetchCategories()
+  }
+})
+
+// React to category_id query param changes (e.g. from sidebar nav)
+watch(() => route.query.category_id, (catId) => {
+  filterCategoryId.value = (catId as string) ?? ''
+  filterStageId.value = ''
+  loadLeads()
 })
 
 const leadsByStatus = computed(() => {
@@ -506,6 +522,25 @@ const leadsByStatus = computed(() => {
   for (const l of store.records) {
     if (map[l.status]) map[l.status]!.push(l)
     else map[l.status] = [l]
+  }
+  return map
+})
+
+// When a category is selected, group by stage for kanban
+const currentCategory = computed(() =>
+  filterCategoryId.value ? pipelineStore.getCategoryById(filterCategoryId.value) : undefined,
+)
+const currentCategoryStages = computed(() =>
+  filterCategoryId.value ? pipelineStore.getStagesForCategory(filterCategoryId.value) : [],
+)
+const leadsByStage = computed(() => {
+  const map: Record<string, RecordOut[]> = {}
+  for (const s of currentCategoryStages.value) map[s.id] = []
+  map['__none__'] = []
+  for (const l of store.records) {
+    const stageId = l.current_stage_id ?? '__none__'
+    if (map[stageId]) map[stageId]!.push(l)
+    else map[stageId] = [l]
   }
   return map
 })
@@ -783,7 +818,28 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
   <div class="p-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">
+        {{ currentCategory ? currentCategory.name : t('leads.title') }}
+      </h2>
+
+      <!-- Category selector -->
+      <div v-if="pipelineStore.categories.length > 0" class="flex items-center gap-1">
+        <button
+          class="px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+          :class="!filterCategoryId ? 'bg-white shadow text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700'"
+          @click="filterCategoryId = ''; filterStageId = ''; loadLeads()"
+        >{{ t('pipeline.allCategories') }}</button>
+        <button
+          v-for="cat in pipelineStore.categories.filter((c) => c.is_active)"
+          :key="cat.id"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+          :class="filterCategoryId === cat.id ? 'bg-white shadow text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700'"
+          @click="filterCategoryId = cat.id; filterStageId = ''; loadLeads()"
+        >
+          <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: cat.color || '#94A3B8' }"></span>
+          {{ cat.name }}
+        </button>
+      </div>
 
       <!-- Saved views -->
       <div v-if="savedViewsStore.viewsForEntity('records').length > 0" class="flex items-center gap-1 flex-wrap">
@@ -1193,55 +1249,96 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
 
     <!-- KANBAN VIEW -->
     <template v-else-if="viewMode === 'kanban'">
-      <div class="flex gap-4 overflow-x-auto pb-4 min-h-96">
-        <div
-          v-for="s in RECORD_STATUSES"
-          :key="s.value"
-          class="flex-shrink-0 w-64 flex flex-col"
-          @dragover="onDragOver($event, s.value)"
-          @dragleave="onDragLeave"
-          @drop="onDrop(s.value)"
-        >
-          <!-- Column header -->
+      <!-- Stage-based kanban (when category is selected) -->
+      <template v-if="currentCategory && currentCategoryStages.length > 0">
+        <div class="flex gap-4 overflow-x-auto pb-4 min-h-96">
           <div
-            class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold transition-colors"
-            :class="[s.color, dragOverStatus === s.value ? 'ring-2 ring-offset-1 ring-red-400' : '']"
+            v-for="stage in currentCategoryStages"
+            :key="stage.id"
+            class="flex-shrink-0 w-64 flex flex-col"
           >
-            {{ statusLabel(s.value) }}
-            <span class="ml-auto bg-white/60 dark:bg-black/30 rounded px-1.5 py-0.5">{{ leadsByStatus[s.value]?.length ?? 0 }}</span>
-          </div>
-          <!-- Cards -->
-          <div
-            class="flex-1 space-y-2 min-h-16 rounded-xl transition-colors p-1"
-            :class="dragOverStatus === s.value ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'"
-          >
+            <!-- Column header -->
             <div
-              v-for="lead in leadsByStatus[s.value]"
-              :key="lead.id"
-              class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
-              draggable="true"
-              @dragstart="onDragStart(lead)"
-              @contextmenu="onRowContextMenu($event, lead)"
+              class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold"
+              :style="{ backgroundColor: stage.color + '22', color: stage.color }"
             >
-              <div class="flex items-start justify-between gap-2">
-                <button
-                  class="text-xs font-medium text-gray-900 dark:text-gray-100 text-left hover:text-red-600 transition-colors leading-snug"
-                  @click="goToDetail(lead.id)"
-                >{{ lead.title }}</button>
-                <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                  <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
+              {{ stage.name }}
+              <span v-if="stage.is_terminal && stage.is_won" class="text-green-600">✓</span>
+              <span class="ml-auto bg-white/60 rounded px-1.5 py-0.5">{{ leadsByStage[stage.id]?.length ?? 0 }}</span>
+            </div>
+            <!-- Cards -->
+            <div class="flex-1 space-y-2 min-h-16 rounded-xl bg-gray-50 dark:bg-gray-700/30 p-1">
+              <div
+                v-for="lead in leadsByStage[stage.id]"
+                :key="lead.id"
+                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-pointer shadow-sm hover:shadow transition-shadow group"
+                @click="goToDetail(lead.id)"
+                @contextmenu="onRowContextMenu($event, lead)"
+              >
+                <div class="text-xs font-medium text-gray-900 dark:text-gray-100 leading-snug">{{ lead.title }}</div>
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
+                  <span v-if="fmtValue(lead)" class="text-xs text-gray-500">{{ fmtValue(lead) }}</span>
+                  <span v-if="lead.expires_at" class="text-xs" :class="pipelineStore.getSlaColor(lead.expires_at)">{{ lead.expires_at }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-2 mt-2 flex-wrap">
-                <span v-if="fmtValue(lead)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(lead) }}</span>
-                <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
-                <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
-              </div>
+              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 py-4">—</div>
             </div>
-            <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
           </div>
         </div>
-      </div>
+      </template>
+
+      <!-- Status-based kanban (no category selected) -->
+      <template v-else>
+        <div class="flex gap-4 overflow-x-auto pb-4 min-h-96">
+          <div
+            v-for="s in RECORD_STATUSES"
+            :key="s.value"
+            class="flex-shrink-0 w-64 flex flex-col"
+            @dragover="onDragOver($event, s.value)"
+            @dragleave="onDragLeave"
+            @drop="onDrop(s.value)"
+          >
+            <!-- Column header -->
+            <div
+              class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold transition-colors"
+              :class="[s.color, dragOverStatus === s.value ? 'ring-2 ring-offset-1 ring-red-400' : '']"
+            >
+              {{ statusLabel(s.value) }}
+              <span class="ml-auto bg-white/60 dark:bg-black/30 rounded px-1.5 py-0.5">{{ leadsByStatus[s.value]?.length ?? 0 }}</span>
+            </div>
+            <!-- Cards -->
+            <div
+              class="flex-1 space-y-2 min-h-16 rounded-xl transition-colors p-1"
+              :class="dragOverStatus === s.value ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'"
+            >
+              <div
+                v-for="lead in leadsByStatus[s.value]"
+                :key="lead.id"
+                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
+                draggable="true"
+                @dragstart="onDragStart(lead)"
+                @contextmenu="onRowContextMenu($event, lead)"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <button
+                    class="text-xs font-medium text-gray-900 dark:text-gray-100 text-left hover:text-red-600 transition-colors leading-snug"
+                    @click="goToDetail(lead.id)"
+                  >{{ lead.title }}</button>
+                  <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
+                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
+                  <span v-if="fmtValue(lead)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(lead) }}</span>
+                  <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
+                  <span v-if="overdueTasks.has(lead.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
+                </div>
+              </div>
+              <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
   </div>
 

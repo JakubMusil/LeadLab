@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecordsStore, RECORD_STATUSES, getStatusMeta } from '@/stores/records'
+import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
@@ -33,6 +34,7 @@ import { ConfirmDeleteModal } from '@/components/ui'
 const route = useRoute()
 const router = useRouter()
 const store = useRecordsStore()
+const pipelineStore = usePipelineStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
@@ -262,7 +264,7 @@ function onCompanyChange() {
 }
 
 const displayedStatuses = computed(() => {
-  const current = store.currentLead?.status || 'new'
+  const current = store.currentRecord?.status || 'new'
   const base = [
     { value: 'new', label: t('leads.statusNew') },
     { value: 'contacted', label: t('leads.statusContacted') },
@@ -279,7 +281,7 @@ const displayedStatuses = computed(() => {
 })
 
 const currentStatusIndex = computed(() => {
-  const current = store.currentLead?.status || 'new'
+  const current = store.currentRecord?.status || 'new'
   return displayedStatuses.value.findIndex((s) => s.value === current)
 })
 
@@ -488,7 +490,7 @@ async function changeStatus(newStatus: string) {
 }
 
 function openEdit() {
-  const lead = store.currentLead
+  const lead = store.currentRecord
   if (!lead) return
   editTitle.value = lead.title
   editStatus.value = lead.status
@@ -539,11 +541,109 @@ async function deleteRecord() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Pipeline: Stage changer
+// ---------------------------------------------------------------------------
+
+const currentStages = computed(() => {
+  const record = store.currentRecord
+  if (!record?.category_id) return []
+  return pipelineStore.getStagesForCategory(record.category_id)
+})
+
+const stageProgress = computed(() => {
+  const record = store.currentRecord
+  if (!record?.category_id || !record.current_stage_id) return 0
+  return pipelineStore.getStageProgress(currentStages.value, record.current_stage_id)
+})
+
+async function changeStage(stageId: string) {
+  const result = await store.updateRecord(leadId.value, { current_stage_id: stageId })
+  if (result.ok) {
+    toast.success(t('pipeline.stageUpdated'))
+  } else {
+    toast.error(result.error ?? t('pipeline.stageUpdateFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline: Checkpoints
+// ---------------------------------------------------------------------------
+
+interface CheckpointItem {
+  id: string
+  name: string
+  date: string | null
+  is_completed: boolean
+  description: string
+}
+
+const checkpoints = ref<CheckpointItem[]>([])
+const checkpointsLoading = ref(false)
+const newCheckpointName = ref('')
+const newCheckpointDate = ref('')
+const addingCheckpoint = ref(false)
+
+async function loadCheckpoints() {
+  const record = store.currentRecord
+  if (!record) return
+  checkpointsLoading.value = true
+  try {
+    const res = await api.get<CheckpointItem[]>(`/api/v1/crm/records/${record.id}/checkpoints`)
+    if (res.ok) checkpoints.value = res.data
+  } finally {
+    checkpointsLoading.value = false
+  }
+}
+
+async function addCheckpoint() {
+  if (!newCheckpointName.value.trim()) return
+  addingCheckpoint.value = true
+  try {
+    const res = await api.post<CheckpointItem>(`/api/v1/crm/records/${leadId.value}/checkpoints`, {
+      name: newCheckpointName.value.trim(),
+      date: newCheckpointDate.value || null,
+    })
+    if (res.ok) {
+      checkpoints.value.push(res.data)
+      newCheckpointName.value = ''
+      newCheckpointDate.value = ''
+    } else {
+      toast.error(t('pipeline.checkpointAddFailed'))
+    }
+  } finally {
+    addingCheckpoint.value = false
+  }
+}
+
+async function toggleCheckpoint(cp: CheckpointItem) {
+  const res = await api.patch<CheckpointItem>(`/api/v1/crm/records/${leadId.value}/checkpoints/${cp.id}`, {
+    is_completed: !cp.is_completed,
+  })
+  if (res.ok) {
+    const idx = checkpoints.value.findIndex((c) => c.id === cp.id)
+    if (idx !== -1) checkpoints.value[idx] = res.data
+  }
+}
+
+async function deleteCheckpoint(cpId: string) {
+  const res = await api.delete(`/api/v1/crm/records/${leadId.value}/checkpoints/${cpId}`)
+  if (res.ok || res.status === 204) {
+    checkpoints.value = checkpoints.value.filter((c) => c.id !== cpId)
+  }
+}
+
 onMounted(async () => {
   await store.fetchRecord(leadId.value)
   loadTeamMembers()
   loadShortcuts()
   loadTools()
+  // Load pipeline categories if not yet loaded
+  if (pipelineStore.categories.length === 0) {
+    pipelineStore.fetchCategories()
+  }
+  // Load checkpoints
+  loadCheckpoints()
 
   on('record.updated', onWsLeadUpdated)
 })
@@ -587,11 +687,11 @@ async function openContactDetail(id: string | null) {
       <div class="h-24 bg-gray-100 rounded-2xl" />
     </div>
 
-    <template v-else-if="store.currentLead">
+    <template v-else-if="store.currentRecord">
       <!-- Title -->
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2 min-w-0">
         <FunnelIcon class="w-6 h-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-        <span class="truncate">{{ store.currentLead.title }}</span>
+        <span class="truncate">{{ store.currentRecord.title }}</span>
         <button
           class="ml-1 flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/permalink"
           :title="permalinkCopiedId === 'page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
@@ -607,24 +707,49 @@ async function openContactDetail(id: string | null) {
 
       <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
-        <div class="flex items-center justify-between gap-1 select-none">
-          <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
-            <div
-              class="w-full h-1.5 rounded-full transition-all duration-300"
-              :class="[
-                i <= currentStatusIndex ? getStatusBg(s.value) : 'bg-gray-200 dark:bg-gray-700',
-                i === currentStatusIndex ? 'scale-y-125' : ''
-              ]"
-              :style="i === currentStatusIndex ? { boxShadow: '0 0 0 2px ' + getStatusHexColor(s.value) + '80' } : {}"
-            />
-            <span
-              class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
-              :class="i <= currentStatusIndex ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
-            >
-              {{ s.label }}
-            </span>
+        <!-- Stage-based progress bar (when category is set) -->
+        <template v-if="store.currentRecord.category_id && currentStages.length > 0">
+          <div class="flex items-center justify-between gap-1 select-none">
+            <div v-for="(stage, i) in currentStages" :key="stage.id" class="flex-1 flex flex-col gap-1.5 items-center relative">
+              <div
+                class="w-full h-1.5 rounded-full transition-all duration-300"
+                :style="{
+                  backgroundColor: store.currentRecord.current_stage_id === stage.id || i < currentStages.findIndex((s) => s.id === store.currentRecord.current_stage_id)
+                    ? (stage.color || '#6366f1')
+                    : '#e5e7eb',
+                  transform: store.currentRecord.current_stage_id === stage.id ? 'scaleY(1.25)' : 'none',
+                }"
+              />
+              <span
+                class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
+                :class="store.currentRecord.current_stage_id === stage.id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
+              >
+                {{ stage.name }}
+              </span>
+            </div>
           </div>
-        </div>
+        </template>
+        <!-- Status-based progress bar (no category) -->
+        <template v-else>
+          <div class="flex items-center justify-between gap-1 select-none">
+            <div v-for="(s, i) in displayedStatuses" :key="s.value" class="flex-1 flex flex-col gap-1.5 items-center relative">
+              <div
+                class="w-full h-1.5 rounded-full transition-all duration-300"
+                :class="[
+                  i <= currentStatusIndex ? getStatusBg(s.value) : 'bg-gray-200 dark:bg-gray-700',
+                  i === currentStatusIndex ? 'scale-y-125' : ''
+                ]"
+                :style="i === currentStatusIndex ? { boxShadow: '0 0 0 2px ' + getStatusHexColor(s.value) + '80' } : {}"
+              />
+              <span
+                class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
+                :class="i <= currentStatusIndex ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
+              >
+                {{ s.label }}
+              </span>
+            </div>
+          </div>
+        </template>
       </div>
 
       <!-- 2-column layout from the start -->
@@ -699,11 +824,84 @@ async function openContactDetail(id: string | null) {
         <!-- Right Column: Sidebar (details + actions) -->
         <div class="space-y-4">
 
-          <!-- Lead details card -->
+          <!-- Stage changer (when category is set) -->
+          <div
+            v-if="store.currentRecord.category_id && currentStages.length > 0"
+            class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4"
+          >
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.stageLabel') }}</div>
+            <!-- Progress bar -->
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-3">
+              <div
+                class="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
+                :style="{ width: stageProgress + '%' }"
+              ></div>
+            </div>
+            <!-- Stage buttons -->
+            <div class="flex flex-wrap gap-1">
+              <button
+                v-for="stage in currentStages"
+                :key="stage.id"
+                class="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors"
+                :style="store.currentRecord.current_stage_id === stage.id
+                  ? { backgroundColor: stage.color + '33', borderColor: stage.color, color: stage.color }
+                  : { borderColor: '#e5e7eb', color: '#6b7280' }"
+                @click="changeStage(stage.id)"
+              >
+                {{ stage.name }}
+                <span v-if="stage.is_terminal && stage.is_won" class="ml-1 text-green-500">✓</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Checkpoints panel -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.checkpoints') }}</div>
+            <div v-if="checkpointsLoading" class="text-xs text-gray-400">{{ t('pipeline.loadingCheckpoints') }}</div>
+            <ul v-else class="space-y-1.5 mb-2">
+              <li
+                v-for="cp in checkpoints"
+                :key="cp.id"
+                class="flex items-center gap-2 group"
+              >
+                <button
+                  class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
+                  :class="cp.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
+                  @click="toggleCheckpoint(cp)"
+                >
+                  <span v-if="cp.is_completed" class="text-[10px]">✓</span>
+                </button>
+                <span
+                  class="text-xs flex-1"
+                  :class="cp.is_completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'"
+                >{{ cp.name }}</span>
+                <span v-if="cp.date" class="text-[10px] text-gray-400 flex-shrink-0">{{ cp.date }}</span>
+                <button
+                  class="hidden group-hover:block text-gray-300 hover:text-red-400 transition-colors"
+                  @click="deleteCheckpoint(cp.id)"
+                >×</button>
+              </li>
+              <li v-if="checkpoints.length === 0" class="text-xs text-gray-400">{{ t('pipeline.noCheckpoints') }}</li>
+            </ul>
+            <!-- Add checkpoint form -->
+            <div class="flex gap-1">
+              <input
+                v-model="newCheckpointName"
+                :placeholder="t('pipeline.newCheckpointPlaceholder')"
+                class="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 dark:bg-gray-700 dark:text-gray-200"
+                @keyup.enter="addCheckpoint"
+              />
+              <button
+                class="px-2 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                :disabled="addingCheckpoint || !newCheckpointName.trim()"
+                @click="addCheckpoint"
+              >+</button>
+            </div>
+          </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
             <!-- Lead title as prominent heading (replaces "Detaily příležitosti" label) -->
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
-              {{ store.currentLead.title }}
+              {{ store.currentRecord.title }}
             </h2>
             <dl class="space-y-2">
               <div class="flex justify-between items-center">
@@ -711,10 +909,10 @@ async function openContactDetail(id: string | null) {
                 <dd class="relative">
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
-                    :class="getStatusMeta(store.currentLead.status).color"
+                    :class="getStatusMeta(store.currentRecord.status).color"
                     @click="statusPopupOpen = !statusPopupOpen"
                   >
-                    {{ getStatusMeta(store.currentLead.status).label }}
+                    {{ getStatusMeta(store.currentRecord.status).label }}
                     <ChevronDownIcon class="w-3 h-3 opacity-60" />
                   </button>
                   <div
@@ -725,7 +923,7 @@ async function openContactDetail(id: string | null) {
                       v-for="s in RECORD_STATUSES"
                       :key="s.value"
                       class="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-                      :class="s.value === store.currentLead.status ? 'font-semibold' : ''"
+                      :class="s.value === store.currentRecord.status ? 'font-semibold' : ''"
                       @click="changeStatus(s.value)"
                     >
                       <span class="w-2 h-2 rounded-full flex-shrink-0" :class="s.color.split(' ')[0]" />
@@ -736,32 +934,32 @@ async function openContactDetail(id: string | null) {
               </div>
               <div class="flex justify-between items-baseline">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewSource') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentLead.source.replace('_', ' ') }}</dd>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentRecord.source.replace('_', ' ') }}</dd>
               </div>
-              <div v-if="store.currentLead.value != null" class="flex justify-between items-baseline">
+              <div v-if="store.currentRecord.value != null" class="flex justify-between items-baseline">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewValue') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentLead.value }} {{ store.currentLead.currency }}</dd>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentRecord.value }} {{ store.currentRecord.currency }}</dd>
               </div>
               <div class="flex justify-between items-baseline">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentLead.created_at).toLocaleDateString() }}</dd>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentRecord.created_at).toLocaleDateString() }}</dd>
               </div>
-              <div v-if="store.currentLead.company_name" class="flex justify-between items-baseline">
+              <div v-if="store.currentRecord.company_name" class="flex justify-between items-baseline">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">Společnost</dt>
                 <dd
                   class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  @click="openContactDetail(store.currentLead.company_id)"
+                  @click="openContactDetail(store.currentRecord.company_id)"
                 >
-                  {{ store.currentLead.company_name }}
+                  {{ store.currentRecord.company_name }}
                 </dd>
               </div>
-              <div v-if="store.currentLead.contact_person_name" class="flex justify-between items-baseline">
+              <div v-if="store.currentRecord.contact_person_name" class="flex justify-between items-baseline">
                 <dt class="text-xs text-gray-500 dark:text-gray-400">Kontaktní osoba</dt>
                 <dd
                   class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  @click="openContactDetail(store.currentLead.contact_person_id)"
+                  @click="openContactDetail(store.currentRecord.contact_person_id)"
                 >
-                  {{ store.currentLead.contact_person_name }}
+                  {{ store.currentRecord.contact_person_name }}
                 </dd>
               </div>
               <!-- Inline-editable description -->
