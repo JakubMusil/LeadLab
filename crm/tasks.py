@@ -1983,7 +1983,7 @@ def fetch_ecb_exchange_rates(self):
         resp.raise_for_status()
     except Exception as exc:
         logger.error("fetch_ecb_exchange_rates: request failed – %s", exc)
-        if self.request.retries >= self.max_retries - 1:
+        if self.request.retries >= self.max_retries:
             _notify_ecb_failure(
                 f"ECB exchange rate download failed after {self.max_retries} attempts.\n\n"
                 f"Error: {exc}\n\nNew canonical_amount calculations may be affected "
@@ -2035,7 +2035,7 @@ def fetch_ecb_exchange_rates(self):
 
     except Exception as exc:
         logger.exception("fetch_ecb_exchange_rates: parse error – %s", exc)
-        if self.request.retries >= self.max_retries - 1:
+        if self.request.retries >= self.max_retries:
             _notify_ecb_failure(
                 f"ECB exchange rate parsing failed after {self.max_retries} attempts.\n\n"
                 f"Error: {exc}"

@@ -483,7 +483,7 @@ onMounted(() => {
     profileFirstName.value = authStore.user.first_name
     profileLastName.value = authStore.user.last_name
     profileTimezone.value = authStore.user.timezone
-    profileNumberLocale.value = authStore.user.number_locale ?? ''
+    profileNumberLocale.value = authStore.user.number_locale || ''
   }
   // Always re-fetch the firm so subscription_tier/active reflects the latest server state
   firmStore.fetchFirms().then(() => {
