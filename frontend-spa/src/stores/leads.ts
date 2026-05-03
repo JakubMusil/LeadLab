@@ -142,7 +142,9 @@ export const useLeadsStore = defineStore('leads', () => {
   async function createLead(payload: LeadIn): Promise<{ ok: boolean; data?: LeadOut; error?: string }> {
     const res = await api.post<LeadOut>('/api/v1/crm/opportunities', payload)
     if (res.ok) {
-      leads.value.unshift(res.data)
+      if (!leads.value.find((l) => l.id === res.data.id)) {
+        leads.value.unshift(res.data)
+      }
       return { ok: true, data: res.data }
     }
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to create lead.') }
