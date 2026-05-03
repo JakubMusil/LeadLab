@@ -188,7 +188,7 @@
     "icoField": "Company ID",
     "firstNamePlaceholder": "First name *",
     "lastNamePlaceholder": "Last name",
-    "noEmployeesFound": "No employees found"
+    "noEmployeesFound": "No employees found",
     "statusNew": "New",
     "statusContacted": "Contacted",
     "statusProposal": "Proposal",
