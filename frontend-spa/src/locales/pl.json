@@ -2211,6 +2211,12 @@
     "saving": "Zapisuję…",
     "rateSaved": "Kurs zapisany",
     "errorRequired": "Podaj walutę i wartość kursu.",
-    "errorSave": "Błąd podczas zapisywania kursu."
+    "errorSave": "Błąd podczas zapisywania kursu.",
+    "exportCsv": "Eksportuj CSV"
+  },
+  "profile": {
+    "numberLocale": "Format liczb",
+    "numberLocaleDefault": "Domyślny (ustawienie workspace)",
+    "numberLocaleHelp": "Nadpisuje format liczb tylko dla Twojego konta. Inni członkowie zespołu nie są dotknięci."
   }
 }

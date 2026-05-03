@@ -1967,6 +1967,7 @@ def fetch_ecb_exchange_rates(self):
     records.  Idempotent – skips if rates for today are already present.
 
     Runs daily at 17:30 CET via Celery beat (ECB publishes by ~16:00 CET).
+    When all retries are exhausted, sends an admin email notification.
     """
     import xml.etree.ElementTree as ET
 
@@ -1982,6 +1983,12 @@ def fetch_ecb_exchange_rates(self):
         resp.raise_for_status()
     except Exception as exc:
         logger.error("fetch_ecb_exchange_rates: request failed – %s", exc)
+        if self.request.retries >= self.max_retries - 1:
+            _notify_ecb_failure(
+                f"ECB exchange rate download failed after {self.max_retries} attempts.\n\n"
+                f"Error: {exc}\n\nNew canonical_amount calculations may be affected "
+                f"until the next successful fetch."
+            )
         raise self.retry(exc=exc)
 
     try:
@@ -2028,7 +2035,39 @@ def fetch_ecb_exchange_rates(self):
 
     except Exception as exc:
         logger.exception("fetch_ecb_exchange_rates: parse error – %s", exc)
+        if self.request.retries >= self.max_retries - 1:
+            _notify_ecb_failure(
+                f"ECB exchange rate parsing failed after {self.max_retries} attempts.\n\n"
+                f"Error: {exc}"
+            )
         raise self.retry(exc=exc)
+
+
+def _notify_ecb_failure(detail: str) -> None:
+    """
+    Send an admin notification when the ECB exchange rate fetch fails
+    after all retries are exhausted.  Uses Django's mail_admins() so the
+    email goes to everyone listed in settings.ADMINS.  Failures are logged
+    regardless of whether ADMINS is configured.
+    """
+    import datetime as _dt
+
+    from django.core.mail import mail_admins
+
+    subject = "LeadLab: ECB exchange rate fetch failed"
+    message = (
+        f"The daily ECB exchange rate fetch task has failed.\n\n"
+        f"{detail}\n\n"
+        f"Time: {_dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+        "Please check the Celery worker logs for more details. "
+        "If the problem persists, consider adding manual exchange rates in the workspace settings "
+        "to ensure accurate currency conversions."
+    )
+    logger.error("fetch_ecb_exchange_rates: all retries exhausted – %s", detail)
+    try:
+        mail_admins(subject, message, fail_silently=True)
+    except Exception as mail_exc:
+        logger.warning("_notify_ecb_failure: could not send admin email – %s", mail_exc)
 
 
 @shared_task

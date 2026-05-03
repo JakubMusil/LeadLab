@@ -25,6 +25,7 @@ class UserOut(Schema):
     first_name: str
     last_name: str
     timezone: str
+    number_locale: str
     full_name: str
     is_staff: bool = False
     is_superuser: bool = False
@@ -47,6 +48,7 @@ class ProfileUpdateIn(Schema):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     timezone: Optional[str] = None
+    number_locale: Optional[str] = None
 
 
 class PasswordResetRequestIn(Schema):
@@ -131,6 +133,9 @@ def update_profile(request, payload: ProfileUpdateIn):
         updated = True
     if payload.timezone is not None:
         user.timezone = payload.timezone
+        updated = True
+    if payload.number_locale is not None:
+        user.number_locale = payload.number_locale
         updated = True
     if updated:
         user.save()
@@ -287,6 +292,7 @@ def _user_out(user: User) -> dict:
         "first_name": user.first_name,
         "last_name": user.last_name,
         "timezone": user.timezone,
+        "number_locale": user.number_locale,
         "full_name": user.full_name,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,

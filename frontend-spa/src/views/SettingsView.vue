@@ -81,6 +81,7 @@ function changeLocale(code: string) {
 const profileFirstName = ref('')
 const profileLastName = ref('')
 const profileTimezone = ref('')
+const profileNumberLocale = ref('')
 const profileLoading = ref(false)
 const profileError = ref('')
 const profileSuccess = ref(false)
@@ -482,6 +483,7 @@ onMounted(() => {
     profileFirstName.value = authStore.user.first_name
     profileLastName.value = authStore.user.last_name
     profileTimezone.value = authStore.user.timezone
+    profileNumberLocale.value = authStore.user.number_locale ?? ''
   }
   // Always re-fetch the firm so subscription_tier/active reflects the latest server state
   firmStore.fetchFirms().then(() => {
@@ -631,6 +633,7 @@ async function saveProfile() {
     first_name: profileFirstName.value,
     last_name: profileLastName.value,
     timezone: profileTimezone.value,
+    number_locale: profileNumberLocale.value,
   })
   profileLoading.value = false
   if (res.ok && res.data) {
@@ -641,6 +644,17 @@ async function saveProfile() {
   } else {
     profileError.value = ((res.data as unknown) as Record<string, string> | null)?.detail ?? 'Failed to update profile.'
   }
+}
+
+function exportExchangeRatesCsv(includeHistory = true) {
+  if (!firmStore.activeFirm) return
+  const url = `/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/export.csv?include_history=${includeHistory}`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `exchange_rates_${firmStore.activeFirm.slug}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 function onAvatarChange(e: Event) {
@@ -890,6 +904,17 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           <label class="block text-xs font-medium text-gray-700 mb-1">Timezone</label>
           <input v-model="profileTimezone" type="text" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="Europe/Prague" />
         </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('profile.numberLocale') }}</label>
+          <select
+            v-model="profileNumberLocale"
+            class="w-full rounded-xl border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          >
+            <option value="">{{ t('profile.numberLocaleDefault') }}</option>
+            <option v-for="loc in NUMBER_LOCALES" :key="loc.value" :value="loc.value">{{ loc.label }}</option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1">{{ t('profile.numberLocaleHelp') }}</p>
+        </div>
         <button type="submit" :disabled="profileLoading" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60">
           {{ profileLoading ? 'Saving…' : 'Save Profile' }}
         </button>
@@ -980,7 +1005,15 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
     <!-- Exchange Rate Management (Pro only) -->
     <div v-if="isPro" class="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('exchangeRates.title') }}</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-900">{{ t('exchangeRates.title') }}</h2>
+        <button
+          class="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-50"
+          @click="exportExchangeRatesCsv(true)"
+        >
+          {{ t('exchangeRates.exportCsv') }}
+        </button>
+      </div>
 
       <!-- Active rates table -->
       <div class="overflow-x-auto mb-4">
