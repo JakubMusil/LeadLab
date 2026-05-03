@@ -1365,6 +1365,10 @@ class SavedView(models.Model):
     )
     sort_by = models.CharField(max_length=50, blank=True)
     sort_dir = models.CharField(max_length=4, default="asc")
+    columns = models.JSONField(
+        default=list,
+        help_text="Ordered list of visible column IDs, e.g. [\"status\",\"value\"]. Empty means default.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

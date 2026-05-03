@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useFirmStore } from '@/stores/firm'
+import { useAuthStore } from '@/stores/auth'
+import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
+import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { Bar } from 'vue-chartjs'
 import {
@@ -12,6 +15,7 @@ import {
 } from 'chart.js'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useI18n } from '@/composables/useI18n'
+import { RouterLink, useRouter } from 'vue-router'
 import type { Component } from 'vue'
 import {
   ChatBubbleLeftIcon,
@@ -26,6 +30,8 @@ import {
   MapPinIcon,
   XMarkIcon,
   Squares2X2Icon,
+  PlusIcon,
+  StarIcon,
 } from '@heroicons/vue/24/outline'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
@@ -59,13 +65,15 @@ interface WidgetConfig {
   order: number
 }
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_leads' | 'quick_create_lead'
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stat_cards', visible: true, order: 0 },
-  { id: 'pipeline_chart', visible: true, order: 1 },
-  { id: 'recent_activity', visible: true, order: 2 },
-  { id: 'status_breakdown', visible: true, order: 3 },
+  { id: 'quick_create_lead', visible: true, order: 1 },
+  { id: 'pipeline_chart', visible: true, order: 2 },
+  { id: 'recent_activity', visible: true, order: 3 },
+  { id: 'my_top_leads', visible: true, order: 4 },
+  { id: 'status_breakdown', visible: true, order: 5 },
 ]
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
@@ -73,14 +81,32 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   pipeline_chart: t('dashboard.pipelineByStatus'),
   recent_activity: t('dashboard.recentActivity'),
   status_breakdown: t('dashboard.statusBreakdown'),
+  my_top_leads: t('dashboard.myTopLeads'),
+  quick_create_lead: t('dashboard.quickCreateLead'),
 }))
 
 const firmStore = useFirmStore()
+const authStore = useAuthStore()
+const leadsStore = useLeadsStore()
+const toast = useToast()
+const router = useRouter()
 const stats = ref<StatsData | null>(null)
 const loading = ref(false)
 const widgets = ref<WidgetConfig[]>([...DEFAULT_WIDGETS])
 const showLayoutEditor = ref(false)
 const savingLayout = ref(false)
+
+// "My top leads" widget state
+const myTopLeads = ref<LeadOut[]>([])
+const myTopLeadsLoading = ref(false)
+
+// "Quick create lead" widget state
+const qcTitle = ref('')
+const qcStatus = ref('new')
+const qcValue = ref('')
+const qcSubmitting = ref(false)
+const qcError = ref('')
+
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const STATUS_LABELS = computed<Record<string, string>>(() => ({
@@ -161,6 +187,70 @@ async function loadStats() {
   }
 }
 
+async function loadMyTopLeads() {
+  if (!firmStore.activeFirm || !authStore.user) return
+  myTopLeadsLoading.value = true
+  try {
+    // Fetch a wider page of the current user's leads, then sort client-side by score
+    // (score is computed dynamically on the backend and isn't a sortable DB field).
+    const params = new URLSearchParams()
+    params.set('assigned_to', String(authStore.user.id))
+    params.set('page', '1')
+    params.set('page_size', '50')
+    const res = await api.get<LeadOut[]>(`/api/v1/crm/opportunities?${params}`)
+    if (res.ok) {
+      // Exclude closed statuses (won/lost/canceled) — focus on active leads.
+      const active = res.data.filter((l) => !['won', 'lost', 'canceled'].includes(l.status))
+      const sorted = active
+        .slice()
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+        .slice(0, 5)
+      myTopLeads.value = sorted
+    }
+  } finally {
+    myTopLeadsLoading.value = false
+  }
+}
+
+async function submitQuickCreate() {
+  const title = qcTitle.value.trim()
+  if (!title) {
+    qcError.value = t('dashboard.qcTitleRequired')
+    return
+  }
+  qcSubmitting.value = true
+  qcError.value = ''
+  try {
+    const valueNum = qcValue.value ? parseFloat(qcValue.value) : null
+    const res = await leadsStore.createLead({
+      title,
+      status: qcStatus.value,
+      value: valueNum != null && !isNaN(valueNum) ? valueNum : null,
+    })
+    if (res.ok) {
+      toast.success(t('dashboard.qcCreated'))
+      qcTitle.value = ''
+      qcStatus.value = 'new'
+      qcValue.value = ''
+      // Refresh widgets that depend on lead data
+      loadStats()
+      loadMyTopLeads()
+    } else {
+      qcError.value = res.error ?? t('dashboard.qcFailed')
+    }
+  } finally {
+    qcSubmitting.value = false
+  }
+}
+
+function openLeadDetail(id: string) {
+  router.push(`/app/opportunities/${id}`)
+}
+
+function statusLabelFor(status: string): string {
+  return STATUS_LABELS.value[status] ?? getStatusMeta(status).label
+}
+
 async function loadLayout() {
   const res = await api.get<{ layout: WidgetConfig[] }>('/api/v1/crm/dashboard-layout')
   if (res.ok && res.data.layout && res.data.layout.length > 0) {
@@ -202,6 +292,7 @@ function toggleWidget(id: string) {
 onMounted(async () => {
   await loadLayout()
   await loadStats()
+  loadMyTopLeads()
   refreshTimer = setInterval(loadStats, 60_000)
 })
 
@@ -408,6 +499,93 @@ function hideSetupBanner() {
               </ul>
             </div>
           </template>
+        </div>
+
+        <!-- Quick create lead -->
+        <div v-else-if="widget.id === 'quick_create_lead'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <PlusIcon class="w-4 h-4 text-red-600" aria-hidden="true" />
+              {{ t('dashboard.quickCreateLead') }}
+            </h3>
+          </div>
+          <form class="grid grid-cols-1 md:grid-cols-12 gap-2" @submit.prevent="submitQuickCreate">
+            <input
+              v-model="qcTitle"
+              type="text"
+              :placeholder="t('dashboard.qcTitlePlaceholder')"
+              :aria-label="t('dashboard.qcTitlePlaceholder')"
+              class="md:col-span-5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <select
+              v-model="qcStatus"
+              :aria-label="t('dashboard.qcStatusLabel')"
+              class="md:col-span-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            >
+              <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ statusLabelFor(s.value) }}</option>
+            </select>
+            <input
+              v-model="qcValue"
+              type="number"
+              min="0"
+              step="any"
+              :placeholder="t('dashboard.qcValuePlaceholder')"
+              :aria-label="t('dashboard.qcValuePlaceholder')"
+              class="md:col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <button
+              type="submit"
+              :disabled="qcSubmitting || !qcTitle.trim()"
+              class="md:col-span-2 bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ qcSubmitting ? t('common.saving') : t('dashboard.qcCreate') }}
+            </button>
+          </form>
+          <p v-if="qcError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ qcError }}</p>
+        </div>
+
+        <!-- My top leads -->
+        <div v-else-if="widget.id === 'my_top_leads'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <StarIcon class="w-4 h-4 text-yellow-500" aria-hidden="true" />
+              {{ t('dashboard.myTopLeads') }}
+            </h3>
+            <RouterLink to="/app/opportunities" class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600">{{ t('dashboard.viewAll') }}</RouterLink>
+          </div>
+          <div v-if="myTopLeadsLoading && myTopLeads.length === 0" class="space-y-2 animate-pulse">
+            <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+          </div>
+          <div v-else-if="myTopLeads.length === 0" class="text-sm text-gray-400 text-center py-6">
+            {{ t('dashboard.myTopLeadsEmpty') }}
+          </div>
+          <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700">
+            <li
+              v-for="lead in myTopLeads"
+              :key="lead.id"
+              class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-2 px-2 rounded-lg transition-colors"
+              @click="openLeadDetail(lead.id)"
+            >
+              <span
+                class="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-semibold"
+                :class="(lead.score ?? 0) >= 75 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                  : (lead.score ?? 0) >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'"
+                :title="t('dashboard.scoreTitle', { score: lead.score ?? 0 })"
+              >
+                {{ lead.score ?? 0 }}
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {{ lead.company_name || lead.contact_person_name || '—' }}
+                </div>
+              </div>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(lead.status).color">
+                {{ statusLabelFor(lead.status) }}
+              </span>
+            </li>
+          </ul>
         </div>
 
         <!-- Status breakdown -->

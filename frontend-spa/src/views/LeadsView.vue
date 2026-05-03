@@ -5,6 +5,7 @@ import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/sto
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
+import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
@@ -13,7 +14,9 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
-import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { useListView, type ColumnDef } from '@/composables/useListView'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
+import Avatar from '@/components/ui/Avatar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +24,7 @@ const store = useLeadsStore()
 const savedViewsStore = useSavedViewsStore()
 const customersStore = useCustomersStore()
 const authStore = useAuthStore()
+const firmStore = useFirmStore()
 const toast = useToast()
 const { t } = useI18n()
 
@@ -34,7 +38,7 @@ const viewModeIcons: Record<ViewMode, object> = {
   list: ListBulletIcon,
 }
 
-const viewMode = ref<ViewMode>('table')
+const viewMode = ref<ViewMode>('list')
 
 watch(() => authStore.user?.id, (userId) => {
   if (!userId) return
@@ -57,8 +61,127 @@ watch(viewMode, (mode) => {
     // ignore
   }
 })
+
+// ---------------------------------------------------------------------------
+// Team members (for filter dropdowns)
+// ---------------------------------------------------------------------------
+interface Member {
+  id: string
+  user_id: string
+  user_email: string
+  user_full_name: string
+  role: string
+}
+const members = ref<Member[]>([])
+async function loadMembers() {
+  const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
+  if (!firmId) return
+  const res = await api.get<Member[]>(`/api/v1/firms/${firmId}/members`)
+  if (res.ok) members.value = res.data
+}
+function memberLabel(m: Member) {
+  return m.user_full_name?.trim() || m.user_email
+}
+
+// ---------------------------------------------------------------------------
+// Sort + Column visibility (via useListView composable)
+// ---------------------------------------------------------------------------
+type SortField = 'title' | 'status' | 'source' | 'value' | 'created_at'
+type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'users'
+
+const TABLE_COLUMNS: ColumnDef<ColumnId>[] = [
+  { id: 'status', labelKey: 'colStatus', defaultVisible: true },
+  { id: 'source', labelKey: 'colSource', defaultVisible: true },
+  { id: 'value', labelKey: 'colValue', defaultVisible: true },
+  { id: 'score', labelKey: 'colScore', defaultVisible: false },
+  { id: 'created_at', labelKey: 'colCreated', defaultVisible: true },
+  { id: 'users', labelKey: 'colUsers', defaultVisible: true },
+]
+
+const {
+  sortField, sortDir, setSort, sortIcon,
+  DEFAULT_SORT_FIELD, DEFAULT_SORT_DIR,
+  visibleColumns, columnPickerOpen, isColVisible, toggleColumn, resetColumns,
+} = useListView<SortField, ColumnId>(
+  { storageKeyPrefix: 'leadlab_leads', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
+  computed(() => authStore.user?.id),
+)
+
+const STATUS_ORDER: Record<string, number> = {
+  new: 1, contacted: 2, proposal: 3, negotiation: 4, won: 5, lost: 6, canceled: 7,
+}
+
+const sortedLeads = computed(() => {
+  return [...store.leads].sort((a, b) => {
+    let cmp = 0
+    if (sortField.value === 'value') {
+      // Null values sort to the end regardless of direction
+      const av = a.value ?? null
+      const bv = b.value ?? null
+      if (av === null && bv === null) cmp = 0
+      else if (av === null) cmp = 1
+      else if (bv === null) cmp = -1
+      else cmp = av - bv
+    } else if (sortField.value === 'status') {
+      cmp = (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0)
+    } else if (sortField.value === 'created_at') {
+      cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    } else {
+      const va = (a[sortField.value] ?? '') as string
+      const vb = (b[sortField.value] ?? '') as string
+      cmp = va.localeCompare(vb)
+    }
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Advanced filters
+// ---------------------------------------------------------------------------
 const filterStatus = ref((route.query.status as string) ?? '')
 const filterSource = ref('')
+const filterAssignedTo = ref('')
+const filterCreatedBy = ref('')
+const filterValueMin = ref('')
+const filterValueMax = ref('')
+const filterCreatedAfter = ref('')
+const filterCreatedBefore = ref('')
+const showAdvancedFilters = ref(false)
+
+function hasActiveAdvancedFilters() {
+  return !!(filterAssignedTo.value || filterCreatedBy.value || filterValueMin.value ||
+            filterValueMax.value || filterCreatedAfter.value || filterCreatedBefore.value)
+}
+
+function buildFilters(page = 1) {
+  const valueMin = filterValueMin.value ? parseFloat(filterValueMin.value) : undefined
+  const valueMax = filterValueMax.value ? parseFloat(filterValueMax.value) : undefined
+  return {
+    status: filterStatus.value,
+    source: filterSource.value,
+    assigned_to: filterAssignedTo.value || undefined,
+    created_by: filterCreatedBy.value || undefined,
+    value_min: valueMin != null && !isNaN(valueMin) ? valueMin : undefined,
+    value_max: valueMax != null && !isNaN(valueMax) ? valueMax : undefined,
+    created_after: filterCreatedAfter.value || undefined,
+    created_before: filterCreatedBefore.value || undefined,
+    page,
+  }
+}
+
+function loadLeads(page = 1) {
+  return store.fetchLeads(buildFilters(page))
+}
+
+function clearAdvancedFilters() {
+  filterAssignedTo.value = ''
+  filterCreatedBy.value = ''
+  filterValueMin.value = ''
+  filterValueMax.value = ''
+  filterCreatedAfter.value = ''
+  filterCreatedBefore.value = ''
+  loadLeads()
+}
 const showModal = ref(false)
 const editingLead = ref<LeadOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
@@ -207,8 +330,14 @@ function onContextAction(id: string) {
   else if (id === 'delete') confirmDeleteId.value = lead.id
 }
 
-watch(filterStatus, () => { store.fetchLeads({ status: filterStatus.value, source: filterSource.value }) })
-watch(filterSource, () => { store.fetchLeads({ status: filterStatus.value, source: filterSource.value }) })
+watch(filterStatus, () => { loadLeads() })
+watch(filterSource, () => { loadLeads() })
+watch(filterAssignedTo, () => { loadLeads() })
+watch(filterCreatedBy, () => { loadLeads() })
+watch(filterValueMin, () => { loadLeads() })
+watch(filterValueMax, () => { loadLeads() })
+watch(filterCreatedAfter, () => { loadLeads() })
+watch(filterCreatedBefore, () => { loadLeads() })
 
 // Apply saved view from ?view= query param
 watch(() => route.query.view, async (viewId) => {
@@ -218,11 +347,33 @@ watch(() => route.query.view, async (viewId) => {
   if (v) {
     filterStatus.value = (v.filters.status as string) ?? ''
     filterSource.value = (v.filters.source as string) ?? ''
+    filterAssignedTo.value = (v.filters.assigned_to as string) ?? ''
+    filterCreatedBy.value = (v.filters.created_by as string) ?? ''
+    filterValueMin.value = (v.filters.value_min as string) ?? ''
+    filterValueMax.value = (v.filters.value_max as string) ?? ''
+    filterCreatedAfter.value = (v.filters.created_after as string) ?? ''
+    filterCreatedBefore.value = (v.filters.created_before as string) ?? ''
+    if (hasActiveAdvancedFilters()) showAdvancedFilters.value = true
+    // Restore sort
+    const validSortFields: SortField[] = ['title', 'status', 'source', 'value', 'created_at']
+    if (v.sort_by && validSortFields.includes(v.sort_by as SortField)) {
+      sortField.value = v.sort_by as SortField
+    }
+    if (v.sort_dir === 'asc' || v.sort_dir === 'desc') {
+      sortDir.value = v.sort_dir
+    }
+    // Restore columns
+    if (Array.isArray(v.columns) && v.columns.length > 0) {
+      const validCols = TABLE_COLUMNS.map((c) => c.id)
+      const restored = v.columns.filter((c) => validCols.includes(c as ColumnId)) as ColumnId[]
+      if (restored.length > 0) visibleColumns.value = restored
+    }
   }
 }, { immediate: true })
 
 onMounted(async () => {
-  store.fetchLeads({ status: filterStatus.value })
+  loadMembers()
+  loadLeads()
   savedViewsStore.fetchViews()
 })
 
@@ -421,7 +572,16 @@ async function saveCurrentView() {
     filters: {
       ...(filterStatus.value ? { status: filterStatus.value } : {}),
       ...(filterSource.value ? { source: filterSource.value } : {}),
+      ...(filterAssignedTo.value ? { assigned_to: filterAssignedTo.value } : {}),
+      ...(filterCreatedBy.value ? { created_by: filterCreatedBy.value } : {}),
+      ...(filterValueMin.value ? { value_min: filterValueMin.value } : {}),
+      ...(filterValueMax.value ? { value_max: filterValueMax.value } : {}),
+      ...(filterCreatedAfter.value ? { created_after: filterCreatedAfter.value } : {}),
+      ...(filterCreatedBefore.value ? { created_before: filterCreatedBefore.value } : {}),
     },
+    sort_by: sortField.value,
+    sort_dir: sortDir.value,
+    columns: visibleColumns.value,
   })
   savingView.value = false
   if (result) {
@@ -455,7 +615,7 @@ async function onImportFile(e: Event) {
     )
     if (res.ok) {
       toast.success(t('leads.importStarted'))
-      setTimeout(() => store.fetchLeads({ status: filterStatus.value, source: filterSource.value }), 2000)
+      setTimeout(() => loadLeads(), 2000)
     } else {
       const msg = ((res.data as unknown) as Record<string, string> | null)?.detail ?? t('leads.importFailed')
       toast.error(msg)
@@ -483,6 +643,12 @@ const actionsDropdownItems = computed(() => [
   { label: t('leads.exportCsv'), onClick: exportCsv },
   { label: t('leads.exportPdf'), onClick: exportPdf },
 ])
+
+// Returns whether assignee should be shown separately from creator
+function showAssigneeAvatar(lead: LeadOut): boolean {
+  if (!lead.assigned_to_id) return false
+  return lead.assigned_to_id !== lead.created_by_id
+}
 </script>
 
 <template>
@@ -544,6 +710,19 @@ const actionsDropdownItems = computed(() => [
           <option value="social">{{ t('leads.sourceSocial') }}</option>
           <option value="other">{{ t('leads.sourceOther') }}</option>
         </select>
+        <!-- Advanced filters toggle -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
+          :class="hasActiveAdvancedFilters()
+            ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          <FunnelIcon class="w-3.5 h-3.5" />
+          {{ t('leads.advancedFilters') }}
+          <span v-if="hasActiveAdvancedFilters()" class="ml-0.5 w-4 h-4 bg-red-600 text-white rounded-full text-[10px] flex items-center justify-center">!</span>
+        </button>
       </template>
 
       <button
@@ -564,6 +743,80 @@ const actionsDropdownItems = computed(() => [
 
       <!-- Hidden file input for CSV import -->
       <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+    </div>
+
+    <!-- Advanced filters panel -->
+    <div
+      v-if="showAdvancedFilters && viewMode !== 'kanban'"
+      class="mb-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700"
+    >
+      <div class="flex flex-wrap gap-3 items-end">
+        <!-- Řešitel (assigned_to) -->
+        <div class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterAssignedTo') }}</label>
+          <select v-model="filterAssignedTo" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.filterAll') }}</option>
+            <option v-for="m in members" :key="m.user_id" :value="m.user_id">{{ memberLabel(m) }}</option>
+          </select>
+        </div>
+        <!-- Tvůrce (created_by) -->
+        <div class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterCreatedBy') }}</label>
+          <select v-model="filterCreatedBy" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.filterAll') }}</option>
+            <option v-for="m in members" :key="m.user_id" :value="m.user_id">{{ memberLabel(m) }}</option>
+          </select>
+        </div>
+        <!-- Hodnota min/max -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterValueMin') }}</label>
+          <input
+            v-model="filterValueMin"
+            type="number"
+            min="0"
+            step="1"
+            :placeholder="t('leads.filterValueMinPlaceholder')"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400 w-28"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterValueMax') }}</label>
+          <input
+            v-model="filterValueMax"
+            type="number"
+            min="0"
+            step="1"
+            :placeholder="t('leads.filterValueMaxPlaceholder')"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400 w-28"
+          />
+        </div>
+        <!-- Datum od/do -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterCreatedAfter') }}</label>
+          <input
+            v-model="filterCreatedAfter"
+            type="date"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterCreatedBefore') }}</label>
+          <input
+            v-model="filterCreatedBefore"
+            type="date"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400"
+          />
+        </div>
+        <!-- Clear button -->
+        <button
+          v-if="hasActiveAdvancedFilters()"
+          type="button"
+          class="mt-auto px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 border border-gray-200 dark:border-gray-600 rounded-xl"
+          @click="clearAdvancedFilters"
+        >
+          <XMarkIcon class="w-3.5 h-3.5 inline-block mr-0.5 align-text-bottom" />{{ t('leads.clearFilters') }}
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -594,18 +847,56 @@ const actionsDropdownItems = computed(() => [
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colTitle') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colStatus') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('leads.colSource') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colValue') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">{{ t('leads.colScore') }}</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colCreated') }}</th>
-              <th class="px-4 py-3" />
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('title')">{{ t('leads.colTitle') }} <span class="opacity-60">{{ sortIcon('title') }}</span></th>
+              <th v-if="isColVisible('status')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('status')">{{ t('leads.colStatus') }} <span class="opacity-60">{{ sortIcon('status') }}</span></th>
+              <th v-if="isColVisible('source')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('source')">{{ t('leads.colSource') }} <span class="opacity-60">{{ sortIcon('source') }}</span></th>
+              <th v-if="isColVisible('value')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('value')">{{ t('leads.colValue') }} <span class="opacity-60">{{ sortIcon('value') }}</span></th>
+              <th v-if="isColVisible('score')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colScore') }}</th>
+              <th v-if="isColVisible('created_at')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('created_at')">{{ t('leads.colCreated') }} <span class="opacity-60">{{ sortIcon('created_at') }}</span></th>
+              <th v-if="isColVisible('users')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colUsers') }}</th>
+              <!-- Column picker -->
+              <th class="px-4 py-3 text-right">
+                <div class="relative inline-block">
+                  <button
+                    type="button"
+                    class="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    :title="t('leads.colPicker')"
+                    :aria-label="t('leads.colPicker')"
+                    @click.stop="columnPickerOpen = !columnPickerOpen"
+                  >
+                    <AdjustmentsHorizontalIcon class="w-4 h-4" />
+                  </button>
+                  <!-- Column picker dropdown -->
+                  <div
+                    v-if="columnPickerOpen"
+                    class="absolute right-0 top-8 z-20 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-2 min-w-44"
+                    @click.stop
+                  >
+                    <div class="px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                      <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colPicker') }}</span>
+                      <button type="button" class="text-xs text-red-500 hover:text-red-700" @click="resetColumns">{{ t('leads.resetColumns') }}</button>
+                    </div>
+                    <label
+                      v-for="col in TABLE_COLUMNS"
+                      :key="col.id"
+                      class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="checkbox"
+                        class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        :checked="isColVisible(col.id)"
+                        @change="toggleColumn(col.id)"
+                      />
+                      {{ t(`leads.${col.labelKey}`) }}
+                    </label>
+                  </div>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="lead in store.leads"
+              v-for="lead in sortedLeads"
               :key="lead.id"
               class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
               @click.self="goToDetail(lead.id)"
@@ -617,7 +908,7 @@ const actionsDropdownItems = computed(() => [
                   <span v-if="overdueTasks.has(lead.id)" title="Overdue task" class="text-red-500 text-xs flex-shrink-0" aria-label="Overdue task">⚠</span>
                 </div>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="isColVisible('status')" class="px-4 py-3">
                 <div class="relative">
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
@@ -651,12 +942,18 @@ const actionsDropdownItems = computed(() => [
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
-              <td class="px-4 py-3 text-gray-700 dark:text-gray-300 hidden lg:table-cell" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
-              <td class="px-4 py-3 hidden xl:table-cell" @click="goToDetail(lead.id)">
+              <td v-if="isColVisible('source')" class="px-4 py-3 text-gray-500 dark:text-gray-400" @click="goToDetail(lead.id)">{{ sourceLabel(lead.source) }}</td>
+              <td v-if="isColVisible('value')" class="px-4 py-3 text-gray-700 dark:text-gray-300" @click="goToDetail(lead.id)">{{ fmtValue(lead) }}</td>
+              <td v-if="isColVisible('score')" class="px-4 py-3" @click="goToDetail(lead.id)">
                 <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
               </td>
-              <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(lead.id)">
+                <div class="flex items-center gap-1">
+                  <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
+                  <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+                </div>
+              </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
@@ -674,12 +971,12 @@ const actionsDropdownItems = computed(() => [
             <button
               v-if="store.page > 1"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page - 1 })"
+              @click="loadLeads(store.page - 1)"
             >{{ t('leads.prev') }}</button>
             <button
               v-if="store.hasMore"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page + 1 })"
+              @click="loadLeads(store.page + 1)"
             >{{ t('leads.next') }}</button>
           </div>
         </div>
@@ -702,7 +999,7 @@ const actionsDropdownItems = computed(() => [
       </div>
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-50 dark:divide-gray-700">
         <div
-          v-for="lead in store.leads"
+          v-for="lead in sortedLeads"
           :key="lead.id"
           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
           @click="goToDetail(lead.id)"
@@ -734,6 +1031,12 @@ const actionsDropdownItems = computed(() => [
           <!-- Date -->
           <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
 
+          <!-- User avatars (creator + assignee if different) -->
+          <div class="hidden sm:flex items-center gap-1 flex-shrink-0" @click.stop>
+            <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
+            <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+          </div>
+
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>
             <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
@@ -749,12 +1052,12 @@ const actionsDropdownItems = computed(() => [
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page - 1 })"
+            @click="loadLeads(store.page - 1)"
           >{{ t('leads.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchLeads({ status: filterStatus, source: filterSource, page: store.page + 1 })"
+            @click="loadLeads(store.page + 1)"
           >{{ t('leads.next') }}</button>
         </div>
       </div>
@@ -833,7 +1136,12 @@ const actionsDropdownItems = computed(() => [
             />
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Saves: status={{ filterStatus || 'any' }}, source={{ filterSource || 'any' }}
+            {{ t('leads.saveViewDescription', { status: filterStatus || t('leads.filterAll'), source: filterSource || t('leads.filterAll') }) }}
+            <template v-if="hasActiveAdvancedFilters()"> + {{ t('leads.saveViewAdvanced') }}</template>
+            <template v-if="sortField !== DEFAULT_SORT_FIELD || sortDir !== DEFAULT_SORT_DIR"> · {{ t('leads.saveViewSort', { field: t(`leads.col_${sortField}`), dir: t(`leads.sort_${sortDir}`) }) }}</template>
+          </p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            {{ t('leads.saveViewColumns', { n: visibleColumns.length }) }}
           </p>
         </div>
         <div class="flex gap-3 pt-4">

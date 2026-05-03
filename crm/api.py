@@ -298,6 +298,7 @@ class LeadOut(Schema):
     status: str
     source: str
     assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str] = None
     value: Optional[Decimal]
     currency: str
     score: Optional[int]
@@ -385,8 +386,15 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         try:
             cb = lead.created_by
             created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not resolve created_by name for lead %s: %s", lead.id, exc)
+    assigned_to_name: Optional[str] = None
+    if lead.assigned_to_id:
+        try:
+            at = lead.assigned_to
+            assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
+        except Exception as exc:
+            logger.debug("Could not resolve assigned_to name for lead %s: %s", lead.id, exc)
     # Company & contact person
     company_id = str(lead.company_id) if lead.company_id else None
     company_name: Optional[str] = None
@@ -412,6 +420,7 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         "status": lead.status,
         "source": lead.source,
         "assigned_to_id": str(lead.assigned_to_id) if lead.assigned_to_id else None,
+        "assigned_to_name": assigned_to_name,
         "value": lead.value,
         "currency": lead.currency,
         "score": score,
@@ -556,10 +565,15 @@ def list_leads(
     request,
     status: str = "",
     assigned_to: str = "",
+    created_by: str = "",
     source: str = "",
     tag: str = "",
+    value_min: Optional[Decimal] = None,
+    value_max: Optional[Decimal] = None,
     created_after: Optional[datetime] = None,
     created_before: Optional[datetime] = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ):
@@ -573,16 +587,29 @@ def list_leads(
         qs = qs.filter(status=status)
     if assigned_to:
         qs = qs.filter(assigned_to_id=assigned_to)
+    if created_by:
+        qs = qs.filter(created_by_id=created_by)
     if source:
         qs = qs.filter(source=source)
     if tag:
         qs = qs.filter(customer__tags__icontains=tag)
+    if value_min is not None:
+        qs = qs.filter(value__gte=value_min)
+    if value_max is not None:
+        qs = qs.filter(value__lte=value_max)
     if created_after:
         qs = qs.filter(created_at__gte=created_after)
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
+    # Sorting
+    _allowed_sort_fields = {'title', 'status', 'source', 'value', 'created_at', 'updated_at'}
+    order_field = sort_by if sort_by in _allowed_sort_fields else 'created_at'
+    if sort_dir == 'asc':
+        qs = qs.order_by(order_field)
+    else:
+        qs = qs.order_by(f'-{order_field}')
     offset = (page - 1) * page_size
-    leads = list(qs.select_related('created_by')[offset:offset + page_size])
+    leads = list(qs.select_related('created_by', 'assigned_to')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))
     return 200, [_lead_out(lead, rules) for lead in leads]
 
@@ -6040,6 +6067,7 @@ class SavedViewOut(Schema):
     filters: Dict[str, Any]
     sort_by: str
     sort_dir: str
+    columns: List[str]
     created_at: datetime
 
 
@@ -6049,6 +6077,7 @@ class SavedViewIn(Schema):
     filters: Dict[str, Any] = {}
     sort_by: str = ""
     sort_dir: str = "asc"
+    columns: List[str] = []
 
 
 def _saved_view_out(v: SavedView) -> dict:
@@ -6059,6 +6088,7 @@ def _saved_view_out(v: SavedView) -> dict:
         "filters": v.filters,
         "sort_by": v.sort_by,
         "sort_dir": v.sort_dir,
+        "columns": v.columns if isinstance(v.columns, list) else [],
         "created_at": v.created_at,
     }
 
@@ -6106,6 +6136,7 @@ def create_saved_view(request, payload: SavedViewIn):
             filters=payload.filters,
             sort_by=payload.sort_by,
             sort_dir=payload.sort_dir,
+            columns=payload.columns,
         )
     except Exception:
         return 400, {"detail": "A saved view with this name already exists for this entity."}

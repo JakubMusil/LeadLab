@@ -10,6 +10,7 @@ export interface SavedView {
   filters: Record<string, string>
   sort_by: string
   sort_dir: string
+  columns: string[]
   created_at: string
 }
 
@@ -19,6 +20,7 @@ export interface SavedViewIn {
   filters?: Record<string, string>
   sort_by?: string
   sort_dir?: string
+  columns?: string[]
 }
 
 export const useSavedViewsStore = defineStore('savedViews', () => {
