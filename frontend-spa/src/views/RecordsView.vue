@@ -512,18 +512,15 @@ onMounted(async () => {
   }
 })
 
-// React to category_id query param changes (e.g. from sidebar nav)
-watch(() => route.query.category_id, (catId) => {
-  filterCategoryId.value = (catId as string) ?? ''
-  filterStageId.value = ''
-  loadLeads()
-})
-
-// React to stage_id query param changes
-watch(() => route.query.stage_id, (stageId) => {
-  filterStageId.value = (stageId as string) ?? ''
-  loadLeads()
-})
+// React to category_id and stage_id query param changes (combined to avoid double loadLeads)
+watch(
+  [() => route.query.category_id, () => route.query.stage_id],
+  ([catId, stageId]) => {
+    filterCategoryId.value = (catId as string) ?? ''
+    filterStageId.value = (stageId as string) ?? ''
+    loadLeads()
+  },
+)
 
 const leadsByStatus = computed(() => {
   const map: Record<string, RecordOut[]> = {}

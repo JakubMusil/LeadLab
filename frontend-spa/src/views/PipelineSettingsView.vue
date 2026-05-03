@@ -96,7 +96,7 @@ const isAdminOrOwner = computed(() =>
 // ---------------------------------------------------------------------------
 
 onMounted(async () => {
-  loadMembers()
+  await loadMembers()
   if (pipelineStore.categories.length === 0) {
     await pipelineStore.fetchCategories()
   }

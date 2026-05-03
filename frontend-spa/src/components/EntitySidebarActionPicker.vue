@@ -521,7 +521,7 @@ async function addActivity() {
     emit('activity-added')
     activeActionType.value = ''
   } else {
-    const msg = (res.data as Record<string, string> | null)?.detail ?? t('leads.activityFailed')
+    const msg = (res.data as { detail?: string } | null)?.detail ?? t('leads.activityFailed')
     toast.error(msg)
   }
 }

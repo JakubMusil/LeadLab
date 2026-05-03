@@ -320,7 +320,7 @@ function fmtBytes(b: number) {
 async function loadTasks() {
   tasksLoading.value = true
   try {
-    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100&lead_id=${leadId.value}`)
+    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100&lead_id=${encodeURIComponent(leadId.value)}`)
     if (res.ok) {
       tasks.value = res.data
     }
