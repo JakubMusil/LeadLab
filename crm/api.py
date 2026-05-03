@@ -25,6 +25,9 @@ from crm.models import (
     Activity,
     ActivityReaction,
     ActivityType,
+    Category,
+    CategoryField,
+    Checkpoint,
     ContactType,
     Customer,
     DashboardLayout,
@@ -37,6 +40,7 @@ from crm.models import (
     Project,
     Proposal,
     SavedView,
+    Stage,
     Task,
     StreamlineItem,
     StreamlineItemKind,
@@ -309,6 +313,17 @@ class RecordOut(Schema):
     company_name: Optional[str] = None
     contact_person_id: Optional[str] = None
     contact_person_name: Optional[str] = None
+    # Pipeline category & stage
+    category_id: Optional[str] = None
+    current_stage_id: Optional[str] = None
+    current_stage_name: Optional[str] = None
+    parent_id: Optional[str] = None
+    # Date fields
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    notes: str = ""
+    extra_data: Dict[str, Any] = {}
 
 
 class RecordIn(Schema):
@@ -321,6 +336,14 @@ class RecordIn(Schema):
     currency: str = "CZK"
     company_id: Optional[str] = None
     contact_person_id: Optional[str] = None
+    category_id: Optional[str] = None
+    current_stage_id: Optional[str] = None
+    parent_id: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    notes: str = ""
+    extra_data: Dict[str, Any] = {}
 
 
 class RecordUpdateIn(Schema):
@@ -333,6 +356,14 @@ class RecordUpdateIn(Schema):
     customer_id: Optional[str] = None
     company_id: Optional[str] = None
     contact_person_id: Optional[str] = None
+    category_id: Optional[str] = None
+    current_stage_id: Optional[str] = None
+    parent_id: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    notes: Optional[str] = None
+    extra_data: Optional[Dict[str, Any]] = None
 
 
 def _compute_lead_score(lead: PipelineRecord, rules: list) -> int:
@@ -410,6 +441,13 @@ def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
             contact_person_name = f"{cp.first_name} {cp.last_name}".strip() or cp.email
         except Exception:
             pass
+    # Resolve current_stage name
+    current_stage_name: Optional[str] = None
+    if lead.current_stage_id:
+        try:
+            current_stage_name = lead.current_stage.name
+        except Exception:
+            pass
     return {
         "id": str(lead.id),
         "firm_id": str(lead.firm_id),
@@ -430,6 +468,16 @@ def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
         "company_name": company_name,
         "contact_person_id": contact_person_id,
         "contact_person_name": contact_person_name,
+        # Pipeline fields
+        "category_id": str(lead.category_id) if lead.category_id else None,
+        "current_stage_id": str(lead.current_stage_id) if lead.current_stage_id else None,
+        "current_stage_name": current_stage_name,
+        "parent_id": str(lead.parent_id) if lead.parent_id else None,
+        "start_date": lead.start_date.isoformat() if lead.start_date else None,
+        "end_date": lead.end_date.isoformat() if lead.end_date else None,
+        "expires_at": lead.expires_at,
+        "notes": lead.notes or "",
+        "extra_data": lead.extra_data or {},
     }
 
 
@@ -566,6 +614,10 @@ def list_records(
     created_by: str = "",
     source: str = "",
     tag: str = "",
+    category_id: str = "",
+    stage_id: str = "",
+    customer_id: str = "",
+    parent_id: str = "",
     value_min: Optional[Decimal] = None,
     value_max: Optional[Decimal] = None,
     created_after: Optional[datetime] = None,
@@ -591,6 +643,14 @@ def list_records(
         qs = qs.filter(source=source)
     if tag:
         qs = qs.filter(customer__tags__icontains=tag)
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+    if stage_id:
+        qs = qs.filter(current_stage_id=stage_id)
+    if customer_id:
+        qs = qs.filter(customer_id=customer_id)
+    if parent_id:
+        qs = qs.filter(parent_id=parent_id)
     if value_min is not None:
         qs = qs.filter(value__gte=value_min)
     if value_max is not None:
@@ -607,7 +667,7 @@ def list_records(
     else:
         qs = qs.order_by(f'-{order_field}')
     offset = (page - 1) * page_size
-    leads = list(qs.select_related('created_by', 'assigned_to')[offset:offset + page_size])
+    leads = list(qs.select_related('created_by', 'assigned_to', 'current_stage')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))
     return 200, [_record_out(lead, rules) for lead in leads]
 
@@ -654,6 +714,43 @@ def create_record(request, payload: RecordIn):
         except User.DoesNotExist:
             return 400, {"detail": "Assigned user not found."}
 
+    category = None
+    if payload.category_id:
+        try:
+            category = Category.objects.get(id=payload.category_id, firm=request.firm)
+        except Category.DoesNotExist:
+            return 400, {"detail": "Category not found in this Firm."}
+
+    current_stage = None
+    if payload.current_stage_id:
+        try:
+            current_stage = Stage.objects.get(id=payload.current_stage_id)
+            if category and current_stage.category_id != category.id:
+                return 400, {"detail": "Stage does not belong to the specified category."}
+        except Stage.DoesNotExist:
+            return 400, {"detail": "Stage not found."}
+
+    parent = None
+    if payload.parent_id:
+        try:
+            parent = PipelineRecord.objects.get(id=payload.parent_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return 400, {"detail": "Parent record not found."}
+
+    start_date = None
+    if payload.start_date:
+        try:
+            start_date = dt.date.fromisoformat(payload.start_date)
+        except ValueError:
+            return 400, {"detail": "Invalid start_date format. Use YYYY-MM-DD."}
+
+    end_date = None
+    if payload.end_date:
+        try:
+            end_date = dt.date.fromisoformat(payload.end_date)
+        except ValueError:
+            return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
+
     lead = PipelineRecord.objects.create(
         firm=request.firm,
         customer=customer,
@@ -666,6 +763,14 @@ def create_record(request, payload: RecordIn):
         value=payload.value,
         currency=payload.currency,
         created_by=request.user,
+        category=category,
+        current_stage=current_stage,
+        parent=parent,
+        start_date=start_date,
+        end_date=end_date,
+        expires_at=payload.expires_at,
+        notes=payload.notes,
+        extra_data=payload.extra_data,
     )
     broadcast_event(firm=request.firm, event='record.created', payload=_record_out(lead))
 
@@ -746,6 +851,59 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         else:
             lead.customer = None
 
+    if "category_id" in update_data:
+        cat_id = update_data.pop("category_id")
+        if cat_id:
+            try:
+                lead.category = Category.objects.get(id=cat_id, firm=request.firm)
+            except Category.DoesNotExist:
+                return 400, {"detail": "Category not found."}
+        else:
+            lead.category = None
+
+    if "current_stage_id" in update_data:
+        stage_id = update_data.pop("current_stage_id")
+        if stage_id:
+            try:
+                stage = Stage.objects.get(id=stage_id)
+                if lead.category_id and stage.category_id != lead.category_id:
+                    return 400, {"detail": "Stage does not belong to the record's category."}
+                lead.current_stage = stage
+            except Stage.DoesNotExist:
+                return 400, {"detail": "Stage not found."}
+        else:
+            lead.current_stage = None
+
+    if "parent_id" in update_data:
+        par_id = update_data.pop("parent_id")
+        if par_id:
+            try:
+                lead.parent = PipelineRecord.objects.get(id=par_id, firm=request.firm)
+            except PipelineRecord.DoesNotExist:
+                return 400, {"detail": "Parent record not found."}
+        else:
+            lead.parent = None
+
+    if "start_date" in update_data:
+        sd = update_data.pop("start_date")
+        if sd:
+            try:
+                lead.start_date = dt.date.fromisoformat(sd)
+            except ValueError:
+                return 400, {"detail": "Invalid start_date format. Use YYYY-MM-DD."}
+        else:
+            lead.start_date = None
+
+    if "end_date" in update_data:
+        ed = update_data.pop("end_date")
+        if ed:
+            try:
+                lead.end_date = dt.date.fromisoformat(ed)
+            except ValueError:
+                return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
+        else:
+            lead.end_date = None
+
     for field, value in update_data.items():
         setattr(lead, field, value)
 
@@ -805,8 +963,163 @@ def delete_record(request, record_id: str):
 
 
 # ===========================================================================
-# ACTIVITIES (Action Hub)
+# CHECKPOINTS
 # ===========================================================================
+
+class CheckpointOut(Schema):
+    id: str
+    record_id: str
+    name: str
+    date: Optional[str]
+    is_completed: bool
+    description: str
+    created_at: str
+
+
+class CheckpointIn(Schema):
+    name: str
+    date: Optional[str] = None
+    is_completed: bool = False
+    description: str = ""
+
+
+class CheckpointUpdateIn(Schema):
+    name: Optional[str] = None
+    date: Optional[str] = None
+    is_completed: Optional[bool] = None
+    description: Optional[str] = None
+
+
+def _checkpoint_out(cp: Checkpoint) -> dict:
+    return {
+        "id": str(cp.id),
+        "record_id": str(cp.record_id),
+        "name": cp.name,
+        "date": cp.date.isoformat() if cp.date else None,
+        "is_completed": cp.is_completed,
+        "description": cp.description,
+        "created_at": cp.created_at.isoformat(),
+    }
+
+
+@router.get(
+    "/records/{record_id}/checkpoints",
+    auth=django_auth,
+    response={200: List[CheckpointOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_checkpoints(request, record_id: str):
+    """List all checkpoints for a record, ordered by date then name."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    checkpoints = Checkpoint.objects.filter(record=lead).order_by("date", "name")
+    return 200, [_checkpoint_out(cp) for cp in checkpoints]
+
+
+@router.post(
+    "/records/{record_id}/checkpoints",
+    auth=django_auth,
+    response={201: CheckpointOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_checkpoint(request, record_id: str, payload: CheckpointIn):
+    """Create a checkpoint for a record."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    date = None
+    if payload.date:
+        try:
+            date = dt.date.fromisoformat(payload.date)
+        except ValueError:
+            return 400, {"detail": "Invalid date format. Use YYYY-MM-DD."}
+
+    cp = Checkpoint.objects.create(
+        record=lead,
+        name=payload.name,
+        date=date,
+        is_completed=payload.is_completed,
+        description=payload.description,
+    )
+    return 201, _checkpoint_out(cp)
+
+
+@router.patch(
+    "/records/{record_id}/checkpoints/{checkpoint_id}",
+    auth=django_auth,
+    response={200: CheckpointOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_checkpoint(request, record_id: str, checkpoint_id: str, payload: CheckpointUpdateIn):
+    """Update a checkpoint."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    try:
+        cp = Checkpoint.objects.get(id=checkpoint_id, record=lead)
+    except Checkpoint.DoesNotExist:
+        return 404, {"detail": "Checkpoint not found."}
+
+    update_data = payload.dict(exclude_none=True)
+    if "date" in update_data:
+        d = update_data.pop("date")
+        if d:
+            try:
+                cp.date = dt.date.fromisoformat(d)
+            except ValueError:
+                return 400, {"detail": "Invalid date format. Use YYYY-MM-DD."}
+        else:
+            cp.date = None
+
+    for field, value in update_data.items():
+        setattr(cp, field, value)
+    cp.save()
+    return 200, _checkpoint_out(cp)
+
+
+@router.delete(
+    "/records/{record_id}/checkpoints/{checkpoint_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_checkpoint(request, record_id: str, checkpoint_id: str):
+    """Delete a checkpoint."""
+    try:
+        require_membership(request, min_role=MembershipRole.WORKER)
+    except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    try:
+        cp = Checkpoint.objects.get(id=checkpoint_id, record=lead)
+    except Checkpoint.DoesNotExist:
+        return 404, {"detail": "Checkpoint not found."}
+
+    perform_soft_delete(cp, request.user)
+    return 204, None
 
 class ActivityOut(Schema):
     id: str
