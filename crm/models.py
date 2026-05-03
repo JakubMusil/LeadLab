@@ -3,9 +3,43 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone as _tz
 
 from firms.models import Firm
 from crm.soft_delete import SoftDeleteMixin
+
+
+# ---------------------------------------------------------------------------
+# Helper: recalculate canonical amount on a financial record
+# ---------------------------------------------------------------------------
+
+def _recalc_canonical(obj, *, amount_field: str) -> None:
+    """
+    Compute canonical_amount for *obj* using the current exchange rates.
+
+    Called from model.save() for Lead, ExpenseItem, RevenueItem.
+    Silently skips if the money module is unavailable (e.g. during migrations).
+    """
+    try:
+        from crm.money import to_canonical  # late import to avoid circular deps
+    except Exception:
+        return
+
+    amount = getattr(obj, amount_field, None)
+    if amount is None:
+        return
+
+    firm = obj.firm
+    # Use the record's date field for historical rate look-up if available.
+    record_date = getattr(obj, "date", None) or getattr(obj, "created_at", None)
+    if hasattr(record_date, "date"):
+        record_date = record_date.date()
+
+    canonical, rate_used = to_canonical(amount, obj.currency, firm, date=record_date)
+    obj.canonical_amount = canonical
+    obj.canonical_currency = firm.default_currency
+    obj.canonical_rate_used = rate_used
+    obj.canonical_updated_at = _tz.now()
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +297,27 @@ class Lead(SoftDeleteMixin, TenantModel):
         help_text="Estimated deal value.",
     )
     currency = models.CharField(max_length=3, default="CZK")
+
+    # Canonical (reporting) amount – value converted to firm.default_currency
+    canonical_amount = models.DecimalField(
+        max_digits=20, decimal_places=2,
+        null=True, blank=True,
+        help_text="Value converted to firm.default_currency at time of last save.",
+    )
+    canonical_currency = models.CharField(
+        max_length=3, blank=True,
+        help_text="Currency code of canonical_amount (= firm.default_currency at save time).",
+    )
+    canonical_rate_used = models.DecimalField(
+        max_digits=20, decimal_places=8,
+        null=True, blank=True,
+        help_text="Exchange rate used for canonical_amount calculation.",
+    )
+    canonical_updated_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When was canonical_amount last recalculated.",
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -285,6 +340,11 @@ class Lead(SoftDeleteMixin, TenantModel):
 
     def __str__(self):
         return f"{self.title} [{self.get_status_display()}]"
+
+    def save(self, *args, **kwargs):
+        # Recalculate canonical amount on value/currency change
+        _recalc_canonical(self, amount_field="value")
+        super().save(*args, **kwargs)
 
     # -----------------------------------------------------------------------
     # Streamline toolbar registry
@@ -2339,6 +2399,27 @@ class ExpenseItem(SoftDeleteMixin, TenantModel):
         help_text="Amount in the firm's default currency.",
     )
     currency = models.CharField(max_length=3, default="CZK")
+
+    # Canonical (reporting) amount
+    canonical_amount = models.DecimalField(
+        max_digits=20, decimal_places=2,
+        null=True, blank=True,
+        help_text="Amount converted to firm.default_currency at time of last save.",
+    )
+    canonical_currency = models.CharField(
+        max_length=3, blank=True,
+        help_text="Currency code of canonical_amount.",
+    )
+    canonical_rate_used = models.DecimalField(
+        max_digits=20, decimal_places=8,
+        null=True, blank=True,
+        help_text="Exchange rate used for canonical_amount calculation.",
+    )
+    canonical_updated_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When was canonical_amount last recalculated.",
+    )
+
     date = models.DateField(db_index=True, help_text="Date the expense was incurred.")
     recurrence = models.CharField(
         max_length=20,
@@ -2363,6 +2444,10 @@ class ExpenseItem(SoftDeleteMixin, TenantModel):
 
     def __str__(self):
         return f"{self.title}: {self.amount} {self.currency} [{self.firm}]"
+
+    def save(self, *args, **kwargs):
+        _recalc_canonical(self, amount_field="amount")
+        super().save(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -2411,6 +2496,27 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
         help_text="Amount in the firm's default currency.",
     )
     currency = models.CharField(max_length=3, default="CZK")
+
+    # Canonical (reporting) amount
+    canonical_amount = models.DecimalField(
+        max_digits=20, decimal_places=2,
+        null=True, blank=True,
+        help_text="Amount converted to firm.default_currency at time of last save.",
+    )
+    canonical_currency = models.CharField(
+        max_length=3, blank=True,
+        help_text="Currency code of canonical_amount.",
+    )
+    canonical_rate_used = models.DecimalField(
+        max_digits=20, decimal_places=8,
+        null=True, blank=True,
+        help_text="Exchange rate used for canonical_amount calculation.",
+    )
+    canonical_updated_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When was canonical_amount last recalculated.",
+    )
+
     date = models.DateField(db_index=True, help_text="Date the revenue was recognised.")
     recurrence = models.CharField(
         max_length=20,
@@ -2435,6 +2541,10 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
 
     def __str__(self):
         return f"{self.title}: {self.amount} {self.currency} [{self.firm}]"
+
+    def save(self, *args, **kwargs):
+        _recalc_canonical(self, amount_field="amount")
+        super().save(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------

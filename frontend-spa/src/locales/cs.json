@@ -2198,5 +2198,30 @@
     "saved": "Nastavení uloženo",
     "warningMixedCurrencies": "Záznamy jsou v různých měnách. Statistiky zobrazují pouze záznamy v {currency}.",
     "warningChangeNote": "Změna výchozí měny nezmění existující záznamy. Částky v jiných měnách budou přepočítány dle aktuálního kurzu při příštím uložení."
+  },
+  "exchangeRates": {
+    "title": "Kurzy měn",
+    "fromCurrency": "Z měny",
+    "toCurrency": "Do měny",
+    "rate": "Kurz",
+    "validFrom": "Platný od",
+    "validTo": "Platný do",
+    "source": "Zdroj",
+    "note": "Poznámka",
+    "createdBy": "Vytvořil",
+    "loading": "Načítám…",
+    "noRates": "Žádné manuální kurzy. ECB kurzy jsou načítány automaticky.",
+    "editNote": "Upravit",
+    "save": "Uložit",
+    "delete": "Smazat",
+    "showHistory": "Zobrazit historii kurzů",
+    "hideHistory": "Skrýt historii",
+    "addRate": "Přidat / aktualizovat kurz",
+    "notePlaceholder": "Volitelná poznámka (např. fixní kurz dle smlouvy)",
+    "saveRate": "Uložit kurz",
+    "saving": "Ukládám…",
+    "rateSaved": "Kurz uložen",
+    "errorRequired": "Zadejte měnu a hodnotu kurzu.",
+    "errorSave": "Chyba při ukládání kurzu."
   }
 }

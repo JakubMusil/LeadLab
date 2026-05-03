@@ -5,6 +5,7 @@ import csv
 import datetime
 import io
 import logging
+from decimal import Decimal
 
 from celery import shared_task
 
@@ -1953,3 +1954,139 @@ def purge_soft_deleted_records(self):
 
     logger.info("purge_soft_deleted_records: total %d record(s) hard-deleted", total)
     return {"purged": total}
+
+
+# ---------------------------------------------------------------------------
+# Exchange Rate Engine – ECB fetch & canonical amount recalculation
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def fetch_ecb_exchange_rates(self):
+    """
+    Download the daily ECB XML exchange rate feed and upsert SystemExchangeRate
+    records.  Idempotent – skips if rates for today are already present.
+
+    Runs daily at 17:30 CET via Celery beat (ECB publishes by ~16:00 CET).
+    """
+    import xml.etree.ElementTree as ET
+
+    import requests
+    from firms.models import SystemExchangeRate
+
+    ECB_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+    ECB_NS = "http://www.gesmes.org/xml/2002-08-01"
+    CUBE_NS = "http://www.ecb.int/vocabulary/2002-08-01/eurofxref"
+
+    try:
+        resp = requests.get(ECB_URL, timeout=30)
+        resp.raise_for_status()
+    except Exception as exc:
+        logger.error("fetch_ecb_exchange_rates: request failed – %s", exc)
+        raise self.retry(exc=exc)
+
+    try:
+        root = ET.fromstring(resp.content)
+        # ECB XML structure: Envelope/Cube/Cube[@time]/Cube[@currency @rate]
+        outer_cubes = root.findall(f"{{{CUBE_NS}}}Cube/{{{CUBE_NS}}}Cube")
+        if not outer_cubes:
+            # Fall back to unqualified tag names (some versions of the feed)
+            outer_cubes = root.findall(".//Cube[@time]")
+        if not outer_cubes:
+            logger.error("fetch_ecb_exchange_rates: unexpected XML structure")
+            return {"status": "error", "detail": "unexpected XML"}
+
+        date_cube = outer_cubes[0]
+        rate_date_str = date_cube.attrib.get("time")
+        if not rate_date_str:
+            logger.error("fetch_ecb_exchange_rates: missing date in XML")
+            return {"status": "error", "detail": "missing date"}
+
+        rate_date = datetime.date.fromisoformat(rate_date_str)
+
+        # Idempotency check
+        if SystemExchangeRate.objects.filter(date=rate_date).exists():
+            logger.info("fetch_ecb_exchange_rates: rates for %s already present, skipping", rate_date)
+            return {"status": "skipped", "date": str(rate_date)}
+
+        created_count = 0
+        inner_cubes = date_cube.findall(f"{{{CUBE_NS}}}Cube") or date_cube.findall("Cube")
+        for cube in inner_cubes:
+            currency = cube.attrib.get("currency")
+            rate_str = cube.attrib.get("rate")
+            if not currency or not rate_str:
+                continue
+            SystemExchangeRate.objects.update_or_create(
+                base_currency="EUR",
+                quote_currency=currency,
+                date=rate_date,
+                defaults={"rate": Decimal(rate_str), "source": "ecb"},
+            )
+            created_count += 1
+
+        logger.info("fetch_ecb_exchange_rates: upserted %d rates for %s", created_count, rate_date)
+        return {"status": "ok", "date": str(rate_date), "count": created_count}
+
+    except Exception as exc:
+        logger.exception("fetch_ecb_exchange_rates: parse error – %s", exc)
+        raise self.retry(exc=exc)
+
+
+@shared_task
+def recalculate_canonical_amounts_for_firm(firm_id: str):
+    """
+    Recalculate canonical_amount for all financial records of a firm.
+
+    Triggered when:
+    - Owner saves a new manual exchange rate
+    - Owner changes firm.default_currency
+    - Manual admin action via management command
+    """
+    from decimal import Decimal as _D
+
+    from firms.models import Firm
+    from crm.models import Lead, ExpenseItem, RevenueItem
+    from crm.money import to_canonical
+    from django.utils import timezone
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        logger.error("recalculate_canonical_amounts_for_firm: firm %s not found", firm_id)
+        return {"error": "firm_not_found"}
+
+    updated = 0
+    failed = 0
+
+    tasks_def = [
+        (Lead, "value", "created_at"),
+        (ExpenseItem, "amount", "date"),
+        (RevenueItem, "amount", "date"),
+    ]
+
+    for model_class, amount_field, date_field in tasks_def:
+        qs = model_class.objects.filter(firm=firm).exclude(**{amount_field: None})
+        for obj in qs.iterator(chunk_size=500):
+            amount = getattr(obj, amount_field)
+            record_date = getattr(obj, date_field, None)
+            if hasattr(record_date, "date"):
+                record_date = record_date.date()
+
+            canonical, rate_used = to_canonical(amount, obj.currency, firm, date=record_date)
+            obj.canonical_amount = canonical
+            obj.canonical_currency = firm.default_currency
+            obj.canonical_rate_used = rate_used
+            obj.canonical_updated_at = timezone.now()
+            obj.save(update_fields=[
+                "canonical_amount", "canonical_currency",
+                "canonical_rate_used", "canonical_updated_at",
+            ])
+            if canonical is not None:
+                updated += 1
+            else:
+                failed += 1
+
+    logger.info(
+        "recalculate_canonical_amounts_for_firm [firm=%s]: %d updated, %d failed (no rate)",
+        firm_id, updated, failed,
+    )
+    return {"updated": updated, "failed": failed}

@@ -2187,5 +2187,30 @@
     "saved": "Ustawienia zapisane",
     "warningMixedCurrencies": "Rekordy są w różnych walutach. Statystyki pokazują tylko rekordy w {currency}.",
     "warningChangeNote": "Zmiana domyślnej waluty nie zmienia istniejących rekordów. Kwoty w innych walutach zostaną przeliczone przy użyciu bieżącego kursu przy następnym zapisie."
+  },
+  "exchangeRates": {
+    "title": "Kursy walut",
+    "fromCurrency": "Z waluty",
+    "toCurrency": "Do waluty",
+    "rate": "Kurs",
+    "validFrom": "Ważny od",
+    "validTo": "Ważny do",
+    "source": "Źródło",
+    "note": "Notatka",
+    "createdBy": "Utworzył",
+    "loading": "Ładuję…",
+    "noRates": "Brak ręcznych kursów. Kursy EBC są ładowane automatycznie.",
+    "editNote": "Edytuj notatkę",
+    "save": "Zapisz",
+    "delete": "Usuń",
+    "showHistory": "Pokaż historię kursów",
+    "hideHistory": "Ukryj historię",
+    "addRate": "Dodaj / zaktualizuj kurs",
+    "notePlaceholder": "Opcjonalna notatka (np. stały kurs wg umowy)",
+    "saveRate": "Zapisz kurs",
+    "saving": "Zapisuję…",
+    "rateSaved": "Kurs zapisany",
+    "errorRequired": "Podaj walutę i wartość kursu.",
+    "errorSave": "Błąd podczas zapisywania kursu."
   }
 }

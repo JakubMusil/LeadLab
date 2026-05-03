@@ -6,6 +6,8 @@ All write endpoints enforce:
   2. Membership in the target Firm (via TenantMiddleware + require_membership).
   3. Role-based access (Owners can do everything; Workers are read-only for team mgmt).
 """
+import datetime
+from decimal import Decimal
 from typing import List, Optional
 
 from django.db import transaction
@@ -95,6 +97,43 @@ class InvitationOut(Schema):
 
 class ErrorOut(Schema):
     detail: str
+
+
+# ---------------------------------------------------------------------------
+# Exchange Rate schemas
+# ---------------------------------------------------------------------------
+
+class ExchangeRateOut(Schema):
+    id: str
+    from_currency: str
+    to_currency: str
+    rate: str           # Decimal as string to preserve precision
+    source: str
+    valid_from: str
+    valid_to: Optional[str]
+    note: str
+    created_by_email: Optional[str]
+    created_at: str
+
+
+class ExchangeRateIn(Schema):
+    from_currency: str
+    rate: str           # Decimal as string
+    valid_from: str     # ISO date string
+    note: str = ""
+
+
+class ExchangeRatePatchIn(Schema):
+    note: Optional[str] = None
+
+
+class ExchangeRatePreviewOut(Schema):
+    from_currency: str
+    amount: str
+    canonical_amount: Optional[str]
+    canonical_currency: str
+    rate_used: Optional[str]
+    rate_source: Optional[str]
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +275,239 @@ def update_firm_currency(request, firm_id: str, payload: FirmCurrencyIn):
     return 200, _firm_out(firm)
 
 
+
+
+# ---------------------------------------------------------------------------
+# Exchange Rate Management
+# ---------------------------------------------------------------------------
+
+def _exchange_rate_out(rate) -> dict:
+    return {
+        "id": str(rate.id),
+        "from_currency": rate.from_currency,
+        "to_currency": rate.to_currency,
+        "rate": str(rate.rate),
+        "source": rate.source,
+        "valid_from": rate.valid_from.isoformat(),
+        "valid_to": rate.valid_to.isoformat() if rate.valid_to else None,
+        "note": rate.note,
+        "created_by_email": rate.created_by.email if rate.created_by else None,
+        "created_at": rate.created_at.isoformat(),
+    }
+
+
+def _get_firm_and_check_admin(request, firm_id: str):
+    """Return (firm, membership) or raise PermissionDenied/FirmNotFound."""
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        raise FirmNotFound()
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        raise PermissionDenied()
+    if not membership.is_admin_or_above:
+        raise PermissionDenied()
+    return firm, membership
+
+
+@router.get(
+    "/{firm_id}/exchange-rates/",
+    auth=django_auth,
+    response={200: List[ExchangeRateOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_exchange_rates(request, firm_id: str, include_history: bool = False):
+    """List exchange rates for a firm. Pass ?include_history=true for closed rates."""
+    from firms.models import FirmExchangeRate
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    qs = FirmExchangeRate.objects.filter(firm=firm).select_related("created_by")
+    if not include_history:
+        qs = qs.filter(valid_to__isnull=True)
+    return 200, [_exchange_rate_out(r) for r in qs]
+
+
+@router.post(
+    "/{firm_id}/exchange-rates/",
+    auth=django_auth,
+    response={201: ExchangeRateOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_exchange_rate(request, firm_id: str, payload: ExchangeRateIn):
+    """
+    Create a new manual exchange rate.
+    Automatically closes any existing active rate for the same currency pair.
+    """
+    from firms.models import FirmExchangeRate
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    try:
+        rate_decimal = Decimal(payload.rate)
+        valid_from = datetime.date.fromisoformat(payload.valid_from)
+    except Exception:
+        return 400, {"detail": "Invalid rate or valid_from date."}
+
+    if rate_decimal <= 0:
+        return 400, {"detail": "Rate must be greater than zero."}
+
+    from_currency = payload.from_currency.upper()[:3]
+    to_currency = firm.default_currency
+
+    with transaction.atomic():
+        # Close any currently active rate for this pair
+        FirmExchangeRate.objects.filter(
+            firm=firm,
+            from_currency=from_currency,
+            to_currency=to_currency,
+            valid_to__isnull=True,
+        ).update(valid_to=valid_from - datetime.timedelta(days=1))
+
+        new_rate = FirmExchangeRate.objects.create(
+            firm=firm,
+            from_currency=from_currency,
+            to_currency=to_currency,
+            rate=rate_decimal,
+            source="manual",
+            valid_from=valid_from,
+            valid_to=None,
+            created_by=request.user,
+            note=payload.note,
+        )
+
+    # Trigger async recalculation of canonical amounts
+    try:
+        from crm.tasks import recalculate_canonical_amounts_for_firm
+        recalculate_canonical_amounts_for_firm.delay(str(firm.id))
+    except Exception:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "create_exchange_rate: could not enqueue canonical recalc for firm %s", firm.id
+        )
+
+    return 201, _exchange_rate_out(new_rate)
+
+
+@router.patch(
+    "/{firm_id}/exchange-rates/{rate_id}/",
+    auth=django_auth,
+    response={200: ExchangeRateOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_exchange_rate(request, firm_id: str, rate_id: str, payload: ExchangeRatePatchIn):
+    """Update the note of an exchange rate (note-only patch)."""
+    from firms.models import FirmExchangeRate
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    try:
+        rate = FirmExchangeRate.objects.select_related("created_by").get(
+            id=rate_id, firm=firm
+        )
+    except FirmExchangeRate.DoesNotExist:
+        return 404, {"detail": "Exchange rate not found."}
+
+    if rate.source != "manual":
+        return 400, {"detail": "Only manual rates can be edited."}
+
+    if payload.note is not None:
+        rate.note = payload.note
+        rate.save(update_fields=["note", "updated_at"])
+
+    return 200, _exchange_rate_out(rate)
+
+
+@router.delete(
+    "/{firm_id}/exchange-rates/{rate_id}/",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_exchange_rate(request, firm_id: str, rate_id: str):
+    """
+    Delete a manual exchange rate.
+    After deletion, the system will fall back to ECB rates (if mode=auto).
+    """
+    from firms.models import FirmExchangeRate
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    try:
+        rate = FirmExchangeRate.objects.get(id=rate_id, firm=firm)
+    except FirmExchangeRate.DoesNotExist:
+        return 404, {"detail": "Exchange rate not found."}
+
+    if rate.source != "manual":
+        return 403, {"detail": "Only manual rates can be deleted."}
+
+    rate.delete()
+    return 204, None
+
+
+@router.get(
+    "/{firm_id}/exchange-rates/preview/",
+    auth=django_auth,
+    response={200: ExchangeRatePreviewOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def preview_exchange_rate(request, firm_id: str, from_currency: str, amount: str):
+    """
+    Preview conversion: { from_currency, amount } → canonical amount.
+    Used for live preview in the UI before saving.
+    """
+    from crm.money import get_rate, to_canonical
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    try:
+        amount_decimal = Decimal(amount)
+    except Exception:
+        return 400, {"detail": "Invalid amount."}
+
+    from_currency = from_currency.upper()[:3]
+    canonical, rate_used = to_canonical(amount_decimal, from_currency, firm)
+
+    # Determine rate source for UI display
+    rate_source = None
+    if rate_used is not None:
+        from firms.models import FirmExchangeRate
+        firm_rate = FirmExchangeRate.objects.filter(
+            firm=firm,
+            from_currency=from_currency,
+            to_currency=firm.default_currency,
+            valid_to__isnull=True,
+        ).first()
+        rate_source = "manual" if firm_rate else "ecb"
+
+    return 200, {
+        "from_currency": from_currency,
+        "amount": str(amount_decimal),
+        "canonical_amount": str(canonical) if canonical is not None else None,
+        "canonical_currency": firm.default_currency,
+        "rate_used": str(rate_used) if rate_used is not None else None,
+        "rate_source": rate_source,
+    }
 
 
 @router.post("/{firm_id}/branding", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
