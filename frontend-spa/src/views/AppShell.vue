@@ -13,6 +13,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
 import { useI18n } from '@/composables/useI18n'
 import { pluginRegistry } from '@/plugins'
+import { api } from '@/api'
 import CommandPalette from '@/components/CommandPalette.vue'
 import TimerWidget from '@/components/TimerWidget.vue'
 import {
@@ -77,6 +78,7 @@ function onLeadCreated(payload: Record<string, unknown>) {
     leadsStore.records.unshift(lead)
   }
   notifStore.pushNotification('record.created', payload)
+  fetchCategoryCounts()
 }
 
 function onLeadUpdated(payload: Record<string, unknown>) {
@@ -91,6 +93,7 @@ function onLeadDeleted(payload: Record<string, unknown>) {
   const id = payload.id as string
   leadsStore.records = leadsStore.records.filter((l) => l.id !== id)
   notifStore.pushNotification('record.deleted', payload)
+  fetchCategoryCounts()
 }
 
 function onActivityCreated(payload: Record<string, unknown>) {
@@ -121,12 +124,20 @@ function onTaskExpired(payload: Record<string, unknown>) {
   notifStore.pushNotification('task.expired', payload)
 }
 
+const categoryCounts = ref<Record<string, number>>({})
+
+async function fetchCategoryCounts() {
+  const res = await api.get<Record<string, number>>('/api/v1/crm/records/counts-by-category')
+  if (res.ok) categoryCounts.value = res.data
+}
+
 onMounted(async () => {
   if (!authStore.user) await authStore.fetchMe()
   if (firmStore.firms.length === 0) await firmStore.fetchFirms()
   await notifStore.fetchNotifications()
   savedViewsStore.fetchViews()
   pipelineStore.fetchCategories()
+  fetchCategoryCounts()
 
   on('record.created', onLeadCreated)
   on('record.updated', onLeadUpdated)
@@ -399,7 +410,13 @@ function formatNotifTime(ts: string): string {
                     :style="{ backgroundColor: cat.color || '#94A3B8' }"
                     aria-hidden="true"
                   ></span>
-                  <span class="truncate">{{ cat.name }}</span>
+                  <span class="truncate flex-1">{{ cat.name }}</span>
+                  <span
+                    v-if="categoryCounts[cat.id]"
+                    class="ml-auto flex-shrink-0 min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center text-white"
+                    :style="{ backgroundColor: cat.color || '#94A3B8' }"
+                    :aria-label="t('pipeline.categoryCountLabel', { count: categoryCounts[cat.id] })"
+                  >{{ categoryCounts[cat.id] }}</span>
                 </RouterLink>
               </template>
 

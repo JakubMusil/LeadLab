@@ -606,6 +606,34 @@ def _build_task_automation_context(task, firm) -> dict:
 
 
 
+
+@router.get("/records/counts-by-category", auth=django_auth, response={200: dict, 403: ErrorOut})
+def records_counts_by_category(request):
+    """Return active record counts per category for the current firm.
+
+    Returns a mapping of ``{category_id: count}`` for records that are not in a
+    terminal state (won/lost/canceled).  Records with no category assigned are
+    omitted from the response.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    from django.db.models import Count as DjCount
+    qs = (
+        PipelineRecord.objects.filter(firm=request.firm)
+        .exclude(status__in=["won", "lost", "canceled"])
+        .exclude(category_id__isnull=True)
+        .values("category_id")
+        .annotate(count=DjCount("id"))
+    )
+    counts: dict = {}
+    for row in qs:
+        counts[str(row["category_id"])] = row["count"]
+    return 200, counts
+
+
 @router.get("/records", auth=django_auth, response={200: List[RecordOut], 403: ErrorOut})
 def list_records(
     request,

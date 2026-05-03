@@ -199,6 +199,30 @@ const editingLead = ref<RecordOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const statusPopupId = ref<string | null>(null)
 
+// Quick-create (inline header form)
+const qcTitle = ref('')
+const qcSubmitting = ref(false)
+
+async function quickCreateRecord() {
+  if (!qcTitle.value.trim() || qcSubmitting.value) return
+  qcSubmitting.value = true
+  const payload: Record<string, unknown> = {
+    title: qcTitle.value.trim(),
+    status: 'new',
+    source: 'web',
+  }
+  if (filterCategoryId.value) payload.category_id = filterCategoryId.value
+  const result = await store.createRecord(payload)
+  qcSubmitting.value = false
+  if (result.ok) {
+    qcTitle.value = ''
+    toast.success(t('leads.recordCreated'))
+    loadLeads()
+  } else {
+    toast.error(result.error ?? t('leads.createFailed'))
+  }
+}
+
 // Saved view UI
 const showSaveViewDialog = ref(false)
 const saveViewName = ref('')
@@ -933,6 +957,22 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
 
       <!-- Hidden file input for CSV import -->
       <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+    </div>
+
+    <!-- Quick-create inline form -->
+    <div class="flex items-center gap-2 mb-4">
+      <input
+        v-model="qcTitle"
+        type="text"
+        :placeholder="currentCategory ? t('pipeline.quickCreatePlaceholderInCategory', { category: currentCategory.name }) : t('leads.quickCreatePlaceholder')"
+        class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-red-400 dark:focus:border-red-500"
+        @keyup.enter="quickCreateRecord"
+      />
+      <button
+        class="flex-shrink-0 px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
+        :disabled="!qcTitle.trim() || qcSubmitting"
+        @click="quickCreateRecord"
+      >{{ qcSubmitting ? '…' : t('leads.quickCreate') }}</button>
     </div>
 
     <!-- Advanced filters panel -->

@@ -201,7 +201,11 @@
     "actions": "Actions",
     "activityAdded": "Activity added.",
     "activityFailed": "Failed to add activity.",
-    "noRecordsInStage": "No records in this stage"
+    "noRecordsInStage": "No records in this stage",
+    "quickCreate": "Add",
+    "quickCreatePlaceholder": "Quick add record…",
+    "recordCreated": "Record created.",
+    "createFailed": "Failed to create record."
   },
   "settings": {
     "title": "Settings",
@@ -423,7 +427,10 @@
     "stageDeleteFailed": "Cannot delete stage (records may be using it).",
     "stageDeleted": "Stage deleted.",
     "confirmDeleteCategory": "Really delete this category? All records must be removed first.",
-    "confirmDeleteStage": "Really delete this stage? Records using it must be moved first."
+    "confirmDeleteStage": "Really delete this stage? Records using it must be moved first.",
+    "stageDragHandle": "Drag to reorder",
+    "categoryCountLabel": "{count} active records",
+    "quickCreatePlaceholderInCategory": "Quick add to \"{category}\"…"
   },
   "proposals": {
     "title": "Proposals",

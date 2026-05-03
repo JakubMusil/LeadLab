@@ -201,7 +201,11 @@
     "actions": "Akcje",
     "activityAdded": "Aktywność dodana.",
     "activityFailed": "Nie udało się dodać aktywności.",
-    "noRecordsInStage": "Brak rekordów na tym etapie"
+    "noRecordsInStage": "Brak rekordów na tym etapie",
+    "quickCreate": "Dodaj",
+    "quickCreatePlaceholder": "Szybkie dodanie rekordu…",
+    "recordCreated": "Rekord utworzony.",
+    "createFailed": "Nie udało się utworzyć rekordu."
   },
   "settings": {
     "title": "Ustawienia",
@@ -423,7 +427,10 @@
     "stageDeleteFailed": "Nie można usunąć etapu.",
     "stageDeleted": "Etap usunięty.",
     "confirmDeleteCategory": "Czy na pewno usunąć tę kategorię?",
-    "confirmDeleteStage": "Czy na pewno usunąć ten etap?"
+    "confirmDeleteStage": "Czy na pewno usunąć ten etap?",
+    "stageDragHandle": "Przeciągnij, aby zmienić kolejność",
+    "categoryCountLabel": "{count} aktywnych rekordów",
+    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}"…"
   },
   "proposals": {
     "title": "Oferty",

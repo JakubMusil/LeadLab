@@ -201,7 +201,11 @@
     "actions": "Akce",
     "activityAdded": "Aktivita přidána.",
     "activityFailed": "Nepodařilo se přidat aktivitu.",
-    "noRecordsInStage": "Žádné záznamy v této fázi"
+    "noRecordsInStage": "Žádné záznamy v této fázi",
+    "quickCreate": "Přidat",
+    "quickCreatePlaceholder": "Rychlé přidání záznamu…",
+    "recordCreated": "Záznam vytvořen.",
+    "createFailed": "Nepodařilo se vytvořit záznam."
   },
   "settings": {
     "title": "Nastavení",
@@ -423,7 +427,10 @@
     "stageDeleteFailed": "Stav nelze smazat (záznamy jej mohou využívat).",
     "stageDeleted": "Stav smazán.",
     "confirmDeleteCategory": "Opravdu smazat tuto kategorii? Všechny záznamy v ní musí být předem odstraněny.",
-    "confirmDeleteStage": "Opravdu smazat tento stav? Záznamy s tímto stavem musí být předem přesunuty."
+    "confirmDeleteStage": "Opravdu smazat tento stav? Záznamy s tímto stavem musí být předem přesunuty.",
+    "stageDragHandle": "Přetáhnout pro změnu pořadí",
+    "categoryCountLabel": "{count} aktivních záznamů",
+    "quickCreatePlaceholderInCategory": "Rychlé přidání do „{category}"…"
   },
   "proposals": {
     "title": "Nabídky",

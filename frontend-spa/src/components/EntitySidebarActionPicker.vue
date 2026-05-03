@@ -6,7 +6,6 @@ import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import type { MentionUser } from '@/components/RichTextEditor.vue'
-import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -526,16 +525,6 @@ async function addActivity() {
   }
 }
 
-// ─── Modal state ───────────────────────────────────────────────────────────
-
-const modalOpen = ref(false)
-const modalActionType = ref('')
-
-function openModal(type: string) {
-  modalActionType.value = type
-  modalOpen.value = true
-}
-
 // Build action items directly from the entity-toolbar registry, then group
 // them into our four UX categories. Tools that don't fit any category fall
 // into a synthetic "other" bucket so we never silently drop a backend tool.
@@ -879,17 +868,5 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         {{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}
       </button>
     </div>
-
-    <StreamlineCreateModal
-      v-model="modalOpen"
-      :action-type="modalActionType"
-      :entity-type="entityType"
-      :entity-id="entityId"
-      :team-members="teamMembers"
-      :attachment-upload-url="attachmentUploadUrl"
-      @activity-added="emit('activity-added')"
-      @task-created="emit('task-created')"
-      @file-uploaded="(f) => emit('file-uploaded', f)"
-    />
   </div>
 </template>
