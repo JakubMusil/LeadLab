@@ -23,6 +23,7 @@ import { useTasksStore, type StreamlineItemOut } from '@/stores/tasks'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
 import { TrashIcon, CheckIcon, ClipboardDocumentListIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline'
+import { ConfirmDeleteModal } from '@/components/ui'
 
 const props = defineProps<{
   taskId: string
@@ -48,6 +49,7 @@ const newText = ref('')
 const submitting = ref(false)
 const togglingId = ref<string | null>(null)
 const hideDeleted = ref(false)
+const deleteConfirmId = ref<string | null>(null)
 
 const visibleItems = computed(() =>
   hideDeleted.value ? items.value.filter(i => !i.is_deleted) : items.value
@@ -127,6 +129,13 @@ async function toggleItem(item: StreamlineItemOut) {
 // Delete
 // ---------------------------------------------------------------------------
 async function deleteItem(id: string) {
+  deleteConfirmId.value = id
+}
+
+async function doDelete() {
+  const id = deleteConfirmId.value
+  if (!id) return
+  deleteConfirmId.value = null
   const res = await store.deleteStreamlineItem(id)
   if (res.ok) {
     const idx = items.value.findIndex((i) => i.id === id)
@@ -286,5 +295,12 @@ const accentClass = props.kind === 'todo'
         </div>
       </div>
     </div>
+
+    <ConfirmDeleteModal
+      :open="!!deleteConfirmId"
+      :message="t('tasks.streamlineDeleteConfirm')"
+      @confirm="doDelete"
+      @cancel="deleteConfirmId = null"
+    />
   </div>
 </template>
