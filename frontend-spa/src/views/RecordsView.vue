@@ -828,7 +828,7 @@ function showAssigneeAvatar(lead: RecordOut): boolean {
           class="px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
           :class="!filterCategoryId ? 'bg-white shadow text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700'"
           @click="filterCategoryId = ''; filterStageId = ''; loadLeads()"
-        >Vše</button>
+        >{{ t('pipeline.allCategories') }}</button>
         <button
           v-for="cat in pipelineStore.categories.filter((c) => c.is_active)"
           :key="cat.id"

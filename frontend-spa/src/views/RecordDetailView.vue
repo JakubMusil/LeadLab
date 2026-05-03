@@ -560,9 +560,9 @@ const stageProgress = computed(() => {
 async function changeStage(stageId: string) {
   const result = await store.updateRecord(leadId.value, { current_stage_id: stageId })
   if (result.ok) {
-    toast.success('Stav aktualizován.')
+    toast.success(t('pipeline.stageUpdated'))
   } else {
-    toast.error(result.error ?? 'Nepodařilo se změnit stav.')
+    toast.error(result.error ?? t('pipeline.stageUpdateFailed'))
   }
 }
 
@@ -609,7 +609,7 @@ async function addCheckpoint() {
       newCheckpointName.value = ''
       newCheckpointDate.value = ''
     } else {
-      toast.error('Nepodařilo se přidat checkpoint.')
+      toast.error(t('pipeline.checkpointAddFailed'))
     }
   } finally {
     addingCheckpoint.value = false
@@ -829,7 +829,7 @@ async function openContactDetail(id: string | null) {
             v-if="store.currentRecord.category_id && currentStages.length > 0"
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4"
           >
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Stav pipeline</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.stageLabel') }}</div>
             <!-- Progress bar -->
             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-3">
               <div
@@ -856,8 +856,8 @@ async function openContactDetail(id: string | null) {
 
           <!-- Checkpoints panel -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Checkpointy</div>
-            <div v-if="checkpointsLoading" class="text-xs text-gray-400">Načítám…</div>
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.checkpoints') }}</div>
+            <div v-if="checkpointsLoading" class="text-xs text-gray-400">{{ t('pipeline.loadingCheckpoints') }}</div>
             <ul v-else class="space-y-1.5 mb-2">
               <li
                 v-for="cp in checkpoints"
@@ -881,13 +881,13 @@ async function openContactDetail(id: string | null) {
                   @click="deleteCheckpoint(cp.id)"
                 >×</button>
               </li>
-              <li v-if="checkpoints.length === 0" class="text-xs text-gray-400">Žádné checkpointy</li>
+              <li v-if="checkpoints.length === 0" class="text-xs text-gray-400">{{ t('pipeline.noCheckpoints') }}</li>
             </ul>
             <!-- Add checkpoint form -->
             <div class="flex gap-1">
               <input
                 v-model="newCheckpointName"
-                placeholder="Nový checkpoint…"
+                :placeholder="t('pipeline.newCheckpointPlaceholder')"
                 class="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 dark:bg-gray-700 dark:text-gray-200"
                 @keyup.enter="addCheckpoint"
               />

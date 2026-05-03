@@ -4,6 +4,7 @@ import { usePipelineStore, type CategoryOut, type StageOut } from '@/stores/pipe
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
+import { useI18n } from '@/composables/useI18n'
 import { ConfirmDeleteModal } from '@/components/ui'
 import {
   PlusIcon,
@@ -18,6 +19,7 @@ const pipelineStore = usePipelineStore()
 const toast = useToast()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
+const { t } = useI18n()
 
 // ---------------------------------------------------------------------------
 // State
@@ -112,10 +114,10 @@ async function saveEditCategory() {
   })
   savingCategory.value = false
   if (result.ok) {
-    toast.success('Category updated.')
+    toast.success(t('pipeline.categoryUpdated'))
     cancelEditCategory()
   } else {
-    toast.error(result.error ?? 'Failed to update category.')
+    toast.error(result.error ?? t('pipeline.categoryUpdateFailed'))
   }
 }
 
@@ -129,14 +131,14 @@ async function createCategory() {
   })
   savingCategory.value = false
   if (result.ok && result.data) {
-    toast.success('Category created.')
+    toast.success(t('pipeline.categoryCreated'))
     newCategoryName.value = ''
     newCategoryColor.value = '#3B82F6'
     newCategoryIcon.value = 'funnel'
     showNewCategoryForm.value = false
     selectedCategoryId.value = result.data.id
   } else {
-    toast.error(result.error ?? 'Failed to create category.')
+    toast.error(result.error ?? t('pipeline.categoryCreateFailed'))
   }
 }
 
@@ -144,12 +146,12 @@ async function confirmDeleteCategory() {
   if (!pendingDeleteCategoryId.value) return
   const result = await pipelineStore.deleteCategory(pendingDeleteCategoryId.value)
   if (result.ok) {
-    toast.success('Category deleted.')
+    toast.success(t('pipeline.categoryDeleted'))
     if (selectedCategoryId.value === pendingDeleteCategoryId.value) {
       selectedCategoryId.value = pipelineStore.categories[0]?.id ?? null
     }
   } else {
-    toast.error(result.error ?? 'Cannot delete category (records may be using it).')
+    toast.error(result.error ?? t('pipeline.categoryDeleteFailed'))
   }
   pendingDeleteCategoryId.value = null
 }
@@ -180,10 +182,10 @@ async function saveEditStage() {
   })
   savingStage.value = false
   if (result.ok) {
-    toast.success('Stage updated.')
+    toast.success(t('pipeline.stageUpdatedOk'))
     cancelEditStage()
   } else {
-    toast.error(result.error ?? 'Failed to update stage.')
+    toast.error(result.error ?? t('pipeline.stageUpdateFailed'))
   }
 }
 
@@ -203,14 +205,14 @@ async function createStage() {
   })
   savingStage.value = false
   if (result.ok) {
-    toast.success('Stage created.')
+    toast.success(t('pipeline.stageCreated'))
     newStageName.value = ''
     newStageColor.value = '#94A3B8'
     newStageIsTerminal.value = false
     newStageIsWon.value = false
     showNewStageForm.value = false
   } else {
-    toast.error(result.error ?? 'Failed to create stage.')
+    toast.error(result.error ?? t('pipeline.stageCreateFailed'))
   }
 }
 
@@ -218,9 +220,9 @@ async function confirmDeleteStage() {
   if (!pendingDeleteStageId.value || !selectedCategoryId.value) return
   const result = await pipelineStore.deleteStage(selectedCategoryId.value, pendingDeleteStageId.value)
   if (result.ok) {
-    toast.success('Stage deleted.')
+    toast.success(t('pipeline.stageDeleted'))
   } else {
-    toast.error(result.error ?? 'Cannot delete stage (records may be using it).')
+    toast.error(result.error ?? t('pipeline.stageDeleteFailed'))
   }
   pendingDeleteStageId.value = null
 }
@@ -229,10 +231,10 @@ async function confirmDeleteStage() {
 <template>
   <div class="p-6 space-y-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-gray-900">Pipeline nastavení</h1>
+      <h1 class="text-xl font-semibold text-gray-900">{{ t('pipeline.settingsTitle') }}</h1>
     </div>
 
-    <div v-if="pipelineStore.loading" class="text-gray-500 text-sm">Načítám kategorie…</div>
+    <div v-if="pipelineStore.loading" class="text-gray-500 text-sm">{{ t('pipeline.loadingCategories') }}</div>
 
     <div v-else class="flex gap-6 min-h-[500px]">
       <!-- Left panel: categories -->
@@ -466,7 +468,7 @@ async function confirmDeleteStage() {
   <!-- Delete category confirm -->
   <ConfirmDeleteModal
     :open="!!pendingDeleteCategoryId"
-    message="Opravdu smazat tuto kategorii? Všechny záznamy v ní musí být předem odstraněny."
+    :message="t('pipeline.confirmDeleteCategory')"
     @confirm="confirmDeleteCategory"
     @cancel="pendingDeleteCategoryId = null"
   />
@@ -474,7 +476,7 @@ async function confirmDeleteStage() {
   <!-- Delete stage confirm -->
   <ConfirmDeleteModal
     :open="!!pendingDeleteStageId"
-    message="Opravdu smazat tento stav? Záznamy s tímto stavem musí být předem přesunuty."
+    :message="t('pipeline.confirmDeleteStage')"
     @confirm="confirmDeleteStage"
     @cancel="pendingDeleteStageId = null"
   />
