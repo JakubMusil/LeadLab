@@ -141,7 +141,18 @@ Stránka `/app/opportunities` (mapuje na `LeadsView.vue`) zobrazuje tabulku / se
 - [x] Frontend: dialog uložení pohledu zobrazuje info o sortu a počtu sloupců
 - [x] Locale: přidány klíče `colPicker`, `resetColumns`, `saveViewSort`, `saveViewColumns`, `sort_asc/desc`, `col_*` do cs/en/de/pl
 
-**Co se dělá v příští relaci (Relace 5):**
-- Dashboard widget "Moje příležitosti" (TOP 5 leadů podle score, přímý odkaz)
-- Quick-create panel pro lead přímo z dashboardu (mini form)
-- Notifications badge – počet leadů s overdue tasky
+### Relace 5 – DOKONČENA (2026-05-03)
+
+**Hotovo:**
+- [x] `LeadOut` TS interface: přidán `score?: number | null` (sjednocení s backendem `crm/api.py:304`)
+- [x] `DashboardView.vue`: dva nové widgety:
+  - [x] **My Top Leads** (`my_top_leads`): TOP 5 mých aktivních příležitostí dle skóre, barevný score chip (zelená ≥75 / žlutá ≥50 / šedá), odkaz na detail, "Zobrazit vše" odkaz
+  - [x] **Quick Create Lead** (`quick_create_lead`): inline mini formulář (název + status + hodnota + Vytvořit), validace názvu, toast po úspěchu, automatický refresh stats a top leads
+- [x] Oba widgety zařazeny v `DEFAULT_WIDGETS` (configurable + draggable jako ostatní)
+- [x] Loading skeleton pro top leads
+- [x] Locale: 13 nových klíčů (`myTopLeads*`, `viewAll`, `scoreTitle`, `quickCreateLead`, `qc*`) v cs/en/de/pl
+
+**Co se dělá v příští relaci (Relace 6):**
+- Notifications badge v navigaci (počet leadů s overdue tasky) – vyžaduje rozšíření backend stats
+- Nebo další UI/UX polishing – TBD
+

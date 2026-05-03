@@ -57,7 +57,19 @@
     "noStatusHistory": "Noch keine Statusverlaufsdaten",
     "noClosedLeads": "Noch keine abgeschlossenen Chancen",
     "noTrendData": "Noch keine Trenddaten",
-    "failedToLoad": "Dashboard-Daten konnten nicht geladen werden."
+    "failedToLoad": "Dashboard-Daten konnten nicht geladen werden.",
+    "myTopLeads": "Meine Top-Chancen",
+    "myTopLeadsEmpty": "Noch keine aktiven Chancen.",
+    "viewAll": "Alle anzeigen",
+    "scoreTitle": "Score: {score}",
+    "quickCreateLead": "Schnell anlegen",
+    "qcTitlePlaceholder": "Titel der Chance…",
+    "qcStatusLabel": "Status",
+    "qcValuePlaceholder": "Wert",
+    "qcCreate": "Anlegen",
+    "qcCreated": "Chance angelegt",
+    "qcFailed": "Anlegen fehlgeschlagen",
+    "qcTitleRequired": "Titel ist erforderlich"
   },
   "leads": {
     "title": "Chancen",

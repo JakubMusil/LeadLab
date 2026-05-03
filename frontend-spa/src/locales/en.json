@@ -57,7 +57,19 @@
     "noStatusHistory": "No status history data yet",
     "noClosedLeads": "No closed opportunities yet",
     "noTrendData": "No trend data yet",
-    "failedToLoad": "Failed to load dashboard data."
+    "failedToLoad": "Failed to load dashboard data.",
+    "myTopLeads": "My top opportunities",
+    "myTopLeadsEmpty": "You have no active opportunities yet.",
+    "viewAll": "View all",
+    "scoreTitle": "Score: {score}",
+    "quickCreateLead": "Quick create opportunity",
+    "qcTitlePlaceholder": "Opportunity title…",
+    "qcStatusLabel": "Status",
+    "qcValuePlaceholder": "Value",
+    "qcCreate": "Create",
+    "qcCreated": "Opportunity created",
+    "qcFailed": "Failed to create opportunity",
+    "qcTitleRequired": "Title is required"
   },
   "leads": {
     "title": "Opportunities",

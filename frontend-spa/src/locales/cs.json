@@ -57,7 +57,19 @@
     "noStatusHistory": "Zatím žádná data o přechodech stavů",
     "noClosedLeads": "Zatím žádné uzavřené příležitosti",
     "noTrendData": "Zatím žádná trendová data",
-    "failedToLoad": "Nepodařilo se načíst data dashboardu."
+    "failedToLoad": "Nepodařilo se načíst data dashboardu.",
+    "myTopLeads": "Mé nejlepší příležitosti",
+    "myTopLeadsEmpty": "Zatím nemáte žádné aktivní příležitosti.",
+    "viewAll": "Zobrazit vše",
+    "scoreTitle": "Skóre: {score}",
+    "quickCreateLead": "Rychlé vytvoření příležitosti",
+    "qcTitlePlaceholder": "Název příležitosti…",
+    "qcStatusLabel": "Stav",
+    "qcValuePlaceholder": "Hodnota",
+    "qcCreate": "Vytvořit",
+    "qcCreated": "Příležitost vytvořena",
+    "qcFailed": "Nepodařilo se vytvořit příležitost",
+    "qcTitleRequired": "Zadejte název"
   },
   "leads": {
     "title": "Příležitosti",

@@ -15,6 +15,7 @@ export interface LeadOut {
   assigned_to_name: string | null
   value: number | null
   currency: string
+  score?: number | null
   created_at: string
   updated_at: string
   created_by_id: string | null

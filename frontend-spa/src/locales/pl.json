@@ -57,7 +57,19 @@
     "noStatusHistory": "Brak danych historii statusów",
     "noClosedLeads": "Brak zamkniętych szans",
     "noTrendData": "Brak danych trendów",
-    "failedToLoad": "Nie udało się załadować danych panelu."
+    "failedToLoad": "Nie udało się załadować danych panelu.",
+    "myTopLeads": "Moje najlepsze szanse",
+    "myTopLeadsEmpty": "Nie masz jeszcze żadnych aktywnych szans.",
+    "viewAll": "Zobacz wszystkie",
+    "scoreTitle": "Wynik: {score}",
+    "quickCreateLead": "Szybko dodaj szansę",
+    "qcTitlePlaceholder": "Tytuł szansy…",
+    "qcStatusLabel": "Status",
+    "qcValuePlaceholder": "Wartość",
+    "qcCreate": "Utwórz",
+    "qcCreated": "Szansa utworzona",
+    "qcFailed": "Nie udało się utworzyć szansy",
+    "qcTitleRequired": "Tytuł jest wymagany"
   },
   "leads": {
     "title": "Szanse",
