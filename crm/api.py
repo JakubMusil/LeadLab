@@ -298,6 +298,7 @@ class LeadOut(Schema):
     status: str
     source: str
     assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str] = None
     value: Optional[Decimal]
     currency: str
     score: Optional[int]
@@ -387,6 +388,13 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
             created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
         except Exception:
             pass
+    assigned_to_name: Optional[str] = None
+    if lead.assigned_to_id:
+        try:
+            at = lead.assigned_to
+            assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
+        except Exception:
+            pass
     # Company & contact person
     company_id = str(lead.company_id) if lead.company_id else None
     company_name: Optional[str] = None
@@ -412,6 +420,7 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         "status": lead.status,
         "source": lead.source,
         "assigned_to_id": str(lead.assigned_to_id) if lead.assigned_to_id else None,
+        "assigned_to_name": assigned_to_name,
         "value": lead.value,
         "currency": lead.currency,
         "score": score,
@@ -582,7 +591,7 @@ def list_leads(
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
     offset = (page - 1) * page_size
-    leads = list(qs.select_related('created_by')[offset:offset + page_size])
+    leads = list(qs.select_related('created_by', 'assigned_to')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))
     return 200, [_lead_out(lead, rules) for lead in leads]
 

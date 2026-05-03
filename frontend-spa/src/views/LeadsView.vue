@@ -14,6 +14,7 @@ import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
 import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import Avatar from '@/components/ui/Avatar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +35,7 @@ const viewModeIcons: Record<ViewMode, object> = {
   list: ListBulletIcon,
 }
 
-const viewMode = ref<ViewMode>('table')
+const viewMode = ref<ViewMode>('list')
 
 watch(() => authStore.user?.id, (userId) => {
   if (!userId) return
@@ -483,6 +484,12 @@ const actionsDropdownItems = computed(() => [
   { label: t('leads.exportCsv'), onClick: exportCsv },
   { label: t('leads.exportPdf'), onClick: exportPdf },
 ])
+
+// Returns whether assignee should be shown separately from creator
+function showAssigneeAvatar(lead: LeadOut): boolean {
+  if (!lead.assigned_to_id) return false
+  return lead.assigned_to_id !== lead.created_by_id
+}
 </script>
 
 <template>
@@ -600,6 +607,7 @@ const actionsDropdownItems = computed(() => [
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colValue') }}</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden xl:table-cell">{{ t('leads.colScore') }}</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell">{{ t('leads.colCreated') }}</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">{{ t('leads.colUsers') }}</th>
               <th class="px-4 py-3" />
             </tr>
           </thead>
@@ -657,6 +665,12 @@ const actionsDropdownItems = computed(() => [
                 <LeadScoreBadge :score="(lead as LeadOut & { score?: number }).score" />
               </td>
               <td class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs hidden lg:table-cell" @click="goToDetail(lead.id)">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
+              <td class="px-4 py-3 hidden md:table-cell" @click="goToDetail(lead.id)">
+                <div class="flex items-center gap-1">
+                  <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
+                  <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+                </div>
+              </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
@@ -733,6 +747,12 @@ const actionsDropdownItems = computed(() => [
 
           <!-- Date -->
           <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
+
+          <!-- User avatars (creator + assignee if different) -->
+          <div class="hidden sm:flex items-center gap-1 flex-shrink-0" @click.stop>
+            <Avatar v-if="lead.created_by_name" size="xs" :name="lead.created_by_name" :title="t('leads.createdBy') + ': ' + lead.created_by_name" />
+            <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="lead.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + lead.assigned_to_name" />
+          </div>
 
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>

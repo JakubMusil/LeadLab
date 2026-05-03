@@ -12,6 +12,7 @@ export interface LeadOut {
   status: string
   source: string
   assigned_to_id: string | null
+  assigned_to_name: string | null
   value: number | null
   currency: string
   created_at: string
