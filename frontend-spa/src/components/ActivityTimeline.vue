@@ -18,6 +18,7 @@ import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vu
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import ActivityEditModal from '@/components/ActivityEditModal.vue'
+import { ConfirmDeleteModal } from '@/components/ui'
 import type { TaskOut } from '@/stores/tasks'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
@@ -1083,6 +1084,7 @@ function canEdit(act: Activity): boolean {
 // ── Modal-based edit ────────────────────────────────────────────────────────
 const editModalOpen = ref(false)
 const editingActivity = ref<Activity | null>(null)
+const deleteConfirmId = ref<string | null>(null)
 
 function startEditing(act: Activity) {
   editingActivity.value = act
@@ -1101,7 +1103,14 @@ function onActivityEdited(updated: Activity) {
   }
 }
 
-async function deleteActivity(activityId: string) {
+function deleteActivity(activityId: string) {
+  deleteConfirmId.value = activityId
+}
+
+async function doDeleteActivity() {
+  const activityId = deleteConfirmId.value
+  if (!activityId) return
+  deleteConfirmId.value = null
   const res = await api.delete<Activity>(`/api/v1/crm/activities/${activityId}`)
   if (!res.ok) {
     toast.error(t('leadDetail.activityDeleteFailed'))
@@ -1790,6 +1799,14 @@ defineExpose({ load: () => loadActivities(1) })
     :activity="editingActivity"
     :entity-type="props.entityType"
     @saved="(act) => onActivityEdited(act as unknown as Activity)"
+  />
+
+  <!-- Activity delete confirmation modal -->
+  <ConfirmDeleteModal
+    :open="!!deleteConfirmId"
+    :message="t('tasks.streamlineDeleteConfirm')"
+    @confirm="doDeleteActivity"
+    @cancel="deleteConfirmId = null"
   />
 </template>
 
