@@ -14,7 +14,7 @@ from django.http import HttpRequest
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Customer, Document, Lead, Proposal, Task
+from crm.models import Customer, Document, PipelineRecord, Proposal, Task
 from crm.soft_delete import perform_soft_delete
 from firms.auth import require_active_subscription, require_membership
 
@@ -41,8 +41,8 @@ class DocumentOut(Schema):
     size_bytes: int
 
     # Entity links (optional)
-    lead_id: Optional[str]
-    lead_title: Optional[str]
+    record_id: Optional[str]
+    record_title: Optional[str]
     customer_id: Optional[str]
     customer_name: Optional[str]
     task_id: Optional[str]
@@ -77,8 +77,8 @@ def _doc_out(doc: Document, request: HttpRequest) -> DocumentOut:
         name=doc.name,
         content_type=doc.content_type,
         size_bytes=doc.size_bytes,
-        lead_id=str(doc.lead_id) if doc.lead_id else None,
-        lead_title=doc.lead.title if doc.lead else None,
+        record_id=str(doc.record_id) if doc.record_id else None,
+        record_title=doc.record.title if doc.record else None,
         customer_id=str(doc.customer_id) if doc.customer_id else None,
         customer_name=customer_name,
         task_id=str(doc.task_id) if doc.task_id else None,
@@ -99,7 +99,7 @@ def _doc_out(doc: Document, request: HttpRequest) -> DocumentOut:
 @documents_router.get("/documents", response=List[DocumentOut], auth=django_auth)
 def list_documents(
     request: HttpRequest,
-    lead_id: Optional[str] = None,
+    record_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     task_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
@@ -113,11 +113,11 @@ def list_documents(
     require_active_subscription(firm)
 
     qs = Document.objects.filter(firm=firm).select_related(
-        "lead", "customer", "task", "proposal", "uploaded_by"
+        "record", "customer", "task", "proposal", "uploaded_by"
     )
 
-    if lead_id:
-        qs = qs.filter(lead_id=lead_id)
+    if record_id:
+        qs = qs.filter(record_id=record_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     if task_id:
@@ -138,7 +138,7 @@ def upload_document(
     request: HttpRequest,
     file: UploadedFile = File(...),
     name: Optional[str] = None,
-    lead_id: Optional[str] = None,
+    record_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     task_id: Optional[str] = None,
     proposal_id: Optional[str] = None,
@@ -153,9 +153,9 @@ def upload_document(
     size_bytes = file.size or 0
 
     # Validate entity links exist and belong to the firm
-    lead = None
-    if lead_id:
-        lead = Lead.objects.filter(firm=firm, id=lead_id).first()
+    record = None
+    if record_id:
+        record = PipelineRecord.objects.filter(firm=firm, id=record_id).first()
 
     customer = None
     if customer_id:
@@ -176,7 +176,7 @@ def upload_document(
         content_type=content_type,
         size_bytes=size_bytes,
         uploaded_by=request.user,
-        lead=lead,
+        record=record,
         customer=customer,
         task=task,
         proposal=proposal,
@@ -196,7 +196,7 @@ def get_document(request: HttpRequest, document_id: str):
     member = require_membership(request, firm)
 
     doc = Document.objects.filter(firm=firm, id=document_id).select_related(
-        "lead", "customer", "task", "proposal", "uploaded_by"
+        "record", "customer", "task", "proposal", "uploaded_by"
     ).first()
     if not doc:
         return 404, {"detail": "Document not found"}

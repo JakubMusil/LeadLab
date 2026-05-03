@@ -178,10 +178,10 @@ class CrmConfig(AppConfig):
         # Register entity-change signals after models are fully loaded
         # -------------------------------------------------------------------
         from django.db.models.signals import pre_save, post_save
-        from crm.models import Lead, Customer, Proposal
+        from crm.models import PipelineRecord, Customer, Proposal
 
         _entities = [
-            (Lead, _LEAD_FIELDS, "lead"),
+            (PipelineRecord, _LEAD_FIELDS, "record"),
             (Customer, _CUSTOMER_FIELDS, "customer"),
             (Proposal, _PROPOSAL_FIELDS, "proposal"),
         ]

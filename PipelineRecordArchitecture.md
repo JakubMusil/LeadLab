@@ -11,81 +11,81 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 
 | # | Název | Stav |
 |---|-------|------|
-| 1 | Smazat Realization + Management | ⬜ |
-| 2 | Přejmenovat Lead → PipelineRecord + nové modely | ⬜ |
+| 1 | Smazat Realization + Management | ✅ |
+| 2 | Přejmenovat Lead → PipelineRecord + nové modely | ✅ |
 | 3 | API – Category/Stage konfigurace + Records CRUD | ⬜ |
 | 4 | Seed command + onboarding hook | ⬜ |
-| 5 | Frontend stores + API klient | ⬜ |
+| 5 | Frontend stores + API klient | ✅ |
 | 6 | Settings UI pro správu kategorií a stages | ⬜ |
-| 7 | RecordsView + RecordDetailView (vzor: LeadsView) | ⬜ |
-| 8 | AppShell navigace + Router update | ⬜ |
+| 7 | RecordsView + RecordDetailView (vzor: LeadsView) | ✅ |
+| 8 | AppShell navigace + Router update | ✅ |
 
 ---
 
 ## Odškrtávací checklist
 
-### Fáze 1 — Smazat Realization + Management ⬜
+### Fáze 1 — Smazat Realization + Management ✅
 
 #### Backend
-- [ ] `crm/models.py` — smazat třídy `RealizationStatus`, `Realization`, `Milestone`, `ManagementType`, `ManagementStatus`, `Management`
-- [ ] `crm/models.py` → `Activity` — smazat FK pole `realization` a `management` + indexy
-- [ ] `crm/models.py` → `Task` — smazat FK pole `realization` a `management`
-- [ ] `crm/models.py` → `Document` — smazat FK pole `realization` a `management` + indexy
-- [ ] Smazat `crm/realization_api.py`
-- [ ] Smazat `crm/management_api.py`
-- [ ] `leadlab/api.py` — odstranit importy a `add_router` pro `realization_router` a `management_router`
-- [ ] `crm/api.py` — smazat importy `Management`, `Realization`; smazat endpointy `realization_metrics`, `sla_compliance`; smazat realization/management větve v action hubu; vyčistit `_task_out` od realization/management polí; vyčistit voice memo endpoint; vyčistit profitability endpoint
-- [ ] `crm/tasks.py` — smazat `_action_create_realization`, `_action_create_management` a jejich volání; vyčistit weekly digest od realization/SLA stats
-- [ ] `crm/automations_api.py` — smazat šablony odkazující na realization/management
-- [ ] `crm/streamline/tools.py` — smazat `realization`/`management` parametry v tool schématech (řádky 1347-1348, 2071-2092)
-- [ ] `crm/documents_api.py` — smazat `realization_id`/`management_id` parametry a větve; vyčistit importy a `DocumentOut` schéma
-- [ ] Smazat všechny migrace v `crm/migrations/` (kromě `__init__.py`), spustit `makemigrations`
+- [x] `crm/models.py` — smazat třídy `RealizationStatus`, `Realization`, `Milestone`, `ManagementType`, `ManagementStatus`, `Management`
+- [x] `crm/models.py` → `Activity` — smazat FK pole `realization` a `management` + indexy
+- [x] `crm/models.py` → `Task` — smazat FK pole `realization` a `management`
+- [x] `crm/models.py` → `Document` — smazat FK pole `realization` a `management` + indexy
+- [x] Smazat `crm/realization_api.py`
+- [x] Smazat `crm/management_api.py`
+- [x] `leadlab/api.py` — odstranit importy a `add_router` pro `realization_router` a `management_router`
+- [x] `crm/api.py` — smazat importy `Management`, `Realization`; smazat endpointy `realization_metrics`, `sla_compliance`; smazat realization/management větve v action hubu; vyčistit `_task_out` od realization/management polí; vyčistit voice memo endpoint; vyčistit profitability endpoint
+- [x] `crm/tasks.py` — smazat `_action_create_realization`, `_action_create_management` a jejich volání; vyčistit weekly digest od realization/SLA stats
+- [x] `crm/automations_api.py` — smazat šablony odkazující na realization/management
+- [x] `crm/streamline/tools.py` — smazat `realization`/`management` parametry v tool schématech (řádky 1347-1348, 2071-2092)
+- [x] `crm/documents_api.py` — smazat `realization_id`/`management_id` parametry a větve; vyčistit importy a `DocumentOut` schéma
+- [x] Smazat všechny migrace v `crm/migrations/` (kromě `__init__.py`), spustit `makemigrations`
 
 #### Frontend
-- [ ] Smazat `frontend-spa/src/views/RealizationsView.vue`
-- [ ] Smazat `frontend-spa/src/views/RealizationDetailView.vue`
-- [ ] Smazat `frontend-spa/src/views/ManagementView.vue`
-- [ ] Smazat `frontend-spa/src/views/ManagementDetailView.vue`
-- [ ] Smazat `frontend-spa/src/stores/realizations.ts`
-- [ ] Smazat `frontend-spa/src/stores/management.ts`
-- [ ] `router/index.ts` — smazat routes `/realizations`, `/realizations/:id`, `/management`, `/management/:id`
-- [ ] `AppShell.vue` — smazat WS handlery `realization.*` a `management.*`; smazat nav položky Realizace + Správa; smazat `WrenchScrewdriverIcon` a `ShieldExclamationIcon` imports (pokud jsou jen pro tyto nav položky)
+- [x] Smazat `frontend-spa/src/views/RealizationsView.vue`
+- [x] Smazat `frontend-spa/src/views/RealizationDetailView.vue`
+- [x] Smazat `frontend-spa/src/views/ManagementView.vue`
+- [x] Smazat `frontend-spa/src/views/ManagementDetailView.vue`
+- [x] Smazat `frontend-spa/src/stores/realizations.ts`
+- [x] Smazat `frontend-spa/src/stores/management.ts`
+- [x] `router/index.ts` — smazat routes `/realizations`, `/realizations/:id`, `/management`, `/management/:id`
+- [x] `AppShell.vue` — smazat WS handlery `realization.*` a `management.*`; smazat nav položky Realizace + Správa; smazat `WrenchScrewdriverIcon` a `ShieldExclamationIcon` imports (pokud jsou jen pro tyto nav položky)
 
 ---
 
-### Fáze 2 — Přejmenovat Lead → PipelineRecord + nové modely ⬜
+### Fáze 2 — Přejmenovat Lead → PipelineRecord + nové modely ✅
 
 #### Přejmenování Lead → PipelineRecord (backend)
-- [ ] `crm/models.py` — přejmenovat třídu `Lead` → `PipelineRecord`; přejmenovat `LeadStatus` → `RecordStatus`, `LeadSource` → `RecordSource`
-- [ ] `crm/models.py` → `Activity.lead` FK → přejmenovat na `record`, `related_name='activities'`
-- [ ] `crm/models.py` → `Task.lead` FK → přejmenovat na `record`
-- [ ] `crm/models.py` → `Document.lead` FK → přejmenovat na `record`
-- [ ] `crm/api.py` — přejmenovat `Lead*` schémata → `Record*`; endpoint `/leads` → `/records`; importy; WS event klíče `lead.*` → `record.*`
-- [ ] `crm/tasks.py` — přejmenovat kontextové proměnné a importy Lead→PipelineRecord
-- [ ] `crm/streamline/tools.py` — přejmenovat `lead_id` → `record_id` v parametrech
-- [ ] `crm/documents_api.py` — přejmenovat `lead_id` → `record_id`
-- [ ] `crm/admin.py` — přejmenovat `LeadAdmin` → `PipelineRecordAdmin`
-- [ ] `crm/events.py` — přejmenovat event strings `lead.*` → `record.*`
+- [x] `crm/models.py` — přejmenovat třídu `Lead` → `PipelineRecord`; přejmenovat `LeadStatus` → `RecordStatus`, `LeadSource` → `RecordSource`
+- [x] `crm/models.py` → `Activity.lead` FK → přejmenovat na `record`, `related_name='activities'`
+- [x] `crm/models.py` → `Task.lead` FK → přejmenovat na `record`
+- [x] `crm/models.py` → `Document.lead` FK → přejmenovat na `record`
+- [x] `crm/api.py` — přejmenovat `Lead*` schémata → `Record*`; endpoint `/leads` → `/records`; importy; WS event klíče `lead.*` → `record.*`
+- [x] `crm/tasks.py` — přejmenovat kontextové proměnné a importy Lead→PipelineRecord
+- [x] `crm/streamline/tools.py` — přejmenovat `lead_id` → `record_id` v parametrech
+- [x] `crm/documents_api.py` — přejmenovat `lead_id` → `record_id`
+- [x] `crm/admin.py` — přejmenovat `LeadAdmin` → `PipelineRecordAdmin`
+- [x] `crm/events.py` — přejmenovat event strings `lead.*` → `record.*`
 
 #### Přejmenování Lead → PipelineRecord (frontend)
-- [ ] Přejmenovat `stores/leads.ts` → `stores/records.ts`; `useLeadsStore` → `useRecordsStore`; `LeadOut`→`RecordOut`; API endpoint `/leads` → `/records`
-- [ ] Přejmenovat `LeadsView.vue` → `RecordsView.vue` (zatím jen rename, adaptace v Fázi 7)
-- [ ] Přejmenovat `LeadDetailView.vue` → `RecordDetailView.vue` (zatím jen rename, adaptace v Fázi 7)
-- [ ] `router/index.ts` — paths `/opportunities` → `/records`, `/opportunities/:id` → `/records/:id`
-- [ ] `AppShell.vue` — WS handlery `lead.*` → `record.*`; nav položka Příležitosti → Records; store reference
-- [ ] `composables/useI18n.ts` — přejmenovat i18n klíče `leads.*` → `records.*`
+- [x] Přejmenovat `stores/leads.ts` → `stores/records.ts`; `useLeadsStore` → `useRecordsStore`; `LeadOut`→`RecordOut`; API endpoint `/leads` → `/records`
+- [x] Přejmenovat `LeadsView.vue` → `RecordsView.vue` (zatím jen rename, adaptace v Fázi 7)
+- [x] Přejmenovat `LeadDetailView.vue` → `RecordDetailView.vue` (zatím jen rename, adaptace v Fázi 7)
+- [x] `router/index.ts` — paths `/opportunities` → `/records`, `/opportunities/:id` → `/records/:id`
+- [x] `AppShell.vue` — WS handlery `lead.*` → `record.*`; nav položka Příležitosti → Records; store reference
+- [x] `composables/useI18n.ts` — přejmenovat i18n klíče `leads.*` → `records.*`
 
 #### Nové modely v `crm/models.py`
-- [ ] **`Category`** — `id` UUID PK, `firm` FK (TenantModel), `name`, `slug` (auto), `icon`, `color`, `order`, `is_active`, `created_at`; `Meta: unique_together(firm, slug)`
-- [ ] **`Stage`** — `id` UUID PK, `category` FK→Category CASCADE, `name`, `label`, `color`, `order`, `is_terminal`, `is_won`, `created_at`; `Meta: unique_together(category, order)`
-- [ ] **`CategoryField`** — `id` UUID PK, `category` FK→Category CASCADE, `field_key` (choices), `is_visible`, `is_required`, `order`; `Meta: unique_together(category, field_key)`
-- [ ] **`Checkpoint`** — `id` UUID PK, `record` FK→PipelineRecord CASCADE, `name`, `date`, `is_completed`, `description`, `created_at`; `SoftDeleteMixin`
-- [ ] `PipelineRecord` — přidat pole `category` FK→Category nullable, `current_stage` FK→Stage nullable, `parent` FK→self nullable, `start_date`, `end_date`, `expires_at`, `notes`, `extra_data` JSONField
+- [x] **`Category`** — `id` UUID PK, `firm` FK (TenantModel), `name`, `slug` (auto), `icon`, `color`, `order`, `is_active`, `created_at`; `Meta: unique_together(firm, slug)`
+- [x] **`Stage`** — `id` UUID PK, `category` FK→Category CASCADE, `name`, `label`, `color`, `order`, `is_terminal`, `is_won`, `created_at`; `Meta: unique_together(category, order)`
+- [x] **`CategoryField`** — `id` UUID PK, `category` FK→Category CASCADE, `field_key` (choices), `is_visible`, `is_required`, `order`; `Meta: unique_together(category, field_key)`
+- [x] **`Checkpoint`** — `id` UUID PK, `record` FK→PipelineRecord CASCADE, `name`, `date`, `is_completed`, `description`, `created_at`; `SoftDeleteMixin`
+- [x] `PipelineRecord` — přidat pole `category` FK→Category nullable, `current_stage` FK→Stage nullable, `parent` FK→self nullable, `start_date`, `end_date`, `expires_at`, `notes`, `extra_data` JSONField
 
 #### Migrace
-- [ ] Smazat celý obsah `crm/migrations/` kromě `__init__.py`
-- [ ] `./manage.py makemigrations crm`
-- [ ] `./manage.py migrate`
+- [x] Smazat celý obsah `crm/migrations/` kromě `__init__.py`
+- [x] `./manage.py makemigrations crm`
+- [x] `./manage.py migrate`
 
 ---
 
@@ -191,4 +191,25 @@ Protože jde o dev prostředí bez produkčních dat, je přejmenování čisté
 
 ## Záznam průběhu
 
-*(průběh implementace bude zaznamenáván níže)*
+### 2026-05-03 — Fáze 1 + Fáze 2 dokončeny
+
+**Fáze 1** (PR #153, branch copilot/analyze-lead-realizace-sprava):
+- Smazány všechny třídy Realization, Milestone, Management z crm/models.py
+- Smazány crm/realization_api.py a crm/management_api.py
+- Odstraněny importy a routery z leadlab/api.py
+- Vyčištěno crm/api.py, crm/tasks.py, crm/automations_api.py, crm/streamline/tools.py, crm/documents_api.py
+- Frontend: smazány RealizationsView, RealizationDetailView, ManagementView, ManagementDetailView, stores/realizations.ts, stores/management.ts
+- Router a AppShell.vue aktualizovány
+
+**Fáze 2** (branch copilot/pipeline-record-architecture-progress):
+- `Lead` → `PipelineRecord`, `LeadStatus` → `RecordStatus`, `LeadSource` → `RecordSource`
+- Nové modely: `Category`, `Stage`, `CategoryField`, `Checkpoint`
+- PipelineRecord rozšířen o pole: category, current_stage, parent, start_date, end_date, expires_at, notes, extra_data
+- FK přejmenována: Activity.lead→.record, Task.lead→.record, Document.lead→.record
+- crm/api.py: schémata Lead*→Record*, endpoint /leads→/records, WS eventy lead.*→record.*
+- crm/tasks.py, crm/events.py, crm/admin.py, crm/documents_api.py, crm/streamline/tools.py aktualizovány
+- Migrace resetovány a znovu vygenerovány (2 soubory: 0001_initial, 0002_category_etc)
+- Frontend: stores/records.ts (useRecordsStore), RecordsView.vue, RecordDetailView.vue, router /records, AppShell.vue, useI18n.ts aktualizovány
+- `python manage.py check` → 0 issues
+
+**Následuje:** Fáze 3 — API pro Category/Stage konfigurace + Records CRUD (pipeline_config_api.py, records_api.py)

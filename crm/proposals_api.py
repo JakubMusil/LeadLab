@@ -49,7 +49,7 @@ from crm.models import (
     ActivityType,
     Customer,
     FirmProposalItem,
-    Lead,
+    PipelineRecord,
     Proposal,
     ProposalItem,
     ProposalStatus,
@@ -469,9 +469,9 @@ def create_standalone_proposal(request, payload: ProposalIn):
 
     if payload.lead_id:
         try:
-            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-        except Lead.DoesNotExist:
-            return 404, {"detail": "Lead not found."}
+            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return 404, {"detail": "PipelineRecord not found."}
     if payload.customer_id:
         try:
             customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
@@ -497,7 +497,7 @@ def create_standalone_proposal(request, payload: ProposalIn):
 
 
 # ---------------------------------------------------------------------------
-# Proposal CRUD — scoped to a Lead (backward-compatible)
+# Proposal CRUD — scoped to a PipelineRecord (backward-compatible)
 # ---------------------------------------------------------------------------
 
 @proposals_router.get(
@@ -512,9 +512,9 @@ def list_proposals(request, lead_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "PipelineRecord not found."}
 
     proposals = (
         Proposal.objects.filter(lead=lead)
@@ -536,9 +536,9 @@ def create_proposal(request, lead_id: str, payload: ProposalIn):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "PipelineRecord not found."}
 
     import uuid as _uuid
     proposal = Proposal.objects.create(

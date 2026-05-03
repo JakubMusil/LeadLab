@@ -517,7 +517,7 @@ function translateLeadStatus(status: string): string {
 // ---------------------------------------------------------------------------
 function listUrl(page: number): string {
   // Lead uses the unified feed endpoint (Activity + Task merged)
-  if (props.entityType === 'lead') return `/api/v1/crm/opportunities/${props.entityId}/feed?page=${page}&page_size=20`
+  if (props.entityType === 'record') return `/api/v1/crm/records/${props.entityId}/feed?page=${page}&page_size=20`
   if (props.entityType === 'realization') return `/api/v1/crm/realizations/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'customer') return `/api/v1/crm/directory/${props.entityId}/activities?page=${page}&page_size=20`
   if (props.entityType === 'proposal') return `/api/v1/crm/proposals/${props.entityId}/activities?page=${page}&page_size=20`

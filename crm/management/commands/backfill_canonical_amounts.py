@@ -1,7 +1,7 @@
 """
 Management command: backfill_canonical_amounts
 
-Recalculates canonical_amount for all financial records (Lead, ExpenseItem,
+Recalculates canonical_amount for all financial records (PipelineRecord, ExpenseItem,
 RevenueItem) across all firms.
 
 For records where currency == firm.default_currency, sets canonical_amount
@@ -21,7 +21,7 @@ from django.utils import timezone
 
 
 class Command(BaseCommand):
-    help = "Backfill canonical_amount for Lead, ExpenseItem, RevenueItem records."
+    help = "Backfill canonical_amount for PipelineRecord, ExpenseItem, RevenueItem records."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -39,7 +39,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from firms.models import Firm
-        from crm.models import Lead, ExpenseItem, RevenueItem
+        from crm.models import PipelineRecord, ExpenseItem, RevenueItem
         from crm.money import to_canonical
 
         dry_run = options["dry_run"]
@@ -62,7 +62,7 @@ class Command(BaseCommand):
         now = timezone.now()
 
         model_defs = [
-            (Lead, "value", "created_at"),
+            (PipelineRecord, "value", "created_at"),
             (ExpenseItem, "amount", "date"),
             (RevenueItem, "amount", "date"),
         ]

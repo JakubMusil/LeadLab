@@ -129,7 +129,7 @@ def check_tier_limits(firm: Firm) -> None:
     if firm.subscription_tier == "pro":
         return  # no hard limits on Pro
 
-    from crm.models import Lead  # local import to avoid circular dependency
+    from crm.models import PipelineRecord  # local import to avoid circular dependency
 
     member_count = firm.memberships.count()
     # This guard is called *before* adding a new member.
@@ -141,7 +141,7 @@ def check_tier_limits(firm: Firm) -> None:
             "Upgrade to Pro to invite more."
         )
 
-    lead_count = Lead.objects.filter(firm=firm).count()
+    lead_count = PipelineRecord.objects.filter(firm=firm).count()
     if lead_count >= 50:
         raise SubscriptionRequired(
             "Free tier allows a maximum of 50 leads. "

@@ -9,7 +9,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import type { Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
-import { useLeadsStore } from '@/stores/leads'
+import { useRecordsStore } from '@/stores/records'
 import { useCustomersStore } from '@/stores/customers'
 import { api } from '@/api'
 import {
@@ -48,7 +48,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
 const { t } = useI18n()
-const leadsStore = useLeadsStore()
+const leadsStore = useRecordsStore()
 const customersStore = useCustomersStore()
 
 const searchQuery = ref('')
@@ -58,7 +58,7 @@ const documents = ref<DocumentOut[]>([])
 
 const navCommands = computed<CommandItem[]>(() => [
   { id: 'nav-dashboard', label: t('nav.overview'), icon: Squares2X2Icon, category: 'navigation', action: () => router.push('/app/dashboard') },
-  { id: 'nav-opportunities', label: t('nav.leads'), icon: FunnelIcon, category: 'navigation', action: () => router.push('/app/opportunities') },
+  { id: 'nav-records', label: t('nav.records'), icon: FunnelIcon, category: 'navigation', action: () => router.push('/app/records') },
   { id: 'nav-directory', label: t('nav.customers'), icon: UsersIcon, category: 'navigation', action: () => router.push('/app/directory') },
   { id: 'nav-calendar', label: t('nav.calendar'), icon: CalendarDaysIcon, category: 'navigation', action: () => router.push('/app/calendar') },
   { id: 'nav-team', label: t('nav.team'), icon: UserGroupIcon, category: 'navigation', action: () => router.push('/app/team') },
@@ -68,13 +68,13 @@ const navCommands = computed<CommandItem[]>(() => [
 ])
 
 const leadItems = computed<CommandItem[]>(() =>
-  leadsStore.leads.slice(0, 50).map((l) => ({
+  leadsStore.records.slice(0, 50).map((l) => ({
     id: `lead-${l.id}`,
     label: l.title,
     description: `Lead · ${l.status}`,
     icon: FunnelIcon,
     category: 'lead' as const,
-    action: () => router.push(`/app/opportunities/${l.id}`),
+    action: () => router.push(`/app/records/${l.id}`),
   })),
 )
 

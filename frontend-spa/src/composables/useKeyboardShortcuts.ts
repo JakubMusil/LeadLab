@@ -41,7 +41,7 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
     if (pendingKey === 'G') {
       if (pendingTimer) clearTimeout(pendingTimer)
       pendingKey = ''
-      if (key === 'L') { router.push('/app/opportunities'); return }
+      if (key === 'L') { router.push('/app/records'); return }
       if (key === 'C') { router.push('/app/directory'); return }
       if (key === 'D') { router.push('/app/dashboard'); return }
       return
@@ -53,7 +53,7 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
       return
     }
 
-    if (key === 'N' && route.path === '/app/opportunities') {
+    if (key === 'N' && route.path === '/app/records') {
       onNewLead?.()
     }
   }

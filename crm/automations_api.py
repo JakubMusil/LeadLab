@@ -85,10 +85,10 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
             {
                 "type": "send_email",
                 "to": "owner",
-                "subject": "🎉 Lead won: {{lead_title}}",
+                "subject": "🎉 PipelineRecord won: {{lead_title}}",
                 "body": (
                     "Great news!\n\n"
-                    "Lead '{{lead_title}}' has been marked as Won.\n\n"
+                    "PipelineRecord '{{lead_title}}' has been marked as Won.\n\n"
                     "Log in to LeadLab for details."
                 ),
             }

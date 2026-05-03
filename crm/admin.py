@@ -5,7 +5,7 @@ from crm.models import (
     Customer,
     DashboardLayout,
     ImportJob,
-    Lead,
+    PipelineRecord,
     LeadScoringRule,
     Notification,
     Proposal,
@@ -49,8 +49,8 @@ class CustomerAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(Lead)
-class LeadAdmin(admin.ModelAdmin):
+@admin.register(PipelineRecord)
+class PipelineRecordAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "source", "assigned_to", "value", "currency", "firm", "created_at")
     list_filter = ("firm", "status", "source")
     search_fields = ("title",)
@@ -61,17 +61,17 @@ class LeadAdmin(admin.ModelAdmin):
 
 @admin.register(Activity)
 class ActivityAdmin(admin.ModelAdmin):
-    list_display = ("type", "lead", "user", "created_at")
+    list_display = ("type", "record", "user", "created_at")
     list_filter = ("type",)
-    search_fields = ("content_text", "lead__title")
+    search_fields = ("content_text", "record__title")
     readonly_fields = ("created_at",)
 
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("title", "lead", "assigned_to", "due_date", "is_completed", "firm")
+    list_display = ("title", "record", "assigned_to", "due_date", "is_completed", "firm")
     list_filter = ("firm", "is_completed")
-    search_fields = ("title", "lead__title")
+    search_fields = ("title", "record__title")
     readonly_fields = ("completed_at", "created_at")
 
 

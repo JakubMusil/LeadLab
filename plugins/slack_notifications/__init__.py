@@ -3,7 +3,7 @@ First-party plugin: Slack Notifications (v2.4)
 
 Sends a Slack message to a configurable channel when:
 - New lead created
-- Lead won / lost
+- PipelineRecord won / lost
 - Task overdue
 - Proposal accepted
 

@@ -29,10 +29,10 @@ from crm.models import (
     Customer,
     DashboardLayout,
     Document,
-    Lead,
+    PipelineRecord,
     LeadScoringRule,
-    LeadSource,
-    LeadStatus,
+    RecordSource,
+    RecordStatus,
     Notification,
     Project,
     Proposal,
@@ -288,7 +288,7 @@ def list_company_employees(request, customer_id: str):
 # LEADS
 # ===========================================================================
 
-class LeadOut(Schema):
+class RecordOut(Schema):
     id: str
     firm_id: str
     customer_id: Optional[str]
@@ -311,11 +311,11 @@ class LeadOut(Schema):
     contact_person_name: Optional[str] = None
 
 
-class LeadIn(Schema):
+class RecordIn(Schema):
     title: str
     customer_id: Optional[str] = None
-    status: str = LeadStatus.NEW
-    source: str = LeadSource.WEB
+    status: str = RecordStatus.NEW
+    source: str = RecordSource.WEB
     assigned_to_id: Optional[str] = None
     value: Optional[Decimal] = None
     currency: str = "CZK"
@@ -323,7 +323,7 @@ class LeadIn(Schema):
     contact_person_id: Optional[str] = None
 
 
-class LeadUpdateIn(Schema):
+class RecordUpdateIn(Schema):
     title: Optional[str] = None
     status: Optional[str] = None
     source: Optional[str] = None
@@ -335,7 +335,7 @@ class LeadUpdateIn(Schema):
     contact_person_id: Optional[str] = None
 
 
-def _compute_lead_score(lead: Lead, rules: list) -> int:
+def _compute_lead_score(lead: PipelineRecord, rules: list) -> int:
     """
     Compute a 0–100 lead score by evaluating each scoring rule against
     the lead.  Rules are pre-fetched by the caller to avoid N+1 queries.
@@ -362,7 +362,7 @@ def _compute_lead_score(lead: Lead, rules: list) -> int:
             matched = lead.value is not None and lead.value >= Decimal(str(operand))
         elif field == "last_activity_days_lte":
             last_activity = (
-                Activity.objects.filter(lead=lead)
+                Activity.objects.filter(record=lead)
                 .order_by("-created_at")
                 .values_list("created_at", flat=True)
                 .first()
@@ -377,7 +377,7 @@ def _compute_lead_score(lead: Lead, rules: list) -> int:
     return max(0, min(100, score))
 
 
-def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
+def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
     score = _compute_lead_score(lead, rules) if rules is not None else None
     created_by_name: Optional[str] = None
     if lead.created_by_id:
@@ -433,7 +433,7 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
     }
 
 
-def _build_lead_automation_context(lead: Lead, firm) -> dict:
+def _build_lead_automation_context(lead: PipelineRecord, firm) -> dict:
     """Build the evaluation context dict for automation rules fired from a Lead event."""
     from firms.models import Membership
 
@@ -496,14 +496,14 @@ def _build_task_automation_context(task, firm) -> dict:
     """
     from firms.models import Membership
 
-    lead_id = str(task.lead_id) if task.lead_id else ""
+    lead_id = str(task.record_id) if task.record_id else ""
     lead_title = ""
     customer_name = ""
     customer_email = ""
 
-    if task.lead_id:
+    if task.record_id:
         try:
-            lead = task.lead
+            lead = task.record
             lead_title = lead.title or ""
             if lead.customer_id:
                 c = lead.customer
@@ -558,8 +558,8 @@ def _build_task_automation_context(task, firm) -> dict:
 
 
 
-@router.get("/opportunities", auth=django_auth, response={200: List[LeadOut], 403: ErrorOut})
-def list_leads(
+@router.get("/records", auth=django_auth, response={200: List[RecordOut], 403: ErrorOut})
+def list_records(
     request,
     status: str = "",
     assigned_to: str = "",
@@ -580,7 +580,7 @@ def list_leads(
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    qs = Lead.objects.filter(firm=request.firm)
+    qs = PipelineRecord.objects.filter(firm=request.firm)
     if status:
         qs = qs.filter(status=status)
     if assigned_to:
@@ -609,11 +609,11 @@ def list_leads(
     offset = (page - 1) * page_size
     leads = list(qs.select_related('created_by', 'assigned_to')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))
-    return 200, [_lead_out(lead, rules) for lead in leads]
+    return 200, [_record_out(lead, rules) for lead in leads]
 
 
-@router.post("/opportunities", auth=django_auth, response={201: LeadOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
-def create_lead(request, payload: LeadIn):
+@router.post("/records", auth=django_auth, response={201: RecordOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
+def create_record(request, payload: RecordIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
         require_active_subscription(request.firm)
@@ -654,7 +654,7 @@ def create_lead(request, payload: LeadIn):
         except User.DoesNotExist:
             return 400, {"detail": "Assigned user not found."}
 
-    lead = Lead.objects.create(
+    lead = PipelineRecord.objects.create(
         firm=request.firm,
         customer=customer,
         company=company,
@@ -667,7 +667,7 @@ def create_lead(request, payload: LeadIn):
         currency=payload.currency,
         created_by=request.user,
     )
-    broadcast_event(firm=request.firm, event='lead.created', payload=_lead_out(lead))
+    broadcast_event(firm=request.firm, event='record.created', payload=_record_out(lead))
 
     # Fire workflow automation trigger: lead_created
     from crm.tasks import evaluate_automation_rules
@@ -678,34 +678,34 @@ def create_lead(request, payload: LeadIn):
         robust=True,
     )
 
-    return 201, _lead_out(lead)
+    return 201, _record_out(lead)
 
 
-@router.get("/opportunities/{lead_id}", auth=django_auth, response={200: LeadOut, 403: ErrorOut, 404: ErrorOut})
-def get_lead(request, lead_id: str):
+@router.get("/records/{record_id}", auth=django_auth, response={200: RecordOut, 403: ErrorOut, 404: ErrorOut})
+def get_record(request, record_id: str):
     try:
         require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.select_related('created_by').get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
-    return 200, _lead_out(lead)
+        lead = PipelineRecord.objects.select_related('created_by').get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+    return 200, _record_out(lead)
 
 
-@router.patch("/opportunities/{lead_id}", auth=django_auth, response={200: LeadOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
-def update_lead(request, lead_id: str, payload: LeadUpdateIn):
+@router.patch("/records/{record_id}", auth=django_auth, response={200: RecordOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
+def update_record(request, record_id: str, payload: RecordUpdateIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     old_status = lead.status
     update_data = payload.dict(exclude_none=True)
@@ -757,7 +757,7 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
                 lead.status = new_status
                 lead.save()
                 Activity.objects.create(
-                    lead=lead,
+                    record=lead,
                     user=request.user,
                     type=ActivityType.STATUS_CHANGE,
                     metadata={
@@ -783,24 +783,24 @@ def update_lead(request, lead_id: str, payload: LeadUpdateIn):
         finally:
             clear_current_user()
 
-    broadcast_event(firm=request.firm, event='lead.updated', payload=_lead_out(lead))
-    return 200, _lead_out(lead)
+    broadcast_event(firm=request.firm, event='record.updated', payload=_record_out(lead))
+    return 200, _record_out(lead)
 
 
-@router.delete("/opportunities/{lead_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
-def delete_lead(request, lead_id: str):
+@router.delete("/records/{record_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
+def delete_record(request, record_id: str):
     try:
         require_membership(request, min_role=MembershipRole.ADMIN)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     perform_soft_delete(lead, request.user)
-    broadcast_event(firm=request.firm, event='lead.deleted', payload={'id': lead_id})
+    broadcast_event(firm=request.firm, event='record.deleted', payload={'id': record_id})
     return 204, None
 
 
@@ -843,7 +843,7 @@ class ActivityUpdateIn(Schema):
 
 class ActivityIn(Schema):
     # Exactly one of the entity IDs must be provided.
-    lead_id: Optional[str] = None
+    record_id: Optional[str] = None
     customer_id: Optional[str] = None
     proposal_id: Optional[str] = None
     task_id: Optional[str] = None
@@ -937,12 +937,12 @@ def list_activities(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(lead=lead).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    activities = Activity.objects.filter(record=lead).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
     return 200, [_activity_out(a, request.user) for a in activities]
 
 
@@ -983,11 +983,11 @@ def _feed_item_from_task(t: "Task", requesting_user=None) -> dict:
 
 
 @router.get(
-    "/opportunities/{lead_id}/feed",
+    "/records/{record_id}/feed",
     auth=django_auth,
     response={200: List[FeedItemOut], 403: ErrorOut, 404: ErrorOut},
 )
-def get_lead_feed(request, lead_id: str, page: int = 1, page_size: int = 20):
+def get_record_feed(request, record_id: str, page: int = 1, page_size: int = 20):
     """
     Unified chronological feed for a Lead — merges Activities and Tasks into
     one list sorted by ``created_at`` descending.
@@ -1004,9 +1004,9 @@ def get_lead_feed(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
 
@@ -1017,13 +1017,13 @@ def get_lead_feed(request, lead_id: str, page: int = 1, page_size: int = 20):
     fetch_size = page_size * 2 + 10  # generous buffer for the merge window
 
     activities = list(
-        Activity.objects.filter(lead=lead)
+        Activity.objects.filter(record=lead)
         .select_related("user")
         .prefetch_related("reactions")
         .order_by("-created_at")[:offset + fetch_size]
     )
     tasks = list(
-        Task.objects.filter(lead=lead, is_archived=False)
+        Task.objects.filter(record=lead, is_archived=False)
         .select_related("assigned_to", "completed_by", "created_by")
         .order_by("-created_at")[:offset + fetch_size]
     )
@@ -1101,10 +1101,10 @@ def create_activity(request, payload: ActivityIn):
 
     if payload.lead_id:
         try:
-            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
+            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
             entity_title = lead.title
-        except Lead.DoesNotExist:
-            return 400, {"detail": "Lead not found in this Firm."}
+        except PipelineRecord.DoesNotExist:
+            return 400, {"detail": "Record not found in this Firm."}
     elif payload.customer_id:
         try:
             customer = Customer.objects.get(id=payload.customer_id, firm=request.firm)
@@ -1147,7 +1147,7 @@ def create_activity(request, payload: ActivityIn):
 
     with transaction.atomic():
         activity = Activity.objects.create(
-            lead=lead,
+            record=lead,
             customer=customer,
             proposal=proposal,
             task=task,
@@ -1200,7 +1200,7 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
     # All entities the activity can reference live within a Firm scope; we
     # check every possible FK and reject if none match the requesting firm.
     firm_id = None
-    for related in (activity.lead,
+    for related in (activity.record,
                     activity.customer, activity.proposal, activity.task):
         if related is not None and getattr(related, "firm_id", None) is not None:
             firm_id = related.firm_id
@@ -1523,10 +1523,10 @@ def _task_out(t: Task, requesting_user=None) -> dict:
     # Resolve lead title (use cached select_related if available)
     lead_id = None
     lead_title = None
-    if t.lead_id:
-        lead_id = str(t.lead_id)
+    if t.record_id:
+        lead_id = str(t.record_id)
         try:
-            lead_title = t.lead.title
+            lead_title = t.record.title
         except (AttributeError, Exception) as exc:
             logger.debug("Could not resolve lead title for task %s: %s", t.id, exc)
 
@@ -2045,9 +2045,9 @@ def create_task(request, payload: TaskIn):
     lead = None
     if payload.lead_id:
         try:
-            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-        except Lead.DoesNotExist:
-            return 400, {"detail": "Lead not found in this Firm."}
+            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return 400, {"detail": "Record not found in this Firm."}
 
     proposal = None
     if payload.proposal_id:
@@ -2085,7 +2085,7 @@ def create_task(request, payload: TaskIn):
 
         task = Task.objects.create(
             firm=request.firm,
-            lead=lead,
+            record=lead,
             proposal=proposal,
             customer=customer,
             assigned_to=assigned_to,
@@ -2133,7 +2133,7 @@ def create_task(request, payload: TaskIn):
             }
             if lead:
                 Activity.objects.create(
-                    lead=lead,
+                    record=lead,
                     user=request.user,
                     type=ActivityType.TASK_ASSIGNED,
                     metadata=activity_metadata,
@@ -2348,7 +2348,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         completion_metadata = {"task_id": str(task.id), "title": task.title}
         if task.lead_id:
             Activity.objects.create(
-                lead=task.lead,
+                record=task.record,
                 user=request.user,
                 type=ActivityType.TASK_COMPLETED,
                 metadata=completion_metadata,
@@ -2359,15 +2359,15 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
             follow_up_lead = None
             if follow_up_data.lead_id:
                 try:
-                    follow_up_lead = Lead.objects.get(id=follow_up_data.lead_id, firm=request.firm)
-                except Lead.DoesNotExist:
+                    follow_up_lead = PipelineRecord.objects.get(id=follow_up_data.lead_id, firm=request.firm)
+                except PipelineRecord.DoesNotExist:
                     pass
             else:
-                follow_up_lead = task.lead
+                follow_up_lead = task.record
 
             follow_up_task = Task.objects.create(
                 firm=request.firm,
-                lead=follow_up_lead,
+                record=follow_up_lead,
                 assigned_to=follow_up_assigned_to,
                 title=follow_up_data.title,
                 description=follow_up_data.description,
@@ -2435,7 +2435,7 @@ def reopen_task(request, task_id: str):
         reopen_metadata = {"task_id": str(task.id), "title": task.title}
         if task.lead_id:
             Activity.objects.create(
-                lead=task.lead,
+                record=task.record,
                 user=request.user,
                 type=ActivityType.TASK_REOPENED,
                 metadata=reopen_metadata,
@@ -2937,7 +2937,7 @@ def create_streamline_items(request, task_id: str, payload: StreamlineItemCreate
         from crm.models import Activity
         Activity.objects.create(
             firm=request.firm,
-            lead=task.lead,
+            record=task.record,
             customer=task.customer,
             proposal=task.proposal,
             task=task,
@@ -2982,7 +2982,7 @@ def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateI
         activity_type = "streamline_item_resolved" if payload.is_resolved else "streamline_item_reopened"
         Activity.objects.create(
             firm=request.firm,
-            lead=task.lead,
+            record=task.record,
             customer=task.customer,
             proposal=task.proposal,
             task=task,
@@ -3306,7 +3306,7 @@ def _copy_task(original: Task, firm, created_by, title: str) -> Task:
     """Create a copy of *original* under *firm*. Does not copy subtasks/checklist."""
     new_task = Task.objects.create(
         firm=firm,
-        lead=original.lead,
+        record=original.record,
         proposal=original.proposal,
         customer=original.customer,
         created_by=created_by,
@@ -3400,15 +3400,15 @@ def move_task(request, task_id: str, payload: TaskMoveIn):
         return 404, {"detail": "Task not found."}
 
     # Clear existing entity links
-    task.lead = None
+    task.record = None
     task.proposal = None
     task.customer = None
 
     if payload.lead_id:
         try:
-            task.lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-        except Lead.DoesNotExist:
-            return 400, {"detail": "Lead not found."}
+            task.record = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return 400, {"detail": "Record not found."}
     elif payload.proposal_id:
         try:
             task.proposal = Proposal.objects.get(id=payload.proposal_id, firm=request.firm)
@@ -4310,9 +4310,9 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
     lead = None
     if payload.lead_id:
         try:
-            lead = Lead.objects.get(id=payload.lead_id, firm=request.firm)
-        except Lead.DoesNotExist:
-            return 400, {"detail": "Lead not found."}
+            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return 400, {"detail": "Record not found."}
 
     proposal = None
     if payload.proposal_id:
@@ -4338,7 +4338,7 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
     with transaction.atomic():
         task = Task.objects.create(
             firm=request.firm,
-            lead=lead,
+            record=lead,
             proposal=proposal,
             customer=customer,
             title=payload.title.strip(),
@@ -4404,8 +4404,8 @@ def get_stats(request):
 
     now = tz.now()
 
-    leads_qs = Lead.objects.filter(firm=request.firm)
-    status_counts = {s.value: 0 for s in LeadStatus}
+    leads_qs = PipelineRecord.objects.filter(firm=request.firm)
+    status_counts = {s.value: 0 for s in RecordStatus}
     for row in leads_qs.values("status").annotate(n=Count("id")):
         status_counts[row["status"]] = row["n"]
 
@@ -4414,16 +4414,16 @@ def get_stats(request):
     mixed_currencies = leads_qs.exclude(currency=default_currency).exists()
 
     pipeline_value = float(
-        same_currency_qs.exclude(status__in=[LeadStatus.WON, LeadStatus.LOST, LeadStatus.CANCELED])
+        same_currency_qs.exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
         .aggregate(total=Sum("value"))["total"]
         or 0
     )
     won_value = float(
-        same_currency_qs.filter(status=LeadStatus.WON).aggregate(total=Sum("value"))["total"] or 0
+        same_currency_qs.filter(status=RecordStatus.WON).aggregate(total=Sum("value"))["total"] or 0
     )
 
     total_leads = leads_qs.count()
-    won_leads = status_counts.get(LeadStatus.WON, 0)
+    won_leads = status_counts.get(RecordStatus.WON, 0)
     conversion_rate = round(won_leads / total_leads, 4) if total_leads else 0.0
 
     tasks_qs = Task.objects.filter(firm=request.firm, is_completed=False)
@@ -4490,11 +4490,11 @@ def _attachment_out(doc: Document, request=None) -> dict:
 
 
 @router.get(
-    "/opportunities/{lead_id}/attachments",
+    "/records/{record_id}/attachments",
     auth=django_auth,
     response={200: List[AttachmentOut], 403: ErrorOut, 404: ErrorOut},
 )
-def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
+def list_attachments(request, record_id: str, page: int = 1, page_size: int = 20):
     """List all file attachments for a Lead, newest first (paginated)."""
     try:
         require_membership(request)
@@ -4502,23 +4502,23 @@ def list_attachments(request, lead_id: str, page: int = 1, page_size: int = 20):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
-    docs = Document.objects.filter(lead=lead, firm=request.firm).order_by("-created_at")[
+    docs = Document.objects.filter(record=lead, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
     return 200, [_attachment_out(d, request) for d in docs]
 
 
 @router.post(
-    "/opportunities/{lead_id}/attachments",
+    "/records/{record_id}/attachments",
     auth=django_auth,
     response={201: AttachmentOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
-def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
+def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
     """
     Upload a file and attach it to a Lead.
 
@@ -4531,9 +4531,9 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     if file.size > _MAX_ATTACHMENT_BYTES:
         return 400, {"detail": f"File exceeds the maximum allowed size of {_MAX_ATTACHMENT_BYTES // (1024 * 1024)} MB."}
@@ -4541,7 +4541,7 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
     with transaction.atomic():
         doc = Document(
             firm=request.firm,
-            lead=lead,
+            record=lead,
             uploaded_by=request.user,
             name=file.name,
             content_type=file.content_type or "application/octet-stream",
@@ -4550,7 +4550,7 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
         doc.file.save(file.name, file, save=True)
 
         Activity.objects.create(
-            lead=lead,
+            record=lead,
             user=request.user,
             type=ActivityType.FILE_UPLOAD,
             metadata={
@@ -4565,11 +4565,11 @@ def upload_attachment(request, lead_id: str, file: UploadedFile = File(...)):
 
 
 @router.delete(
-    "/opportunities/{lead_id}/attachments/{attachment_id}",
+    "/records/{record_id}/attachments/{attachment_id}",
     auth=django_auth,
     response={204: None, 403: ErrorOut, 404: ErrorOut},
 )
-def delete_attachment(request, lead_id: str, attachment_id: str):
+def delete_attachment(request, record_id: str, attachment_id: str):
     """
     Soft-delete a file attachment from a Lead.
 
@@ -4582,12 +4582,12 @@ def delete_attachment(request, lead_id: str, attachment_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = Lead.objects.get(id=lead_id, firm=request.firm)
-    except Lead.DoesNotExist:
-        return 404, {"detail": "Lead not found."}
+        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
 
     try:
-        doc = Document.objects.get(id=attachment_id, lead=lead, firm=request.firm)
+        doc = Document.objects.get(id=attachment_id, record=lead, firm=request.firm)
     except Document.DoesNotExist:
         return 404, {"detail": "Attachment not found."}
 
@@ -4638,7 +4638,7 @@ class _VoiceMemoEntities(NamedTuple):
     inside the active firm tenant.
     """
 
-    lead: Optional[Lead] = None
+    lead: Optional[PipelineRecord] = None
     customer: Optional[Customer] = None
     proposal: Optional[Proposal] = None
     error: Optional[str] = None
@@ -4659,9 +4659,9 @@ def _resolve_voice_memo_entity(
     lead = customer = proposal = None
     if lead_id:
         try:
-            lead = Lead.objects.get(id=lead_id, firm=request.firm)
-        except Lead.DoesNotExist:
-            return _VoiceMemoEntities(error="Lead not found.")
+            lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+        except PipelineRecord.DoesNotExist:
+            return _VoiceMemoEntities(error="Record not found.")
     if customer_id:
         try:
             customer = Customer.objects.get(id=customer_id, firm=request.firm)
@@ -4740,7 +4740,7 @@ def upload_voice_memo(
 
     doc = Document(
         firm=request.firm,
-        lead=lead,
+        record=lead,
         customer=customer,
         proposal=proposal,
         uploaded_by=request.user,
@@ -4874,7 +4874,7 @@ def upload_file_blobs(
         content_type = (upload.content_type or "application/octet-stream").lower()
         doc = Document(
             firm=request.firm,
-            lead=entities.lead,
+            record=entities.lead,
             customer=entities.customer,
             proposal=entities.proposal,
             uploaded_by=request.user,
@@ -4932,12 +4932,12 @@ def pipeline_summary(request):
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    leads_qs = Lead.objects.filter(firm=request.firm)
+    leads_qs = PipelineRecord.objects.filter(firm=request.firm)
 
     # Build a base dict with every status initialised to zero so that
     # statuses with no leads are still present in the response.
-    counts: Dict[str, int] = {s.value: 0 for s in LeadStatus}
-    values: Dict[str, float] = {s.value: 0.0 for s in LeadStatus}
+    counts: Dict[str, int] = {s.value: 0 for s in RecordStatus}
+    values: Dict[str, float] = {s.value: 0.0 for s in RecordStatus}
 
     for row in leads_qs.values("status").annotate(
         n=Count("id"), v=Sum("value")
@@ -5032,9 +5032,9 @@ class OverdueTaskOut(Schema):
 
 def _overdue_task_out(t: Task) -> dict:
     lead_title = None
-    if t.lead_id:
+    if t.record_id:
         try:
-            lead_title = t.lead.title
+            lead_title = t.record.title
         except (AttributeError, Exception):
             pass
     return {
@@ -5197,7 +5197,7 @@ def pipeline_velocity(request):
 
     # For each status, compute average dwell time:
     # dwell = time from entering a status until next transition (or now if current)
-    status_hours: Dict[str, list] = {s.value: [] for s in LeadStatus}
+    status_hours: Dict[str, list] = {s.value: [] for s in RecordStatus}
 
     history_qs = (
         Activity.objects.filter(
@@ -5234,7 +5234,7 @@ def pipeline_velocity(request):
             "avg_hours": (sum(status_hours[s.value]) / len(status_hours[s.value])) if status_hours[s.value] else 0.0,
             "sample_count": len(status_hours[s.value]),
         }
-        for s in LeadStatus
+        for s in RecordStatus
     ]
 
     cache.set(cache_key, result, _ANALYTICS_CACHE_SECONDS)
@@ -5276,7 +5276,7 @@ def won_lost_by_source(
     if cached is not None:
         return 200, cached
 
-    qs = Lead.objects.filter(firm=request.firm, status__in=[LeadStatus.WON, LeadStatus.LOST])
+    qs = PipelineRecord.objects.filter(firm=request.firm, status__in=[RecordStatus.WON, RecordStatus.LOST])
     if date_from:
         parsed = parse_datetime(date_from)
         if parsed is None:
@@ -5296,14 +5296,14 @@ def won_lost_by_source(
 
     data = qs.values("source", "status").annotate(n=Count("id"))
 
-    result_map: Dict[str, Dict[str, int]] = {s.value: {"won": 0, "lost": 0} for s in LeadSource}
+    result_map: Dict[str, Dict[str, int]] = {s.value: {"won": 0, "lost": 0} for s in RecordSource}
     for row in data:
         source = row["source"]
         if source not in result_map:
             result_map[source] = {"won": 0, "lost": 0}
-        if row["status"] == LeadStatus.WON:
+        if row["status"] == RecordStatus.WON:
             result_map[source]["won"] = row["n"]
-        elif row["status"] == LeadStatus.LOST:
+        elif row["status"] == RecordStatus.LOST:
             result_map[source]["lost"] = row["n"]
 
     result = [
@@ -5359,7 +5359,7 @@ def team_performance(request):
     result = []
     for m in memberships:
         user = m.user
-        leads_owned = Lead.objects.filter(firm=request.firm, assigned_to=user).count()
+        leads_owned = PipelineRecord.objects.filter(firm=request.firm, assigned_to=user).count()
         tasks_completed = Task.objects.filter(firm=request.firm, assigned_to=user, is_completed=True).count()
         activities_logged = Activity.objects.filter(lead__firm=request.firm, user=user).count()
         result.append({
@@ -5414,7 +5414,7 @@ def trends(request):
     twelve_weeks_ago = now - dt.timedelta(weeks=12)
     thirty_days_ago = now - dt.timedelta(days=30)
 
-    leads_qs = Lead.objects.filter(firm=request.firm)
+    leads_qs = PipelineRecord.objects.filter(firm=request.firm)
 
     weekly_rows = []
     for week in range(12):
@@ -5422,7 +5422,7 @@ def trends(request):
         week_end = week_start + dt.timedelta(weeks=1)
         created = leads_qs.filter(created_at__gte=week_start, created_at__lt=week_end).count()
         closed = leads_qs.filter(
-            status__in=[LeadStatus.WON, LeadStatus.LOST],
+            status__in=[RecordStatus.WON, RecordStatus.LOST],
             updated_at__gte=week_start,
             updated_at__lt=week_end,
         ).count()
@@ -5434,10 +5434,10 @@ def trends(request):
 
     # Rolling 30-day conversion rate: won / (won + lost) in last 30 days
     closed_30d = leads_qs.filter(
-        status__in=[LeadStatus.WON, LeadStatus.LOST],
+        status__in=[RecordStatus.WON, RecordStatus.LOST],
         updated_at__gte=thirty_days_ago,
     )
-    won_30d = closed_30d.filter(status=LeadStatus.WON).count()
+    won_30d = closed_30d.filter(status=RecordStatus.WON).count()
     total_closed_30d = closed_30d.count()
     conversion_rate = (won_30d / total_closed_30d * 100.0) if total_closed_30d > 0 else 0.0
 

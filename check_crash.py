@@ -5,7 +5,7 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "leadlab.settings")
 django.setup()
 
-from crm.models import Activity, Task, Lead
+from crm.models import Activity, Task, PipelineRecord
 from firms.models import Firm
 from django.db.models import Q
 import uuid
