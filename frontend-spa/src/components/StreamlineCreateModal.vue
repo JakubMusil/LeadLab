@@ -18,9 +18,11 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useAuthStore } from '@/stores/auth'
+import { useMoney } from '@/composables/useMoney'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
 import VoiceMemoRecorder from '@/components/VoiceMemoRecorder.vue'
 import FileUploadComposer from '@/components/FileUploadComposer.vue'
+import CurrencySelect from '@/components/CurrencySelect.vue'
 import {
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -122,6 +124,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
+const { firmCurrency } = useMoney()
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
@@ -332,7 +335,7 @@ const taskEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const taskSubmitting = ref(false)
 
 const proposalTitle = ref('')
-const proposalCurrency = ref('CZK')
+const proposalCurrency = ref(firmCurrency.value)
 const proposalSubmitting = ref(false)
 
 const tagDrafts = ref<Record<string, string>>({})
@@ -387,7 +390,7 @@ function resetForm() {
     taskDescription.value = ''
   } else if (props.actionType === 'proposal') {
     proposalTitle.value = ''
-    proposalCurrency.value = 'CZK'
+    proposalCurrency.value = firmCurrency.value
   }
 }
 
@@ -954,16 +957,7 @@ watch(
                   <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     {{ t('proposals.currency') || 'Currency' }}
                   </label>
-                  <select
-                    v-model="proposalCurrency"
-                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
-                  >
-                    <option>CZK</option>
-                    <option>EUR</option>
-                    <option>USD</option>
-                    <option>GBP</option>
-                    <option>PLN</option>
-                  </select>
+                  <CurrencySelect :model-value="proposalCurrency" @update:model-value="proposalCurrency = $event" />
                 </div>
               </template>
 

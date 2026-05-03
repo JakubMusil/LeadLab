@@ -2197,5 +2197,30 @@
     "saved": "Settings saved",
     "warningMixedCurrencies": "Records exist in multiple currencies. Statistics show only records in {currency}.",
     "warningChangeNote": "Changing the default currency does not alter existing records. Amounts in other currencies will be recalculated using the current rate on next save."
+  },
+  "exchangeRates": {
+    "title": "Exchange Rates",
+    "fromCurrency": "From",
+    "toCurrency": "To",
+    "rate": "Rate",
+    "validFrom": "Valid from",
+    "validTo": "Valid to",
+    "source": "Source",
+    "note": "Note",
+    "createdBy": "Created by",
+    "loading": "Loading…",
+    "noRates": "No manual rates. ECB rates are loaded automatically.",
+    "editNote": "Edit note",
+    "save": "Save",
+    "delete": "Delete",
+    "showHistory": "Show rate history",
+    "hideHistory": "Hide history",
+    "addRate": "Add / update rate",
+    "notePlaceholder": "Optional note (e.g. fixed rate per contract)",
+    "saveRate": "Save rate",
+    "saving": "Saving…",
+    "rateSaved": "Rate saved",
+    "errorRequired": "Enter a currency and rate value.",
+    "errorSave": "Failed to save rate."
   }
 }

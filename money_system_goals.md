@@ -768,24 +768,26 @@ export function useMoney() {
 - [x] Refaktorovat `ProposalBuilderView.vue` (CURRENCIES const → CurrencySelect, `fmt()` → `formatAmountPlain`)
 - [x] Přidat sekci „Měny a formátování" do `SettingsView.vue` (měna, locale, mode toggle, live preview)
 
-### P2 – Exchange Rate Engine (PŘÍŠTÍ FÁZE)
-- [ ] Model `SystemExchangeRate` + migrace (`crm/models.py` nebo `firms/models.py`)
-- [ ] Model `FirmExchangeRate` + migrace (stejné umístění)
-- [ ] `crm/money.py` – `get_rate()`, `to_canonical()`, `_get_system_rate()`
-- [ ] Celery task `fetch_ecb_exchange_rates` v `crm/tasks.py` (denní stahování ECB XML, beat schedule)
-- [ ] Celery task `recalculate_canonical_amounts_for_firm` v `crm/tasks.py`
-- [ ] API endpointy pro správu kurzů (`GET/POST/PATCH/DELETE /api/v1/firms/{id}/exchange-rates/`)
-- [ ] Owner UI – tabulka kurzů, formulář přidání/editace, záložka historie (v `SettingsView.vue`)
-- [ ] `canonical_amount`, `canonical_currency`, `canonical_rate_used`, `canonical_updated_at` pole na `Lead`, `ExpenseItem`, `RevenueItem` + migrace
-- [ ] Přepočet `canonical_amount` v `Lead.save()`, `ExpenseItem.save()`, `RevenueItem.save()`
-- [ ] Management command `backfill_canonical_amounts`
+### P2 – Exchange Rate Engine ✅ HOTOVO
+- [x] Model `SystemExchangeRate` + migrace (`firms/models.py`, `firms/migrations/0011_add_exchange_rate_models.py`)
+- [x] Model `FirmExchangeRate` + migrace (stejné umístění)
+- [x] `crm/money.py` – `get_rate()`, `to_canonical()`, `_get_system_rate()`, křížové kurzy přes EUR pivot
+- [x] Celery task `fetch_ecb_exchange_rates` v `crm/tasks.py` (denní stahování ECB XML, idempotentní, retry 3×)
+- [x] Celery beat schedule `fetch-ecb-exchange-rates` v `leadlab/settings.py` (17:30 UTC)
+- [x] Celery task `recalculate_canonical_amounts_for_firm` v `crm/tasks.py`
+- [x] API endpointy pro správu kurzů (`GET/POST/PATCH/DELETE /api/v1/firms/{id}/exchange-rates/` + preview endpoint)
+- [x] Owner UI – tabulka aktivních kurzů, formulář přidání, záložka historie, editace poznámky, smazání (`SettingsView.vue`)
+- [x] `canonical_amount`, `canonical_currency`, `canonical_rate_used`, `canonical_updated_at` pole na `Lead`, `ExpenseItem`, `RevenueItem` + migrace (`crm/migrations/0060_add_canonical_amount_fields.py`)
+- [x] Přepočet `canonical_amount` v `Lead.save()`, `ExpenseItem.save()`, `RevenueItem.save()` (přes `_recalc_canonical` helper)
+- [x] Management command `backfill_canonical_amounts` (`crm/management/commands/backfill_canonical_amounts.py`)
+- [x] i18n klíče `exchangeRates` v `cs.json`, `en.json`, `de.json`, `pl.json`
 
-### P3 – Konzistence zbývajících views (PO P2)
-- [ ] Refaktorovat `ReportsView.vue` (local `formatMoney` → `formatAmount`, `ref('CZK')` → firmCurrency, amount inputs → `<MoneyInput>`)
-- [ ] Refaktorovat `StreamlineCreateModal.vue` (stejné jako ProposalsView)
-- [ ] Refaktorovat `PublicProposalView.vue` (`fmt()` → `formatAmountPlain`)
-- [ ] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2)` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
-- [ ] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, zobrazit varování při `mixed_currencies: true`)
+### P3 – Konzistence zbývajících views ✅ HOTOVO
+- [x] Refaktorovat `ReportsView.vue` (lokální `formatMoney` → `formatAmount`, `ref('CZK')` → `firmCurrency`, text inputs → `CurrencySelect`, `createProposalFromReport` hardcoded `'CZK'` → `firmCurrency`)
+- [x] Refaktorovat `StreamlineCreateModal.vue` (`ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`)
+- [x] Refaktorovat `PublicProposalView.vue` (`fmt()` lokální `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu)
+- [x] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
+- [x] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty)
 
 ### P4 – Budoucí rozšíření
 - [ ] Křížové kurzy (cross-rate přes EUR pivot) v `get_rate()`
@@ -798,7 +800,7 @@ export function useMoney() {
 
 ## Stav implementace
 
-### Dokončeno (Fáze P0 + P1)
+### Dokončeno (Fáze P0 + P1 + P2)
 **Backend:**
 - `firms/models.py` – přidána pole `default_currency` (default CZK), `number_locale` (default cs-CZ), `exchange_rate_mode` (default auto)
 - `firms/migrations/0010_firm_currency_settings.py` – Django migrace
@@ -806,6 +808,15 @@ export function useMoney() {
 - `crm/api.py` – `get_stats` filtruje `pipeline_value`/`won_value` dle `firm.default_currency`, vrací `mixed_currencies` flag
 - `crm/erp_api.py` – `reports_summary` filtruje `total_expenses`/`total_revenues` dle `firm.default_currency`, vrací `mixed_currencies` flag
 - `crm/management/commands/backfill_firm_currency.py` – management command pro backfill defaultní měny
+- `firms/models.py` – nové modely `SystemExchangeRate` (globální ECB kurzy) a `FirmExchangeRate` (per-firm manuální kurzy s temporální platností)
+- `firms/migrations/0011_add_exchange_rate_models.py` – Django migrace
+- `crm/money.py` – nový modul: `get_rate()`, `to_canonical()`, `_get_system_rate()`, křížové kurzy přes EUR pivot, fallback 7 dní zpět
+- `crm/models.py` – `canonical_amount`, `canonical_currency`, `canonical_rate_used`, `canonical_updated_at` pole na `Lead`, `ExpenseItem`, `RevenueItem`; `_recalc_canonical()` helper; `save()` override na všech třech modelech
+- `crm/migrations/0060_add_canonical_amount_fields.py` – Django migrace
+- `crm/tasks.py` – `fetch_ecb_exchange_rates` (idempotentní ECB XML stahování, retry 3×, beat 17:30 UTC); `recalculate_canonical_amounts_for_firm` (hromadný přepočet canonical amounts)
+- `leadlab/settings.py` – beat schedule `fetch-ecb-exchange-rates`
+- `firms/api.py` – nové endpointy `GET/POST/PATCH/DELETE /api/v1/firms/{id}/exchange-rates/` + `GET /api/v1/firms/{id}/exchange-rates/preview/` (jen admin/owner)
+- `crm/management/commands/backfill_canonical_amounts.py` – management command s `--firm` a `--dry-run` volbami
 
 **Frontend:**
 - `stores/firm.ts` – `FirmOut` interface rozšíren o `default_currency`, `number_locale`, `exchange_rate_mode`
@@ -815,11 +826,16 @@ export function useMoney() {
 - `views/LeadsView.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, text input → `CurrencySelect`, `Intl.NumberFormat` → `formatAmount`
 - `views/ProposalsView.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`, `fmt()` → `formatAmount`
 - `views/ProposalBuilderView.vue` – refaktoring: `CURRENCIES` const odstraněna, `ref('CZK')` → `firmCurrency`, `<option>` select → `CurrencySelect`, `fmt()` → `formatAmountPlain`
-- `views/SettingsView.vue` – přidána sekce „Měny a formátování" (CurrencySelect, locale dropdown, live preview, exchange_rate_mode radio, uložení přes `PATCH /api/v1/firms/{id}/currency`)
-- `locales/cs.json`, `en.json`, `de.json`, `pl.json` – přidány sekce `currencies` (překlady názvů měn) a `currencySettings` (překlady UI labelů)
+- `views/SettingsView.vue` – přidána sekce „Měny a formátování" (CurrencySelect, locale dropdown, live preview, exchange_rate_mode radio, uložení přes `PATCH /api/v1/firms/{id}/currency`); **přidána sekce „Kurzy měn"** (tabulka aktivních kurzů, editace poznámky, smazání, záložka historie, formulář přidání nového kurzu s CurrencySelect, preview read-only pole, recalc trigger)
+- `locales/cs.json`, `en.json`, `de.json`, `pl.json` – přidány sekce `currencies` (překlady názvů měn), `currencySettings` (překlady UI labelů) a **`exchangeRates`** (překlady tabulky a formuláře kurzů)
+- `views/ReportsView.vue` – refaktoring: lokální `formatMoney` → `formatAmount`, `ref('CZK')` → `firmCurrency`, text currency inputs → `CurrencySelect`, `createProposalFromReport` hardcoded `'CZK'` → `firmCurrency`
+- `components/StreamlineCreateModal.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`
+- `views/PublicProposalView.vue` – refaktoring: lokální `fmt()` `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu
+- `views/CustomerDetailView.vue` – refaktoring: `.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`
+- `views/DashboardView.vue` – refaktoring: `Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty
 
-### Příští fáze: P2 – Exchange Rate Engine
-Implementace začne modely `SystemExchangeRate` a `FirmExchangeRate` v `firms/models.py`, navazující Celery tasky a API endpointy pro správu kurzů.
+### Příští fáze: P4 – Budoucí rozšíření
+Viz sekce P4 níže. Doporučené pořadí: export kurzů do CSV, webhook notifikace při výpadku ECB, per-user locale preference.
 
 ---
 

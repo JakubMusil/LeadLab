@@ -160,6 +160,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.purge_soft_deleted_records',
         'schedule': crontab(hour=3, minute=0),
     },
+    # Exchange Rate Engine — fetch ECB daily rates (ECB publishes by ~16:00 CET)
+    'fetch-ecb-exchange-rates': {
+        'task': 'crm.tasks.fetch_ecb_exchange_rates',
+        'schedule': crontab(hour=17, minute=30),
+    },
 }
 
 # Safe-remove: number of days before a soft-deleted record is hard-deleted.

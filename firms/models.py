@@ -424,3 +424,94 @@ class WebhookDelivery(models.Model):
     def __str__(self):
         ok = "✓" if self.success else "✗"
         return f"{ok} {self.event} → {self.endpoint.url}"
+
+
+# ---------------------------------------------------------------------------
+# Exchange Rate Engine
+# ---------------------------------------------------------------------------
+
+
+class SystemExchangeRate(models.Model):
+    """
+    Global exchange rates fetched from ECB. Not scoped to a firm.
+    Used when firm.exchange_rate_mode == 'auto' and no firm-level override exists.
+    Base currency is always EUR (ECB publishes EUR-based rates).
+    """
+
+    base_currency = models.CharField(max_length=3, default="EUR")
+    quote_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=20, decimal_places=8)
+    date = models.DateField()
+    source = models.CharField(max_length=20, default="ecb")
+
+    class Meta:
+        verbose_name = "system exchange rate"
+        verbose_name_plural = "system exchange rates"
+        unique_together = [("base_currency", "quote_currency", "date")]
+        indexes = [
+            models.Index(fields=["quote_currency", "-date"]),
+            models.Index(fields=["base_currency", "-date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.base_currency}/{self.quote_currency} = {self.rate} ({self.date})"
+
+
+class FirmExchangeRate(models.Model):
+    """
+    Exchange rate for a specific currency pair, scoped to a Firm.
+
+    Priority logic:
+    - If firm.exchange_rate_mode == 'manual': only manual rates are used.
+    - If firm.exchange_rate_mode == 'auto': system-wide ECB rates are used,
+      but a firm-level manual override takes precedence for a given pair.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="exchange_rates",
+    )
+    from_currency = models.CharField(max_length=3)
+    to_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=20, decimal_places=8)
+
+    source = models.CharField(
+        max_length=10,
+        choices=[("manual", "Manual"), ("ecb", "ECB Auto")],
+        default="manual",
+    )
+    valid_from = models.DateField(
+        help_text="Rate is effective from this date (inclusive)."
+    )
+    valid_to = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Rate is effective until this date (inclusive). NULL = currently active.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="User who created this rate (NULL for system/ECB rates).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    note = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Optional note visible to team members.",
+    )
+
+    class Meta:
+        verbose_name = "firm exchange rate"
+        verbose_name_plural = "firm exchange rates"
+        ordering = ["-valid_from"]
+        indexes = [
+            models.Index(fields=["firm", "from_currency", "to_currency", "-valid_from"]),
+        ]
+
+    def __str__(self):
+        return f"{self.from_currency}→{self.to_currency} @ {self.rate} ({self.valid_from})"

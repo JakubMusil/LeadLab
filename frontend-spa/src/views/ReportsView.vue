@@ -6,9 +6,12 @@ import { extractErrorMessage } from '@/api/errors'
 import { useI18n } from '@/composables/useI18n'
 import { DocumentIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
+import { useMoney } from '@/composables/useMoney'
+import CurrencySelect from '@/components/CurrencySelect.vue'
 
 const router = useRouter()
 const { t } = useI18n()
+const { firmCurrency, formatAmount, formatAmountPlain } = useMoney()
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -62,12 +65,12 @@ const filterCustomerId = ref('')
 
 // Expense form
 const showExpenseForm = ref(false)
-const expenseForm = ref({ title: '', amount: '', currency: 'CZK', date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' })
+const expenseForm = ref({ title: '', amount: '', currency: firmCurrency.value, date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' })
 const expenseLoading = ref(false)
 
 // Revenue form
 const showRevenueForm = ref(false)
-const revenueForm = ref({ title: '', amount: '', currency: 'CZK', date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' })
+const revenueForm = ref({ title: '', amount: '', currency: firmCurrency.value, date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' })
 const revenueLoading = ref(false)
 
 // Active tab
@@ -88,10 +91,6 @@ function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
-function formatMoney(val: string | number): string {
-  return Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function params() {
@@ -139,7 +138,7 @@ async function addExpense() {
     if (res.ok) {
       expenses.value.unshift(res.data)
       showExpenseForm.value = false
-      expenseForm.value = { title: '', amount: '', currency: 'CZK', date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' }
+      expenseForm.value = { title: '', amount: '', currency: firmCurrency.value, date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' }
       showToast('Expense added')
       await fetchAll()
     } else {
@@ -175,7 +174,7 @@ async function addRevenue() {
     if (res.ok) {
       revenues.value.unshift(res.data)
       showRevenueForm.value = false
-      revenueForm.value = { title: '', amount: '', currency: 'CZK', date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' }
+      revenueForm.value = { title: '', amount: '', currency: firmCurrency.value, date: new Date().toISOString().substring(0, 10), recurrence: 'once', notes: '' }
       showToast('Revenue added')
       await fetchAll()
     } else {
@@ -233,7 +232,7 @@ async function createProposalFromReport() {
   const dateRange = [filterDateFrom.value, filterDateTo.value].filter(Boolean).join(' – ')
   const res = await api.post<{ id: string }>('/api/v1/crm/proposals', {
     title: dateRange ? `${t('proposals.createFromReport')} ${dateRange}` : t('proposals.createFromReport'),
-    currency: 'CZK',
+    currency: firmCurrency.value,
   })
   if (res.ok) {
     router.push(`/app/proposals/${res.data.id}`)
@@ -331,11 +330,11 @@ async function exportToFakturoid() {
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Expenses</div>
-          <div class="text-xl font-bold text-red-600 dark:text-red-400">{{ formatMoney(summary?.total_expenses ?? 0) }}</div>
+          <div class="text-xl font-bold text-red-600 dark:text-red-400">{{ formatAmount(summary?.total_expenses ?? 0) }}</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Revenues</div>
-          <div class="text-xl font-bold text-green-600 dark:text-green-400">{{ formatMoney(summary?.total_revenues ?? 0) }}</div>
+          <div class="text-xl font-bold text-green-600 dark:text-green-400">{{ formatAmount(summary?.total_revenues ?? 0) }}</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
           <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">P&amp;L</div>
@@ -343,7 +342,7 @@ async function exportToFakturoid() {
             class="text-xl font-bold"
             :class="Number(summary?.profit_loss ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
           >
-            {{ formatMoney(summary?.profit_loss ?? 0) }}
+            {{ formatAmount(summary?.profit_loss ?? 0) }}
           </div>
         </div>
       </div>
@@ -376,7 +375,7 @@ async function exportToFakturoid() {
           <ul v-else class="space-y-2">
             <li v-for="e in expenses.slice(0, 5)" :key="e.id" class="flex justify-between items-center text-sm">
               <span class="text-gray-700 dark:text-gray-300 truncate mr-2">{{ e.title }}</span>
-              <span class="font-medium text-red-600 dark:text-red-400 flex-shrink-0">{{ formatMoney(e.amount) }}</span>
+              <span class="font-medium text-red-600 dark:text-red-400 flex-shrink-0">{{ formatAmount(e.amount, e.currency) }}</span>
             </li>
           </ul>
         </div>
@@ -387,7 +386,7 @@ async function exportToFakturoid() {
           <ul v-else class="space-y-2">
             <li v-for="r in revenues.slice(0, 5)" :key="r.id" class="flex justify-between items-center text-sm">
               <span class="text-gray-700 dark:text-gray-300 truncate mr-2">{{ r.title }}</span>
-              <span class="font-medium text-green-600 dark:text-green-400 flex-shrink-0">{{ formatMoney(r.amount) }}</span>
+              <span class="font-medium text-green-600 dark:text-green-400 flex-shrink-0">{{ formatAmount(r.amount, r.currency) }}</span>
             </li>
           </ul>
         </div>
@@ -421,8 +420,7 @@ async function exportToFakturoid() {
               </div>
               <div class="w-24">
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Currency</label>
-                <input v-model="expenseForm.currency" type="text" maxlength="3"
-                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                <CurrencySelect :model-value="expenseForm.currency" @update:model-value="expenseForm.currency = $event" />
               </div>
             </div>
             <div>
@@ -469,7 +467,7 @@ async function exportToFakturoid() {
               <tr v-for="e in expenses" :key="e.id" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ e.date }}</td>
                 <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ e.title }}</td>
-                <td class="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400">{{ formatMoney(e.amount) }} {{ e.currency }}</td>
+                <td class="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400">{{ formatAmount(e.amount, e.currency) }} {{ e.currency }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ e.recurrence }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ e.lead_title ?? e.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -515,8 +513,7 @@ async function exportToFakturoid() {
               </div>
               <div class="w-24">
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Currency</label>
-                <input v-model="revenueForm.currency" type="text" maxlength="3"
-                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                <CurrencySelect :model-value="revenueForm.currency" @update:model-value="revenueForm.currency = $event" />
               </div>
             </div>
             <div>
@@ -563,7 +560,7 @@ async function exportToFakturoid() {
               <tr v-for="r in revenues" :key="r.id" class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ r.date }}</td>
                 <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ r.title }}</td>
-                <td class="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400">{{ formatMoney(r.amount) }} {{ r.currency }}</td>
+                <td class="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400">{{ formatAmount(r.amount, r.currency) }} {{ r.currency }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 capitalize">{{ r.recurrence }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ r.lead_title ?? r.customer_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">

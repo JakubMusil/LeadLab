@@ -3,9 +3,11 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/api'
 import { DocumentIcon, ClockIcon, ClipboardDocumentListIcon, CheckCircleIcon, HandRaisedIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { useMoney } from '@/composables/useMoney'
 
 const route = useRoute()
 const token = computed(() => route.params.token as string)
+const { formatAmountPlain } = useMoney()
 
 interface ProposalItem {
   id: string
@@ -89,7 +91,7 @@ async function respond(action: 'accept' | 'reject') {
 }
 
 function fmt(n: number | string) {
-  return Number(n).toFixed(2)
+  return formatAmountPlain(Number(n), proposal.value?.currency)
 }
 
 const subtotal = computed(() =>

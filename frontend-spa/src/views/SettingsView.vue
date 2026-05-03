@@ -173,6 +173,126 @@ async function saveCurrencySettings() {
   }
 }
 
+// Exchange Rate Management
+interface ExchangeRateOut {
+  id: string
+  from_currency: string
+  to_currency: string
+  rate: string
+  source: string
+  valid_from: string
+  valid_to: string | null
+  note: string
+  created_by_email: string | null
+  created_at: string
+}
+
+const exchangeRates = ref<ExchangeRateOut[]>([])
+const exchangeRatesHistory = ref<ExchangeRateOut[]>([])
+const exchangeRatesLoading = ref(false)
+const exchangeRatesHistoryLoading = ref(false)
+const showExchangeRateHistory = ref(false)
+
+// New rate form
+const newRateFromCurrency = ref('')
+const newRateValue = ref('')
+const newRateValidFrom = ref(new Date().toISOString().slice(0, 10))
+const newRateNote = ref('')
+const newRateLoading = ref(false)
+const newRateError = ref('')
+const newRateSuccess = ref(false)
+
+// Edit note
+const editingNoteId = ref<string | null>(null)
+const editingNoteValue = ref('')
+
+async function loadExchangeRates() {
+  if (!firmStore.activeFirm) return
+  exchangeRatesLoading.value = true
+  try {
+    const res = await api.get<ExchangeRateOut[]>(
+      `/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/`
+    )
+    if (res.ok && res.data) exchangeRates.value = res.data
+  } finally {
+    exchangeRatesLoading.value = false
+  }
+}
+
+async function loadExchangeRatesHistory() {
+  if (!firmStore.activeFirm) return
+  exchangeRatesHistoryLoading.value = true
+  try {
+    const res = await api.get<ExchangeRateOut[]>(
+      `/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/?include_history=true`
+    )
+    if (res.ok && res.data) exchangeRatesHistory.value = res.data
+  } finally {
+    exchangeRatesHistoryLoading.value = false
+  }
+}
+
+async function saveNewRate() {
+  if (!firmStore.activeFirm) return
+  newRateError.value = ''
+  newRateSuccess.value = false
+  if (!newRateFromCurrency.value || !newRateValue.value) {
+    newRateError.value = t('exchangeRates.errorRequired')
+    return
+  }
+  newRateLoading.value = true
+  try {
+    const res = await api.post<ExchangeRateOut>(
+      `/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/`,
+      {
+        from_currency: newRateFromCurrency.value,
+        rate: newRateValue.value,
+        valid_from: newRateValidFrom.value,
+        note: newRateNote.value,
+      }
+    )
+    if (res.ok && res.data) {
+      exchangeRates.value.unshift(res.data)
+      newRateFromCurrency.value = ''
+      newRateValue.value = ''
+      newRateNote.value = ''
+      newRateValidFrom.value = new Date().toISOString().slice(0, 10)
+      newRateSuccess.value = true
+      setTimeout(() => { newRateSuccess.value = false }, 3000)
+    } else {
+      newRateError.value = ((res.data as unknown) as { detail?: string })?.detail ?? t('exchangeRates.errorSave')
+    }
+  } finally {
+    newRateLoading.value = false
+  }
+}
+
+async function deleteExchangeRate(rateId: string) {
+  if (!firmStore.activeFirm) return
+  const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/${rateId}/`)
+  if (res.ok) {
+    exchangeRates.value = exchangeRates.value.filter(r => r.id !== rateId)
+  }
+}
+
+async function saveEditNote(rateId: string) {
+  if (!firmStore.activeFirm) return
+  const res = await api.patch<ExchangeRateOut>(
+    `/api/v1/firms/${firmStore.activeFirm.id}/exchange-rates/${rateId}/`,
+    { note: editingNoteValue.value }
+  )
+  if (res.ok && res.data) {
+    const idx = exchangeRates.value.findIndex(r => r.id === rateId)
+    if (idx >= 0) exchangeRates.value[idx] = res.data
+    editingNoteId.value = null
+  }
+}
+
+function toggleExchangeRateHistory() {
+  showExchangeRateHistory.value = !showExchangeRateHistory.value
+  if (showExchangeRateHistory.value) loadExchangeRatesHistory()
+}
+
 // Billing
 const billingLoading = ref(false)
 const billingError = ref('')
@@ -372,6 +492,7 @@ onMounted(() => {
       loadDigestPreference()
       leadScoringStore.fetchRules()
       loadCustomFields()
+      if (firmStore.isPro) loadExchangeRates()
     }
   })
   // Seed the workspace name from the cached store value immediately so the input is not blank
@@ -854,6 +975,169 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         >
           {{ currencyLoading ? t('currencySettings.saving') : t('currencySettings.save') }}
         </button>
+      </div>
+    </div>
+
+    <!-- Exchange Rate Management (Pro only) -->
+    <div v-if="isPro" class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('exchangeRates.title') }}</h2>
+
+      <!-- Active rates table -->
+      <div class="overflow-x-auto mb-4">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-gray-500 border-b border-gray-100">
+              <th class="text-left py-2 pr-4">{{ t('exchangeRates.fromCurrency') }}</th>
+              <th class="text-left py-2 pr-4">{{ t('exchangeRates.toCurrency') }}</th>
+              <th class="text-right py-2 pr-4">{{ t('exchangeRates.rate') }}</th>
+              <th class="text-left py-2 pr-4">{{ t('exchangeRates.validFrom') }}</th>
+              <th class="text-left py-2 pr-4">{{ t('exchangeRates.source') }}</th>
+              <th class="text-left py-2 pr-4">{{ t('exchangeRates.note') }}</th>
+              <th class="text-right py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="exchangeRatesLoading">
+              <td colspan="7" class="py-4 text-center text-gray-400 text-xs">{{ t('exchangeRates.loading') }}</td>
+            </tr>
+            <tr v-else-if="exchangeRates.length === 0">
+              <td colspan="7" class="py-4 text-center text-gray-400 text-xs">{{ t('exchangeRates.noRates') }}</td>
+            </tr>
+            <tr v-for="rate in exchangeRates" :key="rate.id" class="border-b border-gray-50 last:border-0">
+              <td class="py-2 pr-4 font-mono font-medium text-gray-900">{{ rate.from_currency }}</td>
+              <td class="py-2 pr-4 font-mono text-gray-500">{{ rate.to_currency }}</td>
+              <td class="py-2 pr-4 text-right font-mono">{{ Number(rate.rate).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 }) }}</td>
+              <td class="py-2 pr-4 text-gray-500">{{ rate.valid_from }}</td>
+              <td class="py-2 pr-4">
+                <span
+                  class="inline-block px-1.5 py-0.5 rounded text-xs"
+                  :class="rate.source === 'manual' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                >{{ rate.source }}</span>
+              </td>
+              <td class="py-2 pr-4 text-gray-500 max-w-xs truncate">
+                <span v-if="editingNoteId !== rate.id">{{ rate.note || '—' }}</span>
+                <input
+                  v-else
+                  v-model="editingNoteValue"
+                  class="w-full rounded border border-gray-300 px-2 py-0.5 text-xs"
+                  @keyup.enter="saveEditNote(rate.id)"
+                  @keyup.escape="editingNoteId = null"
+                />
+              </td>
+              <td class="py-2 text-right whitespace-nowrap">
+                <template v-if="rate.source === 'manual'">
+                  <button
+                    v-if="editingNoteId !== rate.id"
+                    class="text-xs text-gray-400 hover:text-gray-700 mr-2"
+                    @click="editingNoteId = rate.id; editingNoteValue = rate.note"
+                  >{{ t('exchangeRates.editNote') }}</button>
+                  <button
+                    v-else
+                    class="text-xs text-blue-600 hover:text-blue-800 mr-2"
+                    @click="saveEditNote(rate.id)"
+                  >{{ t('exchangeRates.save') }}</button>
+                  <button
+                    class="text-xs text-red-500 hover:text-red-700"
+                    @click="deleteExchangeRate(rate.id)"
+                  >{{ t('exchangeRates.delete') }}</button>
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- History toggle -->
+      <button
+        class="text-xs text-gray-500 hover:text-gray-700 mb-4 underline"
+        @click="toggleExchangeRateHistory"
+      >
+        {{ showExchangeRateHistory ? t('exchangeRates.hideHistory') : t('exchangeRates.showHistory') }}
+      </button>
+
+      <div v-if="showExchangeRateHistory" class="overflow-x-auto mb-4">
+        <table class="w-full text-xs text-gray-500">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="text-left py-1.5 pr-3">{{ t('exchangeRates.fromCurrency') }}</th>
+              <th class="text-right py-1.5 pr-3">{{ t('exchangeRates.rate') }}</th>
+              <th class="text-left py-1.5 pr-3">{{ t('exchangeRates.validFrom') }}</th>
+              <th class="text-left py-1.5 pr-3">{{ t('exchangeRates.validTo') }}</th>
+              <th class="text-left py-1.5 pr-3">{{ t('exchangeRates.source') }}</th>
+              <th class="text-left py-1.5">{{ t('exchangeRates.createdBy') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="exchangeRatesHistoryLoading">
+              <td colspan="6" class="py-3 text-center">{{ t('exchangeRates.loading') }}</td>
+            </tr>
+            <tr v-for="rate in exchangeRatesHistory" :key="rate.id" class="border-b border-gray-50 last:border-0">
+              <td class="py-1.5 pr-3 font-mono">{{ rate.from_currency }}</td>
+              <td class="py-1.5 pr-3 text-right font-mono">{{ Number(rate.rate).toFixed(4) }}</td>
+              <td class="py-1.5 pr-3">{{ rate.valid_from }}</td>
+              <td class="py-1.5 pr-3">{{ rate.valid_to || '—' }}</td>
+              <td class="py-1.5 pr-3">{{ rate.source }}</td>
+              <td class="py-1.5">{{ rate.created_by_email || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add new rate form -->
+      <div class="border-t border-gray-100 pt-4">
+        <h3 class="text-xs font-semibold text-gray-700 mb-3">{{ t('exchangeRates.addRate') }}</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ t('exchangeRates.fromCurrency') }}</label>
+            <CurrencySelect v-model="newRateFromCurrency" class="w-36" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ t('exchangeRates.toCurrency') }}</label>
+            <input
+              :value="firmStore.activeFirm?.default_currency"
+              disabled
+              class="w-20 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ t('exchangeRates.rate') }}</label>
+            <input
+              v-model="newRateValue"
+              type="number"
+              step="0.0001"
+              min="0.0001"
+              placeholder="1.0000"
+              class="w-32 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ t('exchangeRates.validFrom') }}</label>
+            <input
+              v-model="newRateValidFrom"
+              type="date"
+              class="rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+            />
+          </div>
+          <div class="flex-1 min-w-40">
+            <label class="block text-xs text-gray-500 mb-1">{{ t('exchangeRates.note') }}</label>
+            <input
+              v-model="newRateNote"
+              type="text"
+              :placeholder="t('exchangeRates.notePlaceholder')"
+              maxlength="255"
+              class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+            />
+          </div>
+          <button
+            :disabled="newRateLoading || !newRateFromCurrency || !newRateValue"
+            class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+            @click="saveNewRate"
+          >
+            {{ newRateLoading ? t('exchangeRates.saving') : t('exchangeRates.saveRate') }}
+          </button>
+        </div>
+        <p v-if="newRateError" class="text-xs text-red-600 mt-2">{{ newRateError }}</p>
+        <p v-if="newRateSuccess" class="text-xs text-green-600 mt-2">{{ t('exchangeRates.rateSaved') }}</p>
       </div>
     </div>
 

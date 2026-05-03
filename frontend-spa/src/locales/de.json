@@ -2187,5 +2187,30 @@
     "saved": "Einstellungen gespeichert",
     "warningMixedCurrencies": "Datensätze sind in mehreren Währungen vorhanden. Statistiken zeigen nur Datensätze in {currency}.",
     "warningChangeNote": "Das Ändern der Standardwährung ändert keine bestehenden Datensätze. Beträge in anderen Währungen werden beim nächsten Speichern mit dem aktuellen Kurs umgerechnet."
+  },
+  "exchangeRates": {
+    "title": "Wechselkurse",
+    "fromCurrency": "Von",
+    "toCurrency": "Nach",
+    "rate": "Kurs",
+    "validFrom": "Gültig ab",
+    "validTo": "Gültig bis",
+    "source": "Quelle",
+    "note": "Notiz",
+    "createdBy": "Erstellt von",
+    "loading": "Lädt…",
+    "noRates": "Keine manuellen Kurse. EZB-Kurse werden automatisch geladen.",
+    "editNote": "Notiz bearbeiten",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "showHistory": "Kursverlauf anzeigen",
+    "hideHistory": "Verlauf ausblenden",
+    "addRate": "Kurs hinzufügen / aktualisieren",
+    "notePlaceholder": "Optionale Notiz (z.B. Festkurs laut Vertrag)",
+    "saveRate": "Kurs speichern",
+    "saving": "Wird gespeichert…",
+    "rateSaved": "Kurs gespeichert",
+    "errorRequired": "Währung und Kurswert eingeben.",
+    "errorSave": "Fehler beim Speichern des Kurses."
   }
 }
