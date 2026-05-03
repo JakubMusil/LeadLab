@@ -27,6 +27,7 @@ import {
   XMarkIcon,
   FunnelIcon,
   LinkIcon,
+  FlagIcon,
 } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
 import { ConfirmDeleteModal } from '@/components/ui'
@@ -44,6 +45,12 @@ const { copiedId: permalinkCopiedId, copyToClipboard } = useClipboard()
 const currentPageUrl = computed(() => window.location.href)
 
 const leadId = computed(() => route.params.id as string)
+
+const currentCategory = computed(() =>
+  store.currentRecord?.category_id
+    ? pipelineStore.getCategoryById(store.currentRecord.category_id)
+    : undefined,
+)
 
 const selectedShortcutId = ref('overview')
 const customFilters = ref<Set<string>>(new Set())
@@ -674,10 +681,22 @@ async function openContactDetail(id: string | null) {
 
 <template>
   <div class="p-6">
-    <!-- Back -->
-    <RouterLink to="/app/records" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4">
-      {{ t('leadDetail.backToLeads') }}
-    </RouterLink>
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap" aria-label="breadcrumb">
+      <RouterLink to="/app/records" class="hover:text-red-600 transition-colors">{{ t('leadDetail.backToLeads') }}</RouterLink>
+      <template v-if="currentCategory">
+        <span class="text-gray-300" aria-hidden="true">›</span>
+        <RouterLink
+          :to="`/app/records?category_id=${currentCategory.id}`"
+          class="flex items-center gap-1 hover:text-red-600 transition-colors"
+        >
+          <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: currentCategory.color || '#94A3B8' }" aria-hidden="true"></span>
+          {{ currentCategory.name }}
+        </RouterLink>
+        <span v-if="store.currentRecord" class="text-gray-300" aria-hidden="true">›</span>
+        <span v-if="store.currentRecord" class="text-gray-700 dark:text-gray-200 font-medium truncate max-w-xs">{{ store.currentRecord.title }}</span>
+      </template>
+    </nav>
 
     <!-- Loading skeleton -->
     <div v-if="store.loadingDetail" class="animate-pulse space-y-4">
@@ -854,8 +873,11 @@ async function openContactDetail(id: string | null) {
           </div>
 
           <!-- Checkpoints panel -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.checkpoints') }}</div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-purple-100 dark:border-purple-900/30 p-4">
+            <div class="flex items-center gap-1.5 mb-3">
+              <FlagIcon class="w-4 h-4 text-purple-500 flex-shrink-0" />
+              <div class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">{{ t('pipeline.checkpoints') }}</div>
+            </div>
             <div v-if="checkpointsLoading" class="text-xs text-gray-400">{{ t('pipeline.loadingCheckpoints') }}</div>
             <ul v-else class="space-y-1.5 mb-2">
               <li
@@ -864,34 +886,35 @@ async function openContactDetail(id: string | null) {
                 class="flex items-center gap-2 group"
               >
                 <button
-                  class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
-                  :class="cp.is_completed ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'"
+                  class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+                  :class="cp.is_completed ? 'bg-purple-500 border-purple-500 text-white' : 'border-purple-300 hover:border-purple-500'"
                   @click="toggleCheckpoint(cp)"
+                  :aria-label="cp.is_completed ? 'Mark incomplete' : 'Mark complete'"
                 >
-                  <span v-if="cp.is_completed" class="text-[10px]">✓</span>
+                  <span v-if="cp.is_completed" class="text-[8px] font-bold">✓</span>
                 </button>
                 <span
                   class="text-xs flex-1"
                   :class="cp.is_completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'"
                 >{{ cp.name }}</span>
-                <span v-if="cp.date" class="text-[10px] text-gray-400 flex-shrink-0">{{ cp.date }}</span>
+                <span v-if="cp.date" class="text-[10px] text-purple-400 flex-shrink-0">{{ cp.date }}</span>
                 <button
                   class="hidden group-hover:block text-gray-300 hover:text-red-400 transition-colors"
                   @click="deleteCheckpoint(cp.id)"
                 >×</button>
               </li>
-              <li v-if="checkpoints.length === 0" class="text-xs text-gray-400">{{ t('pipeline.noCheckpoints') }}</li>
+              <li v-if="checkpoints.length === 0" class="text-xs text-gray-400 italic">{{ t('pipeline.noCheckpoints') }}</li>
             </ul>
             <!-- Add checkpoint form -->
             <div class="flex gap-1">
               <input
                 v-model="newCheckpointName"
                 :placeholder="t('pipeline.newCheckpointPlaceholder')"
-                class="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 dark:bg-gray-700 dark:text-gray-200"
+                class="flex-1 text-xs border border-purple-200 dark:border-purple-700 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-purple-300 dark:bg-gray-700 dark:text-gray-200"
                 @keyup.enter="addCheckpoint"
               />
               <button
-                class="px-2 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                class="px-2 py-1 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 :disabled="addingCheckpoint || !newCheckpointName.trim()"
                 @click="addCheckpoint"
               >+</button>

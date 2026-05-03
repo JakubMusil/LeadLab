@@ -201,7 +201,11 @@
     "actions": "Actions",
     "activityAdded": "Activity added.",
     "activityFailed": "Failed to add activity.",
-    "noRecordsInStage": "No records in this stage"
+    "noRecordsInStage": "No records in this stage",
+    "quickCreate": "Add",
+    "quickCreatePlaceholder": "Quick add record…",
+    "recordCreated": "Record created.",
+    "createFailed": "Failed to create record."
   },
   "settings": {
     "title": "Settings",

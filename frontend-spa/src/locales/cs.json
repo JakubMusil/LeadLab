@@ -201,7 +201,11 @@
     "actions": "Akce",
     "activityAdded": "Aktivita přidána.",
     "activityFailed": "Nepodařilo se přidat aktivitu.",
-    "noRecordsInStage": "Žádné záznamy v této fázi"
+    "noRecordsInStage": "Žádné záznamy v této fázi",
+    "quickCreate": "Přidat",
+    "quickCreatePlaceholder": "Rychlé přidání záznamu…",
+    "recordCreated": "Záznam vytvořen.",
+    "createFailed": "Nepodařilo se vytvořit záznam."
   },
   "settings": {
     "title": "Nastavení",

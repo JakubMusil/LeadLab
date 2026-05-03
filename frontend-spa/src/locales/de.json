@@ -201,7 +201,11 @@
     "actions": "Aktionen",
     "activityAdded": "Aktivität hinzugefügt.",
     "activityFailed": "Aktivität konnte nicht hinzugefügt werden.",
-    "noRecordsInStage": "Keine Datensätze in dieser Phase"
+    "noRecordsInStage": "Keine Datensätze in dieser Phase",
+    "quickCreate": "Hinzufügen",
+    "quickCreatePlaceholder": "Schnell einen Eintrag hinzufügen…",
+    "recordCreated": "Eintrag erstellt.",
+    "createFailed": "Eintrag konnte nicht erstellt werden."
   },
   "settings": {
     "title": "Einstellungen",

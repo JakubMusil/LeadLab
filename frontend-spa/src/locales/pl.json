@@ -201,7 +201,11 @@
     "actions": "Akcje",
     "activityAdded": "Aktywność dodana.",
     "activityFailed": "Nie udało się dodać aktywności.",
-    "noRecordsInStage": "Brak rekordów na tym etapie"
+    "noRecordsInStage": "Brak rekordów na tym etapie",
+    "quickCreate": "Dodaj",
+    "quickCreatePlaceholder": "Szybkie dodanie rekordu…",
+    "recordCreated": "Rekord utworzony.",
+    "createFailed": "Nie udało się utworzyć rekordu."
   },
   "settings": {
     "title": "Ustawienia",

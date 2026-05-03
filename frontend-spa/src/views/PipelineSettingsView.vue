@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -250,6 +251,29 @@ async function confirmDeleteStage() {
   }
   pendingDeleteStageId.value = null
 }
+
+// ---------------------------------------------------------------------------
+// Drag-and-drop stage reordering
+// ---------------------------------------------------------------------------
+
+const draggableStages = computed({
+  get: () => selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : [],
+  set: (reordered: StageOut[]) => {
+    if (!selectedCategoryId.value) return
+    const cat = pipelineStore.getCategoryById(selectedCategoryId.value)
+    if (cat) cat.stages = reordered
+  },
+})
+
+async function onStageDragEnd() {
+  if (!selectedCategoryId.value) return
+  const stages = pipelineStore.getStagesForCategory(selectedCategoryId.value)
+  await Promise.all(
+    stages.map((stage, idx) =>
+      pipelineStore.updateStage(selectedCategoryId.value!, stage.id, { order: idx }),
+    ),
+  )
+}
 </script>
 
 <template>
@@ -358,12 +382,22 @@ async function confirmDeleteStage() {
           <div>
             <div class="text-sm font-semibold text-gray-700 mb-2">Stavy (stages)</div>
 
-            <div class="space-y-2">
+            <VueDraggable
+              v-model="draggableStages"
+              handle=".stage-drag-handle"
+              class="space-y-2"
+              @end="onStageDragEnd"
+            >
               <div
-                v-for="stage in selectedStages"
+                v-for="stage in draggableStages"
                 :key="stage.id"
                 class="flex items-center gap-3 p-3 border border-gray-100 rounded-lg bg-white group"
               >
+                <!-- Drag handle -->
+                <span class="stage-drag-handle cursor-grab text-gray-300 hover:text-gray-500 flex-shrink-0" title="Přetáhnout pro změnu pořadí">
+                  <Bars3Icon class="w-4 h-4" />
+                </span>
+
                 <!-- Color -->
                 <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: stage.color || '#94A3B8' }"></span>
 
@@ -402,7 +436,6 @@ async function confirmDeleteStage() {
                   <div class="flex items-center gap-2">
                     <span v-if="stage.is_terminal && stage.is_won" class="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Výhra</span>
                     <span v-else-if="stage.is_terminal" class="text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Konec</span>
-                    <span class="text-xs text-gray-400">{{ stage.order }}</span>
                   </div>
                   <div class="hidden group-hover:flex items-center gap-1">
                     <button class="p-1 text-gray-400 hover:text-gray-600" @click="startEditStage(stage)">
@@ -414,9 +447,10 @@ async function confirmDeleteStage() {
                   </div>
                 </template>
               </div>
+            </VueDraggable>
 
               <!-- Add stage form -->
-              <div v-if="showNewStageForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
+              <div v-if="showNewStageForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2 mt-2">
                 <div class="grid grid-cols-2 gap-2">
                   <input
                     v-model="newStageName"
@@ -452,13 +486,12 @@ async function confirmDeleteStage() {
 
               <button
                 v-if="!showNewStageForm"
-                class="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
+                class="flex items-center gap-1 mt-2 text-sm text-indigo-600 hover:text-indigo-700"
                 @click="showNewStageForm = true"
               >
                 <PlusIcon class="w-4 h-4" />
                 Přidat stav
               </button>
-            </div>
           </div>
 
           <!-- Fields visibility -->
