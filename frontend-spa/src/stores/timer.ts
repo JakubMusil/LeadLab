@@ -31,6 +31,7 @@ export interface TimeEntryOut {
   duration_minutes: number
   description: string
   is_billable: boolean
+  hourly_rate: number | null
   started_at: string | null
   ended_at: string | null
   created_at: string
@@ -41,6 +42,7 @@ export interface TimeEntryIn {
   duration_minutes: number
   description?: string
   is_billable?: boolean
+  hourly_rate?: number | null
   started_at?: string | null
   ended_at?: string | null
   lead_id?: string | null

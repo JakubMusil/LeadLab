@@ -2253,6 +2253,13 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
         db_index=True,
         help_text="Whether this time should be included in billing/invoicing.",
     )
+    hourly_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Optional hourly rate used for billing calculations.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
