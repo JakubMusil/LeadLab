@@ -565,10 +565,15 @@ def list_leads(
     request,
     status: str = "",
     assigned_to: str = "",
+    created_by: str = "",
     source: str = "",
     tag: str = "",
+    value_min: Optional[Decimal] = None,
+    value_max: Optional[Decimal] = None,
     created_after: Optional[datetime] = None,
     created_before: Optional[datetime] = None,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ):
@@ -582,14 +587,27 @@ def list_leads(
         qs = qs.filter(status=status)
     if assigned_to:
         qs = qs.filter(assigned_to_id=assigned_to)
+    if created_by:
+        qs = qs.filter(created_by_id=created_by)
     if source:
         qs = qs.filter(source=source)
     if tag:
         qs = qs.filter(customer__tags__icontains=tag)
+    if value_min is not None:
+        qs = qs.filter(value__gte=value_min)
+    if value_max is not None:
+        qs = qs.filter(value__lte=value_max)
     if created_after:
         qs = qs.filter(created_at__gte=created_after)
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
+    # Sorting
+    _allowed_sort_fields = {'title', 'status', 'source', 'value', 'created_at', 'updated_at'}
+    order_field = sort_by if sort_by in _allowed_sort_fields else 'created_at'
+    if sort_dir == 'asc':
+        qs = qs.order_by(order_field)
+    else:
+        qs = qs.order_by(f'-{order_field}')
     offset = (page - 1) * page_size
     leads = list(qs.select_related('created_by', 'assigned_to')[offset:offset + page_size])
     rules = list(LeadScoringRule.objects.filter(firm=request.firm))

@@ -41,6 +41,13 @@ export interface LeadFilters {
   status?: string
   source?: string
   assigned_to?: string
+  created_by?: string
+  value_min?: number
+  value_max?: number
+  created_after?: string
+  created_before?: string
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
   page?: number
   page_size?: number
 }
@@ -89,6 +96,13 @@ export const useLeadsStore = defineStore('leads', () => {
       if (filters.status) params.set('status', filters.status)
       if (filters.source) params.set('source', filters.source)
       if (filters.assigned_to) params.set('assigned_to', filters.assigned_to)
+      if (filters.created_by) params.set('created_by', filters.created_by)
+      if (filters.value_min != null) params.set('value_min', String(filters.value_min))
+      if (filters.value_max != null) params.set('value_max', String(filters.value_max))
+      if (filters.created_after) params.set('created_after', filters.created_after)
+      if (filters.created_before) params.set('created_before', filters.created_before)
+      if (filters.sort_by) params.set('sort_by', filters.sort_by)
+      if (filters.sort_dir) params.set('sort_dir', filters.sort_dir)
       const p = filters.page ?? 1
       const ps = filters.page_size ?? pageSize.value
       params.set('page', String(p))

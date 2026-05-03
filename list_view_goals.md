@@ -108,8 +108,24 @@ Stránka `/app/opportunities` (mapuje na `LeadsView.vue`) zobrazuje tabulku / se
 - [x] Frontend view: výchozí `viewMode` změněn z `'table'` na `'list'`
 - [x] Frontend view: Avatar importován, zobrazen v tabulce i seznamu (tvůrce vždy, řešitel pokud se liší)
 
-**Co se dělá v příští relaci (Relace 2):**
-- Přidat řazení sloupců v tabulce (sort state + klikatelné záhlaví)
-- Přidat pokročilé filtry: assigned_to, created_by, hodnota min/max, datum od/do
-- Rozšířit `LeadFilters` a backend list endpoint o nové parametry
-- Zvážit extrakci tabulky do samostatného `OpportunityTableView.vue` (po vzoru `TaskTableView.vue`)
+### Relace 2 – DOKONČENA (2026-05-03)
+
+**Hotovo:**
+- [x] Backend: přidány parametry `created_by`, `value_min`, `value_max`, `sort_by`, `sort_dir` do `list_leads()`
+- [x] Backend: DB-level řazení (title, status, source, value, created_at, updated_at) s ochranou allowlistu
+- [x] Store: `LeadFilters` rozšířen o `created_by`, `value_min`, `value_max`, `created_after`, `created_before`, `sort_by`, `sort_dir`
+- [x] Store: `fetchLeads()` předává nové parametry na API
+- [x] Frontend: načítání členů firmy (`loadMembers`) pro filtrovací dropdowny
+- [x] Frontend: sort state (`sortField`, `sortDir`, `sortedLeads` computed) – klientské řazení na aktuální stránce
+- [x] Frontend: klikatelná záhlaví tabulky s šipkami (title, status, source, value, created_at)
+- [x] Frontend: collapsible panel pokročilých filtrů (řešitel, tvůrce, hodnota min/max, datum od/do)
+- [x] Frontend: `loadLeads(page)` helper konsoliduje všechny filtrační parametry
+- [x] Frontend: pagination přepojeno na `loadLeads(page)`
+- [x] Frontend: SavedView ukládá a obnovuje pokročilé filtry
+- [x] Locale: přidány klíče advancedFilters, filterAll, filterAssignedTo, filterCreatedBy, filterValueMin/Max, filterCreatedAfter/Before, clearFilters, saveViewDescription/Advanced do cs/en/de/pl
+
+**Co se dělá v příští relaci (Relace 3):**
+- Rozšířit `SavedView` model/schema o `columns`, `sort_by`, `sort_dir`
+- UI pro výběr viditelných sloupců (checkbox dropdown v záhlaví tabulky)
+- Uložit výběr sloupců do SavedView nebo localStorage
+- Obnovit celý pohled (filtry + sort + sloupce) z uložené záložky
