@@ -28,6 +28,7 @@ const mockLead = {
   status: 'new',
   source: 'web',
   assigned_to_id: null,
+  assigned_to_name: null,
   value: 5000,
   currency: 'CZK',
   created_at: '2025-01-01T00:00:00Z',

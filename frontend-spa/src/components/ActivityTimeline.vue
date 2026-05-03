@@ -76,7 +76,7 @@ import {
 // Props
 // ---------------------------------------------------------------------------
 const props = defineProps<{
-  entityType: 'lead' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
+  entityType: 'lead' | 'record' | 'realization' | 'management' | 'customer' | 'proposal' | 'task'
   entityId: string
   hideComposer?: boolean
   hideFilterDropdown?: boolean
@@ -223,7 +223,7 @@ const activitiesPage = ref(1)
 const activitiesHasMore = ref(true)
 // Feed items for the unified lead feed (activities + tasks merged)
 const feedItems = ref<FeedItem[]>([])
-const useFeed = computed(() => props.entityType === 'lead')
+const useFeed = computed(() => props.entityType === 'lead' || props.entityType === 'record')
 
 // Filter state — set of activity_type values that are currently visible.
 // Sourced from the streamline preferences store (per-user, persisted on the
@@ -527,6 +527,7 @@ function listUrl(page: number): string {
 
 function entityIdKey(): string {
   if (props.entityType === 'lead') return 'lead_id'
+  if (props.entityType === 'record') return 'record_id'
   if (props.entityType === 'realization') return 'realization_id'
   if (props.entityType === 'customer') return 'customer_id'
   if (props.entityType === 'proposal') return 'proposal_id'

@@ -761,7 +761,7 @@ onMounted(async () => {
               >
                 <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.title }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="proposalStatusColor(p.status)">{{ p.status }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ formatAmountPlain(Number(p.total_value), p.currency) }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ formatAmountPlain(Number(p.total_value)) }}</span>
               </RouterLink>
             </div>
           </div>

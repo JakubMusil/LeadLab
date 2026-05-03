@@ -708,16 +708,16 @@ async function openContactDetail(id: string | null) {
       <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
         <!-- Stage-based progress bar (when category is set) -->
-        <template v-if="store.currentRecord.category_id && currentStages.length > 0">
+        <template v-if="store.currentRecord && store.currentRecord.category_id && currentStages.length > 0">
           <div class="flex items-center justify-between gap-1 select-none">
             <div v-for="(stage, i) in currentStages" :key="stage.id" class="flex-1 flex flex-col gap-1.5 items-center relative">
               <div
                 class="w-full h-1.5 rounded-full transition-all duration-300"
                 :style="{
-                  backgroundColor: store.currentRecord.current_stage_id === stage.id || i < currentStages.findIndex((s) => s.id === store.currentRecord.current_stage_id)
+                  backgroundColor: store.currentRecord?.current_stage_id === stage.id || i < currentStages.findIndex((s) => s.id === store.currentRecord?.current_stage_id)
                     ? (stage.color || '#6366f1')
                     : '#e5e7eb',
-                  transform: store.currentRecord.current_stage_id === stage.id ? 'scaleY(1.25)' : 'none',
+                  transform: store.currentRecord?.current_stage_id === stage.id ? 'scaleY(1.25)' : 'none',
                 }"
               />
               <span

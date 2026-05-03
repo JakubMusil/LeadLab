@@ -109,7 +109,7 @@ const {
   visibleColumns, columnPickerOpen, isColVisible, toggleColumn, resetColumns,
 } = useListView<SortField, ColumnId>(
   { storageKeyPrefix: 'leadlab_records', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
-  computed(() => authStore.user?.id),
+  computed(() => authStore.user?.id?.toString()),
 )
 
 const STATUS_ORDER: Record<string, number> = {
