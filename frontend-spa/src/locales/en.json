@@ -2221,6 +2221,12 @@
     "saving": "Saving…",
     "rateSaved": "Rate saved",
     "errorRequired": "Enter a currency and rate value.",
-    "errorSave": "Failed to save rate."
+    "errorSave": "Failed to save rate.",
+    "exportCsv": "Export CSV"
+  },
+  "profile": {
+    "numberLocale": "Number format",
+    "numberLocaleDefault": "Default (workspace setting)",
+    "numberLocaleHelp": "Overrides the number format for your account only. Other team members are not affected."
   }
 }

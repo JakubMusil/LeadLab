@@ -46,6 +46,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         default="UTC",
         help_text="IANA timezone string, e.g. 'Europe/Prague'.",
     )
+    number_locale = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        help_text=(
+            "BCP 47 locale tag for number/currency formatting (e.g. 'cs-CZ', 'en-US'). "
+            "When empty the workspace default locale is used."
+        ),
+    )
     profile_picture = models.ImageField(
         upload_to="profiles/", null=True, blank=True
     )

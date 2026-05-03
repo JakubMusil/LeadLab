@@ -10,6 +10,7 @@ export interface UserOut {
   first_name: string
   last_name: string
   timezone: string
+  number_locale: string
   full_name: string
   is_staff: boolean
   is_superuser: boolean

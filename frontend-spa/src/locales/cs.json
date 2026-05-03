@@ -2222,6 +2222,12 @@
     "saving": "Ukládám…",
     "rateSaved": "Kurz uložen",
     "errorRequired": "Zadejte měnu a hodnotu kurzu.",
-    "errorSave": "Chyba při ukládání kurzu."
+    "errorSave": "Chyba při ukládání kurzu.",
+    "exportCsv": "Exportovat CSV"
+  },
+  "profile": {
+    "numberLocale": "Formát čísel",
+    "numberLocaleDefault": "Výchozí (dle workspace)",
+    "numberLocaleHelp": "Přepíše formát čísel pro tento účet. Ostatní členové týmu nejsou ovlivněni."
   }
 }

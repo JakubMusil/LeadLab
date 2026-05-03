@@ -6,11 +6,14 @@ All write endpoints enforce:
   2. Membership in the target Firm (via TenantMiddleware + require_membership).
   3. Role-based access (Owners can do everything; Workers are read-only for team mgmt).
 """
+import csv
 import datetime
+import io
 from decimal import Decimal
 from typing import List, Optional
 
 from django.db import transaction
+from django.http import HttpResponse
 from ninja import File, Form, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
@@ -508,6 +511,54 @@ def preview_exchange_rate(request, firm_id: str, from_currency: str, amount: str
         "rate_used": str(rate_used) if rate_used is not None else None,
         "rate_source": rate_source,
     }
+
+
+@router.get(
+    "/{firm_id}/exchange-rates/export.csv",
+    auth=django_auth,
+)
+def export_exchange_rates_csv(request, firm_id: str, include_history: bool = False):
+    """
+    Export exchange rates for a firm as a CSV file.
+    Pass ?include_history=true to include closed (historical) rates.
+    Access: Admin or Owner only.
+    """
+    from firms.models import FirmExchangeRate
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return HttpResponse("Firm not found.", status=404)
+    except PermissionDenied:
+        return HttpResponse("Admin or Owner access required.", status=403)
+
+    qs = FirmExchangeRate.objects.filter(firm=firm).select_related("created_by").order_by("-valid_from")
+    if not include_history:
+        qs = qs.filter(valid_to__isnull=True)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "from_currency", "to_currency", "rate", "source",
+        "valid_from", "valid_to", "note", "created_by", "created_at",
+    ])
+    for rate in qs:
+        writer.writerow([
+            rate.from_currency,
+            rate.to_currency,
+            str(rate.rate),
+            rate.source,
+            rate.valid_from.isoformat(),
+            rate.valid_to.isoformat() if rate.valid_to else "",
+            rate.note,
+            rate.created_by.email if rate.created_by else "",
+            rate.created_at.isoformat(),
+        ])
+
+    filename = f"exchange_rates_{firm.slug}.csv"
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @router.post("/{firm_id}/branding", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})

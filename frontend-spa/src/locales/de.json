@@ -2211,6 +2211,12 @@
     "saving": "Wird gespeichert…",
     "rateSaved": "Kurs gespeichert",
     "errorRequired": "Währung und Kurswert eingeben.",
-    "errorSave": "Fehler beim Speichern des Kurses."
+    "errorSave": "Fehler beim Speichern des Kurses.",
+    "exportCsv": "CSV exportieren"
+  },
+  "profile": {
+    "numberLocale": "Zahlenformat",
+    "numberLocaleDefault": "Standard (Workspace-Einstellung)",
+    "numberLocaleHelp": "Überschreibt das Zahlenformat nur für Ihr Konto. Andere Teammitglieder sind nicht betroffen."
   }
 }

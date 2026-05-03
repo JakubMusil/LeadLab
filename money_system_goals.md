@@ -789,18 +789,18 @@ export function useMoney() {
 - [x] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
 - [x] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty)
 
-### P4 – Budoucí rozšíření
-- [ ] Křížové kurzy (cross-rate přes EUR pivot) v `get_rate()`
-- [ ] Export kurzů do CSV/Excel (pro audit)
-- [ ] Webhook notifikace při výpadku ECB (Slack/email pro adminy)
-- [ ] Rozšíření seznamu podporovaných měn (USD stablecoins, exotické měny)
-- [ ] Per-user locale preference (override nad firm locale)
+### P4 – Budoucí rozšíření ✅ HOTOVO (kromě rozšíření seznamu měn)
+- [x] Křížové kurzy (cross-rate přes EUR pivot) v `get_rate()` – bylo implementováno již v P2 (`crm/money.py` `_get_system_rate()`)
+- [x] Export kurzů do CSV/Excel (pro audit) – `GET /api/v1/firms/{id}/exchange-rates/export.csv` + tlačítko v SettingsView
+- [x] Webhook notifikace při výpadku ECB (email pro adminy) – `_notify_ecb_failure()` + `mail_admins()` při vyčerpání retries v `fetch_ecb_exchange_rates`
+- [x] Per-user locale preference (override nad firm locale) – pole `number_locale` na User modelu; `PATCH /api/v1/users/me`; `useMoney.ts` prioritizuje user locale > firm locale; picker v SettingsView profilu
+- [ ] Rozšíření seznamu podporovaných měn (USD stablecoins, exotické měny) – nízká priorita, lze doplnit dle potřeby
 
 ---
 
 ## Stav implementace
 
-### Dokončeno (Fáze P0 + P1 + P2)
+### Dokončeno (Fáze P0 + P1 + P2 + P3 + P4)
 **Backend:**
 - `firms/models.py` – přidána pole `default_currency` (default CZK), `number_locale` (default cs-CZ), `exchange_rate_mode` (default auto)
 - `firms/migrations/0010_firm_currency_settings.py` – Django migrace
@@ -813,29 +813,34 @@ export function useMoney() {
 - `crm/money.py` – nový modul: `get_rate()`, `to_canonical()`, `_get_system_rate()`, křížové kurzy přes EUR pivot, fallback 7 dní zpět
 - `crm/models.py` – `canonical_amount`, `canonical_currency`, `canonical_rate_used`, `canonical_updated_at` pole na `Lead`, `ExpenseItem`, `RevenueItem`; `_recalc_canonical()` helper; `save()` override na všech třech modelech
 - `crm/migrations/0060_add_canonical_amount_fields.py` – Django migrace
-- `crm/tasks.py` – `fetch_ecb_exchange_rates` (idempotentní ECB XML stahování, retry 3×, beat 17:30 UTC); `recalculate_canonical_amounts_for_firm` (hromadný přepočet canonical amounts)
+- `crm/tasks.py` – `fetch_ecb_exchange_rates` (idempotentní ECB XML stahování, retry 3×, beat 17:30 UTC, **admin email při výpadku**); `recalculate_canonical_amounts_for_firm` (hromadný přepočet canonical amounts); `_notify_ecb_failure()` helper
 - `leadlab/settings.py` – beat schedule `fetch-ecb-exchange-rates`
-- `firms/api.py` – nové endpointy `GET/POST/PATCH/DELETE /api/v1/firms/{id}/exchange-rates/` + `GET /api/v1/firms/{id}/exchange-rates/preview/` (jen admin/owner)
+- `firms/api.py` – nové endpointy `GET/POST/PATCH/DELETE /api/v1/firms/{id}/exchange-rates/` + `GET /api/v1/firms/{id}/exchange-rates/preview/` + **`GET /api/v1/firms/{id}/exchange-rates/export.csv`** (jen admin/owner)
 - `crm/management/commands/backfill_canonical_amounts.py` – management command s `--firm` a `--dry-run` volbami
+- `users/models.py` – **přidáno pole `number_locale`** (BCP 47, blank → použij firm locale)
+- `users/migrations/0003_user_number_locale.py` – Django migrace
+- `users/api.py` – **`UserOut` rozšíren o `number_locale`**; `ProfileUpdateIn` přijímá `number_locale`; `PATCH /api/v1/users/me` ukládá locale
 
 **Frontend:**
 - `stores/firm.ts` – `FirmOut` interface rozšíren o `default_currency`, `number_locale`, `exchange_rate_mode`
-- `composables/useMoney.ts` – nový sdílený composable: `firmCurrency`, `firmLocale`, `formatAmount`, `formatAmountPlain`, `parseMoney`, `currencies`; `SUPPORTED_CURRENCIES`, `CURRENCY_DEFAULT_LOCALE`
+- `stores/auth.ts` – **`UserOut` interface rozšíren o `number_locale`**
+- `composables/useMoney.ts` – nový sdílený composable: `firmCurrency`, `firmLocale` (priorita: user locale > firm locale > fallback); `formatAmount`, `formatAmountPlain`, `parseMoney`, `currencies`; `SUPPORTED_CURRENCIES`, `CURRENCY_DEFAULT_LOCALE`
 - `components/CurrencySelect.vue` – searchable combobox s podporovanými měnami
 - `components/MoneyInput.vue` – specializovaný input pro částky (focus/blur, locale, prefix/suffix symbol)
 - `views/LeadsView.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, text input → `CurrencySelect`, `Intl.NumberFormat` → `formatAmount`
 - `views/ProposalsView.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`, `fmt()` → `formatAmount`
 - `views/ProposalBuilderView.vue` – refaktoring: `CURRENCIES` const odstraněna, `ref('CZK')` → `firmCurrency`, `<option>` select → `CurrencySelect`, `fmt()` → `formatAmountPlain`
-- `views/SettingsView.vue` – přidána sekce „Měny a formátování" (CurrencySelect, locale dropdown, live preview, exchange_rate_mode radio, uložení přes `PATCH /api/v1/firms/{id}/currency`); **přidána sekce „Kurzy měn"** (tabulka aktivních kurzů, editace poznámky, smazání, záložka historie, formulář přidání nového kurzu s CurrencySelect, preview read-only pole, recalc trigger)
-- `locales/cs.json`, `en.json`, `de.json`, `pl.json` – přidány sekce `currencies` (překlady názvů měn), `currencySettings` (překlady UI labelů) a **`exchangeRates`** (překlady tabulky a formuláře kurzů)
+- `views/SettingsView.vue` – sekce „Měny a formátování"; sekce „Kurzy měn" + **tlačítko Export CSV**; **picker formátu čísel v sekci Profil** (per-user locale override)
+- `locales/cs.json`, `en.json`, `de.json`, `pl.json` – přidány sekce `currencies`, `currencySettings`, `exchangeRates` (+ **`exchangeRates.exportCsv`**) a **`profile`** (překlady pro per-user locale picker)
 - `views/ReportsView.vue` – refaktoring: lokální `formatMoney` → `formatAmount`, `ref('CZK')` → `firmCurrency`, text currency inputs → `CurrencySelect`, `createProposalFromReport` hardcoded `'CZK'` → `firmCurrency`
 - `components/StreamlineCreateModal.vue` – refaktoring: `ref('CZK')` → `firmCurrency`, `<option>CZK/EUR/…` → `CurrencySelect`
 - `views/PublicProposalView.vue` – refaktoring: lokální `fmt()` `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu
 - `views/CustomerDetailView.vue` – refaktoring: `.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`
 - `views/DashboardView.vue` – refaktoring: `Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty
 
-### Příští fáze: P4 – Budoucí rozšíření
-Viz sekce P4 níže. Doporučené pořadí: export kurzů do CSV, webhook notifikace při výpadku ECB, per-user locale preference.
+### Zbývá (nízká priorita)
+- **Rozšíření seznamu podporovaných měn** – lze přidat do `SUPPORTED_CURRENCIES` v `crm/money.py` a `frontend-spa/src/composables/useMoney.ts` dle potřeby
+- Žádné další P4 úkoly nejsou otevřeny
 
 ---
 

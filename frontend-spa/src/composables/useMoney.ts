@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useFirmStore } from '@/stores/firm'
+import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 
 // ---------------------------------------------------------------------------
@@ -60,13 +61,19 @@ function escapeRegex(s: string): string {
 
 export function useMoney() {
   const firmStore = useFirmStore()
+  const authStore = useAuthStore()
   const { locale: uiLocale } = useI18n()
 
   /** ISO 4217 code for the workspace reporting currency (fallback: CZK) */
   const firmCurrency = computed(() => firmStore.activeFirm?.default_currency ?? 'CZK')
 
-  /** BCP 47 locale tag for number/currency formatting (fallback: cs-CZ) */
-  const firmLocale = computed(() => firmStore.activeFirm?.number_locale ?? 'cs-CZ')
+  /**
+   * BCP 47 locale tag for number/currency formatting.
+   * Priority: per-user locale preference → workspace locale → fallback cs-CZ.
+   */
+  const firmLocale = computed(
+    () => authStore.user?.number_locale || firmStore.activeFirm?.number_locale || 'cs-CZ'
+  )
 
   /**
    * Format a number as a full currency string using the workspace locale.
