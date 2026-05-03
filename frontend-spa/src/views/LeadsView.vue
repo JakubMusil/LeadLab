@@ -15,7 +15,7 @@ import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useListView, type ColumnDef } from '@/composables/useListView'
-import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon, BuildingOfficeIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import Avatar from '@/components/ui/Avatar.vue'
 
 const route = useRoute()
@@ -201,47 +201,85 @@ const formCurrency = ref('CZK')
 const formError = ref('')
 const formLoading = ref(false)
 
-// Customer typeahead inside lead form
-const formCustomerId = ref<string | null>(null)
+// Smart unified contact picker
+const selectedPrimaryContact = ref<CustomerOut | null>(null)
 const formCustomerQuery = ref('')
 const customerSuggestions = ref<CustomerOut[]>([])
 const customerSearchLoading = ref(false)
 const showCustomerDropdown = ref(false)
+
+// Secondary: contact person (used when primary is a company)
+const selectedContactPerson = ref<CustomerOut | null>(null)
+const allEmployees = ref<CustomerOut[]>([])
+const loadingEmployees = ref(false)
+const contactPersonQuery = ref('')
+const showContactPersonDropdown = ref(false)
+
+// Inline create person form
 const showNewCustomerForm = ref(false)
 const newCustomerFirstName = ref('')
 const newCustomerLastName = ref('')
 const newCustomerEmail = ref('')
 const newCustomerPhone = ref('')
-const selectedCustomerLabel = ref('')
 
-// Company & Contact Person inside lead form
+// Inline create company form
+const showNewCompanyForm = ref(false)
+const newCompanyName = ref('')
+const newCompanyIco = ref('')
+const newCompanyEmail = ref('')
+const newCompanyPhone = ref('')
+
+// Final payload values, derived from selections
+const formCustomerId = ref<string | null>(null)
 const formCompanyId = ref<string | null>(null)
 const formContactPersonId = ref<string | null>(null)
-const companies = ref<CustomerOut[]>([])
-const contactPersons = ref<CustomerOut[]>([])
-const loadingCompanies = ref(false)
-const loadingContactPersons = ref(false)
 
-async function loadCompanies() {
-  loadingCompanies.value = true
-  const res = await api.get<CustomerOut[]>('/api/v1/crm/directory?type=company&page_size=200')
-  loadingCompanies.value = false
-  if (res.ok) companies.value = res.data
+// Grouped dropdown results
+const companySuggestions = computed(() => customerSuggestions.value.filter((c) => c.type === 'company'))
+const personSuggestions = computed(() => customerSuggestions.value.filter((c) => c.type === 'person'))
+
+// Client-side filter for loaded employees
+const filteredEmployees = computed(() => {
+  const q = contactPersonQuery.value.trim().toLowerCase()
+  if (!q) return allEmployees.value
+  return allEmployees.value.filter((p) => {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(' ').toLowerCase()
+    return name.includes(q) || (p.email?.toLowerCase() ?? '').includes(q) || (p.phone ?? '').includes(q)
+  })
+})
+
+function makeContactStub(
+  id: string,
+  type: 'person' | 'company',
+  firstName: string,
+  lastName = '',
+  email = '',
+  phone = '',
+  companyId: string | null = null,
+  companyName = '',
+): CustomerOut {
+  return {
+    id, type, first_name: firstName, last_name: lastName, email, phone,
+    company_id: companyId, company_name: companyName,
+    firm_id: '', ico: '', dic: '', address_street: '', address_city: '',
+    address_zip: '', address_country: '', website: '', tags: [], metadata: {},
+    created_at: '', updated_at: '',
+  }
 }
 
-async function loadEmployeesForCompany(companyId: string) {
-  loadingContactPersons.value = true
+async function loadEmployees(companyId: string) {
+  loadingEmployees.value = true
   const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory/${companyId}/employees`)
-  loadingContactPersons.value = false
-  if (res.ok) contactPersons.value = res.data
+  loadingEmployees.value = false
+  if (res.ok) allEmployees.value = res.data
 }
 
 let customerSearchTimer: ReturnType<typeof setTimeout> | null = null
 
-async function searchCustomers(query: string) {
+async function searchContacts(query: string) {
   if (!query.trim()) { customerSuggestions.value = []; return }
   customerSearchLoading.value = true
-  const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory?search=${encodeURIComponent(query)}&page_size=10`)
+  const res = await api.get<CustomerOut[]>(`/api/v1/crm/directory?search=${encodeURIComponent(query)}&page_size=12`)
   customerSearchLoading.value = false
   if (res.ok) customerSuggestions.value = res.data
 }
@@ -249,49 +287,125 @@ async function searchCustomers(query: string) {
 function onCustomerQueryInput() {
   showCustomerDropdown.value = true
   showNewCustomerForm.value = false
+  showNewCompanyForm.value = false
   if (customerSearchTimer) clearTimeout(customerSearchTimer)
-  customerSearchTimer = setTimeout(() => searchCustomers(formCustomerQuery.value), 280)
+  customerSearchTimer = setTimeout(() => searchContacts(formCustomerQuery.value), 250)
 }
 
-function selectCustomer(c: CustomerOut) {
-  formCustomerId.value = c.id
-  selectedCustomerLabel.value = [c.first_name, c.last_name].filter(Boolean).join(' ') + (c.email ? ` (${c.email})` : '')
-  formCustomerQuery.value = selectedCustomerLabel.value
+function closeCustomerDropdownDelayed() {
+  setTimeout(() => { showCustomerDropdown.value = false }, 200)
+}
+
+function closeContactPersonDropdownDelayed() {
+  setTimeout(() => { showContactPersonDropdown.value = false }, 200)
+}
+
+function selectPrimaryContact(c: CustomerOut) {
+  selectedPrimaryContact.value = c
   showCustomerDropdown.value = false
   customerSuggestions.value = []
-}
-
-function clearCustomer() {
-  formCustomerId.value = null
   formCustomerQuery.value = ''
-  selectedCustomerLabel.value = ''
-  customerSuggestions.value = []
-  showCustomerDropdown.value = false
+  // Reset secondary contact
+  selectedContactPerson.value = null
+  formContactPersonId.value = null
+  contactPersonQuery.value = ''
+  allEmployees.value = []
+  if (c.type === 'company') {
+    formCompanyId.value = c.id
+    formCustomerId.value = null
+    loadEmployees(c.id)
+  } else {
+    formCustomerId.value = c.id
+    formCompanyId.value = c.company_id ?? null
+  }
 }
 
-function openNewCustomerInline() {
+function clearPrimaryContact() {
+  selectedPrimaryContact.value = null
+  formCustomerQuery.value = ''
+  customerSuggestions.value = []
+  showCustomerDropdown.value = false
+  formCustomerId.value = null
+  formCompanyId.value = null
+  formContactPersonId.value = null
+  selectedContactPerson.value = null
+  allEmployees.value = []
+  contactPersonQuery.value = ''
+  showNewCustomerForm.value = false
+  showNewCompanyForm.value = false
+}
+
+function selectContactPerson(cp: CustomerOut) {
+  selectedContactPerson.value = cp
+  formContactPersonId.value = cp.id
+  contactPersonQuery.value = ''
+  showContactPersonDropdown.value = false
+}
+
+function clearContactPerson() {
+  selectedContactPerson.value = null
+  formContactPersonId.value = null
+  contactPersonQuery.value = ''
+}
+
+function onContactPersonQueryInput() {
+  showContactPersonDropdown.value = true
+}
+
+function openCreatePerson() {
   showCustomerDropdown.value = false
   showNewCustomerForm.value = true
+  showNewCompanyForm.value = false
   newCustomerFirstName.value = formCustomerQuery.value.split(' ')[0] ?? ''
   newCustomerLastName.value = formCustomerQuery.value.split(' ').slice(1).join(' ')
   newCustomerEmail.value = ''
   newCustomerPhone.value = ''
 }
 
+function openCreateCompany() {
+  showCustomerDropdown.value = false
+  showNewCompanyForm.value = true
+  showNewCustomerForm.value = false
+  newCompanyName.value = formCustomerQuery.value
+  newCompanyIco.value = ''
+  newCompanyEmail.value = ''
+  newCompanyPhone.value = ''
+}
+
 async function createAndSelectCustomer() {
   if (!newCustomerFirstName.value.trim()) return
   const result = await customersStore.createCustomer({
+    type: 'person',
     first_name: newCustomerFirstName.value.trim(),
     last_name: newCustomerLastName.value.trim(),
     email: newCustomerEmail.value.trim(),
     phone: newCustomerPhone.value.trim(),
   })
   if (result.ok && result.data) {
-    selectCustomer(result.data)
+    selectPrimaryContact(result.data)
     showNewCustomerForm.value = false
     toast.success(t('leads.customerCreated'))
   } else {
     toast.error(result.error ?? t('leads.failedToCreateCustomer'))
+  }
+}
+
+async function createAndSelectCompany() {
+  if (!newCompanyName.value.trim()) return
+  const result = await customersStore.createCustomer({
+    type: 'company',
+    first_name: newCompanyName.value.trim(),
+    company_name: newCompanyName.value.trim(),
+    ico: newCompanyIco.value.trim(),
+    email: newCompanyEmail.value.trim(),
+    phone: newCompanyPhone.value.trim(),
+  })
+  if (result.ok && result.data) {
+    selectPrimaryContact(result.data)
+    showNewCompanyForm.value = false
+    toast.success(t('leads.companyCreated'))
+  } else {
+    toast.error(result.error ?? t('leads.failedToCreateCompany'))
   }
 }
 
@@ -395,12 +509,7 @@ function openCreate() {
   formValue.value = ''
   formCurrency.value = 'CZK'
   formError.value = ''
-  formCompanyId.value = null
-  formContactPersonId.value = null
-  contactPersons.value = []
-  clearCustomer()
-  showNewCustomerForm.value = false
-  loadCompanies()
+  clearPrimaryContact()
   showModal.value = true
 }
 
@@ -412,34 +521,35 @@ function openEdit(lead: LeadOut) {
   formValue.value = lead.value != null ? String(lead.value) : ''
   formCurrency.value = lead.currency
   formError.value = ''
-  // Restore customer if already linked
-  formCustomerId.value = lead.customer_id ?? null
-  const extLead = lead as LeadOut & { customer_name?: string; customer_email?: string }
-  if (lead.customer_id && extLead.customer_name) {
-    selectedCustomerLabel.value = extLead.customer_name + (extLead.customer_email ? ` (${extLead.customer_email})` : '')
-    formCustomerQuery.value = selectedCustomerLabel.value
-  } else {
-    clearCustomer()
+  clearPrimaryContact()
+  // Reconstruct primary contact from lead data
+  const extLead = lead as LeadOut & { customer_name?: string; customer_email?: string; customer_phone?: string }
+  if (lead.customer_id) {
+    const [firstName = '', ...rest] = (extLead.customer_name ?? '').split(' ')
+    selectedPrimaryContact.value = makeContactStub(
+      lead.customer_id, 'person', firstName, rest.join(' '),
+      extLead.customer_email ?? '', extLead.customer_phone ?? '',
+      lead.company_id, lead.company_name ?? '',
+    )
+    formCustomerId.value = lead.customer_id
+    formCompanyId.value = lead.company_id ?? null
+    if (lead.company_id) loadEmployees(lead.company_id)
+  } else if (lead.company_id) {
+    selectedPrimaryContact.value = makeContactStub(
+      lead.company_id, 'company', '', '', '', '', null, lead.company_name ?? '',
+    )
+    formCompanyId.value = lead.company_id
+    loadEmployees(lead.company_id)
   }
-  formCompanyId.value = lead.company_id ?? null
-  formContactPersonId.value = lead.contact_person_id ?? null
-  if (lead.company_id) {
-    loadEmployeesForCompany(lead.company_id)
-  } else {
-    contactPersons.value = []
+  // Reconstruct contact person
+  if (lead.contact_person_id) {
+    const [cpFirst = '', ...cpRest] = (lead.contact_person_name ?? '').split(' ')
+    selectedContactPerson.value = makeContactStub(
+      lead.contact_person_id, 'person', cpFirst, cpRest.join(' '),
+    )
+    formContactPersonId.value = lead.contact_person_id
   }
-  showNewCustomerForm.value = false
-  loadCompanies()
   showModal.value = true
-}
-
-function onCompanyChange() {
-  if (formCompanyId.value) {
-    loadEmployeesForCompany(formCompanyId.value)
-  } else {
-    contactPersons.value = []
-    formContactPersonId.value = null
-  }
 }
 
 async function submitForm() {
@@ -1165,96 +1275,197 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.titleField') }}</label>
             <input v-model="formTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
-          <!-- Customer search/create -->
+          <!-- Unified Contact Picker -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.customerField') }}</label>
-            <div class="relative">
-              <div class="flex gap-1">
+
+            <!-- Selected primary contact chip -->
+            <div v-if="selectedPrimaryContact" class="flex flex-col gap-1">
+              <!-- Company chip -->
+              <div v-if="selectedPrimaryContact.type === 'company'" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl px-3 py-2">
+                <BuildingOfficeIcon class="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {{ selectedPrimaryContact.company_name || [selectedPrimaryContact.first_name, selectedPrimaryContact.last_name].filter(Boolean).join(' ') }}
+                </span>
+                <button type="button" class="text-gray-400 hover:text-red-500" @click="clearPrimaryContact"><XMarkIcon class="w-4 h-4" /></button>
+              </div>
+              <!-- Person chip -->
+              <div v-else class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2">
+                <UserIcon class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ [selectedPrimaryContact.first_name, selectedPrimaryContact.last_name].filter(Boolean).join(' ') }}</span>
+                  <span v-if="selectedPrimaryContact.email" class="text-xs text-gray-400 ml-2">{{ selectedPrimaryContact.email }}</span>
+                </div>
+                <button type="button" class="text-gray-400 hover:text-red-500" @click="clearPrimaryContact"><XMarkIcon class="w-4 h-4" /></button>
+              </div>
+              <!-- Read-only company badge for person with a company -->
+              <div v-if="selectedPrimaryContact.type === 'person' && selectedPrimaryContact.company_name" class="flex items-center gap-1.5 px-1 py-0.5">
+                <BuildingOfficeIcon class="w-3.5 h-3.5 text-gray-400" />
+                <span class="text-xs text-gray-400">{{ selectedPrimaryContact.company_name }}</span>
+              </div>
+            </div>
+
+            <!-- Search input (no contact selected yet) -->
+            <div v-else class="relative">
+              <div class="relative">
+                <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   v-model="formCustomerQuery"
                   type="text"
                   :placeholder="t('leads.customerSearchPlaceholder')"
                   autocomplete="off"
-                  class="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                  class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-red-400"
                   @input="onCustomerQueryInput"
-                  @focus="if (formCustomerQuery && !formCustomerId) { showCustomerDropdown = true; searchCustomers(formCustomerQuery) }"
+                  @focus="if (formCustomerQuery) { showCustomerDropdown = true; searchContacts(formCustomerQuery) }"
+                  @blur="closeCustomerDropdownDelayed"
                 />
-                <button
-                  v-if="formCustomerId"
-                  type="button"
-                  class="px-2 text-gray-400 hover:text-red-500"
-                  title="Clear customer"
-                  @click="clearCustomer"
-                ><XMarkIcon class="w-4 h-4" /></button>
               </div>
               <!-- Suggestions dropdown -->
               <div
-                v-if="showCustomerDropdown && (customerSuggestions.length > 0 || customerSearchLoading)"
-                class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 max-h-48 overflow-y-auto"
+                v-if="showCustomerDropdown && (customerSearchLoading || customerSuggestions.length > 0 || formCustomerQuery.trim())"
+                class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 max-h-60 overflow-y-auto"
               >
                 <div v-if="customerSearchLoading" class="px-3 py-2 text-xs text-gray-400">{{ t('leads.searching') }}</div>
-                <button
-                  v-for="c in customerSuggestions"
-                  :key="c.id"
-                  type="button"
-                  class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  @click="selectCustomer(c)"
-                >
-                  <span class="font-medium">{{ [c.first_name, c.last_name].filter(Boolean).join(' ') }}</span>
-                  <span v-if="c.email" class="text-xs text-gray-400 ml-2">{{ c.email }}</span>
-                  <span v-if="c.phone" class="text-xs text-gray-400 ml-2">{{ c.phone }}</span>
-                </button>
-              </div>
-              <!-- Create new customer link -->
-              <div v-if="showCustomerDropdown && !customerSearchLoading && customerSuggestions.length === 0 && formCustomerQuery.trim()" class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1">
-                <button type="button" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30" @click="openNewCustomerInline">
-                  + Create new customer "{{ formCustomerQuery }}"
-                </button>
+                <template v-else-if="customerSuggestions.length > 0">
+                  <!-- Companies section -->
+                  <template v-if="companySuggestions.length > 0">
+                    <div class="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ t('leads.sectionCompanies') }}</div>
+                    <button
+                      v-for="c in companySuggestions"
+                      :key="c.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      @mousedown.prevent
+                      @click="selectPrimaryContact(c)"
+                    >
+                      <BuildingOfficeIcon class="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <div class="flex-1 min-w-0">
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ c.company_name || [c.first_name, c.last_name].filter(Boolean).join(' ') }}</span>
+                        <span v-if="c.ico" class="text-xs text-gray-400 ml-2">IČO: {{ c.ico }}</span>
+                      </div>
+                    </button>
+                  </template>
+                  <!-- Persons section -->
+                  <template v-if="personSuggestions.length > 0">
+                    <div class="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ t('leads.sectionPersons') }}</div>
+                    <button
+                      v-for="p in personSuggestions"
+                      :key="p.id"
+                      type="button"
+                      class="w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      @mousedown.prevent
+                      @click="selectPrimaryContact(p)"
+                    >
+                      <UserIcon class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div class="flex-1 min-w-0">
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ [p.first_name, p.last_name].filter(Boolean).join(' ') }}</span>
+                        <span v-if="p.email" class="text-xs text-gray-400 ml-2">{{ p.email }}</span>
+                        <span v-if="p.phone" class="text-xs text-gray-400 ml-1">{{ p.email ? '·' : '' }} {{ p.phone }}</span>
+                        <span v-if="p.company_name" class="text-xs text-gray-400 ml-1">· {{ p.company_name }}</span>
+                      </div>
+                    </button>
+                  </template>
+                </template>
+                <!-- No results: offer to create -->
+                <template v-else-if="formCustomerQuery.trim()">
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    @mousedown.prevent
+                    @click="openCreatePerson"
+                  >
+                    <UserIcon class="w-4 h-4 text-gray-400" />
+                    <span>{{ t('leads.createNewPerson') }} <span class="font-medium">"{{ formCustomerQuery }}"</span></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    @mousedown.prevent
+                    @click="openCreateCompany"
+                  >
+                    <BuildingOfficeIcon class="w-4 h-4 text-blue-400" />
+                    <span>{{ t('leads.createNewCompany') }} <span class="font-medium">"{{ formCustomerQuery }}"</span></span>
+                  </button>
+                </template>
               </div>
             </div>
-            <!-- Inline new customer form -->
+
+            <!-- Inline: create new person -->
             <div v-if="showNewCustomerForm" class="mt-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 space-y-2">
               <p class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('leads.newCustomerLabel') }}</p>
               <div class="grid grid-cols-2 gap-2">
-                <input v-model="newCustomerFirstName" type="text" placeholder="First name *" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
-                <input v-model="newCustomerLastName" type="text" placeholder="Last name" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+                <input v-model="newCustomerFirstName" type="text" :placeholder="t('leads.firstNamePlaceholder')" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+                <input v-model="newCustomerLastName" type="text" :placeholder="t('leads.lastNamePlaceholder')" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
               </div>
               <input v-model="newCustomerEmail" type="email" placeholder="Email" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
-              <input v-model="newCustomerPhone" type="tel" placeholder="Phone" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              <input v-model="newCustomerPhone" type="tel" placeholder="Telefon" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
               <div class="flex gap-2">
                 <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="showNewCustomerForm = false">{{ t('leads.cancel') }}</button>
                 <button type="button" class="text-xs text-white bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700" @click="createAndSelectCustomer">{{ t('leads.createAndSelect') }}</button>
               </div>
             </div>
+
+            <!-- Inline: create new company -->
+            <div v-if="showNewCompanyForm" class="mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 space-y-2">
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('leads.newCompanyLabel') }}</p>
+              <input v-model="newCompanyName" type="text" :placeholder="t('leads.companyNameField')" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              <div class="grid grid-cols-2 gap-2">
+                <input v-model="newCompanyIco" type="text" :placeholder="t('leads.icoField')" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+                <input v-model="newCompanyPhone" type="tel" placeholder="Telefon" class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              </div>
+              <input v-model="newCompanyEmail" type="email" placeholder="Email" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400" />
+              <div class="flex gap-2">
+                <button type="button" class="text-xs text-gray-500 hover:text-gray-700" @click="showNewCompanyForm = false">{{ t('leads.cancel') }}</button>
+                <button type="button" class="text-xs text-white bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700" @click="createAndSelectCompany">{{ t('leads.createAndSelect') }}</button>
+              </div>
+            </div>
           </div>
 
-          <!-- Company & Contact Person Selection -->
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Společnost</label>
-              <select
-                v-model="formCompanyId"
-                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-                @change="onCompanyChange"
-              >
-                <option :value="null">-- Žádná společnost --</option>
-                <option v-for="c in companies" :key="c.id" :value="c.id">
-                  {{ c.company_name || [c.first_name, c.last_name].filter(Boolean).join(' ') }}
-                </option>
-              </select>
+          <!-- Secondary: Contact Person (shown only when a company is the primary contact) -->
+          <div v-if="selectedPrimaryContact?.type === 'company'">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.contactPersonField') }}</label>
+            <!-- Selected contact person chip -->
+            <div v-if="selectedContactPerson" class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2">
+              <UserIcon class="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <span class="flex-1 text-sm text-gray-900 dark:text-gray-100 truncate">{{ [selectedContactPerson.first_name, selectedContactPerson.last_name].filter(Boolean).join(' ') }}</span>
+              <button type="button" class="text-gray-400 hover:text-red-500" @click="clearContactPerson"><XMarkIcon class="w-4 h-4" /></button>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Kontaktní osoba</label>
-              <select
-                v-model="formContactPersonId"
-                :disabled="!formCompanyId"
-                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 disabled:opacity-50"
+            <!-- Search / filter employees -->
+            <div v-else class="relative">
+              <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                v-model="contactPersonQuery"
+                type="text"
+                :placeholder="t('leads.contactPersonSearchPlaceholder')"
+                autocomplete="off"
+                class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-red-400"
+                @input="onContactPersonQueryInput"
+                @focus="showContactPersonDropdown = true"
+                @blur="closeContactPersonDropdownDelayed"
+              />
+              <div
+                v-if="showContactPersonDropdown"
+                class="absolute z-20 top-full mt-1 w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1 max-h-48 overflow-y-auto"
               >
-                <option :value="null">-- Žádná kontaktní osoba --</option>
-                <option v-for="cp in contactPersons" :key="cp.id" :value="cp.id">
-                  {{ [cp.first_name, cp.last_name].filter(Boolean).join(' ') }}
-                </option>
-              </select>
+                <div v-if="loadingEmployees" class="px-3 py-2 text-xs text-gray-400">{{ t('leads.searching') }}</div>
+                <template v-else-if="filteredEmployees.length > 0">
+                  <button
+                    v-for="p in filteredEmployees"
+                    :key="p.id"
+                    type="button"
+                    class="w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                    @mousedown.prevent
+                    @click="selectContactPerson(p)"
+                  >
+                    <UserIcon class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <div class="flex-1 min-w-0">
+                      <span class="text-gray-900 dark:text-gray-100">{{ [p.first_name, p.last_name].filter(Boolean).join(' ') }}</span>
+                      <span v-if="p.email" class="text-xs text-gray-400 ml-2">{{ p.email }}</span>
+                    </div>
+                  </button>
+                </template>
+                <div v-else class="px-3 py-2 text-xs text-gray-400">{{ t('leads.noEmployeesFound') }}</div>
+              </div>
             </div>
           </div>
 
