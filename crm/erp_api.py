@@ -16,7 +16,7 @@ from typing import List, Optional
 from ninja import Router, Schema
 from ninja.security import django_auth
 
-from crm.models import Customer, ExpenseItem, Lead, RevenueItem, Task, TimeEntry
+from crm.models import Customer, ExpenseItem, PipelineRecord, RevenueItem, Task, TimeEntry
 from crm.soft_delete import perform_soft_delete
 from firms.auth import require_active_subscription, require_membership
 

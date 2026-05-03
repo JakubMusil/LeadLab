@@ -12,13 +12,13 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 | # | Název | Stav |
 |---|-------|------|
 | 1 | Smazat Realization + Management | ⬜ |
-| 2 | Přejmenovat Lead → PipelineRecord + nové modely | ⬜ |
+| 2 | Přejmenovat Lead → PipelineRecord + nové modely | ✅ |
 | 3 | API – Category/Stage konfigurace + Records CRUD | ⬜ |
 | 4 | Seed command + onboarding hook | ⬜ |
-| 5 | Frontend stores + API klient | ⬜ |
+| 5 | Frontend stores + API klient | ✅ |
 | 6 | Settings UI pro správu kategorií a stages | ⬜ |
-| 7 | RecordsView + RecordDetailView (vzor: LeadsView) | ⬜ |
-| 8 | AppShell navigace + Router update | ⬜ |
+| 7 | RecordsView + RecordDetailView (vzor: LeadsView) | ✅ |
+| 8 | AppShell navigace + Router update | ✅ |
 
 ---
 

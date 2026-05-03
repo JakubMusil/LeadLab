@@ -152,9 +152,9 @@ class LinkedInEnrichmentPlugin(LeadLabPlugin):
         customer.save()
 
         # Log an ENRICHMENT activity on the most recent associated lead (if any)
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         lead = (
-            Lead.objects.filter(firm_id=firm_id, customer=customer)
+            PipelineRecord.objects.filter(firm_id=firm_id, customer=customer)
             .order_by("-created_at")
             .first()
         )

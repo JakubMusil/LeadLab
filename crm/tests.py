@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
 
-from crm.models import Activity, ActivityType, Customer, Lead, LeadSource, LeadStatus, Task
+from crm.models import Activity, ActivityType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
 from firms.models import Firm, Membership, MembershipRole
 from users.models import User
 
@@ -23,12 +23,12 @@ class CRMFixtureMixin:
             last_name="Doe",
             email="jane@example.com",
         )
-        self.lead = Lead.objects.create(
+        self.lead = PipelineRecord.objects.create(
             firm=self.firm,
             customer=self.customer,
             title="Demo Deal",
-            status=LeadStatus.NEW,
-            source=LeadSource.WEB,
+            status=RecordStatus.NEW,
+            source=RecordSource.WEB,
         )
 
 
@@ -55,21 +55,21 @@ class LeadModelTest(CRMFixtureMixin, TestCase):
         self.assertIn("Demo Deal", str(self.lead))
 
     def test_lead_default_status(self):
-        lead = Lead.objects.create(firm=self.firm, title="Quick Lead")
-        self.assertEqual(lead.status, LeadStatus.NEW)
+        lead = PipelineRecord.objects.create(firm=self.firm, title="Quick PipelineRecord")
+        self.assertEqual(lead.status, RecordStatus.NEW)
 
     def test_lead_nullable_customer(self):
-        lead = Lead.objects.create(firm=self.firm, title="Quick Entry")
+        lead = PipelineRecord.objects.create(firm=self.firm, title="Quick Entry")
         self.assertIsNone(lead.customer)
 
     def test_lead_choices(self):
-        valid_statuses = [s.value for s in LeadStatus]
+        valid_statuses = [s.value for s in RecordStatus]
         self.assertIn(self.lead.status, valid_statuses)
 
     def test_lead_firm_isolation(self):
         other_firm = Firm.objects.create(name="Isolate Firm")
-        Lead.objects.create(firm=other_firm, title="Other Lead")
-        self.assertEqual(Lead.objects.filter(firm=self.firm).count(), 1)
+        PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
+        self.assertEqual(PipelineRecord.objects.filter(firm=self.firm).count(), 1)
 
 
 class ActivityModelTest(CRMFixtureMixin, TestCase):
@@ -117,7 +117,7 @@ class ActivityModelTest(CRMFixtureMixin, TestCase):
 
     def test_activity_lead_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm 2")
-        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         Activity.objects.create(lead=other_lead, type=ActivityType.COMMENT, content_text="x")
         self.assertEqual(Activity.objects.filter(lead=self.lead).count(), 0)
 
@@ -651,12 +651,12 @@ class CRMAPIFixtureMixin:
             company_name="Acme",
             tags=["vip"],
         )
-        self.lead = Lead.objects.create(
+        self.lead = PipelineRecord.objects.create(
             firm=self.firm,
             customer=self.customer,
-            title="Test Lead",
-            status=LeadStatus.NEW,
-            source=LeadSource.WEB,
+            title="Test PipelineRecord",
+            status=RecordStatus.NEW,
+            source=RecordSource.WEB,
         )
         self.client.login(username="owner@crm-api.com", password="pass")
 
@@ -833,14 +833,14 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(len(resp.json()), 1)
 
     def test_filter_by_status(self):
-        Lead.objects.create(firm=self.firm, title="Won Lead", status=LeadStatus.WON)
+        PipelineRecord.objects.create(firm=self.firm, title="Won PipelineRecord", status=RecordStatus.WON)
         resp = self._get(self.URL, {"status": "won"})
         data = resp.json()
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["status"], "won")
 
     def test_filter_by_source(self):
-        Lead.objects.create(firm=self.firm, title="Referral Lead", source=LeadSource.REFERRAL)
+        PipelineRecord.objects.create(firm=self.firm, title="Referral PipelineRecord", source=RecordSource.REFERRAL)
         resp = self._get(self.URL, {"source": "referral"})
         data = resp.json()
         self.assertEqual(len(data), 1)
@@ -848,7 +848,7 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_filter_by_tag(self):
         # self.lead has customer with tag "vip"
-        Lead.objects.create(firm=self.firm, title="Untagged Lead")
+        PipelineRecord.objects.create(firm=self.firm, title="Untagged PipelineRecord")
         resp = self._get(self.URL, {"tag": "vip"})
         data = resp.json()
         self.assertEqual(len(data), 1)
@@ -870,13 +870,13 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_pagination(self):
         for i in range(5):
-            Lead.objects.create(firm=self.firm, title=f"Lead {i}")
+            PipelineRecord.objects.create(firm=self.firm, title=f"PipelineRecord {i}")
         resp = self._get(self.URL, {"page": 1, "page_size": 3})
         self.assertEqual(len(resp.json()), 3)
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm")
-        Lead.objects.create(firm=other_firm, title="Foreign Lead")
+        PipelineRecord.objects.create(firm=other_firm, title="Foreign PipelineRecord")
         resp = self._get(self.URL)
         self.assertEqual(len(resp.json()), 1)
 
@@ -885,13 +885,13 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
     URL = "/api/v1/crm/opportunities"
 
     def test_create_lead_returns_201(self):
-        resp = self._post(self.URL, {"title": "New Lead"})
+        resp = self._post(self.URL, {"title": "New PipelineRecord"})
         self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.json()["title"], "New Lead")
+        self.assertEqual(resp.json()["title"], "New PipelineRecord")
 
     def test_create_lead_with_customer(self):
         resp = self._post(self.URL, {
-            "title": "Lead With Customer",
+            "title": "PipelineRecord With Customer",
             "customer_id": str(self.customer.id),
         })
         self.assertEqual(resp.status_code, 201)
@@ -904,7 +904,7 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_lead_worker_allowed(self):
         self.client.login(username="worker@crm-api.com", password="pass")
-        resp = self._post(self.URL, {"title": "Worker Lead"})
+        resp = self._post(self.URL, {"title": "Worker PipelineRecord"})
         self.assertEqual(resp.status_code, 201)
 
 
@@ -912,7 +912,7 @@ class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
     def test_get_lead(self):
         resp = self._get(f"/api/v1/crm/opportunities/{self.lead.id}")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["title"], "Test Lead")
+        self.assertEqual(resp.json()["title"], "Test PipelineRecord")
 
     def test_get_nonexistent_lead_returns_404(self):
         import uuid
@@ -931,7 +931,7 @@ class LeadUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._patch(f"/api/v1/crm/opportunities/{self.lead.id}", {"status": "contacted"})
         self.assertEqual(resp.status_code, 200)
         self.lead.refresh_from_db()
-        self.assertEqual(self.lead.status, LeadStatus.CONTACTED)
+        self.assertEqual(self.lead.status, RecordStatus.CONTACTED)
         self.assertTrue(
             Activity.objects.filter(
                 lead=self.lead, type=ActivityType.STATUS_CHANGE
@@ -948,7 +948,7 @@ class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_lead_admin_succeeds(self):
         resp = self._delete(f"/api/v1/crm/opportunities/{self.lead.id}")
         self.assertEqual(resp.status_code, 204)
-        self.assertFalse(Lead.objects.filter(id=self.lead.id).exists())
+        self.assertFalse(PipelineRecord.objects.filter(id=self.lead.id).exists())
 
     def test_delete_lead_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
@@ -1179,7 +1179,7 @@ class TierLimitLeadCreateAPITest(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@lead_tier.com", password="pass")
         # Free-tier firm with only 1 member to avoid hitting the member limit.
-        self.firm = Firm.objects.create(name="Free Lead Firm", subscription_tier="free")
+        self.firm = Firm.objects.create(name="Free PipelineRecord Firm", subscription_tier="free")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
         self.client.login(username="owner@lead_tier.com", password="pass")
 
@@ -1188,8 +1188,8 @@ class TierLimitLeadCreateAPITest(TestCase):
 
     def test_create_lead_blocked_when_50_leads_exist(self):
         # Pre-fill 50 leads directly in the DB.
-        Lead.objects.bulk_create([
-            Lead(firm=self.firm, title=f"Lead {i}") for i in range(50)
+        PipelineRecord.objects.bulk_create([
+            PipelineRecord(firm=self.firm, title=f"PipelineRecord {i}") for i in range(50)
         ])
         resp = self.client.post(
             self.URL,
@@ -1201,8 +1201,8 @@ class TierLimitLeadCreateAPITest(TestCase):
         self.assertIn("50 leads", resp.json()["detail"])
 
     def test_create_lead_allowed_at_49_leads(self):
-        Lead.objects.bulk_create([
-            Lead(firm=self.firm, title=f"Lead {i}") for i in range(49)
+        PipelineRecord.objects.bulk_create([
+            PipelineRecord(firm=self.firm, title=f"PipelineRecord {i}") for i in range(49)
         ])
         resp = self.client.post(
             self.URL,
@@ -1214,7 +1214,7 @@ class TierLimitLeadCreateAPITest(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Lead Attachments API tests (now backed by Document)
+# PipelineRecord Attachments API tests (now backed by Document)
 # ---------------------------------------------------------------------------
 
 import io
@@ -1252,7 +1252,7 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_list_attachments_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Attach")
-        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         # Upload directly to DB for other firm's lead — should not appear in our list.
         Document.objects.create(
             firm=other_firm,
@@ -1366,7 +1366,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 404)
 
     def test_delete_attachment_wrong_lead_returns_404(self):
-        other_lead = Lead.objects.create(firm=self.firm, title="Other Lead")
+        other_lead = PipelineRecord.objects.create(firm=self.firm, title="Other PipelineRecord")
         resp = self._delete(
             f"/api/v1/crm/opportunities/{other_lead.id}/attachments/{self.attachment.id}"
         )
@@ -1533,7 +1533,7 @@ class FileUploadToolSchemaTest(TestCase):
         from crm.streamline.tools import FileUploadTool
 
         firm = Firm.objects.create(name="FUT firm")
-        lead = Lead.objects.create(firm=firm, title="FUT lead")
+        lead = PipelineRecord.objects.create(firm=firm, title="FUT lead")
         activity = Activity.objects.create(
             lead=lead,
             type=ActivityType.FILE_UPLOAD,
@@ -1559,7 +1559,7 @@ class FileUploadRemoteFetchTaskTest(TestCase):
 
     def setUp(self):
         self.firm = Firm.objects.create(name="Fetch firm")
-        self.lead = Lead.objects.create(firm=self.firm, title="Fetch lead")
+        self.lead = PipelineRecord.objects.create(firm=self.firm, title="Fetch lead")
 
     def _make_activity(self, **metadata):
         return Activity.objects.create(
@@ -1659,7 +1659,7 @@ class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
 
     def test_list_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Task Doc")
-        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         other_task = Task.objects.create(firm=other_firm, lead=other_lead, title="Other")
         Document.objects.create(
             firm=other_firm, task=other_task, name="hidden.pdf",
@@ -1765,13 +1765,13 @@ class PipelineSummaryAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._get(self.URL)
         data = resp.json()
         returned_statuses = {row["status"] for row in data["statuses"]}
-        from crm.models import LeadStatus
-        expected = {s.value for s in LeadStatus}
+        from crm.models import RecordStatus
+        expected = {s.value for s in RecordStatus}
         self.assertEqual(returned_statuses, expected)
 
     def test_counts_reflect_leads(self):
         # setUp creates one NEW lead; add a WON lead with a value
-        Lead.objects.create(firm=self.firm, title="Won Deal", status=LeadStatus.WON, value="5000.00")
+        PipelineRecord.objects.create(firm=self.firm, title="Won Deal", status=RecordStatus.WON, value="5000.00")
         resp = self._get(self.URL)
         data = resp.json()
         rows_by_status = {row["status"]: row for row in data["statuses"]}
@@ -1780,15 +1780,15 @@ class PipelineSummaryAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(rows_by_status["lost"]["count"], 0)
 
     def test_total_value_sums_all_statuses(self):
-        Lead.objects.create(firm=self.firm, title="L1", status=LeadStatus.NEW, value="1000.00")
-        Lead.objects.create(firm=self.firm, title="L2", status=LeadStatus.WON, value="2000.00")
+        PipelineRecord.objects.create(firm=self.firm, title="L1", status=RecordStatus.NEW, value="1000.00")
+        PipelineRecord.objects.create(firm=self.firm, title="L2", status=RecordStatus.WON, value="2000.00")
         resp = self._get(self.URL)
         data = resp.json()
         self.assertAlmostEqual(data["total_value"], 3000.0, places=2)
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Report Other Firm")
-        Lead.objects.create(firm=other_firm, title="Foreign Lead", status=LeadStatus.WON)
+        PipelineRecord.objects.create(firm=other_firm, title="Foreign PipelineRecord", status=RecordStatus.WON)
         resp = self._get(self.URL)
         data = resp.json()
         rows_by_status = {row["status"]: row for row in data["statuses"]}
@@ -1811,7 +1811,7 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
     def setUp(self):
         super().setUp()
         # Create a second lead so we can verify cross-lead aggregation
-        self.lead2 = Lead.objects.create(firm=self.firm, title="Second Lead")
+        self.lead2 = PipelineRecord.objects.create(firm=self.firm, title="Second PipelineRecord")
         self.a1 = Activity.objects.create(
             lead=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="First"
         )
@@ -1831,8 +1831,8 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
     def test_includes_lead_title(self):
         resp = self._get(self.URL)
         titles = {item["lead_title"] for item in resp.json()}
-        self.assertIn("Test Lead", titles)
-        self.assertIn("Second Lead", titles)
+        self.assertIn("Test PipelineRecord", titles)
+        self.assertIn("Second PipelineRecord", titles)
 
     def test_ordered_newest_first(self):
         resp = self._get(self.URL)
@@ -1858,7 +1858,7 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Feed Other Firm")
-        other_lead = Lead.objects.create(firm=other_firm, title="Spy Lead")
+        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Spy PipelineRecord")
         Activity.objects.create(lead=other_lead, type=ActivityType.COMMENT, content_text="spy")
         resp = self._get(self.URL)
         lead_ids = {item["lead_id"] for item in resp.json()}
@@ -1908,7 +1908,7 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_includes_lead_title(self):
         resp = self._get(self.URL)
-        self.assertEqual(resp.json()[0]["lead_title"], "Test Lead")
+        self.assertEqual(resp.json()[0]["lead_title"], "Test PipelineRecord")
 
     def test_no_due_date_tasks_excluded(self):
         Task.objects.create(firm=self.firm, lead=self.lead, title="No Due Date")
@@ -1932,7 +1932,7 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Overdue Other Firm")
-        other_lead = Lead.objects.create(firm=other_firm, title="Other Lead")
+        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         Task.objects.create(
             firm=other_firm,
             lead=other_lead,
@@ -2558,9 +2558,9 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
         self.customer = Customer.objects.create(
             firm=self.firm, first_name="Mig", last_name="Test",
         )
-        self.lead = Lead.objects.create(
-            firm=self.firm, customer=self.customer, title="Mig Lead",
-            status=LeadStatus.NEW, source=LeadSource.WEB,
+        self.lead = PipelineRecord.objects.create(
+            firm=self.firm, customer=self.customer, title="Mig PipelineRecord",
+            status=RecordStatus.NEW, source=RecordSource.WEB,
         )
 
     def _run_migration(self):

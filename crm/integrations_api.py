@@ -22,7 +22,7 @@ from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Customer, ImportJob, ImportJobStatus, ImportJobType, Lead, LeadStatus, Task
+from crm.models import Customer, ImportJob, ImportJobStatus, ImportJobType, PipelineRecord, RecordStatus, Task
 from firms.auth import require_membership
 from firms.token_auth import BearerTokenAuth
 
@@ -165,7 +165,7 @@ def ical_feed(request, user_id: str, firm_id: str, token: str):
         evt.add("uid", f"{task.id}@leadlab")
         evt.add("summary", task.title)
         if task.lead:
-            evt.add("description", f"Lead: {task.lead.title}")
+            evt.add("description", f"PipelineRecord: {task.lead.title}")
         evt.add("status", "COMPLETED" if task.is_completed else "NEEDS-ACTION")
         if task.due_date:
             evt.add("dtstart", task.due_date)
@@ -333,7 +333,7 @@ def export_leads_csv(
 
     from django.db.models import Q
 
-    qs = Lead.objects.filter(firm=request.firm).select_related("customer", "assigned_to")
+    qs = PipelineRecord.objects.filter(firm=request.firm).select_related("customer", "assigned_to")
     if status:
         qs = qs.filter(status=status)
     if source:
@@ -427,13 +427,13 @@ def export_pipeline_pdf(request):
 
     # Build per-status summary
     rows = (
-        Lead.objects.filter(firm=firm)
+        PipelineRecord.objects.filter(firm=firm)
         .values("status")
         .annotate(count=Count("id"), total_value=Sum("value"))
         .order_by("status")
     )
 
-    status_labels = {s.value: s.label for s in LeadStatus}
+    status_labels = {s.value: s.label for s in RecordStatus}
 
     # Build a simple HTML table for WeasyPrint
     total_leads = 0

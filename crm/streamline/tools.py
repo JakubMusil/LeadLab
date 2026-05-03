@@ -55,7 +55,7 @@ class CommentTool(StreamlineTool):
         firm = context["firm"]
         user = context["user"]
         entity_title = context.get("entity_title", "")
-        lead = activity.lead
+        lead = activity.record
 
         mention_ids = payload.get("metadata", {}).get("mentions", [])
         if not mention_ids:
@@ -217,7 +217,7 @@ class EmailOutTool(StreamlineTool):
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
-        if activity.lead is not None:
+        if activity.record is not None:
             _trigger_email_task(activity)
 
     def render_payload(self, activity: "Activity") -> dict:
@@ -306,15 +306,15 @@ class StatusChangeTool(StreamlineTool):
     def process_action(
         self, activity: "Activity", entity: Any, payload: dict, context: dict
     ) -> None:
-        from crm.models import LeadStatus
+        from crm.models import RecordStatus
 
-        lead = activity.lead
+        lead = activity.record
         if lead is None:
             return
 
         metadata = payload.get("metadata", {})
         new_status = metadata.get("new_status")
-        if not new_status or new_status not in [s.value for s in LeadStatus]:
+        if not new_status or new_status not in [s.value for s in RecordStatus]:
             return
 
         old_status = lead.status
@@ -1343,7 +1343,7 @@ class _ScheduledActivityTool(_SimpleLogTool):
             auto_close_on_expiry=True,
             assigned_to=context.get("user"),
             created_by=context.get("user"),
-            lead=activity.lead,
+            record=activity.record,
             customer=activity.customer,
             proposal=activity.proposal,
             metadata={

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
-import { useLeadsStore, type LeadOut } from '@/stores/leads'
+import { useRecordsStore, type RecordOut } from '@/stores/records'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useTasksStore } from '@/stores/tasks'
@@ -46,7 +46,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
-const leadsStore = useLeadsStore()
+const leadsStore = useRecordsStore()
 const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
 const tasksStore = useTasksStore()
@@ -70,24 +70,24 @@ const { on, off } = useWebSocket()
 // ---------------------------------------------------------------------------
 
 function onLeadCreated(payload: Record<string, unknown>) {
-  const lead = payload as unknown as LeadOut
-  if (!leadsStore.leads.find((l) => l.id === lead.id)) {
-    leadsStore.leads.unshift(lead)
+  const lead = payload as unknown as RecordOut
+  if (!leadsStore.records.find((l) => l.id === lead.id)) {
+    leadsStore.records.unshift(lead)
   }
   notifStore.pushNotification('lead.created', payload)
 }
 
 function onLeadUpdated(payload: Record<string, unknown>) {
-  const lead = payload as unknown as LeadOut
-  const idx = leadsStore.leads.findIndex((l) => l.id === lead.id)
-  if (idx !== -1) leadsStore.leads[idx] = lead
-  if (leadsStore.currentLead?.id === lead.id) leadsStore.currentLead = lead
+  const lead = payload as unknown as RecordOut
+  const idx = leadsStore.records.findIndex((l) => l.id === lead.id)
+  if (idx !== -1) leadsStore.records[idx] = lead
+  if (leadsStore.currentRecord?.id === lead.id) leadsStore.currentRecord = lead
   notifStore.pushNotification('lead.updated', payload)
 }
 
 function onLeadDeleted(payload: Record<string, unknown>) {
   const id = payload.id as string
-  leadsStore.leads = leadsStore.leads.filter((l) => l.id !== id)
+  leadsStore.records = leadsStore.records.filter((l) => l.id !== id)
   notifStore.pushNotification('lead.deleted', payload)
 }
 
@@ -158,7 +158,7 @@ const navSections = computed(() => [
     label: t('appShell.sectionCrm'),
     items: [
       { label: t('nav.overview'), icon: Squares2X2Icon, path: '/app/dashboard' },
-      { label: t('nav.leads'), icon: FunnelIcon, path: '/app/opportunities' },
+      { label: t('nav.records'), icon: FunnelIcon, path: '/app/records' },
       { label: t('nav.proposals'), icon: DocumentDuplicateIcon, path: '/app/proposals' },
       { label: t('nav.customers'), icon: UsersIcon, path: '/app/directory' },
     ],
@@ -367,11 +367,11 @@ function formatNotifTime(ts: string): string {
               </RouterLink>
 
               <!-- Saved views for Leads -->
-              <template v-if="sidebarOpen && item.path === '/app/opportunities' && savedViewsStore.viewsForEntity('opportunities').length > 0">
+              <template v-if="sidebarOpen && item.path === '/app/records' && savedViewsStore.viewsForEntity('records').length > 0">
                 <RouterLink
-                  v-for="view in savedViewsStore.viewsForEntity('opportunities')"
+                  v-for="view in savedViewsStore.viewsForEntity('records')"
                   :key="view.id"
-                  :to="`/app/opportunities?view=${view.id}`"
+                  :to="`/app/records?view=${view.id}`"
                   class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
                   @click="mobileMenuOpen = false"
                 >

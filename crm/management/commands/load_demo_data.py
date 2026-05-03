@@ -27,9 +27,9 @@ from crm.models import (
     ActivityType,
     Customer,
     ContactType,
-    Lead,
-    LeadSource,
-    LeadStatus,
+    PipelineRecord,
+    RecordSource,
+    RecordStatus,
     Project,
     Task,
     TaskPriority,
@@ -122,8 +122,8 @@ CUSTOMERS_PERSONS = [
 LEADS = [
     {
         "title": "Zavádění CRM - Tesla Motors Europe",
-        "status": LeadStatus.NEGOTIATION,
-        "source": LeadSource.REFERRAL,
+        "status": RecordStatus.NEGOTIATION,
+        "source": RecordSource.REFERRAL,
         "value": Decimal("48000.00"),
         "currency": "EUR",
         "company_index": 0,
@@ -131,8 +131,8 @@ LEADS = [
     },
     {
         "title": "Konzultace k redesignu webu - Avast",
-        "status": LeadStatus.PROPOSAL,
-        "source": LeadSource.WEB,
+        "status": RecordStatus.PROPOSAL,
+        "source": RecordSource.WEB,
         "value": Decimal("12500.00"),
         "currency": "CZK",
         "company_index": 1,
@@ -140,8 +140,8 @@ LEADS = [
     },
     {
         "title": "Roční licence a podpora - Seznam.cz",
-        "status": LeadStatus.WON,
-        "source": LeadSource.EMAIL,
+        "status": RecordStatus.WON,
+        "source": RecordSource.EMAIL,
         "value": Decimal("3600.00"),
         "currency": "EUR",
         "company_index": 2,
@@ -302,7 +302,7 @@ class Command(BaseCommand):
         for i, data in enumerate(LEADS):
             company = companies[data["company_index"]]
             contact_person = persons[data["contact_person_index"]]
-            lead, created = Lead.objects.get_or_create(
+            lead, created = PipelineRecord.objects.get_or_create(
                 firm=firm,
                 title=data["title"],
                 defaults={
@@ -317,7 +317,7 @@ class Command(BaseCommand):
             )
             leads.append(lead)
             if created:
-                self.stdout.write(f" + Lead: {lead.title}")
+                self.stdout.write(f" + PipelineRecord: {lead.title}")
 
         # ---- activities ----
         for lead_index, activity_list in ACTIVITIES_BY_LEAD.items():

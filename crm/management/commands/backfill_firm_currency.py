@@ -2,20 +2,20 @@
 Management command: backfill_firm_currency
 
 For each firm, sets default_currency to the most frequently used currency
-among its Lead records.  Firms with no leads are left at their current default.
+among its PipelineRecord records.  Firms with no leads are left at their current default.
 """
 from collections import Counter
 
 from django.core.management.base import BaseCommand
 
-from crm.models import Lead
+from crm.models import PipelineRecord
 from firms.models import Firm
 
 
 class Command(BaseCommand):
     help = (
         "Back-fill firm.default_currency based on the most-used currency "
-        "in existing Lead records."
+        "in existing PipelineRecord records."
     )
 
     def add_arguments(self, parser):
@@ -32,7 +32,7 @@ class Command(BaseCommand):
         skipped = 0
 
         for firm in firms:
-            leads = Lead.objects.filter(firm=firm).exclude(currency="").values_list("currency", flat=True)
+            leads = PipelineRecord.objects.filter(firm=firm).exclude(currency="").values_list("currency", flat=True)
             if not leads.exists():
                 skipped += 1
                 self.stdout.write(f"  SKIP  {firm.name}: no leads")

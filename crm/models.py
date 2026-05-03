@@ -17,7 +17,7 @@ def _recalc_canonical(obj, *, amount_field: str) -> None:
     """
     Compute canonical_amount for *obj* using the current exchange rates.
 
-    Called from model.save() for Lead, ExpenseItem, RevenueItem.
+    Called from model.save() for PipelineRecord, ExpenseItem, RevenueItem.
     Silently skips if the money module is unavailable (e.g. during migrations).
     """
     try:
@@ -73,7 +73,7 @@ class ContactType(models.TextChoices):
     COMPANY = "company", "Company"
 
 
-class LeadStatus(models.TextChoices):
+class RecordStatus(models.TextChoices):
     NEW = "new", "New"
     CONTACTED = "contacted", "Contacted"
     PROPOSAL = "proposal", "Proposal"
@@ -83,7 +83,7 @@ class LeadStatus(models.TextChoices):
     CANCELED = "canceled", "Canceled"
 
 
-class LeadSource(models.TextChoices):
+class RecordSource(models.TextChoices):
     WEB = "web", "Web"
     EMAIL = "email", "Email"
     REFERRAL = "referral", "Referral"
@@ -231,10 +231,96 @@ class Customer(SoftDeleteMixin, TenantModel):
 
 
 # ---------------------------------------------------------------------------
-# Lead
+# Category, Stage, CategoryField (Phase 2 — Pipeline Record Architecture)
 # ---------------------------------------------------------------------------
 
-class Lead(SoftDeleteMixin, TenantModel):
+class Category(TenantModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, blank=True)
+    icon = models.CharField(max_length=50, blank=True)
+    color = models.CharField(max_length=20, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "category"
+        verbose_name_plural = "categories"
+        ordering = ["order", "name"]
+        unique_together = [("firm", "slug")]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+class Stage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="stages",
+    )
+    name = models.CharField(max_length=100)
+    label = models.CharField(max_length=100, blank=True)
+    color = models.CharField(max_length=20, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    is_terminal = models.BooleanField(default=False)
+    is_won = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "stage"
+        verbose_name_plural = "stages"
+        ordering = ["order"]
+        unique_together = [("category", "order")]
+
+    def __str__(self):
+        return f"{self.category.name} / {self.name}"
+
+
+class CategoryField(models.Model):
+    FIELD_KEY_CHOICES = [
+        ("value_currency", "Value / Currency"),
+        ("date_range", "Date Range"),
+        ("expires_at", "Expiry Date"),
+        ("notes", "Notes"),
+        ("source", "Source"),
+        ("origin_record", "Origin Record"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="fields",
+    )
+    field_key = models.CharField(max_length=50, choices=FIELD_KEY_CHOICES)
+    is_visible = models.BooleanField(default=True)
+    is_required = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "category field"
+        verbose_name_plural = "category fields"
+        ordering = ["order"]
+        unique_together = [("category", "field_key")]
+
+    def __str__(self):
+        return f"{self.category.name} / {self.field_key}"
+
+
+# ---------------------------------------------------------------------------
+# PipelineRecord
+# ---------------------------------------------------------------------------
+
+class PipelineRecord(SoftDeleteMixin, TenantModel):
     """
     The central entity of the CRM — an inbound or outbound opportunity.
 
@@ -248,7 +334,7 @@ class Lead(SoftDeleteMixin, TenantModel):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="leads",
+        related_name="records",
     )
     # Company from the address book (Customer of type=company)
     company = models.ForeignKey(
@@ -256,7 +342,7 @@ class Lead(SoftDeleteMixin, TenantModel):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="company_leads",
+        related_name="company_records",
         limit_choices_to={"type": "company"},
         help_text="The company (from the address book) this lead belongs to.",
     )
@@ -266,28 +352,28 @@ class Lead(SoftDeleteMixin, TenantModel):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="contact_person_leads",
+        related_name="contact_person_records",
         limit_choices_to={"type": "person"},
         help_text="The specific contact person at the company for this lead.",
     )
     title = models.CharField(max_length=255)
     status = models.CharField(
         max_length=20,
-        choices=LeadStatus.choices,
-        default=LeadStatus.NEW,
+        choices=RecordStatus.choices,
+        default=RecordStatus.NEW,
         db_index=True,
     )
     source = models.CharField(
         max_length=20,
-        choices=LeadSource.choices,
-        default=LeadSource.WEB,
+        choices=RecordSource.choices,
+        default=RecordSource.WEB,
     )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="assigned_leads",
+        related_name="assigned_records",
     )
     value = models.DecimalField(
         max_digits=14,
@@ -323,15 +409,34 @@ class Lead(SoftDeleteMixin, TenantModel):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="created_leads",
+        related_name="created_records",
         help_text="The user who created this lead.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    category = models.ForeignKey(
+        "Category",
+        null=True, blank=True, on_delete=models.SET_NULL,
+    )
+    current_stage = models.ForeignKey(
+        "Stage",
+        null=True, blank=True, on_delete=models.SET_NULL,
+    )
+    parent = models.ForeignKey(
+        "self",
+        null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="children",
+    )
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    extra_data = models.JSONField(default=dict, blank=True)
+
     class Meta(TenantModel.Meta):
-        verbose_name = "opportunity"
-        verbose_name_plural = "opportunities"
+        verbose_name = "pipeline record"
+        verbose_name_plural = "pipeline records"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["firm", "status"]),
@@ -387,15 +492,41 @@ class Lead(SoftDeleteMixin, TenantModel):
 
 
 # ---------------------------------------------------------------------------
+# Checkpoint (Phase 2 — Pipeline Record milestones)
+# ---------------------------------------------------------------------------
+
+class Checkpoint(SoftDeleteMixin, models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    record = models.ForeignKey(
+        PipelineRecord,
+        on_delete=models.CASCADE,
+        related_name="checkpoints",
+    )
+    name = models.CharField(max_length=255)
+    date = models.DateField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "checkpoint"
+        verbose_name_plural = "checkpoints"
+        ordering = ["date", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+# ---------------------------------------------------------------------------
 # Activity (Polymorphic timeline log)
 # ---------------------------------------------------------------------------
 
 class Activity(models.Model):
     """
     A timeline event linked to exactly one CRM entity
-    (Lead / Customer).
+    (PipelineRecord / Customer).
 
-    Exactly one of ``lead``, ``customer``, ``proposal``, or ``task`` must be set.
+    Exactly one of ``record``, ``customer``, ``proposal``, or ``task`` must be set.
     The ``entity_type`` property returns a canonical string so callers do not
     need to check all three FKs.
 
@@ -412,8 +543,8 @@ class Activity(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Polymorphic entity reference — exactly one must be non-null.
-    lead = models.ForeignKey(
-        Lead,
+    record = models.ForeignKey(
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.CASCADE,
@@ -499,8 +630,8 @@ class Activity(models.Model):
         verbose_name_plural = "activities"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["lead", "-created_at"]),
-            models.Index(fields=["lead", "type"]),
+            models.Index(fields=["record", "-created_at"]),
+            models.Index(fields=["record", "type"]),
             models.Index(fields=["customer", "-created_at"], name="crm_activit_cust_created_idx"),
             models.Index(fields=["proposal", "-created_at"], name="crm_activit_prop_created_idx"),
             models.Index(fields=["task", "-created_at"], name="crm_activit_task_created_idx"),
@@ -514,8 +645,8 @@ class Activity(models.Model):
     @property
     def entity_type(self) -> str:
         """Return the canonical entity type string for this activity."""
-        if self.lead_id:
-            return "lead"
+        if self.record_id:
+            return "record"
         if self.customer_id:
             return "customer"
         if self.proposal_id:
@@ -527,8 +658,8 @@ class Activity(models.Model):
     @property
     def entity_id(self) -> str:
         """Return the UUID string of the linked entity."""
-        if self.lead_id:
-            return str(self.lead_id)
+        if self.record_id:
+            return str(self.record_id)
         if self.customer_id:
             return str(self.customer_id)
         if self.proposal_id:
@@ -674,8 +805,8 @@ class Task(SoftDeleteMixin, TenantModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Entity links — all optional; a task may exist standalone
-    lead = models.ForeignKey(
-        Lead,
+    record = models.ForeignKey(
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.CASCADE,
@@ -1517,7 +1648,7 @@ class Proposal(SoftDeleteMixin, TenantModel):
 
     # Entity links — all optional
     lead = models.ForeignKey(
-        Lead,
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -1664,7 +1795,7 @@ class EmailSequence(TenantModel):
     description = models.TextField(blank=True)
     trigger_status = models.CharField(
         max_length=20,
-        choices=LeadStatus.choices,
+        choices=RecordStatus.choices,
         db_index=True,
         help_text="Lead status that triggers enrollment into this sequence.",
     )
@@ -1726,7 +1857,7 @@ class SequenceEnrollmentStatus(models.TextChoices):
 
 class SequenceEnrollment(TenantModel):
     """
-    Records that a specific Lead is enrolled in a specific EmailSequence.
+    Records that a specific PipelineRecord is enrolled in a specific EmailSequence.
 
     ``next_step`` points to the next EmailSequenceStep to be sent.
     ``next_send_at`` is the datetime when that step should be dispatched.
@@ -1739,7 +1870,7 @@ class SequenceEnrollment(TenantModel):
         related_name="enrollments",
     )
     lead = models.ForeignKey(
-        Lead,
+        PipelineRecord,
         on_delete=models.CASCADE,
         related_name="sequence_enrollments",
     )
@@ -1768,7 +1899,7 @@ class SequenceEnrollment(TenantModel):
         ]
 
     def __str__(self):
-        return f"Enrollment: {self.lead} → {self.sequence} (step {self.current_step})"
+        return f"Enrollment: {self.lead_id} → {self.sequence} (step {self.current_step})"
 
 
 # ---------------------------------------------------------------------------
@@ -2198,7 +2329,7 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
 
     # Optional entity links (all nullable — entry may be standalone)
     lead = models.ForeignKey(
-        Lead,
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -2301,7 +2432,7 @@ class ExpenseItem(SoftDeleteMixin, TenantModel):
 
     # Optional entity links
     lead = models.ForeignKey(
-        Lead,
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -2405,7 +2536,7 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
 
     # Optional entity links
     lead = models.ForeignKey(
-        Lead,
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -2524,8 +2655,8 @@ class Document(SoftDeleteMixin, TenantModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Optional entity links — a document may be linked to any combination
-    lead = models.ForeignKey(
-        Lead,
+    record = models.ForeignKey(
+        PipelineRecord,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -2579,7 +2710,7 @@ class Document(SoftDeleteMixin, TenantModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["firm", "-created_at"]),
-            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "record"]),
             models.Index(fields=["firm", "customer"]),
             models.Index(fields=["firm", "task"]),
         ]

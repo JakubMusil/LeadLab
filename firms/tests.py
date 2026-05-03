@@ -166,9 +166,9 @@ class FirmAuthTest(TestCase):
             require_active_subscription(self.firm)
 
     def test_check_tier_limits_lead_count(self):
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         for i in range(50):
-            Lead.objects.create(firm=self.firm, title=f"Lead {i}")
+            PipelineRecord.objects.create(firm=self.firm, title=f"PipelineRecord {i}")
         with self.assertRaises(SubscriptionRequired):
             check_tier_limits(self.firm)
 
@@ -181,9 +181,9 @@ class FirmAuthTest(TestCase):
     def test_check_tier_limits_pro_skips(self):
         self.firm.subscription_tier = "pro"
         self.firm.save()
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         for i in range(100):
-            Lead.objects.create(firm=self.firm, title=f"Lead {i}")
+            PipelineRecord.objects.create(firm=self.firm, title=f"PipelineRecord {i}")
         check_tier_limits(self.firm)  # no exception
 
 

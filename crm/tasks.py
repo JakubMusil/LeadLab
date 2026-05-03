@@ -132,11 +132,11 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     firm = None
 
     if lead_id:
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         try:
-            lead = Lead.objects.get(id=lead_id)
+            lead = PipelineRecord.objects.get(id=lead_id)
             firm = lead.firm
-        except Lead.DoesNotExist:
+        except PipelineRecord.DoesNotExist:
             raise ValueError(f"create_task: lead {lead_id} not found")
     else:
         # Standalone task — resolve firm from context
@@ -229,15 +229,15 @@ def _action_assign_tag(action: dict, context: dict) -> None:
         lead_id = action.get("lead_id") or context.get("lead_id")
         if not lead_id:
             raise ValueError("assign_tag: no lead_id in action or context")
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         try:
-            lead = Lead.objects.get(id=lead_id)
-        except Lead.DoesNotExist:
+            lead = PipelineRecord.objects.get(id=lead_id)
+        except PipelineRecord.DoesNotExist:
             raise ValueError(f"assign_tag: lead {lead_id} not found")
         tags = list(lead.tags or [])
         if tag not in tags:
             tags.append(tag)
-            Lead.objects.filter(id=lead_id).update(tags=tags)
+            PipelineRecord.objects.filter(id=lead_id).update(tags=tags)
         logger.info("automation assign_tag: added tag '%s' to lead %s", tag, lead_id)
     else:
         # Default: task
@@ -268,8 +268,8 @@ def _action_update_field(action: dict, context: dict) -> None:
     if field not in _ALLOWED_LEAD_FIELDS:
         raise ValueError(f"update_field: field '{field}' is not allowed")
 
-    from crm.models import Lead
-    updated = Lead.objects.filter(id=lead_id).update(**{field: value})
+    from crm.models import PipelineRecord
+    updated = PipelineRecord.objects.filter(id=lead_id).update(**{field: value})
     if not updated:
         raise ValueError(f"update_field: lead {lead_id} not found")
     logger.info("automation update_field: set %s=%r on lead %s", field, value, lead_id)
@@ -442,7 +442,7 @@ def process_import_job(self, job_id: str):
 
     from crm.models import (
         Customer, ImportJob, ImportJobStatus, ImportJobType,
-        Lead, LeadSource, LeadStatus,
+        PipelineRecord, RecordSource, RecordStatus,
     )
 
     try:
@@ -472,12 +472,12 @@ def process_import_job(self, job_id: str):
                     title = (row.get("title") or "").strip()
                     if not title:
                         raise ValueError("'title' column is required.")
-                    status = (row.get("status") or LeadStatus.NEW).strip()
-                    if status not in {s.value for s in LeadStatus}:
-                        status = LeadStatus.NEW
-                    source = (row.get("source") or LeadSource.OTHER).strip()
-                    if source not in {s.value for s in LeadSource}:
-                        source = LeadSource.OTHER
+                    status = (row.get("status") or RecordStatus.NEW).strip()
+                    if status not in {s.value for s in RecordStatus}:
+                        status = RecordStatus.NEW
+                    source = (row.get("source") or RecordSource.OTHER).strip()
+                    if source not in {s.value for s in RecordSource}:
+                        source = RecordSource.OTHER
                     raw_value = (row.get("value") or "").strip()
                     value = None
                     if raw_value:
@@ -487,7 +487,7 @@ def process_import_job(self, job_id: str):
                             pass
                     currency = (row.get("currency") or "CZK").strip()[:3]
                     description = (row.get("description") or "").strip()
-                    Lead.objects.create(
+                    PipelineRecord.objects.create(
                         firm=job.firm,
                         title=title,
                         status=status,
@@ -550,7 +550,7 @@ def send_weekly_digest(self):
     from django.core.mail import send_mail
     from django.conf import settings
 
-    from crm.models import Lead, LeadStatus, Task
+    from crm.models import PipelineRecord, RecordStatus, Task
     from firms.models import Firm, Membership
     from django.utils import timezone as tz
 
@@ -565,14 +565,14 @@ def send_weekly_digest(self):
         if not recipients:
             continue
 
-        total_leads = Lead.objects.filter(firm=firm).count()
-        won = Lead.objects.filter(firm=firm, status=LeadStatus.WON).count()
-        lost = Lead.objects.filter(firm=firm, status=LeadStatus.LOST).count()
-        active = Lead.objects.filter(
+        total_leads = PipelineRecord.objects.filter(firm=firm).count()
+        won = PipelineRecord.objects.filter(firm=firm, status=RecordStatus.WON).count()
+        lost = PipelineRecord.objects.filter(firm=firm, status=RecordStatus.LOST).count()
+        active = PipelineRecord.objects.filter(
             firm=firm,
             status__in=[
-                LeadStatus.NEW, LeadStatus.CONTACTED,
-                LeadStatus.PROPOSAL, LeadStatus.NEGOTIATION,
+                RecordStatus.NEW, RecordStatus.CONTACTED,
+                RecordStatus.PROPOSAL, RecordStatus.NEGOTIATION,
             ],
         ).count()
         open_tasks = Task.objects.filter(firm=firm, is_completed=False).count()
@@ -886,7 +886,7 @@ def check_task_overdue_automations(self):
         ) or ""
 
         for task in overdue_tasks:
-            lead = task.lead
+            lead = task.record
             customer_name = ""
             customer_email = ""
             if lead.customer:
@@ -940,7 +940,7 @@ def check_lead_inactivity_automations(self):
     """
     from django.utils import timezone as tz
     from django.db.models import Max
-    from crm.models import Activity, AutomationRule, AutomationRun, Lead
+    from crm.models import Activity, AutomationRule, AutomationRun, PipelineRecord
     from firms.models import Membership
 
     now = tz.now()
@@ -965,7 +965,7 @@ def check_lead_inactivity_automations(self):
 
         # Find leads whose most-recent activity is older than the cutoff
         # (or leads with no activities at all, treating created_at as last activity)
-        leads_qs = Lead.objects.filter(firm_id=firm_id)
+        leads_qs = PipelineRecord.objects.filter(firm_id=firm_id)
         # Annotate with latest activity date
         leads_with_last = leads_qs.annotate(
             last_activity=Max("activities__created_at")
@@ -1167,7 +1167,7 @@ def spawn_recurring_tasks():
         try:
             new_task = Task.objects.create(
                 firm=root.firm,
-                lead=root.lead,
+                record=root.record,
                 proposal=root.proposal,
                 customer=root.customer,
                 title=root.title,
@@ -1316,7 +1316,7 @@ def auto_expire_scheduled_tasks(self):
                 task.save(update_fields=["status"])
 
                 activity = Activity.objects.create(
-                    lead=task.lead,
+                    record=task.record,
                     customer=task.customer,
                     proposal=task.proposal,
                     task=task,
@@ -1639,7 +1639,7 @@ def purge_soft_deleted_records(self):
     from django.utils import timezone as tz
     from crm.models import (
         Customer,
-        Lead,
+        PipelineRecord,
         Task,
         Activity,
         Proposal,
@@ -1659,7 +1659,7 @@ def purge_soft_deleted_records(self):
 
     models_to_purge = [
         ("Customer", Customer),
-        ("Lead", Lead),
+        ("PipelineRecord", PipelineRecord),
         ("Task", Task),
         ("Proposal", Proposal),
         ("TimeEntry", TimeEntry),
@@ -1833,7 +1833,7 @@ def recalculate_canonical_amounts_for_firm(firm_id: str):
     from decimal import Decimal as _D
 
     from firms.models import Firm
-    from crm.models import Lead, ExpenseItem, RevenueItem
+    from crm.models import PipelineRecord, ExpenseItem, RevenueItem
     from crm.money import to_canonical
     from django.utils import timezone
 
@@ -1847,7 +1847,7 @@ def recalculate_canonical_amounts_for_firm(firm_id: str):
     failed = 0
 
     tasks_def = [
-        (Lead, "value", "created_at"),
+        (PipelineRecord, "value", "created_at"),
         (ExpenseItem, "amount", "date"),
         (RevenueItem, "amount", "date"),
     ]

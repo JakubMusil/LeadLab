@@ -27,9 +27,9 @@ def _build_entity_toolbar() -> None:
     """Populate ``_ENTITY_TOOLBAR`` from entity model class attributes."""
     global _ENTITY_TOOLBAR
     try:
-        from crm.models import Lead
+        from crm.models import PipelineRecord
         _ENTITY_TOOLBAR = {
-            "lead": Lead.TOOLBAR_TOOLS,
+            "lead": PipelineRecord.TOOLBAR_TOOLS,
             "customer": ["comment", "call", "meeting", "email_out", "checklist", "task"],
             "proposal": ["comment", "task"],
             "task": [
