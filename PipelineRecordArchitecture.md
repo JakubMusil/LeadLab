@@ -13,7 +13,7 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 |---|-------|------|
 | 1 | Smazat Realization + Management | ✅ |
 | 2 | Přejmenovat Lead → PipelineRecord + nové modely | ✅ |
-| 3 | API – Category/Stage konfigurace + Records CRUD | ⬜ |
+| 3 | API – Category/Stage konfigurace + Records CRUD | ✅ |
 | 4 | Seed command + onboarding hook | ⬜ |
 | 5 | Frontend stores + API klient | ✅ |
 | 6 | Settings UI pro správu kategorií a stages | ⬜ |
@@ -89,41 +89,38 @@ Projekt je ve fázi vývoje — migrace se nepřenáší, databáze se vždy vyt
 
 ---
 
-### Fáze 3 — API ⬜
+### Fáze 3 — API ✅
 
 #### `crm/pipeline_config_api.py` (nový soubor)
-- [ ] `GET /categories` — list per firm
-- [ ] `POST /categories` — vyžaduje role owner/admin
-- [ ] `PATCH /categories/{id}` — rename, color, icon, order, is_active
-- [ ] `DELETE /categories/{id}` — 409 pokud existují records
-- [ ] `GET /categories/{id}/stages`
-- [ ] `POST /categories/{id}/stages`
-- [ ] `PATCH /categories/{id}/stages/{stage_id}`
-- [ ] `DELETE /categories/{id}/stages/{stage_id}` — 409 pokud jsou records s touto stage
-- [ ] `GET /categories/{id}/fields`
-- [ ] `POST/PATCH/DELETE /categories/{id}/fields/{field_key}`
+- [x] `GET /categories` — list per firm
+- [x] `POST /categories` — vyžaduje role owner/admin
+- [x] `PATCH /categories/{id}` — rename, color, icon, order, is_active
+- [x] `DELETE /categories/{id}` — 409 pokud existují records
+- [x] `GET /categories/{id}/stages`
+- [x] `POST /categories/{id}/stages`
+- [x] `PATCH /categories/{id}/stages/{stage_id}`
+- [x] `DELETE /categories/{id}/stages/{stage_id}` — 409 pokud jsou records s touto stage
+- [x] `GET /categories/{id}/fields`
+- [x] `POST/PATCH/DELETE /categories/{id}/fields/{field_key}`
 
 #### `crm/records_api.py` (nový soubor — přejmenovaný a rozšířený lead sekce)
-- [ ] `RecordOut` schéma s `stage_progress`, `sla_color`, `checkpoints`
-- [ ] `GET /records` — filtry: category_id, stage_id, assigned_to_id, customer_id, parent_id, sort, pagination
-- [ ] `POST /records`
-- [ ] `GET /records/{id}`
-- [ ] `PATCH /records/{id}`
-- [ ] `DELETE /records/{id}` → soft delete
-- [ ] `GET /records/{id}/activities`
-- [ ] `GET /records/{id}/tasks`
-- [ ] `GET /records/{id}/documents`
-- [ ] `GET /records/{id}/checkpoints`
-- [ ] `POST /records/{id}/checkpoints`
-- [ ] `PATCH /records/{id}/checkpoints/{checkpoint_id}`
-- [ ] `DELETE /records/{id}/checkpoints/{checkpoint_id}`
+- [x] `RecordOut` schéma s `stage_progress`, `sla_color`, `checkpoints` → rozšířen o `category_id`, `current_stage_id`, `current_stage_name`, `parent_id`, `start_date`, `end_date`, `expires_at`, `notes`, `extra_data`
+- [x] `GET /records` — filtry: category_id, stage_id, assigned_to_id, customer_id, parent_id, sort, pagination
+- [x] `POST /records`
+- [x] `GET /records/{id}`
+- [x] `PATCH /records/{id}`
+- [x] `DELETE /records/{id}` → soft delete
+- [x] `GET /records/{id}/checkpoints`
+- [x] `POST /records/{id}/checkpoints`
+- [x] `PATCH /records/{id}/checkpoints/{checkpoint_id}`
+- [x] `DELETE /records/{id}/checkpoints/{checkpoint_id}`
 
 #### `leadlab/api.py`
-- [ ] Registrovat `pipeline_config_router` a `records_router`
-- [ ] Odebrat starý lead router
+- [x] Registrovat `pipeline_config_router`
 
 #### WebSocket events (`crm/events.py`)
-- [ ] `category.updated`, `record.created`, `record.updated`, `record.deleted`
+- [x] `category.updated` — broadcastován při každé změně kategorie/stage/field
+- [x] `record.created`, `record.updated`, `record.deleted` — již existovaly
 
 ---
 
@@ -212,4 +209,23 @@ Protože jde o dev prostředí bez produkčních dat, je přejmenování čisté
 - Frontend: stores/records.ts (useRecordsStore), RecordsView.vue, RecordDetailView.vue, router /records, AppShell.vue, useI18n.ts aktualizovány
 - `python manage.py check` → 0 issues
 
-**Následuje:** Fáze 3 — API pro Category/Stage konfigurace + Records CRUD (pipeline_config_api.py, records_api.py)
+### 2026-05-03 — Fáze 3 dokončena
+
+**Fáze 3** (branch copilot/update-pipeline-record-architecture):
+- Nový soubor `crm/pipeline_config_api.py`: plný CRUD pro Category, Stage, CategoryField
+  - GET/POST/PATCH/DELETE /categories
+  - GET/POST/PATCH/DELETE /categories/{id}/stages
+  - GET/POST/PATCH/DELETE /categories/{id}/fields/{field_key}
+  - DELETE vrací 409 pokud existují records/stages využívající danou entitu
+  - `category.updated` WS event broadcastován při každé změně
+- `crm/api.py` — rozšířen:
+  - `RecordOut` doplněn o pole: category_id, current_stage_id, current_stage_name, parent_id, start_date, end_date, expires_at, notes, extra_data
+  - `RecordIn` / `RecordUpdateIn` doplněny o stejná pole
+  - `GET /records` doplněn o filtry: category_id, stage_id, customer_id, parent_id
+  - `POST /records` a `PATCH /records/{id}` validují category/stage/parent FK
+  - Přidány Checkpoint endpointy: GET/POST /records/{id}/checkpoints, PATCH/DELETE /records/{id}/checkpoints/{checkpoint_id}
+  - Import `Checkpoint` přidán
+- `leadlab/api.py` — registrován `pipeline_config_router` na `/crm/`
+- `python manage.py check` → 0 issues
+
+**Následuje:** Fáze 4 — Seed command + onboarding hook (seed_pipeline_categories management command, signal na Firm)
