@@ -141,8 +141,7 @@ Stránka `/app/opportunities` (mapuje na `LeadsView.vue`) zobrazuje tabulku / se
 - [x] Frontend: dialog uložení pohledu zobrazuje info o sortu a počtu sloupců
 - [x] Locale: přidány klíče `colPicker`, `resetColumns`, `saveViewSort`, `saveViewColumns`, `sort_asc/desc`, `col_*` do cs/en/de/pl
 
-**Co se dělá v příští relaci (Relace 4):**
-- Composable `useListView(entity, columns, defaultFilters)` – zapouzdření filter/sort/columns/localStorage
-- Generická `SmartListTable.vue` (přijímá column definitions, renderuje thead + tbody)
-- Refaktorovat `LeadsView.vue` na `useListView`
-- Aplikovat na `RealizationsView.vue` (pilotní druhé použití)
+**Co se dělá v příští relaci (Relace 5):**
+- Dashboard widget "Moje příležitosti" (TOP 5 leadů podle score, přímý odkaz)
+- Quick-create panel pro lead přímo z dashboardu (mini form)
+- Notifications badge – počet leadů s overdue tasky

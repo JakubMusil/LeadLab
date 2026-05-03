@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
 import { useSavedViewsStore } from '@/stores/savedViews'
@@ -14,6 +14,7 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useListView, type ColumnDef } from '@/composables/useListView'
 import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
 import Avatar from '@/components/ui/Avatar.vue'
 
@@ -83,27 +84,28 @@ function memberLabel(m: Member) {
 }
 
 // ---------------------------------------------------------------------------
-// Sort state (client-side sort of current page)
+// Sort + Column visibility (via useListView composable)
 // ---------------------------------------------------------------------------
 type SortField = 'title' | 'status' | 'source' | 'value' | 'created_at'
-const DEFAULT_SORT_FIELD: SortField = 'created_at'
-const DEFAULT_SORT_DIR: 'asc' | 'desc' = 'desc'
-const sortField = ref<SortField>(DEFAULT_SORT_FIELD)
-const sortDir = ref<'asc' | 'desc'>(DEFAULT_SORT_DIR)
+type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'users'
 
-function setSort(field: SortField) {
-  if (sortField.value === field) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortField.value = field
-    sortDir.value = 'asc'
-  }
-}
+const TABLE_COLUMNS: ColumnDef<ColumnId>[] = [
+  { id: 'status', labelKey: 'colStatus', defaultVisible: true },
+  { id: 'source', labelKey: 'colSource', defaultVisible: true },
+  { id: 'value', labelKey: 'colValue', defaultVisible: true },
+  { id: 'score', labelKey: 'colScore', defaultVisible: false },
+  { id: 'created_at', labelKey: 'colCreated', defaultVisible: true },
+  { id: 'users', labelKey: 'colUsers', defaultVisible: true },
+]
 
-function sortIcon(field: SortField): string {
-  if (sortField.value !== field) return '↕'
-  return sortDir.value === 'asc' ? '↑' : '↓'
-}
+const {
+  sortField, sortDir, setSort, sortIcon,
+  DEFAULT_SORT_FIELD, DEFAULT_SORT_DIR,
+  visibleColumns, columnPickerOpen, isColVisible, toggleColumn, resetColumns,
+} = useListView<SortField, ColumnId>(
+  { storageKeyPrefix: 'leadlab_leads', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
+  computed(() => authStore.user?.id),
+)
 
 const STATUS_ORDER: Record<string, number> = {
   new: 1, contacted: 2, proposal: 3, negotiation: 4, won: 5, lost: 6, canceled: 7,
@@ -132,79 +134,6 @@ const sortedLeads = computed(() => {
     return sortDir.value === 'asc' ? cmp : -cmp
   })
 })
-
-// ---------------------------------------------------------------------------
-// Column visibility
-// ---------------------------------------------------------------------------
-type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'users'
-
-interface ColumnDef {
-  id: ColumnId
-  labelKey: string
-  defaultVisible: boolean
-}
-
-const TABLE_COLUMNS: ColumnDef[] = [
-  { id: 'status', labelKey: 'colStatus', defaultVisible: true },
-  { id: 'source', labelKey: 'colSource', defaultVisible: true },
-  { id: 'value', labelKey: 'colValue', defaultVisible: true },
-  { id: 'score', labelKey: 'colScore', defaultVisible: false },
-  { id: 'created_at', labelKey: 'colCreated', defaultVisible: true },
-  { id: 'users', labelKey: 'colUsers', defaultVisible: true },
-]
-
-const DEFAULT_VISIBLE_COLS: ColumnId[] = TABLE_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id)
-const visibleColumns = ref<ColumnId[]>([...DEFAULT_VISIBLE_COLS])
-const columnPickerOpen = ref(false)
-
-// Load column prefs from localStorage
-watch(() => authStore.user?.id, (userId) => {
-  if (!userId) return
-  try {
-    const stored = localStorage.getItem(`leadlab_leads_cols_u${userId}`)
-    if (stored) {
-      const parsed = JSON.parse(stored) as ColumnId[]
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        visibleColumns.value = parsed
-      }
-    }
-  } catch {
-    // ignore
-  }
-}, { immediate: true })
-
-watch(visibleColumns, (cols) => {
-  const userId = authStore.user?.id
-  if (!userId) return
-  try {
-    localStorage.setItem(`leadlab_leads_cols_u${userId}`, JSON.stringify(cols))
-  } catch {
-    // ignore
-  }
-}, { deep: true })
-
-function isColVisible(id: ColumnId): boolean {
-  return visibleColumns.value.includes(id)
-}
-
-function toggleColumn(id: ColumnId) {
-  const idx = visibleColumns.value.indexOf(id)
-  if (idx === -1) {
-    visibleColumns.value = [...visibleColumns.value, id]
-  } else {
-    visibleColumns.value = visibleColumns.value.filter((c) => c !== id)
-  }
-}
-
-function resetColumns() {
-  visibleColumns.value = [...DEFAULT_VISIBLE_COLS]
-}
-
-function closeColumnPicker() {
-  columnPickerOpen.value = false
-}
-onMounted(() => document.addEventListener('click', closeColumnPicker))
-onBeforeUnmount(() => document.removeEventListener('click', closeColumnPicker))
 
 // ---------------------------------------------------------------------------
 // Advanced filters
