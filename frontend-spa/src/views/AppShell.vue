@@ -512,6 +512,9 @@ function formatNotifTime(ts: string): string {
           <kbd class="text-xs text-gray-400 dark:text-gray-500 font-mono">⌘K</kbd>
         </div>
 
+        <!-- Time tracking (inline header) -->
+        <TimerWidget variant="inline" />
+
         <!-- Notification bell -->
         <div class="relative">
           <button
@@ -623,9 +626,6 @@ function formatNotifTime(ts: string): string {
       </main>
     </div>
   </div>
-
-  <!-- Sitewide Timer Widget -->
-  <TimerWidget />
 
   <!-- Keyboard shortcuts help modal -->
   <Teleport to="body">

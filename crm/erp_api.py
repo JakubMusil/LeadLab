@@ -39,6 +39,7 @@ class TimeEntryIn(Schema):
     duration_minutes: int
     description: str = ""
     is_billable: bool = True
+    hourly_rate: Optional[Decimal] = None
     started_at: Optional[dt.datetime] = None
     ended_at: Optional[dt.datetime] = None
     lead_id: Optional[str] = None
@@ -51,6 +52,7 @@ class TimeEntryPatch(Schema):
     duration_minutes: Optional[int] = None
     description: Optional[str] = None
     is_billable: Optional[bool] = None
+    hourly_rate: Optional[Decimal] = None
     started_at: Optional[dt.datetime] = None
     ended_at: Optional[dt.datetime] = None
     lead_id: Optional[str] = None
@@ -75,6 +77,7 @@ class TimeEntryOut(Schema):
     duration_minutes: int
     description: str
     is_billable: bool
+    hourly_rate: Optional[Decimal]
     started_at: Optional[dt.datetime]
     ended_at: Optional[dt.datetime]
     created_at: dt.datetime
@@ -108,6 +111,7 @@ class TimeEntryOut(Schema):
             duration_minutes=obj.duration_minutes,
             description=obj.description,
             is_billable=obj.is_billable,
+            hourly_rate=obj.hourly_rate,
             started_at=obj.started_at,
             ended_at=obj.ended_at,
             created_at=obj.created_at,
@@ -163,6 +167,7 @@ def create_time_entry(request, payload: TimeEntryIn):
         duration_minutes=payload.duration_minutes,
         description=payload.description,
         is_billable=payload.is_billable,
+        hourly_rate=payload.hourly_rate,
         started_at=payload.started_at,
         ended_at=payload.ended_at,
         lead_id=payload.lead_id,

@@ -25,6 +25,7 @@ const form = ref<{
   duration_minutes: number
   description: string
   is_billable: boolean
+  hourly_rate: string
   started_at: string
   lead_id: string
   lead_label: string
@@ -36,6 +37,7 @@ const form = ref<{
   duration_minutes: 60,
   description: '',
   is_billable: true,
+  hourly_rate: '',
   started_at: new Date().toISOString().substring(0, 16),
   lead_id: '',
   lead_label: '',
@@ -101,6 +103,7 @@ function clearCustomer() {
 const editingId = ref<string | null>(null)
 const editDuration = ref<number>(0)
 const editDescription = ref<string>('')
+const editHourlyRate = ref<string>('')
 const confirmDeleteEntryId = ref<string | null>(null)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -163,6 +166,7 @@ async function submitManualEntry() {
       duration_minutes: form.value.duration_minutes,
       description: form.value.description,
       is_billable: form.value.is_billable,
+      hourly_rate: form.value.hourly_rate ? parseFloat(form.value.hourly_rate) : null,
       started_at: form.value.started_at ? new Date(form.value.started_at).toISOString() : null,
       lead_id: form.value.lead_id || null,
       customer_id: form.value.customer_id || null,
@@ -177,6 +181,7 @@ async function submitManualEntry() {
         duration_minutes: 60,
         description: '',
         is_billable: true,
+        hourly_rate: '',
         started_at: new Date().toISOString().substring(0, 16),
         lead_id: '',
         lead_label: '',
@@ -201,6 +206,7 @@ function startEdit(entry: TimeEntryOut) {
   editingId.value = entry.id
   editDuration.value = entry.duration_minutes
   editDescription.value = entry.description
+  editHourlyRate.value = entry.hourly_rate != null ? String(entry.hourly_rate) : ''
 }
 
 function cancelEdit() {
@@ -211,6 +217,7 @@ async function saveEdit(entry: TimeEntryOut) {
   const res = await api.patch<TimeEntryOut>(`/api/v1/erp/time-entries/${entry.id}`, {
     duration_minutes: editDuration.value,
     description: editDescription.value,
+    hourly_rate: editHourlyRate.value ? parseFloat(editHourlyRate.value) : null,
   })
   if (res.ok) {
     const idx = entries.value.findIndex(e => e.id === entry.id)
@@ -335,6 +342,11 @@ function deleteEntry(id: string) {
           </button>
           <span class="text-sm text-gray-700 dark:text-gray-300">Billable</span>
         </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hodinová sazba (optional)</label>
+          <input v-model="form.hourly_rate" type="number" min="0" step="0.01" placeholder="0.00"
+            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+        </div>
       </div>
       <div class="flex gap-3 mt-4 justify-end">
         <button class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
@@ -382,6 +394,7 @@ function deleteEntry(id: string) {
             <th class="px-4 py-3 text-left">Linked to</th>
             <th class="px-4 py-3 text-left">User</th>
             <th class="px-4 py-3 text-left">Billable</th>
+            <th class="px-4 py-3 text-left">Hodinová sazba</th>
             <th class="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
@@ -422,6 +435,13 @@ function deleteEntry(id: string) {
               >
                 {{ entry.is_billable ? 'Billable' : 'Non-billable' }}
               </span>
+            </td>
+            <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+              <template v-if="editingId === entry.id">
+                <input v-model="editHourlyRate" type="number" min="0" step="0.01" placeholder="0.00"
+                  class="w-24 rounded border border-gray-300 dark:border-gray-600 px-2 py-0.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+              </template>
+              <span v-else>{{ entry.hourly_rate != null ? entry.hourly_rate : '—' }}</span>
             </td>
             <td class="px-4 py-3 text-right">
               <template v-if="editingId === entry.id">
