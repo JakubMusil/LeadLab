@@ -788,6 +788,8 @@ export function useMoney() {
 - [x] Refaktorovat `PublicProposalView.vue` (`fmt()` lokální `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu)
 - [x] Refaktorovat `CustomerDetailView.vue` (`.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`)
 - [x] Refaktorovat `DashboardView.vue` (`Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty)
+- [x] Refaktorovat `CatalogView.vue` (`Number(item.unit_price).toFixed(2)` → `formatAmountPlain`)
+- [x] Refaktorovat `ProposalTemplatesView.vue` (`Number(item.unit_price).toFixed(2)` → `formatAmountPlain`)
 
 ### P4 – Budoucí rozšíření ✅ HOTOVO (kromě rozšíření seznamu měn)
 - [x] Křížové kurzy (cross-rate přes EUR pivot) v `get_rate()` – bylo implementováno již v P2 (`crm/money.py` `_get_system_rate()`)
@@ -837,10 +839,15 @@ export function useMoney() {
 - `views/PublicProposalView.vue` – refaktoring: lokální `fmt()` `.toFixed(2)` → `formatAmountPlain` respektující locale/měnu návrhu
 - `views/CustomerDetailView.vue` – refaktoring: `.toFixed(2) {{ currency }}` → `formatAmountPlain`, `{{ value }} {{ currency }}` → `formatAmount`
 - `views/DashboardView.vue` – refaktoring: `Intl.NumberFormat(undefined…)` → `formatAmount`, přidáno `mixed_currencies` pole do `StatsData`, varování zobrazeno u pipeline karty
+- `views/CatalogView.vue` – refaktoring: `Number(item.unit_price).toFixed(2)` → `formatAmountPlain`
+- `views/ProposalTemplatesView.vue` – refaktoring: `Number(item.unit_price).toFixed(2)` → `formatAmountPlain`
 
 ### Zbývá (nízká priorita)
 - **Rozšíření seznamu podporovaných měn** – lze přidat do `SUPPORTED_CURRENCIES` v `crm/money.py` a `frontend-spa/src/composables/useMoney.ts` dle potřeby
 - Žádné další P4 úkoly nejsou otevřeny
+
+### Příští fáze
+Všechny P0–P4 úkoly jsou dokončeny. Jediný otevřený bod je rozšíření seznamu měn (nízká priorita). Po jeho realizaci bude money system v plném rozsahu nasazen. Případné budoucí práce: podpora stablecoinů (USDT, USDC), nebo doplnění exotických měn dle poptávky zákazníků.
 
 ---
 
