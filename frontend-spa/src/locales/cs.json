@@ -934,6 +934,7 @@
     "streamlineAddFailed": "Nepodařilo se přidat položky.",
     "streamlineToggleFailed": "Nepodařilo se změnit stav položky.",
     "streamlineDeleteFailed": "Nepodařilo se smazat položku.",
+    "streamlineDeleteConfirm": "Opravdu chcete tuto položku odstranit?",
     "streamlineDeleted": "Odstraněno",
     "streamlineDeletedBy": "uživatelem {name}",
     "streamlineHideDeleted": "Skrýt odstraněné",

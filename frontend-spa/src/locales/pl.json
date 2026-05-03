@@ -930,6 +930,7 @@
     "streamlineAddFailed": "Nie udało się dodać elementów.",
     "streamlineToggleFailed": "Nie udało się zaktualizować elementu.",
     "streamlineDeleteFailed": "Nie udało się usunąć elementu.",
+    "streamlineDeleteConfirm": "Czy na pewno chcesz usunąć ten element?",
     "streamlineDeleted": "Usunięto",
     "streamlineDeletedBy": "przez {name}",
     "streamlineHideDeleted": "Ukryj usunięte",
