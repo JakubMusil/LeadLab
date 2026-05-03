@@ -8,6 +8,19 @@
   min-height: 100vh;
 }
 
+/* Chart color tokens — consumed by Chart.js computed options */
+:root {
+  --chart-tick-color: #6b7280;
+  --chart-grid-color: rgba(0, 0, 0, 0.08);
+  --chart-legend-color: #374151;
+}
+
+.dark {
+  --chart-tick-color: #9ca3af;
+  --chart-grid-color: rgba(255, 255, 255, 0.08);
+  --chart-legend-color: #d1d5db;
+}
+
 /* Sidebar custom scrollbar */
 .sidebar-scrollbar {
   scrollbar-width: thin;

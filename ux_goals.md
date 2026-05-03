@@ -134,5 +134,13 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 - ✅ **#10** Checkpoints — vizuální odlišení: fialová barva, `FlagIcon`, kulatý checkbox.
 - ✅ **#12** RecordDetailView — breadcrumb navigace: „Záznamy → [Kategorie] → [Název]".
 
-**Co zbývá:**
+**Co zbývalo:**
 - **#14** Dark mode — CSS custom properties pro barvy v grafech a badges
+
+### Iterace 3 (branch: `copilot/update-ux-goals-progress`)
+
+**Co bylo uděláno:**
+- ✅ **#14** Dark mode — chart colors: `chartOptions` v `DashboardView` a všechny chart options v `AnalyticsView` převedeny na `computed` reaktující na `isDark` z `useTheme`. Přidány CSS custom properties `--chart-tick-color`, `--chart-grid-color`, `--chart-legend-color` do `main.css` pro `:root` a `.dark`. Tick barvy, grid barvy a legend label barvy se nyní dynamicky přepínají dle aktuálního tématu.
+
+**Co zbývá:**
+- (vše z backlogu hotovo)

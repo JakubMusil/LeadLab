@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
+import { useChartTheme } from '@/composables/useChartTheme'
 import { api } from '@/api'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import UpgradePrompt from '@/components/UpgradePrompt.vue'
@@ -24,6 +25,7 @@ ChartJS.register(BarElement, LineElement, PointElement, CategoryScale, LinearSca
 const firmStore = useFirmStore()
 const { isPro } = storeToRefs(firmStore)
 const { t } = useI18n()
+const { tickColor, gridColor, legendColor } = useChartTheme()
 const loading = ref(false)
 
 // -- Pipeline Velocity --
@@ -256,7 +258,10 @@ const velocityChartOptions = computed(() => ({
       },
     },
   },
-  scales: { x: { ticks: { precision: 1 } }, y: { ticks: { font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { precision: 1, color: tickColor.value }, grid: { color: gridColor.value } },
+    y: { ticks: { font: { size: 11 }, color: tickColor.value }, grid: { color: gridColor.value } },
+  },
 }))
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -284,12 +289,20 @@ const wonLostChartData = computed(() => ({
   ],
 }))
 
-const wonLostChartOptions = {
+const wonLostChartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
-  plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 } } } },
-  scales: { x: { stacked: true, ticks: { font: { size: 11 } } }, y: { stacked: true, ticks: { precision: 0 } } },
-}
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: { font: { size: 11 }, color: legendColor.value },
+    },
+  },
+  scales: {
+    x: { stacked: true, ticks: { font: { size: 11 }, color: tickColor.value }, grid: { color: gridColor.value } },
+    y: { stacked: true, ticks: { precision: 0, color: tickColor.value }, grid: { color: gridColor.value } },
+  },
+}))
 
 const trendsChartData = computed(() => {
   if (!trends.value) return { labels: [], datasets: [] }
@@ -319,12 +332,20 @@ const trendsChartData = computed(() => {
   }
 })
 
-const trendsChartOptions = {
+const trendsChartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
-  plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 } } } },
-  scales: { x: { ticks: { font: { size: 11 } } }, y: { ticks: { precision: 0 } } },
-}
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: { font: { size: 11 }, color: legendColor.value },
+    },
+  },
+  scales: {
+    x: { ticks: { font: { size: 11 }, color: tickColor.value }, grid: { color: gridColor.value } },
+    y: { ticks: { precision: 0, color: tickColor.value }, grid: { color: gridColor.value } },
+  },
+}))
 </script>
 
 <template>
