@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { Bar } from 'vue-chartjs'
 import { useMoney } from '@/composables/useMoney'
+import { useChartTheme } from '@/composables/useChartTheme'
 import {
   Chart as ChartJS,
   BarElement,
@@ -93,6 +94,7 @@ const recordsStore = useRecordsStore()
 const toast = useToast()
 const router = useRouter()
 const { formatAmount } = useMoney()
+const { tickColor, gridColor } = useChartTheme()
 const stats = ref<StatsData | null>(null)
 const loading = ref(false)
 const widgets = ref<WidgetConfig[]>([...DEFAULT_WIDGETS])
@@ -139,15 +141,15 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: { legend: { display: false }, tooltip: { mode: 'index' as const } },
   scales: {
-    x: { ticks: { font: { size: 11 } } },
-    y: { ticks: { precision: 0 } },
+    x: { ticks: { font: { size: 11 }, color: tickColor.value }, grid: { color: gridColor.value } },
+    y: { ticks: { precision: 0, color: tickColor.value }, grid: { color: gridColor.value } },
   },
-}
+}))
 
 const visibleWidgets = computed(() =>
   widgets.value
