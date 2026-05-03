@@ -667,7 +667,7 @@ def create_record(request, payload: RecordIn):
         currency=payload.currency,
         created_by=request.user,
     )
-    broadcast_event(firm=request.firm, event='lead.created', payload=_record_out(lead))
+    broadcast_event(firm=request.firm, event='record.created', payload=_record_out(lead))
 
     # Fire workflow automation trigger: lead_created
     from crm.tasks import evaluate_automation_rules
@@ -783,7 +783,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         finally:
             clear_current_user()
 
-    broadcast_event(firm=request.firm, event='lead.updated', payload=_record_out(lead))
+    broadcast_event(firm=request.firm, event='record.updated', payload=_record_out(lead))
     return 200, _record_out(lead)
 
 
