@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
-import { useLeadsStore, LEAD_STATUSES, getStatusMeta, type LeadOut } from '@/stores/leads'
+import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordOut } from '@/stores/records'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/api'
 import { Bar } from 'vue-chartjs'
@@ -89,7 +89,7 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
-const leadsStore = useLeadsStore()
+const recordsStore = useRecordsStore()
 const toast = useToast()
 const router = useRouter()
 const { formatAmount } = useMoney()
@@ -100,7 +100,7 @@ const showLayoutEditor = ref(false)
 const savingLayout = ref(false)
 
 // "My top leads" widget state
-const myTopLeads = ref<LeadOut[]>([])
+const myTopLeads = ref<RecordOut[]>([])
 const myTopLeadsLoading = ref(false)
 
 // "Quick create lead" widget state
@@ -194,15 +194,13 @@ async function loadMyTopLeads() {
   if (!firmStore.activeFirm || !authStore.user) return
   myTopLeadsLoading.value = true
   try {
-    // Fetch a wider page of the current user's leads, then sort client-side by score
-    // (score is computed dynamically on the backend and isn't a sortable DB field).
     const params = new URLSearchParams()
     params.set('assigned_to', String(authStore.user.id))
     params.set('page', '1')
     params.set('page_size', '50')
-    const res = await api.get<LeadOut[]>(`/api/v1/crm/opportunities?${params}`)
+    const res = await api.get<RecordOut[]>(`/api/v1/crm/records?${params}`)
     if (res.ok) {
-      // Exclude closed statuses (won/lost/canceled) — focus on active leads.
+      // Exclude closed statuses (won/lost/canceled) — focus on active records.
       const active = res.data.filter((l) => !['won', 'lost', 'canceled'].includes(l.status))
       const sorted = active
         .slice()
@@ -225,7 +223,7 @@ async function submitQuickCreate() {
   qcError.value = ''
   try {
     const valueNum = qcValue.value ? parseFloat(qcValue.value) : null
-    const res = await leadsStore.createLead({
+    const res = await recordsStore.createRecord({
       title,
       status: qcStatus.value,
       value: valueNum != null && !isNaN(valueNum) ? valueNum : null,
@@ -247,7 +245,7 @@ async function submitQuickCreate() {
 }
 
 function openLeadDetail(id: string) {
-  router.push(`/app/opportunities/${id}`)
+  router.push(`/app/records/${id}`)
 }
 
 function statusLabelFor(status: string): string {
@@ -458,7 +456,7 @@ function hideSetupBanner() {
                   <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
+                      <RouterLink v-if="act.lead_id" :to="`/app/records/${act.lead_id}`" class="font-medium hover:text-red-600">
                         {{ (act as ActivityItem & { lead_title?: string }).lead_title ?? 'Lead' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>
@@ -492,7 +490,7 @@ function hideSetupBanner() {
                   <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/opportunities/${act.lead_id}`" class="font-medium hover:text-red-600">
+                      <RouterLink v-if="act.lead_id" :to="`/app/records/${act.lead_id}`" class="font-medium hover:text-red-600">
                         {{ act.lead_title ?? 'Lead' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>
@@ -526,7 +524,7 @@ function hideSetupBanner() {
               :aria-label="t('dashboard.qcStatusLabel')"
               class="md:col-span-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
             >
-              <option v-for="s in LEAD_STATUSES" :key="s.value" :value="s.value">{{ statusLabelFor(s.value) }}</option>
+              <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabelFor(s.value) }}</option>
             </select>
             <input
               v-model="qcValue"
@@ -555,7 +553,7 @@ function hideSetupBanner() {
               <StarIcon class="w-4 h-4 text-yellow-500" aria-hidden="true" />
               {{ t('dashboard.myTopLeads') }}
             </h3>
-            <RouterLink to="/app/opportunities" class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600">{{ t('dashboard.viewAll') }}</RouterLink>
+            <RouterLink to="/app/records" class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600">{{ t('dashboard.viewAll') }}</RouterLink>
           </div>
           <div v-if="myTopLeadsLoading && myTopLeads.length === 0" class="space-y-2 animate-pulse">
             <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
@@ -599,7 +597,7 @@ function hideSetupBanner() {
             <RouterLink
               v-for="[status, count] in Object.entries(stats.leads_by_status)"
               :key="status"
-              :to="`/app/leads?status=${status}`"
+              :to="`/app/records?status=${status}`"
               class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
               <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: STATUS_COLORS[status] ?? '#6b7280' }" />

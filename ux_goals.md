@@ -6,17 +6,17 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 
 ## 🔴 Prioritní (konzistence / chyby)
 
-### 1. Dashboard stále používá `useLeadsStore` (starý store)
+### 1. Dashboard stále používá `useLeadsStore` (starý store) ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/DashboardView.vue`
 - **Popis:** DashboardView importuje `useLeadsStore` a `LeadOut` — zatímco zbytek aplikace byl migrován na `useRecordsStore`. Widgety „My Top Leads", grafy i rychlé vytvoření záznamu pracují se starými daty. Widget label je `dashboard.quickCreateLead` místo pipeline-aware varianty.
 - **Cíl:** Migrovat DashboardView na `useRecordsStore`, sjednotit s aktuální pipeline architekturou.
 
-### 2. RecordDetailView — dva paralelní systémy stavů
+### 2. RecordDetailView — dva paralelní systémy stavů ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/RecordDetailView.vue`
 - **Popis:** Stránka detailu záznamu zobrazuje zároveň stage changer (pipeline stages) i starý status progressbar (`displayedStatuses` = hardcodovaný enum new/contacted/proposal/…). Uživatel vidí obojí současně, což je matoucí.
 - **Cíl:** Stage-based progressbar by měl starý status progressbar nahradit, nikoli doplnit.
 
-### 3. RecordsView — `filterStageId` se nepromítá do URL
+### 3. RecordsView — `filterStageId` se nepromítá do URL ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/RecordsView.vue`
 - **Popis:** `filterStageId` není ukládán do query parametrů URL (na rozdíl od `category_id` a `status`). Po refreshi nebo sdílení odkazu se stav filtru ztratí.
 - **Cíl:** Synchronizovat `filterStageId` s URL query parametry stejně jako ostatní filtry.
@@ -30,15 +30,15 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 - **Popis:** Pořadí stages lze měnit pouze editací číselného pole `order`. Projekt již obsahuje závislost `VueDraggable` (používá ji `DashboardView`).
 - **Cíl:** Přidat drag-and-drop handle na řádky stages pomocí existující `VueDraggable` komponenty.
 
-### 5. RecordDetailView — Tasks endpoint ignoruje `record_id`
+### 5. RecordDetailView — Tasks endpoint ignoruje `record_id` ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/RecordDetailView.vue` → `loadTasks()`
-- **Popis:** Funkce `loadTasks()` volá `/api/v1/crm/tasks?page_size=100` a filtruje výsledky client-side podle `task.lead_id === leadId`. U firem s mnoha úkoly se zbytečně načítá vše.
-- **Cíl:** Přidat `record_id` jako query parametr do API volání, filtrovat server-side.
+- **Popis:** Funkce `loadTasks()` volala `/api/v1/crm/tasks?page_size=100` a filtrovala výsledky client-side. Nyní filtruje server-side pomocí `lead_id` parametru.
+- **Cíl:** ✅ Přidán `lead_id` jako query parametr do API volání.
 
-### 6. Kanban sloupce — chybí empty state
+### 6. Kanban sloupce — chybí empty state ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/RecordsView.vue` (kanban view)
-- **Popis:** Pokud stage nemá žádné záznamy, sloupec je prázdný bez jakéhokoli vizuálního indikátoru.
-- **Cíl:** Přidat placeholder „Žádné záznamy" nebo drop-zone UI do prázdných kanban sloupců.
+- **Popis:** Stage-based kanban prázdné sloupce nyní zobrazují text „Žádné záznamy v této fázi" místo pouhé pomlčky.
+- **Cíl:** ✅ Přidán placeholder do prázdných stage-based kanban sloupců.
 
 ### 7. AppShell — navigace kategorií bez počtu záznamů
 - **Soubor:** `frontend-spa/src/views/AppShell.vue`
@@ -64,10 +64,10 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 - **Popis:** Checkpoints (pipeline milníky) a Tasks jsou vizuálně velmi podobné. Checkpoints jsou milníky, ne úkoly — zaslouží odlišný vizuální styl.
 - **Cíl:** Odlišit checkpoints od tasks (jiná ikona, barva, layout).
 
-### 11. EntitySidebarActionPicker inline form — chybí validace a feedback
+### 11. EntitySidebarActionPicker inline form — chybí validace a feedback ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/components/EntitySidebarActionPicker.vue`
-- **Popis:** Inline form `addActivity()` nemá error handling ani success toast — na rozdíl od `StreamlineCreateModal`, který volá `toast.success()` / `toast.error()`. Uživatel po odeslání nevidí žádnou zpětnou vazbu.
-- **Cíl:** Přidat toast notifikace (success/error) po odeslání inline formu.
+- **Popis:** Přidány toast notifikace `success`/`error` po odeslání inline formu `addActivity()`.
+- **Cíl:** ✅ Přidán toast feedback (success/error) po odeslání.
 
 ---
 
@@ -78,20 +78,15 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 - **Popis:** Stránka detailu záznamu nemá breadcrumb zpět do `RecordsView` (ani do správné kategorie). Jediná možnost návratu je tlačítko zpět v prohlížeči.
 - **Cíl:** Přidat breadcrumb lištu: Kategorie → Název záznamu.
 
-### 13. PipelineSettingsView — `isAdminOrOwner` vždy `true`
+### 13. PipelineSettingsView — `isAdminOrOwner` vždy `true` ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/PipelineSettingsView.vue`
-- **Popis:** `isAdminOrOwner` je implementováno jako `!!firmStore.activeFirm` — vždy true, pokud je firma aktivní. Chybí skutečná role-based kontrola.
-- **Cíl:** Implementovat skutečnou kontrolu role (owner/admin) pomocí `authStore` nebo `firmStore`.
+- **Popis:** `isAdminOrOwner` bylo implementováno jako `!!firmStore.activeFirm`. Nyní používá skutečnou roli z API (`/api/v1/firms/{id}/members`).
+- **Cíl:** ✅ Implementována skutečná role-based kontrola.
 
-### 14. Dark mode — hardcodované barvy v grafech a badges
-- **Soubor:** `frontend-spa/src/views/DashboardView.vue`
-- **Popis:** Chart.js i status badges používají hardcodované hex barvy (`#3b82f6`, `#22c55e` atd.), které v dark mode nevypadají dobře.
-- **Cíl:** Použít CSS custom properties nebo dark mode varianty barev pro grafy a badges.
-
-### 15. RecordsView — „Smazat filtry" neresetuje pipeline filtry
+### 15. RecordsView — „Smazat filtry" neresetuje pipeline filtry ✅ HOTOVO
 - **Soubor:** `frontend-spa/src/views/RecordsView.vue`
-- **Popis:** Funkce `clearAdvancedFilters()` resetuje pokročilé filtry, ale netýká se `filterCategoryId` ani `filterStageId`.
-- **Cíl:** Globální „Smazat filtry" by měl resetovat všechny aktivní filtry včetně pipeline filtrů.
+- **Popis:** `clearAdvancedFilters()` nyní resetuje i `filterCategoryId` a `filterStageId` a aktualizuje URL.
+- **Cíl:** ✅ Globální „Smazat filtry" resetuje všechny aktivní filtry včetně pipeline filtrů.
 
 ---
 
@@ -103,3 +98,28 @@ Tento dokument shrnuje identifikované UX a UI nedostatky a náměty na zlepšen
 | 🟠 | Důležité | Výrazný UX friction, zbytečná práce uživatele |
 | 🟡 | Střední | Zlepšení kvality UX, zpětná vazba |
 | 🟢 | Nízká | Polishing, edge cases |
+
+---
+
+## 📋 Průběh práce
+
+### Iterace 1 (branch: `copilot/continue-work-ux-md`)
+
+**Co bylo uděláno:**
+- ✅ **#1** Dashboard migrován z `useLeadsStore`/`LeadOut` na `useRecordsStore`/`RecordOut`. API volání změněna z `/api/v1/crm/opportunities` na `/api/v1/crm/records`. Linky opraveny (`/app/opportunities/` → `/app/records/`).
+- ✅ **#2** RecordDetailView — progressbar: opravena podmínka `v-if`, aby se status-based progressbar nikdy nezobrazoval, pokud záznam má nastavenou `category_id` (i když se stages teprve načítají). Přidán skeleton loader.
+- ✅ **#3** RecordsView — `filterStageId` a `filterCategoryId` nyní synchronizovány s URL (inicializace z query, click handlery využívají `router.replace`). Přidán watcher pro `route.query.stage_id`.
+- ✅ **#5** RecordDetailView `loadTasks()` — přidán `lead_id` parametr do API volání (server-side filter místo client-side).
+- ✅ **#6** Kanban empty state — stage-based sloupce nyní zobrazují „Žádné záznamy v této fázi" místo pouhé pomlčky.
+- ✅ **#11** EntitySidebarActionPicker — přidány toast notifikace (success/error) po odeslání aktivity.
+- ✅ **#13** PipelineSettingsView — `isAdminOrOwner` nyní používá skutečnou roli z API (přes `/api/v1/firms/{id}/members`).
+- ✅ **#15** RecordsView `clearAdvancedFilters()` — nyní resetuje i `filterCategoryId`, `filterStageId` a aktualizuje URL.
+
+**Co zbývá:**
+- **#4** PipelineSettingsView — drag-and-drop řazení stages (VueDraggable už je v projektu)
+- **#7** AppShell — badge s počtem aktivních záznamů u kategorií
+- **#8** EntitySidebarActionPicker — odstranění mrtvého kódu (modal vs. inline form)
+- **#9** RecordsView — inline quick-create varianta v hlavičce
+- **#10** Checkpoints vs. Tasks — vizuální odlišení (ikona, barva)
+- **#12** RecordDetailView — breadcrumb navigace
+- **#14** Dark mode — CSS custom properties pro barvy v grafech a badges

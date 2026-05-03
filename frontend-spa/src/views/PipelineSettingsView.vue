@@ -5,6 +5,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
+import { api } from '@/api'
 import { ConfirmDeleteModal } from '@/components/ui'
 import {
   PlusIcon,
@@ -63,16 +64,39 @@ const selectedStages = computed<StageOut[]>(() =>
   selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : [],
 )
 
-const isAdminOrOwner = computed(() => {
-  const mem = firmStore.activeFirm
-  return !!mem // simplified: assume settings page only accessible to admins
-})
+// ---------------------------------------------------------------------------
+// Role/permissions
+// ---------------------------------------------------------------------------
+interface Member {
+  id: string
+  user_id: string
+  user_email: string
+  role: string
+}
+
+const members = ref<Member[]>([])
+
+async function loadMembers() {
+  const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
+  if (!firmId) return
+  const res = await api.get<Member[]>(`/api/v1/firms/${firmId}/members`)
+  if (res.ok) members.value = res.data
+}
+
+const currentMember = computed(() =>
+  members.value.find((m) => m.user_email === authStore.user?.email),
+)
+
+const isAdminOrOwner = computed(() =>
+  currentMember.value?.role === 'admin' || currentMember.value?.role === 'owner',
+)
 
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 onMounted(async () => {
+  loadMembers()
   if (pipelineStore.categories.length === 0) {
     await pipelineStore.fetchCategories()
   }

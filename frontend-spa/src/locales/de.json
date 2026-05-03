@@ -198,7 +198,10 @@
     "statusLost": "Verloren",
     "statusCanceled": "Abgebrochen",
     "list": "Liste",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "activityAdded": "Aktivität hinzugefügt.",
+    "activityFailed": "Aktivität konnte nicht hinzugefügt werden.",
+    "noRecordsInStage": "Keine Datensätze in dieser Phase"
   },
   "settings": {
     "title": "Einstellungen",
