@@ -12,6 +12,9 @@ export interface FirmOut {
   is_active: boolean
   logo_url: string | null
   primary_color: string
+  default_currency: string
+  number_locale: string
+  exchange_rate_mode: string
 }
 
 const FIRM_ID_KEY = 'firmId'

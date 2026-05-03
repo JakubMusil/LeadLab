@@ -7,6 +7,7 @@ import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useToast } from '@/composables/useToast'
+import { useMoney } from '@/composables/useMoney'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
@@ -15,6 +16,7 @@ import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useListView, type ColumnDef } from '@/composables/useListView'
+import CurrencySelect from '@/components/CurrencySelect.vue'
 import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon, BuildingOfficeIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import Avatar from '@/components/ui/Avatar.vue'
 
@@ -27,6 +29,7 @@ const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const toast = useToast()
 const { t } = useI18n()
+const { firmCurrency, formatAmount } = useMoney()
 
 type ViewMode = 'table' | 'kanban' | 'list'
 
@@ -197,7 +200,7 @@ const formTitle = ref('')
 const formStatus = ref('new')
 const formSource = ref('web')
 const formValue = ref<string>('')
-const formCurrency = ref('CZK')
+const formCurrency = ref(firmCurrency.value)
 const formError = ref('')
 const formLoading = ref(false)
 
@@ -640,7 +643,7 @@ async function onDrop(status: string) {
 
 function fmtValue(lead: LeadOut) {
   if (lead.value == null) return ''
-  return new Intl.NumberFormat(undefined, { style: 'decimal', maximumFractionDigits: 0 }).format(lead.value) + ' ' + lead.currency
+  return formatAmount(lead.value, lead.currency)
 }
 
 function statusLabel(value: string): string {
@@ -1510,7 +1513,7 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leads.currencyField') }}</label>
-              <input v-model="formCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" placeholder="CZK" />
+              <CurrencySelect v-model="formCurrency" />
             </div>
           </div>
           <div class="flex gap-3 pt-2">

@@ -11,6 +11,8 @@ import { setLocale, useI18n } from '@/composables/useI18n'
 import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
 import { CheckIcon, TrashIcon, StarIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
+import { useMoney, SUPPORTED_CURRENCIES, CURRENCY_DEFAULT_LOCALE } from '@/composables/useMoney'
+import CurrencySelect from '@/components/CurrencySelect.vue'
 
 const leadScoringStore = useLeadScoringStore()
 
@@ -98,6 +100,78 @@ const workspaceSuccess = ref(false)
 const confirmDeleteWorkspace = ref(false)
 const dangerLoading = ref(false)
 const confirmDeleteText = ref('')
+
+// Currency & formatting settings
+const { firmCurrency, formatAmount } = useMoney()
+const currencyDefaultCurrency = ref(firmStore.activeFirm?.default_currency ?? 'CZK')
+const currencyNumberLocale = ref(firmStore.activeFirm?.number_locale ?? 'cs-CZ')
+const currencyExchangeRateMode = ref(firmStore.activeFirm?.exchange_rate_mode ?? 'auto')
+const currencyLoading = ref(false)
+const currencyError = ref('')
+const currencySuccess = ref(false)
+
+const NUMBER_LOCALES = [
+  { value: 'cs-CZ', label: 'cs-CZ – 12 500,50 Kč' },
+  { value: 'sk-SK', label: 'sk-SK – 12 500,50 €' },
+  { value: 'de-DE', label: 'de-DE – 12.500,50 €' },
+  { value: 'en-US', label: 'en-US – $12,500.50' },
+  { value: 'en-GB', label: 'en-GB – £12,500.50' },
+  { value: 'pl-PL', label: 'pl-PL – 12 500,50 zł' },
+  { value: 'fr-FR', label: 'fr-FR – 12 500,50 €' },
+  { value: 'hu-HU', label: 'hu-HU – 12 500,50 Ft' },
+  { value: 'nb-NO', label: 'nb-NO – kr 12 500,50' },
+  { value: 'sv-SE', label: 'sv-SE – 12 500,50 kr' },
+]
+
+const currencyPreview = computed(() => {
+  try {
+    return new Intl.NumberFormat(currencyNumberLocale.value, {
+      style: 'currency',
+      currency: currencyDefaultCurrency.value,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(12500.5)
+  } catch {
+    return '—'
+  }
+})
+
+function onDefaultCurrencyChange(code: string) {
+  currencyDefaultCurrency.value = code
+  // Auto-set locale to the currency's default, but only if not manually overridden
+  const defaultLocale = CURRENCY_DEFAULT_LOCALE[code]
+  if (defaultLocale) {
+    currencyNumberLocale.value = defaultLocale
+  }
+}
+
+async function saveCurrencySettings() {
+  if (!firmStore.activeFirm) return
+  currencyLoading.value = true
+  currencyError.value = ''
+  currencySuccess.value = false
+  try {
+    const res = await api.patch<{ default_currency: string; number_locale: string; exchange_rate_mode: string }>(
+      `/api/v1/firms/${firmStore.activeFirm.id}/currency`,
+      {
+        default_currency: currencyDefaultCurrency.value,
+        number_locale: currencyNumberLocale.value,
+        exchange_rate_mode: currencyExchangeRateMode.value,
+      }
+    )
+    if (res.ok && res.data && firmStore.activeFirm) {
+      firmStore.activeFirm.default_currency = res.data.default_currency
+      firmStore.activeFirm.number_locale = res.data.number_locale
+      firmStore.activeFirm.exchange_rate_mode = res.data.exchange_rate_mode
+      currencySuccess.value = true
+      setTimeout(() => { currencySuccess.value = false }, 3000)
+    } else {
+      currencyError.value = ((res.data as unknown) as Record<string, string>)?.detail ?? 'Failed to save currency settings.'
+    }
+  } finally {
+    currencyLoading.value = false
+  }
+}
 
 // Billing
 const billingLoading = ref(false)
@@ -721,6 +795,66 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           {{ workspaceLoading ? 'Saving…' : 'Rename' }}
         </button>
       </form>
+    </div>
+
+    <!-- Currency & Formatting -->
+    <div v-if="isPro" class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('currencySettings.title') }}</h2>
+      <div class="space-y-4 max-w-md">
+        <!-- Default currency -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('currencySettings.defaultCurrency') }}</label>
+          <CurrencySelect :model-value="currencyDefaultCurrency" @update:model-value="onDefaultCurrencyChange" />
+        </div>
+
+        <!-- Number locale -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('currencySettings.numberLocale') }}</label>
+          <select
+            v-model="currencyNumberLocale"
+            class="w-full rounded-xl border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          >
+            <option v-for="loc in NUMBER_LOCALES" :key="loc.value" :value="loc.value">{{ loc.label }}</option>
+          </select>
+        </div>
+
+        <!-- Preview -->
+        <p class="text-xs text-gray-500">
+          {{ t('currencySettings.preview', { example: currencyPreview }) }}
+        </p>
+
+        <!-- Exchange rate mode -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-2">{{ t('currencySettings.exchangeRateMode') }}</label>
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" v-model="currencyExchangeRateMode" value="auto" class="accent-red-600" />
+              {{ t('currencySettings.modeAuto') }}
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" v-model="currencyExchangeRateMode" value="manual" class="accent-red-600" />
+              {{ t('currencySettings.modeManual') }}
+            </label>
+          </div>
+        </div>
+
+        <!-- Warning note -->
+        <p class="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+          {{ t('currencySettings.warningChangeNote') }}
+        </p>
+
+        <!-- Error / success feedback -->
+        <p v-if="currencyError" class="text-xs text-red-600">{{ currencyError }}</p>
+        <p v-if="currencySuccess" class="text-xs text-green-600">{{ t('currencySettings.saved') }}</p>
+
+        <button
+          :disabled="currencyLoading"
+          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+          @click="saveCurrencySettings"
+        >
+          {{ currencyLoading ? t('currencySettings.saving') : t('currencySettings.save') }}
+        </button>
+      </div>
     </div>
 
     <!-- Danger zone -->

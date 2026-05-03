@@ -2157,5 +2157,35 @@
     "message": "Tej akcji nie można cofnąć. Rekord zostanie trwale usunięty.",
     "confirm": "Usuń",
     "cancel": "Anuluj"
+  },
+  "currencies": {
+    "CZK": "Korona czeska",
+    "EUR": "Euro",
+    "USD": "Dolar amerykański",
+    "GBP": "Funt brytyjski",
+    "PLN": "Złoty polski",
+    "HUF": "Forint węgierski",
+    "CHF": "Frank szwajcarski",
+    "NOK": "Korona norweska",
+    "SEK": "Korona szwedzka",
+    "DKK": "Korona duńska",
+    "RON": "Lej rumuński",
+    "BGN": "Lew bułgarski",
+    "UAH": "Hrywna ukraińska",
+    "RSD": "Dinar serbski"
+  },
+  "currencySettings": {
+    "title": "Waluty i formatowanie",
+    "defaultCurrency": "Domyślna waluta raportowania",
+    "numberLocale": "Format liczb",
+    "exchangeRateMode": "Źródło kursów walut",
+    "modeAuto": "Automatyczne kursy (EBC)",
+    "modeManual": "Kursy ręczne",
+    "preview": "Podgląd formatu: {example}",
+    "save": "Zapisz ustawienia",
+    "saving": "Zapisuję…",
+    "saved": "Ustawienia zapisane",
+    "warningMixedCurrencies": "Rekordy są w różnych walutach. Statystyki pokazują tylko rekordy w {currency}.",
+    "warningChangeNote": "Zmiana domyślnej waluty nie zmienia istniejących rekordów. Kwoty w innych walutach zostaną przeliczone przy użyciu bieżącego kursu przy następnym zapisie."
   }
 }

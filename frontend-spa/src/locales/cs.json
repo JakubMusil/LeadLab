@@ -2168,5 +2168,35 @@
     "message": "Tuto akci nelze vzít zpět. Záznam bude trvale odstraněn.",
     "confirm": "Smazat",
     "cancel": "Zrušit"
+  },
+  "currencies": {
+    "CZK": "Česká koruna",
+    "EUR": "Euro",
+    "USD": "Americký dolar",
+    "GBP": "Britská libra",
+    "PLN": "Polský zlotý",
+    "HUF": "Maďarský forint",
+    "CHF": "Švýcarský frank",
+    "NOK": "Norská koruna",
+    "SEK": "Švédská koruna",
+    "DKK": "Dánská koruna",
+    "RON": "Rumunský leu",
+    "BGN": "Bulharský lev",
+    "UAH": "Ukrajinská hřivna",
+    "RSD": "Srbský dinár"
+  },
+  "currencySettings": {
+    "title": "Měny a formátování",
+    "defaultCurrency": "Výchozí měna reportingu",
+    "numberLocale": "Formát čísel",
+    "exchangeRateMode": "Zdroj kurzů",
+    "modeAuto": "Automatické kurzy (ECB)",
+    "modeManual": "Ruční kurzy",
+    "preview": "Ukázka formátu: {example}",
+    "save": "Uložit nastavení",
+    "saving": "Ukládám…",
+    "saved": "Nastavení uloženo",
+    "warningMixedCurrencies": "Záznamy jsou v různých měnách. Statistiky zobrazují pouze záznamy v {currency}.",
+    "warningChangeNote": "Změna výchozí měny nezmění existující záznamy. Částky v jiných měnách budou přepočítány dle aktuálního kurzu při příštím uložení."
   }
 }

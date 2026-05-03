@@ -39,6 +39,9 @@ class FirmOut(Schema):
     is_active: bool
     logo_url: Optional[str] = None
     primary_color: str = '#dc2626'
+    default_currency: str = 'CZK'
+    number_locale: str = 'cs-CZ'
+    exchange_rate_mode: str = 'auto'
 
 
 class FirmIn(Schema):
@@ -47,6 +50,12 @@ class FirmIn(Schema):
 
 class FirmUpdateIn(Schema):
     name: Optional[str] = None
+
+
+class FirmCurrencyIn(Schema):
+    default_currency: Optional[str] = None
+    number_locale: Optional[str] = None
+    exchange_rate_mode: Optional[str] = None
 
 
 class FirmBrandingIn(Schema):
@@ -106,6 +115,9 @@ def _firm_out(firm: Firm) -> dict:
         "is_active": firm.is_active,
         "logo_url": logo_url,
         "primary_color": firm.primary_color,
+        "default_currency": firm.default_currency,
+        "number_locale": firm.number_locale,
+        "exchange_rate_mode": firm.exchange_rate_mode,
     }
 
 
@@ -184,6 +196,42 @@ def update_firm(request, firm_id: str, payload: FirmUpdateIn):
     if payload.name is not None:
         firm.name = payload.name
         firm.save(update_fields=["name"])
+
+    return 200, _firm_out(firm)
+
+
+
+
+@router.patch("/{firm_id}/currency", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
+def update_firm_currency(request, firm_id: str, payload: FirmCurrencyIn):
+    """Update currency & formatting settings (Admin or Owner only)."""
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can update currency settings."}
+
+    update_fields = []
+    if payload.default_currency is not None:
+        firm.default_currency = payload.default_currency.upper()[:3]
+        update_fields.append("default_currency")
+    if payload.number_locale is not None:
+        firm.number_locale = payload.number_locale
+        update_fields.append("number_locale")
+    if payload.exchange_rate_mode is not None:
+        if payload.exchange_rate_mode not in ("auto", "manual"):
+            return 403, {"detail": "exchange_rate_mode must be 'auto' or 'manual'."}
+        firm.exchange_rate_mode = payload.exchange_rate_mode
+        update_fields.append("exchange_rate_mode")
+    if update_fields:
+        firm.save(update_fields=update_fields)
 
     return 200, _firm_out(firm)
 

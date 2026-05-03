@@ -4,9 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
+import { useMoney } from '@/composables/useMoney'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import CurrencySelect from '@/components/CurrencySelect.vue'
 import { CheckIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 
@@ -15,6 +17,7 @@ const router = useRouter()
 const toast = useToast()
 const firmStore = useFirmStore()
 const { t } = useI18n()
+const { firmCurrency, formatAmountPlain } = useMoney()
 
 // Route support:
 // 1) /app/opportunities/:id/proposals/:pid? — lead-scoped (legacy)
@@ -103,7 +106,7 @@ const saving = ref(false)
 const editTitle = ref('')
 const editStatus = ref('draft')
 const editExpiry = ref('')
-const editCurrency = ref('CZK')
+const editCurrency = ref(firmCurrency.value)
 const editNotes = ref('')
 const editIntro = ref('')
 const editClosing = ref('')
@@ -141,7 +144,6 @@ const showPreview = ref(false)
 // ActivityTimeline ref — reload feed after sidebar quick-action submits.
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
-const CURRENCIES = ['CZK', 'EUR', 'USD', 'GBP', 'PLN']
 const STATUSES = computed(() => [
   { value: 'draft', label: t('proposals.statusDraft'), color: 'bg-gray-100 text-gray-700' },
   { value: 'sent', label: t('proposals.statusSent'), color: 'bg-blue-100 text-blue-700' },
@@ -508,7 +510,7 @@ function downloadPdf() {
 // Formatting helpers
 // -----------------------------------------------------------------------
 function fmt(n: number | string) {
-  return Number(n).toFixed(2)
+  return formatAmountPlain(n)
 }
 
 function formatDate(d: string) {
@@ -534,7 +536,7 @@ onMounted(async () => {
   } else {
     // Pre-populate create form
     editTitle.value = ''
-    editCurrency.value = 'CZK'
+    editCurrency.value = firmCurrency.value
   }
 })
 
@@ -698,9 +700,7 @@ watch(
                 <div class="grid grid-cols-2 gap-3">
                   <div>
                     <label class="block text-xs text-gray-500 mb-1">{{ t('proposals.currency') }}</label>
-                    <select v-model="editCurrency" class="w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400">
-                      <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-                    </select>
+                    <CurrencySelect v-model="editCurrency" />
                   </div>
                   <div>
                     <label class="block text-xs text-gray-500 mb-1">{{ t('builder.validUntil') }}</label>
