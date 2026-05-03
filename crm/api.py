@@ -4508,6 +4508,7 @@ class StatsOut(Schema):
     won_value: float
     conversion_rate: float
     recent_activities: List[ActivityOut]
+    mixed_currencies: bool = False
 
 
 @router.get("/stats", auth=django_auth, response={200: StatsOut, 403: ErrorOut})
@@ -4525,13 +4526,17 @@ def get_stats(request):
     for row in leads_qs.values("status").annotate(n=Count("id")):
         status_counts[row["status"]] = row["n"]
 
+    default_currency = request.firm.default_currency
+    same_currency_qs = leads_qs.filter(currency=default_currency)
+    mixed_currencies = leads_qs.exclude(currency=default_currency).exists()
+
     pipeline_value = float(
-        leads_qs.exclude(status__in=[LeadStatus.WON, LeadStatus.LOST, LeadStatus.CANCELED])
+        same_currency_qs.exclude(status__in=[LeadStatus.WON, LeadStatus.LOST, LeadStatus.CANCELED])
         .aggregate(total=Sum("value"))["total"]
         or 0
     )
     won_value = float(
-        leads_qs.filter(status=LeadStatus.WON).aggregate(total=Sum("value"))["total"] or 0
+        same_currency_qs.filter(status=LeadStatus.WON).aggregate(total=Sum("value"))["total"] or 0
     )
 
     total_leads = leads_qs.count()
@@ -4560,6 +4565,7 @@ def get_stats(request):
         "won_value": won_value,
         "conversion_rate": conversion_rate,
         "recent_activities": [_activity_out(a) for a in recent_activities],
+        "mixed_currencies": mixed_currencies,
     }
 
 

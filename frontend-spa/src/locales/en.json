@@ -2167,5 +2167,35 @@
     "message": "This action cannot be undone. The record will be permanently removed.",
     "confirm": "Delete",
     "cancel": "Cancel"
+  },
+  "currencies": {
+    "CZK": "Czech Koruna",
+    "EUR": "Euro",
+    "USD": "US Dollar",
+    "GBP": "British Pound",
+    "PLN": "Polish Zloty",
+    "HUF": "Hungarian Forint",
+    "CHF": "Swiss Franc",
+    "NOK": "Norwegian Krone",
+    "SEK": "Swedish Krone",
+    "DKK": "Danish Krone",
+    "RON": "Romanian Leu",
+    "BGN": "Bulgarian Lev",
+    "UAH": "Ukrainian Hryvnia",
+    "RSD": "Serbian Dinar"
+  },
+  "currencySettings": {
+    "title": "Currencies & Formatting",
+    "defaultCurrency": "Default reporting currency",
+    "numberLocale": "Number format",
+    "exchangeRateMode": "Exchange rate source",
+    "modeAuto": "Automatic rates (ECB)",
+    "modeManual": "Manual rates",
+    "preview": "Format preview: {example}",
+    "save": "Save settings",
+    "saving": "Saving…",
+    "saved": "Settings saved",
+    "warningMixedCurrencies": "Records exist in multiple currencies. Statistics show only records in {currency}.",
+    "warningChangeNote": "Changing the default currency does not alter existing records. Amounts in other currencies will be recalculated using the current rate on next save."
   }
 }

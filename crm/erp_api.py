@@ -552,6 +552,7 @@ class ReportSummaryOut(Schema):
     total_expenses: Decimal
     total_revenues: Decimal
     profit_loss: Decimal
+    mixed_currencies: bool = False
 
 
 @router.get("/reports/summary", response=ReportSummaryOut)
@@ -588,10 +589,19 @@ def reports_summary(
         ex_qs = ex_qs.filter(date__lte=date_to)
         rev_qs = rev_qs.filter(date__lte=date_to)
 
+    # Filter aggregations to the workspace default currency to avoid mixing apples and oranges.
+    default_currency = firm.default_currency
+    same_currency_ex = ex_qs.filter(currency=default_currency)
+    same_currency_rev = rev_qs.filter(currency=default_currency)
+    mixed_currencies = (
+        ex_qs.exclude(currency=default_currency).exists()
+        or rev_qs.exclude(currency=default_currency).exists()
+    )
+
     total_minutes = te_qs.aggregate(s=Sum("duration_minutes"))["s"] or 0
     billable_minutes = te_qs.filter(is_billable=True).aggregate(s=Sum("duration_minutes"))["s"] or 0
-    total_expenses = ex_qs.aggregate(s=Sum("amount"))["s"] or Decimal("0")
-    total_revenues = rev_qs.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+    total_expenses = same_currency_ex.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+    total_revenues = same_currency_rev.aggregate(s=Sum("amount"))["s"] or Decimal("0")
 
     return ReportSummaryOut(
         total_minutes=total_minutes,
@@ -599,4 +609,5 @@ def reports_summary(
         total_expenses=total_expenses,
         total_revenues=total_revenues,
         profit_loss=total_revenues - total_expenses,
+        mixed_currencies=mixed_currencies,
     )

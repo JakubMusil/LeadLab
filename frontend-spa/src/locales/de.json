@@ -2157,5 +2157,35 @@
     "message": "Diese Aktion kann nicht rückgängig gemacht werden. Der Eintrag wird dauerhaft entfernt.",
     "confirm": "Löschen",
     "cancel": "Abbrechen"
+  },
+  "currencies": {
+    "CZK": "Tschechische Krone",
+    "EUR": "Euro",
+    "USD": "US-Dollar",
+    "GBP": "Britisches Pfund",
+    "PLN": "Polnischer Złoty",
+    "HUF": "Ungarischer Forint",
+    "CHF": "Schweizer Franken",
+    "NOK": "Norwegische Krone",
+    "SEK": "Schwedische Krone",
+    "DKK": "Dänische Krone",
+    "RON": "Rumänischer Leu",
+    "BGN": "Bulgarischer Lew",
+    "UAH": "Ukrainische Hrywnja",
+    "RSD": "Serbischer Dinar"
+  },
+  "currencySettings": {
+    "title": "Währungen & Formatierung",
+    "defaultCurrency": "Standard-Berichtswährung",
+    "numberLocale": "Zahlenformat",
+    "exchangeRateMode": "Wechselkursquelle",
+    "modeAuto": "Automatische Kurse (EZB)",
+    "modeManual": "Manuelle Kurse",
+    "preview": "Formatvorschau: {example}",
+    "save": "Einstellungen speichern",
+    "saving": "Wird gespeichert…",
+    "saved": "Einstellungen gespeichert",
+    "warningMixedCurrencies": "Datensätze sind in mehreren Währungen vorhanden. Statistiken zeigen nur Datensätze in {currency}.",
+    "warningChangeNote": "Das Ändern der Standardwährung ändert keine bestehenden Datensätze. Beträge in anderen Währungen werden beim nächsten Speichern mit dem aktuellen Kurs umgerechnet."
   }
 }

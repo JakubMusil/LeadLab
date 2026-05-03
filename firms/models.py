@@ -33,6 +33,24 @@ class Firm(models.Model):
     logo = models.ImageField(upload_to='firm_logos/', blank=True, null=True)
     primary_color = models.CharField(max_length=7, blank=True, default='#dc2626')
 
+    # Currency & formatting settings
+    default_currency = models.CharField(
+        max_length=3,
+        default="CZK",
+        help_text="ISO 4217 currency code used as the reporting currency for this workspace.",
+    )
+    number_locale = models.CharField(
+        max_length=10,
+        default="cs-CZ",
+        help_text="BCP 47 locale tag controlling number/currency formatting (e.g. 'cs-CZ', 'en-US').",
+    )
+    exchange_rate_mode = models.CharField(
+        max_length=10,
+        choices=[("auto", "Automatic (ECB)"), ("manual", "Manual rates")],
+        default="auto",
+        help_text="How exchange rates are sourced for this workspace.",
+    )
+
     class Meta:
         verbose_name = "firm"
         verbose_name_plural = "firms"
