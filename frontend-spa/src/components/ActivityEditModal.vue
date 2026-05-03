@@ -61,7 +61,7 @@ interface SchemaProp {
 
 const props = defineProps<{
   activity: Activity | null
-  entityType: 'lead' | 'customer' | 'realization' | 'management' | 'proposal' | 'task'
+  entityType: 'lead' | 'record' | 'customer' | 'realization' | 'management' | 'proposal' | 'task'
   modelValue: boolean
 }>()
 

@@ -107,7 +107,7 @@ const {
   visibleColumns, columnPickerOpen, isColVisible, toggleColumn, resetColumns,
 } = useListView<SortField, ColumnId>(
   { storageKeyPrefix: 'leadlab_leads', columns: TABLE_COLUMNS, defaultSortField: 'created_at', defaultSortDir: 'desc' },
-  computed(() => authStore.user?.id),
+  computed(() => authStore.user?.id?.toString()),
 )
 
 const STATUS_ORDER: Record<string, number> = {
@@ -696,7 +696,7 @@ async function saveCurrentView() {
   savingView.value = true
   const result = await savedViewsStore.createView({
     name: saveViewName.value.trim(),
-    entity: 'opportunities',
+    entity: 'records',
     filters: {
       ...(filterStatus.value ? { status: filterStatus.value } : {}),
       ...(filterSource.value ? { source: filterSource.value } : {}),
@@ -786,9 +786,9 @@ function showAssigneeAvatar(lead: LeadOut): boolean {
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">{{ t('leads.title') }}</h2>
 
       <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('opportunities').length > 0" class="flex items-center gap-1 flex-wrap">
+      <div v-if="savedViewsStore.viewsForEntity('records').length > 0" class="flex items-center gap-1 flex-wrap">
         <div
-          v-for="view in savedViewsStore.viewsForEntity('opportunities')"
+          v-for="view in savedViewsStore.viewsForEntity('records')"
           :key="view.id"
           class="flex items-center gap-0.5"
         >

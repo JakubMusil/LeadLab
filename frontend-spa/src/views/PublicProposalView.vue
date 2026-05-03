@@ -91,7 +91,7 @@ async function respond(action: 'accept' | 'reject') {
 }
 
 function fmt(n: number | string) {
-  return formatAmountPlain(Number(n), proposal.value?.currency)
+  return formatAmountPlain(Number(n))
 }
 
 const subtotal = computed(() =>

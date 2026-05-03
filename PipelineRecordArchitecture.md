@@ -255,3 +255,21 @@ Protože jde o dev prostředí bez produkčních dat, je přejmenování čisté
 - `AppShell.vue`: import `usePipelineStore`; `fetchCategories()` v `onMounted`; dynamická navigace kategorií pod "Records" (barevné tečky, link na `/app/records?category_id=…`); WS event registry přejmenováno `lead.*` → `record.*`; handler `category.updated` → `pipelineStore.handleCategoryUpdated()`; eventLabel a eventIcon mapy aktualizovány
 
 **Všechny fáze 1–8 dokončeny. ✅**
+
+---
+
+### 2026-05-03 — Opraveny TypeScript chyby po refaktoru
+
+Po buildu frontendu bylo nalezeno 8 kategorií TS chyb; všechny opraveny:
+
+1. **ActivityTimeline.vue** — přidán `'record'` do union typu `entityType`; `useFeed` rozšířen o `entityType === 'record'`; `entityIdKey()` doplněn o větev `'record'` → `'record_id'`
+2. **ActivityEditModal.vue** — přidán `'record'` do union typu `entityType`
+3. **StreamlineCreateModal.vue** — přidán `'record'` do union typu `entityType`
+4. **EntitySidebarActionPicker.vue** — přidán `'record'` do union typu `entityType`
+5. **RecordDetailView.vue** — `v-if` a `:style` binding doplněny o optional chaining (`?.`) pro `store.currentRecord`
+6. **LeadsView.vue + RecordsView.vue** — `authStore.user?.id` převeden na `.toString()` pro `useListView` (který očekává `Ref<string | undefined>`)
+7. **LeadsView.vue** — `'opportunities'` → `'records'` v `savedViewsStore` voláních (entity enum)
+8. **CustomerDetailView.vue + PublicProposalView.vue** — odstraněn druhý argument z `formatAmountPlain()` (funkce přijímá pouze 1 argument)
+9. **Test soubory** (`leads.spec.ts`, `LeadsView.spec.ts`, `auth.spec.ts`) — doplněna chybějící pole `assigned_to_name` a `number_locale` v mock datech
+
+`npm run build` → ✅ 0 TS chyb. `python manage.py check` → ✅ 0 issues.
