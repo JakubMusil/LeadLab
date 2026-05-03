@@ -393,8 +393,8 @@ def _lead_out(lead: Lead, rules: Optional[list] = None) -> dict:
         try:
             at = lead.assigned_to
             assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not resolve assigned_to name for lead %s: %s", lead.id, exc)
     # Company & contact person
     company_id = str(lead.company_id) if lead.company_id else None
     company_name: Optional[str] = None
