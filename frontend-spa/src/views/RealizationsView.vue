@@ -88,6 +88,26 @@ const REALIZATION_STATUS_ORDER: Record<string, number> = {
   planned: 1, in_progress: 2, on_hold: 3, done: 4, cancelled: 5,
 }
 
+// Explicit dot colors – avoids fragile split of the badge color string
+const REALIZATION_DOT_COLORS: Record<string, string> = {
+  planned: 'bg-gray-400',
+  in_progress: 'bg-blue-500',
+  on_hold: 'bg-yellow-400',
+  done: 'bg-green-500',
+  cancelled: 'bg-red-400',
+}
+function realizationDotColor(status: string): string {
+  return REALIZATION_DOT_COLORS[status] ?? 'bg-gray-400'
+}
+
+// Type-safe field accessor for the string-sortable fields
+function getRealizationSortValue(r: RealizationOut, field: SortField): string {
+  if (field === 'title') return r.title ?? ''
+  if (field === 'customer_name') return r.customer_name ?? ''
+  if (field === 'end_date') return r.end_date ?? ''
+  return ''
+}
+
 const filteredAndSortedRealizations = computed(() => {
   let items = store.realizations.filter((r) => {
     if (filterStatus.value && r.status !== filterStatus.value) return false
@@ -111,8 +131,8 @@ const filteredAndSortedRealizations = computed(() => {
       const bd = b.end_date ?? ''
       cmp = ad < bd ? -1 : ad > bd ? 1 : 0
     } else {
-      const va = ((a as Record<string, unknown>)[sortField.value] ?? '') as string
-      const vb = ((b as Record<string, unknown>)[sortField.value] ?? '') as string
+      const va = getRealizationSortValue(a, sortField.value)
+      const vb = getRealizationSortValue(b, sortField.value)
       cmp = va.localeCompare(vb)
     }
     return sortDir.value === 'asc' ? cmp : -cmp
@@ -402,7 +422,7 @@ function selectCustomer(c: CustomerOut) {
           @click="router.push(`/app/realizations/${r.id}`)"
         >
           <!-- Status dot -->
-          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="getRealizationStatusMeta(r.status).color.split(' ')[0]" :aria-label="getRealizationStatusMeta(r.status).label" />
+          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :class="realizationDotColor(r.status)" :aria-label="getRealizationStatusMeta(r.status).label" />
 
           <!-- Title -->
           <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ r.title }}</span>
