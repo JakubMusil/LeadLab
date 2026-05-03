@@ -343,7 +343,7 @@ function deleteEntry(id: string) {
           <span class="text-sm text-gray-700 dark:text-gray-300">Billable</span>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hodinová sazba (optional)</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hourly rate (optional)</label>
           <input v-model="form.hourly_rate" type="number" min="0" step="0.01" placeholder="0.00"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
         </div>
@@ -394,7 +394,7 @@ function deleteEntry(id: string) {
             <th class="px-4 py-3 text-left">Linked to</th>
             <th class="px-4 py-3 text-left">User</th>
             <th class="px-4 py-3 text-left">Billable</th>
-            <th class="px-4 py-3 text-left">Hodinová sazba</th>
+            <th class="px-4 py-3 text-left">Hourly rate</th>
             <th class="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
