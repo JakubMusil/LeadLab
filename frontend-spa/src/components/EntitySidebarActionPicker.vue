@@ -3,6 +3,7 @@
 import { ref, computed, watch, onMounted, type Component } from 'vue'
 import { api } from '@/api'
 import { useI18n } from '@/composables/useI18n'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import type { MentionUser } from '@/components/RichTextEditor.vue'
 import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import {
@@ -340,6 +341,185 @@ function pickMessageDirection(direction: 'out' | 'in') {
   messageDirection.value = direction
 }
 
+// ─── Inline form ────────────────────────────────────────────────────────────
+//
+// After the user picks an action from the grid, the action grid is replaced by
+// an inline composer panel that renders the schema-driven form for the chosen
+// tool directly inside the sidebar (without a modal/teleport).  This keeps
+// the elements reachable for component tests and provides a tight UX.
+
+interface SchemaProp {
+  key: string
+  title: string
+  type: string
+  format?: string
+  enum?: string[]
+  minimum?: number
+  maximum?: number
+  items?: { type?: string }
+}
+
+const TOP_FIELD_KEYS = new Set([
+  'subject', 'to', 'from_address', 'from_number', 'from_handle', 'to_handle', 'channel', 'direction', 'url',
+])
+const SKIP_FIELD_KEYS = new Set([
+  'content_text', 'mentions', 'recording_filename', 'recording_size_bytes',
+  'provider_message_id', 'provider_event_id', 'provider_request_id',
+  'message_id', 'viewer_ip', 'user_agent', 'source_activity_ids',
+])
+const MULTILINE_FIELD_KEYS = new Set(['transcript', 'description', 'notes', 'message', 'text'])
+
+const activeActionType = ref('')
+type FieldValue = string | number | string[] | null
+const extraFields = ref<Record<string, FieldValue>>({})
+const boolFields = ref<Record<string, boolean>>({})
+const activityText = ref('')
+const activitySubmitting = ref(false)
+const richEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+
+const currentTool = computed<StreamlineTool | null>(() => {
+  if (!activeActionType.value) return null
+  if (activeActionType.value === 'message') return resolvedMessageTool.value
+  return toolbarTools.value.find((x) => x.activity_type === activeActionType.value) ?? null
+})
+
+const schemaPropsAll = computed<SchemaProp[]>(() => {
+  const tool = currentTool.value
+  if (!tool?.form_schema?.properties) return []
+  return Object.entries(tool.form_schema.properties as Record<string, Record<string, unknown>>)
+    .filter(([key]) => !SKIP_FIELD_KEYS.has(key))
+    .map(([key, schema]) => ({
+      key,
+      title: (schema.title as string) || key,
+      type: (schema.type as string) || 'string',
+      format: schema.format as string | undefined,
+      enum: schema.enum as string[] | undefined,
+      minimum: schema.minimum as number | undefined,
+      maximum: schema.maximum as number | undefined,
+      items: schema.items as { type?: string } | undefined,
+    }))
+})
+
+const schemaPropsTop = computed(() => schemaPropsAll.value.filter((p) => TOP_FIELD_KEYS.has(p.key)))
+const schemaPropsBottom = computed(() => schemaPropsAll.value.filter((p) => !TOP_FIELD_KEYS.has(p.key)))
+
+const toolHasContentText = computed(() => {
+  const tool = currentTool.value
+  return !!(tool?.form_schema?.properties as Record<string, unknown> | undefined)?.content_text
+})
+
+function inputTypeFor(prop: SchemaProp): string {
+  if (prop.format === 'email') return 'email'
+  if (prop.format === 'uri') return 'url'
+  if (prop.format === 'date') return 'date'
+  if (prop.format === 'date-time') {
+    if (
+      activeActionType.value === 'event_scheduled' &&
+      (prop.key === 'start_at' || prop.key === 'end_at') &&
+      boolFields.value.all_day === true
+    ) {
+      return 'date'
+    }
+    return 'datetime-local'
+  }
+  return 'text'
+}
+
+function placeholderFor(prop: SchemaProp): string {
+  if (prop.format === 'email') return 'name@example.com'
+  if (prop.format === 'uri') return 'https://…'
+  if (prop.key === 'to' || prop.key === 'from_number') return '+420…'
+  return ''
+}
+
+function requiresField(key: string): boolean {
+  return currentTool.value?.form_schema.required?.includes(key) ?? false
+}
+
+function isMultilineProp(prop: SchemaProp): boolean {
+  return MULTILINE_FIELD_KEYS.has(prop.key)
+}
+
+function _initFieldsForTool(tool: StreamlineTool | null) {
+  const fields: Record<string, FieldValue> = {}
+  const bools: Record<string, boolean> = {}
+  if (tool?.form_schema?.properties) {
+    for (const [key, raw] of Object.entries(
+      tool.form_schema.properties as Record<string, Record<string, unknown>>,
+    )) {
+      if (SKIP_FIELD_KEYS.has(key)) continue
+      const propType = raw.type as string | undefined
+      if (propType === 'array') {
+        fields[key] = []
+      } else if (propType === 'boolean') {
+        bools[key] = (raw.default as boolean | undefined) ?? false
+      } else {
+        fields[key] = ''
+      }
+    }
+  }
+  extraFields.value = fields
+  boolFields.value = bools
+}
+
+// Re-init schema fields when the user changes channel/direction inside the
+// unified messaging composer (each channel has a different form schema).
+watch(resolvedMessageTool, (next, prev) => {
+  if (activeActionType.value !== 'message') return
+  if (next?.activity_type === prev?.activity_type) return
+  _initFieldsForTool(next)
+})
+
+function openInlineForm(type: string) {
+  activeActionType.value = type
+  activityText.value = ''
+  activitySubmitting.value = false
+  if (type === 'message') {
+    messageChannel.value = ''
+    messageDirection.value = ''
+    extraFields.value = {}
+    boolFields.value = {}
+  } else {
+    const tool = toolbarTools.value.find((x) => x.activity_type === type)
+    _initFieldsForTool(tool ?? null)
+  }
+}
+
+async function addActivity() {
+  const resolvedType =
+    activeActionType.value === 'message'
+      ? resolvedMessageTool.value?.activity_type
+      : activeActionType.value
+  if (!resolvedType) return
+  activitySubmitting.value = true
+  const mentionedIds =
+    resolvedType === 'comment' ? (richEditorRef.value?.getMentionedIds() ?? []) : []
+  const cleanFields: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(extraFields.value)) {
+    if (v === '' || v === null || v === undefined) continue
+    if (Array.isArray(v) && v.length === 0) continue
+    cleanFields[k] = v
+  }
+  for (const [k, v] of Object.entries(boolFields.value)) {
+    cleanFields[k] = v
+  }
+  const metadata: Record<string, unknown> = {
+    ...cleanFields,
+    ...(mentionedIds.length ? { mentions: mentionedIds } : {}),
+  }
+  const res = await api.post('/api/v1/crm/activities', {
+    [`${props.entityType}_id`]: props.entityId,
+    type: resolvedType,
+    content_text: activityText.value,
+    metadata,
+  })
+  activitySubmitting.value = false
+  if (res.ok) {
+    emit('activity-added')
+    activeActionType.value = ''
+  }
+}
+
 // ─── Modal state ───────────────────────────────────────────────────────────
 
 const modalOpen = ref(false)
@@ -476,8 +656,8 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
       {{ t('leadDetail.quickActions') }}
     </p>
 
-    <!-- Action type picker (grouped by UX category) — always visible -->
-    <div class="flex flex-col gap-3" data-testid="entity-sidebar-action-groups">
+    <!-- Action type picker (grouped by UX category) — shown when no inline form is active -->
+    <div v-if="!activeActionType" class="flex flex-col gap-3" data-testid="entity-sidebar-action-groups">
       <div
         v-for="group in groupedActionItems"
         :key="group.key"
@@ -499,13 +679,199 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
             :data-action="item.value"
             class="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-gray-700 dark:text-gray-300 transition-colors text-left"
             :class="[accentClasses(group.accent).ring, accentClasses(group.accent).hover]"
-            @click="openModal(item.value)"
+            @click="openInlineForm(item.value)"
           >
             <component :is="item.icon" class="w-4 h-4 flex-shrink-0" :class="accentClasses(group.accent).text" />
             <span class="flex-1 truncate">{{ item.label }}</span>
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Inline composer panel — shown after an action is picked -->
+    <div v-else class="flex flex-col gap-3 mt-1">
+      <!-- Back button -->
+      <button
+        type="button"
+        class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 -mb-1"
+        @click="activeActionType = ''"
+      >
+        ← {{ t('common.back', 'Zpět') }}
+      </button>
+
+      <!-- Unified message composer: Channel + Direction picker -->
+      <div
+        v-if="activeActionType === 'message'"
+        class="space-y-2 pb-2 border-b border-gray-100 dark:border-gray-700"
+        data-testid="message-composer-channel-picker"
+      >
+        <div data-field="message-channel">
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {{ t('messageComposer.channelLabel') }}<span class="text-red-500 ml-0.5">*</span>
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="ch in messageChannelOptions"
+              :key="ch.value"
+              type="button"
+              data-testid="message-composer-channel-option"
+              :data-channel="ch.value"
+              :data-active="messageChannel === ch.value ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+              :class="
+                messageChannel === ch.value
+                  ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'
+              "
+              @click="pickMessageChannel(ch.value)"
+            >
+              {{ t(ch.labelKey) }}
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="messageChannel"
+          data-field="message-direction"
+        >
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {{ t('messageComposer.directionLabel') }}<span class="text-red-500 ml-0.5">*</span>
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="dir in messageChannelOptions.find((c) => c.value === messageChannel)?.directions ?? []"
+              :key="dir.value"
+              type="button"
+              data-testid="message-composer-direction-option"
+              :data-direction="dir.value"
+              :data-active="messageDirection === dir.value ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+              :class="
+                messageDirection === dir.value
+                  ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
+                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-red-300'
+              "
+              @click="pickMessageDirection(dir.value)"
+            >
+              {{ t(dir.labelKey) }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schema "top" fields (subject, to, from_address, …) -->
+      <template v-for="prop in schemaPropsTop" :key="prop.key">
+        <div :data-field="prop.key">
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {{ prop.title }}<span v-if="requiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
+          </label>
+          <select
+            v-if="prop.enum"
+            v-model="extraFields[prop.key]"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          >
+            <option value="">{{ t('leadDetail.selectOption') }}</option>
+            <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <input
+            v-else
+            v-model="extraFields[prop.key]"
+            :type="inputTypeFor(prop)"
+            :placeholder="placeholderFor(prop)"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          />
+        </div>
+      </template>
+
+      <!-- Rich-text body — only when tool schema includes content_text -->
+      <RichTextEditor
+        v-if="toolHasContentText"
+        ref="richEditorRef"
+        v-model="activityText"
+        :placeholder="
+          activeActionType === 'comment'
+            ? t('leadDetail.commentPlaceholder')
+            : t('leadDetail.notePlaceholder')
+        "
+        :disabled="activitySubmitting"
+        :members="activeActionType === 'comment' ? teamMembers : []"
+        :upload-url="activeActionType === 'comment' ? attachmentUploadUrl : undefined"
+        @file-uploaded="(f) => emit('file-uploaded', f)"
+      />
+
+      <!-- Schema "bottom" fields (all_day, start_at, duration, transcript, …) -->
+      <template v-for="prop in schemaPropsBottom" :key="prop.key">
+        <div :data-field="prop.key">
+          <label
+            v-if="prop.type !== 'boolean'"
+            class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+          >
+            {{ prop.title }}<span v-if="requiresField(prop.key)" class="text-red-500 ml-0.5">*</span>
+          </label>
+
+          <!-- Numeric -->
+          <input
+            v-if="prop.type === 'integer' || prop.type === 'number'"
+            v-model.number="extraFields[prop.key]"
+            type="number"
+            :min="prop.minimum"
+            :max="prop.maximum"
+            :step="prop.type === 'integer' ? 1 : 'any'"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          />
+
+          <!-- Enum dropdown -->
+          <select
+            v-else-if="prop.enum"
+            v-model="extraFields[prop.key]"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          >
+            <option value="">{{ t('leadDetail.selectOption') }}</option>
+            <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+
+          <!-- Boolean → checkbox -->
+          <label
+            v-else-if="prop.type === 'boolean'"
+            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none"
+          >
+            <input
+              v-model="boolFields[prop.key]"
+              type="checkbox"
+              class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+            <span>{{ prop.title }}</span>
+          </label>
+
+          <!-- Multi-line text -->
+          <textarea
+            v-else-if="isMultilineProp(prop)"
+            v-model="extraFields[prop.key]"
+            rows="3"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
+          />
+
+          <!-- Default: typed string input -->
+          <input
+            v-else
+            v-model="extraFields[prop.key]"
+            :type="inputTypeFor(prop)"
+            :placeholder="placeholderFor(prop)"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+          />
+        </div>
+      </template>
+
+      <!-- Submit -->
+      <button
+        type="button"
+        data-testid="entity-sidebar-action-submit"
+        :disabled="activitySubmitting"
+        class="w-full px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors"
+        @click="addActivity()"
+      >
+        {{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}
+      </button>
     </div>
 
     <StreamlineCreateModal
