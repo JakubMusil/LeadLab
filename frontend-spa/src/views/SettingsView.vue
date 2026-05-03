@@ -163,7 +163,7 @@ const webhookDeliveries = ref<Record<string, WebhookDelivery[]>>({})
 const webhookDeliveriesLoading = ref<Record<string, boolean>>({})
 const webhookDeliveriesOpen = ref<Record<string, boolean>>({})
 const pendingRevokeToken = ref<APIToken | null>(null)
-const pendingDeleteWebhook = ref<WebhookEndpoint | null>(null))
+const pendingDeleteWebhook = ref<WebhookEndpoint | null>(null)
 
 async function toggleWebhookDeliveries(wh: WebhookEndpoint) {
   const id = wh.id
