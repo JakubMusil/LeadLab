@@ -337,14 +337,14 @@
     "addingRule": "Füge hinzu…",
     "addRuleBtn": "+ Regel hinzufügen",
     "profileSection": "Profil",
-    "workspaceSection": "Workspace",
+    "workspaceSection": "Arbeitsbereich",
     "dangerZoneSection": "Gefahrenzone",
     "billingSection": "Abrechnung",
     "apiTokensSection": "API-Token",
     "webhooksSection": "Ausgehende Webhooks",
     "calendarFeedSection": "Kalender-Feed",
     "notificationsSection": "Benachrichtigungen",
-    "brandingSection": "Branding",
+    "brandingSection": "Markenauftritt",
     "languageSection": "Sprache",
     "leadScoringSection": "Lead-Bewertungsregeln",
     "upload": "Hochladen",
@@ -390,7 +390,9 @@
     "proLabelBadge": "⭐ Pro",
     "freeLabelBadge": "Kostenlos",
     "slug": "Slug:",
-    "subscription": "Abonnement:"
+    "subscription": "Abonnement:",
+    "tabUser": "Benutzer",
+    "tabWorkspace": "Arbeitsbereich"
   },
   "proposals": {
     "title": "Angebote",
