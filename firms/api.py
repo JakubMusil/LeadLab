@@ -175,6 +175,7 @@ def list_firms(request):
 @router.post("/", auth=django_auth, response={201: FirmOut, 400: ErrorOut})
 def create_firm(request, payload: FirmIn):
     """Create a new Firm and make the creator its Owner."""
+    from crm.management.commands.seed_pipeline_categories import seed_for_firm
     with transaction.atomic():
         firm = Firm.objects.create(name=payload.name)
         Membership.objects.create(
@@ -182,6 +183,7 @@ def create_firm(request, payload: FirmIn):
             firm=firm,
             role=MembershipRole.OWNER,
         )
+        seed_for_firm(firm)
     return 201, _firm_out(firm)
 
 

@@ -872,6 +872,10 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
         @click="activeTab = 'workspace'"
       >{{ t('settings.tabWorkspace') }}</button>
+      <button
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all text-gray-500 hover:text-gray-700"
+        @click="router.push('/app/settings/pipeline')"
+      >Pipeline</button>
     </div>
 
     <!-- ==================== USER TAB ==================== -->

@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useRecordsStore, type RecordOut } from '@/stores/records'
+import { usePipelineStore } from '@/stores/pipeline'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useTasksStore } from '@/stores/tasks'
@@ -47,6 +48,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const leadsStore = useRecordsStore()
+const pipelineStore = usePipelineStore()
 const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
 const tasksStore = useTasksStore()
@@ -74,7 +76,7 @@ function onLeadCreated(payload: Record<string, unknown>) {
   if (!leadsStore.records.find((l) => l.id === lead.id)) {
     leadsStore.records.unshift(lead)
   }
-  notifStore.pushNotification('lead.created', payload)
+  notifStore.pushNotification('record.created', payload)
 }
 
 function onLeadUpdated(payload: Record<string, unknown>) {
@@ -82,13 +84,13 @@ function onLeadUpdated(payload: Record<string, unknown>) {
   const idx = leadsStore.records.findIndex((l) => l.id === lead.id)
   if (idx !== -1) leadsStore.records[idx] = lead
   if (leadsStore.currentRecord?.id === lead.id) leadsStore.currentRecord = lead
-  notifStore.pushNotification('lead.updated', payload)
+  notifStore.pushNotification('record.updated', payload)
 }
 
 function onLeadDeleted(payload: Record<string, unknown>) {
   const id = payload.id as string
   leadsStore.records = leadsStore.records.filter((l) => l.id !== id)
-  notifStore.pushNotification('lead.deleted', payload)
+  notifStore.pushNotification('record.deleted', payload)
 }
 
 function onActivityCreated(payload: Record<string, unknown>) {
@@ -124,24 +126,27 @@ onMounted(async () => {
   if (firmStore.firms.length === 0) await firmStore.fetchFirms()
   await notifStore.fetchNotifications()
   savedViewsStore.fetchViews()
+  pipelineStore.fetchCategories()
 
-  on('lead.created', onLeadCreated)
-  on('lead.updated', onLeadUpdated)
-  on('lead.deleted', onLeadDeleted)
+  on('record.created', onLeadCreated)
+  on('record.updated', onLeadUpdated)
+  on('record.deleted', onLeadDeleted)
   on('activity.created', onActivityCreated)
   on('task.completed', onTaskCompleted)
   on('task.outcome_prompt', onTaskOutcomePrompt)
   on('task.expired', onTaskExpired)
+  on('category.updated', pipelineStore.handleCategoryUpdated)
 })
 
 onUnmounted(() => {
-  off('lead.created', onLeadCreated)
-  off('lead.updated', onLeadUpdated)
-  off('lead.deleted', onLeadDeleted)
+  off('record.created', onLeadCreated)
+  off('record.updated', onLeadUpdated)
+  off('record.deleted', onLeadDeleted)
   off('activity.created', onActivityCreated)
   off('task.completed', onTaskCompleted)
   off('task.outcome_prompt', onTaskOutcomePrompt)
   off('task.expired', onTaskExpired)
+  off('category.updated', pipelineStore.handleCategoryUpdated)
 })
 
 // Keyboard shortcuts (no "new opportunity" trigger here – LeadsView handles that)
@@ -230,9 +235,9 @@ function toggleNotifPanel() {
 
 function eventLabel(event: string): string {
   const map: Record<string, string> = {
-    'lead.created': t('appShell.eventLeadCreated'),
-    'lead.updated': t('appShell.eventLeadUpdated'),
-    'lead.deleted': t('appShell.eventLeadDeleted'),
+    'record.created': t('appShell.eventLeadCreated'),
+    'record.updated': t('appShell.eventLeadUpdated'),
+    'record.deleted': t('appShell.eventLeadDeleted'),
     'activity.created': t('appShell.eventActivityCreated'),
     'task.completed': t('appShell.eventTaskCompleted'),
     'task.outcome_prompt': t('appShell.eventTaskOutcomePrompt'),
@@ -245,9 +250,9 @@ import type { Component } from 'vue'
 
 function eventIcon(event: string): Component {
   const map: Record<string, Component> = {
-    'lead.created': PlusCircleIcon,
-    'lead.updated': PencilSquareIcon,
-    'lead.deleted': TrashIcon,
+    'record.created': PlusCircleIcon,
+    'record.updated': PencilSquareIcon,
+    'record.deleted': TrashIcon,
     'activity.created': ChatBubbleLeftIcon,
     'task.completed': CheckCircleIcon,
     'task.outcome_prompt': ClockIcon,
@@ -257,7 +262,7 @@ function eventIcon(event: string): Component {
 }
 
 function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
-  if (n.event === 'lead.created' || n.event === 'lead.updated') {
+  if (n.event === 'record.created' || n.event === 'record.updated') {
     return (n.payload.title as string) || eventLabel(n.event)
   }
   if (n.event === 'activity.created') {
@@ -272,7 +277,7 @@ function notifTitle(n: { event: string; payload: Record<string, unknown> }): str
   if (n.event === 'task.expired') {
     return (n.payload.task_title as string) || t('appShell.notifTaskExpired')
   }
-  if (n.event === 'lead.deleted') {
+  if (n.event === 'record.deleted') {
     return t('appShell.notifLeadDeleted', { id: n.payload.id as string })
   }
   return eventLabel(n.event)
@@ -377,6 +382,24 @@ function formatNotifTime(ts: string): string {
                 >
                   <span aria-hidden="true">🔖</span>
                   <span class="truncate">{{ view.name }}</span>
+                </RouterLink>
+              </template>
+
+              <!-- Pipeline categories -->
+              <template v-if="sidebarOpen && item.path === '/app/records' && pipelineStore.categories.length > 0">
+                <RouterLink
+                  v-for="cat in pipelineStore.categories.filter((c) => c.is_active)"
+                  :key="cat.id"
+                  :to="`/app/records?category_id=${cat.id}`"
+                  class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
+                  @click="mobileMenuOpen = false"
+                >
+                  <span
+                    class="w-2 h-2 rounded-full flex-shrink-0"
+                    :style="{ backgroundColor: cat.color || '#94A3B8' }"
+                    aria-hidden="true"
+                  ></span>
+                  <span class="truncate">{{ cat.name }}</span>
                 </RouterLink>
               </template>
 
