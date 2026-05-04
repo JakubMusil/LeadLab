@@ -339,7 +339,7 @@ async function createField() {
   if (!selectedCategoryId.value || !newFieldKey.value) return
   savingField.value = true
   const nextOrder = selectedFields.value.length
-    ? Math.max(...selectedFields.value.map((f) => f.order)) + 1
+    ? Math.max(0, ...selectedFields.value.map((f) => f.order)) + 1
     : 0
   const result = await pipelineStore.createField(selectedCategoryId.value, newFieldKey.value, {
     is_visible: newFieldIsVisible.value,
