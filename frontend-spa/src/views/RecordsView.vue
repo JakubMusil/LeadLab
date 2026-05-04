@@ -967,7 +967,7 @@ async function onImportFile(e: Event) {
   fd.append('file', file)
   try {
     const res = await api.postForm<{ id: string; status: string }>(
-      '/api/v1/integrations/import/leads',
+      '/api/v1/integrations/import/records',
       fd,
     )
     if (res.ok) {
@@ -987,7 +987,7 @@ function exportCsv() {
   const params = new URLSearchParams()
   if (filterStatus.value) params.set('status', filterStatus.value)
   if (filterSource.value) params.set('source', filterSource.value)
-  window.location.href = `/api/v1/integrations/export/leads.csv?${params.toString()}`
+  window.location.href = `/api/v1/integrations/export/records.csv?${params.toString()}`
 }
 
 function exportPdf() {

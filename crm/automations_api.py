@@ -63,7 +63,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
                 "body": (
                     "Hi {{assignee_name}},\n\n"
                     "This is a reminder that your task '{{task_title}}' "
-                    "on record '{{lead_title}}' is due tomorrow.\n\n"
+                    "on record '{{record_title}}' is due tomorrow.\n\n"
                     "Log in to LeadLab to complete it."
                 ),
             }
@@ -85,10 +85,10 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
             {
                 "type": "send_email",
                 "to": "owner",
-                "subject": "🎉 PipelineRecord won: {{lead_title}}",
+                "subject": "🎉 PipelineRecord won: {{record_title}}",
                 "body": (
                     "Great news!\n\n"
-                    "PipelineRecord '{{lead_title}}' has been marked as Won.\n\n"
+                    "PipelineRecord '{{record_title}}' has been marked as Won.\n\n"
                     "Log in to LeadLab for details."
                 ),
             }
@@ -128,8 +128,8 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         "trigger": AutomationTrigger.RECORD_INACTIVE,
         "trigger_config": {"inactive_days": 30},
         "conditions": [
-            {"field": "lead_status", "operator": "neq", "value": "won"},
-            {"field": "lead_status", "operator": "neq", "value": "lost"},
+            {"field": "record_status", "operator": "neq", "value": "won"},
+            {"field": "record_status", "operator": "neq", "value": "lost"},
         ],
         "actions": [
             {"type": "update_field", "field": "status", "value": "lost"},
@@ -148,7 +148,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         "actions": [
             {
                 "type": "create_task",
-                "title_template": "Follow up on sent proposal for {{lead_title}}",
+                "title_template": "Follow up on sent proposal for {{record_title}}",
                 "due_days_offset": 3,
                 "priority": "medium",
                 "assign_to_user_id": "inherit",

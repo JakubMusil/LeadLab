@@ -136,7 +136,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=9, minute=0),
     },
     'automation-record-inactivity': {
-        'task': 'crm.tasks.check_lead_inactivity_automations',
+        'task': 'crm.tasks.check_record_inactivity_automations',
         # Once per day at 10:00 UTC
         'schedule': crontab(hour=10, minute=0),
     },

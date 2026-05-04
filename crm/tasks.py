@@ -433,7 +433,7 @@ def send_activity_email(self, activity_id: str):
 @shared_task(bind=True, max_retries=0)
 def process_import_job(self, job_id: str):
     """
-    Parse a CSV file and bulk-create Leads or Customers for a Firm.
+    Parse a CSV file and bulk-create PipelineRecords or Customers for a Firm.
 
     Progress is tracked via the ``ImportJob`` model fields:
     ``total``, ``processed``, ``failed_count``, ``errors_json``.
@@ -565,7 +565,7 @@ def send_weekly_digest(self):
         if not recipients:
             continue
 
-        total_leads = PipelineRecord.objects.filter(firm=firm).count()
+        total_records = PipelineRecord.objects.filter(firm=firm).count()
         won = PipelineRecord.objects.filter(firm=firm, status=RecordStatus.WON).count()
         lost = PipelineRecord.objects.filter(firm=firm, status=RecordStatus.LOST).count()
         active = PipelineRecord.objects.filter(
@@ -581,8 +581,8 @@ def send_weekly_digest(self):
         body = (
             f"Hi,\n\n"
             f"Here is your weekly pipeline summary for {firm.name}:\n\n"
-            f"Příležitosti (Leads):\n"
-            f"  Total:  {total_leads}\n"
+            f"Příležitosti (Záznamy):\n"
+            f"  Total:  {total_records}\n"
             f"  Active: {active}\n"
             f"  Won:    {won}\n"
             f"  Lost:   {lost}\n\n"
@@ -691,7 +691,7 @@ def dispatch_sequence_emails(self):
     For each due enrollment:
     1. Look up the next EmailSequenceStep.
     2. Send the email (via Django's email backend).
-    3. Log a SEQUENCE_EMAIL_SENT activity on the lead.
+    3. Log a SEQUENCE_EMAIL_SENT activity on the record.
     4. Advance the enrollment to the next step (or mark it completed).
 
     Runs every 15 minutes via Celery beat.
@@ -742,7 +742,9 @@ def dispatch_sequence_emails(self):
             if record.customer:
                 customer_name = f"{record.customer.first_name} {record.customer.last_name}".strip()
             body = step.body_template.replace(
-                "{{lead_title}}", record.title
+                "{{record_title}}", record.title
+            ).replace(
+                "{{lead_title}}", record.title  # backward-compat alias
             ).replace(
                 "{{customer_name}}", customer_name or record.title
             )
@@ -815,7 +817,7 @@ def evaluate_automation_rules(self, trigger: str, firm_id: str, context: dict):
     """
     Evaluate all active AutomationRules for *trigger* in *firm_id*.
 
-    Called by API hooks (lead created, status changed, proposal sent/accepted)
+    Called by API hooks (record created, status changed, proposal sent/accepted)
     and by the periodic check tasks below.  Each matching rule is executed
     via ``_execute_rule`` which logs an AutomationRun.
     """
@@ -927,9 +929,9 @@ def check_task_overdue_automations(self):
 
 
 @shared_task(bind=True, max_retries=0)
-def check_lead_inactivity_automations(self):
+def check_record_inactivity_automations(self):
     """
-    Periodic task: fire ``lead_inactive`` automations.
+    Periodic task: fire ``record_inactive`` (``lead_inactive``) automations.
 
     Runs once per day.  For each firm that has active RECORD_INACTIVE rules,
     finds records with no Activity records in the last ``inactive_days`` days

@@ -1,5 +1,5 @@
 """
-Django Ninja API router – CRM (Customers, Leads, Activities, Tasks)
+Django Ninja API router – CRM (Customers, Records, Activities, Tasks)
 
 Every endpoint requires:
   1. Session authentication.
@@ -430,17 +430,17 @@ def _validate_record_field_rules(
     return None
 
 
-def _compute_record_score(lead: PipelineRecord, rules: list) -> int:
+def _compute_record_score(record: PipelineRecord, rules: list) -> int:
     """
     Compute a 0–100 record score by evaluating each scoring rule against
     the record.  Rules are pre-fetched by the caller to avoid N+1 queries.
 
     Supported field values
     ----------------------
-    ``status``                 — matches if lead.status == operand (string)
-    ``source``                 — matches if lead.source == operand (string)
-    ``value_gte``              — matches if lead.value >= operand (number)
-    ``last_activity_days_lte`` — matches if the lead's most recent activity is
+    ``status``                 — matches if record.status == operand (string)
+    ``source``                 — matches if record.source == operand (string)
+    ``value_gte``              — matches if record.value >= operand (number)
+    ``last_activity_days_lte`` — matches if the record's most recent activity is
                                   within *operand* days (number)
     """
     score = 50  # baseline
@@ -450,14 +450,14 @@ def _compute_record_score(lead: PipelineRecord, rules: list) -> int:
         matched = False
 
         if field == "status":
-            matched = lead.status == operand
+            matched = record.status == operand
         elif field == "source":
-            matched = lead.source == operand
+            matched = record.source == operand
         elif field == "value_gte":
-            matched = lead.value is not None and lead.value >= Decimal(str(operand))
+            matched = record.value is not None and record.value >= Decimal(str(operand))
         elif field == "last_activity_days_lte":
             last_activity = (
-                Activity.objects.filter(record=lead)
+                Activity.objects.filter(record=record)
                 .order_by("-created_at")
                 .values_list("created_at", flat=True)
                 .first()
@@ -472,89 +472,89 @@ def _compute_record_score(lead: PipelineRecord, rules: list) -> int:
     return max(0, min(100, score))
 
 
-def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
-    score = _compute_record_score(lead, rules) if rules is not None else None
+def _record_out(record: PipelineRecord, rules: Optional[list] = None) -> dict:
+    score = _compute_record_score(record, rules) if rules is not None else None
     created_by_name: Optional[str] = None
-    if lead.created_by_id:
+    if record.created_by_id:
         try:
-            cb = lead.created_by
+            cb = record.created_by
             created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
         except Exception as exc:
-            logger.debug("Could not resolve created_by name for lead %s: %s", lead.id, exc)
+            logger.debug("Could not resolve created_by name for record %s: %s", record.id, exc)
     assigned_to_name: Optional[str] = None
-    if lead.assigned_to_id:
+    if record.assigned_to_id:
         try:
-            at = lead.assigned_to
+            at = record.assigned_to
             assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
         except Exception as exc:
-            logger.debug("Could not resolve assigned_to name for lead %s: %s", lead.id, exc)
+            logger.debug("Could not resolve assigned_to name for record %s: %s", record.id, exc)
     # Company & contact person
-    company_id = str(lead.company_id) if lead.company_id else None
+    company_id = str(record.company_id) if record.company_id else None
     company_name: Optional[str] = None
-    contact_person_id = str(lead.contact_person_id) if lead.contact_person_id else None
+    contact_person_id = str(record.contact_person_id) if record.contact_person_id else None
     contact_person_name: Optional[str] = None
-    if lead.company_id:
+    if record.company_id:
         try:
-            co = lead.company
+            co = record.company
             company_name = co.company_name or f"{co.first_name} {co.last_name}".strip()
         except Exception:
             pass
-    if lead.contact_person_id:
+    if record.contact_person_id:
         try:
-            cp = lead.contact_person
+            cp = record.contact_person
             contact_person_name = f"{cp.first_name} {cp.last_name}".strip() or cp.email
         except Exception:
             pass
     # Resolve current_stage name
     current_stage_name: Optional[str] = None
-    if lead.current_stage_id:
+    if record.current_stage_id:
         try:
-            current_stage_name = lead.current_stage.name
+            current_stage_name = record.current_stage.name
         except Exception:
             pass
     return {
-        "id": str(lead.id),
-        "firm_id": str(lead.firm_id),
-        "customer_id": str(lead.customer_id) if lead.customer_id else None,
-        "title": lead.title,
-        "status": lead.status,
-        "source": lead.source,
-        "assigned_to_id": str(lead.assigned_to_id) if lead.assigned_to_id else None,
+        "id": str(record.id),
+        "firm_id": str(record.firm_id),
+        "customer_id": str(record.customer_id) if record.customer_id else None,
+        "title": record.title,
+        "status": record.status,
+        "source": record.source,
+        "assigned_to_id": str(record.assigned_to_id) if record.assigned_to_id else None,
         "assigned_to_name": assigned_to_name,
-        "value": lead.value,
-        "currency": lead.currency,
+        "value": record.value,
+        "currency": record.currency,
         "score": score,
-        "created_at": lead.created_at,
-        "updated_at": lead.updated_at,
-        "created_by_id": str(lead.created_by_id) if lead.created_by_id else None,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+        "created_by_id": str(record.created_by_id) if record.created_by_id else None,
         "created_by_name": created_by_name,
         "company_id": company_id,
         "company_name": company_name,
         "contact_person_id": contact_person_id,
         "contact_person_name": contact_person_name,
         # Pipeline fields
-        "category_id": str(lead.category_id) if lead.category_id else None,
-        "current_stage_id": str(lead.current_stage_id) if lead.current_stage_id else None,
+        "category_id": str(record.category_id) if record.category_id else None,
+        "current_stage_id": str(record.current_stage_id) if record.current_stage_id else None,
         "current_stage_name": current_stage_name,
-        "parent_id": str(lead.parent_id) if lead.parent_id else None,
-        "start_date": lead.start_date.isoformat() if lead.start_date else None,
-        "end_date": lead.end_date.isoformat() if lead.end_date else None,
-        "expires_at": lead.expires_at,
-        "notes": lead.notes or "",
-        "extra_data": lead.extra_data or {},
+        "parent_id": str(record.parent_id) if record.parent_id else None,
+        "start_date": record.start_date.isoformat() if record.start_date else None,
+        "end_date": record.end_date.isoformat() if record.end_date else None,
+        "expires_at": record.expires_at,
+        "notes": record.notes or "",
+        "extra_data": record.extra_data or {},
     }
 
 
-def _build_record_automation_context(lead: PipelineRecord, firm) -> dict:
+def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
     """Build the evaluation context dict for automation rules fired from a Record event."""
     from firms.models import Membership
 
     customer_name = ""
     customer_email = ""
-    if lead.customer_id:
+    if record.customer_id:
         try:
             # customer may already be loaded via select_related
-            c = lead.customer
+            c = record.customer
             customer_name = f"{c.first_name} {c.last_name}".strip()
             customer_email = c.email or ""
         except Exception:  # noqa: BLE001
@@ -562,9 +562,9 @@ def _build_record_automation_context(lead: PipelineRecord, firm) -> dict:
 
     assignee_email = ""
     assignee_name = ""
-    if lead.assigned_to_id:
+    if record.assigned_to_id:
         try:
-            u = lead.assigned_to
+            u = record.assigned_to
             assignee_email = u.email or ""
             assignee_name = f"{u.first_name} {u.last_name}".strip()
         except Exception:  # noqa: BLE001
@@ -579,11 +579,11 @@ def _build_record_automation_context(lead: PipelineRecord, firm) -> dict:
     ) or ""
 
     return {
-        "record_id": str(lead.id),
-        "record_title": lead.title,
-        "record_status": lead.status,
-        "record_source": lead.source,
-        "record_value": str(lead.value) if lead.value is not None else "",
+        "record_id": str(record.id),
+        "record_title": record.title,
+        "record_status": record.status,
+        "record_source": record.source,
+        "record_value": str(record.value) if record.value is not None else "",
         "firm_id": str(firm.pk),
         "customer_name": customer_name,
         "customer_email": customer_email,
@@ -597,28 +597,29 @@ def _build_task_automation_context(task, firm) -> dict:
     """Build the evaluation context dict for automation rules fired from a Task event.
 
     Args:
-        task: A Task model instance (should have lead, customer, assigned_to pre-fetched).
+        task: A Task model instance (should have record, customer, assigned_to pre-fetched).
         firm: The Firm instance that owns the task.
 
     Returns:
         A dict with string values suitable for condition evaluation and template rendering.
-        Keys: task_id, task_title, task_status, task_priority, lead_id, lead_title,
-              firm_id, assignee_id, assignee_email, assignee_name,
-              customer_name, customer_email, owner_email, due_date.
+        Keys: task_id, task_title, task_status, task_priority, record_id, record_title,
+              lead_id, lead_title (backward-compat aliases), firm_id, assignee_id,
+              assignee_email, assignee_name, customer_name, customer_email, owner_email,
+              due_date.
     """
     from firms.models import Membership
 
-    lead_id = str(task.record_id) if task.record_id else ""
-    lead_title = ""
+    record_id = str(task.record_id) if task.record_id else ""
+    record_title = ""
     customer_name = ""
     customer_email = ""
 
     if task.record_id:
         try:
-            lead = task.record
-            lead_title = lead.title or ""
-            if lead.customer_id:
-                c = lead.customer
+            rec = task.record
+            record_title = rec.title or ""
+            if rec.customer_id:
+                c = rec.customer
                 customer_name = f"{c.first_name} {c.last_name}".strip()
                 customer_email = c.email or ""
         except Exception:  # noqa: BLE001
@@ -656,8 +657,11 @@ def _build_task_automation_context(task, firm) -> dict:
         "task_title": task.title,
         "task_status": task.status,
         "task_priority": task.priority,
-        "lead_id": lead_id,
-        "lead_title": lead_title,
+        "record_id": record_id,
+        "record_title": record_title,
+        # Backward-compat aliases for automation rules created before the rename
+        "lead_id": record_id,
+        "lead_title": record_title,
         "firm_id": str(firm.pk),
         "assignee_id": assignee_id,
         "assignee_email": assignee_email,
@@ -774,9 +778,9 @@ def list_records(
     else:
         qs = qs.order_by(f'-{order_field}')
     offset = (page - 1) * page_size
-    leads = list(qs.select_related('created_by', 'assigned_to', 'current_stage')[offset:offset + page_size])
+    records = list(qs.select_related('created_by', 'assigned_to', 'current_stage')[offset:offset + page_size])
     rules = list(RecordScoringRule.objects.filter(firm=request.firm))
-    return 200, [_record_out(lead, rules) for lead in leads]
+    return 200, [_record_out(record, rules) for record in records]
 
 
 @router.post("/records", auth=django_auth, response={201: RecordOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
@@ -858,7 +862,7 @@ def create_record(request, payload: RecordIn):
         except ValueError:
             return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
 
-    lead = PipelineRecord.objects.create(
+    record = PipelineRecord.objects.create(
         firm=request.firm,
         customer=customer,
         company=company,
@@ -879,18 +883,18 @@ def create_record(request, payload: RecordIn):
         notes=payload.notes,
         extra_data=payload.extra_data,
     )
-    broadcast_event(firm=request.firm, event='record.created', payload=_record_out(lead))
+    broadcast_event(firm=request.firm, event='record.created', payload=_record_out(record))
 
     # Fire workflow automation trigger: record_created
     from crm.tasks import evaluate_automation_rules
-    _automation_ctx = _build_record_automation_context(lead, request.firm)
+    _automation_ctx = _build_record_automation_context(record, request.firm)
     from django.db import transaction
     transaction.on_commit(
         lambda: evaluate_automation_rules.delay("record_created", str(request.firm.pk), _automation_ctx),
         robust=True,
     )
 
-    return 201, _record_out(lead)
+    return 201, _record_out(record)
 
 
 @router.get("/records/{record_id}", auth=django_auth, response={200: RecordOut, 403: ErrorOut, 404: ErrorOut})
@@ -901,10 +905,10 @@ def get_record(request, record_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.select_related('created_by').get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.select_related('created_by').get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
-    return 200, _record_out(lead)
+    return 200, _record_out(record)
 
 
 @router.patch("/records/{record_id}", auth=django_auth, response={200: RecordOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
@@ -915,105 +919,105 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
-    old_status = lead.status
+    old_status = record.status
     update_data = payload.dict(exclude_none=True)
 
     # Handle status change — create an Activity in the same transaction
     new_status = update_data.pop("status", None)
 
     # Resolve FK overrides (company, contact_person, customer, assigned_to)
-    # These cannot be set via setattr(lead, "company_id", ...) reliably through
+    # These cannot be set via setattr(record, "company_id", ...) reliably through
     # the loop below — we pop and resolve them explicitly.
     if "company_id" in update_data:
         cid = update_data.pop("company_id")
         if cid:
             try:
-                lead.company = Customer.objects.get(id=cid, firm=request.firm, type="company")
+                record.company = Customer.objects.get(id=cid, firm=request.firm, type="company")
             except Customer.DoesNotExist:
                 return 400, {"detail": "Company not found."}
         else:
-            lead.company = None
+            record.company = None
 
     if "contact_person_id" in update_data:
         cpid = update_data.pop("contact_person_id")
         if cpid:
             try:
-                lead.contact_person = Customer.objects.get(id=cpid, firm=request.firm)
+                record.contact_person = Customer.objects.get(id=cpid, firm=request.firm)
             except Customer.DoesNotExist:
                 return 400, {"detail": "Contact person not found."}
         else:
-            lead.contact_person = None
+            record.contact_person = None
 
     if "customer_id" in update_data:
         cust_id = update_data.pop("customer_id")
         if cust_id:
             try:
-                lead.customer = Customer.objects.get(id=cust_id, firm=request.firm)
+                record.customer = Customer.objects.get(id=cust_id, firm=request.firm)
             except Customer.DoesNotExist:
                 return 400, {"detail": "Customer not found."}
         else:
-            lead.customer = None
+            record.customer = None
 
     if "category_id" in update_data:
         cat_id = update_data.pop("category_id")
         if cat_id:
             try:
-                lead.category = Category.objects.get(id=cat_id, firm=request.firm)
+                record.category = Category.objects.get(id=cat_id, firm=request.firm)
             except Category.DoesNotExist:
                 return 400, {"detail": "Category not found."}
         else:
-            lead.category = None
+            record.category = None
 
     if "current_stage_id" in update_data:
         stage_id = update_data.pop("current_stage_id")
         if stage_id:
             try:
                 stage = Stage.objects.get(id=stage_id)
-                if lead.category_id and stage.category_id != lead.category_id:
+                if record.category_id and stage.category_id != record.category_id:
                     return 400, {"detail": "Stage does not belong to the record's category."}
-                lead.current_stage = stage
+                record.current_stage = stage
             except Stage.DoesNotExist:
                 return 400, {"detail": "Stage not found."}
         else:
-            lead.current_stage = None
+            record.current_stage = None
 
     if "parent_id" in update_data:
         par_id = update_data.pop("parent_id")
         if par_id:
             try:
-                lead.parent = PipelineRecord.objects.get(id=par_id, firm=request.firm)
+                record.parent = PipelineRecord.objects.get(id=par_id, firm=request.firm)
             except PipelineRecord.DoesNotExist:
                 return 400, {"detail": "Parent record not found."}
         else:
-            lead.parent = None
+            record.parent = None
 
     if "start_date" in update_data:
         sd = update_data.pop("start_date")
         if sd:
             try:
-                lead.start_date = dt.date.fromisoformat(sd)
+                record.start_date = dt.date.fromisoformat(sd)
             except ValueError:
                 return 400, {"detail": "Invalid start_date format. Use YYYY-MM-DD."}
         else:
-            lead.start_date = None
+            record.start_date = None
 
     if "end_date" in update_data:
         ed = update_data.pop("end_date")
         if ed:
             try:
-                lead.end_date = dt.date.fromisoformat(ed)
+                record.end_date = dt.date.fromisoformat(ed)
             except ValueError:
                 return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
         else:
-            lead.end_date = None
+            record.end_date = None
 
     # Validate field values against CategoryField.validation_rules
     validation_err = _validate_record_field_rules(
-        category_id=lead.category_id,
+        category_id=record.category_id,
         value=update_data.get("value"),
         notes=update_data.get("notes"),
         source=update_data.get("source"),
@@ -1022,17 +1026,17 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         return 400, {"detail": validation_err}
 
     for field, value in update_data.items():
-        setattr(lead, field, value)
+        setattr(record, field, value)
 
     with transaction.atomic():
         from crm.apps import set_current_user, clear_current_user
         set_current_user(request.user)
         try:
             if new_status and new_status != old_status:
-                lead.status = new_status
-                lead.save()
+                record.status = new_status
+                record.save()
                 Activity.objects.create(
-                    record=lead,
+                    record=record,
                     user=request.user,
                     type=ActivityType.STATUS_CHANGE,
                     metadata={
@@ -1040,10 +1044,10 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                         "new_status": new_status,
                     },
                 )
-                # Fire workflow automation trigger: lead_status_change
+                # Fire workflow automation trigger: record_status_change (stored as lead_status_change)
                 from crm.tasks import evaluate_automation_rules
                 _automation_ctx = {
-                    **_build_record_automation_context(lead, request.firm),
+                    **_build_record_automation_context(record, request.firm),
                     "from_status": old_status,
                     "to_status": new_status,
                 }
@@ -1054,12 +1058,12 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                     robust=True,
                 )
             else:
-                lead.save()
+                record.save()
         finally:
             clear_current_user()
 
-    broadcast_event(firm=request.firm, event='record.updated', payload=_record_out(lead))
-    return 200, _record_out(lead)
+    broadcast_event(firm=request.firm, event='record.updated', payload=_record_out(record))
+    return 200, _record_out(record)
 
 
 @router.delete("/records/{record_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
@@ -1070,11 +1074,11 @@ def delete_record(request, record_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
-    perform_soft_delete(lead, request.user)
+    perform_soft_delete(record, request.user)
     broadcast_event(firm=request.firm, event='record.deleted', payload={'id': record_id})
     return 204, None
 
@@ -1132,11 +1136,11 @@ def list_checkpoints(request, record_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
-    checkpoints = Checkpoint.objects.filter(record=lead).order_by("date", "name")
+    checkpoints = Checkpoint.objects.filter(record=record).order_by("date", "name")
     return 200, [_checkpoint_out(cp) for cp in checkpoints]
 
 
@@ -1153,7 +1157,7 @@ def create_checkpoint(request, record_id: str, payload: CheckpointIn):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
@@ -1165,7 +1169,7 @@ def create_checkpoint(request, record_id: str, payload: CheckpointIn):
             return 400, {"detail": "Invalid date format. Use YYYY-MM-DD."}
 
     cp = Checkpoint.objects.create(
-        record=lead,
+        record=record,
         name=payload.name,
         date=date,
         is_completed=payload.is_completed,
@@ -1187,12 +1191,12 @@ def update_checkpoint(request, record_id: str, checkpoint_id: str, payload: Chec
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     try:
-        cp = Checkpoint.objects.get(id=checkpoint_id, record=lead)
+        cp = Checkpoint.objects.get(id=checkpoint_id, record=record)
     except Checkpoint.DoesNotExist:
         return 404, {"detail": "Checkpoint not found."}
 
@@ -1226,12 +1230,12 @@ def delete_checkpoint(request, record_id: str, checkpoint_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     try:
-        cp = Checkpoint.objects.get(id=checkpoint_id, record=lead)
+        cp = Checkpoint.objects.get(id=checkpoint_id, record=record)
     except Checkpoint.DoesNotExist:
         return 404, {"detail": "Checkpoint not found."}
 
@@ -1435,26 +1439,26 @@ def get_record_feed(request, record_id: str, page: int = 1, page_size: int = 20)
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
 
     # Fetch both sets — slightly over-fetch then merge & sort in Python.
-    # For typical page sizes (20) this is negligible; for very active leads
-    # with thousands of records a keyset-pagination approach would be better,
+    # For typical page sizes (20) this is negligible; for very active records
+    # with thousands of entries a keyset-pagination approach would be better,
     # but that optimisation can be added later without breaking the contract.
     fetch_size = page_size * 2 + 10  # generous buffer for the merge window
 
     activities = list(
-        Activity.objects.filter(record=lead)
+        Activity.objects.filter(record=record)
         .select_related("user")
         .prefetch_related("reactions")
         .order_by("-created_at")[:offset + fetch_size]
     )
     tasks = list(
-        Task.objects.filter(record=lead, is_archived=False)
+        Task.objects.filter(record=record, is_archived=False)
         .select_related("assigned_to", "completed_by", "created_by")
         .order_by("-created_at")[:offset + fetch_size]
     )
@@ -1611,7 +1615,7 @@ def toggle_activity_reaction(request, activity_id: str, payload: _ReactionToggle
     """
     Toggle an emoji reaction on any Activity (entity-agnostic).
 
-    Works for activities attached to any entity (lead, customer,
+    Works for activities attached to any entity (record, customer,
     proposal, task).  If the requesting user has already reacted
     with this emoji the reaction is removed; otherwise it is added.
 
@@ -2540,7 +2544,7 @@ def create_task(request, payload: TaskIn):
             projects = Project.objects.filter(id__in=payload.project_ids, firm=request.firm)
             task.projects.set(projects)
 
-        # Log activity on the linked entity (lead, customer, or proposal).
+        # Log activity on the linked entity (record, customer, or proposal).
         # Mirrors the unified Streamline timeline contract: a TASK_ASSIGNED
         # event is emitted onto whichever entity owns the task so that the
         # entity's detail timeline shows it.
@@ -2775,7 +2779,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
         task.completed_by = request.user
         task.status = TaskStatus.DONE
         task.save(update_fields=["is_completed", "completed_at", "completed_by", "status"])
-        # Log Activity on every linked entity (lead, customer, proposal).
+        # Log Activity on every linked entity (record, customer, proposal).
         completion_metadata = {"task_id": str(task.id), "title": task.title}
         if task.record_id:
             Activity.objects.create(
@@ -3043,7 +3047,7 @@ def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
 def _task_entity_kwargs_iter(task: Task):
     """Yield ``Activity`` constructor kwargs for each linked CRM entity.
 
-    A task can be tied to several entities (lead/customer/proposal).
+    A task can be tied to several entities (record/customer/proposal).
     We log a separate Activity per timeline so each entity's history
     is self-contained. If no entity is linked we still yield one empty
     dict so the Activity is created (orphan timeline).
@@ -4933,12 +4937,12 @@ def list_attachments(request, record_id: str, page: int = 1, page_size: int = 20
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
-    docs = Document.objects.filter(record=lead, firm=request.firm).order_by("-created_at")[
+    docs = Document.objects.filter(record=record, firm=request.firm).order_by("-created_at")[
         offset: offset + page_size
     ]
     return 200, [_attachment_out(d, request) for d in docs]
@@ -4951,7 +4955,7 @@ def list_attachments(request, record_id: str, page: int = 1, page_size: int = 20
 )
 def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
     """
-    Upload a file and attach it to a Lead.
+    Upload a file and attach it to a PipelineRecord.
 
     Creates a ``Document`` record and a ``FILE_UPLOAD`` Activity atomically.
     """
@@ -4962,7 +4966,7 @@ def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
@@ -4972,7 +4976,7 @@ def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
     with transaction.atomic():
         doc = Document(
             firm=request.firm,
-            record=lead,
+            record=record,
             uploaded_by=request.user,
             name=file.name,
             content_type=file.content_type or "application/octet-stream",
@@ -4981,7 +4985,7 @@ def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
         doc.file.save(file.name, file, save=True)
 
         Activity.objects.create(
-            record=lead,
+            record=record,
             user=request.user,
             type=ActivityType.FILE_UPLOAD,
             metadata={
@@ -5002,9 +5006,9 @@ def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
 )
 def delete_attachment(request, record_id: str, attachment_id: str):
     """
-    Soft-delete a file attachment from a Lead.
+    Soft-delete a file attachment from a PipelineRecord.
 
-    Marks the record as deleted; the physical file is removed by the purge task.
+    Marks the document as deleted; the physical file is removed by the purge task.
     Requires at least Admin role.
     """
     try:
@@ -5013,12 +5017,12 @@ def delete_attachment(request, record_id: str, attachment_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     try:
-        doc = Document.objects.get(id=attachment_id, record=lead, firm=request.firm)
+        doc = Document.objects.get(id=attachment_id, record=record, firm=request.firm)
     except Document.DoesNotExist:
         return 404, {"detail": "Attachment not found."}
 
@@ -5353,9 +5357,9 @@ class PipelineSummaryOut(Schema):
 )
 def pipeline_summary(request):
     """
-    Lead pipeline summary: count and total estimated value per status.
+    Pipeline summary: count and total estimated value per status.
 
-    All lead statuses are always present in the response, even when the
+    All record statuses are always present in the response, even when the
     count is zero, so clients can render a consistent pipeline view.
     """
     try:
@@ -5363,14 +5367,14 @@ def pipeline_summary(request):
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    leads_qs = PipelineRecord.objects.filter(firm=request.firm)
+    records_qs = PipelineRecord.objects.filter(firm=request.firm)
 
     # Build a base dict with every status initialised to zero so that
-    # statuses with no leads are still present in the response.
+    # statuses with no records are still present in the response.
     counts: Dict[str, int] = {s.value: 0 for s in RecordStatus}
     values: Dict[str, float] = {s.value: 0.0 for s in RecordStatus}
 
-    for row in leads_qs.values("status").annotate(
+    for row in records_qs.values("status").annotate(
         n=Count("id"), v=Sum("value")
     ):
         counts[row["status"]] = row["n"]
@@ -5425,7 +5429,7 @@ def activity_feed(
     page_size: int = 20,
 ):
     """
-    Firm-wide activity feed across all leads, newest first (paginated).
+    Firm-wide activity feed across all records, newest first (paginated).
 
     Optionally filter by ``type`` (e.g. ``comment``, ``call``).
     """
@@ -5613,7 +5617,7 @@ class VelocityRow(Schema):
 )
 def pipeline_velocity(request):
     """
-    Average time (in hours) a lead spends in each status, computed from
+    Average time (in hours) a record spends in each status, computed from
     ``Activity(type=status_change)`` records.  Results are cached for 5 minutes.
     """
     try:
@@ -5641,16 +5645,16 @@ def pipeline_velocity(request):
     )
 
     # Group by record — each row is a status_change Activity with new_status in metadata
-    lead_history: Dict[str, list] = {}
+    record_history: Dict[str, list] = {}
     for entry in history_qs:
         new_status = entry["metadata"].get("new_status") if isinstance(entry["metadata"], dict) else None
         if new_status:
-            lead_history.setdefault(str(entry["record_id"]), []).append(
+            record_history.setdefault(str(entry["record_id"]), []).append(
                 {"to_status": new_status, "changed_at": entry["created_at"]}
             )
 
     now = tz.now()
-    for lead_id, entries in lead_history.items():
+    for record_id, entries in record_history.items():
         for i, entry in enumerate(entries):
             status = entry["to_status"]
             entered_at = entry["changed_at"]
@@ -5693,7 +5697,7 @@ def won_lost_by_source(
     date_to: Optional[str] = None,
 ):
     """
-    Count of Won and Lost leads grouped by source, optionally filtered by a
+    Count of Won and Lost records grouped by source, optionally filtered by a
     date range (``date_from`` / ``date_to`` in ISO-8601 format).
     Results are cached for 5 minutes per unique query.
     """
@@ -5766,7 +5770,7 @@ class TeamPerformanceRow(Schema):
 )
 def team_performance(request):
     """
-    Per-member stats: leads owned, tasks completed, activities logged.
+    Per-member stats: records owned, tasks completed, activities logged.
     Results are cached for 5 minutes.
     """
     try:

@@ -684,8 +684,8 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(f" + Kontakt: {person.first_name} {person.last_name}")
 
-        # ---- leads ----
-        leads: list[PipelineRecord] = []
+        # ---- records ----
+        records: list[PipelineRecord] = []
         for data in LEADS:
             company = companies[data["company_index"]]
             contact_person = persons[data["contact_person_index"]]
@@ -694,7 +694,7 @@ class Command(BaseCommand):
             category = categories_by_slug.get(cat_slug)
             stage = stages_by_slug.get(cat_slug, {}).get(stage_order)
 
-            lead, created = PipelineRecord.objects.get_or_create(
+            record, created = PipelineRecord.objects.get_or_create(
                 firm=firm,
                 title=data["title"],
                 defaults={
@@ -710,26 +710,26 @@ class Command(BaseCommand):
                     "notes": data.get("notes", ""),
                 },
             )
-            leads.append(lead)
+            records.append(record)
             if created:
-                self.stdout.write(f" + Záznam: {lead.title}")
+                self.stdout.write(f" + Záznam: {record.title}")
 
         # ---- activities ----
-        for lead_index, activity_list in ACTIVITIES_BY_LEAD.items():
-            if lead_index >= len(leads):
+        for record_index, activity_list in ACTIVITIES_BY_LEAD.items():
+            if record_index >= len(records):
                 continue
-            target_lead = leads[lead_index]
-            if Activity.objects.filter(record=target_lead).exists():
+            target_record = records[record_index]
+            if Activity.objects.filter(record=target_record).exists():
                 continue
             for body, atype in activity_list:
                 Activity.objects.create(
-                    record=target_lead,
+                    record=target_record,
                     user=user,
                     type=atype,
                     content_text=body,
                 )
             self.stdout.write(
-                f" + {len(activity_list)} aktivit na '{target_lead.title}'"
+                f" + {len(activity_list)} aktivit na '{target_record.title}'"
             )
 
         # ---- projects ----
@@ -740,14 +740,14 @@ class Command(BaseCommand):
 
         # ---- tasks ----
         now = timezone.now()
-        for title, lead_index, days_offset, priority, status in TASKS:
-            if lead_index >= len(leads):
+        for title, record_index, days_offset, priority, status in TASKS:
+            if record_index >= len(records):
                 continue
-            target_lead = leads[lead_index]
+            target_record = records[record_index]
             task, created = Task.objects.get_or_create(
                 firm=firm,
                 title=title,
-                record=target_lead,
+                record=target_record,
                 defaults={
                     "assigned_to": user,
                     "due_date": now + timedelta(days=days_offset),
@@ -763,7 +763,7 @@ class Command(BaseCommand):
             f"\nDemonstační data úspěšně načtena!"
             f"\n  Firmy (kontakty): {len(companies)}"
             f"\n  Osoby (kontakty): {len(persons)}"
-            f"\n  Pipeline záznamy: {len(leads)}"
+            f"\n  Pipeline záznamy: {len(records)}"
             f"\n  Přihlašovací e-mail: {email}"
             f"\n  Heslo: {password}"
         ))
