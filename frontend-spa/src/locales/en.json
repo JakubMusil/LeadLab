@@ -430,7 +430,31 @@
     "confirmDeleteStage": "Really delete this stage? Records using it must be moved first.",
     "stageDragHandle": "Drag to reorder",
     "categoryCountLabel": "{count} active records",
-    "quickCreatePlaceholderInCategory": "Quick add to \"{category}\"…"
+    "quickCreatePlaceholderInCategory": "Quick add to \"{category}\"…",
+    "fieldsTitle": "Fields",
+    "fieldDragHandle": "Drag to reorder",
+    "fieldVisible": "Visible",
+    "fieldRequired": "Required",
+    "fieldHidden": "Hidden",
+    "noFields": "No fields configured.",
+    "addField": "Add field",
+    "cancel": "Cancel",
+    "fieldKeyPlaceholder": "Select a field…",
+    "fieldCreated": "Field added.",
+    "fieldCreateFailed": "Failed to add field.",
+    "fieldUpdated": "Field updated.",
+    "fieldUpdateFailed": "Failed to update field.",
+    "fieldDeleted": "Field removed.",
+    "fieldDeleteFailed": "Failed to remove field.",
+    "confirmDeleteField": "Really remove this field from the category?",
+    "fieldKey": {
+      "value_currency": "Value / Currency",
+      "date_range": "Date Range",
+      "expires_at": "Expiry Date",
+      "notes": "Notes",
+      "source": "Source",
+      "origin_record": "Origin Record"
+    }
   },
   "proposals": {
     "title": "Proposals",

@@ -430,7 +430,31 @@
     "confirmDeleteStage": "Status wirklich löschen?",
     "stageDragHandle": "Zum Neuanordnen ziehen",
     "categoryCountLabel": "{count} aktive Einträge",
-    "quickCreatePlaceholderInCategory": "Schnell zu „{category}” hinzufügen…"
+    "quickCreatePlaceholderInCategory": "Schnell zu „{category}” hinzufügen…",
+    "fieldsTitle": "Felder",
+    "fieldDragHandle": "Zum Neuanordnen ziehen",
+    "fieldVisible": "Sichtbar",
+    "fieldRequired": "Pflichtfeld",
+    "fieldHidden": "Ausgeblendet",
+    "noFields": "Keine Felder konfiguriert.",
+    "addField": "Feld hinzufügen",
+    "cancel": "Abbrechen",
+    "fieldKeyPlaceholder": "Feld auswählen…",
+    "fieldCreated": "Feld hinzugefügt.",
+    "fieldCreateFailed": "Feld konnte nicht hinzugefügt werden.",
+    "fieldUpdated": "Feld aktualisiert.",
+    "fieldUpdateFailed": "Feld konnte nicht aktualisiert werden.",
+    "fieldDeleted": "Feld entfernt.",
+    "fieldDeleteFailed": "Feld konnte nicht entfernt werden.",
+    "confirmDeleteField": "Dieses Feld wirklich aus der Kategorie entfernen?",
+    "fieldKey": {
+      "value_currency": "Wert / Währung",
+      "date_range": "Zeitraum",
+      "expires_at": "Ablaufdatum",
+      "notes": "Notizen",
+      "source": "Quelle",
+      "origin_record": "Ursprungsdatensatz"
+    }
   },
   "proposals": {
     "title": "Angebote",

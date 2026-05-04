@@ -430,7 +430,31 @@
     "confirmDeleteStage": "Opravdu smazat tento stav? Záznamy s tímto stavem musí být předem přesunuty.",
     "stageDragHandle": "Přetáhnout pro změnu pořadí",
     "categoryCountLabel": "{count} aktivních záznamů",
-    "quickCreatePlaceholderInCategory": "Rychlé přidání do „{category}”…"
+    "quickCreatePlaceholderInCategory": "Rychlé přidání do „{category}”…",
+    "fieldsTitle": "Pole",
+    "fieldDragHandle": "Přetáhnout pro změnu pořadí",
+    "fieldVisible": "Viditelné",
+    "fieldRequired": "Povinné",
+    "fieldHidden": "Skryté",
+    "noFields": "Žádná pole nastavena.",
+    "addField": "Přidat pole",
+    "cancel": "Zrušit",
+    "fieldKeyPlaceholder": "Vyberte pole…",
+    "fieldCreated": "Pole přidáno.",
+    "fieldCreateFailed": "Nepodařilo se přidat pole.",
+    "fieldUpdated": "Pole aktualizováno.",
+    "fieldUpdateFailed": "Nepodařilo se aktualizovat pole.",
+    "fieldDeleted": "Pole odstraněno.",
+    "fieldDeleteFailed": "Nepodařilo se odstranit pole.",
+    "confirmDeleteField": "Opravdu odebrat toto pole z kategorie?",
+    "fieldKey": {
+      "value_currency": "Hodnota / Měna",
+      "date_range": "Časové rozmezí",
+      "expires_at": "Datum vypršení",
+      "notes": "Poznámky",
+      "source": "Zdroj",
+      "origin_record": "Zdrojový záznam"
+    }
   },
   "proposals": {
     "title": "Nabídky",
