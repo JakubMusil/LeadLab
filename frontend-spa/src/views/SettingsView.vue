@@ -13,6 +13,7 @@ import { CheckIcon, TrashIcon, StarIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import { useMoney, SUPPORTED_CURRENCIES, CURRENCY_DEFAULT_LOCALE } from '@/composables/useMoney'
 import CurrencySelect from '@/components/CurrencySelect.vue'
+import PipelineSettingsView from '@/views/PipelineSettingsView.vue'
 
 const leadScoringStore = useLeadScoringStore()
 
@@ -97,8 +98,8 @@ const workspaceLoading = ref(false)
 const workspaceError = ref('')
 const workspaceSuccess = ref(false)
 
-// Settings tab: 'user' | 'workspace'
-const activeTab = ref<'user' | 'workspace'>('user')
+// Settings tab: 'user' | 'workspace' | 'pipeline'
+const activeTab = ref<'user' | 'workspace' | 'pipeline'>('user')
 
 // Danger zone
 const confirmDeleteWorkspace = ref(false)
@@ -873,8 +874,9 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         @click="activeTab = 'workspace'"
       >{{ t('settings.tabWorkspace') }}</button>
       <button
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all text-gray-500 hover:text-gray-700"
-        @click="router.push('/app/settings/pipeline')"
+        :class="activeTab === 'pipeline' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'pipeline'"
       >{{ t('settings.tabPipeline') }}</button>
     </div>
 
@@ -1072,7 +1074,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
     </div>
 
     <!-- Currency & Formatting -->
-    <div v-if="isPro" class="bg-white rounded-2xl border border-gray-100 p-5">
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ t('currencySettings.title') }}</h2>
       <div class="space-y-4 max-w-md">
         <!-- Default currency -->
@@ -1131,8 +1133,8 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       </div>
     </div>
 
-    <!-- Exchange Rate Management (Pro only) -->
-    <div v-if="isPro" class="bg-white rounded-2xl border border-gray-100 p-5">
+    <!-- Exchange Rate Management -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-semibold text-gray-900">{{ t('exchangeRates.title') }}</h2>
         <button
@@ -1766,6 +1768,12 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
 
     </div>
     <!-- ==================== END WORKSPACE TAB ==================== -->
+
+    <!-- ==================== PIPELINE TAB ==================== -->
+    <div v-show="activeTab === 'pipeline'">
+      <PipelineSettingsView />
+    </div>
+    <!-- ==================== END PIPELINE TAB ==================== -->
 
   </div>
 

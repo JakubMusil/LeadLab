@@ -1538,7 +1538,10 @@
     "rename": "Umbenennen",
     "search": "Suchen",
     "irreversible": "Diese Aktion ist unwiderruflich.",
-    "error": "Fehler"
+    "error": "Fehler",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "website": "Webseite"
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
@@ -2487,6 +2490,17 @@
     "statusLost": "Verloren",
     "statusCanceled": "Abgebrochen",
     "list": "Liste",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "colUpdated": "Geändert",
+    "colCompany": "Unternehmen",
+    "colContactPerson": "Kontaktperson",
+    "filterUpdatedAfter": "Geändert nach",
+    "filterUpdatedBefore": "Geändert vor",
+    "filterStage": "Phase",
+    "filterCompany": "Unternehmen",
+    "filterCompanyPlaceholder": "Unternehmens-ID",
+    "col_updated_at": "Geändert",
+    "newInCategory": "Neue {category}",
+    "contactDetailTitle": "Kontaktdetails"
   }
 }

@@ -710,10 +710,14 @@ def list_records(
     stage_id: str = "",
     customer_id: str = "",
     parent_id: str = "",
+    company_id: str = "",
+    contact_person_id: str = "",
     value_min: Optional[Decimal] = None,
     value_max: Optional[Decimal] = None,
     created_after: Optional[datetime] = None,
     created_before: Optional[datetime] = None,
+    updated_after: Optional[datetime] = None,
+    updated_before: Optional[datetime] = None,
     sort_by: str = "created_at",
     sort_dir: str = "desc",
     page: int = 1,
@@ -751,6 +755,14 @@ def list_records(
         qs = qs.filter(created_at__gte=created_after)
     if created_before:
         qs = qs.filter(created_at__lte=created_before)
+    if company_id:
+        qs = qs.filter(company_id=company_id)
+    if contact_person_id:
+        qs = qs.filter(contact_person_id=contact_person_id)
+    if updated_after:
+        qs = qs.filter(updated_at__gte=updated_after)
+    if updated_before:
+        qs = qs.filter(updated_at__lte=updated_before)
     # Sorting
     _allowed_sort_fields = {'title', 'status', 'source', 'value', 'created_at', 'updated_at'}
     order_field = sort_by if sort_by in _allowed_sort_fields else 'created_at'

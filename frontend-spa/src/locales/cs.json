@@ -1549,7 +1549,10 @@
     "rename": "Přejmenovat",
     "search": "Hledat",
     "irreversible": "Tato akce je nevratná.",
-    "error": "Chyba"
+    "error": "Chyba",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "website": "Web"
   },
   "errorBoundary": {
     "title": "Něco se pokazilo",
@@ -2498,6 +2501,17 @@
     "statusLost": "Prohrán",
     "statusCanceled": "Zrušen",
     "list": "Seznam",
-    "actions": "Akce"
+    "actions": "Akce",
+    "colUpdated": "Upraveno",
+    "colCompany": "Společnost",
+    "colContactPerson": "Kontaktní osoba",
+    "filterUpdatedAfter": "Upraveno od",
+    "filterUpdatedBefore": "Upraveno do",
+    "filterStage": "Fáze",
+    "filterCompany": "Společnost",
+    "filterCompanyPlaceholder": "ID společnosti",
+    "col_updated_at": "Upraveno",
+    "newInCategory": "Nová {category}",
+    "contactDetailTitle": "Detail kontaktu"
   }
 }
