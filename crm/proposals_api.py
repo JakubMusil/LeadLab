@@ -6,8 +6,8 @@ Public (no-auth) endpoints:
     POST /crm/public/proposals/{token}/respond      – accept or reject
 
 Authenticated endpoints:
-    GET  /crm/leads/{lead_id}/proposals             – list proposals on a lead
-    POST /crm/leads/{lead_id}/proposals             – create proposal
+    GET  /crm/records/{record_id}/proposals             – list proposals on a record
+    POST /crm/records/{record_id}/proposals             – create proposal
     GET  /crm/proposals/{id}                        – get proposal
     PUT  /crm/proposals/{id}                        – update proposal
     DELETE /crm/proposals/{id}                      – delete proposal
@@ -288,7 +288,7 @@ def _proposal_out(proposal: Proposal) -> dict:
     items = list(proposal.items.all())
     return {
         "id": str(proposal.id),
-        "lead_id": str(proposal.lead_id) if proposal.lead_id else None,
+        "lead_id": str(proposal.record_id) if proposal.record_id else None,
         "customer_id": str(proposal.customer_id) if proposal.customer_id else None,
         "firm_id": str(proposal.firm_id),
         "title": proposal.title,
@@ -356,10 +356,10 @@ def _firm_proposal_item_out(item: FirmProposalItem) -> dict:
 
 
 def _log_proposal_created_activity(proposal: Proposal, user) -> None:
-    """Log a PROPOSAL_CREATED activity on every linked entity's lead (if any)."""
-    if proposal.lead_id:
+    """Log a PROPOSAL_CREATED activity on every linked entity's record (if any)."""
+    if proposal.record_id:
         Activity.objects.create(
-            lead_id=proposal.lead_id,
+            record_id=proposal.record_id,
             user=user,
             type=ActivityType.PROPOSAL_CREATED,
             content_text=proposal.title,
@@ -380,14 +380,14 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
     """Build the evaluation context dict for automation rules fired from a Proposal event."""
     from firms.models import Membership
 
-    lead = proposal.lead
+    record = proposal.record
     customer_name = ""
     customer_email = ""
 
-    # Try to get customer info from lead first, then from direct customer link
-    if lead and lead.customer_id:
+    # Try to get customer info from record first, then from direct customer link
+    if record and record.customer_id:
         try:
-            c = lead.customer
+            c = record.customer
             customer_name = f"{c.first_name} {c.last_name}".strip()
             customer_email = c.email or ""
         except Exception:  # noqa: BLE001
@@ -412,9 +412,9 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
         "proposal_id": str(proposal.id),
         "proposal_title": proposal.title,
         "proposal_status": proposal.status,
-        "lead_id": str(lead.id) if lead else "",
-        "lead_title": lead.title if lead else "",
-        "lead_status": lead.status if lead else "",
+        "record_id": str(record.id) if record else "",
+        "record_title": record.title if record else "",
+        "record_status": record.status if record else "",
         "firm_id": str(proposal.firm_id),
         "customer_name": customer_name,
         "customer_email": customer_email,
@@ -443,7 +443,7 @@ def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[
     if status:
         qs = qs.filter(status=status)
     if lead_id:
-        qs = qs.filter(lead_id=lead_id)
+        qs = qs.filter(record_id=lead_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     return 200, [_proposal_out(p) for p in qs]
@@ -464,12 +464,12 @@ def create_standalone_proposal(request, payload: ProposalIn):
     import uuid as _uuid
 
     # Resolve optional entity links
-    lead = None
+    record = None
     customer = None
 
     if payload.lead_id:
         try:
-            lead = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+            record = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
         except PipelineRecord.DoesNotExist:
             return 404, {"detail": "PipelineRecord not found."}
     if payload.customer_id:
@@ -480,7 +480,7 @@ def create_standalone_proposal(request, payload: ProposalIn):
 
     proposal = Proposal.objects.create(
         firm=request.firm,
-        lead=lead,
+        record=record,
         customer=customer,
         title=payload.title,
         status=payload.status,
@@ -501,23 +501,23 @@ def create_standalone_proposal(request, payload: ProposalIn):
 # ---------------------------------------------------------------------------
 
 @proposals_router.get(
-    "/opportunities/{lead_id}/proposals",
+    "/opportunities/{record_id}/proposals",
     auth=django_auth,
     response={200: List[ProposalOut], 403: ErrorOut, 404: ErrorOut},
 )
-def list_proposals(request, lead_id: str):
+def list_proposals(request, record_id: str):
     try:
         require_membership(request)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "PipelineRecord not found."}
 
     proposals = (
-        Proposal.objects.filter(lead=lead)
+        Proposal.objects.filter(record=record)
         .prefetch_related("items")
         .order_by("-created_at")
     )
@@ -525,25 +525,25 @@ def list_proposals(request, lead_id: str):
 
 
 @proposals_router.post(
-    "/opportunities/{lead_id}/proposals",
+    "/opportunities/{record_id}/proposals",
     auth=django_auth,
     response={201: ProposalOut, 403: ErrorOut, 404: ErrorOut},
 )
-def create_proposal(request, lead_id: str, payload: ProposalIn):
+def create_proposal(request, record_id: str, payload: ProposalIn):
     try:
         require_membership(request, min_role=MembershipRole.WORKER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        lead = PipelineRecord.objects.get(id=lead_id, firm=request.firm)
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "PipelineRecord not found."}
 
     import uuid as _uuid
     proposal = Proposal.objects.create(
         firm=request.firm,
-        lead=lead,
+        record=record,
         title=payload.title,
         status=payload.status,
         expiry_date=payload.expiry_date or None,
@@ -1283,14 +1283,14 @@ def public_get_proposal(request, token: str):
 def public_respond_proposal(request, token: str, payload: PublicProposalRespondIn):
     """
     The proposal recipient accepts or rejects the proposal.
-    Logs a PROPOSAL_ACCEPTED or PROPOSAL_REJECTED activity on the lead.
+    Logs a PROPOSAL_ACCEPTED or PROPOSAL_REJECTED activity on the record.
     """
     if payload.action not in ("accept", "reject"):
         return 400, {"detail": "action must be 'accept' or 'reject'."}
 
     try:
         proposal = (
-            Proposal.objects.select_related("firm", "lead")
+            Proposal.objects.select_related("firm", "record")
             .prefetch_related("items")
             .get(public_token=token)
         )
@@ -1316,9 +1316,9 @@ def public_respond_proposal(request, token: str, payload: PublicProposalRespondI
     proposal.responded_at = now
     proposal.save(update_fields=["status", "responded_at", "updated_at"])
 
-    if proposal.lead_id:
+    if proposal.record_id:
         Activity.objects.create(
-            lead=proposal.lead,
+            record=proposal.record,
             type=activity_type,
             content_text=f"Proposal '{proposal.title}' was {new_status} via public link.",
             metadata={"proposal_id": str(proposal.id), "proposal_title": proposal.title},

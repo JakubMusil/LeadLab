@@ -3,9 +3,9 @@ Django Ninja router – Integrations
 
 Covers:
   * iCal feed          — GET /api/v1/integrations/ical/tasks?token=<signed>
-  * CSV import         — POST /api/v1/integrations/import/{leads|customers}
+  * CSV import         — POST /api/v1/integrations/import/{records|customers}
   * Import job status  — GET  /api/v1/integrations/import/{job_id}
-  * CSV export         — GET  /api/v1/integrations/export/leads.csv
+  * CSV export         — GET  /api/v1/integrations/export/records.csv
                          GET  /api/v1/integrations/export/customers.csv
   * PDF export         — GET  /api/v1/integrations/export/pipeline.pdf
 """
@@ -150,7 +150,7 @@ def ical_feed(request, user_id: str, firm_id: str, token: str):
 
     tasks = (
         Task.objects.filter(firm=firm, assigned_to=user)
-        .select_related("lead")
+        .select_related("record")
         .order_by("due_date")
     )
 
@@ -164,8 +164,8 @@ def ical_feed(request, user_id: str, firm_id: str, token: str):
         evt = Event()
         evt.add("uid", f"{task.id}@leadlab")
         evt.add("summary", task.title)
-        if task.lead:
-            evt.add("description", f"PipelineRecord: {task.lead.title}")
+        if task.record:
+            evt.add("description", f"PipelineRecord: {task.record.title}")
         evt.add("status", "COMPLETED" if task.is_completed else "NEEDS-ACTION")
         if task.due_date:
             evt.add("dtstart", task.due_date)
@@ -185,13 +185,13 @@ def ical_feed(request, user_id: str, firm_id: str, token: str):
 # ---------------------------------------------------------------------------
 
 @router.post(
-    "/import/leads",
+    "/import/records",
     auth=_auth,
     response={202: ImportJobOut, 400: ErrorOut, 403: ErrorOut},
 )
-def import_leads_csv(request, file: UploadedFile = File(...)):
+def import_records_csv(request, file: UploadedFile = File(...)):
     """
-    Upload a CSV file to bulk-import leads.
+    Upload a CSV file to bulk-import pipeline records.
 
     Expected columns: ``title``, ``status`` (optional), ``source`` (optional),
     ``value`` (optional), ``currency`` (optional), ``description`` (optional).
@@ -219,7 +219,7 @@ def import_leads_csv(request, file: UploadedFile = File(...)):
         from crm.tasks import process_import_job
         process_import_job.delay(str(job.id))
     except Exception:
-        logger.warning("import_leads_csv: Could not enqueue process_import_job for %s", job.id)
+        logger.warning("import_records_csv: Could not enqueue process_import_job for %s", job.id)
 
     return 202, _job_out(job)
 
@@ -314,17 +314,17 @@ def _echo_csv(rows):
         buf.truncate()
 
 
-@router.get("/export/leads.csv", auth=_auth)
-def export_leads_csv(
+@router.get("/export/records.csv", auth=_auth)
+def export_records_csv(
     request,
     status: str = "",
     source: str = "",
     search: str = "",
 ):
     """
-    Download the current filtered lead list as a CSV file.
+    Download the current filtered pipeline record list as a CSV file.
     Accepts the same ``status``, ``source``, and ``search`` filters as the
-    leads list endpoint.
+    records list endpoint.
     """
     try:
         require_membership(request)
@@ -364,7 +364,7 @@ def export_leads_csv(
         _echo_csv(rows()),
         content_type="text/csv",
     )
-    response["Content-Disposition"] = "attachment; filename=leads.csv"
+    response["Content-Disposition"] = "attachment; filename=records.csv"
     return response
 
 
@@ -436,13 +436,13 @@ def export_pipeline_pdf(request):
     status_labels = {s.value: s.label for s in RecordStatus}
 
     # Build a simple HTML table for WeasyPrint
-    total_leads = 0
+    total_records = 0
     total_value = 0.0
     table_rows = ""
     for row in rows:
         label = status_labels.get(row["status"], row["status"])
         val = float(row["total_value"] or 0)
-        total_leads += row["count"]
+        total_records += row["count"]
         total_value += val
         table_rows += (
             f"<tr><td>{label}</td>"
@@ -477,7 +477,7 @@ def export_pipeline_pdf(request):
       {table_rows}
     </tbody>
     <tfoot>
-      <tr><td>Total</td><td>{total_leads}</td><td>{total_value:,.2f}</td></tr>
+      <tr><td>Total</td><td>{total_records}</td><td>{total_value:,.2f}</td></tr>
     </tfoot>
   </table>
 </body>

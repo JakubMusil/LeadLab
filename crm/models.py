@@ -387,7 +387,7 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         on_delete=models.SET_NULL,
         related_name="contact_person_records",
         limit_choices_to={"type": "person"},
-        help_text="The specific contact person at the company for this lead.",
+        help_text="The specific contact person at the company for this record.",
     )
     title = models.CharField(max_length=255)
     status = models.CharField(
@@ -1314,7 +1314,7 @@ class Notification(models.Model):
     )
     event = models.CharField(
         max_length=50,
-        help_text="Event name, e.g. 'lead.created', 'activity.created', 'task.completed'.",
+        help_text="Event name, e.g. 'record.created', 'activity.created', 'task.completed'.",
     )
     payload = models.JSONField(
         default=dict,
@@ -1674,7 +1674,7 @@ class FirmProposalItem(SoftDeleteMixin, TenantModel):
 
 
 # ---------------------------------------------------------------------------
-# Proposal (standalone entity — can link to Lead or Customer)
+# Proposal (standalone entity — can link to PipelineRecord or Customer)
 # ---------------------------------------------------------------------------
 
 class Proposal(SoftDeleteMixin, TenantModel):
