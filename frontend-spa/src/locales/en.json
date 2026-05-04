@@ -492,7 +492,14 @@
       "color_picker": "Color picker",
       "currency_input": "Currency input",
       "rich_text": "Rich-text editor"
-    }
+    },
+    "fieldEdit": "Edit",
+    "fieldSaved": "Field saved.",
+    "fieldSaveFailed": "Failed to save field.",
+    "fieldSaving": "Saving…",
+    "fieldSaveBtn": "Save",
+    "fieldStartDate": "From",
+    "fieldEndDate": "To"
   },
   "proposals": {
     "title": "Proposals",

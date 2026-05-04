@@ -492,7 +492,14 @@
       "color_picker": "Wybór koloru",
       "currency_input": "Pole waluty",
       "rich_text": "Edytor tekstu sformatowanego"
-    }
+    },
+    "fieldEdit": "Edytuj",
+    "fieldSaved": "Pole zapisane.",
+    "fieldSaveFailed": "Nie udało się zapisać pola.",
+    "fieldSaving": "Zapisuję…",
+    "fieldSaveBtn": "Zapisz",
+    "fieldStartDate": "Od",
+    "fieldEndDate": "Do"
   },
   "proposals": {
     "title": "Oferty",

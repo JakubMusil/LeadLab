@@ -492,7 +492,14 @@
       "color_picker": "Výběr barvy",
       "currency_input": "Input pro měnu",
       "rich_text": "Editor formátovaného textu"
-    }
+    },
+    "fieldEdit": "Upravit",
+    "fieldSaved": "Pole uloženo.",
+    "fieldSaveFailed": "Nepodařilo se uložit pole.",
+    "fieldSaving": "Ukládám…",
+    "fieldSaveBtn": "Uložit",
+    "fieldStartDate": "Od",
+    "fieldEndDate": "Do"
   },
   "proposals": {
     "title": "Nabídky",
