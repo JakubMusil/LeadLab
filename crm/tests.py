@@ -50,7 +50,7 @@ class CustomerModelTest(CRMFixtureMixin, TestCase):
         self.assertEqual(self.customer.metadata, {})
 
 
-class LeadModelTest(CRMFixtureMixin, TestCase):
+class RecordModelTest(CRMFixtureMixin, TestCase):
     def test_record_str(self):
         self.assertIn("Demo Deal", str(self.record))
 
@@ -824,8 +824,8 @@ class CustomerDeleteAPITest(CRMAPIFixtureMixin, TestCase):
 
 # -- Records -----------------------------------------------------------------
 
-class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
-    URL = "/api/v1/crm/opportunities"
+class RecordListAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/records"
 
     def test_list_records_returns_firm_records(self):
         resp = self._get(self.URL)
@@ -881,8 +881,8 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(len(resp.json()), 1)
 
 
-class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
-    URL = "/api/v1/crm/opportunities"
+class RecordCreateAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/records"
 
     def test_create_record_returns_201(self):
         resp = self._post(self.URL, {"title": "New PipelineRecord"})
@@ -908,27 +908,27 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
 
 
-class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordGetAPITest(CRMAPIFixtureMixin, TestCase):
     def test_get_record(self):
-        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}")
+        resp = self._get(f"/api/v1/crm/records/{self.record.id}")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["title"], "Test PipelineRecord")
 
     def test_get_nonexistent_record_returns_404(self):
         import uuid
-        resp = self._get(f"/api/v1/crm/opportunities/{uuid.uuid4()}")
+        resp = self._get(f"/api/v1/crm/records/{uuid.uuid4()}")
         self.assertEqual(resp.status_code, 404)
 
 
 class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
     def test_patch_record_title(self):
-        resp = self._patch(f"/api/v1/crm/opportunities/{self.record.id}", {"title": "Updated"})
+        resp = self._patch(f"/api/v1/crm/records/{self.record.id}", {"title": "Updated"})
         self.assertEqual(resp.status_code, 200)
         self.record.refresh_from_db()
         self.assertEqual(self.record.title, "Updated")
 
     def test_patch_status_creates_activity(self):
-        resp = self._patch(f"/api/v1/crm/opportunities/{self.record.id}", {"status": "contacted"})
+        resp = self._patch(f"/api/v1/crm/records/{self.record.id}", {"status": "contacted"})
         self.assertEqual(resp.status_code, 200)
         self.record.refresh_from_db()
         self.assertEqual(self.record.status, RecordStatus.CONTACTED)
@@ -940,19 +940,19 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_patch_nonexistent_record_returns_404(self):
         import uuid
-        resp = self._patch(f"/api/v1/crm/opportunities/{uuid.uuid4()}", {"title": "X"})
+        resp = self._patch(f"/api/v1/crm/records/{uuid.uuid4()}", {"title": "X"})
         self.assertEqual(resp.status_code, 404)
 
 
-class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_record_admin_succeeds(self):
-        resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
+        resp = self._delete(f"/api/v1/crm/records/{self.record.id}")
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(PipelineRecord.objects.filter(id=self.record.id).exists())
 
     def test_delete_record_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
-        resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
+        resp = self._delete(f"/api/v1/crm/records/{self.record.id}")
         self.assertEqual(resp.status_code, 403)
 
 
@@ -960,7 +960,7 @@ class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
 
 class ActivityListAPITest(CRMAPIFixtureMixin, TestCase):
     def test_list_activities_empty(self):
-        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}/activities")
+        resp = self._get(f"/api/v1/crm/records/{self.record.id}/activities")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), [])
 
@@ -968,7 +968,7 @@ class ActivityListAPITest(CRMAPIFixtureMixin, TestCase):
         Activity.objects.create(
             record=self.record, user=self.owner, type=ActivityType.COMMENT, content_text="Hello"
         )
-        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}/activities")
+        resp = self._get(f"/api/v1/crm/records/{self.record.id}/activities")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.json()), 1)
 
@@ -978,14 +978,14 @@ class ActivityListAPITest(CRMAPIFixtureMixin, TestCase):
                 record=self.record, type=ActivityType.COMMENT, content_text=f"msg {i}"
             )
         resp = self._get(
-            f"/api/v1/crm/opportunities/{self.record.id}/activities",
+            f"/api/v1/crm/records/{self.record.id}/activities",
             {"page": 1, "page_size": 3},
         )
         self.assertEqual(len(resp.json()), 3)
 
     def test_list_activities_nonexistent_record_returns_404(self):
         import uuid
-        resp = self._get(f"/api/v1/crm/opportunities/{uuid.uuid4()}/activities")
+        resp = self._get(f"/api/v1/crm/records/{uuid.uuid4()}/activities")
         self.assertEqual(resp.status_code, 404)
 
 
@@ -1174,7 +1174,7 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
 class TierLimitRecordCreateAPITest(TestCase):
     """create_record enforces the Free-tier 50-record limit."""
 
-    URL = "/api/v1/crm/opportunities"
+    URL = "/api/v1/crm/records"
 
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@record_tier.com", password="pass")
@@ -1347,7 +1347,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_delete_attachment_admin_succeeds(self):
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/records/{self.record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(Document.objects.filter(id=self.attachment.id).exists())
@@ -1355,26 +1355,26 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
     def test_delete_attachment_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/records/{self.record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 403)
 
     def test_delete_nonexistent_attachment_returns_404(self):
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{uuid_module.uuid4()}"
+            f"/api/v1/crm/records/{self.record.id}/attachments/{uuid_module.uuid4()}"
         )
         self.assertEqual(resp.status_code, 404)
 
     def test_delete_attachment_wrong_record_returns_404(self):
         other_record = PipelineRecord.objects.create(firm=self.firm, title="Other PipelineRecord")
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{other_record.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/records/{other_record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 404)
 
     def test_delete_attachment_nonexistent_record_returns_404(self):
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/records/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 404)
 

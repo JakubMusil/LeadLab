@@ -198,7 +198,7 @@ const availableCompanies = computed(() => store.customers.filter((c) => c.type =
 // Linked records
 interface RecordOut { id: string; title: string; status: string; value: number | null; currency: string; created_at: string }
 const linkedRecords = ref<RecordOut[]>([])
-const leadsLoading = ref(false)
+const recordsLoading = ref(false)
 
 // Linked proposals
 interface ProposalOut { id: string; title: string; status: string; total_value: string; currency: string; created_at: string }
@@ -338,15 +338,15 @@ async function removeMetadata(key: string) {
   metaLoading.value = false
 }
 
-async function loadLinkedLeads() {
-  leadsLoading.value = true
+async function loadLinkedRecords() {
+  recordsLoading.value = true
   try {
-    const allRecords = await api.get<Array<RecordOut & { customer_id: string | null }>>('/api/v1/crm/opportunities?page_size=100')
+    const allRecords = await api.get<Array<RecordOut & { customer_id: string | null }>>('/api/v1/crm/records?page_size=100')
     if (allRecords.ok) {
       linkedRecords.value = allRecords.data.filter((l) => l.customer_id === customerId.value)
     }
   } finally {
-    leadsLoading.value = false
+    recordsLoading.value = false
   }
 }
 
@@ -473,7 +473,7 @@ onMounted(async () => {
   await loadTools()
   await store.fetchCustomers({ page: 1 })
   await store.fetchCustomer(customerId.value)
-  await loadLinkedLeads()
+  await loadLinkedRecords()
   await loadLinkedProposals()
   await loadEmployees()
 })
@@ -732,7 +732,7 @@ onMounted(async () => {
           <!-- Linked Records -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.linkedLeads') }}</h3>
-            <div v-if="leadsLoading" class="animate-pulse space-y-2">
+            <div v-if="recordsLoading" class="animate-pulse space-y-2">
               <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
             </div>
             <div v-else-if="linkedRecords.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noLinkedLeads') }}</div>
@@ -740,7 +740,7 @@ onMounted(async () => {
               <RouterLink
                 v-for="record in linkedRecords"
                 :key="record.id"
-                :to="`/app/opportunities/${record.id}`"
+                :to="`/app/records/${record.id}`"
                 class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ record.title }}</span>

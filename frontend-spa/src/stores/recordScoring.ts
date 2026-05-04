@@ -23,7 +23,7 @@ export const SCORING_FIELDS = [
   { value: 'last_activity_days_lte', label: 'Last activity within N days' },
 ]
 
-export const useRecordScoringStore = defineStore('leadScoring', () => {
+export const useRecordScoringStore = defineStore('recordScoring', () => {
   const rules = ref<RecordScoringRule[]>([])
   const loading = ref(false)
 

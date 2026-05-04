@@ -9,7 +9,7 @@ const features: { icon: Component; title: string; description: string }[] = [
   {
     icon: FunnelIcon,
     title: 'Pipeline Management',
-    description: 'Track every sales opportunity through a visual kanban pipeline with customisable stages.',
+    description: 'Track every record through a visual kanban pipeline with customisable stages.',
   },
   {
     icon: UserGroupIcon,

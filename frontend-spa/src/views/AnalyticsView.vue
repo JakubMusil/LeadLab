@@ -43,13 +43,13 @@ interface TeamRow {
   user_id: string
   email: string
   full_name: string
-  leads_owned: number
+  records_owned: number
   tasks_completed: number
   activities_logged: number
 }
 const team = ref<TeamRow[]>([])
-type SortKey = 'full_name' | 'leads_owned' | 'tasks_completed' | 'activities_logged'
-const sortKey = ref<SortKey>('leads_owned')
+type SortKey = 'full_name' | 'records_owned' | 'tasks_completed' | 'activities_logged'
+const sortKey = ref<SortKey>('records_owned')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 // -- Trends --
@@ -453,11 +453,11 @@ const trendsChartOptions = computed(() => ({
                 </th>
                 <th
                   class="text-right py-2 px-4 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200"
-                  @click="toggleSort('leads_owned')"
+                  @click="toggleSort('records_owned')"
                   scope="col"
-                  :aria-sort="sortKey === 'leads_owned' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+                  :aria-sort="sortKey === 'records_owned' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  {{ t('analytics.colLeads') }} <span aria-hidden="true">{{ sortIcon('leads_owned') }}</span>
+                  {{ t('analytics.colLeads') }} <span aria-hidden="true">{{ sortIcon('records_owned') }}</span>
                 </th>
                 <th
                   class="text-right py-2 px-4 text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200"
@@ -490,7 +490,7 @@ const trendsChartOptions = computed(() => ({
                   <div class="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[180px]">{{ row.email }}</div>
                 </td>
                 <td class="py-3 px-4 text-right font-medium text-gray-700 dark:text-gray-300">
-                  {{ row.leads_owned }}
+                  {{ row.records_owned }}
                 </td>
                 <td class="py-3 px-4 text-right font-medium text-gray-700 dark:text-gray-300">
                   {{ row.tasks_completed }}

@@ -1,37 +1,37 @@
 /**
- * Critical path E2E test: Lead lifecycle
+ * Critical path E2E test: Record lifecycle
  *
  * Covers:
- *   1. Navigate to Leads list
- *   2. Create a new lead
- *   3. Change lead status via inline badge editor
- *   4. Open lead detail and add a comment activity
- *   5. Create a task on the lead
+ *   1. Navigate to Records list
+ *   2. Create a new record
+ *   3. Change record status via inline badge editor
+ *   4. Open record detail and add a comment activity
+ *   5. Create a task on the record
  *   6. Complete the task
  */
 import { test, expect } from '@playwright/test'
 
-test.describe('Lead lifecycle', () => {
-  const leadTitle = `E2E Lead ${Date.now()}`
+test.describe('Record lifecycle', () => {
+  const recordTitle = `E2E Record ${Date.now()}`
 
-  test('create a lead', async ({ page }) => {
-    await page.goto('/app/leads')
-    await expect(page.getByRole('heading', { name: /leads/i })).toBeVisible()
+  test('create a record', async ({ page }) => {
+    await page.goto('/app/records')
+    await expect(page.getByRole('heading', { name: /records/i })).toBeVisible()
 
     // Open create modal.
-    await page.getByRole('button', { name: /new lead/i }).click()
-    await page.getByLabel(/title/i).fill(leadTitle)
+    await page.getByRole('button', { name: /new record/i }).click()
+    await page.getByLabel(/title/i).fill(recordTitle)
     await page.getByRole('button', { name: /create/i }).click()
 
-    // The new lead should appear in the list.
-    await expect(page.getByText(leadTitle)).toBeVisible({ timeout: 10_000 })
+    // The new record should appear in the list.
+    await expect(page.getByText(recordTitle)).toBeVisible({ timeout: 10_000 })
   })
 
-  test('change lead status', async ({ page }) => {
-    await page.goto('/app/leads')
+  test('change record status', async ({ page }) => {
+    await page.goto('/app/records')
 
     // Find our lead and click the status badge.
-    const row = page.locator('tr, [data-testid="lead-row"]').filter({ hasText: leadTitle }).first()
+    const row = page.locator('tr, [data-testid="record-row"]').filter({ hasText: recordTitle }).first()
     await expect(row).toBeVisible({ timeout: 10_000 })
 
     const statusBadge = row.locator('[data-testid="status-badge"], .status-badge').first()
@@ -44,12 +44,12 @@ test.describe('Lead lifecycle', () => {
     await expect(row.getByText(/contacted/i)).toBeVisible({ timeout: 5_000 })
   })
 
-  test('add a comment activity on lead detail', async ({ page }) => {
-    await page.goto('/app/leads')
+  test('add a comment activity on record detail', async ({ page }) => {
+    await page.goto('/app/records')
 
     // Navigate to lead detail.
-    await page.getByText(leadTitle).first().click()
-    await page.waitForURL(/\/app\/leads\//)
+    await page.getByText(recordTitle).first().click()
+    await page.waitForURL(/\/app\/records\//)
 
     // Switch to Activities tab if not already visible.
     const activitiesTab = page.getByRole('tab', { name: /activit/i })
@@ -67,10 +67,10 @@ test.describe('Lead lifecycle', () => {
     })
   })
 
-  test('create and complete a task on the lead', async ({ page }) => {
-    await page.goto('/app/leads')
-    await page.getByText(leadTitle).first().click()
-    await page.waitForURL(/\/app\/leads\//)
+  test('create and complete a task on the record', async ({ page }) => {
+    await page.goto('/app/records')
+    await page.getByText(recordTitle).first().click()
+    await page.waitForURL(/\/app\/records\//)
 
     // Switch to Tasks tab.
     const tasksTab = page.getByRole('tab', { name: /tasks/i })

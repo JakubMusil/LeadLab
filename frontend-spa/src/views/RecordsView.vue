@@ -576,7 +576,7 @@ watch(
   },
 )
 
-const leadsByStatus = computed(() => {
+const recordsByStatus = computed(() => {
   const map: Record<string, RecordOut[]> = {}
   for (const s of RECORD_STATUSES) map[s.value] = []
   for (const l of store.records) {
@@ -602,7 +602,7 @@ const newRecordButtonLabel = computed(() => {
   if (!currentCategory.value) return ''
   return `+ ${t('leads.newInCategory', { category: currentCategory.value.name })}`
 })
-const leadsByStage = computed(() => {
+const recordsByStage = computed(() => {
   const map: Record<string, RecordOut[]> = {}
   for (const s of currentCategoryStages.value) map[s.id] = []
   map['__none__'] = []
@@ -1439,7 +1439,7 @@ function closeContactDetail() {
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(record)"><PencilSquareIcon class="w-4 h-4" /></button>
                   <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
                 </div>
               </td>
@@ -1547,7 +1547,7 @@ function closeContactDetail() {
 
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>
-            <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+            <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(record)"><PencilSquareIcon class="w-4 h-4" /></button>
             <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
@@ -1591,7 +1591,7 @@ function closeContactDetail() {
             >
               {{ stage.name }}
               <span v-if="stage.is_terminal && stage.is_won" class="text-green-600">✓</span>
-              <span class="ml-auto bg-white/60 rounded px-1.5 py-0.5">{{ leadsByStage[stage.id]?.length ?? 0 }}</span>
+              <span class="ml-auto bg-white/60 rounded px-1.5 py-0.5">{{ recordsByStage[stage.id]?.length ?? 0 }}</span>
             </div>
             <!-- Cards -->
             <div
@@ -1599,7 +1599,7 @@ function closeContactDetail() {
               :class="dragOverStageId === stage.id ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-300 dark:ring-blue-600' : 'bg-gray-50 dark:bg-gray-700/30'"
             >
               <div
-                v-for="record in leadsByStage[stage.id]"
+                v-for="record in recordsByStage[stage.id]"
                 :key="record.id"
                 class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
                 draggable="true"
@@ -1624,7 +1624,7 @@ function closeContactDetail() {
                   </div>
                 </div>
               </div>
-              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs py-6" :class="draggingStageRecord ? 'text-blue-400 dark:text-blue-500' : 'text-gray-400 dark:text-gray-500'">{{ draggingStageRecord ? t('leads.dropHere') : t('leads.noRecordsInStage') }}</div>
+              <div v-if="(recordsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs py-6" :class="draggingStageRecord ? 'text-blue-400 dark:text-blue-500' : 'text-gray-400 dark:text-gray-500'">{{ draggingStageRecord ? t('leads.dropHere') : t('leads.noRecordsInStage') }}</div>
             </div>
           </div>
         </div>
@@ -1647,7 +1647,7 @@ function closeContactDetail() {
               :class="[s.color, dragOverStatus === s.value ? 'ring-2 ring-offset-1 ring-red-400' : '']"
             >
               {{ statusLabel(s.value) }}
-              <span class="ml-auto bg-white/60 dark:bg-black/30 rounded px-1.5 py-0.5">{{ leadsByStatus[s.value]?.length ?? 0 }}</span>
+              <span class="ml-auto bg-white/60 dark:bg-black/30 rounded px-1.5 py-0.5">{{ recordsByStatus[s.value]?.length ?? 0 }}</span>
             </div>
             <!-- Cards -->
             <div
@@ -1655,7 +1655,7 @@ function closeContactDetail() {
               :class="dragOverStatus === s.value ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'"
             >
               <div
-                v-for="record in leadsByStatus[s.value]"
+                v-for="record in recordsByStatus[s.value]"
                 :key="record.id"
                 class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
                 draggable="true"
@@ -1668,7 +1668,7 @@ function closeContactDetail() {
                     @click="goToDetail(record.id)"
                   >{{ record.title }}</button>
                   <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
+                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(record)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
@@ -1677,7 +1677,7 @@ function closeContactDetail() {
                   <span v-if="overdueTasks.has(record.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
                 </div>
               </div>
-              <div v-if="(leadsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
+              <div v-if="(recordsByStatus[s.value]?.length ?? 0) === 0" class="text-center text-xs text-gray-300 dark:text-gray-600 py-4">{{ t('leads.dropHere') }}</div>
             </div>
           </div>
         </div>

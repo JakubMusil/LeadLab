@@ -333,7 +333,7 @@ onMounted(async () => {
   await tasksStore.fetchTasks({})
   const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
   const [leadsRes, membersRes] = await Promise.all([
-    api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=100'),
+    api.get<LeadOption[]>('/api/v1/crm/records?page_size=100'),
     firmId
       ? api.get<{ id: string; user_id: string; user_full_name: string }[]>(`/api/v1/firms/${firmId}/members`)
       : Promise.resolve({ ok: false as const, data: [] }),
@@ -649,7 +649,7 @@ onMounted(async () => {
             />
           </div>
 
-          <!-- Lead -->
+          <!-- Record -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('calendar.leadField') }}</label>
             <select

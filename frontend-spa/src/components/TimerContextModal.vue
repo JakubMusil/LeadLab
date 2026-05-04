@@ -36,7 +36,7 @@ watch(searchQuery, async (q) => {
   try {
     let url = ''
     if (entityType.value === 'record') {
-      url = `/api/v1/crm/opportunities?search=${encodeURIComponent(q)}&page_size=10`
+      url = `/api/v1/crm/records?search=${encodeURIComponent(q)}&page_size=10`
     } else if (entityType.value === 'customer') {
       url = `/api/v1/crm/customers?search=${encodeURIComponent(q)}&page_size=10`
     } else if (entityType.value === 'task') {

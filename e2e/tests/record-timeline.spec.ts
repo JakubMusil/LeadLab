@@ -1,7 +1,7 @@
 /**
- * Critical path E2E test: Lead timeline UX
+ * Critical path E2E test: Record timeline UX
  *
- * Exercises the unified Streamline timeline on the Lead detail view via
+ * Exercises the unified Streamline timeline on the Record detail view via
  * stable `data-testid` selectors (added in the 10th iteration of
  * `streamline_goals.md`). Covers:
  *
@@ -10,29 +10,29 @@
  *   3. Toggle a reaction on a comment activity (add + remove)
  *   4. Persist the comment + reaction across a full page reload
  *
- * The lead is created once up-front via the JSON API (cheaper than going
- * through the New Lead modal) and reused across all four tests in serial
+ * The record is created once up-front via the JSON API (cheaper than going
+ * through the New Record modal) and reused across all four tests in serial
  * order.
  */
 import { test, expect, type APIResponse } from '@playwright/test'
 
-test.describe.serial('Lead timeline UX', () => {
-  let leadId = ''
-  const leadTitle = `E2E Timeline ${Date.now()}`
+test.describe.serial('Record timeline UX', () => {
+  let recordId = ''
+  const recordTitle = `E2E Timeline ${Date.now()}`
   const commentText = `Automated timeline test comment ${Date.now()}`
 
   test.beforeAll(async ({ request }) => {
-    const res: APIResponse = await request.post('/api/v1/crm/leads', {
-      data: { title: leadTitle },
+    const res: APIResponse = await request.post('/api/v1/crm/records', {
+      data: { title: recordTitle },
     })
-    expect(res.ok(), `Lead create failed: ${res.status()} ${await res.text()}`).toBeTruthy()
+    expect(res.ok(), `Record create failed: ${res.status()} ${await res.text()}`).toBeTruthy()
     const body = await res.json()
-    leadId = body.id as string
-    expect(leadId).toBeTruthy()
+    recordId = body.id as string
+    expect(recordId).toBeTruthy()
   })
 
   test('add a comment via the sidebar action picker', async ({ page }) => {
-    await page.goto(`/app/leads/${leadId}`)
+    await page.goto(`/app/records/${recordId}`)
 
     // Sidebar Quick Actions panel should be present on the Overview tab.
     await expect(page.getByTestId('entity-sidebar-action-picker')).toBeVisible()
@@ -62,7 +62,7 @@ test.describe.serial('Lead timeline UX', () => {
   })
 
   test('filter the feed by activity type', async ({ page }) => {
-    await page.goto(`/app/leads/${leadId}`)
+    await page.goto(`/app/records/${recordId}`)
 
     // Wait for the feed to render at least our seeded comment.
     await expect(
@@ -92,7 +92,7 @@ test.describe.serial('Lead timeline UX', () => {
   })
 
   test('toggle a reaction on the seeded comment', async ({ page }) => {
-    await page.goto(`/app/leads/${leadId}`)
+    await page.goto(`/app/records/${recordId}`)
 
     const commentItem = page
       .locator('[data-testid="activity-item"][data-activity-type="comment"]')
@@ -120,7 +120,7 @@ test.describe.serial('Lead timeline UX', () => {
   })
 
   test('comment persists across a full page reload', async ({ page }) => {
-    await page.goto(`/app/leads/${leadId}`)
+    await page.goto(`/app/records/${recordId}`)
     await expect(
       page
         .locator('[data-testid="activity-item"][data-activity-type="comment"]')
@@ -145,11 +145,11 @@ test.describe.serial('Lead timeline UX', () => {
     // type — and that an unrelated type would be hidden if present.
     const callNotes = `Automated multi-select call ${Date.now()}`
     const seed = await request.post('/api/v1/crm/activities', {
-      data: { lead_id: leadId, type: 'call', content_text: callNotes },
+      data: { record_id: recordId, type: 'call', content_text: callNotes },
     })
     expect(seed.ok(), `Call seed failed: ${seed.status()} ${await seed.text()}`).toBeTruthy()
 
-    await page.goto(`/app/leads/${leadId}`)
+    await page.goto(`/app/records/${recordId}`)
 
     // Both seeded activities must be in the feed before we touch the filter.
     await expect(

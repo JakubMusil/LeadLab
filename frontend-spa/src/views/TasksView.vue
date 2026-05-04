@@ -48,8 +48,8 @@ function memberLabel(m: Member) {
 interface RecordOption { id: string; title: string }
 const records = ref<RecordOption[]>([])
 
-async function loadLeads() {
-  const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
+async function loadRecords() {
+  const res = await api.get<LeadOption[]>('/api/v1/crm/records?page_size=200')
   if (res.ok) records.value = (res.data as RecordOption[])
 }
 
@@ -410,7 +410,7 @@ function toggleWatcher(watcherIds: string[], userId: string) {
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadLeads()])
+  await Promise.all([loadMembers(), loadRecords()])
   await loadTasks()
 })
 </script>
@@ -641,10 +641,10 @@ onMounted(async () => {
             >
               ⚠ {{ { low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'), high: t('tasks.priorityHigh'), critical: t('tasks.priorityCritical') }[task.priority] ?? task.priority }}
             </span>
-            <!-- Lead link -->
+            <!-- Record link -->
             <RouterLink
               v-if="task.record_id"
-              :to="`/app/opportunities/${task.record_id}`"
+              :to="`/app/records/${task.record_id}`"
               class="text-xs text-blue-500 hover:underline truncate max-w-[160px]"
             >
               {{ task.record_title || task.record_id }}
@@ -815,11 +815,11 @@ onMounted(async () => {
             {{ newTaskError }}
           </div>
 
-          <!-- Lead (optional) -->
+          <!-- Record (optional) -->
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
             <select
-              v-model="newTaskLeadId"
+              v-model="newTaskRecordId"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
             >
               <option value="">{{ t('tasks.selectLead') }}</option>

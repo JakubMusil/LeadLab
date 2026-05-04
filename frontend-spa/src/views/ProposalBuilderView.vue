@@ -21,13 +21,13 @@ const { t } = useI18n()
 const { firmCurrency, formatAmountPlain } = useMoney()
 
 // Route support:
-// 1) /app/opportunities/:id/proposals/:pid? — record-scoped (legacy)
+// 1) /app/records/:id/proposals/:pid? — record-scoped (legacy)
 // 2) /app/proposals/:id                     — standalone
 const recordId = computed(() => route.params.id as string | undefined)
 const proposalId = computed(() => {
   // standalone route: /app/proposals/:id
   if (route.path.startsWith('/app/proposals/')) return route.params.id as string
-  // legacy route: /app/opportunities/:id/proposals/:pid
+  // legacy route: /app/records/:id/proposals/:pid
   return route.params.pid as string | undefined
 })
 const isStandalone = computed(() => route.path.startsWith('/app/proposals/') || route.path === '/app/proposals')
@@ -193,7 +193,7 @@ async function loadProposals() {
     if (isStandalone.value) {
       // standalone: no proposal list sidebar in this view, nothing to load
     } else if (recordId.value) {
-      const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${recordId.value}/proposals`)
+      const res = await api.get<Proposal[]>(`/api/v1/crm/records/${recordId.value}/proposals`)
       if (res.ok) proposals.value = res.data
     }
   } finally {
@@ -244,7 +244,7 @@ async function createProposal() {
   saving.value = true
   let res
   if (recordId.value && !isStandalone.value) {
-    res = await api.post<Proposal>(`/api/v1/crm/opportunities/${recordId.value}/proposals`, {
+    res = await api.post<Proposal>(`/api/v1/crm/records/${recordId.value}/proposals`, {
       title: editTitle.value || t('builder.newProposal'),
       currency: editCurrency.value,
     })
@@ -263,7 +263,7 @@ async function createProposal() {
     if (isStandalone.value) {
       router.replace(`/app/proposals/${res.data.id}`)
     } else {
-      router.replace(`/app/opportunities/${recordId.value}/proposals/${res.data.id}`)
+      router.replace(`/app/records/${recordId.value}/proposals/${res.data.id}`)
     }
     toast.success(t('builder.proposalCreated'))
   } else {
@@ -303,7 +303,7 @@ async function doDeleteProposal(id: string) {
       if (isStandalone.value) {
         router.replace('/app/proposals')
       } else {
-        router.replace(`/app/opportunities/${recordId.value}/proposals`)
+        router.replace(`/app/records/${recordId.value}/proposals`)
       }
     }
     toast.success(t('builder.proposalDeleted'))
@@ -320,7 +320,7 @@ function selectProposal(p: Proposal) {
   if (isStandalone.value) {
     router.push(`/app/proposals/${p.id}`)
   } else {
-    router.push(`/app/opportunities/${recordId.value}/proposals/${p.id}`)
+    router.push(`/app/records/${recordId.value}/proposals/${p.id}`)
   }
 }
 
@@ -542,7 +542,7 @@ onMounted(async () => {
     const first = proposals.value[0]
     if (first) {
       await loadProposal(first.id)
-      router.replace(`/app/opportunities/${recordId.value}/proposals/${first.id}`)
+      router.replace(`/app/records/${recordId.value}/proposals/${first.id}`)
     }
   } else {
     // Pre-populate create form
@@ -573,7 +573,7 @@ watch(
     </RouterLink>
     <RouterLink
       v-else
-      :to="`/app/opportunities/${recordId}`"
+      :to="`/app/records/${recordId}`"
       class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4"
     >
       ← Back to Record
