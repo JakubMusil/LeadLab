@@ -603,7 +603,7 @@ def _build_task_automation_context(task, firm) -> dict:
     Returns:
         A dict with string values suitable for condition evaluation and template rendering.
         Keys: task_id, task_title, task_status, task_priority, record_id, record_title,
-              lead_id, lead_title (backward-compat aliases), firm_id, assignee_id,
+              firm_id, assignee_id,
               assignee_email, assignee_name, customer_name, customer_email, owner_email,
               due_date.
     """
@@ -659,9 +659,6 @@ def _build_task_automation_context(task, firm) -> dict:
         "task_priority": task.priority,
         "record_id": record_id,
         "record_title": record_title,
-        # Backward-compat aliases for automation rules created before the rename
-        "lead_id": record_id,
-        "lead_title": record_title,
         "firm_id": str(firm.pk),
         "assignee_id": assignee_id,
         "assignee_email": assignee_email,
@@ -1044,7 +1041,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                         "new_status": new_status,
                     },
                 )
-                # Fire workflow automation trigger: record_status_change (stored as lead_status_change)
+                # Fire workflow automation trigger: record_status_change
                 from crm.tasks import evaluate_automation_rules
                 _automation_ctx = {
                     **_build_record_automation_context(record, request.firm),
@@ -1053,7 +1050,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 }
                 transaction.on_commit(
                     lambda ctx=_automation_ctx: evaluate_automation_rules.delay(
-                        "lead_status_change", str(request.firm.pk), ctx
+                        "record_status_change", str(request.firm.pk), ctx
                     ),
                     robust=True,
                 )
@@ -1424,12 +1421,12 @@ def _feed_item_from_task(t: "Task", requesting_user=None) -> dict:
 )
 def get_record_feed(request, record_id: str, page: int = 1, page_size: int = 20):
     """
-    Unified chronological feed for a Lead — merges Activities and Tasks into
+    Unified chronological feed for a Record — merges Activities and Tasks into
     one list sorted by ``created_at`` descending.
 
     Activities are the standard Streamline records (comments, calls, emails,
     file uploads, etc.).  Tasks are surfaced as rich cards so the user can see
-    and interact with them inline without leaving the Lead detail.
+    and interact with them inline without leaving the Record detail.
 
     Pagination works over the merged set — ``page_size`` items total per page.
     """
@@ -4930,7 +4927,7 @@ def _attachment_out(doc: Document, request=None) -> dict:
     response={200: List[AttachmentOut], 403: ErrorOut, 404: ErrorOut},
 )
 def list_attachments(request, record_id: str, page: int = 1, page_size: int = 20):
-    """List all file attachments for a Lead, newest first (paginated)."""
+    """List all file attachments for a Record, newest first (paginated)."""
     try:
         require_membership(request)
     except Exception as exc:
@@ -5044,7 +5041,7 @@ def delete_attachment(request, record_id: str, attachment_id: str):
 # ``duration_seconds``.  This keeps technical metadata (filename, MIME,
 # size) entirely server-side and out of the user-facing form.
 #
-# The endpoint is entity-agnostic: it accepts an optional ``lead_id`` /
+# The endpoint is entity-agnostic: it accepts an optional ``record_id`` /
 # ``customer_id`` / ``proposal_id`` query parameter so the resulting
 # ``Document`` is correctly linked, but linking is best-effort and the
 # upload succeeds even without it.
@@ -5832,7 +5829,7 @@ class TrendsOut(Schema):
 )
 def trends(request):
     """
-    Leads created vs. closed (Won + Lost) per week for the last 12 weeks,
+    Records created vs. closed (Won + Lost) per week for the last 12 weeks,
     plus a rolling 30-day conversion rate.  Results are cached for 5 minutes.
     """
     try:

@@ -41,7 +41,7 @@ const authStore = useAuthStore()
 const { on, off } = useWebSocket()
 const { t } = useI18n()
 
-const leadId = computed(() => route.params.id as string)
+const recordId = computed(() => route.params.id as string)
 
 const currentCategory = computed(() =>
   store.currentRecord?.category_id
@@ -208,7 +208,7 @@ async function loadTeamMembers() {
 // Tasks
 interface Task {
   id: string
-  lead_id: string
+  record_id: string
   title: string
   description?: string
   due_date: string | null
@@ -344,7 +344,7 @@ function fmtBytes(b: number) {
 async function loadTasks() {
   tasksLoading.value = true
   try {
-    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100&lead_id=${encodeURIComponent(leadId.value)}`)
+    const res = await api.get<Task[]>(`/api/v1/crm/tasks?page_size=100&record_id=${encodeURIComponent(recordId.value)}`)
     if (res.ok) {
       tasks.value = res.data
     }
@@ -380,7 +380,7 @@ async function toggleExpand(taskId: string) {
 async function loadFiles() {
   filesLoading.value = true
   try {
-    const res = await api.get<FileItem[]>(`/api/v1/crm/records/${leadId.value}/attachments?page_size=50`)
+    const res = await api.get<FileItem[]>(`/api/v1/crm/records/${recordId.value}/attachments?page_size=50`)
     if (res.ok) files.value = res.data
   } finally {
     filesLoading.value = false
@@ -393,7 +393,7 @@ async function addTask() {
   // Collect @mentioned user IDs from the description editor
   const mentionedIds = taskEditorRef.value?.getMentionedIds() ?? []
   const payload: Record<string, unknown> = {
-    lead_id: leadId.value,
+    record_id: recordId.value,
     title: newTaskTitle.value.trim(),
     description: newTaskDescription.value,
     assigned_to_id: newTaskAssigneeId.value || null,
@@ -458,7 +458,7 @@ async function doUpload(file: File) {
 
   await new Promise<void>((resolve) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api/v1/crm/records/${leadId.value}/attachments`)
+    xhr.open('POST', `/api/v1/crm/records/${recordId.value}/attachments`)
     // Forward cookies / CSRF via credentials
     xhr.withCredentials = true
     xhr.upload.onprogress = (ev) => {
@@ -491,7 +491,7 @@ async function doUpload(file: File) {
 }
 
 async function doDeleteFile(id: string) {
-  const res = await api.delete(`/api/v1/crm/records/${leadId.value}/attachments/${id}`)
+  const res = await api.delete(`/api/v1/crm/records/${recordId.value}/attachments/${id}`)
   if (res.ok || res.status === 204) {
     files.value = files.value.filter((f) => f.id !== id)
     toast.success('File deleted.')
@@ -506,7 +506,7 @@ function deleteFile(id: string) {
 
 async function changeStatus(newStatus: string) {
   statusPopupOpen.value = false
-  const result = await store.patchStatus(leadId.value, newStatus)
+  const result = await store.patchStatus(recordId.value, newStatus)
   if (!result.ok) toast.error(result.error ?? 'Failed to update status.')
   else activityTimelineRef.value?.load()
 }
@@ -535,7 +535,7 @@ function openEdit() {
 async function submitEdit() {
   if (!editTitle.value.trim()) { editError.value = t('recordDetail.editTitleRequired'); return }
   editLoading.value = true
-  const result = await store.updateRecord(leadId.value, {
+  const result = await store.updateRecord(recordId.value, {
     title: editTitle.value.trim(),
     status: editStatus.value,
     source: editSource.value,
@@ -554,7 +554,7 @@ async function submitEdit() {
 }
 
 async function deleteRecord() {
-  const result = await store.deleteRecord(leadId.value)
+  const result = await store.deleteRecord(recordId.value)
   if (result.ok) {
     toast.success(t('recordDetail.deleted'))
     router.push('/app/records')
@@ -580,7 +580,7 @@ const stageProgress = computed(() => {
 })
 
 async function changeStage(stageId: string) {
-  const result = await store.updateRecord(leadId.value, { current_stage_id: stageId })
+  const result = await store.updateRecord(recordId.value, { current_stage_id: stageId })
   if (result.ok) {
     toast.success(t('pipeline.stageUpdated'))
   } else {
@@ -622,7 +622,7 @@ async function addCheckpoint() {
   if (!newCheckpointName.value.trim()) return
   addingCheckpoint.value = true
   try {
-    const res = await api.post<CheckpointItem>(`/api/v1/crm/records/${leadId.value}/checkpoints`, {
+    const res = await api.post<CheckpointItem>(`/api/v1/crm/records/${recordId.value}/checkpoints`, {
       name: newCheckpointName.value.trim(),
       date: newCheckpointDate.value || null,
     })
@@ -639,7 +639,7 @@ async function addCheckpoint() {
 }
 
 async function toggleCheckpoint(cp: CheckpointItem) {
-  const res = await api.patch<CheckpointItem>(`/api/v1/crm/records/${leadId.value}/checkpoints/${cp.id}`, {
+  const res = await api.patch<CheckpointItem>(`/api/v1/crm/records/${recordId.value}/checkpoints/${cp.id}`, {
     is_completed: !cp.is_completed,
   })
   if (res.ok) {
@@ -649,14 +649,14 @@ async function toggleCheckpoint(cp: CheckpointItem) {
 }
 
 async function deleteCheckpoint(cpId: string) {
-  const res = await api.delete(`/api/v1/crm/records/${leadId.value}/checkpoints/${cpId}`)
+  const res = await api.delete(`/api/v1/crm/records/${recordId.value}/checkpoints/${cpId}`)
   if (res.ok || res.status === 204) {
     checkpoints.value = checkpoints.value.filter((c) => c.id !== cpId)
   }
 }
 
 onMounted(async () => {
-  await store.fetchRecord(leadId.value)
+  await store.fetchRecord(recordId.value)
   loadTeamMembers()
   loadShortcuts()
   loadTools()
@@ -804,7 +804,7 @@ async function saveFieldEdit(fieldKey: string) {
       savingField.value = false
       return
   }
-  const result = await store.updateRecord(leadId.value, payload)
+  const result = await store.updateRecord(recordId.value, payload)
   savingField.value = false
   if (result.ok) {
     editingFieldKey.value = null
@@ -982,7 +982,7 @@ async function saveFieldEdit(fieldKey: string) {
             ref="activityTimelineRef"
             :hide-composer="true"
             entity-type="record"
-            :entity-id="leadId"
+            :entity-id="recordId"
             :hide-filter-dropdown="true"
             :override-visible-types="currentVisibleTypes"
           />
@@ -1258,7 +1258,7 @@ async function saveFieldEdit(fieldKey: string) {
           <EntitySidebarActionPicker
             ref="sidebarPickerRef"
             entity-type="record"
-            :entity-id="leadId"
+            :entity-id="recordId"
             @tool-selected="openModalTool"
           />
 
@@ -1274,9 +1274,9 @@ async function saveFieldEdit(fieldKey: string) {
     :model-value="!!activeModalTool"
     :action-type="activeModalTool"
     entity-type="record"
-    :entity-id="leadId"
+    :entity-id="recordId"
     :team-members="teamMembers"
-    :attachment-upload-url="`/api/v1/crm/records/${leadId}/attachments`"
+    :attachment-upload-url="`/api/v1/crm/records/${recordId}/attachments`"
     @update:model-value="(v) => { if (!v) closeModalTool() }"
     @activity-added="activityTimelineRef?.load()"
     @file-uploaded="(f) => { files.unshift(f as any) }"

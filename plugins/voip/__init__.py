@@ -1,8 +1,8 @@
 """
 First-party plugin: VoIP / Click-to-Call (v2.4)
 
-Integrates with Twilio to place calls directly from a lead detail page.
-Call duration and recording URL are logged as a ``CALL`` activity on the lead.
+Integrates with Twilio to place calls directly from a record detail page.
+Call duration and recording URL are logged as a ``CALL`` activity on the record.
 
 Configuration (stored in PluginConfig.config):
   twilio_account_sid  : str  — Twilio Account SID (secret)
@@ -23,7 +23,7 @@ class VoIPPlugin(LeadLabPlugin):
         "name": "voip-click-to-call",
         "version": "1.0.0",
         "description": (
-            "Integrates with Twilio to place calls directly from a lead detail "
+            "Integrates with Twilio to place calls directly from a record detail "
             "page. Call duration and recording URL are logged as a CALL activity."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/voip/icon.png",

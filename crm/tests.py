@@ -51,22 +51,22 @@ class CustomerModelTest(CRMFixtureMixin, TestCase):
 
 
 class LeadModelTest(CRMFixtureMixin, TestCase):
-    def test_lead_str(self):
+    def test_record_str(self):
         self.assertIn("Demo Deal", str(self.record))
 
-    def test_lead_default_status(self):
-        lead = PipelineRecord.objects.create(firm=self.firm, title="Quick PipelineRecord")
-        self.assertEqual(lead.status, RecordStatus.NEW)
+    def test_record_default_status(self):
+        record = PipelineRecord.objects.create(firm=self.firm, title="Quick PipelineRecord")
+        self.assertEqual(record.status, RecordStatus.NEW)
 
-    def test_lead_nullable_customer(self):
-        lead = PipelineRecord.objects.create(firm=self.firm, title="Quick Entry")
-        self.assertIsNone(lead.customer)
+    def test_record_nullable_customer(self):
+        record = PipelineRecord.objects.create(firm=self.firm, title="Quick Entry")
+        self.assertIsNone(record.customer)
 
-    def test_lead_choices(self):
+    def test_record_choices(self):
         valid_statuses = [s.value for s in RecordStatus]
         self.assertIn(self.record.status, valid_statuses)
 
-    def test_lead_firm_isolation(self):
+    def test_record_firm_isolation(self):
         other_firm = Firm.objects.create(name="Isolate Firm")
         PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         self.assertEqual(PipelineRecord.objects.filter(firm=self.firm).count(), 1)
@@ -115,10 +115,10 @@ class ActivityModelTest(CRMFixtureMixin, TestCase):
         )
         self.assertIn("Comment", str(activity))
 
-    def test_activity_lead_isolation(self):
+    def test_activity_record_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm 2")
-        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
-        Activity.objects.create(record=other_lead, type=ActivityType.COMMENT, content_text="x")
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
+        Activity.objects.create(record=other_record, type=ActivityType.COMMENT, content_text="x")
         self.assertEqual(Activity.objects.filter(record=self.record).count(), 0)
 
 
@@ -630,7 +630,7 @@ import json
 
 
 class CRMAPIFixtureMixin:
-    """Sets up two users, a firm with owner + worker, a customer and a lead."""
+    """Sets up two users, a firm with owner + worker, a customer and a record."""
 
     def setUp(self):
         self.owner = User.objects.create_user(email="owner@crm-api.com", password="pass")
@@ -822,12 +822,12 @@ class CustomerDeleteAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 403)
 
 
-# -- Leads -------------------------------------------------------------------
+# -- Records -----------------------------------------------------------------
 
 class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
     URL = "/api/v1/crm/opportunities"
 
-    def test_list_leads_returns_firm_leads(self):
+    def test_list_records_returns_firm_records(self):
         resp = self._get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.json()), 1)
@@ -884,12 +884,12 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
 class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
     URL = "/api/v1/crm/opportunities"
 
-    def test_create_lead_returns_201(self):
+    def test_create_record_returns_201(self):
         resp = self._post(self.URL, {"title": "New PipelineRecord"})
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.json()["title"], "New PipelineRecord")
 
-    def test_create_lead_with_customer(self):
+    def test_create_record_with_customer(self):
         resp = self._post(self.URL, {
             "title": "PipelineRecord With Customer",
             "customer_id": str(self.customer.id),
@@ -897,24 +897,24 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.json()["customer_id"], str(self.customer.id))
 
-    def test_create_lead_invalid_customer_returns_400(self):
+    def test_create_record_invalid_customer_returns_400(self):
         import uuid
         resp = self._post(self.URL, {"title": "Bad", "customer_id": str(uuid.uuid4())})
         self.assertEqual(resp.status_code, 400)
 
-    def test_create_lead_worker_allowed(self):
+    def test_create_record_worker_allowed(self):
         self.client.login(username="worker@crm-api.com", password="pass")
         resp = self._post(self.URL, {"title": "Worker PipelineRecord"})
         self.assertEqual(resp.status_code, 201)
 
 
 class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
-    def test_get_lead(self):
+    def test_get_record(self):
         resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["title"], "Test PipelineRecord")
 
-    def test_get_nonexistent_lead_returns_404(self):
+    def test_get_nonexistent_record_returns_404(self):
         import uuid
         resp = self._get(f"/api/v1/crm/opportunities/{uuid.uuid4()}")
         self.assertEqual(resp.status_code, 404)
@@ -938,19 +938,19 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
             ).exists()
         )
 
-    def test_patch_nonexistent_lead_returns_404(self):
+    def test_patch_nonexistent_record_returns_404(self):
         import uuid
         resp = self._patch(f"/api/v1/crm/opportunities/{uuid.uuid4()}", {"title": "X"})
         self.assertEqual(resp.status_code, 404)
 
 
 class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
-    def test_delete_lead_admin_succeeds(self):
+    def test_delete_record_admin_succeeds(self):
         resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(PipelineRecord.objects.filter(id=self.record.id).exists())
 
-    def test_delete_lead_worker_returns_403(self):
+    def test_delete_record_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
         resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 403)
@@ -983,7 +983,7 @@ class ActivityListAPITest(CRMAPIFixtureMixin, TestCase):
         )
         self.assertEqual(len(resp.json()), 3)
 
-    def test_list_activities_nonexistent_lead_returns_404(self):
+    def test_list_activities_nonexistent_record_returns_404(self):
         import uuid
         resp = self._get(f"/api/v1/crm/opportunities/{uuid.uuid4()}/activities")
         self.assertEqual(resp.status_code, 404)
@@ -1001,7 +1001,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.json()["type"], "comment")
 
-    def test_create_activity_invalid_lead_returns_400(self):
+    def test_create_activity_invalid_record_returns_400(self):
         import uuid
         resp = self._post(self.URL, {
             "record_id": str(uuid.uuid4()),
@@ -1017,7 +1017,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
         })
         self.assertEqual(resp.status_code, 400)
 
-    def test_status_change_activity_updates_lead(self):
+    def test_status_change_activity_updates_record(self):
         resp = self._post(self.URL, {
             "record_id": str(self.record.id),
             "type": "status_change",
@@ -1124,7 +1124,7 @@ class TaskCreateAPITest(CRMAPIFixtureMixin, TestCase):
             ).exists()
         )
 
-    def test_create_task_invalid_lead_returns_400(self):
+    def test_create_task_invalid_record_returns_400(self):
         import uuid
         resp = self._post(self.URL, {"record_id": str(uuid.uuid4()), "title": "Orphan"})
         self.assertEqual(resp.status_code, 400)
@@ -1167,27 +1167,27 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Tier limit enforcement for lead creation
+# Tier limit enforcement for record creation
 # ---------------------------------------------------------------------------
 
 
-class TierLimitLeadCreateAPITest(TestCase):
-    """create_lead enforces the Free-tier 50-lead limit."""
+class TierLimitRecordCreateAPITest(TestCase):
+    """create_record enforces the Free-tier 50-record limit."""
 
     URL = "/api/v1/crm/opportunities"
 
     def setUp(self):
-        self.owner = User.objects.create_user(email="owner@lead_tier.com", password="pass")
+        self.owner = User.objects.create_user(email="owner@record_tier.com", password="pass")
         # Free-tier firm with only 1 member to avoid hitting the member limit.
         self.firm = Firm.objects.create(name="Free PipelineRecord Firm", subscription_tier="free")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        self.client.login(username="owner@lead_tier.com", password="pass")
+        self.client.login(username="owner@record_tier.com", password="pass")
 
     def _firm_headers(self):
         return {"HTTP_X_FIRM_ID": str(self.firm.id)}
 
-    def test_create_lead_blocked_when_50_leads_exist(self):
-        # Pre-fill 50 leads directly in the DB.
+    def test_create_record_blocked_when_50_records_exist(self):
+        # Pre-fill 50 records directly in the DB.
         PipelineRecord.objects.bulk_create([
             PipelineRecord(firm=self.firm, title=f"PipelineRecord {i}") for i in range(50)
         ])
@@ -1200,7 +1200,7 @@ class TierLimitLeadCreateAPITest(TestCase):
         self.assertEqual(resp.status_code, 402)
         self.assertIn("50 records", resp.json()["detail"])
 
-    def test_create_lead_allowed_at_49_leads(self):
+    def test_create_record_allowed_at_49_records(self):
         PipelineRecord.objects.bulk_create([
             PipelineRecord(firm=self.firm, title=f"PipelineRecord {i}") for i in range(49)
         ])
@@ -1231,10 +1231,10 @@ class AttachmentAPIFixtureMixin(CRMAPIFixtureMixin):
     def _make_file(self, name="test.txt", content=b"hello world", content_type="text/plain"):
         return SimpleUploadedFile(name, content, content_type=content_type)
 
-    def _upload(self, lead_id, name="test.txt", content=b"hello world"):
+    def _upload(self, record_id, name="test.txt", content=b"hello world"):
         f = self._make_file(name=name, content=content)
         return self.client.post(
-            f"/api/v1/crm/records/{lead_id}/attachments",
+            f"/api/v1/crm/records/{record_id}/attachments",
             data={"file": f},
             **self.firm_headers(),
         )
@@ -1246,17 +1246,17 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), [])
 
-    def test_list_attachments_nonexistent_lead_returns_404(self):
+    def test_list_attachments_nonexistent_record_returns_404(self):
         resp = self._get(f"/api/v1/crm/records/{uuid_module.uuid4()}/attachments")
         self.assertEqual(resp.status_code, 404)
 
     def test_list_attachments_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Attach")
-        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
-        # Upload directly to DB for other firm's lead — should not appear in our list.
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
+        # Upload directly to DB for other firm's record — should not appear in our list.
         Document.objects.create(
             firm=other_firm,
-            record=other_lead,
+            record=other_record,
             name="secret.pdf",
             content_type="application/pdf",
             size_bytes=100,
@@ -1292,7 +1292,7 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data["original_filename"], "test.txt")
-        self.assertEqual(data["lead_id"], str(self.record.id))
+        self.assertEqual(data["record_id"], str(self.record.id))
         self.assertIn("url", data)
 
     def test_upload_creates_db_record(self):
@@ -1317,7 +1317,7 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
         resp = self._upload(self.record.id)
         self.assertEqual(resp.status_code, 201)
 
-    def test_upload_nonexistent_lead_returns_404(self):
+    def test_upload_nonexistent_record_returns_404(self):
         resp = self._upload(uuid_module.uuid4())
         self.assertEqual(resp.status_code, 404)
 
@@ -1365,14 +1365,14 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
         )
         self.assertEqual(resp.status_code, 404)
 
-    def test_delete_attachment_wrong_lead_returns_404(self):
-        other_lead = PipelineRecord.objects.create(firm=self.firm, title="Other PipelineRecord")
+    def test_delete_attachment_wrong_record_returns_404(self):
+        other_record = PipelineRecord.objects.create(firm=self.firm, title="Other PipelineRecord")
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{other_lead.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/opportunities/{other_record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 404)
 
-    def test_delete_attachment_nonexistent_lead_returns_404(self):
+    def test_delete_attachment_nonexistent_record_returns_404(self):
         resp = self._delete(
             f"/api/v1/crm/opportunities/{uuid_module.uuid4()}/attachments/{self.attachment.id}"
         )
@@ -1533,9 +1533,9 @@ class FileUploadToolSchemaTest(TestCase):
         from crm.streamline.tools import FileUploadTool
 
         firm = Firm.objects.create(name="FUT firm")
-        lead = PipelineRecord.objects.create(firm=firm, title="FUT lead")
+        record = PipelineRecord.objects.create(firm=firm, title="FUT record")
         activity = Activity.objects.create(
-            record=lead,
+            record=record,
             type=ActivityType.FILE_UPLOAD,
             metadata={
                 "title": "Q4 brief",
@@ -1559,7 +1559,7 @@ class FileUploadRemoteFetchTaskTest(TestCase):
 
     def setUp(self):
         self.firm = Firm.objects.create(name="Fetch firm")
-        self.record = PipelineRecord.objects.create(firm=self.firm, title="Fetch lead")
+        self.record = PipelineRecord.objects.create(firm=self.firm, title="Fetch record")
 
     def _make_activity(self, **metadata):
         return Activity.objects.create(
@@ -1659,8 +1659,8 @@ class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
 
     def test_list_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Task Doc")
-        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
-        other_task = Task.objects.create(firm=other_firm, record=other_lead, title="Other")
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
+        other_task = Task.objects.create(firm=other_firm, record=other_record, title="Other")
         Document.objects.create(
             firm=other_firm, task=other_task, name="hidden.pdf",
             content_type="application/pdf", size_bytes=10,
@@ -1670,13 +1670,13 @@ class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 404)
 
     def test_list_returns_only_task_documents(self):
-        # One doc on our task, one on the lead — only the task one must appear.
+        # One doc on our task, one on the record — only the task one must appear.
         Document.objects.create(
             firm=self.firm, task=self.task, name="mine.txt",
             content_type="text/plain", size_bytes=4,
         )
         Document.objects.create(
-            firm=self.firm, record=self.record, name="leadonly.txt",
+            firm=self.firm, record=self.record, name="recordonly.txt",
             content_type="text/plain", size_bytes=8,
         )
         resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
@@ -1769,8 +1769,8 @@ class PipelineSummaryAPITest(CRMAPIFixtureMixin, TestCase):
         expected = {s.value for s in RecordStatus}
         self.assertEqual(returned_statuses, expected)
 
-    def test_counts_reflect_leads(self):
-        # setUp creates one NEW lead; add a WON lead with a value
+    def test_counts_reflect_records(self):
+        # setUp creates one NEW record; add a WON record with a value
         PipelineRecord.objects.create(firm=self.firm, title="Won Deal", status=RecordStatus.WON, value="5000.00")
         resp = self._get(self.URL)
         data = resp.json()
@@ -1792,7 +1792,7 @@ class PipelineSummaryAPITest(CRMAPIFixtureMixin, TestCase):
         resp = self._get(self.URL)
         data = resp.json()
         rows_by_status = {row["status"]: row for row in data["statuses"]}
-        # Our firm only has one NEW lead from setUp
+        # Our firm only has one NEW record from setUp
         self.assertEqual(rows_by_status["won"]["count"], 0)
 
     def test_requires_authentication(self):
@@ -1810,27 +1810,27 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
 
     def setUp(self):
         super().setUp()
-        # Create a second lead so we can verify cross-lead aggregation
-        self.lead2 = PipelineRecord.objects.create(firm=self.firm, title="Second PipelineRecord")
+        # Create a second record so we can verify cross-record aggregation
+        self.record2 = PipelineRecord.objects.create(firm=self.firm, title="Second PipelineRecord")
         self.a1 = Activity.objects.create(
             record=self.record, user=self.owner, type=ActivityType.COMMENT, content_text="First"
         )
         self.a2 = Activity.objects.create(
-            record=self.lead2, user=self.worker, type=ActivityType.CALL, content_text="Call"
+            record=self.record2, user=self.worker, type=ActivityType.CALL, content_text="Call"
         )
 
     def test_returns_200(self):
         resp = self._get(self.URL)
         self.assertEqual(resp.status_code, 200)
 
-    def test_returns_activities_across_all_leads(self):
+    def test_returns_activities_across_all_records(self):
         resp = self._get(self.URL)
         data = resp.json()
         self.assertEqual(len(data), 2)
 
-    def test_includes_lead_title(self):
+    def test_includes_record_title(self):
         resp = self._get(self.URL)
-        titles = {item["lead_title"] for item in resp.json()}
+        titles = {item["record_title"] for item in resp.json()}
         self.assertIn("Test PipelineRecord", titles)
         self.assertIn("Second PipelineRecord", titles)
 
@@ -1858,11 +1858,11 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Feed Other Firm")
-        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Spy PipelineRecord")
-        Activity.objects.create(record=other_lead, type=ActivityType.COMMENT, content_text="spy")
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Spy PipelineRecord")
+        Activity.objects.create(record=other_record, type=ActivityType.COMMENT, content_text="spy")
         resp = self._get(self.URL)
         record_ids = {item["record_id"] for item in resp.json()}
-        self.assertNotIn(str(other_lead.id), record_ids)
+        self.assertNotIn(str(other_record.id), record_ids)
 
     def test_requires_authentication(self):
         self.client.logout()
@@ -1906,9 +1906,9 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["id"], str(self.overdue_task.id))
 
-    def test_includes_lead_title(self):
+    def test_includes_record_title(self):
         resp = self._get(self.URL)
-        self.assertEqual(resp.json()[0]["lead_title"], "Test PipelineRecord")
+        self.assertEqual(resp.json()[0]["record_title"], "Test PipelineRecord")
 
     def test_no_due_date_tasks_excluded(self):
         Task.objects.create(firm=self.firm, record=self.record, title="No Due Date")
@@ -1932,10 +1932,10 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Overdue Other Firm")
-        other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         Task.objects.create(
             firm=other_firm,
-            record=other_lead,
+            record=other_record,
             title="Other Overdue",
             due_date=timezone.now() - dt.timedelta(days=1),
         )
@@ -2028,8 +2028,8 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         self.client.force_login(self.owner)
         self.client.defaults["HTTP_X_FIRM_ID"] = str(self.firm.id)
 
-    def test_export_leads_csv(self):
-        resp = self.client.get("/api/v1/integrations/export/leads.csv")
+    def test_export_records_csv(self):
+        resp = self.client.get("/api/v1/integrations/export/records.csv")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp["Content-Type"], "text/csv")
         content = b"".join(resp.streaming_content).decode()
@@ -2185,7 +2185,7 @@ class RevenueAPITest(CRMFixtureMixin, TestCase):
             "amount": "5000.00",
             "currency": "CZK",
             "date": "2025-02-01",
-            "lead_id": str(self.record.id),
+            "record_id": str(self.record.id),
         }
         resp = self.client.post(
             "/api/v1/erp/revenues",
@@ -2392,7 +2392,7 @@ class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
         auto_expire_scheduled_tasks()
         task.refresh_from_db()
         self.assertEqual(task.status, TaskStatus.EXPIRED)
-        # An Activity of type TASK_EXPIRED is logged on the same lead.
+        # An Activity of type TASK_EXPIRED is logged on the same record.
         self.assertTrue(
             Activity.objects.filter(
                 record=self.record, task=task, type=ActivityType.TASK_EXPIRED

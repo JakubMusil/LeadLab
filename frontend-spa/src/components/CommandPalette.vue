@@ -39,7 +39,7 @@ interface DocumentOut {
   id: string
   name: string
   content_type: string
-  lead_title?: string
+  record_title?: string
   customer_name?: string
   realization_title?: string
 }
@@ -48,7 +48,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
 const { t } = useI18n()
-const leadsStore = useRecordsStore()
+const recordsStore = useRecordsStore()
 const customersStore = useCustomersStore()
 
 const searchQuery = ref('')
@@ -67,8 +67,8 @@ const navCommands = computed<CommandItem[]>(() => [
   { id: 'nav-documents', label: t('nav.documents'), icon: FolderOpenIcon, category: 'navigation', action: () => router.push('/app/documents') },
 ])
 
-const leadItems = computed<CommandItem[]>(() =>
-  leadsStore.records.slice(0, 50).map((l) => ({
+const recordItems = computed<CommandItem[]>(() =>
+  recordsStore.records.slice(0, 50).map((l) => ({
     id: `record-${l.id}`,
     label: l.title,
     description: `Record · ${l.status}`,
@@ -93,7 +93,7 @@ const documentItems = computed<CommandItem[]>(() =>
   documents.value.slice(0, 30).map((doc) => ({
     id: `doc-${doc.id}`,
     label: doc.name,
-    description: `Document · ${doc.lead_title ?? doc.customer_name ?? doc.realization_title ?? t('commandPalette.unlinked')}`,
+    description: `Document · ${doc.record_title ?? doc.customer_name ?? doc.realization_title ?? t('commandPalette.unlinked')}`,
     icon: DocumentIcon,
     category: 'document' as const,
     action: () => router.push('/app/documents'),
@@ -116,7 +116,7 @@ function getRecent(): CommandItem[] {
     const raw = localStorage.getItem(RECENT_KEY)
     if (!raw) return []
     const ids: string[] = JSON.parse(raw)
-    const all = [...navCommands.value, ...leadItems.value, ...customerItems.value, ...documentItems.value]
+    const all = [...navCommands.value, ...recordItems.value, ...customerItems.value, ...documentItems.value]
     return ids
       .map((id) => all.find((i) => i.id === id))
       .filter((i): i is CommandItem => !!i)
@@ -155,7 +155,7 @@ const filteredItems = computed<CommandItem[]>(() => {
     if (recent.length) return recent
     return navCommands.value.slice(0, 7)
   }
-  const all = [...navCommands.value, ...leadItems.value, ...customerItems.value, ...documentItems.value]
+  const all = [...navCommands.value, ...recordItems.value, ...customerItems.value, ...documentItems.value]
   return all.filter((item) => fuzzyMatch(q, item.label) || fuzzyMatch(q, item.description ?? '')).slice(0, 12)
 })
 

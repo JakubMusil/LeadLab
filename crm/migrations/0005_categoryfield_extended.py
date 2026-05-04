@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     """
 
     dependencies = [
-        ("crm", "0004_drop_legacy_milestone"),
+        ("crm", "0002_initial"),
     ]
 
     operations = [

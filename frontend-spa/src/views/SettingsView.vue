@@ -8,14 +8,14 @@ import { api } from '@/api'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { setLocale, useI18n } from '@/composables/useI18n'
-import { useLeadScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
+import { useRecordScoringStore, SCORING_FIELDS } from '@/stores/leadScoring'
 import { CheckIcon, TrashIcon, StarIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import { useMoney, SUPPORTED_CURRENCIES, CURRENCY_DEFAULT_LOCALE } from '@/composables/useMoney'
 import CurrencySelect from '@/components/CurrencySelect.vue'
 import PipelineSettingsView from '@/views/PipelineSettingsView.vue'
 
-const leadScoringStore = useLeadScoringStore()
+const recordScoringStore = useRecordScoringStore()
 
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
@@ -441,7 +441,7 @@ async function toggleDigest() {
   }
 }
 
-// ---- Lead Scoring ----
+// ---- Record Scoring ----
 const newRuleField = ref('status')
 const newRuleOperand = ref('')
 const newRuleScoreDelta = ref(10)
@@ -462,7 +462,7 @@ async function addScoringRule() {
     if (isNaN(n)) { ruleError.value = t('settings.operandMustBeNumber'); ruleLoading.value = false; return }
     operand = n
   }
-  const result = await leadScoringStore.createRule({
+  const result = await recordScoringStore.createRule({
     field: newRuleField.value,
     operand,
     score_delta: newRuleScoreDelta.value,
@@ -478,7 +478,7 @@ async function addScoringRule() {
 }
 
 async function removeScoringRule(id: string) {
-  await leadScoringStore.deleteRule(id)
+  await recordScoringStore.deleteRule(id)
   toast.success(t('settings.ruleDeleted'))
 }
 
@@ -496,7 +496,7 @@ onMounted(() => {
       loadTokens()
       loadWebhooks()
       loadDigestPreference()
-      leadScoringStore.fetchRules()
+      recordScoringStore.fetchRules()
       loadCustomFields()
       if (firmStore.isPro) loadExchangeRates()
     }
@@ -1546,13 +1546,13 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">{{ t('settings.leadScoringDesc2') }}</p>
 
       <!-- Existing rules -->
-      <div v-if="leadScoringStore.loading" class="animate-pulse space-y-2 mb-4">
+      <div v-if="recordScoringStore.loading" class="animate-pulse space-y-2 mb-4">
         <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
       </div>
-      <div v-else-if="leadScoringStore.rules.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">{{ t('settings.noRulesYet') }}</div>
+      <div v-else-if="recordScoringStore.rules.length === 0" class="text-sm text-gray-400 dark:text-gray-500 mb-4">{{ t('settings.noRulesYet') }}</div>
       <ul v-else class="space-y-2 mb-5">
         <li
-          v-for="rule in leadScoringStore.rules"
+          v-for="rule in recordScoringStore.rules"
           :key="rule.id"
           class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
         >

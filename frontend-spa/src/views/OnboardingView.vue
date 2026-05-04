@@ -23,7 +23,7 @@ const inviteLoading = ref(false)
 const inviteError = ref('')
 const inviteSent = ref(false)
 
-// Step 3 — Import leads
+// Step 3 — Import records
 const importFile = ref<File | null>(null)
 const importLoading = ref(false)
 const importDone = ref(false)
@@ -34,7 +34,7 @@ const importDone = ref(false)
 const steps = [
   { label: 'Create workspace' },
   { label: 'Invite team' },
-  { label: 'Import leads' },
+  { label: 'Import records' },
   { label: 'Configure pipeline' },
   { label: 'Complete' },
 ]
@@ -42,7 +42,7 @@ const steps = [
 const completedSteps = computed(() => ({
   workspace: workspaceCreated.value,
   team: inviteSent.value,
-  leads: importDone.value,
+  records: importDone.value,
   pipeline: currentStep.value >= 5,
 }))
 
@@ -159,7 +159,7 @@ function finish() {
         <!-- Step 1: Create workspace -->
         <div v-if="currentStep === 1">
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Create your workspace</h1>
-          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Your workspace is where you and your team manage leads and customers.</p>
+          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Your workspace is where you and your team manage records and customers.</p>
           <div v-if="workspaceError" class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ workspaceError }}</div>
           <form @submit.prevent="handleCreateWorkspace" class="space-y-4">
             <div>
@@ -209,9 +209,9 @@ function finish() {
           </div>
         </div>
 
-        <!-- Step 3: Import leads -->
+        <!-- Step 3: Import records -->
         <div v-else-if="currentStep === 3">
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Import leads</h1>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Import records</h1>
           <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Upload a CSV file to import existing leads. You can skip this step.</p>
           <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center mb-6">
             <div class="text-3xl mb-3" aria-hidden="true">📂</div>
@@ -265,8 +265,8 @@ function finish() {
               <span :class="completedSteps.team ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Team invited</span>
             </li>
             <li class="flex items-center gap-3 text-sm">
-              <span :class="completedSteps.leads ? 'text-green-600' : 'text-gray-400'" aria-hidden="true"><component :is="completedSteps.leads ? CheckIcon : MinusCircleIcon" class="w-3.5 h-3.5" /></span>
-              <span :class="completedSteps.leads ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Leads imported</span>
+              <span :class="completedSteps.records ? 'text-green-600' : 'text-gray-400'" aria-hidden="true"><component :is="completedSteps.records ? CheckIcon : MinusCircleIcon" class="w-3.5 h-3.5" /></span>
+              <span :class="completedSteps.records ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'">Records imported</span>
             </li>
             <li class="flex items-center gap-3 text-sm">
               <CheckIcon class="w-3.5 h-3.5 text-green-600" aria-hidden="true" />

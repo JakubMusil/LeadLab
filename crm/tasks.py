@@ -744,8 +744,6 @@ def dispatch_sequence_emails(self):
             body = step.body_template.replace(
                 "{{record_title}}", record.title
             ).replace(
-                "{{lead_title}}", record.title  # backward-compat alias
-            ).replace(
                 "{{customer_name}}", customer_name or record.title
             )
 
@@ -931,7 +929,7 @@ def check_task_overdue_automations(self):
 @shared_task(bind=True, max_retries=0)
 def check_record_inactivity_automations(self):
     """
-    Periodic task: fire ``record_inactive`` (``lead_inactive``) automations.
+    Periodic task: fire ``record_inactive`` automations.
 
     Runs once per day.  For each firm that has active RECORD_INACTIVE rules,
     finds records with no Activity records in the last ``inactive_days`` days
@@ -949,14 +947,14 @@ def check_record_inactivity_automations(self):
 
     firm_ids = (
         AutomationRule.objects
-        .filter(trigger="lead_inactive", is_active=True)
+        .filter(trigger="record_inactive", is_active=True)
         .values_list("firm_id", flat=True)
         .distinct()
     )
 
     for firm_id in firm_ids:
         rules = AutomationRule.objects.filter(
-            firm_id=firm_id, trigger="lead_inactive", is_active=True
+            firm_id=firm_id, trigger="record_inactive", is_active=True
         )
         # Smallest inactive_days across rules (so we don't miss any)
         min_inactive_days = min(

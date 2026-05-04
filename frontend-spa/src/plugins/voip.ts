@@ -9,7 +9,7 @@ registerPlugin({
     name: 'voip-click-to-call',
     version: '1.0.0',
     description:
-      'Integrates with Twilio to place calls directly from a lead detail page. Call duration and recording URL are logged as a CALL activity.',
+      'Integrates with Twilio to place calls directly from a record detail page. Call duration and recording URL are logged as a CALL activity.',
     iconUrl: 'https://cdn.leadlab.io/plugins/voip/icon.png',
     permissions: ['records:read', 'activities:write'],
     configSchema: {

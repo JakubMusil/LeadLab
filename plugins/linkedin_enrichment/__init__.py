@@ -3,7 +3,7 @@ First-party plugin: LinkedIn Enrichment (v2.4)
 
 Given a LinkedIn profile URL stored in ``Customer.metadata['linkedin_url']``,
 fetches public profile data via a configurable proxy API and updates the
-customer record, then logs an ENRICHMENT activity on any associated lead.
+customer record, then logs an ENRICHMENT activity on any associated record.
 
 Configuration (stored in PluginConfig.config):
   proxy_api_url : str  — Base URL of the LinkedIn proxy API (required)
@@ -151,16 +151,16 @@ class LinkedInEnrichmentPlugin(LeadLabPlugin):
             customer.company_name = updates["company_name"]
         customer.save()
 
-        # Log an ENRICHMENT activity on the most recent associated lead (if any)
+        # Log an ENRICHMENT activity on the most recent associated record (if any)
         from crm.models import PipelineRecord
-        lead = (
+        record = (
             PipelineRecord.objects.filter(firm_id=firm_id, customer=customer)
             .order_by("-created_at")
             .first()
         )
-        if lead:
+        if record:
             Activity.objects.create(
-                lead=lead,
+                record=record,
                 type=ENRICHMENT_ACTIVITY_TYPE,
                 content_text="LinkedIn profile enrichment completed.",
                 metadata={

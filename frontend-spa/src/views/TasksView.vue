@@ -43,14 +43,14 @@ function memberLabel(m: Member) {
 }
 
 // ---------------------------------------------------------------------------
-// Leads (for the "new task" lead selector)
+// Records (for the "new task" record selector)
 // ---------------------------------------------------------------------------
-interface LeadOption { id: string; title: string }
-const leads = ref<LeadOption[]>([])
+interface RecordOption { id: string; title: string }
+const records = ref<RecordOption[]>([])
 
 async function loadLeads() {
   const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
-  if (res.ok) leads.value = (res.data as LeadOption[])
+  if (res.ok) records.value = (res.data as RecordOption[])
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ function formatDate(ds: string | null) {
 // New Task modal
 // ---------------------------------------------------------------------------
 const showNewTask = ref(false)
-const newTaskLeadId = ref('')
+const newTaskRecordId = ref('')
 const newTaskTitle = ref('')
 const newTaskDescription = ref('')
 const newTaskDueDate = ref('')
@@ -129,7 +129,7 @@ const newTaskSubmitting = ref(false)
 const newTaskError = ref('')
 
 function openNewTask() {
-  newTaskLeadId.value = ''
+  newTaskRecordId.value = ''
   newTaskTitle.value = ''
   newTaskDescription.value = ''
   newTaskDueDate.value = ''
@@ -151,7 +151,7 @@ async function submitNewTask() {
     .map((s) => s.trim())
     .filter(Boolean)
   const result = await tasksStore.createTask({
-    lead_id: newTaskLeadId.value || null,
+    record_id: newTaskRecordId.value || null,
     title: newTaskTitle.value.trim(),
     description: newTaskDescription.value,
     assigned_to_id: newTaskAssigneeId.value || null,
@@ -643,11 +643,11 @@ onMounted(async () => {
             </span>
             <!-- Lead link -->
             <RouterLink
-              v-if="task.lead_id"
-              :to="`/app/opportunities/${task.lead_id}`"
+              v-if="task.record_id"
+              :to="`/app/opportunities/${task.record_id}`"
               class="text-xs text-blue-500 hover:underline truncate max-w-[160px]"
             >
-              {{ task.lead_title || task.lead_id }}
+              {{ task.record_title || task.record_id }}
             </RouterLink>
             <!-- Tags -->
             <span
@@ -823,7 +823,7 @@ onMounted(async () => {
               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400"
             >
               <option value="">{{ t('tasks.selectLead') }}</option>
-              <option v-for="l in leads" :key="l.id" :value="l.id">{{ l.title }}</option>
+              <option v-for="l in records" :key="l.id" :value="l.id">{{ l.title }}</option>
             </select>
           </div>
 

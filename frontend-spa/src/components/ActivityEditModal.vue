@@ -20,7 +20,7 @@ interface Activity {
   id: string
   entity_type: string
   entity_id: string
-  lead_id: string | null
+  record_id: string | null
   user_id: string | null
   user_name: string | null
   user_avatar_url: string | null
@@ -61,7 +61,7 @@ interface SchemaProp {
 
 const props = defineProps<{
   activity: Activity | null
-  entityType: 'lead' | 'record' | 'customer' | 'realization' | 'management' | 'proposal' | 'task'
+  entityType: 'record' | 'customer' | 'realization' | 'management' | 'proposal' | 'task'
   modelValue: boolean
 }>()
 

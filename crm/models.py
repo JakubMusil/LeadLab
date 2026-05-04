@@ -1951,13 +1951,13 @@ class SequenceEnrollment(TenantModel):
 
 class AutomationTrigger(models.TextChoices):
     RECORD_CREATED = "record_created", "Record Created"
-    RECORD_STATUS_CHANGE = "lead_status_change", "Record Status Changed"
+    RECORD_STATUS_CHANGE = "record_status_change", "Record Status Changed"
     TASK_OVERDUE = "task_overdue", "Task Overdue"
     TASK_CREATED = "task_created", "Task Created"
     TASK_COMPLETED = "task_completed", "Task Completed"
     PROPOSAL_SENT = "proposal_sent", "Proposal Sent"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
-    RECORD_INACTIVE = "lead_inactive", "Record Inactive (N days)"
+    RECORD_INACTIVE = "record_inactive", "Record Inactive (N days)"
     WEBHOOK_RECEIVED = "webhook_received", "Custom Webhook Received"
     CONTACT_CREATED = "contact_created", "Contact Created"
 
@@ -2667,7 +2667,7 @@ def _document_upload_to(instance, filename):
 # called at runtime — they only need to be importable so the migration graph
 # can build.  Path expressions mirror the original implementations.
 def _attachment_upload_to(instance, filename):  # noqa: D401 — legacy
-    """Legacy LeadAttachment upload path. No longer called; kept for migrations."""
+    """Legacy upload path. No longer called; kept for historical reference."""
     return f"attachments/{getattr(instance, 'record_id', 'unknown')}/{filename}"
 
 

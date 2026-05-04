@@ -59,9 +59,9 @@ describe('timerStore', () => {
 
   it('start() with context stores entity info', () => {
     const store = useTimerStore()
-    store.start({ entityType: 'lead', entityId: 'lead-123', entityLabel: 'Big Deal' }, 'Work desc', true)
-    expect(store.context.entityType).toBe('lead')
-    expect(store.context.entityId).toBe('lead-123')
+    store.start({ entityType: 'record', entityId: 'record-123', entityLabel: 'Big Deal' }, 'Work desc', true)
+    expect(store.context.entityType).toBe('record')
+    expect(store.context.entityId).toBe('record-123')
     expect(store.description).toBe('Work desc')
     expect(store.isBillable).toBe(true)
   })
@@ -100,7 +100,7 @@ describe('timerStore', () => {
     ;(api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, status: 200, data: mockEntry })
 
     const store = useTimerStore()
-    store.start({ entityType: 'record', entityId: 'lead-1', entityLabel: 'Deal' }, 'Dev work', true)
+    store.start({ entityType: 'record', entityId: 'record-1', entityLabel: 'Deal' }, 'Dev work', true)
     vi.advanceTimersByTime(90 * 1000) // 90 seconds = 1.5 minutes → rounds to 2
 
     const result = await store.stop()
@@ -112,7 +112,7 @@ describe('timerStore', () => {
       expect.objectContaining({
         description: 'Dev work',
         is_billable: true,
-        record_id: 'lead-1',
+        record_id: 'record-1',
         customer_id: null,
         task_id: null,
       }),

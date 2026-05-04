@@ -375,7 +375,7 @@ function selectPrimaryContact(c: CustomerOut) {
     formCustomerId.value = null
     loadEmployees(c.id)
   } else if (c.company_id) {
-    // Person that belongs to a company → store as contact_person so they are visible in the lead detail
+    // Person that belongs to a company → store as contact_person so they are visible in the record detail
     formContactPersonId.value = c.id
     formCompanyId.value = c.company_id
     formCustomerId.value = null
@@ -753,9 +753,9 @@ async function confirmDelete(id: string) {
   else toast.error(result.error ?? t('leads.failedToDelete'))
 }
 
-async function changeStatus(leadId: string, newStatus: string) {
+async function changeStatus(recordId: string, newStatus: string) {
   statusPopupId.value = null
-  const result = await store.patchStatus(leadId, newStatus)
+  const result = await store.patchStatus(recordId, newStatus)
   if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
 }
 
@@ -903,7 +903,7 @@ function sourceLabel(value: string): string {
 // Fetch record tasks to check overdue
 const overdueTasks = ref<Set<string>>(new Set())
 async function checkOverdueTasks() {
-  const res = await api.get<{ id: string; lead_id: string; due_date: string | null; is_completed: boolean }[]>(
+  const res = await api.get<{ id: string; record_id: string; due_date: string | null; is_completed: boolean }[]>(
     '/api/v1/crm/tasks?completed=false&page_size=100'
   )
   if (res.ok) {
@@ -911,7 +911,7 @@ async function checkOverdueTasks() {
     const set = new Set<string>()
     for (const task of res.data) {
       if (task.due_date && new Date(task.due_date).getTime() < now) {
-        set.add(task.lead_id)
+        set.add(task.record_id)
       }
     }
     overdueTasks.value = set

@@ -44,8 +44,8 @@ vi.mock('@/api', () => ({
 import { api } from '@/api'
 
 const mockStats = {
-  total_leads: 42,
-  leads_by_status: { new: 10, contacted: 8, proposal: 6, negotiation: 5, won: 9, lost: 3, canceled: 1 },
+  total_records: 42,
+  records_by_status: { new: 10, contacted: 8, proposal: 6, negotiation: 5, won: 9, lost: 3, canceled: 1 },
   total_customers: 20,
   total_tasks_pending: 5,
   total_tasks_overdue: 2,
@@ -88,7 +88,7 @@ describe('DashboardView', () => {
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('42') // total leads
+    expect(wrapper.text()).toContain('42') // total records
     expect(wrapper.text()).toContain('20') // total customers
   })
 

@@ -2,7 +2,7 @@
 Management command: backfill_firm_currency
 
 For each firm, sets default_currency to the most frequently used currency
-among its PipelineRecord records.  Firms with no leads are left at their current default.
+among its PipelineRecord records.  Firms with no records are left at their current default.
 """
 from collections import Counter
 
@@ -32,15 +32,15 @@ class Command(BaseCommand):
         skipped = 0
 
         for firm in firms:
-            leads = PipelineRecord.objects.filter(firm=firm).exclude(currency="").values_list("currency", flat=True)
-            if not leads.exists():
+            records = PipelineRecord.objects.filter(firm=firm).exclude(currency="").values_list("currency", flat=True)
+            if not records.exists():
                 skipped += 1
-                self.stdout.write(f"  SKIP  {firm.name}: no leads")
+                self.stdout.write(f"  SKIP  {firm.name}: no records")
                 continue
 
-            counts = Counter(leads)
+            counts = Counter(records)
             most_common_currency, count = counts.most_common(1)[0]
-            total_leads = sum(counts.values())
+            total_records = sum(counts.values())
             has_mix = len(counts) > 1
 
             if has_mix:
@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 )
             else:
                 self.stdout.write(
-                    f"  OK    {firm.name}: {most_common_currency} ({total_leads} leads)"
+                    f"  OK    {firm.name}: {most_common_currency} ({total_records} records)"
                 )
 
             if firm.default_currency != most_common_currency:
@@ -69,6 +69,6 @@ class Command(BaseCommand):
         verb = "Would update" if dry_run else "Updated"
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nDone. {verb} {updated} firm(s); {skipped} firm(s) skipped (no leads)."
+                f"\nDone. {verb} {updated} firm(s); {skipped} firm(s) skipped (no records)."
             )
         )

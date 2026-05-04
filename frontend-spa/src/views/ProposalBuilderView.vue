@@ -21,9 +21,9 @@ const { t } = useI18n()
 const { firmCurrency, formatAmountPlain } = useMoney()
 
 // Route support:
-// 1) /app/opportunities/:id/proposals/:pid? — lead-scoped (legacy)
+// 1) /app/opportunities/:id/proposals/:pid? — record-scoped (legacy)
 // 2) /app/proposals/:id                     — standalone
-const leadId = computed(() => route.params.id as string | undefined)
+const recordId = computed(() => route.params.id as string | undefined)
 const proposalId = computed(() => {
   // standalone route: /app/proposals/:id
   if (route.path.startsWith('/app/proposals/')) return route.params.id as string
@@ -54,7 +54,7 @@ interface ProposalItem {
 
 interface Proposal {
   id: string
-  lead_id: string | null
+  record_id: string | null
   customer_id: string | null
   realization_id: string | null
   management_id: string | null
@@ -192,8 +192,8 @@ async function loadProposals() {
   try {
     if (isStandalone.value) {
       // standalone: no proposal list sidebar in this view, nothing to load
-    } else if (leadId.value) {
-      const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${leadId.value}/proposals`)
+    } else if (recordId.value) {
+      const res = await api.get<Proposal[]>(`/api/v1/crm/opportunities/${recordId.value}/proposals`)
       if (res.ok) proposals.value = res.data
     }
   } finally {
@@ -243,8 +243,8 @@ function populateForm(p: Proposal) {
 async function createProposal() {
   saving.value = true
   let res
-  if (leadId.value && !isStandalone.value) {
-    res = await api.post<Proposal>(`/api/v1/crm/opportunities/${leadId.value}/proposals`, {
+  if (recordId.value && !isStandalone.value) {
+    res = await api.post<Proposal>(`/api/v1/crm/opportunities/${recordId.value}/proposals`, {
       title: editTitle.value || t('builder.newProposal'),
       currency: editCurrency.value,
     })
@@ -263,7 +263,7 @@ async function createProposal() {
     if (isStandalone.value) {
       router.replace(`/app/proposals/${res.data.id}`)
     } else {
-      router.replace(`/app/opportunities/${leadId.value}/proposals/${res.data.id}`)
+      router.replace(`/app/opportunities/${recordId.value}/proposals/${res.data.id}`)
     }
     toast.success(t('builder.proposalCreated'))
   } else {
@@ -303,7 +303,7 @@ async function doDeleteProposal(id: string) {
       if (isStandalone.value) {
         router.replace('/app/proposals')
       } else {
-        router.replace(`/app/opportunities/${leadId.value}/proposals`)
+        router.replace(`/app/opportunities/${recordId.value}/proposals`)
       }
     }
     toast.success(t('builder.proposalDeleted'))
@@ -320,7 +320,7 @@ function selectProposal(p: Proposal) {
   if (isStandalone.value) {
     router.push(`/app/proposals/${p.id}`)
   } else {
-    router.push(`/app/opportunities/${leadId.value}/proposals/${p.id}`)
+    router.push(`/app/opportunities/${recordId.value}/proposals/${p.id}`)
   }
 }
 
@@ -469,7 +469,7 @@ function toggleCatalogItem(id: string) {
 // Proposal context label
 // -----------------------------------------------------------------------
 function contextLabel(p: Proposal): string {
-  if (p.lead_id) return `Příležitost`
+  if (p.record_id) return `Příležitost`
   if (p.customer_id) return `Kontakt`
   if (p.realization_id) return `Realizace`
   if (p.management_id) return `Správa`
@@ -542,7 +542,7 @@ onMounted(async () => {
     const first = proposals.value[0]
     if (first) {
       await loadProposal(first.id)
-      router.replace(`/app/opportunities/${leadId.value}/proposals/${first.id}`)
+      router.replace(`/app/opportunities/${recordId.value}/proposals/${first.id}`)
     }
   } else {
     // Pre-populate create form
@@ -573,10 +573,10 @@ watch(
     </RouterLink>
     <RouterLink
       v-else
-      :to="`/app/opportunities/${leadId}`"
+      :to="`/app/opportunities/${recordId}`"
       class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 mb-4"
     >
-      ← Back to Lead
+      ← Back to Record
     </RouterLink>
 
     <!-- Context badge for standalone proposals -->
@@ -589,7 +589,7 @@ watch(
 
     <div class="flex gap-6">
       <!-- ----------------------------------------------------------------
-           LEFT SIDEBAR: proposal list (only for lead-scoped view)
+           LEFT SIDEBAR: proposal list (only for record-scoped view)
       ---------------------------------------------------------------- -->
       <aside v-if="!isStandalone" class="w-64 flex-shrink-0">
         <div class="bg-white rounded-2xl border border-gray-100 p-3">

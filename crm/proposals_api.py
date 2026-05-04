@@ -102,7 +102,7 @@ class ProposalItemIn(Schema):
 
 class ProposalOut(Schema):
     id: str
-    lead_id: Optional[str]
+    record_id: Optional[str]
     customer_id: Optional[str]
     firm_id: str
     title: str
@@ -126,7 +126,7 @@ class ProposalOut(Schema):
 
 class ProposalIn(Schema):
     title: str
-    lead_id: Optional[str] = None
+    record_id: Optional[str] = None
     customer_id: Optional[str] = None
     status: str = ProposalStatus.DRAFT
     expiry_date: Optional[str] = None
@@ -288,7 +288,7 @@ def _proposal_out(proposal: Proposal) -> dict:
     items = list(proposal.items.all())
     return {
         "id": str(proposal.id),
-        "lead_id": str(proposal.record_id) if proposal.record_id else None,
+        "record_id": str(proposal.record_id) if proposal.record_id else None,
         "customer_id": str(proposal.customer_id) if proposal.customer_id else None,
         "firm_id": str(proposal.firm_id),
         "title": proposal.title,
@@ -431,7 +431,7 @@ def _build_proposal_automation_context(proposal: Proposal) -> dict:
     auth=django_auth,
     response={200: List[ProposalOut], 403: ErrorOut},
 )
-def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[str] = None,
+def list_all_proposals(request, status: Optional[str] = None, record_id: Optional[str] = None,
                        customer_id: Optional[str] = None):
     """List all proposals for the active firm, with optional filters."""
     try:
@@ -442,8 +442,8 @@ def list_all_proposals(request, status: Optional[str] = None, lead_id: Optional[
     qs = Proposal.objects.filter(firm=request.firm).prefetch_related("items").order_by("-created_at")
     if status:
         qs = qs.filter(status=status)
-    if lead_id:
-        qs = qs.filter(record_id=lead_id)
+    if record_id:
+        qs = qs.filter(record_id=record_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     return 200, [_proposal_out(p) for p in qs]
@@ -467,9 +467,9 @@ def create_standalone_proposal(request, payload: ProposalIn):
     record = None
     customer = None
 
-    if payload.lead_id:
+    if payload.record_id:
         try:
-            record = PipelineRecord.objects.get(id=payload.lead_id, firm=request.firm)
+            record = PipelineRecord.objects.get(id=payload.record_id, firm=request.firm)
         except PipelineRecord.DoesNotExist:
             return 404, {"detail": "PipelineRecord not found."}
     if payload.customer_id:

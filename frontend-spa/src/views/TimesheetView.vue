@@ -48,16 +48,16 @@ const form = ref<{
 })
 
 // Entity search helpers
-const leadSearch = ref('')
-const leadResults = ref<{ id: string; label: string }[]>([])
+const recordSearch = ref('')
+const recordResults = ref<{ id: string; label: string }[]>([])
 const customerSearch = ref('')
 const customerResults = ref<{ id: string; label: string }[]>([])
 
-async function searchLeads(q: string) {
-  if (!q) { leadResults.value = []; return }
-  const res = await api.get<Record<string, string>[]>(`/api/v1/crm/leads?search=${encodeURIComponent(q)}&page_size=10`)
+async function searchRecords(q: string) {
+  if (!q) { recordResults.value = []; return }
+  const res = await api.get<Record<string, string>[]>(`/api/v1/crm/records?search=${encodeURIComponent(q)}&page_size=10`)
   if (res.ok) {
-    leadResults.value = (Array.isArray(res.data) ? res.data : (res.data as { results?: Record<string, string>[] }).results ?? [])
+    recordResults.value = (Array.isArray(res.data) ? res.data : (res.data as { results?: Record<string, string>[] }).results ?? [])
       .map((l) => ({ id: l.id as string, label: l.title as string }))
   }
 }
@@ -71,11 +71,11 @@ async function searchCustomers(q: string) {
   }
 }
 
-function pickLead(item: { id: string; label: string }) {
+function pickRecord(item: { id: string; label: string }) {
   form.value.record_id = item.id
   form.value.record_label = item.label
-  leadSearch.value = item.label
-  leadResults.value = []
+  recordSearch.value = item.label
+  recordResults.value = []
 }
 
 function pickCustomer(item: { id: string; label: string }) {
@@ -85,11 +85,11 @@ function pickCustomer(item: { id: string; label: string }) {
   customerResults.value = []
 }
 
-function clearLead() {
+function clearRecord() {
   form.value.record_id = ''
   form.value.record_label = ''
-  leadSearch.value = ''
-  leadResults.value = []
+  recordSearch.value = ''
+  recordResults.value = []
 }
 
 function clearCustomer() {
@@ -190,7 +190,7 @@ async function submitManualEntry() {
         task_id: '',
         task_label: '',
       }
-      leadSearch.value = ''
+      recordSearch.value = ''
       customerSearch.value = ''
     } else {
       showToast(extractErrorMessage(res.data, 'Failed to add entry'))
@@ -305,13 +305,13 @@ function deleteEntry(id: string) {
         <div class="relative">
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Opportunity (optional)</label>
           <input v-model="leadSearch" type="text" placeholder="Search opportunities…"
-            @input="searchLeads(leadSearch)"
+            @input="searchRecords(recordSearch)"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
           <button v-if="form.record_id" class="absolute right-2 top-7 text-gray-400 hover:text-gray-600 text-xs" @click="clearLead"><XMarkIcon class="w-4 h-4" /></button>
           <div v-if="leadResults.length" class="absolute z-10 w-full mt-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto">
             <button v-for="r in leadResults" :key="r.id"
               class="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
-              @click="pickLead(r)">{{ r.label }}</button>
+              @click="pickRecord(r)">{{ r.label }}</button>
           </div>
         </div>
         <div class="relative">

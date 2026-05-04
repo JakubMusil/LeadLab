@@ -9,7 +9,7 @@
  *
  * Usage:
  *   const { on } = useWebSocket()
- *   on('lead.created', (payload) => leadsStore.handleLeadCreated(payload))
+ *   on('record.created', (payload) => recordsStore.handleRecordCreated(payload))
  */
 
 import { ref, watch, onUnmounted } from 'vue'

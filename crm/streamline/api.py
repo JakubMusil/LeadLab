@@ -29,7 +29,6 @@ def _build_entity_toolbar() -> None:
     try:
         from crm.models import PipelineRecord
         _ENTITY_TOOLBAR = {
-            "lead": PipelineRecord.TOOLBAR_TOOLS,
             "record": PipelineRecord.TOOLBAR_TOOLS,
             "customer": ["comment", "call", "meeting", "email_out", "checklist", "task"],
             "proposal": ["comment", "task"],
@@ -116,7 +115,7 @@ def get_entity_toolbar(request, entity_type: str):
     pre-registered tool element from the tool registry — no front-end
     hard-coding required.
 
-    ``entity_type`` must be one of: ``lead``, ``customer``, ``proposal``.
+    ``entity_type`` must be one of: ``record``, ``customer``, ``proposal``.
 
     The special pseudo-type ``task`` (which creates a Task record rather than
     an Activity) is included in the list with a synthetic descriptor so the

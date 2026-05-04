@@ -8,13 +8,13 @@ const faqOpen = ref<number | null>(null)
 const features: { icon: Component; title: string; description: string }[] = [
   {
     icon: FunnelIcon,
-    title: 'Lead Management',
+    title: 'Pipeline Management',
     description: 'Track every sales opportunity through a visual kanban pipeline with customisable stages.',
   },
   {
     icon: UserGroupIcon,
     title: 'Team Collaboration',
-    description: 'Invite your team, assign leads, and stay in sync with real-time notifications.',
+    description: 'Invite your team, assign records, and stay in sync with real-time notifications.',
   },
   {
     icon: ChartBarIcon,
@@ -30,7 +30,7 @@ const testimonials = [
     role: 'Sales Director, TechCorp',
   },
   {
-    quote: "We finally have one source of truth for our leads. Onboarding the team took minutes.",
+    quote: "We finally have one source of truth for our records. Onboarding the team took minutes.",
     name: 'Martin V.',
     role: 'CEO, StartupHQ',
   },
@@ -44,7 +44,7 @@ const testimonials = [
 const faqs = [
   {
     q: 'Is there a free plan?',
-    a: 'Yes! The Free plan includes unlimited leads, 2 team members, and core CRM features. No credit card required.',
+    a: 'Yes! The Free plan includes unlimited records, 2 team members, and core CRM features. No credit card required.',
   },
   {
     q: 'How do I upgrade to Pro?',
@@ -52,7 +52,7 @@ const faqs = [
   },
   {
     q: 'Can I import my existing contacts?',
-    a: 'Absolutely. LeadLab supports CSV import during onboarding and from the Leads page at any time.',
+    a: 'Absolutely. LeadLab supports CSV import during onboarding and from the Records page at any time.',
   },
   {
     q: 'Is my data secure?',
@@ -91,7 +91,7 @@ const faqs = [
         The CRM that gets out<br class="hidden sm:block" /> of your way
       </h1>
       <p class="text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
-        LeadLab helps sales teams track leads, close deals, and grow revenue — without the complexity of enterprise CRMs.
+        LeadLab helps sales teams track records, close deals, and grow revenue — without the complexity of enterprise CRMs.
       </p>
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
         <a href="/app/register" class="inline-block px-8 py-3.5 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors text-lg">
@@ -127,7 +127,7 @@ const faqs = [
           <div class="text-4xl font-extrabold text-gray-900 mb-1">$0</div>
           <div class="text-gray-400 text-sm mb-6">Forever free</div>
           <ul class="space-y-3 mb-8 text-sm text-gray-700">
-            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited leads</li>
+            <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Unlimited records</li>
             <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Up to 2 team members</li>
             <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> Basic pipeline</li>
             <li class="flex gap-2"><CheckIcon class="w-4 h-4 text-green-500 flex-shrink-0" /> CSV import</li>
