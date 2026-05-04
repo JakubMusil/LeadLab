@@ -1548,7 +1548,10 @@
     "rename": "Rename",
     "search": "Search",
     "irreversible": "This action is irreversible.",
-    "error": "Error"
+    "error": "Error",
+    "email": "Email",
+    "phone": "Phone",
+    "website": "Website"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -2497,6 +2500,17 @@
     "statusLost": "Lost",
     "statusCanceled": "Canceled",
     "list": "List",
-    "actions": "Actions"
+    "actions": "Actions",
+    "colUpdated": "Updated",
+    "colCompany": "Company",
+    "colContactPerson": "Contact Person",
+    "filterUpdatedAfter": "Updated after",
+    "filterUpdatedBefore": "Updated before",
+    "filterStage": "Stage",
+    "filterCompany": "Company",
+    "filterCompanyPlaceholder": "Search company name…",
+    "col_updated_at": "Updated",
+    "newInCategory": "New {category}",
+    "contactDetailTitle": "Contact details"
   }
 }

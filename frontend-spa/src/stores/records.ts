@@ -66,6 +66,8 @@ export interface RecordFilters {
   value_max?: number
   created_after?: string
   created_before?: string
+  updated_after?: string
+  updated_before?: string
   sort_by?: string
   sort_dir?: 'asc' | 'desc'
   page?: number
@@ -74,6 +76,9 @@ export interface RecordFilters {
   category_id?: string
   stage_id?: string
   parent_id?: string
+  company_id?: string
+  company_name?: string
+  contact_person_id?: string
 }
 
 export const RECORD_STATUSES = [
@@ -125,11 +130,16 @@ export const useRecordsStore = defineStore('records', () => {
       if (filters.value_max != null) params.set('value_max', String(filters.value_max))
       if (filters.created_after) params.set('created_after', filters.created_after)
       if (filters.created_before) params.set('created_before', filters.created_before)
+      if (filters.updated_after) params.set('updated_after', filters.updated_after)
+      if (filters.updated_before) params.set('updated_before', filters.updated_before)
       if (filters.sort_by) params.set('sort_by', filters.sort_by)
       if (filters.sort_dir) params.set('sort_dir', filters.sort_dir)
       if (filters.category_id) params.set('category_id', filters.category_id)
       if (filters.stage_id) params.set('stage_id', filters.stage_id)
       if (filters.parent_id) params.set('parent_id', filters.parent_id)
+      if (filters.company_id) params.set('company_id', filters.company_id)
+      if (filters.company_name) params.set('company_name', filters.company_name)
+      if (filters.contact_person_id) params.set('contact_person_id', filters.contact_person_id)
       const p = filters.page ?? 1
       const ps = filters.page_size ?? pageSize.value
       params.set('page', String(p))

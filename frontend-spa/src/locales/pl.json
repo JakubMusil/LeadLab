@@ -1538,7 +1538,10 @@
     "rename": "Zmień nazwę",
     "search": "Szukaj",
     "irreversible": "Ta operacja jest nieodwracalna.",
-    "error": "Błąd"
+    "error": "Błąd",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "website": "Strona"
   },
   "errorBoundary": {
     "title": "Coś poszło nie tak",
@@ -2487,6 +2490,17 @@
     "statusLost": "Przegrany",
     "statusCanceled": "Anulowany",
     "list": "Lista",
-    "actions": "Akcje"
+    "actions": "Akcje",
+    "colUpdated": "Zaktualizowano",
+    "colCompany": "Firma",
+    "colContactPerson": "Osoba kontaktowa",
+    "filterUpdatedAfter": "Zaktualizowano po",
+    "filterUpdatedBefore": "Zaktualizowano przed",
+    "filterStage": "Etap",
+    "filterCompany": "Firma",
+    "filterCompanyPlaceholder": "Szukaj nazwy firmy…",
+    "col_updated_at": "Zaktualizowano",
+    "newInCategory": "Nowy {category}",
+    "contactDetailTitle": "Szczegóły kontaktu"
   }
 }

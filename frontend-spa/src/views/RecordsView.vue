@@ -93,8 +93,8 @@ function memberLabel(m: Member) {
 // ---------------------------------------------------------------------------
 // Sort + Column visibility (via useListView composable)
 // ---------------------------------------------------------------------------
-type SortField = 'title' | 'status' | 'source' | 'value' | 'created_at'
-type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'users'
+type SortField = 'title' | 'status' | 'source' | 'value' | 'created_at' | 'updated_at'
+type ColumnId = 'status' | 'source' | 'value' | 'score' | 'created_at' | 'updated_at' | 'users' | 'company' | 'contact_person'
 
 const TABLE_COLUMNS: ColumnDef<ColumnId>[] = [
   { id: 'status', labelKey: 'colStatus', defaultVisible: true },
@@ -102,6 +102,9 @@ const TABLE_COLUMNS: ColumnDef<ColumnId>[] = [
   { id: 'value', labelKey: 'colValue', defaultVisible: true },
   { id: 'score', labelKey: 'colScore', defaultVisible: false },
   { id: 'created_at', labelKey: 'colCreated', defaultVisible: true },
+  { id: 'updated_at', labelKey: 'colUpdated', defaultVisible: true },
+  { id: 'company', labelKey: 'colCompany', defaultVisible: true },
+  { id: 'contact_person', labelKey: 'colContactPerson', defaultVisible: true },
   { id: 'users', labelKey: 'colUsers', defaultVisible: true },
 ]
 
@@ -133,6 +136,8 @@ const sortedRecords = computed(() => {
       cmp = (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0)
     } else if (sortField.value === 'created_at') {
       cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    } else if (sortField.value === 'updated_at') {
+      cmp = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
     } else {
       const va = (a[sortField.value] ?? '') as string
       const vb = (b[sortField.value] ?? '') as string
@@ -153,13 +158,20 @@ const filterValueMin = ref('')
 const filterValueMax = ref('')
 const filterCreatedAfter = ref('')
 const filterCreatedBefore = ref('')
+const filterUpdatedAfter = ref('')
+const filterUpdatedBefore = ref('')
 const filterCategoryId = ref((route.query.category_id as string) ?? '')
 const filterStageId = ref((route.query.stage_id as string) ?? '')
+const filterCompanyId = ref('')
+const filterCompanyName = ref('')
+const filterContactPersonId = ref('')
 const showAdvancedFilters = ref(false)
 
 function hasActiveAdvancedFilters() {
   return !!(filterAssignedTo.value || filterCreatedBy.value || filterValueMin.value ||
-            filterValueMax.value || filterCreatedAfter.value || filterCreatedBefore.value)
+            filterValueMax.value || filterCreatedAfter.value || filterCreatedBefore.value ||
+            filterUpdatedAfter.value || filterUpdatedBefore.value ||
+            filterStageId.value || filterCompanyId.value || filterCompanyName.value || filterContactPersonId.value)
 }
 
 function buildFilters(page = 1) {
@@ -174,8 +186,13 @@ function buildFilters(page = 1) {
     value_max: valueMax != null && !isNaN(valueMax) ? valueMax : undefined,
     created_after: filterCreatedAfter.value || undefined,
     created_before: filterCreatedBefore.value || undefined,
+    updated_after: filterUpdatedAfter.value || undefined,
+    updated_before: filterUpdatedBefore.value || undefined,
     category_id: filterCategoryId.value || undefined,
     stage_id: filterStageId.value || undefined,
+    company_id: filterCompanyId.value || undefined,
+    company_name: filterCompanyName.value || undefined,
+    contact_person_id: filterContactPersonId.value || undefined,
     page,
   }
 }
@@ -191,8 +208,13 @@ function clearAdvancedFilters() {
   filterValueMax.value = ''
   filterCreatedAfter.value = ''
   filterCreatedBefore.value = ''
+  filterUpdatedAfter.value = ''
+  filterUpdatedBefore.value = ''
   filterCategoryId.value = ''
   filterStageId.value = ''
+  filterCompanyId.value = ''
+  filterCompanyName.value = ''
+  filterContactPersonId.value = ''
   router.replace({ query: { ...route.query, category_id: undefined, stage_id: undefined } })
   loadRecords()
 }
@@ -496,6 +518,12 @@ watch(filterValueMin, () => { loadRecords() })
 watch(filterValueMax, () => { loadRecords() })
 watch(filterCreatedAfter, () => { loadRecords() })
 watch(filterCreatedBefore, () => { loadRecords() })
+watch(filterUpdatedAfter, () => { loadRecords() })
+watch(filterUpdatedBefore, () => { loadRecords() })
+watch(filterStageId, () => { loadRecords() })
+watch(filterCompanyId, () => { loadRecords() })
+watch(filterCompanyName, () => { loadRecords() })
+watch(filterContactPersonId, () => { loadRecords() })
 
 // Apply saved view from ?view= query param
 watch(() => route.query.view, async (viewId) => {
@@ -513,7 +541,7 @@ watch(() => route.query.view, async (viewId) => {
     filterCreatedBefore.value = (v.filters.created_before as string) ?? ''
     if (hasActiveAdvancedFilters()) showAdvancedFilters.value = true
     // Restore sort
-    const validSortFields: SortField[] = ['title', 'status', 'source', 'value', 'created_at']
+    const validSortFields: SortField[] = ['title', 'status', 'source', 'value', 'created_at', 'updated_at']
     if (v.sort_by && validSortFields.includes(v.sort_by as SortField)) {
       sortField.value = v.sort_by as SortField
     }
@@ -565,6 +593,15 @@ const currentCategory = computed(() =>
 const currentCategoryStages = computed(() =>
   filterCategoryId.value ? pipelineStore.getStagesForCategory(filterCategoryId.value) : [],
 )
+// All stages across all categories (for stage filter when no category selected)
+const availableStagesForFilter = computed(() =>
+  filterCategoryId.value ? currentCategoryStages.value : pipelineStore.allStages,
+)
+// Label for the "new record" button
+const newRecordButtonLabel = computed(() => {
+  if (!currentCategory.value) return ''
+  return `+ ${t('leads.newInCategory', { category: currentCategory.value.name })}`
+})
 const leadsByStage = computed(() => {
   const map: Record<string, RecordOut[]> = {}
   for (const s of currentCategoryStages.value) map[s.id] = []
@@ -969,6 +1006,30 @@ function showAssigneeAvatar(record: RecordOut): boolean {
   if (!record.assigned_to_id) return false
   return record.assigned_to_id !== record.created_by_id
 }
+
+// Contact detail modal (for company / contact person click in list/table)
+const contactDetailRecord = ref<RecordOut | null>(null)
+const contactDetailType = ref<'company' | 'contact_person' | null>(null)
+const contactDetailData = ref<Record<string, unknown> | null>(null)
+const contactDetailLoading = ref(false)
+
+async function openContactDetail(record: RecordOut, type: 'company' | 'contact_person') {
+  const id = type === 'company' ? record.company_id : record.contact_person_id
+  if (!id) return
+  contactDetailRecord.value = record
+  contactDetailType.value = type
+  contactDetailData.value = null
+  contactDetailLoading.value = true
+  const res = await api.get<Record<string, unknown>>(`/api/v1/crm/directory/${id}`)
+  contactDetailLoading.value = false
+  if (res.ok) contactDetailData.value = res.data
+}
+
+function closeContactDetail() {
+  contactDetailRecord.value = null
+  contactDetailType.value = null
+  contactDetailData.value = null
+}
 </script>
 
 <template>
@@ -1066,11 +1127,6 @@ function showAssigneeAvatar(record: RecordOut): boolean {
         </button>
       </template>
 
-      <button
-        class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
-        @click="openCreate"
-      >{{ t('leads.newLead') }}</button>
-
       <!-- Actions dropdown (import / export / save view) -->
       <Dropdown :items="actionsDropdownItems" placement="right" :open-on-hover="true">
         <button
@@ -1082,12 +1138,19 @@ function showAssigneeAvatar(record: RecordOut): boolean {
         </button>
       </Dropdown>
 
+      <!-- New record button: only shown when a category is selected -->
+      <button
+        v-if="currentCategory"
+        class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
+        @click="openCreate"
+      >{{ newRecordButtonLabel }}</button>
+
       <!-- Hidden file input for CSV import -->
       <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
     </div>
 
-    <!-- Quick-create inline form -->
-    <div class="flex items-center gap-2 mb-4">
+    <!-- Quick-create inline form (only when a category is selected) -->
+    <div v-if="currentCategory" class="flex items-center gap-2 mb-4">
       <input
         v-model="qcTitle"
         type="text"
@@ -1164,6 +1227,41 @@ function showAssigneeAvatar(record: RecordOut): boolean {
             class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400"
           />
         </div>
+        <!-- Upraveno od/do -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterUpdatedAfter') }}</label>
+          <input
+            v-model="filterUpdatedAfter"
+            type="date"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterUpdatedBefore') }}</label>
+          <input
+            v-model="filterUpdatedBefore"
+            type="date"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400"
+          />
+        </div>
+        <!-- Fáze (stage) - shows all stages when no category, or category stages when selected -->
+        <div v-if="availableStagesForFilter.length > 0" class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterStage') }}</label>
+          <select v-model="filterStageId" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.filterAll') }}</option>
+            <option v-for="stage in availableStagesForFilter" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
+          </select>
+        </div>
+        <!-- Společnost (company) -->
+        <div class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterCompany') }}</label>
+          <input
+            v-model="filterCompanyName"
+            type="text"
+            :placeholder="t('leads.filterCompanyPlaceholder')"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400 w-36"
+          />
+        </div>
         <!-- Clear button -->
         <button
           v-if="hasActiveAdvancedFilters()"
@@ -1210,6 +1308,9 @@ function showAssigneeAvatar(record: RecordOut): boolean {
               <th v-if="isColVisible('value')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('value')">{{ t('leads.colValue') }} <span class="opacity-60">{{ sortIcon('value') }}</span></th>
               <th v-if="isColVisible('score')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colScore') }}</th>
               <th v-if="isColVisible('created_at')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('created_at')">{{ t('leads.colCreated') }} <span class="opacity-60">{{ sortIcon('created_at') }}</span></th>
+              <th v-if="isColVisible('updated_at')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('updated_at')">{{ t('leads.colUpdated') }} <span class="opacity-60">{{ sortIcon('updated_at') }}</span></th>
+              <th v-if="isColVisible('company')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colCompany') }}</th>
+              <th v-if="isColVisible('contact_person')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colContactPerson') }}</th>
               <th v-if="isColVisible('users')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('leads.colUsers') }}</th>
               <!-- Column picker -->
               <th class="px-4 py-3 text-right">
@@ -1305,6 +1406,31 @@ function showAssigneeAvatar(record: RecordOut): boolean {
                 <RecordScoreBadge :score="(record as RecordOut & { score?: number }).score" />
               </td>
               <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(record.id)">{{ new Date(record.created_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('updated_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(record.id)">{{ new Date(record.updated_at).toLocaleDateString() }}</td>
+              <td v-if="isColVisible('company')" class="px-4 py-3 text-xs" @click.stop>
+                <button
+                  v-if="record.company_name"
+                  class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  :title="record.company_name"
+                  @click="openContactDetail(record, 'company')"
+                >
+                  <BuildingOfficeIcon class="w-3.5 h-3.5 flex-shrink-0" />
+                  <span class="truncate max-w-28">{{ record.company_name }}</span>
+                </button>
+                <span v-else class="text-gray-300 dark:text-gray-600">—</span>
+              </td>
+              <td v-if="isColVisible('contact_person')" class="px-4 py-3 text-xs" @click.stop>
+                <button
+                  v-if="record.contact_person_name"
+                  class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  :title="record.contact_person_name"
+                  @click="openContactDetail(record, 'contact_person')"
+                >
+                  <UserIcon class="w-3.5 h-3.5 flex-shrink-0" />
+                  <span class="truncate max-w-28">{{ record.contact_person_name }}</span>
+                </button>
+                <span v-else class="text-gray-300 dark:text-gray-600">—</span>
+              </td>
               <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(record.id)">
                 <div class="flex items-center gap-1">
                   <Avatar v-if="record.created_by_name" size="xs" :name="record.created_by_name" :title="t('leads.createdBy') + ': ' + record.created_by_name" />
@@ -1385,8 +1511,33 @@ function showAssigneeAvatar(record: RecordOut): boolean {
           <!-- Score -->
           <span class="hidden xl:block flex-shrink-0"><RecordScoreBadge :score="(record as RecordOut & { score?: number }).score" /></span>
 
-          <!-- Date -->
-          <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(record.created_at).toLocaleDateString() }}</span>
+          <!-- Dates: Created + Updated -->
+          <div class="hidden lg:flex flex-col items-end flex-shrink-0 w-24" @click.stop="goToDetail(record.id)">
+            <span class="text-xs text-gray-400 dark:text-gray-500">{{ new Date(record.created_at).toLocaleDateString() }}</span>
+            <span v-if="new Date(record.updated_at).getTime() !== new Date(record.created_at).getTime()" class="text-xs text-gray-300 dark:text-gray-600">{{ new Date(record.updated_at).toLocaleDateString() }}</span>
+          </div>
+
+          <!-- Company -->
+          <div class="hidden md:block flex-shrink-0 w-28" @click.stop>
+            <button
+              v-if="record.company_name"
+              class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors truncate max-w-full"
+              :title="record.company_name"
+              @click="openContactDetail(record, 'company')"
+            >
+              <BuildingOfficeIcon class="w-3 h-3 flex-shrink-0" />
+              <span class="truncate">{{ record.company_name }}</span>
+            </button>
+            <button
+              v-if="record.contact_person_name"
+              class="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors truncate max-w-full"
+              :title="record.contact_person_name"
+              @click="openContactDetail(record, 'contact_person')"
+            >
+              <UserIcon class="w-3 h-3 flex-shrink-0" />
+              <span class="truncate">{{ record.contact_person_name }}</span>
+            </button>
+          </div>
 
           <!-- User avatars (creator + assignee if different) -->
           <div class="hidden sm:flex items-center gap-1 flex-shrink-0" @click.stop>
@@ -1913,4 +2064,49 @@ function showAssigneeAvatar(record: RecordOut): boolean {
 
   <!-- Global status popup backdrop -->
   <div v-if="statusPopupId" class="fixed inset-0 z-5" @click="statusPopupId = null" />
+
+  <!-- Contact detail modal -->
+  <Teleport to="body">
+    <div
+      v-if="contactDetailRecord"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      @click.self="closeContactDetail"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('leads.contactDetailTitle') }}</h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="closeContactDetail">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+        <div v-if="contactDetailLoading" class="py-8 text-center text-sm text-gray-400">{{ t('common.loading') }}</div>
+        <div v-else-if="contactDetailData" class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <div v-if="contactDetailData.company_name" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('leads.colCompany') }}</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ contactDetailData.company_name }}</span>
+          </div>
+          <div v-if="contactDetailData.first_name || contactDetailData.last_name" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('leads.colContactPerson') }}</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ [contactDetailData.first_name, contactDetailData.last_name].filter(Boolean).join(' ') }}</span>
+          </div>
+          <div v-if="contactDetailData.email" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('common.email') }}</span>
+            <a :href="`mailto:${contactDetailData.email}`" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ contactDetailData.email }}</a>
+          </div>
+          <div v-if="contactDetailData.phone" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('common.phone') }}</span>
+            <a :href="`tel:${contactDetailData.phone}`" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ contactDetailData.phone }}</a>
+          </div>
+          <div v-if="contactDetailData.website" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('common.website') }}</span>
+            <a :href="String(contactDetailData.website)" target="_blank" class="text-red-600 dark:text-red-400 hover:underline text-right">{{ contactDetailData.website }}</a>
+          </div>
+          <div v-if="contactDetailData.ico" class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span class="text-gray-500 dark:text-gray-400">IČO</span>
+            <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ contactDetailData.ico }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
