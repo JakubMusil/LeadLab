@@ -577,6 +577,7 @@ const leadsByStage = computed(() => {
 
 /** Field keys that are shown elsewhere in the card (value, expires_at) or are not meaningful to show inline */
 const KANBAN_SKIP_FIELD_KEYS = new Set(['value_currency', 'source', 'expires_at'])
+const KANBAN_NOTES_MAX_LENGTH = 40
 
 function getKanbanCardFields(record: RecordOut): { label: string; value: string }[] {
   const category = currentCategory.value
@@ -598,11 +599,17 @@ function getKanbanCardFields(record: RecordOut): { label: string; value: string 
           break
         }
         case 'notes':
-          value = record.notes ? (record.notes.length > 40 ? record.notes.substring(0, 40) + '…' : record.notes) : '—'
+          if (record.notes) {
+            value = record.notes.length > KANBAN_NOTES_MAX_LENGTH
+              ? record.notes.substring(0, KANBAN_NOTES_MAX_LENGTH) + '…'
+              : record.notes
+          }
           break
-        case 'origin_record':
-          value = record.parent_id ? `#${String(record.parent_id).substring(0, 8)}…` : '—'
+        case 'origin_record': {
+          const pid = record.parent_id ? String(record.parent_id) : null
+          value = pid ? `#${pid.substring(0, Math.min(8, pid.length))}${pid.length > 8 ? '…' : ''}` : '—'
           break
+        }
         default:
           value = '—'
       }

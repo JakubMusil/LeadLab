@@ -367,8 +367,8 @@ class RecordUpdateIn(Schema):
 
 
 def _validate_record_field_rules(
-    category_id,
-    value=None,
+    category_id: Optional[Any],
+    value: Optional[Any] = None,
     notes: Optional[str] = None,
     source: Optional[str] = None,
 ) -> Optional[str]:
@@ -415,7 +415,8 @@ def _validate_record_field_rules(
         if pattern:
             try:
                 if not re.fullmatch(pattern, notes):
-                    return "Notes does not match the required pattern."
+                    hint = rules.get("pattern_hint", pattern)
+                    return f"Notes does not match the required pattern: {hint}"
             except re.error:
                 pass  # invalid regex in config — skip silently
 
