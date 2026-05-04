@@ -30,6 +30,7 @@ def _build_entity_toolbar() -> None:
         from crm.models import PipelineRecord
         _ENTITY_TOOLBAR = {
             "lead": PipelineRecord.TOOLBAR_TOOLS,
+            "record": PipelineRecord.TOOLBAR_TOOLS,
             "customer": ["comment", "call", "meeting", "email_out", "checklist", "task"],
             "proposal": ["comment", "task"],
             "task": [
