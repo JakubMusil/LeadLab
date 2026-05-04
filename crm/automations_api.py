@@ -76,7 +76,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
             "Sends an email to the firm owner whenever a record "
             "is marked as Won."
         ),
-        "trigger": AutomationTrigger.LEAD_STATUS_CHANGE,
+        "trigger": AutomationTrigger.RECORD_STATUS_CHANGE,
         "trigger_config": {},
         "conditions": [
             {"field": "to_status", "operator": "eq", "value": "won"},
@@ -125,7 +125,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
             "Automatically updates a record's status to 'Lost' when there "
             "has been no recorded activity for 30 days."
         ),
-        "trigger": AutomationTrigger.LEAD_INACTIVE,
+        "trigger": AutomationTrigger.RECORD_INACTIVE,
         "trigger_config": {"inactive_days": 30},
         "conditions": [
             {"field": "lead_status", "operator": "neq", "value": "won"},

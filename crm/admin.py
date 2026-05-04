@@ -6,7 +6,7 @@ from crm.models import (
     DashboardLayout,
     ImportJob,
     PipelineRecord,
-    LeadScoringRule,
+    RecordScoringRule,
     Notification,
     Proposal,
     ProposalItem,
@@ -107,8 +107,8 @@ class DashboardLayoutAdmin(admin.ModelAdmin):
     readonly_fields = ("updated_at",)
 
 
-@admin.register(LeadScoringRule)
-class LeadScoringRuleAdmin(admin.ModelAdmin):
+@admin.register(RecordScoringRule)
+class RecordScoringRuleAdmin(admin.ModelAdmin):
     list_display = ("field", "operand", "score_delta", "firm")
     list_filter = ("firm", "field")
     search_fields = ("field",)
@@ -135,9 +135,9 @@ class ProposalItemInline(admin.TabularInline):
 
 @admin.register(Proposal)
 class ProposalAdmin(admin.ModelAdmin):
-    list_display = ("title", "status", "lead", "currency", "view_count", "firm", "created_at")
+    list_display = ("title", "status", "record", "currency", "view_count", "firm", "created_at")
     list_filter = ("firm", "status")
-    search_fields = ("title", "lead__title")
+    search_fields = ("title", "record__title")
     readonly_fields = ("public_token", "view_count", "first_viewed_at", "sent_at", "responded_at", "created_at", "updated_at")
     inlines = [ProposalItemInline]
 

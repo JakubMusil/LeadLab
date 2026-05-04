@@ -127,22 +127,22 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
 
-    lead_id = context.get("lead_id")
-    lead = None
+    record_id = context.get("record_id")
+    record = None
     firm = None
 
-    if lead_id:
+    if record_id:
         from crm.models import PipelineRecord
         try:
-            lead = PipelineRecord.objects.get(id=lead_id)
-            firm = lead.firm
+            record = PipelineRecord.objects.get(id=record_id)
+            firm = record.firm
         except PipelineRecord.DoesNotExist:
-            raise ValueError(f"create_task: lead {lead_id} not found")
+            raise ValueError(f"create_task: record {record_id} not found")
     else:
         # Standalone task — resolve firm from context
         firm_id = context.get("firm_id")
         if not firm_id:
-            raise ValueError("create_task: no lead_id or firm_id in context")
+            raise ValueError("create_task: no record_id or firm_id in context")
         from firms.models import Firm
         try:
             firm = Firm.objects.get(id=firm_id)
@@ -172,7 +172,7 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
 
     task = Task.objects.create(
         firm=firm,
-        lead=lead,
+        record=record,
         title=title,
         due_date=due_date,
         priority=priority,
@@ -191,7 +191,7 @@ def _action_create_task(action: dict, context: dict, rule) -> None:
     logger.info(
         "automation create_task: rule=%s created task '%s' (id=%s)%s",
         getattr(rule, 'id', 'unknown'), title, task.id,
-        f" on lead {lead_id}" if lead_id else "",
+        f" on record {record_id}" if record_id else "",
     )
 
 
@@ -218,27 +218,27 @@ def _action_set_task_status(action: dict, context: dict) -> None:
 
 
 def _action_assign_tag(action: dict, context: dict) -> None:
-    """Add a tag to a task or lead."""
+    """Add a tag to a task or record."""
     tag = action.get("tag", "").strip()
     if not tag:
         raise ValueError("assign_tag: no tag specified")
 
-    target_type = action.get("target_type", "task")  # "task" or "lead"
+    target_type = action.get("target_type", "task")  # "task" or "record"
 
-    if target_type == "lead":
-        lead_id = action.get("lead_id") or context.get("lead_id")
-        if not lead_id:
-            raise ValueError("assign_tag: no lead_id in action or context")
+    if target_type == "record":
+        record_id = action.get("record_id") or context.get("record_id")
+        if not record_id:
+            raise ValueError("assign_tag: no record_id in action or context")
         from crm.models import PipelineRecord
         try:
-            lead = PipelineRecord.objects.get(id=lead_id)
+            record = PipelineRecord.objects.get(id=record_id)
         except PipelineRecord.DoesNotExist:
-            raise ValueError(f"assign_tag: lead {lead_id} not found")
-        tags = list(lead.tags or [])
+            raise ValueError(f"assign_tag: record {record_id} not found")
+        tags = list(record.tags or [])
         if tag not in tags:
             tags.append(tag)
-            PipelineRecord.objects.filter(id=lead_id).update(tags=tags)
-        logger.info("automation assign_tag: added tag '%s' to lead %s", tag, lead_id)
+            PipelineRecord.objects.filter(id=record_id).update(tags=tags)
+        logger.info("automation assign_tag: added tag '%s' to record %s", tag, record_id)
     else:
         # Default: task
         task_id = action.get("task_id") or context.get("task_id")
@@ -257,9 +257,9 @@ def _action_assign_tag(action: dict, context: dict) -> None:
 
 
 def _action_update_field(action: dict, context: dict) -> None:
-    lead_id = context.get("lead_id")
-    if not lead_id:
-        raise ValueError("update_field: no lead_id in context")
+    record_id = context.get("record_id")
+    if not record_id:
+        raise ValueError("update_field: no record_id in context")
 
     field = action.get("field", "")
     value = action.get("value")
@@ -269,10 +269,10 @@ def _action_update_field(action: dict, context: dict) -> None:
         raise ValueError(f"update_field: field '{field}' is not allowed")
 
     from crm.models import PipelineRecord
-    updated = PipelineRecord.objects.filter(id=lead_id).update(**{field: value})
+    updated = PipelineRecord.objects.filter(id=record_id).update(**{field: value})
     if not updated:
-        raise ValueError(f"update_field: lead {lead_id} not found")
-    logger.info("automation update_field: set %s=%r on lead %s", field, value, lead_id)
+        raise ValueError(f"update_field: record {record_id} not found")
+    logger.info("automation update_field: set %s=%r on record %s", field, value, record_id)
 
 
 def _action_call_webhook(action: dict, context: dict) -> None:
@@ -466,7 +466,7 @@ def process_import_job(self, job_id: str):
         job.total = total
         job.save(update_fields=["total"])
 
-        if job.type == ImportJobType.LEADS:
+        if job.type == ImportJobType.RECORDS:
             for i, row in enumerate(rows, start=1):
                 try:
                     title = (row.get("title") or "").strip()
@@ -711,11 +711,11 @@ def dispatch_sequence_emails(self):
     due = SequenceEnrollment.objects.filter(
         status=SequenceEnrollmentStatus.ACTIVE,
         next_send_at__lte=now,
-    ).select_related("sequence", "lead", "lead__customer")
+    ).select_related("sequence", "record", "record__customer")
 
     for enrollment in due:
         sequence = enrollment.sequence
-        lead = enrollment.lead
+        record = enrollment.record
 
         try:
             step = sequence.steps.get(step_order=enrollment.current_step)
@@ -726,25 +726,25 @@ def dispatch_sequence_emails(self):
             enrollment.save(update_fields=["status", "completed_at"])
             continue
 
-        # Resolve recipient email from lead's customer
+        # Resolve recipient email from record's customer
         to_email = ""
-        if lead.customer:
-            to_email = lead.customer.email
+        if record.customer:
+            to_email = record.customer.email
         if not to_email:
             logger.warning(
-                "dispatch_sequence_emails: Lead %s has no customer email — skipping step %d.",
-                lead.id,
+                "dispatch_sequence_emails: Record %s has no customer email — skipping step %d.",
+                record.id,
                 step.step_order,
             )
         else:
             # Render simple placeholders
             customer_name = ""
-            if lead.customer:
-                customer_name = f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+            if record.customer:
+                customer_name = f"{record.customer.first_name} {record.customer.last_name}".strip()
             body = step.body_template.replace(
-                "{{lead_title}}", lead.title
+                "{{lead_title}}", record.title
             ).replace(
-                "{{customer_name}}", customer_name or lead.title
+                "{{customer_name}}", customer_name or record.title
             )
 
             from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.io")
@@ -753,7 +753,7 @@ def dispatch_sequence_emails(self):
             try:
                 from firms.models import PluginConfig
                 pc = PluginConfig.objects.filter(
-                    firm_id=lead.firm_id,
+                    firm_id=record.firm_id,
                     plugin_name="email-sequences",
                     enabled=True,
                 ).first()
@@ -781,7 +781,7 @@ def dispatch_sequence_emails(self):
 
             # Log activity
             Activity.objects.create(
-                lead=lead,
+                record=record,
                 type="sequence_email_sent",
                 content_text=f"Sequence email sent: {step.subject}",
                 metadata={
@@ -886,20 +886,20 @@ def check_task_overdue_automations(self):
         ) or ""
 
         for task in overdue_tasks:
-            lead = task.record
+            record = task.record
             customer_name = ""
             customer_email = ""
-            if lead.customer:
+            if record.customer:
                 customer_name = (
-                    f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+                    f"{record.customer.first_name} {record.customer.last_name}".strip()
                 )
-                customer_email = lead.customer.email or ""
+                customer_email = record.customer.email or ""
 
             context = {
                 "task_id": str(task.id),
                 "task_title": task.title,
-                "lead_id": str(lead.id),
-                "lead_title": lead.title,
+                "record_id": str(record.id),
+                "record_title": record.title,
                 "firm_id": str(firm_id),
                 "due_date": task.due_date.isoformat() if task.due_date else "",
                 "days_until_due": (
@@ -931,12 +931,12 @@ def check_lead_inactivity_automations(self):
     """
     Periodic task: fire ``lead_inactive`` automations.
 
-    Runs once per day.  For each firm that has active LEAD_INACTIVE rules,
-    finds leads with no Activity records in the last ``inactive_days`` days
+    Runs once per day.  For each firm that has active RECORD_INACTIVE rules,
+    finds records with no Activity records in the last ``inactive_days`` days
     (from ``trigger_config``, default 30), then evaluates the rules.
 
     Deduplication: a run is skipped if the same rule already has a SUCCESS or
-    SKIPPED run for the same lead within the last 24 hours.
+    SKIPPED run for the same record within the last 24 hours.
     """
     from django.utils import timezone as tz
     from django.db.models import Max
@@ -963,23 +963,20 @@ def check_lead_inactivity_automations(self):
         )
         inactivity_cutoff = now - datetime.timedelta(days=min_inactive_days)
 
-        # Find leads whose most-recent activity is older than the cutoff
-        # (or leads with no activities at all, treating created_at as last activity)
-        leads_qs = PipelineRecord.objects.filter(firm_id=firm_id)
+        # Find records whose most-recent activity is older than the cutoff
+        # (or records with no activities at all, treating created_at as last activity)
+        records_qs = PipelineRecord.objects.filter(firm_id=firm_id)
         # Annotate with latest activity date
-        leads_with_last = leads_qs.annotate(
+        records_with_last = records_qs.annotate(
             last_activity=Max("activities__created_at")
-        ).filter(
-            # Either no activities (last_activity is NULL) and lead is old enough,
-            # or the most recent activity predates the cutoff
-            last_activity__lt=inactivity_cutoff,
-        ) | leads_qs.annotate(
-            last_activity=Max("activities__created_at")
-        ).filter(
-            last_activity__isnull=True,
-            created_at__lt=inactivity_cutoff,
         )
-        leads_qs = leads_with_last.select_related("customer").distinct()
+        records_qs = (
+            records_with_last.filter(last_activity__lt=inactivity_cutoff)
+            | records_with_last.filter(
+                last_activity__isnull=True,
+                created_at__lt=inactivity_cutoff,
+            )
+        ).select_related("customer").distinct()
 
         # Get owner email
         owner_email = (
@@ -990,25 +987,25 @@ def check_lead_inactivity_automations(self):
             .first()
         ) or ""
 
-        for lead in leads_qs:
+        for record in records_qs:
             customer_name = ""
             customer_email = ""
-            if lead.customer:
+            if record.customer:
                 customer_name = (
-                    f"{lead.customer.first_name} {lead.customer.last_name}".strip()
+                    f"{record.customer.first_name} {record.customer.last_name}".strip()
                 )
-                customer_email = lead.customer.email or ""
+                customer_email = record.customer.email or ""
 
             # Compute actual inactive_days
-            last_act = getattr(lead, "last_activity", None)
+            last_act = getattr(record, "last_activity", None)
             inactive_days = (
-                (now - last_act).days if last_act else (now - lead.created_at).days
+                (now - last_act).days if last_act else (now - record.created_at).days
             )
 
             context = {
-                "lead_id": str(lead.id),
-                "lead_title": lead.title,
-                "lead_status": lead.status,
+                "record_id": str(record.id),
+                "record_title": record.title,
+                "record_status": record.status,
                 "firm_id": str(firm_id),
                 "inactive_days": str(inactive_days),
                 "customer_email": customer_email,
@@ -1022,11 +1019,11 @@ def check_lead_inactivity_automations(self):
                 if inactive_days < rule_inactive_days:
                     continue
 
-                # Skip if already fired for this lead in the last 24 hours
+                # Skip if already fired for this record in the last 24 hours
                 already_ran = AutomationRun.objects.filter(
                     rule=rule,
                     triggered_at__gte=now - datetime.timedelta(hours=24),
-                ).filter(context__lead_id=str(lead.id)).exists()
+                ).filter(context__record_id=str(record.id)).exists()
                 if already_ran:
                     continue
 
@@ -1567,7 +1564,7 @@ def fetch_remote_file_for_activity(self, activity_id: str):
         # parent entity is set.
         firm = None
         for parent in (
-            getattr(activity, "lead", None),
+            getattr(activity, "record", None),
             getattr(activity, "customer", None),
             getattr(activity, "proposal", None),
             getattr(activity, "task", None),
@@ -1580,7 +1577,7 @@ def fetch_remote_file_for_activity(self, activity_id: str):
 
         doc = Document(
             firm=firm,
-            lead=getattr(activity, "lead", None),
+            record=getattr(activity, "record", None),
             customer=getattr(activity, "customer", None),
             proposal=getattr(activity, "proposal", None),
             task=getattr(activity, "task", None),

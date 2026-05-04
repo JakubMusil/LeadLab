@@ -33,7 +33,7 @@ class FakturoidPlugin(LeadLabPlugin):
             "Create invoices directly from revenue reports."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/fakturoid/icon.png",
-        "permissions": ["leads:read"],
+        "permissions": ["records:read"],
         "activity_types": [],
         "webhook_event_types": [],
         "config_schema": {

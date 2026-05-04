@@ -5,7 +5,7 @@ persisting them as Notification records for all firm members.
 Usage (sync context, e.g. inside a Django Ninja endpoint)::
 
     from crm.events import broadcast_event
-    broadcast_event(firm=lead.firm, event="lead.created", payload=_lead_out(lead))
+    broadcast_event(firm=record.firm, event="record.created", payload=_record_out(record))
 
 The function is fully fire-and-forget: any error (channel layer unavailable,
 Redis down) is caught and logged so it never breaks the HTTP response.

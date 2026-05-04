@@ -21,8 +21,8 @@ VALID_PERMISSIONS: frozenset[str] = frozenset(
     {
         "activities:read",
         "activities:write",
-        "leads:read",
-        "leads:write",
+        "records:read",
+        "records:write",
         "customers:read",
         "customers:write",
         "notifications:send",

@@ -1006,13 +1006,13 @@ class WebhookEndpointModelTest(TestCase):
     def test_subscribes_to_empty_events_means_all(self):
         from firms.models import WebhookEndpoint
         ep = WebhookEndpoint(firm=self.firm, url="https://example.com", events=[])
-        self.assertTrue(ep.subscribes_to("lead.created"))
+        self.assertTrue(ep.subscribes_to("record.created"))
         self.assertTrue(ep.subscribes_to("activity.created"))
 
     def test_subscribes_to_specific_event(self):
         from firms.models import WebhookEndpoint
-        ep = WebhookEndpoint(firm=self.firm, url="https://example.com", events=["lead.created"])
-        self.assertTrue(ep.subscribes_to("lead.created"))
+        ep = WebhookEndpoint(firm=self.firm, url="https://example.com", events=["record.created"])
+        self.assertTrue(ep.subscribes_to("record.created"))
         self.assertFalse(ep.subscribes_to("activity.created"))
 
 
@@ -1027,13 +1027,13 @@ class WebhookAPITest(TestCase):
     def test_create_webhook(self):
         resp = self.client.post(
             f"/api/v1/firms/{self.firm.id}/webhooks",
-            data=json.dumps({"url": "https://example.com/hook", "events": ["lead.created"]}),
+            data=json.dumps({"url": "https://example.com/hook", "events": ["record.created"]}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data["url"], "https://example.com/hook")
-        self.assertEqual(data["events"], ["lead.created"])
+        self.assertEqual(data["events"], ["record.created"])
         self.assertTrue(data["is_active"])
 
     def test_list_webhooks(self):

@@ -8,15 +8,15 @@ Messages broadcast on that group follow this envelope:
 
     {
         "type": "crm.event",          # Channels routing key (dot → underscore dispatch)
-        "event": "lead.created",      # Application-level event name
+        "event": "record.created",      # Application-level event name
         "payload": { ... }            # Event-specific data
     }
 
 Event names:
-    lead.created   — a new lead was created
-    lead.updated   — a lead was updated (status change included)
-    lead.deleted   — a lead was deleted; payload contains {"id": "<uuid>"}
-    activity.created — a new activity was logged on a lead
+    record.created   — a new record was created
+    record.updated   — a record was updated (status change included)
+    record.deleted   — a record was deleted; payload contains {"id": "<uuid>"}
+    activity.created — a new activity was logged on a record
     task.completed — a task was marked as completed
 """
 
