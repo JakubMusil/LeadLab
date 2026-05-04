@@ -8,6 +8,8 @@ Usage:
     python manage.py seed_pipeline_categories --firm-id <uuid>
 
 Safe to run multiple times — existing objects are skipped (get_or_create).
+Note: CategoryField defaults (value_type, widget, etc.) are only applied when a
+field is first created. Existing fields will not be updated on subsequent runs.
 """
 
 from __future__ import annotations

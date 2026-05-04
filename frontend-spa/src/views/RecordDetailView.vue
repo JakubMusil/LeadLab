@@ -740,15 +740,18 @@ function startFieldEdit(fieldKey: string) {
   const record = store.currentRecord
   if (!record) return
   editingFieldKey.value = fieldKey
+  // Normalize any ISO datetime/date string to YYYY-MM-DD for <input type="date">
+  const toDateInputValue = (v: string | null | undefined): string => {
+    if (!v) return ''
+    return typeof v === 'string' ? v.substring(0, 10) : ''
+  }
   switch (fieldKey) {
     case 'expires_at':
-      fieldEditValues.value['expires_at'] = record.expires_at
-        ? record.expires_at.substring(0, 10)
-        : ''
+      fieldEditValues.value['expires_at'] = toDateInputValue(record.expires_at)
       break
     case 'date_range':
-      fieldEditValues.value['start_date'] = record.start_date || ''
-      fieldEditValues.value['end_date'] = record.end_date || ''
+      fieldEditValues.value['start_date'] = toDateInputValue(record.start_date)
+      fieldEditValues.value['end_date'] = toDateInputValue(record.end_date)
       break
     case 'notes':
       fieldEditValues.value['notes'] = record.notes || ''
