@@ -2,7 +2,7 @@
 /**
  * Global Command Palette — Cmd/Ctrl + K
  *
- * Fuzzy-searches leads, customers, navigation targets, and documents.
+ * Fuzzy-searches records, customers, navigation targets, and documents.
  * Triggered by the keyboard shortcut; closed with Escape or click-outside.
  */
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
@@ -32,7 +32,7 @@ interface CommandItem {
   description?: string
   icon: Component
   action: () => void
-  category: 'navigation' | 'lead' | 'customer' | 'document' | 'recent'
+  category: 'navigation' | 'record' | 'customer' | 'document' | 'recent'
 }
 
 interface DocumentOut {
@@ -71,9 +71,9 @@ const leadItems = computed<CommandItem[]>(() =>
   leadsStore.records.slice(0, 50).map((l) => ({
     id: `lead-${l.id}`,
     label: l.title,
-    description: `Lead · ${l.status}`,
+    description: `Record · ${l.status}`,
     icon: FunnelIcon,
-    category: 'lead' as const,
+    category: 'record' as const,
     action: () => router.push(`/app/records/${l.id}`),
   })),
 )
@@ -256,7 +256,7 @@ onMounted(async () => {
           >
             {{
               item.category === 'navigation' ? 'Page' :
-              item.category === 'lead' ? 'Lead' :
+              item.category === 'record' ? 'Record' :
               item.category === 'customer' ? 'Customer' :
               item.category === 'document' ? 'Document' : 'Recent'
             }}

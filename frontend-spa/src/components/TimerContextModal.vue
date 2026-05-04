@@ -12,7 +12,7 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-type EntityType = 'lead' | 'customer' | 'task' | null
+type EntityType = 'record' | 'customer' | 'task' | null
 
 interface SearchResult {
   id: string
@@ -35,8 +35,8 @@ watch(searchQuery, async (q) => {
   searching.value = true
   try {
     let url = ''
-    if (entityType.value === 'lead') {
-      url = `/api/v1/crm/leads?search=${encodeURIComponent(q)}&page_size=10`
+    if (entityType.value === 'record') {
+      url = `/api/v1/crm/opportunities?search=${encodeURIComponent(q)}&page_size=10`
     } else if (entityType.value === 'customer') {
       url = `/api/v1/crm/customers?search=${encodeURIComponent(q)}&page_size=10`
     } else if (entityType.value === 'task') {
@@ -113,7 +113,7 @@ function close() {
             <button
               v-for="opt in [
                 { value: null, label: t('timerModal.none') },
-                { value: 'lead', label: t('timerModal.opportunity') },
+                { value: 'record', label: t('timerModal.opportunity') },
                 { value: 'customer', label: t('timerModal.contact') },
                 { value: 'task', label: t('timerModal.taskEntity') },
               ]"

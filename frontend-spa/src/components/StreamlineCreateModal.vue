@@ -103,7 +103,7 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean
     actionType: string
-    entityType: 'lead' | 'record' | 'customer' | 'realization' | 'management' | 'proposal'
+    entityType: 'record' | 'customer' | 'realization' | 'management' | 'proposal'
     entityId: string
     teamMembers?: MentionUser[]
     attachmentUploadUrl?: string

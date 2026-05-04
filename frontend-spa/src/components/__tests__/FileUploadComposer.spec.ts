@@ -24,7 +24,7 @@ beforeEach(() => {
 
 function _mount() {
   return mount(FileUploadComposer, {
-    props: { uploadUrl: '/api/v1/crm/file-uploads/upload?lead_id=L1' },
+    props: { uploadUrl: '/api/v1/crm/file-uploads/upload?record_id=R1' },
   })
 }
 

@@ -12,7 +12,7 @@ import { api } from '@/api'
 import { extractErrorMessage } from '@/api/errors'
 
 export interface TimerContext {
-  entityType: 'lead' | 'customer' | 'task' | 'realization' | null
+  entityType: 'record' | 'customer' | 'task' | 'realization' | null
   entityId: string | null
   entityLabel: string | null
 }
@@ -22,8 +22,8 @@ export interface TimeEntryOut {
   firm_id: string
   user_id: string | null
   user_name: string | null
-  lead_id: string | null
-  lead_title: string | null
+  record_id: string | null
+  record_title: string | null
   customer_id: string | null
   customer_name: string | null
   task_id: string | null
@@ -45,7 +45,7 @@ export interface TimeEntryIn {
   hourly_rate?: number | null
   started_at?: string | null
   ended_at?: string | null
-  lead_id?: string | null
+  record_id?: string | null
   customer_id?: string | null
   task_id?: string | null
   realization_id?: string | null
@@ -157,7 +157,7 @@ export const useTimerStore = defineStore('timer', () => {
       is_billable: isBillable.value,
       started_at: new Date(startedAt.value).toISOString(),
       ended_at: endedAt.toISOString(),
-      lead_id: context.value.entityType === 'lead' ? context.value.entityId : null,
+      record_id: context.value.entityType === 'record' ? context.value.entityId : null,
       customer_id: context.value.entityType === 'customer' ? context.value.entityId : null,
       task_id: context.value.entityType === 'task' ? context.value.entityId : null,
       realization_id: context.value.entityType === 'realization' ? context.value.entityId : null,

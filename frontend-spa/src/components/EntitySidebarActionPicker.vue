@@ -70,7 +70,7 @@ interface StreamlineTool {
 
 const props = withDefaults(
   defineProps<{
-    entityType: 'lead' | 'record' | 'customer' | 'realization' | 'management' | 'proposal'
+    entityType: 'record' | 'customer' | 'realization' | 'management' | 'proposal'
     entityId: string
     teamMembers?: MentionUser[]
     /**
