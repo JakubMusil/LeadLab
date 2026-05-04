@@ -25,11 +25,8 @@ import {
   PaperClipIcon,
   ChevronDownIcon,
   XMarkIcon,
-  FunnelIcon,
-  LinkIcon,
   FlagIcon,
 } from '@heroicons/vue/24/outline'
-import { useClipboard } from '@/composables/useClipboard'
 import { ConfirmDeleteModal } from '@/components/ui'
 
 const route = useRoute()
@@ -41,8 +38,6 @@ const firmStore = useFirmStore()
 const authStore = useAuthStore()
 const { on, off } = useWebSocket()
 const { t } = useI18n()
-const { copiedId: permalinkCopiedId, copyToClipboard } = useClipboard()
-const currentPageUrl = computed(() => window.location.href)
 
 const leadId = computed(() => route.params.id as string)
 
@@ -803,20 +798,14 @@ async function saveFieldEdit(fieldKey: string) {
 <template>
   <div class="p-6">
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap" aria-label="breadcrumb">
-      <RouterLink to="/app/records" class="hover:text-red-600 transition-colors">{{ t('recordDetail.backToLeads') }}</RouterLink>
-      <template v-if="currentCategory">
-        <span class="text-gray-300" aria-hidden="true">›</span>
-        <RouterLink
-          :to="`/app/records?category_id=${currentCategory.id}`"
-          class="flex items-center gap-1 hover:text-red-600 transition-colors"
-        >
-          <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: currentCategory.color || '#94A3B8' }" aria-hidden="true"></span>
-          {{ currentCategory.name }}
-        </RouterLink>
-        <span v-if="store.currentRecord" class="text-gray-300" aria-hidden="true">›</span>
-        <span v-if="store.currentRecord" class="text-gray-700 dark:text-gray-200 font-medium truncate max-w-xs">{{ store.currentRecord.title }}</span>
-      </template>
+    <nav v-if="currentCategory" class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap" aria-label="breadcrumb">
+      <RouterLink
+        :to="`/app/records?category_id=${currentCategory.id}`"
+        class="flex items-center gap-1 hover:text-red-600 transition-colors"
+      >
+        <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: currentCategory.color || '#94A3B8' }" aria-hidden="true"></span>
+        {{ currentCategory.name }}
+      </RouterLink>
     </nav>
 
     <!-- Loading skeleton -->
@@ -826,23 +815,6 @@ async function saveFieldEdit(fieldKey: string) {
     </div>
 
     <template v-else-if="store.currentRecord">
-      <!-- Title -->
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2 min-w-0">
-        <FunnelIcon class="w-6 h-6 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-        <span class="truncate">{{ store.currentRecord.title }}</span>
-        <button
-          class="ml-1 flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/permalink"
-          :title="permalinkCopiedId === 'page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
-          @click="copyToClipboard(currentPageUrl, 'page')"
-        >
-          <LinkIcon class="w-4 h-4" />
-          <span
-            v-if="permalinkCopiedId === 'page'"
-            class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none"
-          >Zkopírováno!</span>
-        </button>
-      </h1>
-
       <!-- Progress bar -->
       <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
         <!-- Stage-based progress bar (when category is set) -->

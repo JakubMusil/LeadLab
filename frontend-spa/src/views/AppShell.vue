@@ -12,6 +12,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
 import { useI18n } from '@/composables/useI18n'
+import { useClipboard } from '@/composables/useClipboard'
 import { pluginRegistry } from '@/plugins'
 import { api } from '@/api'
 import CommandPalette from '@/components/CommandPalette.vue'
@@ -42,6 +43,7 @@ import {
   PlusCircleIcon,
   PencilSquareIcon,
   BellIcon,
+  LinkIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -55,6 +57,9 @@ const savedViewsStore = useSavedViewsStore()
 const tasksStore = useTasksStore()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
+const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
+const currentPageUrl = computed(() => window.location.href)
+const isRecordDetailPage = computed(() => route.meta?.title === 'Record Detail')
 
 watchEffect(() => {
   const color = firmStore.activeFirm?.primary_color ?? '#dc2626'
@@ -497,9 +502,26 @@ function formatNotifTime(ts: string): string {
         </button>
 
         <!-- Page title -->
-        <h1 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
-          {{ (route.meta?.title as string) ?? 'LeadLab' }}
-        </h1>
+        <div class="flex items-center gap-1.5 min-w-0 flex-shrink overflow-hidden">
+          <template v-if="isRecordDetailPage && leadsStore.currentRecord">
+            <FunnelIcon class="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+            <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[14rem] sm:max-w-xs">{{ leadsStore.currentRecord.title }}</span>
+            <button
+              class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/nav-permalink"
+              :title="navPermalinkCopiedId === 'nav-page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
+              @click="copyNavPermalink(currentPageUrl, 'nav-page')"
+            >
+              <LinkIcon class="w-4 h-4" />
+              <span
+                v-if="navPermalinkCopiedId === 'nav-page'"
+                class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 dark:bg-gray-700 px-2 py-0.5 text-[10px] text-white pointer-events-none z-10"
+              >Zkopírováno!</span>
+            </button>
+          </template>
+          <h1 v-else class="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
+            {{ (route.meta?.title as string) ?? 'LeadLab' }}
+          </h1>
+        </div>
 
         <div class="flex-1" />
 
