@@ -295,6 +295,34 @@ class CategoryField(models.Model):
         ("origin_record", "Origin Record"),
     ]
 
+    VALUE_TYPE_CHOICES = [
+        ("text", "Text"),
+        ("number", "Number"),
+        ("currency", "Currency"),
+        ("date", "Date"),
+        ("datetime", "Date & Time"),
+        ("boolean", "Boolean"),
+        ("select", "Select (single)"),
+        ("multiselect", "Select (multiple)"),
+        ("url", "URL"),
+        ("email", "E-mail"),
+    ]
+
+    WIDGET_CHOICES = [
+        ("auto", "Auto (derive from type)"),
+        ("text_input", "Text input"),
+        ("textarea", "Textarea"),
+        ("number_input", "Number input"),
+        ("date_picker", "Date picker"),
+        ("datetime_picker", "Date & time picker"),
+        ("toggle", "Toggle / switch"),
+        ("select", "Select dropdown"),
+        ("multiselect", "Multi-select"),
+        ("color_picker", "Color picker"),
+        ("currency_input", "Currency input"),
+        ("rich_text", "Rich-text editor"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     category = models.ForeignKey(
         Category,
@@ -305,6 +333,11 @@ class CategoryField(models.Model):
     is_visible = models.BooleanField(default=True)
     is_required = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
+    value_type = models.CharField(max_length=20, choices=VALUE_TYPE_CHOICES, default="text")
+    widget = models.CharField(max_length=20, choices=WIDGET_CHOICES, default="auto")
+    validation_rules = models.JSONField(default=dict, blank=True)
+    label_override = models.CharField(max_length=100, blank=True, default="")
+    help_text_override = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         verbose_name = "category field"
