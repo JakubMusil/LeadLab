@@ -354,6 +354,9 @@ function _initFieldsForTool(tool: StreamlineTool | null): Record<string, FieldVa
       tool.form_schema.properties as Record<string, Record<string, unknown>>,
     )) {
       if (SKIP_FIELD_KEYS.has(key)) continue
+      // Skip system/integration fields marked as hidden — they must not block
+      // form validation or appear as empty strings in the submitted payload.
+      if (raw['x-hidden']) continue
       const propType = raw.type as string | undefined
       if (propType === 'array') {
         fields[key] = []

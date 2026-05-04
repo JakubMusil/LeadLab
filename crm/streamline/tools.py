@@ -1567,7 +1567,7 @@ class PaymentReceivedTool(_SimpleLogTool):
     schema_properties = {
         "amount": {"type": "number", "title": "Amount"},
         "currency": {"type": "string", "title": "Currency"},
-        "invoice_id": {"type": "string", "title": "Invoice Reference"},
+        "invoice_id": {"type": "string", "title": "Invoice ID"},
         "paid_at": {"type": "string", "format": "date-time", "title": "Paid At"},
         "method": {"type": "string", "title": "Method"},
         # Hidden — populated by payment gateway integrations
