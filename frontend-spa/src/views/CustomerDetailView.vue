@@ -153,6 +153,14 @@ const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(nu
 
 // Streamline Create Modal state (opened from sidebar picker tool-selected event).
 const activeModalTool = ref('')
+
+function openModalTool(type: string) {
+  activeModalTool.value = type
+}
+
+function closeModalTool() {
+  activeModalTool.value = ''
+}
 // Edit mode
 const editing = ref(false)
 const editFirstName = ref('')
@@ -649,7 +657,7 @@ onMounted(async () => {
           <EntitySidebarActionPicker
             entity-type="customer"
             :entity-id="customerId"
-            @tool-selected="(type) => { activeModalTool = type }"
+            @tool-selected="openModalTool"
           />
 
           <!-- Employees card (for companies) -->
@@ -884,7 +892,7 @@ onMounted(async () => {
     :action-type="activeModalTool"
     entity-type="customer"
     :entity-id="customerId"
-    @update:model-value="(v) => { if (!v) activeModalTool = '' }"
+    @update:model-value="(v) => { if (!v) closeModalTool() }"
     @activity-added="activityTimelineRef?.load()"
   />
 </template>

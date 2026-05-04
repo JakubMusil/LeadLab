@@ -147,6 +147,14 @@ const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(nu
 
 // Streamline Create Modal state (opened from sidebar picker tool-selected event).
 const activeModalTool = ref('')
+
+function openModalTool(type: string) {
+  activeModalTool.value = type
+}
+
+function closeModalTool() {
+  activeModalTool.value = ''
+}
 const STATUSES = computed(() => [
   { value: 'draft', label: t('proposals.statusDraft'), color: 'bg-gray-100 text-gray-700' },
   { value: 'sent', label: t('proposals.statusSent'), color: 'bg-blue-100 text-blue-700' },
@@ -982,7 +990,7 @@ watch(
               <EntitySidebarActionPicker
                 entity-type="proposal"
                 :entity-id="currentProposal.id"
-                @tool-selected="(type) => { activeModalTool = type }"
+                @tool-selected="openModalTool"
               />
             </div>
           </div>
@@ -1013,7 +1021,7 @@ watch(
     :action-type="activeModalTool"
     entity-type="proposal"
     :entity-id="currentProposal.id"
-    @update:model-value="(v) => { if (!v) activeModalTool = '' }"
+    @update:model-value="(v) => { if (!v) closeModalTool() }"
     @activity-added="activityTimelineRef?.load()"
   />
 </template>

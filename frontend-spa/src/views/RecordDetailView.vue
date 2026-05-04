@@ -70,6 +70,10 @@ function closeAkceDropdown() {
   akceDropdownOpen.value = false
 }
 
+function closeModalTool() {
+  activeModalTool.value = ''
+}
+
 interface ShortcutPreset {
   id: string
   name: string
@@ -1273,7 +1277,7 @@ async function saveFieldEdit(fieldKey: string) {
     :entity-id="leadId"
     :team-members="teamMembers"
     :attachment-upload-url="`/api/v1/crm/records/${leadId}/attachments`"
-    @update:model-value="(v) => { if (!v) activeModalTool = '' }"
+    @update:model-value="(v) => { if (!v) closeModalTool() }"
     @activity-added="activityTimelineRef?.load()"
     @file-uploaded="(f) => { files.unshift(f as any) }"
   />
