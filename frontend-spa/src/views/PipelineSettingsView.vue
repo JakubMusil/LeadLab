@@ -551,8 +551,9 @@ const editMin = computed({
   get: () => String(editingField.value.validation_rules.min ?? ''),
   set: (v: string) => {
     const rules = { ...editingField.value.validation_rules }
-    if (v === '') delete rules.min
-    else rules.min = Number(v)
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.min
+    else rules.min = n
     editingField.value.validation_rules = rules
   },
 })
@@ -560,8 +561,9 @@ const editMax = computed({
   get: () => String(editingField.value.validation_rules.max ?? ''),
   set: (v: string) => {
     const rules = { ...editingField.value.validation_rules }
-    if (v === '') delete rules.max
-    else rules.max = Number(v)
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.max
+    else rules.max = n
     editingField.value.validation_rules = rules
   },
 })
@@ -569,8 +571,9 @@ const newMin = computed({
   get: () => String(newFieldValidationRules.value.min ?? ''),
   set: (v: string) => {
     const rules = { ...newFieldValidationRules.value }
-    if (v === '') delete rules.min
-    else rules.min = Number(v)
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.min
+    else rules.min = n
     newFieldValidationRules.value = rules
   },
 })
@@ -578,8 +581,9 @@ const newMax = computed({
   get: () => String(newFieldValidationRules.value.max ?? ''),
   set: (v: string) => {
     const rules = { ...newFieldValidationRules.value }
-    if (v === '') delete rules.max
-    else rules.max = Number(v)
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.max
+    else rules.max = n
     newFieldValidationRules.value = rules
   },
 })

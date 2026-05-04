@@ -184,7 +184,6 @@ def _field_out(f: CategoryField) -> dict:
         "help_text_override": f.help_text_override or "",
     }
 
-
 def _validate_field_payload(payload_dict: dict) -> Optional[str]:
     """Return an error string if validation fails, otherwise None."""
     widget = payload_dict.get("widget")
