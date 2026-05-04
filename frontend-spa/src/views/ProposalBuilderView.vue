@@ -972,7 +972,7 @@ watch(
           <!-- Streamline: timeline + quick-action sidebar (builder UI above stays untouched) -->
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('leadDetail.tabActivities') }}</h3>
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ t('recordDetail.tabActivities') }}</h3>
               <ActivityTimeline ref="activityTimelineRef" entityType="proposal" :entityId="currentProposal.id" />
             </div>
             <div>

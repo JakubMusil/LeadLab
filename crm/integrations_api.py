@@ -348,16 +348,16 @@ def export_leads_csv(
             "id", "title", "status", "source", "value", "currency",
             "customer_name", "assigned_to", "created_at", "updated_at",
         ]
-        for lead in qs.iterator():
+        for record in qs.iterator():
             customer_name = ""
-            if lead.customer:
-                customer_name = f"{lead.customer.first_name} {lead.customer.last_name}".strip()
-            assigned = lead.assigned_to.email if lead.assigned_to else ""
+            if record.customer:
+                customer_name = f"{record.customer.first_name} {record.customer.last_name}".strip()
+            assigned = record.assigned_to.email if record.assigned_to else ""
             yield [
-                str(lead.id), lead.title, lead.status, lead.source,
-                str(lead.value or ""), lead.currency,
+                str(record.id), record.title, record.status, record.source,
+                str(record.value or ""), record.currency,
                 customer_name, assigned,
-                lead.created_at.isoformat(), lead.updated_at.isoformat(),
+                record.created_at.isoformat(), record.updated_at.isoformat(),
             ]
 
     response = StreamingHttpResponse(

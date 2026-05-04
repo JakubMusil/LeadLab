@@ -13,7 +13,7 @@ import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
 import { ConfirmDeleteModal } from '@/components/ui'
-import LeadScoreBadge from '@/components/LeadScoreBadge.vue'
+import RecordScoreBadge from '@/components/RecordScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useListView, type ColumnDef } from '@/composables/useListView'
@@ -1175,13 +1175,13 @@ function showAssigneeAvatar(record: RecordOut): boolean {
               <td v-if="isColVisible('source')" class="px-4 py-3 text-gray-500 dark:text-gray-400" @click="goToDetail(record.id)">{{ sourceLabel(record.source) }}</td>
               <td v-if="isColVisible('value')" class="px-4 py-3 text-gray-700 dark:text-gray-300" @click="goToDetail(record.id)">{{ fmtValue(record) }}</td>
               <td v-if="isColVisible('score')" class="px-4 py-3" @click="goToDetail(record.id)">
-                <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
+                <RecordScoreBadge :score="(record as RecordOut & { score?: number }).score" />
               </td>
               <td v-if="isColVisible('created_at')" class="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs" @click="goToDetail(record.id)">{{ new Date(record.created_at).toLocaleDateString() }}</td>
               <td v-if="isColVisible('users')" class="px-4 py-3" @click="goToDetail(record.id)">
                 <div class="flex items-center gap-1">
                   <Avatar v-if="record.created_by_name" size="xs" :name="record.created_by_name" :title="t('leads.createdBy') + ': ' + record.created_by_name" />
-                  <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
+                  <Avatar v-if="showAssigneeAvatar(record)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
                 </div>
               </td>
               <td class="px-4 py-3">
@@ -1256,7 +1256,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
           <span class="hidden lg:block text-xs text-gray-600 dark:text-gray-300 flex-shrink-0 w-24 text-right">{{ fmtValue(record) }}</span>
 
           <!-- Score -->
-          <span class="hidden xl:block flex-shrink-0"><LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" /></span>
+          <span class="hidden xl:block flex-shrink-0"><RecordScoreBadge :score="(record as RecordOut & { score?: number }).score" /></span>
 
           <!-- Date -->
           <span class="hidden lg:block text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 w-24 text-right">{{ new Date(record.created_at).toLocaleDateString() }}</span>
@@ -1264,7 +1264,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
           <!-- User avatars (creator + assignee if different) -->
           <div class="hidden sm:flex items-center gap-1 flex-shrink-0" @click.stop>
             <Avatar v-if="record.created_by_name" size="xs" :name="record.created_by_name" :title="t('leads.createdBy') + ': ' + record.created_by_name" />
-            <Avatar v-if="showAssigneeAvatar(lead)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
+            <Avatar v-if="showAssigneeAvatar(record)" size="xs" :name="record.assigned_to_name ?? ''" :title="t('leads.assignedTo') + ': ' + record.assigned_to_name" />
           </div>
 
           <!-- Actions -->
@@ -1376,7 +1376,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
                 </div>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
                   <span v-if="fmtValue(record)" class="text-xs text-gray-500 dark:text-gray-400">{{ fmtValue(record) }}</span>
-                  <LeadScoreBadge :score="(lead as RecordOut & { score?: number }).score" />
+                  <RecordScoreBadge :score="(record as RecordOut & { score?: number }).score" />
                   <span v-if="overdueTasks.has(record.id)" class="text-xs text-red-500" :title="t('leads.overdueLabel')">{{ t('leads.overdueLabel') }}</span>
                 </div>
               </div>

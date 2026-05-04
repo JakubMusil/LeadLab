@@ -100,7 +100,7 @@ describe('timerStore', () => {
     ;(api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, status: 200, data: mockEntry })
 
     const store = useTimerStore()
-    store.start({ entityType: 'lead', entityId: 'lead-1', entityLabel: 'Deal' }, 'Dev work', true)
+    store.start({ entityType: 'record', entityId: 'lead-1', entityLabel: 'Deal' }, 'Dev work', true)
     vi.advanceTimersByTime(90 * 1000) // 90 seconds = 1.5 minutes → rounds to 2
 
     const result = await store.stop()
@@ -112,7 +112,7 @@ describe('timerStore', () => {
       expect.objectContaining({
         description: 'Dev work',
         is_billable: true,
-        lead_id: 'lead-1',
+        record_id: 'lead-1',
         customer_id: null,
         task_id: null,
       }),

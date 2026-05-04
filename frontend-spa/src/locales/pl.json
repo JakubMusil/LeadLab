@@ -430,7 +430,7 @@
     "confirmDeleteStage": "Czy na pewno usunąć ten etap?",
     "stageDragHandle": "Przeciągnij, aby zmienić kolejność",
     "categoryCountLabel": "{count} aktywnych rekordów",
-    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}"…"
+    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}”…"
   },
   "proposals": {
     "title": "Oferty",
@@ -545,11 +545,11 @@
     "upcoming": "Nadchodzące (kolejne 7 dni)",
     "newTaskTitle": "Nowe zadanie",
     "titleField": "Tytuł *",
-    "leadField": "Lead *",
+    "leadField": "Rekord *",
     "assigneeField": "Przypisano do",
     "timeField": "Godzina",
     "descriptionField": "Opis",
-    "selectLead": "Wybierz lead…",
+    "selectLead": "Wybierz rekord…",
     "cancel": "Anuluj",
     "createTask": "Utwórz zadanie",
     "taskCreated": "Zadanie utworzone.",
@@ -557,7 +557,7 @@
     "taskMarkedComplete": "Zadanie oznaczone jako ukończone!",
     "failedToCompleteTask": "Nie udało się ukończyć zadania.",
     "titleRequired": "Tytuł jest wymagany.",
-    "leadRequired": "Proszę wybrać lead.",
+    "leadRequired": "Proszę wybrać rekord.",
     "creating": "Tworzenie…",
     "dueDateField": "Termin wykonania",
     "failedToComplete": "Nie udało się ukończyć zadania.",
@@ -846,8 +846,8 @@
     "showCompleted": "Pokaż zakończone",
     "newTask": "+ Nowe zadanie",
     "noTasks": "Nie znaleziono zadań.",
-    "lead": "Lead",
-    "selectLead": "Wybierz lead…",
+    "lead": "Rekord",
+    "selectLead": "Wybierz rekord…",
     "taskTitle": "Tytuł",
     "description": "Opis",
     "deadline": "Termin",
@@ -1178,7 +1178,7 @@
     "cancelLog": "Anuluj",
     "deleteTimeLog": "Usuń wpis czasu"
   },
-  "leadDetail": {
+  "recordDetail": {
     "backToLeads": "← Szanse",
     "edit": "Edytuj",
     "delete": "Usuń",

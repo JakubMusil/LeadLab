@@ -11,7 +11,7 @@ registerPlugin({
     description:
       'Integrates with Twilio to place calls directly from a lead detail page. Call duration and recording URL are logged as a CALL activity.',
     iconUrl: 'https://cdn.leadlab.io/plugins/voip/icon.png',
-    permissions: ['leads:read', 'activities:write'],
+    permissions: ['records:read', 'activities:write'],
     configSchema: {
       type: 'object',
       properties: {

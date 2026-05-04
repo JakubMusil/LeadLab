@@ -366,10 +366,10 @@ class RecordUpdateIn(Schema):
     extra_data: Optional[Dict[str, Any]] = None
 
 
-def _compute_lead_score(lead: PipelineRecord, rules: list) -> int:
+def _compute_record_score(lead: PipelineRecord, rules: list) -> int:
     """
-    Compute a 0–100 lead score by evaluating each scoring rule against
-    the lead.  Rules are pre-fetched by the caller to avoid N+1 queries.
+    Compute a 0–100 record score by evaluating each scoring rule against
+    the record.  Rules are pre-fetched by the caller to avoid N+1 queries.
 
     Supported field values
     ----------------------
@@ -409,7 +409,7 @@ def _compute_lead_score(lead: PipelineRecord, rules: list) -> int:
 
 
 def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
-    score = _compute_lead_score(lead, rules) if rules is not None else None
+    score = _compute_record_score(lead, rules) if rules is not None else None
     created_by_name: Optional[str] = None
     if lead.created_by_id:
         try:
@@ -481,8 +481,8 @@ def _record_out(lead: PipelineRecord, rules: Optional[list] = None) -> dict:
     }
 
 
-def _build_lead_automation_context(lead: PipelineRecord, firm) -> dict:
-    """Build the evaluation context dict for automation rules fired from a Lead event."""
+def _build_record_automation_context(lead: PipelineRecord, firm) -> dict:
+    """Build the evaluation context dict for automation rules fired from a Record event."""
     from firms.models import Membership
 
     customer_name = ""
@@ -802,12 +802,12 @@ def create_record(request, payload: RecordIn):
     )
     broadcast_event(firm=request.firm, event='record.created', payload=_record_out(lead))
 
-    # Fire workflow automation trigger: lead_created
+    # Fire workflow automation trigger: record_created
     from crm.tasks import evaluate_automation_rules
-    _automation_ctx = _build_lead_automation_context(lead, request.firm)
+    _automation_ctx = _build_record_automation_context(lead, request.firm)
     from django.db import transaction
     transaction.on_commit(
-        lambda: evaluate_automation_rules.delay("lead_created", str(request.firm.pk), _automation_ctx),
+        lambda: evaluate_automation_rules.delay("record_created", str(request.firm.pk), _automation_ctx),
         robust=True,
     )
 
@@ -954,7 +954,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 # Fire workflow automation trigger: lead_status_change
                 from crm.tasks import evaluate_automation_rules
                 _automation_ctx = {
-                    **_build_lead_automation_context(lead, request.firm),
+                    **_build_record_automation_context(lead, request.firm),
                     "from_status": old_status,
                     "to_status": new_status,
                 }

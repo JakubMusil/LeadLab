@@ -273,11 +273,11 @@ async function save() {
   submitting.value = false
 
   if (res.ok) {
-    toast.success(t('leadDetail.activityUpdated', 'Příspěvek byl upraven'))
+    toast.success(t('recordDetail.activityUpdated', 'Příspěvek byl upraven'))
     emit('saved', res.data as Activity)
     close()
   } else {
-    toast.error(t('leadDetail.activityFailed', 'Nepodařilo se uložit změny'))
+    toast.error(t('recordDetail.activityFailed', 'Nepodařilo se uložit změny'))
   }
 }
 
@@ -288,10 +288,10 @@ function close() {
 // ─── Activity type label ──────────────────────────────────────────────────────
 
 const activityTypeLabelKey: Record<string, string> = {
-  comment: 'leadDetail.typeComment',
-  call: 'leadDetail.typeCall',
-  meeting: 'leadDetail.typeMeeting',
-  checklist: 'leadDetail.typeChecklist',
+  comment: 'recordDetail.typeComment',
+  call: 'recordDetail.typeCall',
+  meeting: 'recordDetail.typeMeeting',
+  checklist: 'recordDetail.typeChecklist',
 }
 
 const activityTypeLabel = computed(() => {
@@ -344,7 +344,7 @@ const activityTypeLabel = computed(() => {
               </div>
               <div class="min-w-0">
                 <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                  {{ t('leadDetail.editActivity', 'Upravit příspěvek') }}
+                  {{ t('recordDetail.editActivity', 'Upravit příspěvek') }}
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ activityTypeLabel }}</p>
               </div>
@@ -370,7 +370,7 @@ const activityTypeLabel = computed(() => {
                     v-model="extraFields[prop.key]"
                     class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   >
-                    <option value="">{{ t('leadDetail.selectOption', 'Vyberte…') }}</option>
+                    <option value="">{{ t('recordDetail.selectOption', 'Vyberte…') }}</option>
                     <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
                   </select>
                   <textarea
@@ -393,12 +393,12 @@ const activityTypeLabel = computed(() => {
               <!-- Rich text body -->
               <div v-if="toolHasContentText || !schemaPropsAll.length">
                 <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  {{ t('leadDetail.editorPlaceholder', 'Obsah…') }}
+                  {{ t('recordDetail.editorPlaceholder', 'Obsah…') }}
                 </label>
                 <div class="rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
                   <RichTextEditor
                     v-model="contentText"
-                    :placeholder="t('leadDetail.editorPlaceholder', 'Napište obsah…')"
+                    :placeholder="t('recordDetail.editorPlaceholder', 'Napište obsah…')"
                     class="min-h-[120px]"
                   />
                 </div>
@@ -425,7 +425,7 @@ const activityTypeLabel = computed(() => {
                     </div>
                     <input
                       v-model="tagDrafts[prop.key]"
-                      :placeholder="t('leadDetail.tagPlaceholder', 'Přidat… (Enter nebo čárka)')"
+                      :placeholder="t('recordDetail.tagPlaceholder', 'Přidat… (Enter nebo čárka)')"
                       class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       @keydown="onTagKey($event, prop.key)"
                       @blur="addTag(prop.key)"
@@ -438,7 +438,7 @@ const activityTypeLabel = computed(() => {
                     v-model="extraFields[prop.key]"
                     class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   >
-                    <option value="">{{ t('leadDetail.selectOption', 'Vyberte…') }}</option>
+                    <option value="">{{ t('recordDetail.selectOption', 'Vyberte…') }}</option>
                     <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
                   </select>
 

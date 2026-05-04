@@ -50,14 +50,14 @@ const { t, te } = useI18n()
 
 function toolLabel(tool: StreamlineToolItem): string {
   const camel = tool.activity_type.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-  const key = `leadDetail.type${camel.charAt(0).toUpperCase()}${camel.slice(1)}`
+  const key = `recordDetail.type${camel.charAt(0).toUpperCase()}${camel.slice(1)}`
   if (te(key)) return t(key)
 
-  if (tool.activity_type === 'call') return t('leadDetail.typeCall')
-  if (tool.activity_type === 'task') return t('leadDetail.typeTask')
-  if (tool.activity_type === 'meeting') return t('leadDetail.typeMeeting')
-  if (tool.activity_type === 'comment') return t('leadDetail.typeComment')
-  if (tool.activity_type === 'todo_items_added') return t('leadDetail.typeTodoItems')
+  if (tool.activity_type === 'call') return t('recordDetail.typeCall')
+  if (tool.activity_type === 'task') return t('recordDetail.typeTask')
+  if (tool.activity_type === 'meeting') return t('recordDetail.typeMeeting')
+  if (tool.activity_type === 'comment') return t('recordDetail.typeComment')
+  if (tool.activity_type === 'todo_items_added') return t('recordDetail.typeTodoItems')
 
   return tool.label
 }

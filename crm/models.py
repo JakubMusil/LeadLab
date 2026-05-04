@@ -1907,7 +1907,7 @@ class SequenceEnrollment(TenantModel):
 # ---------------------------------------------------------------------------
 
 class AutomationTrigger(models.TextChoices):
-    LEAD_CREATED = "lead_created", "Lead Created"
+    RECORD_CREATED = "record_created", "Record Created"
     LEAD_STATUS_CHANGE = "lead_status_change", "Lead Status Changed"
     TASK_OVERDUE = "task_overdue", "Task Overdue"
     TASK_CREATED = "task_created", "Task Created"

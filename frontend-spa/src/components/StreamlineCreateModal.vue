@@ -152,48 +152,48 @@ const heroIconMap: Record<string, Component> = {
 // ─── Label / help maps ────────────────────────────────────────────────────────
 
 const activityTypeLabelKey: Record<string, string> = {
-  comment: 'leadDetail.typeComment',
-  call: 'leadDetail.typeCall',
-  meeting: 'leadDetail.typeMeeting',
-  email_out: 'leadDetail.typeEmailOut',
-  email_in: 'leadDetail.typeEmailIn',
-  task: 'leadDetail.typeTask',
-  sms_out: 'leadDetail.typeSmsOut',
-  sms_in: 'leadDetail.typeSmsIn',
-  whatsapp_out: 'leadDetail.typeWhatsAppOut',
-  whatsapp_in: 'leadDetail.typeWhatsAppIn',
-  meeting_scheduled: 'leadDetail.typeMeetingScheduled',
-  event_scheduled: 'leadDetail.typeEventScheduled',
-  link: 'leadDetail.typeLink',
-  voice_memo: 'leadDetail.typeVoiceMemo',
-  system_note: 'leadDetail.typeSystemNote',
-  file_upload: 'leadDetail.typeFileUpload',
-  todo_items: 'leadDetail.typeTodoItems',
-  todo_items_added: 'leadDetail.typeTodoItems',
-  proposal: 'leadDetail.typeProposal',
-  message: 'leadDetail.typeMessage',
+  comment: 'recordDetail.typeComment',
+  call: 'recordDetail.typeCall',
+  meeting: 'recordDetail.typeMeeting',
+  email_out: 'recordDetail.typeEmailOut',
+  email_in: 'recordDetail.typeEmailIn',
+  task: 'recordDetail.typeTask',
+  sms_out: 'recordDetail.typeSmsOut',
+  sms_in: 'recordDetail.typeSmsIn',
+  whatsapp_out: 'recordDetail.typeWhatsAppOut',
+  whatsapp_in: 'recordDetail.typeWhatsAppIn',
+  meeting_scheduled: 'recordDetail.typeMeetingScheduled',
+  event_scheduled: 'recordDetail.typeEventScheduled',
+  link: 'recordDetail.typeLink',
+  voice_memo: 'recordDetail.typeVoiceMemo',
+  system_note: 'recordDetail.typeSystemNote',
+  file_upload: 'recordDetail.typeFileUpload',
+  todo_items: 'recordDetail.typeTodoItems',
+  todo_items_added: 'recordDetail.typeTodoItems',
+  proposal: 'recordDetail.typeProposal',
+  message: 'recordDetail.typeMessage',
 }
 
 const activityTypeHelpKey: Record<string, string> = {
-  comment: 'leadDetail.toolHelp.comment',
-  call: 'leadDetail.toolHelp.call',
-  meeting: 'leadDetail.toolHelp.meeting',
-  meeting_scheduled: 'leadDetail.toolHelp.meeting_scheduled',
-  event_scheduled: 'leadDetail.toolHelp.event_scheduled',
-  email_out: 'leadDetail.toolHelp.email_out',
-  email_in: 'leadDetail.toolHelp.email_in',
-  sms_out: 'leadDetail.toolHelp.sms_out',
-  sms_in: 'leadDetail.toolHelp.sms_in',
-  whatsapp_out: 'leadDetail.toolHelp.whatsapp_out',
-  whatsapp_in: 'leadDetail.toolHelp.whatsapp_in',
-  link: 'leadDetail.toolHelp.link',
-  file_upload: 'leadDetail.toolHelp.file_upload',
-  voice_memo: 'leadDetail.toolHelp.voice_memo',
-  system_note: 'leadDetail.toolHelp.system_note',
-  task: 'leadDetail.toolHelp.task',
-  todo_items: 'leadDetail.toolHelp.todo_items',
-  todo_items_added: 'leadDetail.toolHelp.todo_items',
-  message: 'leadDetail.toolHelp.message',
+  comment: 'recordDetail.toolHelp.comment',
+  call: 'recordDetail.toolHelp.call',
+  meeting: 'recordDetail.toolHelp.meeting',
+  meeting_scheduled: 'recordDetail.toolHelp.meeting_scheduled',
+  event_scheduled: 'recordDetail.toolHelp.event_scheduled',
+  email_out: 'recordDetail.toolHelp.email_out',
+  email_in: 'recordDetail.toolHelp.email_in',
+  sms_out: 'recordDetail.toolHelp.sms_out',
+  sms_in: 'recordDetail.toolHelp.sms_in',
+  whatsapp_out: 'recordDetail.toolHelp.whatsapp_out',
+  whatsapp_in: 'recordDetail.toolHelp.whatsapp_in',
+  link: 'recordDetail.toolHelp.link',
+  file_upload: 'recordDetail.toolHelp.file_upload',
+  voice_memo: 'recordDetail.toolHelp.voice_memo',
+  system_note: 'recordDetail.toolHelp.system_note',
+  task: 'recordDetail.toolHelp.task',
+  todo_items: 'recordDetail.toolHelp.todo_items',
+  todo_items_added: 'recordDetail.toolHelp.todo_items',
+  message: 'recordDetail.toolHelp.message',
 }
 
 // ─── Toolbar loading ──────────────────────────────────────────────────────────
@@ -584,10 +584,10 @@ async function addActivity() {
   activitySubmitting.value = false
   if (res.ok) {
     emit('activity-added')
-    toast.success(t('leadDetail.activityAdded'))
+    toast.success(t('recordDetail.activityAdded'))
     close()
   } else {
-    toast.error(t('leadDetail.activityFailed'))
+    toast.error(t('recordDetail.activityFailed'))
   }
 }
 
@@ -608,10 +608,10 @@ async function submitVoiceMemo(payload: VoiceMemoSubmitPayload) {
   activitySubmitting.value = false
   if (res.ok) {
     emit('activity-added')
-    toast.success(t('leadDetail.activityAdded'))
+    toast.success(t('recordDetail.activityAdded'))
     close()
   } else {
-    toast.error(t('leadDetail.activityFailed'))
+    toast.error(t('recordDetail.activityFailed'))
   }
 }
 
@@ -635,10 +635,10 @@ async function submitFileUpload(payload: FileUploadSubmitPayload) {
   activitySubmitting.value = false
   if (res.ok) {
     emit('activity-added')
-    toast.success(t('leadDetail.activityAdded'))
+    toast.success(t('recordDetail.activityAdded'))
     close()
   } else {
-    toast.error(t('leadDetail.activityFailed'))
+    toast.error(t('recordDetail.activityFailed'))
   }
 }
 
@@ -660,10 +660,10 @@ async function addTask() {
     })
     if (res.ok) {
       emit('activity-added')
-      toast.success(t('leadDetail.activityAdded'))
+      toast.success(t('recordDetail.activityAdded'))
       close()
     } else {
-      toast.error(t('leadDetail.activityFailed'))
+      toast.error(t('recordDetail.activityFailed'))
     }
   } else {
     const payload: Record<string, unknown> = {
@@ -678,10 +678,10 @@ async function addTask() {
     if (res.ok) {
       emit('task-created')
       emit('activity-added')
-      toast.success(t('leadDetail.taskCreated'))
+      toast.success(t('recordDetail.taskCreated'))
       close()
     } else {
-      toast.error(t('leadDetail.taskFailed'))
+      toast.error(t('recordDetail.taskFailed'))
     }
   }
   taskSubmitting.value = false
@@ -759,9 +759,9 @@ const actionHelp = computed(() => {
 const submitLabel = computed(() => {
   if (isSubmitting.value) return '…'
   if (props.actionType === 'task' || props.actionType === 'todo_items_added')
-    return t('leadDetail.addTask')
+    return t('recordDetail.addTask')
   if (props.actionType === 'proposal') return t('proposals.create') || 'Create'
-  return t('leadDetail.activitySubmit')
+  return t('recordDetail.activitySubmit')
 })
 
 // ─── Close ────────────────────────────────────────────────────────────────────
@@ -872,14 +872,14 @@ watch(
                   v-if="actionType === 'todo_items_added'"
                   v-model="taskTitle"
                   rows="4"
-                  :placeholder="t('leadDetail.taskTitleBulk')"
+                  :placeholder="t('recordDetail.taskTitleBulk')"
                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none"
                 />
                 <input
                   v-else
                   v-model="taskTitle"
                   type="text"
-                  :placeholder="t('leadDetail.taskTitle')"
+                  :placeholder="t('recordDetail.taskTitle')"
                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
                 />
                 <input
@@ -928,13 +928,13 @@ watch(
                 </div>
                 <div v-if="actionType === 'task'">
                   <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    {{ t('leadDetail.descriptionLabel') }}
+                    {{ t('recordDetail.descriptionLabel') }}
                   </label>
                   <RichTextEditor
                     ref="taskEditorRef"
                     v-model="taskDescription"
                     :members="teamMembers"
-                    :placeholder="t('leadDetail.addMentionPlaceholder')"
+                    :placeholder="t('recordDetail.addMentionPlaceholder')"
                     class="min-h-[60px]"
                   />
                 </div>
@@ -1052,7 +1052,7 @@ watch(
                       v-model="extraFields[prop.key]"
                       class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
                     >
-                      <option value="">{{ t('leadDetail.selectOption') }}</option>
+                      <option value="">{{ t('recordDetail.selectOption') }}</option>
                       <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
                     <textarea
@@ -1079,8 +1079,8 @@ watch(
                   v-model="activityText"
                   :placeholder="
                     actionType === 'comment'
-                      ? t('leadDetail.commentPlaceholder')
-                      : t('leadDetail.notePlaceholder')
+                      ? t('recordDetail.commentPlaceholder')
+                      : t('recordDetail.notePlaceholder')
                   "
                   :disabled="activitySubmitting"
                   :members="actionType === 'comment' ? teamMembers : []"
@@ -1117,7 +1117,7 @@ watch(
                       v-model="extraFields[prop.key]"
                       class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
                     >
-                      <option value="">{{ t('leadDetail.selectOption') }}</option>
+                      <option value="">{{ t('recordDetail.selectOption') }}</option>
                       <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
 
@@ -1147,7 +1147,7 @@ watch(
                         v-model="tagDrafts[prop.key]"
                         type="text"
                         class="flex-1 min-w-[80px] bg-transparent border-0 px-1 py-0.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none"
-                        :placeholder="t('leadDetail.tagInputPlaceholder')"
+                        :placeholder="t('recordDetail.tagInputPlaceholder')"
                         @keydown="(e) => onTagKey(e, prop.key)"
                         @blur="addTag(prop.key)"
                       />

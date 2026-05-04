@@ -63,17 +63,17 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
                 "body": (
                     "Hi {{assignee_name}},\n\n"
                     "This is a reminder that your task '{{task_title}}' "
-                    "on lead '{{lead_title}}' is due tomorrow.\n\n"
+                    "on record '{{lead_title}}' is due tomorrow.\n\n"
                     "Log in to LeadLab to complete it."
                 ),
             }
         ],
     },
     {
-        "id": "notify_owner_lead_won",
-        "name": "Notify owner when lead won",
+        "id": "notify_owner_record_won",
+        "name": "Notify owner when record won",
         "description": (
-            "Sends an email to the firm owner whenever a lead "
+            "Sends an email to the firm owner whenever a record "
             "is marked as Won."
         ),
         "trigger": AutomationTrigger.LEAD_STATUS_CHANGE,
@@ -95,13 +95,13 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         ],
     },
     {
-        "id": "welcome_email_lead_created",
-        "name": "Send welcome email when lead created",
+        "id": "welcome_email_record_created",
+        "name": "Send welcome email when record created",
         "description": (
             "Automatically sends a welcome email to the customer "
-            "when a new lead is created."
+            "when a new record is created."
         ),
-        "trigger": AutomationTrigger.LEAD_CREATED,
+        "trigger": AutomationTrigger.RECORD_CREATED,
         "trigger_config": {},
         "conditions": [],
         "actions": [
@@ -111,7 +111,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
                 "subject": "Welcome, {{customer_name}}!",
                 "body": (
                     "Hi {{customer_name}},\n\n"
-                    "Thank you for your interest. We have created a lead "
+                    "Thank you for your interest. We have created a record "
                     "for you and will be in touch soon.\n\n"
                     "Best regards,\nThe Team"
                 ),
@@ -120,9 +120,9 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
     },
     {
         "id": "mark_lost_30_days_inactive",
-        "name": "Mark lead as Lost after 30 days of inactivity",
+        "name": "Mark record as Lost after 30 days of inactivity",
         "description": (
-            "Automatically updates a lead's status to 'Lost' when there "
+            "Automatically updates a record's status to 'Lost' when there "
             "has been no recorded activity for 30 days."
         ),
         "trigger": AutomationTrigger.LEAD_INACTIVE,
@@ -139,7 +139,7 @@ AUTOMATION_TEMPLATES: List[Dict[str, Any]] = [
         "id": "followup_task_proposal_sent",
         "name": "Create follow-up task when proposal sent",
         "description": (
-            "Creates a follow-up task on the lead 3 days after a proposal "
+            "Creates a follow-up task on the record 3 days after a proposal "
             "is sent, so the assignee remembers to check in with the prospect."
         ),
         "trigger": AutomationTrigger.PROPOSAL_SENT,

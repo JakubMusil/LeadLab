@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * LeadScoreBadge — colour-coded 0–100 score badge for a lead.
+ * RecordScoreBadge — colour-coded 0–100 score badge for a pipeline record.
  *
  * Colour bands:
  *   0–29  red   (low)
@@ -32,7 +32,7 @@ function label(score: number): string {
     v-if="score != null"
     class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-semibold"
     :class="badgeClass(score)"
-    :title="`Lead score: ${score}/100 (${label(score)})`"
+    :title="`Record score: ${score}/100 (${label(score)})`"
     :aria-label="`Score ${score} out of 100`"
   >
     <span class="tabular-nums">{{ score }}</span>
