@@ -28,7 +28,7 @@ function selectItem(item: { onClick: () => void }) {
 </script>
 
 <template>
-  <div ref="rootRef" class="relative inline-block">
+  <div ref="rootRef" class="relative inline-block" @mouseenter="open = true" @mouseleave="open = false">
     <div @click.stop="open = !open">
       <slot />
     </div>
