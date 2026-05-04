@@ -366,6 +366,70 @@ class RecordUpdateIn(Schema):
     extra_data: Optional[Dict[str, Any]] = None
 
 
+def _validate_record_field_rules(
+    category_id: Optional[Any],
+    value: Optional[Any] = None,
+    notes: Optional[str] = None,
+    source: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Validate record field values against the CategoryField.validation_rules
+    configured for the record's category.
+
+    Returns an error string on failure, or None if everything is valid.
+
+    Supported rule keys per field_key
+    -----------------------------------
+    value_currency : min / max  (numeric bounds on the record value)
+    notes          : pattern    (full-match regex on the notes text)
+    source         : options    (allowed values list)
+    """
+    import re
+
+    if not category_id:
+        return None
+
+    fields_qs = CategoryField.objects.filter(category_id=category_id).values(
+        "field_key", "validation_rules"
+    )
+    rules_by_key: Dict[str, Any] = {
+        row["field_key"]: (row["validation_rules"] or {}) for row in fields_qs
+    }
+
+    # --- value_currency: min/max ---
+    if value is not None and "value_currency" in rules_by_key:
+        rules = rules_by_key["value_currency"]
+        try:
+            fval = float(value)
+            if "min" in rules and fval < float(rules["min"]):
+                return f"Value must be at least {rules['min']}."
+            if "max" in rules and fval > float(rules["max"]):
+                return f"Value must be at most {rules['max']}."
+        except (TypeError, ValueError):
+            pass  # non-numeric value handled by model / other validators
+
+    # --- notes: pattern (regex) ---
+    if notes is not None and notes and "notes" in rules_by_key:
+        rules = rules_by_key["notes"]
+        pattern = rules.get("pattern")
+        if pattern:
+            try:
+                if not re.fullmatch(pattern, notes):
+                    hint = rules.get("pattern_hint", pattern)
+                    return f"Notes does not match the required pattern: {hint}"
+            except re.error:
+                pass  # invalid regex in config — skip silently
+
+    # --- source: options (select) ---
+    if source is not None and "source" in rules_by_key:
+        rules = rules_by_key["source"]
+        options = rules.get("options")
+        if isinstance(options, list) and len(options) > 0 and source not in options:
+            return f"Source must be one of: {', '.join(str(o) for o in options)}."
+
+    return None
+
+
 def _compute_record_score(lead: PipelineRecord, rules: list) -> int:
     """
     Compute a 0–100 record score by evaluating each scoring rule against
@@ -931,6 +995,16 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 return 400, {"detail": "Invalid end_date format. Use YYYY-MM-DD."}
         else:
             lead.end_date = None
+
+    # Validate field values against CategoryField.validation_rules
+    validation_err = _validate_record_field_rules(
+        category_id=lead.category_id,
+        value=update_data.get("value"),
+        notes=update_data.get("notes"),
+        source=update_data.get("source"),
+    )
+    if validation_err:
+        return 400, {"detail": validation_err}
 
     for field, value in update_data.items():
         setattr(lead, field, value)

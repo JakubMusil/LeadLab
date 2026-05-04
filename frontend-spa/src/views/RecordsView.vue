@@ -575,6 +575,49 @@ const leadsByStage = computed(() => {
   return map
 })
 
+/** Field keys that are shown elsewhere in the card (value, expires_at) or are not meaningful to show inline */
+const KANBAN_SKIP_FIELD_KEYS = new Set(['value_currency', 'source', 'expires_at'])
+const KANBAN_NOTES_MAX_LENGTH = 40
+
+function getKanbanCardFields(record: RecordOut): { label: string; value: string }[] {
+  const category = currentCategory.value
+  if (!category) return []
+
+  const visibleFields = category.fields
+    .filter(f => f.is_visible && !KANBAN_SKIP_FIELD_KEYS.has(f.field_key))
+    .slice(0, 2)
+
+  return visibleFields
+    .map(f => {
+      const label = f.label_override || (t(`pipeline.fieldKey.${f.field_key}` as any) || f.field_key)
+      let value = '—'
+      switch (f.field_key) {
+        case 'date_range': {
+          const start = record.start_date ? new Date(record.start_date).toLocaleDateString() : null
+          const end = record.end_date ? new Date(record.end_date).toLocaleDateString() : null
+          if (start || end) value = `${start ?? '…'} – ${end ?? '…'}`
+          break
+        }
+        case 'notes':
+          if (record.notes) {
+            value = record.notes.length > KANBAN_NOTES_MAX_LENGTH
+              ? record.notes.substring(0, KANBAN_NOTES_MAX_LENGTH) + '…'
+              : record.notes
+          }
+          break
+        case 'origin_record': {
+          const pid = record.parent_id ? String(record.parent_id) : null
+          value = pid ? `#${pid.substring(0, Math.min(8, pid.length))}${pid.length > 8 ? '…' : ''}` : '—'
+          break
+        }
+        default:
+          value = '—'
+      }
+      return { label, value }
+    })
+    .filter(f => f.value !== '—')
+}
+
 function openCreate() {
   editingRecord.value = null
   formTitle.value = ''
@@ -1325,6 +1368,17 @@ function showAssigneeAvatar(record: RecordOut): boolean {
                 <div class="flex items-center gap-2 mt-2 flex-wrap">
                   <span v-if="fmtValue(record)" class="text-xs text-gray-500">{{ fmtValue(record) }}</span>
                   <span v-if="record.expires_at" class="text-xs" :class="pipelineStore.getSlaColor(record.expires_at)">{{ record.expires_at }}</span>
+                </div>
+                <!-- Category field values -->
+                <div v-if="getKanbanCardFields(record).length > 0" class="mt-2 space-y-0.5">
+                  <div
+                    v-for="kf in getKanbanCardFields(record)"
+                    :key="kf.label"
+                    class="flex items-baseline gap-1.5 text-[11px]"
+                  >
+                    <span class="text-gray-400 dark:text-gray-500 shrink-0">{{ kf.label }}:</span>
+                    <span class="text-gray-600 dark:text-gray-300 truncate">{{ kf.value }}</span>
+                  </div>
                 </div>
               </div>
               <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-400 dark:text-gray-500 py-6">{{ t('leads.noRecordsInStage') }}</div>

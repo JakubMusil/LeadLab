@@ -699,6 +699,7 @@ const pipelineFields = computed(() => categoryFields.value.filter((f) => !SIDEBA
 const editingFieldKey = ref<string | null>(null)
 const fieldEditValues = ref<Record<string, string>>({})
 const savingField = ref(false)
+const fieldEditError = ref<string | null>(null)
 
 function getFieldLabel(fieldKey: string, labelOverride: string): string {
   if (labelOverride) return labelOverride
@@ -762,10 +763,12 @@ function startFieldEdit(fieldKey: string) {
 function cancelFieldEdit() {
   editingFieldKey.value = null
   fieldEditValues.value = {}
+  fieldEditError.value = null
 }
 
 async function saveFieldEdit(fieldKey: string) {
   savingField.value = true
+  fieldEditError.value = null
   let payload: Partial<RecordIn> = {}
   switch (fieldKey) {
     case 'expires_at':
@@ -789,9 +792,10 @@ async function saveFieldEdit(fieldKey: string) {
   if (result.ok) {
     editingFieldKey.value = null
     fieldEditValues.value = {}
+    fieldEditError.value = null
     toast.success(t('pipeline.fieldSaved'))
   } else {
-    toast.error(result.error ?? t('pipeline.fieldSaveFailed'))
+    fieldEditError.value = result.error ?? t('pipeline.fieldSaveFailed')
   }
 }
 </script>
@@ -1140,6 +1144,9 @@ async function saveFieldEdit(fieldKey: string) {
                       {{ t('pipeline.cancel') }}
                     </button>
                   </div>
+                  <p v-if="fieldEditError && editingFieldKey === field.field_key" class="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {{ fieldEditError }}
+                  </p>
                 </template>
 
                 <div class="border-t border-gray-100 dark:border-gray-700/50 mt-3 last:hidden" />

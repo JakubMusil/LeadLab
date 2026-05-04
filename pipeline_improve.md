@@ -96,24 +96,24 @@ aby bylo možné každému poli v pipeline nastavit:
 
 ---
 
-### Fáze 5 — Runtime validace hodnot polí ⬜
+### Fáze 5 — Runtime validace hodnot polí ✅
 
 - Při ukládání hodnoty přes API ověřit `validation_rules` daného `CategoryField`
   - `min`/`max` pro number/currency
   - `pattern` (regex) pro text
   - `options` pro select/multiselect — hodnota musí být v seznamu
-- Frontend: zobrazit chybové zprávy při neplatné hodnotě
+- Frontend: zobrazit chybové zprávy při neplatné hodnotě (inline pod inputem, ne jen toast)
 
-**Status: ⬜ Bude příště**
+**Status: ✅ Hotovo**
 
 ---
 
-### Fáze 6 — Kanban karta s hodnotami polí ⬜
+### Fáze 6 — Kanban karta s hodnotami polí ✅
 
-- Zobrazit klíčová pole kategorie (maximálně 2-3) přímo na Kanban kartě v RecordsView
+- Zobrazit klíčová pole kategorie (maximálně 2) přímo na Kanban kartě v RecordsView
 - Ušetří přechod do detailu záznamu pro rychlé informace
 
-**Status: ⬜ Bude příště**
+**Status: ✅ Hotovo**
 
 ---
 
@@ -128,6 +128,10 @@ aby bylo možné každému poli v pipeline nastavit:
 - **Fáze 3 dokončena**: seed command aktualizován — každý FIELD_KEY_CHOICES má nyní `value_type`, `widget`, `validation_rules` (pro source) a `help_text_override`
 - **Fáze 4 dokončena**: přidán panel "Pipeline Fields" v RecordDetailView sidebaru — zobrazuje viditelná pole kategorie s hodnotami a inline editací (date_range, expires_at, notes); nové i18n klíče do všech 4 locale souborů
 
+### Relace 3
+- **Fáze 5 dokončena**: backend helper `_validate_record_field_rules` v `crm/api.py` — validuje `value` (min/max), `notes` (pattern regex), `source` (options) oproti `CategoryField.validation_rules`; frontend zobrazí chybu inline pod editačním inputem (ref `fieldEditError`)
+- **Fáze 6 dokončena**: stage-based Kanban karta v RecordsView zobrazuje až 2 viditelná pole kategorie (date_range, notes, origin_record) pod hodnotou/datem expirace; pomocná funkce `getKanbanCardFields(record)` v RecordsView.vue
+
 ### Příště
-- Fáze 5: Runtime validace hodnot polí dle `validation_rules`
-- Fáze 6: Zobrazení klíčových polí kategorie na Kanban kartě
+- Žádné další fáze naplánované — pipeline_improve.md je kompletní
+- Možná přidat Drag-and-drop pro přesouvání karet mezi sloupci v stage-based Kanban
