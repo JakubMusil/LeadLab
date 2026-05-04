@@ -2196,7 +2196,7 @@ onUnmounted(() => {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.moveTask') }}</h2>
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
-            <select v-model="moveLeadId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+            <select v-model="moveRecordId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
               <option value="">{{ t('tasks.noLead') }}</option>
               <option v-for="l in records" :key="l.id" :value="l.id">{{ l.title }}</option>
             </select>

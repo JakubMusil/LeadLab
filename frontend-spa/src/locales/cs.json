@@ -1707,8 +1707,6 @@
     "tag": "Štítek",
     "applyTo": "Použít na",
     "taskFromTrigger": "Úkol (ze spouštěče)",
-    "leadStatus": "Stav příležitosti",
-    "leadSource": "Zdroj příležitosti",
     "currency": "Měna",
     "description": "Popis",
     "newValue": "Nová hodnota",
@@ -1764,8 +1762,8 @@
     "triggerRecordCreated": "Vytvořen záznam",
     "triggerRecordStatusChanged": "Změna stavu záznamu",
     "triggerInactiveRecord": "Neaktivní záznam (N dní)",
-    "recordStatus": "Stav záznamu",
-    "recordSource": "Zdroj záznamu"
+    "recordStatus": "Stav příležitosti",
+    "recordSource": "Zdroj příležitosti"
   },
   "plugins": {
     "title": "Pluginy",

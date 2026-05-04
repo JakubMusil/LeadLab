@@ -1706,8 +1706,6 @@
     "tag": "Tag",
     "applyTo": "Apply to",
     "taskFromTrigger": "Task (from trigger)",
-    "leadStatus": "Record status",
-    "leadSource": "Record source",
     "currency": "Currency",
     "description": "Description",
     "newValue": "New value",
@@ -1763,8 +1761,8 @@
     "triggerRecordCreated": "Record Created",
     "triggerRecordStatusChanged": "Record Status Changed",
     "triggerInactiveRecord": "Record Inactive (N days)",
-    "recordStatus": "Record Status",
-    "recordSource": "Record Source"
+    "recordStatus": "Record status",
+    "recordSource": "Record source"
   },
   "plugins": {
     "title": "Plugins",

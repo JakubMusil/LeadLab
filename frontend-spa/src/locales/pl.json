@@ -1706,8 +1706,6 @@
     "tag": "Tag",
     "applyTo": "Zastosuj do",
     "taskFromTrigger": "Zadanie (z wyzwalacza)",
-    "leadStatus": "Status szansy",
-    "leadSource": "Źródło szansy",
     "currency": "Waluta",
     "description": "Opis",
     "newValue": "Nowa wartość",
@@ -1763,8 +1761,8 @@
     "triggerRecordCreated": "Rekord utworzony",
     "triggerRecordStatusChanged": "Zmiana statusu rekordu",
     "triggerInactiveRecord": "Nieaktywny rekord (N dni)",
-    "recordStatus": "Status rekordu",
-    "recordSource": "Źródło rekordu"
+    "recordStatus": "Status szansy",
+    "recordSource": "Źródło szansy"
   },
   "plugins": {
     "title": "Wtyczki",

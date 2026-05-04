@@ -265,7 +265,7 @@ onMounted(loadProposals)
 
             <div v-if="createContext === 'record'">
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextLead') }} ID</label>
-              <input v-model="createLeadId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextLead') + ' UUID'" />
+              <input v-model="createRecordId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextLead') + ' UUID'" />
             </div>
             <div v-else-if="createContext === 'customer'">
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextCustomer') }} ID</label>

@@ -1706,8 +1706,6 @@
     "tag": "Tag",
     "applyTo": "Anwenden auf",
     "taskFromTrigger": "Aufgabe (vom Auslöser)",
-    "leadStatus": "Datensatz-Status",
-    "leadSource": "Datensatz-Quelle",
     "currency": "Währung",
     "description": "Beschreibung",
     "newValue": "Neuer Wert",
