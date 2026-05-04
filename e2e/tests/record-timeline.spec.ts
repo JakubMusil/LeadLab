@@ -10,8 +10,8 @@
  *   3. Toggle a reaction on a comment activity (add + remove)
  *   4. Persist the comment + reaction across a full page reload
  *
- * The lead is created once up-front via the JSON API (cheaper than going
- * through the New Lead modal) and reused across all four tests in serial
+ * The record is created once up-front via the JSON API (cheaper than going
+ * through the New Record modal) and reused across all four tests in serial
  * order.
  */
 import { test, expect, type APIResponse } from '@playwright/test'
