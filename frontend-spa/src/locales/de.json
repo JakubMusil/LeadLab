@@ -499,7 +499,19 @@
     "fieldSaving": "Speichere…",
     "fieldSaveBtn": "Speichern",
     "fieldStartDate": "Von",
-    "fieldEndDate": "Bis"
+    "fieldEndDate": "Bis",
+    "terminalMoveTitle": "Nach \"{stage}\" verschieben?",
+    "terminalMoveSubtitle": "Dies ist eine abschließende Phase. Bestätigen Sie die Verschiebung unten.",
+    "terminalMoveNote": "Ergebnisnotiz (optional)",
+    "terminalMoveNotePlaceholder": "Fügen Sie eine Notiz zu diesem Ergebnis hinzu…",
+    "terminalAddCheckpoint": "Auch einen Checkpoint erstellen",
+    "terminalCheckpointName": "Checkpoint-Name",
+    "terminalCheckpointNamePlaceholder": "z. B. Vertrag unterzeichnet",
+    "terminalCheckpointDate": "Datum (optional)",
+    "terminalConfirmWon": "Als Gewonnen markieren ✓",
+    "terminalConfirmLost": "Verschiebung bestätigen",
+    "terminalMoveFailed": "Datensatz konnte nicht in diese Phase verschoben werden.",
+    "terminalCheckpointFailed": "Datensatz verschoben, aber Checkpoint konnte nicht erstellt werden."
   },
   "proposals": {
     "title": "Angebote",

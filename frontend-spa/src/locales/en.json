@@ -499,7 +499,19 @@
     "fieldSaving": "Saving…",
     "fieldSaveBtn": "Save",
     "fieldStartDate": "From",
-    "fieldEndDate": "To"
+    "fieldEndDate": "To",
+    "terminalMoveTitle": "Move to \"{stage}\"?",
+    "terminalMoveSubtitle": "This is a terminal stage. Confirm the move below.",
+    "terminalMoveNote": "Outcome note (optional)",
+    "terminalMoveNotePlaceholder": "Add a note about this result…",
+    "terminalAddCheckpoint": "Also create a checkpoint",
+    "terminalCheckpointName": "Checkpoint name",
+    "terminalCheckpointNamePlaceholder": "e.g. Contract signed",
+    "terminalCheckpointDate": "Date (optional)",
+    "terminalConfirmWon": "Mark as Won ✓",
+    "terminalConfirmLost": "Confirm move",
+    "terminalMoveFailed": "Failed to move record to this stage.",
+    "terminalCheckpointFailed": "Record moved, but checkpoint could not be created."
   },
   "proposals": {
     "title": "Proposals",

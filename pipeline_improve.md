@@ -131,6 +131,21 @@ aby bylo možné každému poli v pipeline nastavit:
 
 ---
 
+### Fáze 8 — Dialog při přesunu do terminální stage ✅
+
+- Při přetažení Kanban karty na terminální stage (is_terminal=true) se zobrazí potvrzovací modal:
+  - Název záznamu + cílová stage (barevný badge)
+  - Volitelné textové pole pro poznámku k výsledku
+  - Checkbox „Vytvořit kontrolní bod" + vstup pro název a datum
+  - Tlačítko Potvrdit (zelené „Označit jako Vyhráno ✓" pro is_won, jinak šedé „Potvrdit přesun")
+  - Tlačítko Zrušit
+- Na potvrzení: volání `patchStage`, pokud je zaškrtnuto, také POST nový checkpoint
+- i18n klíče: `terminalMoveTitle`, `terminalMoveSubtitle`, `terminalMoveNote`, `terminalMoveNotePlaceholder`, `terminalAddCheckpoint`, `terminalCheckpointName`, `terminalCheckpointNamePlaceholder`, `terminalCheckpointDate`, `terminalConfirmWon`, `terminalConfirmLost`, `terminalMoveFailed`, `terminalCheckpointFailed` — přidány do všech 4 locale souborů
+
+**Status: ✅ Hotovo**
+
+---
+
 ## Co bylo uděláno (log)
 
 ### Relace 1
@@ -149,6 +164,9 @@ aby bylo možné každému poli v pipeline nastavit:
 ### Relace 4
 - **Fáze 7 dokončena**: přidán drag-and-drop pro stage-based Kanban — `patchStage` v records store, drag handlery v RecordsView, vizuální feedback (modrý highlight sloupce)
 
+### Relace 5
+- **Fáze 8 dokončena**: při přetažení Kanban karty do terminální stage se zobrazí potvrzovací modal (`Modal` + `Button` komponenty); modal nabízí volitelnou poznámku k výsledku a možnost vytvořit checkpoint (s názvem a datem); tlačítko potvrzení je zelené pro stage `is_won`, jinak standardní; i18n klíče přidány do všech 4 locale souborů (cs/en/pl/de)
+
 ### Příště
 - Žádné další fáze naplánované — pipeline_improve.md je kompletní
-- Možné rozšíření: přidat checkpoint dialog při přesunutí karty do terminální stage
+- Možná rozšíření: filtrování Kanban karet dle pole kategorie; bulk-move záznamů mezi stages

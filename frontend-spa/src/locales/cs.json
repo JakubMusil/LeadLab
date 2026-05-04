@@ -499,7 +499,19 @@
     "fieldSaving": "Ukládám…",
     "fieldSaveBtn": "Uložit",
     "fieldStartDate": "Od",
-    "fieldEndDate": "Do"
+    "fieldEndDate": "Do",
+    "terminalMoveTitle": "Přesunout do \"{stage}\"?",
+    "terminalMoveSubtitle": "Toto je terminální fáze. Potvrďte přesun níže.",
+    "terminalMoveNote": "Poznámka k výsledku (volitelně)",
+    "terminalMoveNotePlaceholder": "Přidejte poznámku k tomuto výsledku…",
+    "terminalAddCheckpoint": "Také vytvořit kontrolní bod",
+    "terminalCheckpointName": "Název kontrolního bodu",
+    "terminalCheckpointNamePlaceholder": "např. Podpis smlouvy",
+    "terminalCheckpointDate": "Datum (volitelně)",
+    "terminalConfirmWon": "Označit jako Vyhráno ✓",
+    "terminalConfirmLost": "Potvrdit přesun",
+    "terminalMoveFailed": "Nepodařilo se přesunout záznam do této fáze.",
+    "terminalCheckpointFailed": "Záznam přesunut, ale kontrolní bod se nepodařilo vytvořit."
   },
   "proposals": {
     "title": "Nabídky",

@@ -499,7 +499,19 @@
     "fieldSaving": "Zapisuję…",
     "fieldSaveBtn": "Zapisz",
     "fieldStartDate": "Od",
-    "fieldEndDate": "Do"
+    "fieldEndDate": "Do",
+    "terminalMoveTitle": "Przenieść do \"{stage}\"?",
+    "terminalMoveSubtitle": "To jest etap końcowy. Potwierdź przeniesienie poniżej.",
+    "terminalMoveNote": "Notatka o wyniku (opcjonalnie)",
+    "terminalMoveNotePlaceholder": "Dodaj notatkę o tym wyniku…",
+    "terminalAddCheckpoint": "Utwórz także punkt kontrolny",
+    "terminalCheckpointName": "Nazwa punktu kontrolnego",
+    "terminalCheckpointNamePlaceholder": "np. Podpisanie umowy",
+    "terminalCheckpointDate": "Data (opcjonalnie)",
+    "terminalConfirmWon": "Oznacz jako Wygrane ✓",
+    "terminalConfirmLost": "Potwierdź przeniesienie",
+    "terminalMoveFailed": "Nie udało się przenieść rekordu do tego etapu.",
+    "terminalCheckpointFailed": "Rekord przeniesiony, ale nie udało się utworzyć punktu kontrolnego."
   },
   "proposals": {
     "title": "Oferty",
