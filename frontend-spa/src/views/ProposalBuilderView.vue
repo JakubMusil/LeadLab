@@ -8,6 +8,7 @@ import { useMoney } from '@/composables/useMoney'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import CurrencySelect from '@/components/CurrencySelect.vue'
 import { CheckIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
@@ -144,6 +145,16 @@ const showPreview = ref(false)
 // ActivityTimeline ref — reload feed after sidebar quick-action submits.
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
+// Streamline Create Modal state (opened from sidebar picker tool-selected event).
+const activeModalTool = ref('')
+
+function openModalTool(type: string) {
+  activeModalTool.value = type
+}
+
+function closeModalTool() {
+  activeModalTool.value = ''
+}
 const STATUSES = computed(() => [
   { value: 'draft', label: t('proposals.statusDraft'), color: 'bg-gray-100 text-gray-700' },
   { value: 'sent', label: t('proposals.statusSent'), color: 'bg-blue-100 text-blue-700' },
@@ -979,7 +990,7 @@ watch(
               <EntitySidebarActionPicker
                 entity-type="proposal"
                 :entity-id="currentProposal.id"
-                @activity-added="activityTimelineRef?.load()"
+                @tool-selected="openModalTool"
               />
             </div>
           </div>
@@ -1001,5 +1012,16 @@ watch(
     :message="t('builder.confirmDelete')"
     @confirm="doDeleteProposal(confirmDeleteProposalId!); confirmDeleteProposalId = null"
     @cancel="confirmDeleteProposalId = null"
+  />
+
+  <!-- Streamline Create Modal — opened from sidebar picker -->
+  <StreamlineCreateModal
+    v-if="currentProposal"
+    :model-value="!!activeModalTool"
+    :action-type="activeModalTool"
+    entity-type="proposal"
+    :entity-id="currentProposal.id"
+    @update:model-value="(v) => { if (!v) closeModalTool() }"
+    @activity-added="activityTimelineRef?.load()"
   />
 </template>

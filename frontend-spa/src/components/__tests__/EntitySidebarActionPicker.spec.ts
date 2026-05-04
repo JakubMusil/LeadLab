@@ -14,19 +14,6 @@ vi.mock('@/api', () => ({
   },
 }))
 
-// RichTextEditor is heavyweight and renders a tiptap editor we don't need
-// here — replace it with a lightweight stub that exposes the same v-model
-// surface and the `getMentionedIds` method the picker calls on submit.
-vi.mock('@/components/RichTextEditor.vue', () => ({
-  default: {
-    name: 'RichTextEditorStub',
-    props: ['modelValue', 'placeholder', 'disabled', 'members', 'uploadUrl'],
-    emits: ['update:modelValue', 'file-uploaded'],
-    template: '<textarea data-testid="stub-rich-text" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-    methods: { getMentionedIds: () => [] },
-  },
-}))
-
 import { api } from '@/api'
 
 // A realistic toolbar for a Lead, matching the new backend behaviour:
@@ -55,7 +42,7 @@ async function mountPicker() {
   return wrapper
 }
 
-describe('EntitySidebarActionPicker — unified message composer', () => {
+describe('EntitySidebarActionPicker — action grid', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
@@ -89,147 +76,22 @@ describe('EntitySidebarActionPicker — unified message composer', () => {
     expect(visibleTypes).not.toContain('message')
   })
 
-  it('shows channel + direction picker when "Message" is selected', async () => {
+  it('emits tool-selected with the action type when a non-message tool is clicked', async () => {
     const wrapper = await mountPicker()
-    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="message"]').trigger('click')
-    expect(wrapper.find('[data-testid="message-composer-channel-picker"]').exists()).toBe(true)
-    const channels = wrapper.findAll('[data-testid="message-composer-channel-option"]').map((c) => c.attributes('data-channel'))
-    expect(channels).toEqual(['email', 'sms', 'whatsapp', 'chat'])
-    // Direction toggle isn't rendered until a channel with direction options is picked.
-    expect(wrapper.findAll('[data-testid="message-composer-direction-option"]').length).toBe(0)
+    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="comment"]').trigger('click')
+    expect(wrapper.emitted('tool-selected')).toEqual([['comment']])
   })
 
-  it('exposes both directions for email and resolves to email_out schema', async () => {
+  it('emits tool-selected with "message" when the unified message entry is clicked', async () => {
     const wrapper = await mountPicker()
     await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="message"]').trigger('click')
-    await wrapper.find('[data-testid="message-composer-channel-option"][data-channel="email"]').trigger('click')
-    const dirs = wrapper.findAll('[data-testid="message-composer-direction-option"]').map((d) => d.attributes('data-direction'))
-    expect(dirs).toEqual(['out', 'in'])
-
-    await wrapper.find('[data-testid="message-composer-direction-option"][data-direction="out"]').trigger('click')
-    // The resolved tool's "Subject" / "To" header fields appear above the body.
-    const fieldKeys = wrapper.findAll('[data-field]').map((d) => d.attributes('data-field'))
-    expect(fieldKeys).toContain('subject')
-    expect(fieldKeys).toContain('to')
+    expect(wrapper.emitted('tool-selected')).toEqual([['message']])
   })
 
-  it('skips the direction toggle for the chat channel', async () => {
+  it('emits tool-selected with "call" when the call tool is clicked', async () => {
     const wrapper = await mountPicker()
-    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="message"]').trigger('click')
-    await wrapper.find('[data-testid="message-composer-channel-option"][data-channel="chat"]').trigger('click')
-    expect(wrapper.findAll('[data-testid="message-composer-direction-option"]').length).toBe(0)
-    // Chat schema (single content_text) still renders.
-    expect(wrapper.find('[data-testid="stub-rich-text"]').exists()).toBe(true)
-  })
-
-  it('submits the resolved activity_type, not "message"', async () => {
-    const wrapper = await mountPicker()
-    vi.mocked(api.post).mockResolvedValue({ ok: true, status: 201, data: {} })
-
-    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="message"]').trigger('click')
-    await wrapper.find('[data-testid="message-composer-channel-option"][data-channel="sms"]').trigger('click')
-    await wrapper.find('[data-testid="message-composer-direction-option"][data-direction="out"]').trigger('click')
-
-    // Fill required fields directly via the v-model surface.
-    const toInput = wrapper.find('[data-field="to"] input')
-    expect(toInput.exists()).toBe(true)
-    await toInput.setValue('+420123456789')
-    const body = wrapper.find('[data-testid="stub-rich-text"]')
-    await body.setValue('Hello SMS')
-
-    const submit = wrapper.find('[data-testid="entity-sidebar-action-submit"]')
-    expect(submit.exists()).toBe(true)
-    await submit.trigger('click')
-    await flushPromises()
-
-    expect(api.post).toHaveBeenCalledTimes(1)
-    const [, payload] = vi.mocked(api.post).mock.calls[0]!
-    expect((payload as Record<string, unknown>).type).toBe('sms_out')
+    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="call"]').trigger('click')
+    expect(wrapper.emitted('tool-selected')).toEqual([['call']])
   })
 })
 
-describe('EntitySidebarActionPicker — event_scheduled', () => {
-  // Toolbar containing the new ``event_scheduled`` tool with the same
-  // schema the backend produces.
-  const EVENT_TOOLBAR = [
-    ...TOOLBAR,
-    {
-      activity_type: 'event_scheduled',
-      label: 'Event Scheduled',
-      icon: 'CalendarIcon',
-      channel: 'none',
-      direction: 'none',
-      form_schema: {
-        type: 'object',
-        properties: {
-          content_text: { type: 'string', title: 'Subject' },
-          all_day: { type: 'boolean', title: 'All day', default: false },
-          start_at: { type: 'string', format: 'date-time', title: 'Start' },
-          end_at: { type: 'string', format: 'date-time', title: 'End' },
-          location: { type: 'string', title: 'Location' },
-          attendees: { type: 'array', items: { type: 'string' }, title: 'Attendees' },
-          description: { type: 'string', title: 'Description' },
-        },
-        required: ['start_at'],
-      },
-    },
-  ]
-
-  async function mountWithEvent() {
-    vi.mocked(api.get).mockResolvedValue({ ok: true, status: 200, data: EVENT_TOOLBAR })
-    const wrapper = mount(EntitySidebarActionPicker, {
-      props: { entityType: 'lead', entityId: 'lead-1' },
-    })
-    await flushPromises()
-    return wrapper
-  }
-
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.clearAllMocks()
-  })
-
-  it('renders the all-day checkbox and switches start_at/end_at to date inputs when toggled on', async () => {
-    const wrapper = await mountWithEvent()
-    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="event_scheduled"]').trigger('click')
-
-    // Default — start_at is a datetime-local input.
-    const startBefore = wrapper.find('[data-field="start_at"] input')
-    expect(startBefore.exists()).toBe(true)
-    expect(startBefore.attributes('type')).toBe('datetime-local')
-
-    // Toggle the all-day checkbox; the same input must collapse to date.
-    const allDayCheckbox = wrapper.find('[data-field="all_day"] input[type="checkbox"]')
-    expect(allDayCheckbox.exists()).toBe(true)
-    await allDayCheckbox.setValue(true)
-
-    const startAfter = wrapper.find('[data-field="start_at"] input')
-    expect(startAfter.attributes('type')).toBe('date')
-    const endAfter = wrapper.find('[data-field="end_at"] input')
-    expect(endAfter.attributes('type')).toBe('date')
-  })
-
-  it('submits all_day=true and the date-only start when the toggle is on', async () => {
-    const wrapper = await mountWithEvent()
-    vi.mocked(api.post).mockResolvedValue({ ok: true, status: 201, data: {} })
-
-    await wrapper.find('[data-testid="entity-sidebar-action-option"][data-action="event_scheduled"]').trigger('click')
-    await wrapper.find('[data-field="all_day"] input[type="checkbox"]').setValue(true)
-    await wrapper.find('[data-field="start_at"] input').setValue('2026-05-04')
-    await wrapper.find('[data-field="end_at"] input').setValue('2026-05-04')
-    await wrapper.find('[data-field="location"] input').setValue('Studio')
-
-    await wrapper.find('[data-testid="entity-sidebar-action-submit"]').trigger('click')
-    await flushPromises()
-
-    expect(api.post).toHaveBeenCalledTimes(1)
-    const [, payload] = vi.mocked(api.post).mock.calls[0]!
-    const body = payload as Record<string, unknown>
-    expect(body.type).toBe('event_scheduled')
-    const meta = body.metadata as Record<string, unknown>
-    expect(meta.all_day).toBe(true)
-    expect(meta.start_at).toBe('2026-05-04')
-    expect(meta.end_at).toBe('2026-05-04')
-    expect(meta.location).toBe('Studio')
-  })
-})
