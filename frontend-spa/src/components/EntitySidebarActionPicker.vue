@@ -147,13 +147,13 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'communication',
     labelKey: 'recordDetail.toolCategory.communication',
-    activityTypes: ['comment', 'call', 'meeting', 'message', 'mention'],
+    activityTypes: ['comment', 'call', 'meeting', 'message'],
     accent: 'red',
   },
   {
     key: 'planning',
     labelKey: 'recordDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'checklist', 'todo_items_added', 'proposal', 'time_logged', 'approval_requested', 'approval_resolved'],
+    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'checklist', 'todo_items_added', 'proposal', 'time_logged', 'approval_requested'],
     accent: 'blue',
   },
   {
@@ -165,14 +165,8 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'commerce',
     labelKey: 'recordDetail.toolCategory.commerce',
-    activityTypes: ['payment_received', 'invoice_sent', 'signature_requested', 'signature_completed'],
+    activityTypes: ['payment_received', 'invoice_sent', 'signature_requested'],
     accent: 'purple',
-  },
-  {
-    key: 'system',
-    labelKey: 'recordDetail.toolCategory.system',
-    activityTypes: ['system_note'],
-    accent: 'amber',
   },
 ]
 

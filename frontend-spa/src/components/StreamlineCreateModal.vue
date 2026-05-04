@@ -71,6 +71,8 @@ interface SchemaProp {
   minimum?: number
   maximum?: number
   items?: { type?: string }
+  xHidden?: boolean
+  xMultiline?: boolean
 }
 
 interface MessageChannelOption {
@@ -278,7 +280,7 @@ const SKIP_FIELD_KEYS = new Set([
   'provider_message_id', 'provider_event_id', 'provider_request_id',
   'message_id', 'viewer_ip', 'user_agent', 'source_activity_ids',
 ])
-const MULTILINE_FIELD_KEYS = new Set(['transcript', 'description', 'notes', 'message', 'text'])
+const MULTILINE_FIELD_KEYS = new Set(['transcript', 'description', 'notes', 'message', 'text', 'note'])
 
 // ─── Current tool ─────────────────────────────────────────────────────────────
 
@@ -294,7 +296,7 @@ const schemaPropsAll = computed<SchemaProp[]>(() => {
   const tool = currentTool.value
   if (!tool?.form_schema?.properties) return []
   return Object.entries(tool.form_schema.properties as Record<string, Record<string, unknown>>)
-    .filter(([key]) => !SKIP_FIELD_KEYS.has(key))
+    .filter(([key, schema]) => !SKIP_FIELD_KEYS.has(key) && !schema['x-hidden'])
     .map(([key, schema]) => ({
       key,
       title: (schema.title as string) || key,
@@ -304,6 +306,8 @@ const schemaPropsAll = computed<SchemaProp[]>(() => {
       minimum: schema.minimum as number | undefined,
       maximum: schema.maximum as number | undefined,
       items: schema.items as { type?: string } | undefined,
+      xHidden: !!(schema['x-hidden'] as boolean | undefined),
+      xMultiline: !!(schema['x-multiline'] as boolean | undefined),
     }))
 })
 
@@ -350,6 +354,9 @@ function _initFieldsForTool(tool: StreamlineTool | null): Record<string, FieldVa
       tool.form_schema.properties as Record<string, Record<string, unknown>>,
     )) {
       if (SKIP_FIELD_KEYS.has(key)) continue
+      // Skip system/integration fields marked as hidden — they must not block
+      // form validation or appear as empty strings in the submitted payload.
+      if (raw['x-hidden']) continue
       const propType = raw.type as string | undefined
       if (propType === 'array') {
         fields[key] = []
@@ -502,7 +509,7 @@ const isSubmitting = computed(() => {
 // ─── Template field-rendering helpers ────────────────────────────────────────
 
 function isMultilineProp(prop: SchemaProp): boolean {
-  return MULTILINE_FIELD_KEYS.has(prop.key)
+  return MULTILINE_FIELD_KEYS.has(prop.key) || !!prop.xMultiline
 }
 
 function inputTypeFor(prop: SchemaProp): string {
