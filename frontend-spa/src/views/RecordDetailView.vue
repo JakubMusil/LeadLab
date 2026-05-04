@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, getStatusMeta } from '@/stores/records'
+import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordIn } from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
@@ -677,6 +677,123 @@ async function openContactDetail(id: string | null) {
     selectedContact.value = res.data
   }
 }
+
+// ---------------------------------------------------------------------------
+// Pipeline Fields — inline editing panel
+// ---------------------------------------------------------------------------
+
+const categoryFields = computed(() => {
+  const record = store.currentRecord
+  if (!record?.category_id) return []
+  const cat = pipelineStore.getCategoryById(record.category_id)
+  if (!cat) return []
+  return cat.fields.filter((f) => f.is_visible)
+})
+
+/** Which field_keys to skip in the pipeline fields panel (shown elsewhere in sidebar) */
+const SIDEBAR_FIELD_KEYS = new Set(['value_currency', 'source'])
+
+/** Visible pipeline fields, excluding those already prominently shown in main details */
+const pipelineFields = computed(() => categoryFields.value.filter((f) => !SIDEBAR_FIELD_KEYS.has(f.field_key)))
+
+const editingFieldKey = ref<string | null>(null)
+const fieldEditValues = ref<Record<string, string>>({})
+const savingField = ref(false)
+
+function getFieldLabel(fieldKey: string, labelOverride: string): string {
+  if (labelOverride) return labelOverride
+  const key = `pipeline.fieldKey.${fieldKey}` as any
+  return t(key) || fieldKey
+}
+
+function formatDateDisplay(isoStr: string | null | undefined): string {
+  if (!isoStr) return '—'
+  try {
+    return new Date(isoStr).toLocaleDateString()
+  } catch {
+    return isoStr
+  }
+}
+
+function getFieldDisplayValue(fieldKey: string): string {
+  const record = store.currentRecord
+  if (!record) return '—'
+  switch (fieldKey) {
+    case 'expires_at':
+      return formatDateDisplay(record.expires_at)
+    case 'date_range': {
+      const start = formatDateDisplay(record.start_date)
+      const end = formatDateDisplay(record.end_date)
+      if (!record.start_date && !record.end_date) return '—'
+      return `${start} – ${end}`
+    }
+    case 'notes':
+      return record.notes || '—'
+    case 'origin_record':
+      return record.parent_id ? `#${String(record.parent_id).substring(0, 8)}…` : '—'
+    default:
+      return '—'
+  }
+}
+
+function startFieldEdit(fieldKey: string) {
+  const record = store.currentRecord
+  if (!record) return
+  editingFieldKey.value = fieldKey
+  // Normalize any ISO datetime/date string to YYYY-MM-DD for <input type="date">
+  const toDateInputValue = (v: string | null | undefined): string => {
+    if (!v) return ''
+    return typeof v === 'string' ? v.substring(0, 10) : ''
+  }
+  switch (fieldKey) {
+    case 'expires_at':
+      fieldEditValues.value['expires_at'] = toDateInputValue(record.expires_at)
+      break
+    case 'date_range':
+      fieldEditValues.value['start_date'] = toDateInputValue(record.start_date)
+      fieldEditValues.value['end_date'] = toDateInputValue(record.end_date)
+      break
+    case 'notes':
+      fieldEditValues.value['notes'] = record.notes || ''
+      break
+  }
+}
+
+function cancelFieldEdit() {
+  editingFieldKey.value = null
+  fieldEditValues.value = {}
+}
+
+async function saveFieldEdit(fieldKey: string) {
+  savingField.value = true
+  let payload: Partial<RecordIn> = {}
+  switch (fieldKey) {
+    case 'expires_at':
+      payload = { expires_at: fieldEditValues.value['expires_at'] || null }
+      break
+    case 'date_range':
+      payload = {
+        start_date: fieldEditValues.value['start_date'] || null,
+        end_date: fieldEditValues.value['end_date'] || null,
+      }
+      break
+    case 'notes':
+      payload = { notes: fieldEditValues.value['notes'] || '' }
+      break
+    default:
+      savingField.value = false
+      return
+  }
+  const result = await store.updateRecord(leadId.value, payload)
+  savingField.value = false
+  if (result.ok) {
+    editingFieldKey.value = null
+    fieldEditValues.value = {}
+    toast.success(t('pipeline.fieldSaved'))
+  } else {
+    toast.error(result.error ?? t('pipeline.fieldSaveFailed'))
+  }
+}
 </script>
 
 <template>
@@ -920,6 +1037,116 @@ async function openContactDetail(id: string | null) {
               >+</button>
             </div>
           </div>
+
+          <!-- Pipeline Fields panel -->
+          <div
+            v-if="pipelineFields.length > 0"
+            class="bg-white dark:bg-gray-800 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 p-4"
+          >
+            <div class="flex items-center gap-1.5 mb-3">
+              <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+              </svg>
+              <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">{{ t('pipeline.fieldsTitle') }}</span>
+            </div>
+
+            <div class="space-y-3">
+              <div
+                v-for="field in pipelineFields"
+                :key="field.field_key"
+                class="group"
+              >
+                <div class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">
+                  {{ getFieldLabel(field.field_key, field.label_override) }}
+                </div>
+
+                <!-- View mode (not editing) -->
+                <template v-if="editingFieldKey !== field.field_key">
+                  <div class="flex items-start justify-between gap-2">
+                    <div
+                      class="text-sm text-gray-800 dark:text-gray-200 break-words leading-snug"
+                      :class="field.field_key === 'notes' ? 'whitespace-pre-wrap max-h-28 overflow-y-auto' : ''"
+                    >
+                      {{ getFieldDisplayValue(field.field_key) }}
+                    </div>
+                    <button
+                      v-if="field.field_key !== 'origin_record'"
+                      class="hidden group-hover:flex flex-shrink-0 items-center gap-0.5 text-[10px] text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mt-0.5"
+                      :title="t('pipeline.fieldEdit')"
+                      @click="startFieldEdit(field.field_key)"
+                    >
+                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div v-if="field.help_text_override" class="text-[10px] text-gray-400 mt-0.5 italic">
+                    {{ field.help_text_override }}
+                  </div>
+                </template>
+
+                <!-- Edit mode -->
+                <template v-else>
+                  <!-- expires_at -->
+                  <div v-if="field.field_key === 'expires_at'" class="flex flex-col gap-1.5">
+                    <input
+                      v-model="fieldEditValues['expires_at']"
+                      type="date"
+                      class="w-full rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <!-- date_range -->
+                  <div v-else-if="field.field_key === 'date_range'" class="flex gap-2">
+                    <div class="flex-1">
+                      <div class="text-[10px] text-gray-400 mb-0.5">{{ t('pipeline.fieldStartDate') }}</div>
+                      <input
+                        v-model="fieldEditValues['start_date']"
+                        type="date"
+                        class="w-full rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[10px] text-gray-400 mb-0.5">{{ t('pipeline.fieldEndDate') }}</div>
+                      <input
+                        v-model="fieldEditValues['end_date']"
+                        type="date"
+                        class="w-full rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- notes -->
+                  <div v-else-if="field.field_key === 'notes'">
+                    <textarea
+                      v-model="fieldEditValues['notes']"
+                      rows="4"
+                      class="w-full rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y"
+                    />
+                  </div>
+
+                  <div class="flex gap-2 mt-1.5">
+                    <button
+                      :disabled="savingField"
+                      class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                      @click="saveFieldEdit(field.field_key)"
+                    >
+                      {{ savingField ? t('pipeline.fieldSaving') : t('pipeline.fieldSaveBtn') }}
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      @click="cancelFieldEdit"
+                    >
+                      {{ t('pipeline.cancel') }}
+                    </button>
+                  </div>
+                </template>
+
+                <div class="border-t border-gray-100 dark:border-gray-700/50 mt-3 last:hidden" />
+              </div>
+            </div>
+          </div>
+
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
             <!-- Record title as prominent heading -->
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">

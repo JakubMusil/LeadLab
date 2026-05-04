@@ -492,7 +492,14 @@
       "color_picker": "Farbauswahl",
       "currency_input": "Währungseingabe",
       "rich_text": "Rich-Text-Editor"
-    }
+    },
+    "fieldEdit": "Bearbeiten",
+    "fieldSaved": "Feld gespeichert.",
+    "fieldSaveFailed": "Feld konnte nicht gespeichert werden.",
+    "fieldSaving": "Speichere…",
+    "fieldSaveBtn": "Speichern",
+    "fieldStartDate": "Von",
+    "fieldEndDate": "Bis"
   },
   "proposals": {
     "title": "Angebote",

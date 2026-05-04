@@ -62,16 +62,56 @@ aby bylo možné každému poli v pipeline nastavit:
 
 ---
 
-### Fáze 3 — Seed command ⬜
+### Fáze 3 — Seed command ✅
 
 - Aktualizovat `crm/management/commands/seed_pipeline_categories.py`
 - Přidat rozumné výchozí `value_type` pro každý `FIELD_KEY_CHOICES`:
-  - `value_currency` → `currency`
-  - `date_range` → `date`
-  - `expires_at` → `date`
-  - `notes` → `text`, widget `textarea`
-  - `source` → `select`
-  - `origin_record` → `text`
+  - `value_currency` → `value_type: currency`, `widget: currency_input`, `help_text_override`
+  - `date_range` → `value_type: date`, `widget: date_picker`, `help_text_override`
+  - `expires_at` → `value_type: date`, `widget: date_picker`, `help_text_override`
+  - `notes` → `value_type: text`, `widget: textarea`, `help_text_override`
+  - `source` → `value_type: select`, `widget: select`, `validation_rules.options`, `help_text_override`
+  - `origin_record` → `value_type: text`, `widget: text_input`, `help_text_override`
+
+**Status: ✅ Hotovo**
+
+---
+
+### Fáze 4 — Pipeline Fields panel v RecordDetailView ✅
+
+- Přidat panel "Pipeline Fields" v pravém sidebaru RecordDetailView
+- Panel se zobrazí pouze pokud má záznam kategorii s viditelnými poli
+- Pole `value_currency` a `source` se v panelu nezobrazují (jsou v hlavní sekci)
+- Každé pole zobrazí:
+  - Label (label_override nebo přeložený field_key)
+  - Aktuální hodnotu z PipelineRecord
+  - Tlačítko Upravit (zobrazí se při hoveru)
+- Inline editing pro každý field_key:
+  - `expires_at` → date input
+  - `date_range` → dva date inputy (Od / Do)
+  - `notes` → textarea
+- i18n klíče: `pipeline.fieldEdit`, `fieldSaved`, `fieldSaveFailed`, `fieldSaving`, `fieldSaveBtn`, `fieldStartDate`, `fieldEndDate` — přidány do všech 4 locale souborů
+
+**Status: ✅ Hotovo**
+
+---
+
+### Fáze 5 — Runtime validace hodnot polí ⬜
+
+- Při ukládání hodnoty přes API ověřit `validation_rules` daného `CategoryField`
+  - `min`/`max` pro number/currency
+  - `pattern` (regex) pro text
+  - `options` pro select/multiselect — hodnota musí být v seznamu
+- Frontend: zobrazit chybové zprávy při neplatné hodnotě
+
+**Status: ⬜ Bude příště**
+
+---
+
+### Fáze 6 — Kanban karta s hodnotami polí ⬜
+
+- Zobrazit klíčová pole kategorie (maximálně 2-3) přímo na Kanban kartě v RecordsView
+- Ušetří přechod do detailu záznamu pro rychlé informace
 
 **Status: ⬜ Bude příště**
 
@@ -84,6 +124,10 @@ aby bylo možné každému poli v pipeline nastavit:
 - **Fáze 1 dokončena**: model (`value_type`, `widget`, `validation_rules`, `label_override`, `help_text_override`), migrace 0005, API schémata + serverová validace pro select/multiselect
 - **Fáze 2 dokončena**: store types, rozšířený UI formulář (edit + nový field) s dropdowny, min/max, options textarea, label override, help text; i18n klíče (cs, en, pl, de)
 
+### Relace 2
+- **Fáze 3 dokončena**: seed command aktualizován — každý FIELD_KEY_CHOICES má nyní `value_type`, `widget`, `validation_rules` (pro source) a `help_text_override`
+- **Fáze 4 dokončena**: přidán panel "Pipeline Fields" v RecordDetailView sidebaru — zobrazuje viditelná pole kategorie s hodnotami a inline editací (date_range, expires_at, notes); nové i18n klíče do všech 4 locale souborů
+
 ### Příště
-- Fáze 3: Seed command — výchozí value_type pro existující pole
-- Zvážit runtime validaci hodnot PipelineRecord polí dle `validation_rules`
+- Fáze 5: Runtime validace hodnot polí dle `validation_rules`
+- Fáze 6: Zobrazení klíčových polí kategorie na Kanban kartě
