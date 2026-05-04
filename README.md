@@ -4,6 +4,34 @@
 
 ---
 
+## Elevator Pitch
+
+### 🇨🇿 Česky
+
+> **Váš obchodní tým ztrácí čas v Excelu místo uzavírání dealů?**
+>
+> **LeadLab** je chytrý CRM pipeline pro B2B obchodníky, kteří chtějí mít každý deal pod kontrolou – od prvního kontaktu po podpis smlouvy.
+>
+> Vizuální pipeline s vlastními etapami, automatické checklisty, které tým provází každým krokem, multi-měnový reporting v reálném čase a AI nástroje, které za vás píšou emaily a shrnutí schůzek.
+>
+> **Žádné složité nastavování. Žádný chaos. Jen čistý přehled o tom, kde peníze jsou – a kde se zasekly.**
+>
+> Vyzkoušejte LeadLab zdarma 14 dní. Vaši obchodníci vám poděkují.
+
+### 🇬🇧 English
+
+> **Your sales team is drowning in spreadsheets instead of closing deals?**
+>
+> **LeadLab** is the smart B2B sales pipeline CRM that keeps every deal on track – from first touch to signed contract.
+>
+> Custom pipeline stages, guided checklists for every step, real-time multi-currency revenue tracking, and AI-powered tools that draft emails and summarize meetings for you.
+>
+> **No complex setup. No chaos. Just crystal-clear visibility into where your money is – and where it's stuck.**
+>
+> Try LeadLab free for 14 days. Your sales team will thank you.
+
+---
+
 ## Features
 
 ### CRM — Sales & Relationships
