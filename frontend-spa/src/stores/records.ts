@@ -206,6 +206,25 @@ export const useRecordsStore = defineStore('records', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to update status.') }
   }
 
+  async function patchStage(id: string, stageId: string | null): Promise<{ ok: boolean; error?: string }> {
+    // Optimistic update
+    const idx = records.value.findIndex((l) => l.id === id)
+    const prev = idx !== -1 ? { current_stage_id: records.value[idx]!.current_stage_id, current_stage_name: records.value[idx]!.current_stage_name } : null
+    if (idx !== -1) records.value[idx] = { ...records.value[idx]!, current_stage_id: stageId, current_stage_name: null }
+    if (currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, current_stage_id: stageId, current_stage_name: null }
+
+    const res = await api.patch<RecordOut>(`/api/v1/crm/records/${id}`, { current_stage_id: stageId })
+    if (res.ok) {
+      if (idx !== -1) records.value[idx] = res.data
+      if (currentRecord.value?.id === id) currentRecord.value = res.data
+      return { ok: true }
+    }
+    // Roll back
+    if (prev !== null && idx !== -1) records.value[idx] = { ...records.value[idx]!, ...prev }
+    if (prev !== null && currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, ...prev }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update stage.') }
+  }
+
   async function deleteRecord(id: string): Promise<{ ok: boolean; error?: string }> {
     const res = await api.delete(`/api/v1/crm/records/${id}`)
     if (res.ok || res.status === 204) {
@@ -218,6 +237,6 @@ export const useRecordsStore = defineStore('records', () => {
   return {
     records, currentRecord, loading, loadingDetail, page, pageSize, hasMore,
     firmHeader,
-    fetchRecords, fetchRecord, createRecord, updateRecord, patchStatus, deleteRecord,
+    fetchRecords, fetchRecord, createRecord, updateRecord, patchStatus, patchStage, deleteRecord,
   }
 })
