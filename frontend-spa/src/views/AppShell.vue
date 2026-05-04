@@ -50,7 +50,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
-const leadsStore = useRecordsStore()
+const recordsStore = useRecordsStore()
 const pipelineStore = usePipelineStore()
 const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
@@ -77,26 +77,26 @@ const { on, off } = useWebSocket()
 // WebSocket event handlers
 // ---------------------------------------------------------------------------
 
-function onLeadCreated(payload: Record<string, unknown>) {
+function onRecordCreated(payload: Record<string, unknown>) {
   const record = payload as unknown as RecordOut
-  if (!leadsStore.records.find((r) => r.id === record.id)) {
-    leadsStore.records.unshift(record)
+  if (!recordsStore.records.find((r) => r.id === record.id)) {
+    recordsStore.records.unshift(record)
   }
   notifStore.pushNotification('record.created', payload)
   fetchCategoryCounts()
 }
 
-function onLeadUpdated(payload: Record<string, unknown>) {
+function onRecordUpdated(payload: Record<string, unknown>) {
   const record = payload as unknown as RecordOut
-  const idx = leadsStore.records.findIndex((r) => r.id === record.id)
-  if (idx !== -1) leadsStore.records[idx] = record
-  if (leadsStore.currentRecord?.id === record.id) leadsStore.currentRecord = record
+  const idx = recordsStore.records.findIndex((r) => r.id === record.id)
+  if (idx !== -1) recordsStore.records[idx] = record
+  if (recordsStore.currentRecord?.id === record.id) recordsStore.currentRecord = record
   notifStore.pushNotification('record.updated', payload)
 }
 
-function onLeadDeleted(payload: Record<string, unknown>) {
+function onRecordDeleted(payload: Record<string, unknown>) {
   const id = payload.id as string
-  leadsStore.records = leadsStore.records.filter((l) => l.id !== id)
+  recordsStore.records = recordsStore.records.filter((l) => l.id !== id)
   notifStore.pushNotification('record.deleted', payload)
   fetchCategoryCounts()
 }
@@ -144,9 +144,9 @@ onMounted(async () => {
   pipelineStore.fetchCategories()
   fetchCategoryCounts()
 
-  on('record.created', onLeadCreated)
-  on('record.updated', onLeadUpdated)
-  on('record.deleted', onLeadDeleted)
+  on('record.created', onRecordCreated)
+  on('record.updated', onRecordUpdated)
+  on('record.deleted', onRecordDeleted)
   on('activity.created', onActivityCreated)
   on('task.completed', onTaskCompleted)
   on('task.outcome_prompt', onTaskOutcomePrompt)
@@ -155,9 +155,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  off('record.created', onLeadCreated)
-  off('record.updated', onLeadUpdated)
-  off('record.deleted', onLeadDeleted)
+  off('record.created', onRecordCreated)
+  off('record.updated', onRecordUpdated)
+  off('record.deleted', onRecordDeleted)
   off('activity.created', onActivityCreated)
   off('task.completed', onTaskCompleted)
   off('task.outcome_prompt', onTaskOutcomePrompt)
@@ -503,9 +503,9 @@ function formatNotifTime(ts: string): string {
 
         <!-- Page title -->
         <div class="flex items-center gap-1.5 min-w-0 flex-shrink overflow-hidden">
-          <template v-if="isRecordDetailPage && leadsStore.currentRecord">
+          <template v-if="isRecordDetailPage && recordsStore.currentRecord">
             <FunnelIcon class="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-            <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{{ leadsStore.currentRecord.title }}</span>
+            <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{{ recordsStore.currentRecord.title }}</span>
             <button
               class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/nav-permalink"
               :title="navPermalinkCopiedId === 'nav-page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"

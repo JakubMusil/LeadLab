@@ -265,7 +265,7 @@ function toggleWatcher(watcherIds: string[], userId: string) {
 interface RecordOption { id: string; title: string }
 const records = ref<RecordOption[]>([])
 
-async function loadLeads() {
+async function loadRecords() {
   const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
   if (res.ok) records.value = res.data as RecordOption[]
 }
@@ -1018,7 +1018,7 @@ async function saveCustomFieldValue(fieldId: string, newValue: unknown) {
 // Init
 // ---------------------------------------------------------------------------
 onMounted(async () => {
-  await Promise.all([loadMembers(), loadLeads(), loadTask(), loadDependencies(), loadTimeLogs(), loadActiveTimer()])
+  await Promise.all([loadMembers(), loadRecords(), loadTask(), loadDependencies(), loadTimeLogs(), loadActiveTimer()])
 })
 
 onUnmounted(() => {

@@ -6,14 +6,14 @@ export const commandPaletteOpen = ref(false)
 
 export const SHORTCUTS = [
   { keys: 'Cmd/Ctrl + K', description: 'Open command palette' },
-  { keys: 'G L', description: 'Go to Opportunities' },
+  { keys: 'G L', description: 'Go to Records' },
   { keys: 'G C', description: 'Go to Directory' },
   { keys: 'G D', description: 'Go to Dashboard' },
-  { keys: 'N', description: 'New Opportunity (on Opportunities page)' },
+  { keys: 'N', description: 'New Record (on Records page)' },
   { keys: '?', description: 'Show this help' },
 ]
 
-export function useKeyboardShortcuts(onNewLead?: () => void) {
+export function useKeyboardShortcuts(onNewRecord?: () => void) {
   const router = useRouter()
   const route = useRoute()
   let pendingKey = ''
@@ -54,7 +54,7 @@ export function useKeyboardShortcuts(onNewLead?: () => void) {
     }
 
     if (key === 'N' && route.path === '/app/records') {
-      onNewLead?.()
+      onNewRecord?.()
     }
   }
 

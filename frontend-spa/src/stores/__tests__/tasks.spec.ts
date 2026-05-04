@@ -110,13 +110,13 @@ describe('useTasksStore', () => {
   })
 
   it('createTask() returns error on failure', async () => {
-    vi.mocked(api.post).mockResolvedValueOnce({ ok: false, status: 400, data: { detail: 'Lead not found.' } })
+    vi.mocked(api.post).mockResolvedValueOnce({ ok: false, status: 400, data: { detail: 'Record not found.' } })
 
     const store = useTasksStore()
     const result = await store.createTask({ record_id: 'bad', title: 'Task' })
 
     expect(result.ok).toBe(false)
-    expect(result.error).toBe('Lead not found.')
+    expect(result.error).toBe('Record not found.')
   })
 
   it('completeTask() updates task in list', async () => {

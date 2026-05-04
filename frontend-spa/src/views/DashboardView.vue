@@ -68,14 +68,14 @@ interface WidgetConfig {
   order: number
 }
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_leads' | 'quick_create_lead'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record'
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stat_cards', visible: true, order: 0 },
-  { id: 'quick_create_lead', visible: true, order: 1 },
+  { id: 'quick_create_record', visible: true, order: 1 },
   { id: 'pipeline_chart', visible: true, order: 2 },
   { id: 'recent_activity', visible: true, order: 3 },
-  { id: 'my_top_leads', visible: true, order: 4 },
+  { id: 'my_top_records', visible: true, order: 4 },
   { id: 'status_breakdown', visible: true, order: 5 },
 ]
 
@@ -84,8 +84,8 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   pipeline_chart: t('dashboard.pipelineByStatus'),
   recent_activity: t('dashboard.recentActivity'),
   status_breakdown: t('dashboard.statusBreakdown'),
-  my_top_leads: t('dashboard.myTopLeads'),
-  quick_create_lead: t('dashboard.quickCreateLead'),
+  my_top_records: t('dashboard.myTopRecords'),
+  quick_create_record: t('dashboard.quickCreateLead'),
 }))
 
 const firmStore = useFirmStore()
@@ -192,7 +192,7 @@ async function loadStats() {
   }
 }
 
-async function loadMyTopLeads() {
+async function loadMyTopRecords() {
   if (!firmStore.activeFirm || !authStore.user) return
   myTopRecordsLoading.value = true
   try {
@@ -237,7 +237,7 @@ async function submitQuickCreate() {
       qcValue.value = ''
       // Refresh widgets that depend on record data
       loadStats()
-      loadMyTopLeads()
+      loadMyTopRecords()
     } else {
       qcError.value = res.error ?? t('dashboard.qcFailed')
     }
@@ -295,7 +295,7 @@ function toggleWidget(id: string) {
 onMounted(async () => {
   await loadLayout()
   await loadStats()
-  loadMyTopLeads()
+  loadMyTopRecords()
   refreshTimer = setInterval(loadStats, 60_000)
 })
 
@@ -506,7 +506,7 @@ function hideSetupBanner() {
         </div>
 
         <!-- Quick create record -->
-        <div v-else-if="widget.id === 'quick_create_lead'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <div v-else-if="widget.id === 'quick_create_record'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <PlusIcon class="w-4 h-4 text-red-600" aria-hidden="true" />
@@ -549,19 +549,19 @@ function hideSetupBanner() {
         </div>
 
         <!-- My top records -->
-        <div v-else-if="widget.id === 'my_top_leads'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+        <div v-else-if="widget.id === 'my_top_records'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <StarIcon class="w-4 h-4 text-yellow-500" aria-hidden="true" />
-              {{ t('dashboard.myTopLeads') }}
+              {{ t('dashboard.myTopRecords') }}
             </h3>
             <RouterLink to="/app/records" class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600">{{ t('dashboard.viewAll') }}</RouterLink>
           </div>
-          <div v-if="myTopLeadsLoading && myTopLeads.length === 0" class="space-y-2 animate-pulse">
+          <div v-if="myTopRecordsLoading && myTopRecords.length === 0" class="space-y-2 animate-pulse">
             <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
           </div>
-          <div v-else-if="myTopLeads.length === 0" class="text-sm text-gray-400 text-center py-6">
-            {{ t('dashboard.myTopLeadsEmpty') }}
+          <div v-else-if="myTopRecords.length === 0" class="text-sm text-gray-400 text-center py-6">
+            {{ t('dashboard.myTopRecordsEmpty') }}
           </div>
           <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700">
             <li

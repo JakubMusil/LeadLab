@@ -50,7 +50,7 @@ class CustomerModelTest(CRMFixtureMixin, TestCase):
         self.assertEqual(self.customer.metadata, {})
 
 
-class LeadModelTest(CRMFixtureMixin, TestCase):
+class RecordModelTest(CRMFixtureMixin, TestCase):
     def test_record_str(self):
         self.assertIn("Demo Deal", str(self.record))
 
@@ -824,7 +824,7 @@ class CustomerDeleteAPITest(CRMAPIFixtureMixin, TestCase):
 
 # -- Records -----------------------------------------------------------------
 
-class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordListAPITest(CRMAPIFixtureMixin, TestCase):
     URL = "/api/v1/crm/opportunities"
 
     def test_list_records_returns_firm_records(self):
@@ -881,7 +881,7 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(len(resp.json()), 1)
 
 
-class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordCreateAPITest(CRMAPIFixtureMixin, TestCase):
     URL = "/api/v1/crm/opportunities"
 
     def test_create_record_returns_201(self):
@@ -908,7 +908,7 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
 
 
-class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordGetAPITest(CRMAPIFixtureMixin, TestCase):
     def test_get_record(self):
         resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 200)
@@ -944,7 +944,7 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 404)
 
 
-class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
+class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_record_admin_succeeds(self):
         resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 204)
