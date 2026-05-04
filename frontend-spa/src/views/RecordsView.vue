@@ -724,7 +724,7 @@ function goToDetail(id: string) {
   router.push(`/app/records/${id}`)
 }
 
-// Kanban drag state
+// Kanban drag state (status-based)
 const draggingRecord = ref<RecordOut | null>(null)
 const dragOverStatus = ref<string | null>(null)
 
@@ -747,6 +747,38 @@ async function onDrop(status: string) {
   const record = draggingRecord.value
   draggingRecord.value = null
   await changeStatus(record.id, status)
+}
+
+// Kanban drag state (stage-based)
+const draggingStageRecord = ref<RecordOut | null>(null)
+const dragOverStageId = ref<string | null>(null)
+
+function onStageDragStart(e: DragEvent, record: RecordOut) {
+  draggingStageRecord.value = record
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+function onStageDragOver(e: DragEvent, stageId: string) {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverStageId.value = stageId
+}
+function onStageDragLeave(e: DragEvent) {
+  // Only clear if leaving the column entirely (not entering a child element)
+  const rel = e.relatedTarget as Node | null
+  if (rel && (e.currentTarget as HTMLElement).contains(rel)) return
+  dragOverStageId.value = null
+}
+async function onStageDrop(stageId: string) {
+  dragOverStageId.value = null
+  if (!draggingStageRecord.value || draggingStageRecord.value.current_stage_id === stageId) {
+    draggingStageRecord.value = null
+    return
+  }
+  const record = draggingStageRecord.value
+  draggingStageRecord.value = null
+  const stage = currentCategoryStages.value.find(s => s.id === stageId)
+  const result = await store.patchStage(record.id, stageId, stage?.name ?? null)
+  if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
 }
 
 function fmtValue(record: RecordOut) {
@@ -1345,22 +1377,30 @@ function showAssigneeAvatar(record: RecordOut): boolean {
             v-for="stage in currentCategoryStages"
             :key="stage.id"
             class="flex-shrink-0 w-64 flex flex-col"
+            @dragover="onStageDragOver($event, stage.id)"
+            @dragleave="onStageDragLeave($event)"
+            @drop="onStageDrop(stage.id)"
           >
             <!-- Column header -->
             <div
-              class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold"
-              :style="{ backgroundColor: stage.color + '22', color: stage.color }"
+              class="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-semibold transition-colors"
+              :style="{ backgroundColor: dragOverStageId === stage.id ? stage.color + '44' : stage.color + '22', color: stage.color }"
             >
               {{ stage.name }}
               <span v-if="stage.is_terminal && stage.is_won" class="text-green-600">✓</span>
               <span class="ml-auto bg-white/60 rounded px-1.5 py-0.5">{{ leadsByStage[stage.id]?.length ?? 0 }}</span>
             </div>
             <!-- Cards -->
-            <div class="flex-1 space-y-2 min-h-16 rounded-xl bg-gray-50 dark:bg-gray-700/30 p-1">
+            <div
+              class="flex-1 space-y-2 min-h-16 rounded-xl transition-colors p-1"
+              :class="dragOverStageId === stage.id ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-300 dark:ring-blue-600' : 'bg-gray-50 dark:bg-gray-700/30'"
+            >
               <div
                 v-for="record in leadsByStage[stage.id]"
                 :key="record.id"
-                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-pointer shadow-sm hover:shadow transition-shadow group"
+                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 cursor-grab shadow-sm hover:shadow transition-shadow group"
+                draggable="true"
+                @dragstart="onStageDragStart($event, record)"
                 @click="goToDetail(record.id)"
                 @contextmenu="onRowContextMenu($event, record)"
               >
@@ -1381,7 +1421,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
                   </div>
                 </div>
               </div>
-              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-400 dark:text-gray-500 py-6">{{ t('leads.noRecordsInStage') }}</div>
+              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs py-6" :class="draggingStageRecord ? 'text-blue-400 dark:text-blue-500' : 'text-gray-400 dark:text-gray-500'">{{ draggingStageRecord ? t('leads.dropHere') : t('leads.noRecordsInStage') }}</div>
             </div>
           </div>
         </div>

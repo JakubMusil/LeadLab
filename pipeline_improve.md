@@ -117,6 +117,20 @@ aby bylo možné každému poli v pipeline nastavit:
 
 ---
 
+### Fáze 7 — Drag-and-drop pro stage-based Kanban ✅
+
+- Přidána metoda `patchStage(id, stageId)` do records store — optimistický update s rollbackem
+- Stage-based Kanban v RecordsView získal drag-and-drop:
+  - Karty mají `draggable="true"` a `@dragstart` handler
+  - Sloupce reagují na `@dragover`, `@dragleave`, `@drop`
+  - Vizuální indikace: modrý highlight + ring na cílovém sloupci při tahu
+  - Prázdný sloupec zobrazuje "Drop here" místo "No records in this stage"
+- Nové refs/funkce: `draggingStageRecord`, `dragOverStageId`, `onStageDragStart`, `onStageDragOver`, `onStageDragLeave`, `onStageDrop`
+
+**Status: ✅ Hotovo**
+
+---
+
 ## Co bylo uděláno (log)
 
 ### Relace 1
@@ -132,6 +146,9 @@ aby bylo možné každému poli v pipeline nastavit:
 - **Fáze 5 dokončena**: backend helper `_validate_record_field_rules` v `crm/api.py` — validuje `value` (min/max), `notes` (pattern regex), `source` (options) oproti `CategoryField.validation_rules`; frontend zobrazí chybu inline pod editačním inputem (ref `fieldEditError`)
 - **Fáze 6 dokončena**: stage-based Kanban karta v RecordsView zobrazuje až 2 viditelná pole kategorie (date_range, notes, origin_record) pod hodnotou/datem expirace; pomocná funkce `getKanbanCardFields(record)` v RecordsView.vue
 
+### Relace 4
+- **Fáze 7 dokončena**: přidán drag-and-drop pro stage-based Kanban — `patchStage` v records store, drag handlery v RecordsView, vizuální feedback (modrý highlight sloupce)
+
 ### Příště
 - Žádné další fáze naplánované — pipeline_improve.md je kompletní
-- Možná přidat Drag-and-drop pro přesouvání karet mezi sloupci v stage-based Kanban
+- Možné rozšíření: přidat checkpoint dialog při přesunutí karty do terminální stage
