@@ -163,6 +163,7 @@ const filterUpdatedBefore = ref('')
 const filterCategoryId = ref((route.query.category_id as string) ?? '')
 const filterStageId = ref((route.query.stage_id as string) ?? '')
 const filterCompanyId = ref('')
+const filterCompanyName = ref('')
 const filterContactPersonId = ref('')
 const showAdvancedFilters = ref(false)
 
@@ -170,7 +171,7 @@ function hasActiveAdvancedFilters() {
   return !!(filterAssignedTo.value || filterCreatedBy.value || filterValueMin.value ||
             filterValueMax.value || filterCreatedAfter.value || filterCreatedBefore.value ||
             filterUpdatedAfter.value || filterUpdatedBefore.value ||
-            filterStageId.value || filterCompanyId.value || filterContactPersonId.value)
+            filterStageId.value || filterCompanyId.value || filterCompanyName.value || filterContactPersonId.value)
 }
 
 function buildFilters(page = 1) {
@@ -190,6 +191,7 @@ function buildFilters(page = 1) {
     category_id: filterCategoryId.value || undefined,
     stage_id: filterStageId.value || undefined,
     company_id: filterCompanyId.value || undefined,
+    company_name: filterCompanyName.value || undefined,
     contact_person_id: filterContactPersonId.value || undefined,
     page,
   }
@@ -208,8 +210,10 @@ function clearAdvancedFilters() {
   filterCreatedBefore.value = ''
   filterUpdatedAfter.value = ''
   filterUpdatedBefore.value = ''
+  filterCategoryId.value = ''
   filterStageId.value = ''
   filterCompanyId.value = ''
+  filterCompanyName.value = ''
   filterContactPersonId.value = ''
   router.replace({ query: { ...route.query, category_id: undefined, stage_id: undefined } })
   loadRecords()
@@ -518,6 +522,7 @@ watch(filterUpdatedAfter, () => { loadRecords() })
 watch(filterUpdatedBefore, () => { loadRecords() })
 watch(filterStageId, () => { loadRecords() })
 watch(filterCompanyId, () => { loadRecords() })
+watch(filterCompanyName, () => { loadRecords() })
 watch(filterContactPersonId, () => { loadRecords() })
 
 // Apply saved view from ?view= query param
@@ -1251,7 +1256,7 @@ function closeContactDetail() {
         <div class="flex flex-col gap-1 min-w-36">
           <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterCompany') }}</label>
           <input
-            v-model="filterCompanyId"
+            v-model="filterCompanyName"
             type="text"
             :placeholder="t('leads.filterCompanyPlaceholder')"
             class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400 w-36"
@@ -1509,7 +1514,7 @@ function closeContactDetail() {
           <!-- Dates: Created + Updated -->
           <div class="hidden lg:flex flex-col items-end flex-shrink-0 w-24" @click.stop="goToDetail(record.id)">
             <span class="text-xs text-gray-400 dark:text-gray-500">{{ new Date(record.created_at).toLocaleDateString() }}</span>
-            <span v-if="record.updated_at !== record.created_at" class="text-xs text-gray-300 dark:text-gray-600">{{ new Date(record.updated_at).toLocaleDateString() }}</span>
+            <span v-if="new Date(record.updated_at).getTime() !== new Date(record.created_at).getTime()" class="text-xs text-gray-300 dark:text-gray-600">{{ new Date(record.updated_at).toLocaleDateString() }}</span>
           </div>
 
           <!-- Company -->

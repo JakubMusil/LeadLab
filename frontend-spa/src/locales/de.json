@@ -2498,7 +2498,7 @@
     "filterUpdatedBefore": "Geändert vor",
     "filterStage": "Phase",
     "filterCompany": "Unternehmen",
-    "filterCompanyPlaceholder": "Unternehmens-ID",
+    "filterCompanyPlaceholder": "Unternehmensname suchen…",
     "col_updated_at": "Geändert",
     "newInCategory": "Neue {category}",
     "contactDetailTitle": "Kontaktdetails"

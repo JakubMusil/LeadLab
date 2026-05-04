@@ -2509,7 +2509,7 @@
     "filterUpdatedBefore": "Upraveno do",
     "filterStage": "Fáze",
     "filterCompany": "Společnost",
-    "filterCompanyPlaceholder": "ID společnosti",
+    "filterCompanyPlaceholder": "Hledat název společnosti…",
     "col_updated_at": "Upraveno",
     "newInCategory": "Nová {category}",
     "contactDetailTitle": "Detail kontaktu"

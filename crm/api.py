@@ -711,6 +711,7 @@ def list_records(
     customer_id: str = "",
     parent_id: str = "",
     company_id: str = "",
+    company_name: str = "",
     contact_person_id: str = "",
     value_min: Optional[Decimal] = None,
     value_max: Optional[Decimal] = None,
@@ -757,6 +758,8 @@ def list_records(
         qs = qs.filter(created_at__lte=created_before)
     if company_id:
         qs = qs.filter(company_id=company_id)
+    if company_name:
+        qs = qs.filter(company__company_name__icontains=company_name)
     if contact_person_id:
         qs = qs.filter(contact_person_id=contact_person_id)
     if updated_after:

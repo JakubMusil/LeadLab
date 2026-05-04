@@ -2508,7 +2508,7 @@
     "filterUpdatedBefore": "Updated before",
     "filterStage": "Stage",
     "filterCompany": "Company",
-    "filterCompanyPlaceholder": "Company ID",
+    "filterCompanyPlaceholder": "Search company name…",
     "col_updated_at": "Updated",
     "newInCategory": "New {category}",
     "contactDetailTitle": "Contact details"

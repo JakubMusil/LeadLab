@@ -77,6 +77,7 @@ export interface RecordFilters {
   stage_id?: string
   parent_id?: string
   company_id?: string
+  company_name?: string
   contact_person_id?: string
 }
 
@@ -137,6 +138,7 @@ export const useRecordsStore = defineStore('records', () => {
       if (filters.stage_id) params.set('stage_id', filters.stage_id)
       if (filters.parent_id) params.set('parent_id', filters.parent_id)
       if (filters.company_id) params.set('company_id', filters.company_id)
+      if (filters.company_name) params.set('company_name', filters.company_name)
       if (filters.contact_person_id) params.set('contact_person_id', filters.contact_person_id)
       const p = filters.page ?? 1
       const ps = filters.page_size ?? pageSize.value

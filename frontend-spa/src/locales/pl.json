@@ -2498,7 +2498,7 @@
     "filterUpdatedBefore": "Zaktualizowano przed",
     "filterStage": "Etap",
     "filterCompany": "Firma",
-    "filterCompanyPlaceholder": "ID firmy",
+    "filterCompanyPlaceholder": "Szukaj nazwy firmy…",
     "col_updated_at": "Zaktualizowano",
     "newInCategory": "Nowy {category}",
     "contactDetailTitle": "Szczegóły kontaktu"
