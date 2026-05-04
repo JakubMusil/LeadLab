@@ -1406,7 +1406,8 @@
       "planning": "Planung",
       "files": "Dateien & Links",
       "system": "System",
-      "other": "Sonstiges"
+      "other": "Sonstiges",
+      "commerce": "Handel"
     },
     "toolHelp": {
       "comment": "Freier Kommentar zur Opportunity. Verwenden Sie {'@'}, um Kolleg:innen zu erwähnen.",
@@ -1426,13 +1427,33 @@
       "system_note": "Systemartige Notiz, z.B. „Aus CSV importiert“ oder „Aus Duplikat-Lead zusammengeführt“.",
       "task": "Erstellt eine mit dieser Opportunity verknüpfte Aufgabe. Optional Beschreibung oder Erwähnung.",
       "todo_items": "Aufgaben eingeben — jede Zeile = eine neue Aufgabe. Alle werden auf einmal erstellt.",
-      "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen."
+      "message": "E-Mail, SMS, WhatsApp oder Chat-Nachricht erfassen oder senden — Kanal unten wählen.",
+      "call_scheduled": "Geplanter zukünftiger Anruf — Datum, Uhrzeit, Kontakt.",
+      "chat": "Erfasste Chat-Nachricht (Slack, Teams, …).",
+      "mention": "Benachrichtigen Sie ein Teammitglied durch eine Erwähnung in diesem Datensatz.",
+      "checklist": "Interaktive Checkliste, die mit diesem Datensatz verknüpft ist.",
+      "time_logged": "Zeit für diesen Datensatz erfassen — Minuten, optionale Beschreibung, Start-/Endzeit.",
+      "approval_requested": "Genehmigungsanfrage von einem Teammitglied.",
+      "approval_resolved": "Ergebnis einer Genehmigungsanfrage.",
+      "payment_received": "Erfasste eingegangene Zahlung für diesen Datensatz.",
+      "invoice_sent": "Erfasste an den Kontakt gesendete Rechnung.",
+      "signature_requested": "Erfasste Unterschriftsanfrage für ein Dokument.",
+      "signature_completed": "Erfasste abgeschlossene Unterschrift eines Dokuments."
     },
     "typeMessage": "Nachricht",
     "typeTodoItems": "Todo-Aufgaben",
     "typeChecklist": "Checkliste",
     "checklistCheck": "Als erledigt markieren",
-    "checklistUncheck": "Markierung aufheben"
+    "checklistUncheck": "Markierung aufheben",
+    "typeChat": "Chat-Nachricht",
+    "typeMention": "Erwähnung",
+    "typeTimeLogged": "Erfasste Zeit",
+    "typeApprovalRequested": "Genehmigung beantragt",
+    "typeApprovalResolved": "Genehmigung abgeschlossen",
+    "typePaymentReceived": "Zahlung erhalten",
+    "typeInvoiceSent": "Rechnung gesendet",
+    "typeSignatureRequested": "Unterschrift angefordert",
+    "typeSignatureCompleted": "Unterschrift abgeschlossen"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",

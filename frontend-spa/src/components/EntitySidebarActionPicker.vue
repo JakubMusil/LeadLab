@@ -11,6 +11,7 @@ import {
   PaperAirplaneIcon,
   InboxArrowDownIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   CheckCircleIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
@@ -22,6 +23,14 @@ import {
   MicrophoneIcon,
   InformationCircleIcon,
   QuestionMarkCircleIcon,
+  AtSymbolIcon,
+  ClockIcon,
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  CheckBadgeIcon,
+  BanknotesIcon,
+  DocumentCurrencyDollarIcon,
+  PencilSquareIcon,
 } from '@heroicons/vue/24/outline'
 
 /**
@@ -78,6 +87,7 @@ const heroIconMap: Record<string, Component> = {
   ArrowsRightLeftIcon,
   PaperClipIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   CheckCircleIcon,
   DocumentTextIcon,
   DocumentCheckIcon,
@@ -86,6 +96,14 @@ const heroIconMap: Record<string, Component> = {
   LinkIcon,
   MicrophoneIcon,
   InformationCircleIcon,
+  AtSymbolIcon,
+  ClockIcon,
+  ShieldExclamationIcon,
+  ShieldCheckIcon,
+  CheckBadgeIcon,
+  BanknotesIcon,
+  DocumentCurrencyDollarIcon,
+  PencilSquareIcon,
 }
 
 // Map activity_type → i18n key (preserves multi-language support).
@@ -100,15 +118,26 @@ const activityTypeLabelKey: Record<string, string> = {
   sms_in: 'recordDetail.typeSmsIn',
   whatsapp_out: 'recordDetail.typeWhatsAppOut',
   whatsapp_in: 'recordDetail.typeWhatsAppIn',
+  chat: 'recordDetail.typeChat',
+  mention: 'recordDetail.typeMention',
   meeting_scheduled: 'recordDetail.typeMeetingScheduled',
   call_scheduled: 'recordDetail.typeCallScheduled',
   event_scheduled: 'recordDetail.typeEventScheduled',
+  checklist: 'recordDetail.typeChecklist',
+  todo_items_added: 'recordDetail.typeTodoItems',
+  time_logged: 'recordDetail.typeTimeLogged',
+  approval_requested: 'recordDetail.typeApprovalRequested',
+  approval_resolved: 'recordDetail.typeApprovalResolved',
   link: 'recordDetail.typeLink',
   voice_memo: 'recordDetail.typeVoiceMemo',
-  system_note: 'recordDetail.typeSystemNote',
   file_upload: 'recordDetail.typeFileUpload',
+  payment_received: 'recordDetail.typePaymentReceived',
+  invoice_sent: 'recordDetail.typeInvoiceSent',
+  signature_requested: 'recordDetail.typeSignatureRequested',
+  signature_completed: 'recordDetail.typeSignatureCompleted',
   todo_items: 'recordDetail.typeTodoItems',
   proposal: 'recordDetail.typeProposal',
+  system_note: 'recordDetail.typeSystemNote',
   // Pseudo-tool for the unified messaging composer (no real activity_type).
   message: 'recordDetail.typeMessage',
 }
@@ -116,7 +145,7 @@ const activityTypeLabelKey: Record<string, string> = {
 // ─── Tool category grouping (UX layout) ────────────────────────────────────
 
 interface ToolCategory {
-  key: 'communication' | 'planning' | 'files' | 'system' | 'other'
+  key: 'communication' | 'planning' | 'files' | 'commerce' | 'system' | 'other'
   labelKey: string
   activityTypes: string[]
   accent: string
@@ -126,13 +155,13 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'communication',
     labelKey: 'recordDetail.toolCategory.communication',
-    activityTypes: ['comment', 'call', 'meeting', 'message'],
+    activityTypes: ['comment', 'call', 'meeting', 'message', 'mention'],
     accent: 'red',
   },
   {
     key: 'planning',
     labelKey: 'recordDetail.toolCategory.planning',
-    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'todo_items_added', 'proposal'],
+    activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'checklist', 'todo_items_added', 'proposal', 'time_logged', 'approval_requested', 'approval_resolved'],
     accent: 'blue',
   },
   {
@@ -140,6 +169,12 @@ const TOOL_CATEGORIES: ToolCategory[] = [
     labelKey: 'recordDetail.toolCategory.files',
     activityTypes: ['file_upload', 'voice_memo', 'link'],
     accent: 'emerald',
+  },
+  {
+    key: 'commerce',
+    labelKey: 'recordDetail.toolCategory.commerce',
+    activityTypes: ['payment_received', 'invoice_sent', 'signature_requested', 'signature_completed'],
+    accent: 'purple',
   },
   {
     key: 'system',
@@ -268,6 +303,12 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         ring: 'border-gray-200 dark:border-gray-700/50',
         text: 'text-gray-600 dark:text-gray-400',
         hover: 'hover:border-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
+      }
+    case 'purple':
+      return {
+        ring: 'border-purple-200 dark:border-purple-700/50',
+        text: 'text-purple-600 dark:text-purple-400',
+        hover: 'hover:border-purple-400 hover:text-purple-700 dark:hover:text-purple-300',
       }
     case 'red':
     default:

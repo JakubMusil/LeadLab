@@ -518,6 +518,8 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         "todo_items_added",
         "proposal",
         "time_logged",
+        "approval_requested",
+        "approval_resolved",
         # Files & references
         "file_upload",
         "voice_memo",
