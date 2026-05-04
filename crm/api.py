@@ -1258,6 +1258,13 @@ class ActivityOut(Schema):
     reactions: List[Dict[str, Any]] = []
     # Calendar / Task unification
     task_id: Optional[str] = None
+    # Soft-delete tombstone
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by_name: Optional[str] = None
+    # Edit tracking
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
 
 
 class ActivityUpdateIn(Schema):
@@ -2394,6 +2401,7 @@ def list_tasks(
     proposal_id: Optional[str] = None,
     customer_id: Optional[str] = None,
     project_id: Optional[str] = None,
+    tag: Optional[str] = None,
     page: int = 1,
     page_size: int = 50,
 ):
