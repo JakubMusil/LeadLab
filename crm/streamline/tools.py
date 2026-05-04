@@ -113,23 +113,28 @@ class CallTool(StreamlineTool):
                     "title": "Duration (minutes)",
                     "minimum": 0,
                 },
+                # Hidden — populated by VOIP/call-recording integrations, not user input
                 "recording_url": {
                     "type": "string",
                     "format": "uri",
                     "title": "Recording URL",
+                    "x-hidden": True,
                 },
                 "recording_filename": {
                     "type": "string",
                     "title": "Recording Filename",
+                    "x-hidden": True,
                 },
                 "recording_size_bytes": {
                     "type": "integer",
                     "title": "Recording Size (bytes)",
                     "minimum": 0,
+                    "x-hidden": True,
                 },
                 "transcript": {
                     "type": "string",
                     "title": "Transcript",
+                    "x-hidden": True,
                 },
             },
         }
@@ -904,9 +909,10 @@ class ApprovalRequestedTool(StreamlineTool):
         return {
             "type": "object",
             "properties": {
-                "approver_id": {"type": "string", "title": "Approver"},
+                # Hidden — internal UUID resolved from approver_name by the user
+                "approver_id": {"type": "string", "title": "Approver", "x-hidden": True},
                 "approver_name": {"type": "string", "title": "Approver Name"},
-                "note": {"type": "string", "title": "Note"},
+                "note": {"type": "string", "title": "Note", "x-multiline": True},
             },
         }
 
@@ -1385,8 +1391,9 @@ class MeetingScheduledTool(_ScheduledActivityTool):
             "items": {"type": "string"},
             "title": "Attendees",
         },
-        "ics_url": {"type": "string", "format": "uri", "title": "ICS URL"},
-        "provider_event_id": {"type": "string", "title": "Provider Event ID"},
+        # Hidden — populated by calendar/e-mail integrations, not user input
+        "ics_url": {"type": "string", "format": "uri", "title": "ICS URL", "x-hidden": True},
+        "provider_event_id": {"type": "string", "title": "Provider Event ID", "x-hidden": True},
     }
     required_fields = ["start_at"]
 
@@ -1415,7 +1422,8 @@ class CallScheduledTool(_ScheduledActivityTool):
             "items": {"type": "string"},
             "title": "Attendees",
         },
-        "provider_event_id": {"type": "string", "title": "Provider Event ID"},
+        # Hidden — populated by calendar integrations, not user input
+        "provider_event_id": {"type": "string", "title": "Provider Event ID", "x-hidden": True},
     }
     required_fields = ["start_at"]
 
@@ -1537,10 +1545,12 @@ class LinkTool(_SimpleLogTool):
         "url": {"type": "string", "format": "uri", "title": "URL"},
         "title": {"type": "string", "title": "Title"},
         "description": {"type": "string", "title": "Description"},
+        # Hidden — auto-fetched Open Graph preview, not user input
         "thumbnail_url": {
             "type": "string",
             "format": "uri",
             "title": "Thumbnail URL",
+            "x-hidden": True,
         },
     }
     required_fields = ["url"]
@@ -1557,10 +1567,11 @@ class PaymentReceivedTool(_SimpleLogTool):
     schema_properties = {
         "amount": {"type": "number", "title": "Amount"},
         "currency": {"type": "string", "title": "Currency"},
-        "invoice_id": {"type": "string", "title": "Invoice ID"},
+        "invoice_id": {"type": "string", "title": "Invoice Reference"},
         "paid_at": {"type": "string", "format": "date-time", "title": "Paid At"},
         "method": {"type": "string", "title": "Method"},
-        "provider": {"type": "string", "title": "Provider"},
+        # Hidden — populated by payment gateway integrations
+        "provider": {"type": "string", "title": "Provider", "x-hidden": True},
     }
     required_fields = ["amount", "currency"]
 
@@ -1572,15 +1583,17 @@ class InvoiceSentTool(_SimpleLogTool):
     category = "commerce"
     default_visibility = "important"
     schema_properties = {
-        "invoice_id": {"type": "string", "title": "Invoice ID"},
+        # Hidden — internal UUID used by accounting integrations
+        "invoice_id": {"type": "string", "title": "Invoice ID", "x-hidden": True},
         "invoice_number": {"type": "string", "title": "Invoice Number"},
         "amount": {"type": "number", "title": "Amount"},
         "currency": {"type": "string", "title": "Currency"},
         "due_date": {"type": "string", "format": "date", "title": "Due Date"},
         "url": {"type": "string", "format": "uri", "title": "Invoice URL"},
-        "provider": {"type": "string", "title": "Provider"},
+        # Hidden — populated by accounting integrations
+        "provider": {"type": "string", "title": "Provider", "x-hidden": True},
     }
-    required_fields = ["invoice_id"]
+    required_fields = ["invoice_number"]
 
 
 # --- Signature workflow ----------------------------------------------------
@@ -1592,17 +1605,19 @@ class SignatureRequestedTool(_SimpleLogTool):
     category = "commerce"
     default_visibility = "important"
     schema_properties = {
-        "document_id": {"type": "string", "title": "Document ID"},
+        # Hidden — internal document UUID from e-sign integrations
+        "document_id": {"type": "string", "title": "Document ID", "x-hidden": True},
         "document_title": {"type": "string", "title": "Document Title"},
         "signer_email": {
             "type": "string",
             "format": "email",
             "title": "Signer Email",
         },
-        "provider": {"type": "string", "title": "Provider"},
-        "provider_request_id": {"type": "string", "title": "Provider Request ID"},
+        # Hidden — populated by e-sign provider integrations
+        "provider": {"type": "string", "title": "Provider", "x-hidden": True},
+        "provider_request_id": {"type": "string", "title": "Provider Request ID", "x-hidden": True},
     }
-    required_fields = ["document_id", "signer_email"]
+    required_fields = ["document_title", "signer_email"]
 
 
 class SignatureCompletedTool(_SimpleLogTool):
@@ -1612,7 +1627,8 @@ class SignatureCompletedTool(_SimpleLogTool):
     category = "commerce"
     default_visibility = "important"
     schema_properties = {
-        "document_id": {"type": "string", "title": "Document ID"},
+        # Hidden — internal document UUID from e-sign integrations
+        "document_id": {"type": "string", "title": "Document ID", "x-hidden": True},
         "document_title": {"type": "string", "title": "Document Title"},
         "signer_email": {
             "type": "string",
@@ -1620,10 +1636,11 @@ class SignatureCompletedTool(_SimpleLogTool):
             "title": "Signer Email",
         },
         "signed_at": {"type": "string", "format": "date-time", "title": "Signed At"},
-        "provider": {"type": "string", "title": "Provider"},
-        "provider_request_id": {"type": "string", "title": "Provider Request ID"},
+        # Hidden — populated by e-sign provider integrations
+        "provider": {"type": "string", "title": "Provider", "x-hidden": True},
+        "provider_request_id": {"type": "string", "title": "Provider Request ID", "x-hidden": True},
     }
-    required_fields = ["document_id"]
+    required_fields = ["document_title"]
 
 
 # --- Proposal Viewed (passive tracking) ------------------------------------
