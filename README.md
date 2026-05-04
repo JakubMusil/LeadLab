@@ -1,6 +1,6 @@
 # LeadLab
 
-**LeadLab** is a full-stack multi-tenant SaaS CRM/ERP platform built with Django / Django Ninja on the backend and a Vue 3 SPA on the frontend. It covers the complete business lifecycle — from the first sales contact all the way through delivery and post-sale service — in a single, unified workspace called a *Firm*.
+**LeadLab** is a full-stack multi-tenant SaaS CRM/ERP platform built with Django / Django Ninja on the backend and a Vue 3 SPA on the frontend. It covers the complete business lifecycle — from the first sales contact all the way through post-sale service — in a single, unified workspace called a *Firm*.
 
 ---
 
@@ -9,19 +9,21 @@
 ### CRM — Sales & Relationships
 
 - **Contact book** — Unified address book for companies and people; IČO/DIČ, tags, custom metadata, company–person hierarchy, and enrichment via plugins.
-- **Opportunity pipeline (Leads)** — 6-stage Kanban (New → Contacted → Qualified → Proposal → Won / Lost / Canceled) with drag-and-drop, smart lead scoring (0–100), and saved filter views.
+- **Configurable pipeline (Records)** — Fully customisable categories (e.g. Sales, Service, Onboarding) each with their own stages, fields, and colour scheme. Records move through stages via drag-and-drop Kanban, with smart lead scoring (0–100) and saved filter views.
+- **Pipeline settings** — Admin UI to create and reorder categories, define custom stages (incl. terminal/won flags), and toggle which fields (value, date range, notes, source, …) are visible per category.
+- **Checkpoints** — Per-record milestones with optional due dates and completion tracking (replaces the old Realization milestone system).
 - **Business proposals** — Quote builder with line items, PDF export, public signing links, accept/reject tracking, and proposal templates.
-- **Realization (project delivery)** — Kanban activated automatically on Won; milestones, time tracking, linked tasks, activities, documents, and financial reports.
-- **Management (post-delivery)** — SLA/warranty/retention tracking with colour-coded time indicators, service Kanban, and automatic escalation via the automation engine.
-- **Activity timeline** — Immutable event log per entity: comments (with @mention via Tiptap), calls, meetings, emails, file uploads, status changes, and task events.
-- **Task management** — Global task manager with calendar view, templates, checklists, due-date assignment, and automatic completion logging.
+- **Activity timeline (Streamline)** — Immutable event log per entity (Record, Customer, Proposal, Task): comments with @mention (Tiptap rich text), calls, meetings, emails, SMS, WhatsApp, voice memos, file uploads, checklists, status changes, task events, AI summaries, and more. Emoji reactions on any activity. The sidebar toolbar is driven by a backend registry — no frontend hardcoding.
+- **Task management** — Global task manager with calendar view, templates, rich-text descriptions, checklists / sub-tasks (Streamline Items), due-date ranges, priorities, status workflow, tags, watchers, favourites, personal reminders, recurring tasks, task dependencies (blocks / related-to), and an approval workflow. Calendar-bound task kinds (call, meeting, event) auto-close on expiry.
 
 ### ERP — Operations & Tools
 
-- **Time tracking** — Persistent sitewide floating timer; attach entries to any entity (Lead, Realization, Task, etc.) or log manually as a timesheet entry.
-- **Financial reports** — P&L overview at Opportunity / Realization / Customer level; timesheet, expense and revenue items; Fakturoid API integration for invoicing; CSV/PDF export.
-- **Calendar** — Aggregated monthly/weekly/daily view (FullCalendar) showing tasks, milestones, SLA expiry, and activity events; iCal export.
+- **Time tracking** — Persistent sitewide floating timer; attach entries to any entity (Record, Customer, Task) or log manually as a timesheet entry.
+- **Financial reports** — P&L overview at Record / Customer level; timesheet, expense and revenue items with multi-currency support; Fakturoid API integration for invoicing; CSV/PDF export.
+- **Multi-currency** — 14 supported currencies. Exchange rates auto-fetched from ECB daily at 17:30 UTC (or maintained manually per workspace). Canonical amounts stored on every financial record for consistent reporting. Per-workspace and per-user number/currency locale override.
+- **Calendar** — Aggregated monthly/weekly/daily view (FullCalendar) showing tasks, checkpoints, and activity events; iCal export.
 - **Documents** — Central file store with drag-and-drop upload, signed temporary share links, in-browser image/PDF preview, and cross-entity search.
+- **Product catalog** — Internal catalog of products/services for use in proposal line items.
 
 ### Platform
 
@@ -32,8 +34,9 @@
 - **API tokens** — Personal Bearer tokens for machine-to-machine access alongside session auth.
 - **Outbound webhooks** — Register endpoints to receive real-time event payloads; delivery attempt log included.
 - **Real-time updates** — WebSocket channel (Django Channels) broadcasts pipeline events to connected browser clients.
-- **Web Push notifications** — VAPID-based push for task assignments and lead events.
-- **Workflow automation** — Visual trigger → condition → action rule builder with AND/OR logic; evaluated by Celery with a full execution log.
+- **Web Push notifications** — VAPID-based push for task assignments and record events.
+- **Workflow automation** — Visual trigger → condition → action rule builder with AND/OR logic; built-in templates; evaluated by Celery with a full execution log.
+- **Streamline tool registry** — Backend-driven registry of activity toolbar tools; entity-type-specific toolbars served via `/api/v1/streamline/tools`, eliminating frontend hardcoding.
 - **Plugin system** — Register custom nav items, activity types, and webhook event types from external Django apps; first-party plugins for Email Sequences, VoIP/Click-to-Call, LinkedIn Enrichment, and Slack Notifications; community plugins via the public registry.
 - **White-label branding** — Custom logo and brand colour per workspace (Pro tier).
 - **Async email dispatch** — Outbound emails queued via Celery / Redis.
@@ -46,7 +49,9 @@
 
 - Multi-language UI (English / Czech / German / Polish) with dark mode.
 - Onboarding wizard, analytics dashboard (pipeline velocity, team performance, conversion trends), and super-admin panel.
-- Command palette (`Cmd/Ctrl+K`), keyboard shortcuts, notification bell, and Tiptap rich-text editor with @mention.
+- Command palette (`Cmd/Ctrl+K`), keyboard shortcuts, notification bell, and Tiptap rich-text editor with @mention, task lists, highlight, and link support.
+- Pipeline settings view for managing categories, stages, and field visibility.
+- Public task share links (read-only task view without login).
 - PWA manifest + service worker.
 - Internal design system (Button, Input, Modal, Badge, …) documented in Storybook.
 
@@ -56,7 +61,7 @@
 
 | Layer | Technology |
 |---|---|
-| Framework | Django / Django Ninja |
+| Framework | Django / Django Ninja (API v2.5) |
 | ASGI server | Daphne (production), Django dev server (local) |
 | Database | PostgreSQL (SQLite for local dev) |
 | Task queue | Celery + Redis |
@@ -73,14 +78,19 @@
 ## Project Structure
 
 ```
-leadlab/          # Django project settings, URL conf, Celery config, root API, plugin registry
+leadlab/          # Django project settings, URL conf, Celery config, root API
 users/            # Custom User model (email-based), auth endpoints, password reset, avatars
 firms/            # Firm & Membership models, tenant middleware, role auth, invitations,
                   #   billing (Stripe), API tokens, outbound webhooks
-crm/              # Contact, Lead, Activity, Task, Realization, Management, Proposal,
-                  #   Automation models and API; WebSocket consumers;
-                  #   integrations (iCal, CSV, PDF); push notifications
+crm/              # Core CRM/ERP models and APIs:
+                  #   Customer, PipelineRecord, Category, Stage, CategoryField, Checkpoint,
+                  #   Activity, Task, Proposal, Automation, Project, Document, TimeEntry,
+                  #   ExpenseItem, RevenueItem; WebSocket consumers;
+                  #   integrations (iCal, CSV, PDF, Fakturoid); push notifications;
+                  #   Streamline tool registry
 plugins/          # Plugin registry and first-party plugin implementations
+                  #   (email_sequences, voip, linkedin_enrichment, slack_notifications,
+                  #    fakturoid)
 frontend/         # Thin Django app that serves the compiled Vue SPA
 frontend-spa/     # Vue 3 + TypeScript SPA source (npm build)
 docs/             # MkDocs documentation site
@@ -139,6 +149,9 @@ python manage.py migrate
 python manage.py load_demo_data
 # → creates demo@leadlab.io / Demo1234! with a sample workspace
 
+# (Optional) seed pipeline categories
+python manage.py seed_pipeline_categories
+
 # Start the dev server
 python manage.py runserver
 ```
@@ -148,10 +161,10 @@ python manage.py runserver
 > daphne -b 127.0.0.1 -p 8000 leadlab.asgi:application
 > ```
 
-> **Celery** (async email, CSV import, automations, weekly digest):
+> **Celery** (async email, CSV import, automations, ECB rate sync, weekly digest):
 > ```bash
 > celery -A leadlab worker --loglevel=info
-> celery -A leadlab beat --loglevel=info   # scheduled tasks
+> celery -A leadlab beat --loglevel=info   # scheduled tasks (ECB daily at 17:30 UTC, etc.)
 > ```
 
 See [install.md](install.md) for the full environment variable reference and production deployment checklist.
@@ -174,7 +187,7 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | POST | `/login` | No | Start a session |
 | POST | `/logout` | Yes | End the current session |
 | GET | `/me` | Yes | Return the current user |
-| PATCH | `/me` | Yes | Update profile (name, timezone) |
+| PATCH | `/me` | Yes | Update profile (name, timezone, number_locale) |
 | POST | `/me/avatar` | Yes | Upload / replace profile picture |
 | POST | `/password-reset/request` | No | Send a password-reset email |
 | POST | `/password-reset/confirm` | No | Set a new password via reset token |
@@ -185,9 +198,10 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 |---|---|---|---|
 | GET | `/` | authenticated | List the caller's Firms |
 | POST | `/` | authenticated | Create a Firm (caller becomes Owner) |
-| GET | `/{firm_id}` | member | Get Firm details |
+| GET | `/{firm_id}` | member | Get Firm details (incl. currency & locale settings) |
 | PATCH | `/{firm_id}` | Admin+ | Rename a Firm |
 | DELETE | `/{firm_id}` | Owner | Delete a Firm |
+| PATCH | `/{firm_id}/currency` | Admin+ | Set default currency, number locale, exchange rate mode |
 | POST | `/{firm_id}/branding` | Owner | Upload logo / set brand colour |
 | GET | `/{firm_id}/members` | member | List team members |
 | POST | `/{firm_id}/members` | Admin+ | Add an existing user as member |
@@ -204,6 +218,9 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | PATCH | `/{firm_id}/webhooks/{id}` | Admin+ | Update a webhook endpoint |
 | DELETE | `/{firm_id}/webhooks/{id}` | Admin+ | Delete a webhook endpoint |
 | GET | `/{firm_id}/webhooks/{id}/deliveries` | Admin+ | List delivery attempts |
+| GET | `/{firm_id}/exchange-rates` | member | List firm exchange rates |
+| POST | `/{firm_id}/exchange-rates` | Admin+ | Create / update a manual exchange rate |
+| GET | `/{firm_id}/exchange-rates/export.csv` | member | Export exchange rates as CSV |
 
 ### Invitations (public) — `/api/v1/invitations/`
 
@@ -214,6 +231,8 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 
 ### CRM — `/api/v1/crm/`
 
+#### Contacts
+
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/customers` | member | List / search contacts |
@@ -221,41 +240,97 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | GET | `/customers/{id}` | member | Get a contact |
 | PUT | `/customers/{id}` | Worker+ | Replace a contact |
 | DELETE | `/customers/{id}` | Admin+ | Delete a contact |
-| GET | `/leads` | member | List leads (filter by status / assignee / source / tag / date) |
-| POST | `/leads` | Worker+ | Create a lead |
-| GET | `/leads/{id}` | member | Get a lead |
-| PATCH | `/leads/{id}` | Worker+ | Update a lead (status change auto-logged) |
-| DELETE | `/leads/{id}` | Admin+ | Delete a lead |
-| GET | `/leads/{id}/activities` | member | Paginated activity timeline |
+
+#### Pipeline Records
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/records` | member | List records (filter by status / category / assignee / source / tag / date) |
+| POST | `/records` | Worker+ | Create a record |
+| GET | `/records/{id}` | member | Get a record |
+| PATCH | `/records/{id}` | Worker+ | Update a record (stage/status changes auto-logged) |
+| DELETE | `/records/{id}` | Admin+ | Delete a record |
+| GET | `/records/{id}/activities` | member | Paginated activity timeline |
+| GET | `/records/{id}/checkpoints` | member | List checkpoints |
+| POST | `/records/{id}/checkpoints` | Worker+ | Create a checkpoint |
+| PATCH | `/records/{id}/checkpoints/{cp_id}` | Worker+ | Update a checkpoint |
+| DELETE | `/records/{id}/checkpoints/{cp_id}` | Admin+ | Delete a checkpoint |
+
+#### Pipeline Configuration (Categories / Stages / Fields)
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/categories` | member | List all pipeline categories |
+| POST | `/categories` | Admin+ | Create a category |
+| PATCH | `/categories/{id}` | Admin+ | Update a category |
+| DELETE | `/categories/{id}` | Admin+ | Delete a category (403 if records exist) |
+| GET | `/categories/{id}/stages` | member | List stages for a category |
+| POST | `/categories/{id}/stages` | Admin+ | Create a stage |
+| PATCH | `/categories/{id}/stages/{stage_id}` | Admin+ | Update a stage |
+| DELETE | `/categories/{id}/stages/{stage_id}` | Admin+ | Delete a stage (403 if records use it) |
+| GET | `/categories/{id}/fields` | member | List field configuration for a category |
+| POST | `/categories/{id}/fields/{field_key}` | Admin+ | Enable / upsert a field |
+| PATCH | `/categories/{id}/fields/{field_key}` | Admin+ | Update a field's visibility / required flag |
+| DELETE | `/categories/{id}/fields/{field_key}` | Admin+ | Remove a field from the category |
+
+#### Activities & Proposals
+
+| Method | Path | Role | Description |
+|---|---|---|---|
 | POST | `/activities` | Worker+ | Log an activity |
-| GET | `/tasks` | member | List tasks (filter by completed) |
+| PATCH | `/activities/{id}` | Worker+ | Edit an activity |
+| DELETE | `/activities/{id}` | Worker+ | Soft-delete an activity |
+| POST | `/activities/{id}/reactions` | Worker+ | Add / toggle an emoji reaction |
+| GET | `/proposals` | member | List proposals |
+| POST | `/proposals` | Worker+ | Create a proposal |
+| GET | `/proposals/{id}` | member | Get a proposal |
+| PATCH | `/proposals/{id}` | Worker+ | Update a proposal |
+
+#### Tasks
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/tasks` | member | List tasks (filter by status / priority / kind / assignee / tag) |
 | POST | `/tasks` | Worker+ | Create a task |
+| GET | `/tasks/{id}` | member | Get a task |
+| PATCH | `/tasks/{id}` | Worker+ | Update a task |
+| DELETE | `/tasks/{id}` | Admin+ | Delete a task |
 | POST | `/tasks/{id}/complete` | Worker+ | Mark a task as completed |
-| GET | `/realizations` | member | List realizations |
-| POST | `/realizations` | Worker+ | Create a realization |
-| GET | `/realizations/{id}` | member | Get a realization |
-| PATCH | `/realizations/{id}` | Worker+ | Update a realization |
-| DELETE | `/realizations/{id}` | Admin+ | Delete a realization |
-| GET | `/milestones` | member | List milestones |
-| POST | `/milestones` | Worker+ | Create a milestone |
-| GET | `/management` | member | List management records |
-| POST | `/management` | Worker+ | Create a management record |
-| GET | `/management/{id}` | member | Get a management record |
-| PATCH | `/management/{id}` | Worker+ | Update a management record |
+| POST | `/tasks/{id}/approve` | Worker+ | Approve or reject a task |
+| GET | `/tasks/{id}/streamline-items` | member | List checklist / sub-task items |
+| POST | `/tasks/{id}/streamline-items` | Worker+ | Add checklist / sub-task items |
+| PATCH | `/tasks/{id}/streamline-items/{item_id}` | Worker+ | Toggle or update an item |
+
+#### Automations
+
+| Method | Path | Role | Description |
+|---|---|---|---|
 | GET | `/automations` | Admin+ | List automation rules |
 | POST | `/automations` | Admin+ | Create an automation rule |
-| PATCH | `/automations/{id}` | Admin+ | Update an automation rule |
-| DELETE | `/automations/{id}` | Admin+ | Delete an automation rule |
+| GET | `/automations/{id}` | Admin+ | Get a rule |
+| PATCH | `/automations/{id}` | Admin+ | Update a rule |
+| DELETE | `/automations/{id}` | Admin+ | Delete a rule |
 | GET | `/automations/{id}/runs` | Admin+ | List automation execution log |
+| GET | `/automations/templates` | Admin+ | List built-in automation templates |
+| POST | `/automations/from-template/{template_id}` | Admin+ | Create a rule from a template |
 
 ### ERP — `/api/v1/erp/`
 
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/time-entries` | member | List time entries (filter by user, entity, date) |
-| POST | `/time-entries` | Worker+ | Create / stop a time entry |
+| POST | `/time-entries` | Worker+ | Create a time entry |
 | PATCH | `/time-entries/{id}` | Worker+ | Edit a time entry |
 | DELETE | `/time-entries/{id}` | Worker+ | Delete a time entry |
+| GET | `/expenses` | member | List expense items |
+| POST | `/expenses` | Worker+ | Create an expense item |
+| PATCH | `/expenses/{id}` | Worker+ | Update an expense item |
+| DELETE | `/expenses/{id}` | Admin+ | Delete an expense item |
+| GET | `/revenues` | member | List revenue items |
+| POST | `/revenues` | Worker+ | Create a revenue item |
+| PATCH | `/revenues/{id}` | Worker+ | Update a revenue item |
+| DELETE | `/revenues/{id}` | Admin+ | Delete a revenue item |
+| GET | `/reports/summary` | member | Aggregated P&L summary |
 | GET | `/documents` | member | List documents (filter by entity) |
 | POST | `/documents` | Worker+ | Upload a document |
 | DELETE | `/documents/{id}` | Admin+ | Delete a document |
@@ -266,13 +341,23 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 |---|---|---|
 | GET | `/ical/token` | Get signed iCal feed URL |
 | GET | `/ical/tasks` | Public iCal feed (token-authenticated) |
-| POST | `/import/leads` | Bulk-import leads from CSV |
+| POST | `/import/records` | Bulk-import records from CSV |
 | POST | `/import/customers` | Bulk-import contacts from CSV |
 | GET | `/import/{job_id}` | Poll import job status |
 | GET | `/import` | List recent import jobs |
-| GET | `/export/leads.csv` | Download leads as CSV |
+| GET | `/export/records.csv` | Download records as CSV |
 | GET | `/export/customers.csv` | Download contacts as CSV |
 | GET | `/export/pipeline.pdf` | Download pipeline summary as PDF |
+| POST | `/fakturoid/test` | Test Fakturoid API connection |
+| POST | `/fakturoid/invoices` | Create an invoice in Fakturoid |
+
+### Streamline — `/api/v1/streamline/`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/tools` | List all registered activity tools (label, icon, category, form schema) |
+| GET | `/tools/{activity_type}` | Get details for a single tool |
+| GET | `/toolbar/{entity_type}` | Get the ordered toolbar tool list for a given entity type |
 
 ### Web Push — `/api/v1/push/`
 
