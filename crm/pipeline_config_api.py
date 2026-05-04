@@ -139,6 +139,11 @@ class CategoryFieldOut(Schema):
     is_visible: bool
     is_required: bool
     order: int
+    value_type: str
+    widget: str
+    validation_rules: dict
+    label_override: str
+    help_text_override: str
 
 
 class CategoryFieldIn(Schema):
@@ -146,12 +151,22 @@ class CategoryFieldIn(Schema):
     is_visible: bool = True
     is_required: bool = False
     order: int = 0
+    value_type: str = "text"
+    widget: str = "auto"
+    validation_rules: dict = {}
+    label_override: str = ""
+    help_text_override: str = ""
 
 
 class CategoryFieldUpdateIn(Schema):
     is_visible: Optional[bool] = None
     is_required: Optional[bool] = None
     order: Optional[int] = None
+    value_type: Optional[str] = None
+    widget: Optional[str] = None
+    validation_rules: Optional[dict] = None
+    label_override: Optional[str] = None
+    help_text_override: Optional[str] = None
 
 
 def _field_out(f: CategoryField) -> dict:
@@ -162,12 +177,37 @@ def _field_out(f: CategoryField) -> dict:
         "is_visible": f.is_visible,
         "is_required": f.is_required,
         "order": f.order,
+        "value_type": f.value_type,
+        "widget": f.widget,
+        "validation_rules": f.validation_rules or {},
+        "label_override": f.label_override or "",
+        "help_text_override": f.help_text_override or "",
     }
 
+def _validate_field_payload(payload_dict: dict) -> Optional[str]:
+    """Return an error string if validation fails, otherwise None."""
+    widget = payload_dict.get("widget")
+    value_type = payload_dict.get("value_type")
+    rules = payload_dict.get("validation_rules") or {}
 
-# ===========================================================================
-# CATEGORY ENDPOINTS
-# ===========================================================================
+    # select / multiselect widgets require options
+    if widget in ("select", "multiselect") or value_type in ("select", "multiselect"):
+        options = rules.get("options")
+        if not isinstance(options, list) or len(options) == 0:
+            return "Fields of type 'select' or 'multiselect' require at least one option in validation_rules.options."
+
+    valid_value_types = [k for k, _ in CategoryField.VALUE_TYPE_CHOICES]
+    if value_type and value_type not in valid_value_types:
+        return f"Invalid value_type. Valid choices: {valid_value_types}"
+
+    valid_widgets = [k for k, _ in CategoryField.WIDGET_CHOICES]
+    if widget and widget not in valid_widgets:
+        return f"Invalid widget. Valid choices: {valid_widgets}"
+
+    return None
+
+
+
 
 @pipeline_config_router.get(
     "/categories",
@@ -460,6 +500,10 @@ def create_field(request, category_id: str, field_key: str, payload: CategoryFie
         return 400, {"detail": f"Invalid field_key. Valid keys: {valid_keys}"}
 
     update_data = {k: v for k, v in payload.dict().items() if v is not None}
+    err = _validate_field_payload(update_data)
+    if err:
+        return 400, {"detail": err}
+
     field, created = CategoryField.objects.update_or_create(
         category=category,
         field_key=field_key,
@@ -491,6 +535,9 @@ def update_field(request, category_id: str, field_key: str, payload: CategoryFie
         return 404, {"detail": "Field not found."}
 
     update_data = payload.dict(exclude_none=True)
+    err = _validate_field_payload(update_data)
+    if err:
+        return 400, {"detail": err}
     for k, v in update_data.items():
         setattr(field, k, v)
     field.save()

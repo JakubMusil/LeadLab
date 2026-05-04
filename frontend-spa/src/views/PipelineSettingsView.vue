@@ -51,11 +51,32 @@ const savingStage = ref(false)
 
 // Fields
 const editingFieldKey = ref<string | null>(null)
-const editingField = ref<{ is_visible: boolean; is_required: boolean }>({ is_visible: true, is_required: false })
+const editingField = ref<{
+  is_visible: boolean
+  is_required: boolean
+  value_type: string
+  widget: string
+  validation_rules: Record<string, unknown>
+  label_override: string
+  help_text_override: string
+}>({
+  is_visible: true,
+  is_required: false,
+  value_type: 'text',
+  widget: 'auto',
+  validation_rules: {},
+  label_override: '',
+  help_text_override: '',
+})
 const showNewFieldForm = ref(false)
 const newFieldKey = ref('')
 const newFieldIsVisible = ref(true)
 const newFieldIsRequired = ref(false)
+const newFieldValueType = ref('text')
+const newFieldWidget = ref('auto')
+const newFieldValidationRules = ref<Record<string, unknown>>({})
+const newFieldLabelOverride = ref('')
+const newFieldHelpText = ref('')
 const savingField = ref(false)
 
 // Delete confirmations
@@ -311,12 +332,28 @@ async function onStageDragEnd() {
 
 function startEditField(field: CategoryFieldOut) {
   editingFieldKey.value = field.field_key
-  editingField.value = { is_visible: field.is_visible, is_required: field.is_required }
+  editingField.value = {
+    is_visible: field.is_visible,
+    is_required: field.is_required,
+    value_type: field.value_type || 'text',
+    widget: field.widget || 'auto',
+    validation_rules: field.validation_rules ? { ...field.validation_rules } : {},
+    label_override: field.label_override || '',
+    help_text_override: field.help_text_override || '',
+  }
 }
 
 function cancelEditField() {
   editingFieldKey.value = null
-  editingField.value = { is_visible: true, is_required: false }
+  editingField.value = {
+    is_visible: true,
+    is_required: false,
+    value_type: 'text',
+    widget: 'auto',
+    validation_rules: {},
+    label_override: '',
+    help_text_override: '',
+  }
 }
 
 async function saveEditField() {
@@ -325,6 +362,11 @@ async function saveEditField() {
   const result = await pipelineStore.updateField(selectedCategoryId.value, editingFieldKey.value, {
     is_visible: editingField.value.is_visible,
     is_required: editingField.value.is_required,
+    value_type: editingField.value.value_type,
+    widget: editingField.value.widget,
+    validation_rules: editingField.value.validation_rules,
+    label_override: editingField.value.label_override,
+    help_text_override: editingField.value.help_text_override,
   })
   savingField.value = false
   if (result.ok) {
@@ -345,6 +387,11 @@ async function createField() {
     is_visible: newFieldIsVisible.value,
     is_required: newFieldIsRequired.value,
     order: nextOrder,
+    value_type: newFieldValueType.value,
+    widget: newFieldWidget.value,
+    validation_rules: newFieldValidationRules.value,
+    label_override: newFieldLabelOverride.value,
+    help_text_override: newFieldHelpText.value,
   })
   savingField.value = false
   if (result.ok) {
@@ -352,6 +399,11 @@ async function createField() {
     newFieldKey.value = ''
     newFieldIsVisible.value = true
     newFieldIsRequired.value = false
+    newFieldValueType.value = 'text'
+    newFieldWidget.value = 'auto'
+    newFieldValidationRules.value = {}
+    newFieldLabelOverride.value = ''
+    newFieldHelpText.value = ''
     showNewFieldForm.value = false
   } else {
     toast.error(result.error ?? t('pipeline.fieldCreateFailed'))
@@ -391,6 +443,168 @@ async function onFieldDragEnd() {
     ),
   )
 }
+
+// ---------------------------------------------------------------------------
+// Value type / widget helpers
+// ---------------------------------------------------------------------------
+
+const VALUE_TYPES = [
+  { value: 'text', label: () => t('pipeline.valueType.text') },
+  { value: 'number', label: () => t('pipeline.valueType.number') },
+  { value: 'currency', label: () => t('pipeline.valueType.currency') },
+  { value: 'date', label: () => t('pipeline.valueType.date') },
+  { value: 'datetime', label: () => t('pipeline.valueType.datetime') },
+  { value: 'boolean', label: () => t('pipeline.valueType.boolean') },
+  { value: 'select', label: () => t('pipeline.valueType.select') },
+  { value: 'multiselect', label: () => t('pipeline.valueType.multiselect') },
+  { value: 'url', label: () => t('pipeline.valueType.url') },
+  { value: 'email', label: () => t('pipeline.valueType.email') },
+]
+
+const ALL_WIDGETS = [
+  { value: 'auto', label: () => t('pipeline.widget.auto') },
+  { value: 'text_input', label: () => t('pipeline.widget.text_input') },
+  { value: 'textarea', label: () => t('pipeline.widget.textarea') },
+  { value: 'number_input', label: () => t('pipeline.widget.number_input') },
+  { value: 'date_picker', label: () => t('pipeline.widget.date_picker') },
+  { value: 'datetime_picker', label: () => t('pipeline.widget.datetime_picker') },
+  { value: 'toggle', label: () => t('pipeline.widget.toggle') },
+  { value: 'select', label: () => t('pipeline.widget.select') },
+  { value: 'multiselect', label: () => t('pipeline.widget.multiselect') },
+  { value: 'color_picker', label: () => t('pipeline.widget.color_picker') },
+  { value: 'currency_input', label: () => t('pipeline.widget.currency_input') },
+  { value: 'rich_text', label: () => t('pipeline.widget.rich_text') },
+]
+
+/** Widgets relevant to a given value_type */
+function widgetsForType(vt: string) {
+  const map: Record<string, string[]> = {
+    text: ['auto', 'text_input', 'textarea', 'rich_text'],
+    number: ['auto', 'number_input'],
+    currency: ['auto', 'currency_input', 'number_input'],
+    date: ['auto', 'date_picker'],
+    datetime: ['auto', 'datetime_picker'],
+    boolean: ['auto', 'toggle'],
+    select: ['auto', 'select'],
+    multiselect: ['auto', 'multiselect'],
+    url: ['auto', 'text_input'],
+    email: ['auto', 'text_input'],
+  }
+  const allowed = map[vt] ?? ['auto']
+  return ALL_WIDGETS.filter((w) => allowed.includes(w.value))
+}
+
+const editWidgets = computed(() => widgetsForType(editingField.value.value_type))
+const newWidgets = computed(() => widgetsForType(newFieldValueType.value))
+
+/** When value_type changes, reset widget to 'auto' if no longer compatible */
+function onEditValueTypeChange() {
+  const allowed = editWidgets.value.map((w) => w.value)
+  if (!allowed.includes(editingField.value.widget)) {
+    editingField.value.widget = 'auto'
+  }
+  // reset options if no longer select/multiselect
+  if (!['select', 'multiselect'].includes(editingField.value.value_type)) {
+    const rules = { ...editingField.value.validation_rules }
+    delete rules.options
+    editingField.value.validation_rules = rules
+  }
+}
+
+function onNewValueTypeChange() {
+  const allowed = newWidgets.value.map((w) => w.value)
+  if (!allowed.includes(newFieldWidget.value)) {
+    newFieldWidget.value = 'auto'
+  }
+  if (!['select', 'multiselect'].includes(newFieldValueType.value)) {
+    const rules = { ...newFieldValidationRules.value }
+    delete rules.options
+    newFieldValidationRules.value = rules
+  }
+}
+
+/** Computed string of options (one per line) for select/multiselect */
+const editOptionsText = computed({
+  get: () => {
+    const opts = (editingField.value.validation_rules.options as string[] | undefined) ?? []
+    return opts.join('\n')
+  },
+  set: (val: string) => {
+    const opts = val.split('\n').map((s) => s.trim()).filter(Boolean)
+    editingField.value.validation_rules = { ...editingField.value.validation_rules, options: opts }
+  },
+})
+
+const newOptionsText = computed({
+  get: () => {
+    const opts = (newFieldValidationRules.value.options as string[] | undefined) ?? []
+    return opts.join('\n')
+  },
+  set: (val: string) => {
+    const opts = val.split('\n').map((s) => s.trim()).filter(Boolean)
+    newFieldValidationRules.value = { ...newFieldValidationRules.value, options: opts }
+  },
+})
+
+/** min/max helpers */
+const editMin = computed({
+  get: () => String(editingField.value.validation_rules.min ?? ''),
+  set: (v: string) => {
+    const rules = { ...editingField.value.validation_rules }
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.min
+    else rules.min = n
+    editingField.value.validation_rules = rules
+  },
+})
+const editMax = computed({
+  get: () => String(editingField.value.validation_rules.max ?? ''),
+  set: (v: string) => {
+    const rules = { ...editingField.value.validation_rules }
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.max
+    else rules.max = n
+    editingField.value.validation_rules = rules
+  },
+})
+const newMin = computed({
+  get: () => String(newFieldValidationRules.value.min ?? ''),
+  set: (v: string) => {
+    const rules = { ...newFieldValidationRules.value }
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.min
+    else rules.min = n
+    newFieldValidationRules.value = rules
+  },
+})
+const newMax = computed({
+  get: () => String(newFieldValidationRules.value.max ?? ''),
+  set: (v: string) => {
+    const rules = { ...newFieldValidationRules.value }
+    const n = parseFloat(v)
+    if (v === '' || isNaN(n)) delete rules.max
+    else rules.max = n
+    newFieldValidationRules.value = rules
+  },
+})
+const editPattern = computed({
+  get: () => String(editingField.value.validation_rules.pattern ?? ''),
+  set: (v: string) => {
+    const rules = { ...editingField.value.validation_rules }
+    if (v === '') delete rules.pattern
+    else rules.pattern = v
+    editingField.value.validation_rules = rules
+  },
+})
+const newPattern = computed({
+  get: () => String(newFieldValidationRules.value.pattern ?? ''),
+  set: (v: string) => {
+    const rules = { ...newFieldValidationRules.value }
+    if (v === '') delete rules.pattern
+    else rules.pattern = v
+    newFieldValidationRules.value = rules
+  },
+})
 </script>
 
 <template>
@@ -632,20 +846,105 @@ async function onFieldDragEnd() {
                 </span>
 
                 <template v-if="editingFieldKey === field.field_key">
-                  <div class="flex-1 flex flex-col gap-1">
-                    <span class="text-sm font-medium text-gray-800">{{ t(`pipeline.fieldKey.${field.field_key}`) }}</span>
+                  <div class="flex-1 space-y-3">
+                    <span class="text-sm font-semibold text-gray-800">{{ t(`pipeline.fieldKey.${field.field_key}`) }}</span>
+
+                    <!-- Basic toggles -->
                     <div class="flex gap-4">
-                      <label class="flex items-center gap-1 text-xs text-gray-600">
+                      <label class="flex items-center gap-1.5 text-xs text-gray-600">
                         <input v-model="editingField.is_visible" type="checkbox" class="rounded" />
                         {{ t('pipeline.fieldVisible') }}
                       </label>
-                      <label class="flex items-center gap-1 text-xs text-gray-600">
+                      <label class="flex items-center gap-1.5 text-xs text-gray-600">
                         <input v-model="editingField.is_required" type="checkbox" class="rounded" />
                         {{ t('pipeline.fieldRequired') }}
                       </label>
                     </div>
+
+                    <!-- Label override -->
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldLabelOverride') }}</label>
+                      <input
+                        v-model="editingField.label_override"
+                        :placeholder="t('pipeline.fieldLabelOverridePlaceholder')"
+                        class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300"
+                      />
+                    </div>
+
+                    <!-- Help text -->
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldHelpText') }}</label>
+                      <input
+                        v-model="editingField.help_text_override"
+                        :placeholder="t('pipeline.fieldHelpTextPlaceholder')"
+                        class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300"
+                      />
+                    </div>
+
+                    <!-- Value type -->
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldValueType') }}</label>
+                      <select
+                        v-model="editingField.value_type"
+                        class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                        @change="onEditValueTypeChange"
+                      >
+                        <option v-for="vt in VALUE_TYPES" :key="vt.value" :value="vt.value">{{ vt.label() }}</option>
+                      </select>
+                    </div>
+
+                    <!-- Widget -->
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldWidget') }}</label>
+                      <select
+                        v-model="editingField.widget"
+                        class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                      >
+                        <option v-for="w in editWidgets" :key="w.value" :value="w.value">{{ w.label() }}</option>
+                      </select>
+                    </div>
+
+                    <!-- Validation rules: number/currency → min/max -->
+                    <template v-if="['number', 'currency'].includes(editingField.value_type)">
+                      <div class="flex gap-3">
+                        <div class="flex items-center gap-1">
+                          <label class="text-xs text-gray-500">{{ t('pipeline.fieldMin') }}</label>
+                          <input v-model="editMin" type="number" class="w-20 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300" />
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <label class="text-xs text-gray-500">{{ t('pipeline.fieldMax') }}</label>
+                          <input v-model="editMax" type="number" class="w-20 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300" />
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- Validation rules: text → pattern -->
+                    <template v-if="editingField.value_type === 'text'">
+                      <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldPattern') }}</label>
+                        <input
+                          v-model="editPattern"
+                          placeholder="^[A-Z].*"
+                          class="flex-1 text-xs font-mono border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300"
+                        />
+                      </div>
+                    </template>
+
+                    <!-- Validation rules: select/multiselect → options -->
+                    <template v-if="['select', 'multiselect'].includes(editingField.value_type)">
+                      <div class="flex flex-col gap-1">
+                        <label class="text-xs text-gray-500">{{ t('pipeline.fieldOptions') }}</label>
+                        <textarea
+                          v-model="editOptionsText"
+                          rows="4"
+                          :placeholder="t('pipeline.fieldOptionsPlaceholder')"
+                          class="text-xs font-mono border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 resize-y"
+                        />
+                        <span class="text-xs text-gray-400">{{ t('pipeline.fieldOptionsHint') }}</span>
+                      </div>
+                    </template>
                   </div>
-                  <div class="flex gap-1">
+                  <div class="flex gap-1 self-start">
                     <button class="p-1 text-green-600 hover:text-green-700" :disabled="savingField" @click="saveEditField">
                       <CheckIcon class="w-4 h-4" />
                     </button>
@@ -655,8 +954,14 @@ async function onFieldDragEnd() {
                   </div>
                 </template>
                 <template v-else>
-                  <span class="flex-1 text-sm font-medium text-gray-800">{{ t(`pipeline.fieldKey.${field.field_key}`) }}</span>
-                  <div class="flex items-center gap-2">
+                  <div class="flex-1 min-w-0">
+                    <span class="text-sm font-medium text-gray-800 block truncate">
+                      {{ field.label_override || t(`pipeline.fieldKey.${field.field_key}`) }}
+                    </span>
+                    <span v-if="field.label_override" class="text-xs text-gray-400 truncate">{{ t(`pipeline.fieldKey.${field.field_key}`) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-xs text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded font-mono">{{ field.value_type }}</span>
                     <span v-if="!field.is_visible" class="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{{ t('pipeline.fieldHidden') }}</span>
                     <span v-if="field.is_required" class="text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{{ t('pipeline.fieldRequired') }}</span>
                   </div>
@@ -677,36 +982,121 @@ async function onFieldDragEnd() {
             </p>
 
             <!-- Add field form -->
-            <div v-if="showNewFieldForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2 mt-2">
-              <div class="space-y-2">
-                <select
-                  v-model="newFieldKey"
-                  class="w-full text-sm border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
-                >
-                  <option value="" disabled>{{ t('pipeline.fieldKeyPlaceholder') }}</option>
-                  <option v-for="key in availableFieldKeys" :key="key" :value="key">
-                    {{ t(`pipeline.fieldKey.${key}`) }}
-                  </option>
-                </select>
-                <div class="flex gap-4">
-                  <label class="flex items-center gap-1 text-xs text-gray-600">
-                    <input v-model="newFieldIsVisible" type="checkbox" class="rounded" />
-                    {{ t('pipeline.fieldVisible') }}
-                  </label>
-                  <label class="flex items-center gap-1 text-xs text-gray-600">
-                    <input v-model="newFieldIsRequired" type="checkbox" class="rounded" />
-                    {{ t('pipeline.fieldRequired') }}
-                  </label>
-                </div>
+            <div v-if="showNewFieldForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-3 mt-2">
+              <!-- Field key selector -->
+              <select
+                v-model="newFieldKey"
+                class="w-full text-sm border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+              >
+                <option value="" disabled>{{ t('pipeline.fieldKeyPlaceholder') }}</option>
+                <option v-for="key in availableFieldKeys" :key="key" :value="key">
+                  {{ t(`pipeline.fieldKey.${key}`) }}
+                </option>
+              </select>
+
+              <!-- Label override -->
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldLabelOverride') }}</label>
+                <input
+                  v-model="newFieldLabelOverride"
+                  :placeholder="t('pipeline.fieldLabelOverridePlaceholder')"
+                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                />
               </div>
+
+              <!-- Help text -->
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldHelpText') }}</label>
+                <input
+                  v-model="newFieldHelpText"
+                  :placeholder="t('pipeline.fieldHelpTextPlaceholder')"
+                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                />
+              </div>
+
+              <!-- Value type -->
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldValueType') }}</label>
+                <select
+                  v-model="newFieldValueType"
+                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  @change="onNewValueTypeChange"
+                >
+                  <option v-for="vt in VALUE_TYPES" :key="vt.value" :value="vt.value">{{ vt.label() }}</option>
+                </select>
+              </div>
+
+              <!-- Widget -->
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldWidget') }}</label>
+                <select
+                  v-model="newFieldWidget"
+                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option v-for="w in newWidgets" :key="w.value" :value="w.value">{{ w.label() }}</option>
+                </select>
+              </div>
+
+              <!-- number/currency → min/max -->
+              <template v-if="['number', 'currency'].includes(newFieldValueType)">
+                <div class="flex gap-3">
+                  <div class="flex items-center gap-1">
+                    <label class="text-xs text-gray-500">{{ t('pipeline.fieldMin') }}</label>
+                    <input v-model="newMin" type="number" class="w-20 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white" />
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <label class="text-xs text-gray-500">{{ t('pipeline.fieldMax') }}</label>
+                    <input v-model="newMax" type="number" class="w-20 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white" />
+                  </div>
+                </div>
+              </template>
+
+              <!-- text → pattern -->
+              <template v-if="newFieldValueType === 'text'">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-500 w-24 flex-shrink-0">{{ t('pipeline.fieldPattern') }}</label>
+                  <input
+                    v-model="newPattern"
+                    placeholder="^[A-Z].*"
+                    class="flex-1 text-xs font-mono border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                  />
+                </div>
+              </template>
+
+              <!-- select/multiselect → options -->
+              <template v-if="['select', 'multiselect'].includes(newFieldValueType)">
+                <div class="flex flex-col gap-1">
+                  <label class="text-xs text-gray-500">{{ t('pipeline.fieldOptions') }}</label>
+                  <textarea
+                    v-model="newOptionsText"
+                    rows="4"
+                    :placeholder="t('pipeline.fieldOptionsPlaceholder')"
+                    class="text-xs font-mono border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 resize-y bg-white"
+                  />
+                  <span class="text-xs text-gray-400">{{ t('pipeline.fieldOptionsHint') }}</span>
+                </div>
+              </template>
+
+              <!-- Visibility / required -->
+              <div class="flex gap-4">
+                <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input v-model="newFieldIsVisible" type="checkbox" class="rounded" />
+                  {{ t('pipeline.fieldVisible') }}
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input v-model="newFieldIsRequired" type="checkbox" class="rounded" />
+                  {{ t('pipeline.fieldRequired') }}
+                </label>
+              </div>
+
               <div class="flex gap-2">
                 <button
-                  class="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
                   :disabled="savingField || !newFieldKey"
                   @click="createField"
                 >{{ t('pipeline.addField') }}</button>
                 <button
-                  class="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
+                  class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
                   @click="showNewFieldForm = false"
                 >{{ t('pipeline.cancel') }}</button>
               </div>

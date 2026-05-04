@@ -25,12 +25,22 @@ export interface CategoryFieldOut {
   is_visible: boolean
   is_required: boolean
   order: number
+  value_type: string
+  widget: string
+  validation_rules: Record<string, unknown>
+  label_override: string
+  help_text_override: string
 }
 
 export interface CategoryFieldIn {
   is_visible?: boolean
   is_required?: boolean
   order?: number
+  value_type?: string
+  widget?: string
+  validation_rules?: Record<string, unknown>
+  label_override?: string
+  help_text_override?: string
 }
 
 export interface CategoryOut {
