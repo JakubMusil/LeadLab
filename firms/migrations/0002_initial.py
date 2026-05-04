@@ -9,6 +9,19 @@ class Migration(migrations.Migration):
 
     initial = True
 
+    replaces = [
+        ('firms', '0002_invitation_model'),
+        ('firms', '0003_apitoken_webhook'),
+        ('firms', '0004_add_weekly_digest_enabled'),
+        ('firms', '0005_firm_branding'),
+        ('firms', '0006_plugin_config'),
+        ('firms', '0007_alter_pluginconfig_config'),
+        ('firms', '0008_firm_fakturoid'),
+        ('firms', '0009_remove_firm_fakturoid'),
+        ('firms', '0010_firm_currency_settings'),
+        ('firms', '0011_add_exchange_rate_models'),
+    ]
+
     dependencies = [
         ('firms', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
