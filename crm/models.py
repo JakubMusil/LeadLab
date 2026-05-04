@@ -163,7 +163,7 @@ class ProposalStatus(models.TextChoices):
 class Customer(SoftDeleteMixin, TenantModel):
     """
     A contact in the address book. A single Customer can be linked to many
-    Leads inside the same Firm.
+    Records inside the same Firm.
 
     ``tags`` is stored as a JSONField (list of strings) for maximum database
     compatibility while still supporting PostgreSQL's native array operators
@@ -357,7 +357,7 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
     """
     The central entity of the CRM — an inbound or outbound opportunity.
 
-    ``customer`` is nullable to allow 'quick entry' leads where the
+    ``customer`` is nullable to allow 'quick entry' records where the
     full contact record is filled in later.
     """
 
@@ -377,7 +377,7 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         on_delete=models.SET_NULL,
         related_name="company_records",
         limit_choices_to={"type": "company"},
-        help_text="The company (from the address book) this lead belongs to.",
+        help_text="The company (from the address book) this record belongs to.",
     )
     # Individual contact person (must be an employee of the selected company)
     contact_person = models.ForeignKey(
@@ -443,7 +443,7 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="created_records",
-        help_text="The user who created this lead.",
+        help_text="The user who created this record.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -487,11 +487,11 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
     # -----------------------------------------------------------------------
     # Streamline toolbar registry
     # -----------------------------------------------------------------------
-    #: Activity types shown in the Lead detail sidebar toolbar, in display order.
+    #: Activity types shown in the Record detail sidebar toolbar, in display order.
     #: The frontend uses this list (via the streamline API) to build the toolbar
     #: from pre-registered tool elements — no hardcoding on the frontend side.
     #: All manually-loggable Streamline tools that are logically valid for a
-    #: Lead (Příležitost) — covers communication channels, scheduling,
+    #: Record (Příležitost) — covers communication channels, scheduling,
     #: attachments and free-form system notes.  Auto-logged event types
     #: (status_change, entity_change, task_*, proposal_*, ai_*, …) are
     #: intentionally excluded as they are produced by other UI actions or
@@ -727,7 +727,7 @@ class ActivityReaction(models.Model):
     A generic emoji reaction (e.g. 👍 ❤️ 😂) on an ``Activity``.
 
     Replaces the task-specific ``TaskCommentReaction`` so that any activity
-    in the unified Streamline timeline (lead / customer / task /
+    in the unified Streamline timeline (record / customer / task /
     proposal) can be reacted to.
 
     The ``unique_together`` constraint ensures a user can add each emoji only
@@ -840,7 +840,7 @@ CALENDAR_TASK_KINDS = frozenset({TaskKind.CALL, TaskKind.MEETING, TaskKind.EVENT
 
 class Task(SoftDeleteMixin, TenantModel):
     """
-    A to-do item that can optionally be linked to a Lead, Proposal, Customer,
+    A to-do item that can optionally be linked to a Record, Proposal, Customer,
     or exist independently. Completion is tracked explicitly so that we can
     log a TASK_COMPLETED Activity automatically.
     """
@@ -1347,7 +1347,7 @@ def _import_upload_to(instance, filename):
 
 
 class ImportJobType(models.TextChoices):
-    LEADS = "leads", "Leads"
+    RECORDS = "records", "Records"
     CUSTOMERS = "customers", "Customers"
 
 
@@ -1360,7 +1360,7 @@ class ImportJobStatus(models.TextChoices):
 
 class ImportJob(TenantModel):
     """
-    Tracks the progress of a background CSV import for leads or customers.
+    Tracks the progress of a background CSV import for records or customers.
 
     The Celery task ``process_import_job`` reads ``file``, creates records,
     and updates ``processed``, ``failed_count``, ``errors_json``, and
@@ -1378,7 +1378,7 @@ class ImportJob(TenantModel):
     type = models.CharField(
         max_length=20,
         choices=ImportJobType.choices,
-        default=ImportJobType.LEADS,
+        default=ImportJobType.RECORDS,
     )
     status = models.CharField(
         max_length=20,
@@ -1489,14 +1489,14 @@ class DashboardLayout(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Lead Scoring Rule
+# Record Scoring Rule
 # ---------------------------------------------------------------------------
 
-class LeadScoringRule(TenantModel):
+class RecordScoringRule(TenantModel):
     """
-    A single rule that contributes a delta to a lead's score (0–100).
+    A single rule that contributes a delta to a record's score (0–100).
 
-    ``field``      — which lead attribute to test: 'status', 'source',
+    ``field``      — which record attribute to test: 'status', 'source',
                      'value_gte', 'last_activity_days_lte'
     ``operand``    — JSON-encoded comparison value (string, number, etc.)
     ``score_delta``— points added when the rule matches (may be negative)
@@ -1505,7 +1505,7 @@ class LeadScoringRule(TenantModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     field = models.CharField(
         max_length=50,
-        help_text="Lead attribute to test.",
+        help_text="Record attribute to test.",
     )
     operand = models.JSONField(
         help_text="Comparison value for the field.",
@@ -1515,12 +1515,12 @@ class LeadScoringRule(TenantModel):
     )
 
     class Meta(TenantModel.Meta):
-        verbose_name = "lead scoring rule"
-        verbose_name_plural = "lead scoring rules"
+        verbose_name = "record scoring rule"
+        verbose_name_plural = "record scoring rules"
         ordering = ["field"]
 
     def __str__(self):
-        return f"LeadScoringRule(field={self.field}, delta={self.score_delta:+d}) [{self.firm}]"
+        return f"RecordScoringRule(field={self.field}, delta={self.score_delta:+d}) [{self.firm}]"
 
 
 # ---------------------------------------------------------------------------
@@ -1530,7 +1530,7 @@ class LeadScoringRule(TenantModel):
 class SavedView(models.Model):
     """
     A named combination of filters and sort settings saved by a user for
-    the Leads or Customers list.
+    the Records or Customers list.
     """
 
     ENTITY_LEADS = "opportunities"
@@ -1680,7 +1680,7 @@ class FirmProposalItem(SoftDeleteMixin, TenantModel):
 class Proposal(SoftDeleteMixin, TenantModel):
     """
     A business proposal.  It can be linked to any combination of CRM entities
-    (Lead, Customer) — or exist completely standalone.
+    (Record, Customer) — or exist completely standalone.
 
     ``public_token`` is a UUID used to construct the signed public URL;
     it is regenerated each time the proposal is re-sent so that old links expire.
@@ -1690,7 +1690,7 @@ class Proposal(SoftDeleteMixin, TenantModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Entity links — all optional
-    lead = models.ForeignKey(
+    record = models.ForeignKey(
         PipelineRecord,
         null=True,
         blank=True,
@@ -1745,7 +1745,7 @@ class Proposal(SoftDeleteMixin, TenantModel):
         verbose_name_plural = "proposals"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["firm", "lead", "-created_at"]),
+            models.Index(fields=["firm", "record", "-created_at"]),
             models.Index(fields=["firm", "customer"]),
             models.Index(fields=["firm", "status"]),
         ]
@@ -1826,7 +1826,7 @@ class ProposalItem(models.Model):
 
 class EmailSequence(TenantModel):
     """
-    A named drip campaign that is triggered when a lead transitions to a
+    A named drip campaign that is triggered when a record transitions to a
     specific status.
 
     Steps are evaluated in ``step_order`` order, with each step sent
@@ -1840,7 +1840,7 @@ class EmailSequence(TenantModel):
         max_length=20,
         choices=RecordStatus.choices,
         db_index=True,
-        help_text="Lead status that triggers enrollment into this sequence.",
+        help_text="Record status that triggers enrollment into this sequence.",
     )
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1879,7 +1879,7 @@ class EmailSequenceStep(models.Model):
     )
     subject = models.CharField(max_length=255)
     body_template = models.TextField(
-        help_text="Plain-text email body. Supports {{lead_title}}, {{customer_name}} placeholders.",
+        help_text="Plain-text email body. Supports {{record_title}}, {{customer_name}} placeholders.",
     )
 
     class Meta:
@@ -1912,7 +1912,7 @@ class SequenceEnrollment(TenantModel):
         on_delete=models.CASCADE,
         related_name="enrollments",
     )
-    lead = models.ForeignKey(
+    record = models.ForeignKey(
         PipelineRecord,
         on_delete=models.CASCADE,
         related_name="sequence_enrollments",
@@ -1942,7 +1942,7 @@ class SequenceEnrollment(TenantModel):
         ]
 
     def __str__(self):
-        return f"Enrollment: {self.lead_id} → {self.sequence} (step {self.current_step})"
+        return f"Enrollment: {self.record_id} → {self.sequence} (step {self.current_step})"
 
 
 # ---------------------------------------------------------------------------
@@ -1951,13 +1951,13 @@ class SequenceEnrollment(TenantModel):
 
 class AutomationTrigger(models.TextChoices):
     RECORD_CREATED = "record_created", "Record Created"
-    LEAD_STATUS_CHANGE = "lead_status_change", "Lead Status Changed"
+    RECORD_STATUS_CHANGE = "lead_status_change", "Record Status Changed"
     TASK_OVERDUE = "task_overdue", "Task Overdue"
     TASK_CREATED = "task_created", "Task Created"
     TASK_COMPLETED = "task_completed", "Task Completed"
     PROPOSAL_SENT = "proposal_sent", "Proposal Sent"
     PROPOSAL_ACCEPTED = "proposal_accepted", "Proposal Accepted"
-    LEAD_INACTIVE = "lead_inactive", "Lead Inactive (N days)"
+    RECORD_INACTIVE = "lead_inactive", "Record Inactive (N days)"
     WEBHOOK_RECEIVED = "webhook_received", "Custom Webhook Received"
     CONTACT_CREATED = "contact_created", "Contact Created"
 
@@ -1974,7 +1974,7 @@ class AutomationRule(SoftDeleteMixin, TenantModel):
 
     ``trigger``        — which event fires the rule
     ``trigger_config`` — trigger-specific settings (e.g. ``inactive_days`` for
-                         LEAD_INACTIVE, ``warning_days`` for TASK_OVERDUE)
+                         RECORD_INACTIVE, ``warning_days`` for TASK_OVERDUE)
     ``conditions``     — list of ``{field, operator, value}`` dicts; ALL must
                          match (logical AND) for actions to run
     ``actions``        — ordered list of action dicts executed when triggered
@@ -1993,7 +1993,7 @@ class AutomationRule(SoftDeleteMixin, TenantModel):
         blank=True,
         help_text=(
             "Trigger-specific configuration. "
-            "LEAD_INACTIVE: {inactive_days: 30}. "
+            "RECORD_INACTIVE: {inactive_days: 30}. "
             "TASK_OVERDUE: {warning_days: 1}."
         ),
     )
@@ -2351,7 +2351,7 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
     A sitewide time-tracking record that can be linked to any CRM entity.
 
     Unlike ``TaskTimeLog`` (which is scoped to a Task), ``TimeEntry`` is a
-    first-class ERP record that may reference a Lead, Customer, or Task —
+    first-class ERP record that may reference a Record, Customer, or Task —
     or exist independently (standalone timer / manual entry).
 
     ``started_at`` / ``ended_at`` are set when the entry was created from the
@@ -2371,7 +2371,7 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
     )
 
     # Optional entity links (all nullable — entry may be standalone)
-    lead = models.ForeignKey(
+    record = models.ForeignKey(
         PipelineRecord,
         null=True,
         blank=True,
@@ -2436,7 +2436,7 @@ class TimeEntry(SoftDeleteMixin, TenantModel):
         ordering = ["-started_at", "-created_at"]
         indexes = [
             models.Index(fields=["firm", "user", "-created_at"]),
-            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "record"]),
             models.Index(fields=["firm", "customer"]),
             models.Index(fields=["firm", "task"]),
         ]
@@ -2474,7 +2474,7 @@ class ExpenseItem(SoftDeleteMixin, TenantModel):
     )
 
     # Optional entity links
-    lead = models.ForeignKey(
+    record = models.ForeignKey(
         PipelineRecord,
         null=True,
         blank=True,
@@ -2543,7 +2543,7 @@ class ExpenseItem(SoftDeleteMixin, TenantModel):
         ordering = ["-date", "-created_at"]
         indexes = [
             models.Index(fields=["firm", "-date"]),
-            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "record"]),
             models.Index(fields=["firm", "customer"]),
         ]
 
@@ -2578,7 +2578,7 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
     )
 
     # Optional entity links
-    lead = models.ForeignKey(
+    record = models.ForeignKey(
         PipelineRecord,
         null=True,
         blank=True,
@@ -2640,7 +2640,7 @@ class RevenueItem(SoftDeleteMixin, TenantModel):
         ordering = ["-date", "-created_at"]
         indexes = [
             models.Index(fields=["firm", "-date"]),
-            models.Index(fields=["firm", "lead"]),
+            models.Index(fields=["firm", "record"]),
             models.Index(fields=["firm", "customer"]),
         ]
 
@@ -2668,7 +2668,7 @@ def _document_upload_to(instance, filename):
 # can build.  Path expressions mirror the original implementations.
 def _attachment_upload_to(instance, filename):  # noqa: D401 — legacy
     """Legacy LeadAttachment upload path. No longer called; kept for migrations."""
-    return f"attachments/{getattr(instance, 'lead_id', 'unknown')}/{filename}"
+    return f"attachments/{getattr(instance, 'record_id', 'unknown')}/{filename}"
 
 
 def _task_attachment_upload_to(instance, filename):  # noqa: D401 — legacy
@@ -2685,7 +2685,7 @@ class Document(SoftDeleteMixin, TenantModel):
     """
     A file attached to any CRM entity or existing standalone.
 
-    A Document can be linked to any combination of Lead, Customer,
+    A Document can be linked to any combination of Record, Customer,
     Task, or Proposal — or exist as a standalone firm document.
 
     ``name``          — display name (defaults to original filename)

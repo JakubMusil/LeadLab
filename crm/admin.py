@@ -6,7 +6,7 @@ from crm.models import (
     DashboardLayout,
     ImportJob,
     PipelineRecord,
-    LeadScoringRule,
+    RecordScoringRule,
     Notification,
     Proposal,
     ProposalItem,
@@ -107,8 +107,8 @@ class DashboardLayoutAdmin(admin.ModelAdmin):
     readonly_fields = ("updated_at",)
 
 
-@admin.register(LeadScoringRule)
-class LeadScoringRuleAdmin(admin.ModelAdmin):
+@admin.register(RecordScoringRule)
+class RecordScoringRuleAdmin(admin.ModelAdmin):
     list_display = ("field", "operand", "score_delta", "firm")
     list_filter = ("firm", "field")
     search_fields = ("field",)
