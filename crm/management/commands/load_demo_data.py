@@ -765,5 +765,5 @@ class Command(BaseCommand):
             f"\n  Osoby (kontakty): {len(persons)}"
             f"\n  Pipeline záznamy: {len(leads)}"
             f"\n  Přihlašovací e-mail: {email}"
-            f"\n  Heslo: {'(použito stávající)' if not hasattr(self, '_pw_printed') else ''}"
+            f"\n  Heslo: {password}"
         ))
