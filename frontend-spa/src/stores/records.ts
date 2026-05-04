@@ -206,12 +206,12 @@ export const useRecordsStore = defineStore('records', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to update status.') }
   }
 
-  async function patchStage(id: string, stageId: string | null): Promise<{ ok: boolean; error?: string }> {
+  async function patchStage(id: string, stageId: string | null, stageName?: string | null): Promise<{ ok: boolean; error?: string }> {
     // Optimistic update
     const idx = records.value.findIndex((l) => l.id === id)
     const prev = idx !== -1 ? { current_stage_id: records.value[idx]!.current_stage_id, current_stage_name: records.value[idx]!.current_stage_name } : null
-    if (idx !== -1) records.value[idx] = { ...records.value[idx]!, current_stage_id: stageId, current_stage_name: null }
-    if (currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, current_stage_id: stageId, current_stage_name: null }
+    if (idx !== -1) records.value[idx] = { ...records.value[idx]!, current_stage_id: stageId, current_stage_name: stageName ?? null }
+    if (currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, current_stage_id: stageId, current_stage_name: stageName ?? null }
 
     const res = await api.patch<RecordOut>(`/api/v1/crm/records/${id}`, { current_stage_id: stageId })
     if (res.ok) {

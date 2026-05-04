@@ -776,7 +776,8 @@ async function onStageDrop(stageId: string) {
   }
   const record = draggingStageRecord.value
   draggingStageRecord.value = null
-  const result = await store.patchStage(record.id, stageId)
+  const stage = currentCategoryStages.value.find(s => s.id === stageId)
+  const result = await store.patchStage(record.id, stageId, stage?.name ?? null)
   if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
 }
 
@@ -1420,7 +1421,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
                   </div>
                 </div>
               </div>
-              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs text-gray-400 dark:text-gray-500 py-6">{{ t('leads.dropHere') }}</div>
+              <div v-if="(leadsByStage[stage.id]?.length ?? 0) === 0" class="text-center text-xs py-6" :class="draggingStageRecord ? 'text-blue-400 dark:text-blue-500' : 'text-gray-400 dark:text-gray-500'">{{ draggingStageRecord ? t('leads.dropHere') : t('leads.noRecordsInStage') }}</div>
             </div>
           </div>
         </div>
