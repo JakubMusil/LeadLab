@@ -72,14 +72,14 @@ interface FirmMember {
 // ---------------------------------------------------------------------------
 
 const TRIGGER_LABELS = computed<Record<string, string>>(() => ({
-  lead_created: t('automations.triggerLeadCreated'),
-  lead_status_change: t('automations.triggerLeadStatusChanged'),
+  record_created: t('automations.triggerRecordCreated'),
+  record_status_change: t('automations.triggerRecordStatusChanged'),
   task_overdue: t('automations.triggerTaskOverdue'),
   task_created: t('automations.triggerTaskCreated'),
   task_completed: t('automations.triggerTaskCompleted'),
   proposal_sent: t('automations.triggerProposalSent'),
   proposal_accepted: t('automations.triggerProposalAccepted'),
-  lead_inactive: t('automations.triggerInactiveLead'),
+  record_inactive: t('automations.triggerInactiveRecord'),
   webhook_received: t('automations.triggerWebhookReceived'),
   realization_status_change: t('automations.triggerRealizationStatusChange'),
   sla_expiring: t('automations.triggerSlaExpiring'),
@@ -88,14 +88,14 @@ const TRIGGER_LABELS = computed<Record<string, string>>(() => ({
 }))
 
 const TRIGGER_DESCRIPTIONS: Record<string, string> = {
-  lead_created: 'Fires when a new lead is created in the CRM.',
-  lead_status_change: 'Fires when a lead\'s status changes (e.g. new → won).',
+  record_created: 'Fires when a new record is created in the CRM.',
+  record_status_change: 'Fires when a record\'s status changes (e.g. new → won).',
   task_overdue: 'Fires periodically for tasks that are past their due date.',
   task_created: 'Fires when a new task is created.',
   task_completed: 'Fires when a task is marked as completed — useful for chaining tasks.',
   proposal_sent: 'Fires when a proposal is sent to a customer.',
   proposal_accepted: 'Fires when a customer accepts a proposal.',
-  lead_inactive: 'Fires for leads with no activity for a configurable number of days.',
+  record_inactive: 'Fires for records with no activity for a configurable number of days.',
   webhook_received: 'Fires when a custom webhook event is received.',
   // Phase 4.6
   realization_status_change: 'Fires when a realization\'s status changes (e.g. planned → done).',
@@ -516,7 +516,7 @@ function lastRunLabel(rule: AutomationRule): string {
       </div>
 
       <!-- Trigger config: inactive_days / warning_days -->
-      <div v-if="ruleFormTrigger === 'lead_inactive'" class="flex items-center gap-3">
+      <div v-if="ruleFormTrigger === 'record_inactive'" class="flex items-center gap-3">
         <label class="text-xs font-medium text-gray-700 dark:text-gray-300 w-36">{{ t('automations.inactiveDays') }}</label>
         <input
           :value="(ruleFormTriggerConfig['inactive_days'] as string | number) ?? 30"
@@ -647,13 +647,13 @@ function lastRunLabel(rule: AutomationRule): string {
             <input
               v-model="action.subject"
               type="text"
-              placeholder="Subject — supports {{lead_title}}, {{task_title}}, {{customer_name}}"
+              placeholder="Subject — supports {{record_title}}, {{task_title}}, {{customer_name}}"
               class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
             />
             <textarea
               v-model="action.body"
               rows="3"
-              placeholder="Email body. Use {{lead_title}}, {{task_title}}, {{customer_name}}, {{assignee_name}}…"
+              placeholder="Email body. Use {{record_title}}, {{task_title}}, {{customer_name}}, {{assignee_name}}…"
               class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400 resize-none"
             />
           </template>
@@ -665,10 +665,10 @@ function lastRunLabel(rule: AutomationRule): string {
               <input
                 v-model="action.title_template"
                 type="text"
-                placeholder="e.g. Follow up with {{customer_name}} on {{lead_title}}"
+                placeholder="e.g. Follow up with {{customer_name}} on {{record_title}}"
                 class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               />
-              <p v-pre class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{lead_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code> (triggering task's due date)</p>
+              <p v-pre class="text-[10px] text-gray-400 mt-0.5">Placeholders: <code>{{record_title}}</code>, <code>{{task_title}}</code>, <code>{{customer_name}}</code>, <code>{{due_date}}</code> (triggering task's due date)</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -753,7 +753,7 @@ function lastRunLabel(rule: AutomationRule): string {
                   class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
                 >
                   <option value="task">{{ t('automations.taskFromTrigger') }}</option>
-                  <option value="lead">{{ t('automations.leadFromTrigger') }}</option>
+                  <option value="record">{{ t('automations.recordFromTrigger') }}</option>
                 </select>
               </div>
             </div>
@@ -766,8 +766,8 @@ function lastRunLabel(rule: AutomationRule): string {
                 v-model="action.field"
                 class="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1.5 text-xs focus:outline-none focus:border-red-400"
               >
-                <option value="status">{{ t('automations.leadStatus') }}</option>
-                <option value="source">{{ t('automations.leadSource') }}</option>
+                <option value="status">{{ t('automations.recordStatus') }}</option>
+                <option value="source">{{ t('automations.recordSource') }}</option>
                 <option value="currency">{{ t('automations.currency') }}</option>
                 <option value="description">{{ t('automations.description') }}</option>
               </select>
@@ -953,8 +953,8 @@ function lastRunLabel(rule: AutomationRule): string {
               <span v-else-if="run.context?.task_title" class="text-gray-500 dark:text-gray-400 truncate">
                 Task: {{ run.context.task_title as string }}
               </span>
-              <span v-else-if="run.context?.lead_title" class="text-gray-500 dark:text-gray-400 truncate">
-                Lead: {{ run.context.lead_title as string }}
+              <span v-else-if="run.context?.record_title" class="text-gray-500 dark:text-gray-400 truncate">
+                Record: {{ run.context.record_title as string }}
               </span>
             </li>
           </ul>

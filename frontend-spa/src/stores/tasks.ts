@@ -7,8 +7,8 @@ export interface TaskOut {
   id: string
   firm_id: string
   // Entity links
-  lead_id: string | null
-  lead_title: string | null
+  record_id: string | null
+  record_title: string | null
   proposal_id: string | null
   proposal_title: string | null
   customer_id: string | null
@@ -86,7 +86,7 @@ export interface TaskOut {
 }
 
 export interface TaskIn {
-  lead_id?: string | null
+  record_id?: string | null
   proposal_id?: string | null
   customer_id?: string | null
   title: string
@@ -133,7 +133,7 @@ export interface FollowUpTaskIn {
   assigned_to_id?: string | null
   watcher_ids?: string[]
   due_date?: string | null
-  lead_id?: string | null
+  record_id?: string | null
 }
 
 /**
@@ -160,7 +160,7 @@ export interface TaskFetchOpts {
   isArchived?: boolean
   isPinned?: boolean
   isFavourite?: boolean
-  leadId?: string
+  recordId?: string
   proposalId?: string
   customerId?: string
   projectId?: string
@@ -320,7 +320,7 @@ export interface TaskTemplateUpdateIn {
 
 export interface TaskTemplateApplyIn {
   title: string
-  lead_id?: string | null
+  record_id?: string | null
   proposal_id?: string | null
   customer_id?: string | null
   assigned_to_id?: string | null
@@ -400,7 +400,7 @@ export const useTasksStore = defineStore('tasks', () => {
       if (opts.isArchived !== undefined) params.set('is_archived', String(opts.isArchived))
       if (opts.isPinned !== undefined) params.set('is_pinned', String(opts.isPinned))
       if (opts.isFavourite !== undefined) params.set('is_favourite', String(opts.isFavourite))
-      if (opts.leadId !== undefined) params.set('lead_id', opts.leadId)
+      if (opts.recordId !== undefined) params.set('record_id', opts.recordId)
       if (opts.proposalId !== undefined) params.set('proposal_id', opts.proposalId)
       if (opts.customerId !== undefined) params.set('customer_id', opts.customerId)
       if (opts.projectId !== undefined) params.set('project_id', opts.projectId)
@@ -647,7 +647,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
   async function moveTask(
     id: string,
-    opts: { lead_id?: string | null; proposal_id?: string | null; customer_id?: string | null },
+    opts: { record_id?: string | null; proposal_id?: string | null; customer_id?: string | null },
   ): Promise<{ ok: boolean; data?: TaskOut; error?: string }> {
     const res = await api.post<TaskOut>(`/api/v1/crm/tasks/${id}/move`, opts)
     if (res.ok) {

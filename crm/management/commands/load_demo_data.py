@@ -301,9 +301,9 @@ CUSTOMERS_PERSONS = [
     },
 ]
 
-# Each lead: title, status, source, value, currency, company_index, contact_person_index,
-#            category_slug, stage_order, notes
-LEADS = [
+# Each record: title, status, source, value, currency, company_index, contact_person_index,
+#              category_slug, stage_order, notes
+RECORDS = [
     {
         "title": "Implementace CRM systému – Rohlík.cz",
         "status": RecordStatus.NEGOTIATION,
@@ -426,7 +426,7 @@ LEADS = [
     },
 ]
 
-ACTIVITIES_BY_LEAD: dict[int, list[tuple[str, ActivityType]]] = {
+ACTIVITIES_BY_RECORD: dict[int, list[tuple[str, ActivityType]]] = {
     0: [
         ("Úvodní schůzka s Tomášem Čuprem – představení LeadLab platformy. Zájem o enterprise tarif.", ActivityType.MEETING),
         ("Zasláno demo prostředí a přístupové údaje pro testování.", ActivityType.EMAIL_OUT),
@@ -483,7 +483,7 @@ ACTIVITIES_BY_LEAD: dict[int, list[tuple[str, ActivityType]]] = {
     ],
 }
 
-# (title, lead_index, days_offset, priority, status)
+# (title, record_index, days_offset, priority, status)
 TASKS = [
     ("Připravit technický návrh SAP integrace pro Rohlík", 0, 5, TaskPriority.HIGH, TaskStatus.TODO),
     ("Odeslat revidovanou nabídku po technické schůzce – Rohlík", 0, 3, TaskPriority.HIGH, TaskStatus.IN_PROGRESS),
@@ -515,7 +515,7 @@ PROJECTS = [
 
 class Command(BaseCommand):
     help = (
-        "Populate the database with a demo workspace, contacts, leads, "
+        "Populate the database with a demo workspace, contacts, records, "
         "pipeline categories, activities, and tasks for evaluation and "
         "development purposes."
     )
@@ -686,7 +686,7 @@ class Command(BaseCommand):
 
         # ---- records ----
         records: list[PipelineRecord] = []
-        for data in LEADS:
+        for data in RECORDS:
             company = companies[data["company_index"]]
             contact_person = persons[data["contact_person_index"]]
             cat_slug = data.get("category_slug", "prileziosti")
@@ -715,7 +715,7 @@ class Command(BaseCommand):
                 self.stdout.write(f" + Záznam: {record.title}")
 
         # ---- activities ----
-        for record_index, activity_list in ACTIVITIES_BY_LEAD.items():
+        for record_index, activity_list in ACTIVITIES_BY_RECORD.items():
             if record_index >= len(records):
                 continue
             target_record = records[record_index]

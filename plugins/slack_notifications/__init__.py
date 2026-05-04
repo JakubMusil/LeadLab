@@ -2,17 +2,17 @@
 First-party plugin: Slack Notifications (v2.4)
 
 Sends a Slack message to a configurable channel when:
-- New lead created
+- New record created
 - PipelineRecord won / lost
 - Task overdue
 - Proposal accepted
 
 Configuration (stored in PluginConfig.config):
-  slack_webhook_url   : str   — Slack Incoming Webhook URL
-  notify_lead_created : bool  — default True
-  notify_lead_won     : bool  — default True
-  notify_lead_lost    : bool  — default True
-  notify_task_overdue : bool  — default True
+  slack_webhook_url        : str   — Slack Incoming Webhook URL
+  notify_record_created    : bool  — default True
+  notify_record_won        : bool  — default True
+  notify_record_lost       : bool  — default True
+  notify_task_overdue      : bool  — default True
   notify_proposal_accepted : bool — default True
 """
 from __future__ import annotations
@@ -30,15 +30,15 @@ class SlackNotificationsPlugin(LeadLabPlugin):
         "version": "1.0.0",
         "description": (
             "Send Slack messages to a configurable channel when key CRM events "
-            "occur: new lead, lead won/lost, task overdue, proposal accepted."
+            "occur: new record, record won/lost, task overdue, proposal accepted."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/slack-notifications/icon.png",
         "permissions": ["notifications:send", "records:read"],
         "activity_types": [],
         "webhook_event_types": [
-            "lead.created",
-            "lead.won",
-            "lead.lost",
+            "record.created",
+            "record.won",
+            "record.lost",
             "task.overdue",
             "proposal.accepted",
         ],
@@ -51,19 +51,19 @@ class SlackNotificationsPlugin(LeadLabPlugin):
                     "description": "The Incoming Webhook URL from your Slack app configuration.",
                     "secret": True,
                 },
-                "notify_lead_created": {
+                "notify_record_created": {
                     "type": "boolean",
-                    "title": "Notify on new lead",
+                    "title": "Notify on new record",
                     "default": True,
                 },
-                "notify_lead_won": {
+                "notify_record_won": {
                     "type": "boolean",
-                    "title": "Notify on lead won",
+                    "title": "Notify on record won",
                     "default": True,
                 },
-                "notify_lead_lost": {
+                "notify_record_lost": {
                     "type": "boolean",
-                    "title": "Notify on lead lost",
+                    "title": "Notify on record lost",
                     "default": True,
                 },
                 "notify_task_overdue": {
@@ -122,9 +122,9 @@ class SlackNotificationsPlugin(LeadLabPlugin):
 
         # Check per-event toggles
         event_key_map = {
-            "lead.created": "notify_lead_created",
-            "lead.won": "notify_lead_won",
-            "lead.lost": "notify_lead_lost",
+            "record.created": "notify_record_created",
+            "record.won": "notify_record_won",
+            "record.lost": "notify_record_lost",
             "task.overdue": "notify_task_overdue",
             "proposal.accepted": "notify_proposal_accepted",
         }

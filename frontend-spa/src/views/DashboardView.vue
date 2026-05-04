@@ -42,16 +42,16 @@ const { t } = useI18n()
 
 interface ActivityItem {
   id: string
-  lead_id: string
-  lead_title?: string
+  record_id: string
+  record_title?: string
   type: string
   content_text: string
   created_at: string
 }
 
 interface StatsData {
-  total_leads: number
-  leads_by_status: Record<string, number>
+  total_records: number
+  records_by_status: Record<string, number>
   total_customers: number
   total_tasks_pending: number
   total_tasks_overdue: number
@@ -101,11 +101,11 @@ const widgets = ref<WidgetConfig[]>([...DEFAULT_WIDGETS])
 const showLayoutEditor = ref(false)
 const savingLayout = ref(false)
 
-// "My top leads" widget state
-const myTopLeads = ref<RecordOut[]>([])
-const myTopLeadsLoading = ref(false)
+// "My top records" widget state
+const myTopRecords = ref<RecordOut[]>([])
+const myTopRecordsLoading = ref(false)
 
-// "Quick create lead" widget state
+// "Quick create record" widget state
 const qcTitle = ref('')
 const qcStatus = ref('new')
 const qcValue = ref('')
@@ -127,7 +127,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const chartData = computed(() => {
   if (!stats.value) return { labels: [], datasets: [] }
-  const entries = Object.entries(stats.value.leads_by_status)
+  const entries = Object.entries(stats.value.records_by_status)
   return {
     labels: entries.map(([k]) => STATUS_LABELS.value[k] ?? k),
     datasets: [
@@ -194,7 +194,7 @@ async function loadStats() {
 
 async function loadMyTopLeads() {
   if (!firmStore.activeFirm || !authStore.user) return
-  myTopLeadsLoading.value = true
+  myTopRecordsLoading.value = true
   try {
     const params = new URLSearchParams()
     params.set('assigned_to', String(authStore.user.id))
@@ -208,10 +208,10 @@ async function loadMyTopLeads() {
         .slice()
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
         .slice(0, 5)
-      myTopLeads.value = sorted
+      myTopRecords.value = sorted
     }
   } finally {
-    myTopLeadsLoading.value = false
+    myTopRecordsLoading.value = false
   }
 }
 
@@ -235,7 +235,7 @@ async function submitQuickCreate() {
       qcTitle.value = ''
       qcStatus.value = 'new'
       qcValue.value = ''
-      // Refresh widgets that depend on lead data
+      // Refresh widgets that depend on record data
       loadStats()
       loadMyTopLeads()
     } else {
@@ -246,7 +246,7 @@ async function submitQuickCreate() {
   }
 }
 
-function openLeadDetail(id: string) {
+function openRecordDetail(id: string) {
   router.push(`/app/records/${id}`)
 }
 
@@ -411,7 +411,7 @@ function hideSetupBanner() {
         <div v-if="widget.id === 'stat_cards'" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ t('dashboard.totalLeads') }}</div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_leads }}</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ stats.total_records }}</div>
             <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ t('dashboard.conversion', { rate: (stats.conversion_rate * 100).toFixed(1) }) }}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
@@ -458,8 +458,8 @@ function hideSetupBanner() {
                   <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/records/${act.lead_id}`" class="font-medium hover:text-red-600">
-                        {{ (act as ActivityItem & { lead_title?: string }).lead_title ?? 'Lead' }}
+                      <RouterLink v-if="act.record_id" :to="`/app/records/${act.record_id}`" class="font-medium hover:text-red-600">
+                        {{ (act as ActivityItem & { record_title?: string }).record_title ?? 'Record' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>
                     </p>
@@ -492,8 +492,8 @@ function hideSetupBanner() {
                   <component :is="activityIcon(act.type)" class="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   <div class="min-w-0">
                     <p class="text-xs text-gray-700 dark:text-gray-300 truncate">
-                      <RouterLink v-if="act.lead_id" :to="`/app/records/${act.lead_id}`" class="font-medium hover:text-red-600">
-                        {{ act.lead_title ?? 'Lead' }}
+                      <RouterLink v-if="act.record_id" :to="`/app/records/${act.record_id}`" class="font-medium hover:text-red-600">
+                        {{ act.record_title ?? 'Record' }}
                       </RouterLink>
                       <span v-if="act.content_text"> — {{ act.content_text }}</span>
                     </p>
@@ -505,7 +505,7 @@ function hideSetupBanner() {
           </template>
         </div>
 
-        <!-- Quick create lead -->
+        <!-- Quick create record -->
         <div v-else-if="widget.id === 'quick_create_lead'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -548,7 +548,7 @@ function hideSetupBanner() {
           <p v-if="qcError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ qcError }}</p>
         </div>
 
-        <!-- My top leads -->
+        <!-- My top records -->
         <div v-else-if="widget.id === 'my_top_leads'" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -565,28 +565,28 @@ function hideSetupBanner() {
           </div>
           <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700">
             <li
-              v-for="lead in myTopLeads"
-              :key="lead.id"
+              v-for="record in myTopRecords"
+              :key="record.id"
               class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-2 px-2 rounded-lg transition-colors"
-              @click="openLeadDetail(lead.id)"
+              @click="openRecordDetail(record.id)"
             >
               <span
                 class="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-semibold"
-                :class="(lead.score ?? 0) >= 75 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                  : (lead.score ?? 0) >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                :class="(record.score ?? 0) >= 75 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                  : (record.score ?? 0) >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'"
-                :title="t('dashboard.scoreTitle', { score: lead.score ?? 0 })"
+                :title="t('dashboard.scoreTitle', { score: record.score ?? 0 })"
               >
-                {{ lead.score ?? 0 }}
+                {{ record.score ?? 0 }}
               </span>
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ record.title }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {{ lead.company_name || lead.contact_person_name || '—' }}
+                  {{ record.company_name || record.contact_person_name || '—' }}
                 </div>
               </div>
-              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(lead.status).color">
-                {{ statusLabelFor(lead.status) }}
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium flex-shrink-0" :class="getStatusMeta(record.status).color">
+                {{ statusLabelFor(record.status) }}
               </span>
             </li>
           </ul>
@@ -597,7 +597,7 @@ function hideSetupBanner() {
           <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.statusBreakdown') }}</h3>
           <div class="flex flex-wrap gap-3">
             <RouterLink
-              v-for="[status, count] in Object.entries(stats.leads_by_status)"
+              v-for="[status, count] in Object.entries(stats.records_by_status)"
               :key="status"
               :to="`/app/records?status=${status}`"
               class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"

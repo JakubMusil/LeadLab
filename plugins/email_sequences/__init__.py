@@ -4,10 +4,10 @@ First-party plugin: Email Sequences (v2.4)
 Multi-step drip campaign plugin.
 
 A *Sequence* defines a series of timed emails that are automatically sent
-when a lead transitions to a specific status. Each *SequenceStep* specifies
+when a record transitions to a specific status. Each *SequenceStep* specifies
 a delay (in days) after the previous step, a subject, and a body template.
 
-When a lead changes status the CRM fires the ``sequence.enroll`` signal which
+When a record changes status the CRM fires the ``sequence.enroll`` signal which
 creates an *Enrollment* record. The Celery beat task
 ``send_sequence_emails`` processes pending steps and dispatches emails.
 
@@ -33,7 +33,7 @@ class EmailSequencesPlugin(LeadLabPlugin):
         "version": "1.0.0",
         "description": (
             "Multi-step drip campaign plugin. Define timed email sequences "
-            "triggered by lead status transitions. Celery beat schedules "
+            "triggered by record status transitions. Celery beat schedules "
             "individual sends."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/email-sequences/icon.png",

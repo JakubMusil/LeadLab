@@ -38,7 +38,7 @@ function formatDate(iso: string): string {
 }
 
 function entityLabel(doc: DocumentOut): string {
-  if (doc.lead_title) return doc.lead_title
+  if (doc.record_title) return doc.record_title
   if (doc.customer_name) return doc.customer_name
   if (doc.realization_title) return doc.realization_title
   if (doc.management_title) return doc.management_title

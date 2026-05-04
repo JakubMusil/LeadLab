@@ -18,8 +18,8 @@ import { api } from '@/api'
 const mockTask = {
   id: 'task-1',
   firm_id: '1',
-  lead_id: 'lead-1',
-  lead_title: null,
+  record_id: 'record-1',
+  record_title: null,
   proposal_id: null,
   proposal_title: null,
   customer_id: null,
@@ -102,7 +102,7 @@ describe('useTasksStore', () => {
     vi.mocked(api.post).mockResolvedValueOnce({ ok: true, status: 201, data: mockTask })
 
     const store = useTasksStore()
-    const result = await store.createTask({ lead_id: 'lead-1', title: 'Follow up call' })
+    const result = await store.createTask({ record_id: 'record-1', title: 'Follow up call' })
 
     expect(result.ok).toBe(true)
     expect(store.tasks).toHaveLength(1)
@@ -113,7 +113,7 @@ describe('useTasksStore', () => {
     vi.mocked(api.post).mockResolvedValueOnce({ ok: false, status: 400, data: { detail: 'Lead not found.' } })
 
     const store = useTasksStore()
-    const result = await store.createTask({ lead_id: 'bad', title: 'Task' })
+    const result = await store.createTask({ record_id: 'bad', title: 'Task' })
 
     expect(result.ok).toBe(false)
     expect(result.error).toBe('Lead not found.')

@@ -9,12 +9,6 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    replaces = [
-        ('crm', '0002_category_categoryfield_checkpoint_pipelinerecord_and_more'),
-        ('crm', '0003_backfill_meeting_scheduled_tasks'),
-        ('crm', '0004_rename_lead_created_trigger'),
-    ]
-
     dependencies = [
         ('crm', '0001_initial'),
         ('firms', '0001_initial'),
@@ -173,7 +167,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='import_jobs', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
-            model_name='leadscoringrule',
+            model_name='recordscoringrule',
             name='firm',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='firms.firm'),
         ),
@@ -200,17 +194,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='pipelinerecord',
             name='company',
-            field=models.ForeignKey(blank=True, help_text='The company (from the address book) this lead belongs to.', limit_choices_to={'type': 'company'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='company_records', to='crm.customer'),
+            field=models.ForeignKey(blank=True, help_text='The company (from the address book) this record belongs to.', limit_choices_to={'type': 'company'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='company_records', to='crm.customer'),
         ),
         migrations.AddField(
             model_name='pipelinerecord',
             name='contact_person',
-            field=models.ForeignKey(blank=True, help_text='The specific contact person at the company for this lead.', limit_choices_to={'type': 'person'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='contact_person_records', to='crm.customer'),
+            field=models.ForeignKey(blank=True, help_text='The specific contact person at the company for this record.', limit_choices_to={'type': 'person'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='contact_person_records', to='crm.customer'),
         ),
         migrations.AddField(
             model_name='pipelinerecord',
             name='created_by',
-            field=models.ForeignKey(blank=True, help_text='The user who created this lead.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_records', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, help_text='The user who created this record.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_records', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='pipelinerecord',
@@ -234,7 +228,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='expenseitem',
-            name='lead',
+            name='record',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='expense_items', to='crm.pipelinerecord'),
         ),
         migrations.AddField(
@@ -274,7 +268,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='proposal',
-            name='lead',
+            name='record',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='proposals', to='crm.pipelinerecord'),
         ),
         migrations.AddField(
@@ -329,7 +323,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='revenueitem',
-            name='lead',
+            name='record',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='revenue_items', to='crm.pipelinerecord'),
         ),
         migrations.AddField(
@@ -354,7 +348,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='sequenceenrollment',
-            name='lead',
+            name='record',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sequence_enrollments', to='crm.pipelinerecord'),
         ),
         migrations.AddField(
@@ -584,7 +578,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='timeentry',
-            name='lead',
+            name='record',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='time_entries', to='crm.pipelinerecord'),
         ),
         migrations.AddField(
@@ -647,7 +641,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='proposal',
-            index=models.Index(fields=['firm', 'lead', '-created_at'], name='crm_proposa_firm_id_47809e_idx'),
+            index=models.Index(fields=['firm', 'record', '-created_at'], name='crm_proposa_firm_id_47809e_idx'),
         ),
         migrations.AddIndex(
             model_name='proposal',
@@ -667,7 +661,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='revenueitem',
-            index=models.Index(fields=['firm', 'lead'], name='crm_revenue_firm_id_ceb375_idx'),
+            index=models.Index(fields=['firm', 'record'], name='crm_revenue_firm_id_ceb375_idx'),
         ),
         migrations.AddIndex(
             model_name='revenueitem',
@@ -735,7 +729,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='expenseitem',
-            index=models.Index(fields=['firm', 'lead'], name='crm_expense_firm_id_36e872_idx'),
+            index=models.Index(fields=['firm', 'record'], name='crm_expense_firm_id_36e872_idx'),
         ),
         migrations.AddIndex(
             model_name='expenseitem',
@@ -831,7 +825,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='timeentry',
-            index=models.Index(fields=['firm', 'lead'], name='crm_timeent_firm_id_473226_idx'),
+            index=models.Index(fields=['firm', 'record'], name='crm_timeent_firm_id_473226_idx'),
         ),
         migrations.AddIndex(
             model_name='timeentry',

@@ -9,8 +9,8 @@ export interface DocumentOut {
   name: string
   content_type: string
   size_bytes: number
-  lead_id?: string | null
-  lead_title?: string | null
+  record_id?: string | null
+  record_title?: string | null
   customer_id?: string | null
   customer_name?: string | null
   realization_id?: string | null

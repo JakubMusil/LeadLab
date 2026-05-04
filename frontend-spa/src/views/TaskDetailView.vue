@@ -260,14 +260,14 @@ function toggleWatcher(watcherIds: string[], userId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Leads (for move modal)
+// Records (for move modal)
 // ---------------------------------------------------------------------------
-interface LeadOption { id: string; title: string }
-const leads = ref<LeadOption[]>([])
+interface RecordOption { id: string; title: string }
+const records = ref<RecordOption[]>([])
 
 async function loadLeads() {
   const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
-  if (res.ok) leads.value = res.data as LeadOption[]
+  if (res.ok) records.value = res.data as RecordOption[]
 }
 
 // ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ function openCopyModal() {
 
 // Move task
 const showMoveModal = ref(false)
-const moveLeadId = ref('')
+const moveRecordId = ref('')
 const moveCustomerId = ref('')
 const moveSubmitting = ref(false)
 const customers = ref<{ id: string; display: string }[]>([])
@@ -345,7 +345,7 @@ async function loadCustomers() {
 
 function openMoveModal() {
   if (!task.value) return
-  moveLeadId.value = task.value.lead_id ?? ''
+  moveRecordId.value = task.value.record_id ?? ''
   moveCustomerId.value = task.value.customer_id ?? ''
   showMoveModal.value = true
   showActionMenu.value = false
@@ -356,7 +356,7 @@ async function submitMoveTask() {
   if (!task.value) return
   moveSubmitting.value = true
   const result = await tasksStore.moveTask(task.value.id, {
-    lead_id: moveLeadId.value || null,
+    record_id: moveRecordId.value || null,
     customer_id: moveCustomerId.value || null,
   })
   moveSubmitting.value = false
@@ -1054,9 +1054,9 @@ onUnmounted(() => {
         <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
           <span>{{ t('tasks.title') }}</span>
           <span>›</span>
-          <template v-if="task.lead_id">
-            <RouterLink :to="`/app/opportunities/${task.lead_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
-              {{ task.lead_title || task.lead_id }}
+          <template v-if="task.record_id">
+            <RouterLink :to="`/app/opportunities/${task.record_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+              {{ task.record_title || task.record_id }}
             </RouterLink>
             <span>›</span>
           </template>
@@ -1275,13 +1275,13 @@ onUnmounted(() => {
             <!-- Meta grid -->
             <div class="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
               <!-- Lead (if linked) -->
-              <div v-if="task.lead_id" class="flex items-center gap-1.5">
+              <div v-if="task.record_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.lead') }}</span>
                 <RouterLink
-                  :to="`/app/opportunities/${task.lead_id}`"
+                  :to="`/app/opportunities/${task.record_id}`"
                   class="text-blue-500 hover:underline truncate"
                 >
-                  {{ task.lead_title || task.lead_id }}
+                  {{ task.record_title || task.record_id }}
                 </RouterLink>
               </div>
               <!-- Customer (if linked) -->
@@ -2196,9 +2196,9 @@ onUnmounted(() => {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('tasks.moveTask') }}</h2>
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
-            <select v-model="moveLeadId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
+            <select v-model="moveRecordId" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-red-400">
               <option value="">{{ t('tasks.noLead') }}</option>
-              <option v-for="l in leads" :key="l.id" :value="l.id">{{ l.title }}</option>
+              <option v-for="l in records" :key="l.id" :value="l.id">{{ l.title }}</option>
             </select>
           </div>
           <div>

@@ -16,7 +16,7 @@ vi.mock('@/api', () => ({
 
 import { api } from '@/api'
 
-// A realistic toolbar for a Lead, matching the new backend behaviour:
+// A realistic toolbar for a Record, matching the new backend behaviour:
 // every channel-specific messaging tool carries `channel` + `direction`
 // metadata.
 const TOOLBAR = [
@@ -36,7 +36,7 @@ const TOOLBAR = [
 async function mountPicker() {
   vi.mocked(api.get).mockResolvedValue({ ok: true, status: 200, data: TOOLBAR })
   const wrapper = mount(EntitySidebarActionPicker, {
-    props: { entityType: 'lead', entityId: 'lead-1' },
+    props: { entityType: 'record', entityId: 'record-1' },
   })
   await flushPromises()
   return wrapper
@@ -68,7 +68,7 @@ describe('EntitySidebarActionPicker — action grid', () => {
       data: TOOLBAR.filter((t) => !t.channel || t.channel === 'none'),
     })
     const wrapper = mount(EntitySidebarActionPicker, {
-      props: { entityType: 'lead', entityId: 'lead-1' },
+      props: { entityType: 'record', entityId: 'record-1' },
     })
     await flushPromises()
     const options = wrapper.findAll('[data-testid="entity-sidebar-action-option"]')

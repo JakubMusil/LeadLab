@@ -14,7 +14,7 @@ const { firmCurrency, formatAmount } = useMoney()
 
 interface Proposal {
   id: string
-  lead_id: string | null
+  record_id: string | null
   customer_id: string | null
   realization_id: string | null
   management_id: string | null
@@ -38,8 +38,8 @@ const filterContext = ref('')
 const showCreateModal = ref(false)
 const createTitle = ref('')
 const createCurrency = ref(firmCurrency.value)
-const createContext = ref<'lead' | 'customer' | 'realization' | 'management' | 'none'>('none')
-const createLeadId = ref('')
+const createContext = ref<'record' | 'customer' | 'realization' | 'management' | 'none'>('none')
+const createRecordId = ref('')
 const createCustomerId = ref('')
 const createRealizationId = ref('')
 const createManagementId = ref('')
@@ -60,7 +60,7 @@ function statusMeta(status: string) {
 }
 
 function contextLabel(p: Proposal): string {
-  if (p.lead_id) return t('proposals.contextLead')
+  if (p.record_id) return t('proposals.contextLead')
   if (p.customer_id) return t('proposals.contextCustomer')
   if (p.realization_id) return t('proposals.contextRealization')
   if (p.management_id) return t('proposals.contextManagement')
@@ -70,11 +70,11 @@ function contextLabel(p: Proposal): string {
 const filteredProposals = computed(() => {
   let result = proposals.value
   if (filterStatus.value) result = result.filter(p => p.status === filterStatus.value)
-  if (filterContext.value === 'lead') result = result.filter(p => p.lead_id)
+  if (filterContext.value === 'record') result = result.filter(p => p.record_id)
   if (filterContext.value === 'customer') result = result.filter(p => p.customer_id)
   if (filterContext.value === 'realization') result = result.filter(p => p.realization_id)
   if (filterContext.value === 'management') result = result.filter(p => p.management_id)
-  if (filterContext.value === 'none') result = result.filter(p => !p.lead_id && !p.customer_id && !p.realization_id && !p.management_id)
+  if (filterContext.value === 'none') result = result.filter(p => !p.record_id && !p.customer_id && !p.realization_id && !p.management_id)
   return result
 })
 
@@ -96,7 +96,7 @@ function openCreateModal() {
   createTitle.value = ''
   createCurrency.value = firmCurrency.value
   createContext.value = 'none'
-  createLeadId.value = ''
+  createRecordId.value = ''
   createCustomerId.value = ''
   createRealizationId.value = ''
   createManagementId.value = ''
@@ -110,8 +110,8 @@ async function createProposal() {
     title: createTitle.value.trim(),
     currency: createCurrency.value,
   }
-  if (createContext.value === 'lead' && createLeadId.value.trim()) {
-    payload.lead_id = createLeadId.value.trim()
+  if (createContext.value === 'record' && createRecordId.value.trim()) {
+    payload.record_id = createRecordId.value.trim()
   } else if (createContext.value === 'customer' && createCustomerId.value.trim()) {
     payload.customer_id = createCustomerId.value.trim()
   } else if (createContext.value === 'realization' && createRealizationId.value.trim()) {
@@ -170,7 +170,7 @@ onMounted(loadProposals)
         class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-700 dark:text-gray-300"
       >
         <option value="">{{ t('proposals.filterAll') }}</option>
-        <option value="lead">{{ t('proposals.filterLeads') }}</option>
+        <option value="record">{{ t('proposals.filterLeads') }}</option>
         <option value="customer">{{ t('proposals.filterCustomers') }}</option>
         <option value="realization">{{ t('proposals.filterRealizations') }}</option>
         <option value="management">{{ t('proposals.filterManagement') }}</option>
@@ -256,16 +256,16 @@ onMounted(loadProposals)
                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100"
               >
                 <option value="none">{{ t('proposals.contextNone') }}</option>
-                <option value="lead">{{ t('proposals.contextLead') }}</option>
+                <option value="record">{{ t('proposals.contextLead') }}</option>
                 <option value="customer">{{ t('proposals.contextCustomer') }}</option>
                 <option value="realization">{{ t('proposals.contextRealization') }}</option>
                 <option value="management">{{ t('proposals.contextManagement') }}</option>
               </select>
             </div>
 
-            <div v-if="createContext === 'lead'">
+            <div v-if="createContext === 'record'">
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextLead') }} ID</label>
-              <input v-model="createLeadId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextLead') + ' UUID'" />
+              <input v-model="createRecordId" type="text" class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100" :placeholder="t('proposals.contextLead') + ' UUID'" />
             </div>
             <div v-else-if="createContext === 'customer'">
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('proposals.contextCustomer') }} ID</label>

@@ -255,7 +255,7 @@ const showNewTaskModal = ref(false)
 const newTaskTitle = ref('')
 const newTaskDate = ref('')
 const newTaskTime = ref('')
-const newTaskLeadId = ref('')
+const newTaskRecordId = ref('')
 const newTaskAssigneeId = ref('')
 const newTaskDescription = ref('')
 const taskFormLoading = ref(false)
@@ -268,7 +268,7 @@ function openNewTaskModal(dateStr?: string, timeStr?: string) {
   newTaskDate.value = dateStr ?? new Date().toISOString().slice(0, 10)
   newTaskTime.value = timeStr ?? ''
   newTaskTitle.value = ''
-  newTaskLeadId.value = ''
+  newTaskRecordId.value = ''
   newTaskAssigneeId.value = ''
   newTaskDescription.value = ''
   taskFormError.value = ''
@@ -286,7 +286,7 @@ function handleDateSelect(info: DateSelectArg) {
 
 async function submitNewTask() {
   if (!newTaskTitle.value.trim()) { taskFormError.value = t('calendar.titleRequired'); return }
-  if (!newTaskLeadId.value) { taskFormError.value = t('calendar.leadRequired'); return }
+  if (!newTaskRecordId.value) { taskFormError.value = t('calendar.leadRequired'); return }
   taskFormLoading.value = true
   taskFormError.value = ''
 
@@ -299,7 +299,7 @@ async function submitNewTask() {
   }
 
   const result = await tasksStore.createTask({
-    lead_id: newTaskLeadId.value,
+    record_id: newTaskRecordId.value,
     title: newTaskTitle.value.trim(),
     description: newTaskDescription.value.trim() || undefined,
     assigned_to_id: newTaskAssigneeId.value || null,
@@ -442,11 +442,11 @@ onMounted(async () => {
     >
       <p class="font-semibold text-gray-900 dark:text-gray-100 mb-1.5 leading-snug">{{ tooltipTask.title }}</p>
       <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
-        <div v-if="tooltipTask.lead_title" class="flex items-center gap-1.5">
+        <div v-if="tooltipTask.record_title" class="flex items-center gap-1.5">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          {{ tooltipTask.lead_title }}
+          {{ tooltipTask.record_title }}
         </div>
         <div v-if="tooltipTask.assigned_to_name" class="flex items-center gap-1.5">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -536,12 +536,12 @@ onMounted(async () => {
 
         <!-- Task meta -->
         <div class="px-5 pb-4 space-y-2.5">
-          <div v-if="selectedTask.lead_title" class="flex items-center gap-3 text-sm">
+          <div v-if="selectedTask.record_title" class="flex items-center gap-3 text-sm">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <span class="text-gray-500 dark:text-gray-400 w-20 flex-shrink-0">{{ t('calendar.lead') }}</span>
-            <span class="text-gray-900 dark:text-gray-100 font-medium">{{ selectedTask.lead_title }}</span>
+            <span class="text-gray-900 dark:text-gray-100 font-medium">{{ selectedTask.record_title }}</span>
           </div>
           <div class="flex items-center gap-3 text-sm">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

@@ -784,7 +784,7 @@ onMounted(async () => {
     <div v-else class="text-center py-12 text-gray-400 dark:text-gray-500">{{ t('customers.notFound') }}</div>
 
 
-    <!-- Edit Modal Teleport exactly like Lead Detail -->
+    <!-- Edit Modal Teleport exactly like Record Detail -->
     <Teleport to="body">
       <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-customer-title">

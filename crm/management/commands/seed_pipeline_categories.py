@@ -70,7 +70,7 @@ DEFAULT_CATEGORIES = [
                 "validation_rules": {
                     "options": ["web", "email", "referral", "cold_call", "social", "other"],
                 },
-                "help_text_override": "Odkud přišel tento lead",
+                "help_text_override": "Odkud přišel tento záznam",
             },
         ],
     },

@@ -163,7 +163,7 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('url', models.URLField(help_text='The URL that will receive POST requests.', max_length=500)),
                 ('secret', models.CharField(default=secrets.token_hex, help_text='HMAC signing secret — sent as X-LeadLab-Signature.', max_length=64)),
-                ('events', models.JSONField(default=list, help_text="List of event names to subscribe to, e.g. ['lead.created', 'activity.created']. Empty list means all events.")),
+                ('events', models.JSONField(default=list, help_text="List of event names to subscribe to, e.g. ['record.created', 'activity.created']. Empty list means all events.")),
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),

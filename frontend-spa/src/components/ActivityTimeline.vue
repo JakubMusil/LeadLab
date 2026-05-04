@@ -111,7 +111,7 @@ interface Activity {
   id: string
   entity_type: string
   entity_id: string
-  lead_id: string | null
+  record_id: string | null
   user_id: string | null
   user_name: string | null
   user_avatar_url: string | null
@@ -131,7 +131,7 @@ interface Activity {
   edited_at?: string | null
 }
 
-// Unified feed item — either an Activity or a Task (for Lead feed)
+// Unified feed item — either an Activity or a Task (for Record feed)
 interface FeedItem {
   item_type: 'activity' | 'task'
   created_at: string
@@ -291,7 +291,7 @@ const displayItems = computed<DisplayItem[]>(() => {
         return { ...act, _type: 'activity', _key: act.id, _created_at: act.created_at } as DisplayItem
       })
   }
-  // Non-lead entities — plain activity list
+  // Non-record entities — plain activity list
   return filteredActivities.value.map((a) => ({
     ...a,
     _type: 'activity' as const,
@@ -499,7 +499,7 @@ const actionPickerItems = computed<{ value: string; label: string; icon: Compone
   ]
 })
 
-function translateLeadStatus(status: string): string {
+function translateRecordStatus(status: string): string {
   const map: Record<string, string> = {
     new: t('leads.statusNew'),
     contacted: t('leads.statusContacted'),
@@ -536,7 +536,7 @@ function entityIdKey(): string {
 
 // Build the upload URL for inline comment attachments.
 // The /api/v1/crm/file-uploads/upload endpoint accepts entity ID params
-// (lead_id, customer_id, etc.) but does NOT accept task_id — tasks
+// (record_id, customer_id, etc.) but does NOT accept task_id — tasks
 // belong to a parent entity whose ID is not surfaced here — so inline
 // file upload is only enabled for the five supported entity types.
 const commentUploadUrl = computed<string | undefined>(() => {
@@ -552,7 +552,7 @@ async function loadActivities(page = 1) {
   activitiesLoading.value = true
   try {
     if (useFeed.value) {
-      // Unified feed for Lead — merges Activity + Task
+      // Unified feed for Record — merges Activity + Task
       const res = await api.get<FeedItem[]>(listUrl(page))
       if (res.ok) {
         if (page === 1) feedItems.value = res.data
@@ -1525,8 +1525,8 @@ defineExpose({ load: () => loadActivities(1) })
             />
             <p v-if="item.type === 'status_change'" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {{ t('recordDetail.statusChangedArrow', {
-                from: translateLeadStatus((item.metadata as Record<string, string>).old_status ?? ''),
-                to: translateLeadStatus((item.metadata as Record<string, string>).new_status ?? ''),
+                from: translateRecordStatus((item.metadata as Record<string, string>).old_status ?? ''),
+                to: translateRecordStatus((item.metadata as Record<string, string>).new_status ?? ''),
               }) }}
             </p>
             <p v-else-if="item.type === 'task_completed' && (item.metadata as Record<string, string>).title" class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">

@@ -9,7 +9,7 @@ registerPlugin({
     name: 'email-sequences',
     version: '1.0.0',
     description:
-      'Multi-step drip campaign plugin. Define timed email sequences triggered by lead status transitions. Celery beat schedules individual sends.',
+      'Multi-step drip campaign plugin. Define timed email sequences triggered by record status transitions. Celery beat schedules individual sends.',
     iconUrl: 'https://cdn.leadlab.io/plugins/email-sequences/icon.png',
     permissions: ['records:read', 'activities:write', 'notifications:send'],
     configSchema: {
