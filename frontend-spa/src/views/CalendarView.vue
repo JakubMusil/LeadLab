@@ -649,7 +649,7 @@ onMounted(async () => {
             />
           </div>
 
-          <!-- Lead -->
+          <!-- Record -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('calendar.leadField') }}</label>
             <select

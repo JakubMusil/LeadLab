@@ -1439,7 +1439,7 @@ function closeContactDetail() {
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+                  <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(record)"><PencilSquareIcon class="w-4 h-4" /></button>
                   <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click.stop="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
                 </div>
               </td>
@@ -1547,7 +1547,7 @@ function closeContactDetail() {
 
           <!-- Actions -->
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" @click.stop>
-            <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(lead)"><PencilSquareIcon class="w-4 h-4" /></button>
+            <button class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" :aria-label="t('leads.edit')" @click="openEdit(record)"><PencilSquareIcon class="w-4 h-4" /></button>
             <button class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500" :aria-label="t('leads.delete')" @click="confirmDeleteId = record.id"><TrashIcon class="w-4 h-4" /></button>
           </div>
         </div>
@@ -1668,7 +1668,7 @@ function closeContactDetail() {
                     @click="goToDetail(record.id)"
                   >{{ record.title }}</button>
                   <div class="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(lead)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
+                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400" :aria-label="t('leads.edit')" @click.stop="openEdit(record)"><PencilSquareIcon class="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 mt-2 flex-wrap">

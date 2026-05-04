@@ -1274,7 +1274,7 @@ onUnmounted(() => {
 
             <!-- Meta grid -->
             <div class="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
-              <!-- Lead (if linked) -->
+              <!-- Record (if linked) -->
               <div v-if="task.record_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.lead') }}</span>
                 <RouterLink

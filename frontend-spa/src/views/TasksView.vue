@@ -641,7 +641,7 @@ onMounted(async () => {
             >
               ⚠ {{ { low: t('tasks.priorityLow'), medium: t('tasks.priorityMedium'), high: t('tasks.priorityHigh'), critical: t('tasks.priorityCritical') }[task.priority] ?? task.priority }}
             </span>
-            <!-- Lead link -->
+            <!-- Record link -->
             <RouterLink
               v-if="task.record_id"
               :to="`/app/opportunities/${task.record_id}`"
@@ -815,7 +815,7 @@ onMounted(async () => {
             {{ newTaskError }}
           </div>
 
-          <!-- Lead (optional) -->
+          <!-- Record (optional) -->
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{{ t('tasks.lead') }} <span class="text-gray-400">({{ t('tasks.optional') }})</span></label>
             <select
