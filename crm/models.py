@@ -355,7 +355,7 @@ class CategoryField(models.Model):
 
 class PipelineRecord(SoftDeleteMixin, TenantModel):
     """
-    The central entity of the CRM — an inbound or outbound opportunity.
+    The central entity of the CRM — a pipeline record.
 
     ``customer`` is nullable to allow 'quick entry' records where the
     full contact record is filled in later.

@@ -96,7 +96,7 @@ function onRecordUpdated(payload: Record<string, unknown>) {
 
 function onRecordDeleted(payload: Record<string, unknown>) {
   const id = payload.id as string
-  recordsStore.records = recordsStore.records.filter((l) => l.id !== id)
+  recordsStore.records = recordsStore.records.filter((r) => r.id !== id)
   notifStore.pushNotification('record.deleted', payload)
   fetchCategoryCounts()
 }
@@ -165,7 +165,7 @@ onUnmounted(() => {
   off('category.updated', pipelineStore.handleCategoryUpdated)
 })
 
-// Keyboard shortcuts (no "new opportunity" trigger here – RecordsView handles that)
+// Keyboard shortcuts (no "new record" trigger here – RecordsView handles that)
 useKeyboardShortcuts()
 
 const userInitials = computed(() => {

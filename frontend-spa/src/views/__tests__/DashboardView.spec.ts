@@ -59,7 +59,7 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/app/dashboard', component: DashboardView },
-    { path: '/app/opportunities', component: { template: '<div/>' } },
+    { path: '/app/records', component: { template: '<div/>' } },
   ],
 })
 

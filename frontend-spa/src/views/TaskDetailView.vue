@@ -266,7 +266,7 @@ interface RecordOption { id: string; title: string }
 const records = ref<RecordOption[]>([])
 
 async function loadRecords() {
-  const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
+  const res = await api.get<LeadOption[]>('/api/v1/crm/records?page_size=200')
   if (res.ok) records.value = res.data as RecordOption[]
 }
 
@@ -1055,7 +1055,7 @@ onUnmounted(() => {
           <span>{{ t('tasks.title') }}</span>
           <span>›</span>
           <template v-if="task.record_id">
-            <RouterLink :to="`/app/opportunities/${task.record_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
+            <RouterLink :to="`/app/records/${task.record_id}`" class="hover:text-blue-500 truncate max-w-[160px]">
               {{ task.record_title || task.record_id }}
             </RouterLink>
             <span>›</span>
@@ -1278,7 +1278,7 @@ onUnmounted(() => {
               <div v-if="task.record_id" class="flex items-center gap-1.5">
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('tasks.lead') }}</span>
                 <RouterLink
-                  :to="`/app/opportunities/${task.record_id}`"
+                  :to="`/app/records/${task.record_id}`"
                   class="text-blue-500 hover:underline truncate"
                 >
                   {{ task.record_title || task.record_id }}

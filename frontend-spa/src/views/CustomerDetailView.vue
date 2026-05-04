@@ -341,7 +341,7 @@ async function removeMetadata(key: string) {
 async function loadLinkedRecords() {
   recordsLoading.value = true
   try {
-    const allRecords = await api.get<Array<RecordOut & { customer_id: string | null }>>('/api/v1/crm/opportunities?page_size=100')
+    const allRecords = await api.get<Array<RecordOut & { customer_id: string | null }>>('/api/v1/crm/records?page_size=100')
     if (allRecords.ok) {
       linkedRecords.value = allRecords.data.filter((l) => l.customer_id === customerId.value)
     }
@@ -740,7 +740,7 @@ onMounted(async () => {
               <RouterLink
                 v-for="record in linkedRecords"
                 :key="record.id"
-                :to="`/app/opportunities/${record.id}`"
+                :to="`/app/records/${record.id}`"
                 class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ record.title }}</span>

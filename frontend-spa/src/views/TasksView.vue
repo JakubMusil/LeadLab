@@ -49,7 +49,7 @@ interface RecordOption { id: string; title: string }
 const records = ref<RecordOption[]>([])
 
 async function loadRecords() {
-  const res = await api.get<LeadOption[]>('/api/v1/crm/opportunities?page_size=200')
+  const res = await api.get<LeadOption[]>('/api/v1/crm/records?page_size=200')
   if (res.ok) records.value = (res.data as RecordOption[])
 }
 
@@ -644,7 +644,7 @@ onMounted(async () => {
             <!-- Record link -->
             <RouterLink
               v-if="task.record_id"
-              :to="`/app/opportunities/${task.record_id}`"
+              :to="`/app/records/${task.record_id}`"
               class="text-xs text-blue-500 hover:underline truncate max-w-[160px]"
             >
               {{ task.record_title || task.record_id }}

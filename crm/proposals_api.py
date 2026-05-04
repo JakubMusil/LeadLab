@@ -501,7 +501,7 @@ def create_standalone_proposal(request, payload: ProposalIn):
 # ---------------------------------------------------------------------------
 
 @proposals_router.get(
-    "/opportunities/{record_id}/proposals",
+    "/records/{record_id}/proposals",
     auth=django_auth,
     response={200: List[ProposalOut], 403: ErrorOut, 404: ErrorOut},
 )
@@ -525,7 +525,7 @@ def list_proposals(request, record_id: str):
 
 
 @proposals_router.post(
-    "/opportunities/{record_id}/proposals",
+    "/records/{record_id}/proposals",
     auth=django_auth,
     response={201: ProposalOut, 403: ErrorOut, 404: ErrorOut},
 )

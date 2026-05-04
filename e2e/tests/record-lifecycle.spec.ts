@@ -49,7 +49,7 @@ test.describe('Record lifecycle', () => {
 
     // Navigate to lead detail.
     await page.getByText(recordTitle).first().click()
-    await page.waitForURL(/\/app\/leads\//)
+    await page.waitForURL(/\/app\/records\//)
 
     // Switch to Activities tab if not already visible.
     const activitiesTab = page.getByRole('tab', { name: /activit/i })
@@ -70,7 +70,7 @@ test.describe('Record lifecycle', () => {
   test('create and complete a task on the record', async ({ page }) => {
     await page.goto('/app/records')
     await page.getByText(recordTitle).first().click()
-    await page.waitForURL(/\/app\/leads\//)
+    await page.waitForURL(/\/app\/records\//)
 
     // Switch to Tasks tab.
     const tasksTab = page.getByRole('tab', { name: /tasks/i })
