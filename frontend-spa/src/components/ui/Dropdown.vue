@@ -5,8 +5,9 @@ withDefaults(
   defineProps<{
     items: { label: string; icon?: string; danger?: boolean; onClick: () => void }[]
     placement?: 'left' | 'right'
+    openOnHover?: boolean
   }>(),
-  { placement: 'right' },
+  { placement: 'right', openOnHover: false },
 )
 
 const open = ref(false)
@@ -28,7 +29,12 @@ function selectItem(item: { onClick: () => void }) {
 </script>
 
 <template>
-  <div ref="rootRef" class="relative inline-block" @mouseenter="open = true" @mouseleave="open = false">
+  <div
+    ref="rootRef"
+    class="relative inline-block"
+    @mouseenter="openOnHover && (open = true)"
+    @mouseleave="openOnHover && (open = false)"
+  >
     <div @click.stop="open = !open">
       <slot />
     </div>

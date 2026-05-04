@@ -1072,7 +1072,7 @@ function showAssigneeAvatar(record: RecordOut): boolean {
       >{{ t('leads.newLead') }}</button>
 
       <!-- Actions dropdown (import / export / save view) -->
-      <Dropdown :items="actionsDropdownItems" placement="right">
+      <Dropdown :items="actionsDropdownItems" placement="right" :open-on-hover="true">
         <button
           type="button"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
