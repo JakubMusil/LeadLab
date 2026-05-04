@@ -3013,7 +3013,7 @@ class TaskOutcomeEndpointTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(acts.count(), 1)
         self.assertEqual(acts.first().content_text, "Spoke with client, all good.")
         self.assertEqual(acts.first().metadata.get("outcome"), "held")
-        self.assertEqual(acts.first().lead, self.record)
+        self.assertEqual(acts.first().record, self.record)
 
     def test_held_meeting_kind_logs_meeting_activity(self):
         from crm.models import ActivityType
