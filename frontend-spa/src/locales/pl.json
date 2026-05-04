@@ -1406,7 +1406,8 @@
       "planning": "Planowanie",
       "files": "Pliki i linki",
       "system": "System",
-      "other": "Inne"
+      "other": "Inne",
+      "commerce": "Handel"
     },
     "toolHelp": {
       "comment": "Swobodny komentarz do okazji. Użyj {'@'}, aby wspomnieć członka zespołu.",
@@ -1426,13 +1427,33 @@
       "system_note": "Notatka systemowa, np. „Zaimportowano z CSV“ albo „Scalono z duplikatu leada“.",
       "task": "Tworzy zadanie powiązane z tą okazją. Opcjonalnie dodaj opis lub wzmiankę.",
       "todo_items": "Wpisz zadania — każda linia = jedno nowe zadanie. Wszystkie zostaną utworzone naraz.",
-      "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej."
+      "message": "Zarejestruj lub wyślij e-mail, SMS, WhatsApp lub czat — kanał wybierz poniżej.",
+      "call_scheduled": "Zaplanowane przyszłe połączenie — data, godzina, kontakt.",
+      "chat": "Zarejestrowana wiadomość na czacie (Slack, Teams, …).",
+      "mention": "Powiadom członka zespołu, wspominając go w tym rekordzie.",
+      "checklist": "Interaktywna lista kontrolna powiązana z tym rekordem.",
+      "time_logged": "Zarejestruj czas poświęcony na ten rekord — minuty, opcjonalny opis, znaczniki czasu.",
+      "approval_requested": "Prośba o zatwierdzenie od członka zespołu.",
+      "approval_resolved": "Wynik żądania zatwierdzenia.",
+      "payment_received": "Zarejestrowana płatność otrzymana dla tego rekordu.",
+      "invoice_sent": "Zarejestrowana faktura wysłana do kontaktu.",
+      "signature_requested": "Zarejestrowane żądanie podpisu dokumentu.",
+      "signature_completed": "Zarejestrowany ukończony podpis dokumentu."
     },
     "typeMessage": "Wiadomość",
     "typeTodoItems": "Zadania todo",
     "typeChecklist": "Lista kontrolna",
     "checklistCheck": "Oznacz jako wykonane",
-    "checklistUncheck": "Odznacz"
+    "checklistUncheck": "Odznacz",
+    "typeChat": "Wiadomość na czacie",
+    "typeMention": "Wzmianka",
+    "typeTimeLogged": "Zarejestrowany czas",
+    "typeApprovalRequested": "Zatwierdzenie wymagane",
+    "typeApprovalResolved": "Zatwierdzenie rozwiązane",
+    "typePaymentReceived": "Otrzymana płatność",
+    "typeInvoiceSent": "Wysłana faktura",
+    "typeSignatureRequested": "Żądanie podpisu",
+    "typeSignatureCompleted": "Podpis ukończony"
   },
   "sequences": {
     "title": "Sekwencje e-mail",

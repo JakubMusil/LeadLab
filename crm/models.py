@@ -507,6 +507,8 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         "sms_in",
         "whatsapp_out",
         "whatsapp_in",
+        "chat",
+        "mention",
         # Planning
         "meeting_scheduled",
         "call_scheduled",
@@ -515,10 +517,18 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         "checklist",
         "todo_items_added",
         "proposal",
+        "time_logged",
+        "approval_requested",
+        "approval_resolved",
         # Files & references
         "file_upload",
         "voice_memo",
         "link",
+        # Commerce
+        "payment_received",
+        "invoice_sent",
+        "signature_requested",
+        "signature_completed",
         # System
         "system_note",
     ]

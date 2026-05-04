@@ -1417,7 +1417,8 @@
       "planning": "Plánování",
       "files": "Soubory a odkazy",
       "system": "Systém",
-      "other": "Ostatní"
+      "other": "Ostatní",
+      "commerce": "Obchod"
     },
     "toolHelp": {
       "comment": "Volný komentář k příležitosti, můžete použít {'@'} pro zmínění kolegy.",
@@ -1437,13 +1438,33 @@
       "system_note": "Systémová poznámka, např. „Importováno z CSV“ nebo „Sloučeno z duplicitního leadu“.",
       "task": "Vytvoří úkol navázaný na tuto příležitost. Volitelně přidejte popis nebo zmínku.",
       "todo_items": "Zadejte úkoly — každý řádek = jeden nový úkol. Všechny budou přidány najednou.",
-      "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže."
+      "message": "Zaznamenej nebo odešli e-mail, SMS, WhatsApp nebo chat — kanál vyber níže.",
+      "call_scheduled": "Naplánovaný budoucí hovor — datum, čas, kontakt.",
+      "chat": "Zaznamenaná chatová zpráva (Slack, Teams, …).",
+      "mention": "Upozorněte kolegu zmínkou na tomto záznamu.",
+      "checklist": "Interaktivní kontrolní seznam navázaný na tento záznam.",
+      "time_logged": "Zaznamenejte strávený čas — minuty, volitelný popis, čas začátku a konce.",
+      "approval_requested": "Požadavek na schválení od člena týmu.",
+      "approval_resolved": "Zaznamenaný výsledek žádosti o schválení.",
+      "payment_received": "Zaznamenaná přijatá platba k tomuto záznamu.",
+      "invoice_sent": "Zaznamenaná faktura odeslaná kontaktu.",
+      "signature_requested": "Zaznamenaný požadavek na podpis dokumentu.",
+      "signature_completed": "Zaznamenaný dokončený podpis dokumentu."
     },
     "typeMessage": "Zpráva",
     "typeTodoItems": "Hromadné úkoly",
     "typeChecklist": "Odškrtávací seznam",
     "checklistCheck": "Označit jako hotové",
-    "checklistUncheck": "Odznačit"
+    "checklistUncheck": "Odznačit",
+    "typeChat": "Chatová zpráva",
+    "typeMention": "Zmínka",
+    "typeTimeLogged": "Zaznamenaný čas",
+    "typeApprovalRequested": "Schválení požadováno",
+    "typeApprovalResolved": "Schválení vyřešeno",
+    "typePaymentReceived": "Přijatá platba",
+    "typeInvoiceSent": "Odeslaná faktura",
+    "typeSignatureRequested": "Požadavek na podpis",
+    "typeSignatureCompleted": "Podpis dokončen"
   },
   "sequences": {
     "title": "E-mailové sekvence",
