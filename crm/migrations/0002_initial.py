@@ -9,6 +9,12 @@ class Migration(migrations.Migration):
 
     initial = True
 
+    replaces = [
+        ('crm', '0002_category_categoryfield_checkpoint_pipelinerecord_and_more'),
+        ('crm', '0003_backfill_meeting_scheduled_tasks'),
+        ('crm', '0004_rename_lead_created_trigger'),
+    ]
+
     dependencies = [
         ('crm', '0001_initial'),
         ('firms', '0001_initial'),
