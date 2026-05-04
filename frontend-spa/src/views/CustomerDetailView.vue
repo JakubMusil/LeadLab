@@ -184,9 +184,9 @@ const employeesLoading = ref(false)
 // Available companies for person→company link
 const availableCompanies = computed(() => store.customers.filter((c) => c.type === 'company' && c.id !== customerId.value))
 
-// Linked leads
-interface LeadOut { id: string; title: string; status: string; value: number | null; currency: string; created_at: string }
-const linkedLeads = ref<LeadOut[]>([])
+// Linked records
+interface RecordOut { id: string; title: string; status: string; value: number | null; currency: string; created_at: string }
+const linkedRecords = ref<RecordOut[]>([])
 const leadsLoading = ref(false)
 
 // Linked proposals
@@ -330,9 +330,9 @@ async function removeMetadata(key: string) {
 async function loadLinkedLeads() {
   leadsLoading.value = true
   try {
-    const allLeads = await api.get<Array<LeadOut & { customer_id: string | null }>>('/api/v1/crm/opportunities?page_size=100')
-    if (allLeads.ok) {
-      linkedLeads.value = allLeads.data.filter((l) => l.customer_id === customerId.value)
+    const allRecords = await api.get<Array<RecordOut & { customer_id: string | null }>>('/api/v1/crm/opportunities?page_size=100')
+    if (allRecords.ok) {
+      linkedRecords.value = allRecords.data.filter((l) => l.customer_id === customerId.value)
     }
   } finally {
     leadsLoading.value = false
@@ -718,23 +718,23 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Linked Leads -->
+          <!-- Linked Records -->
           <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('customers.linkedLeads') }}</h3>
             <div v-if="leadsLoading" class="animate-pulse space-y-2">
               <div v-for="i in 2" :key="i" class="h-10 bg-gray-100 dark:bg-gray-700 rounded-xl" />
             </div>
-            <div v-else-if="linkedLeads.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noLinkedLeads') }}</div>
+            <div v-else-if="linkedRecords.length === 0" class="text-sm text-gray-400 dark:text-gray-500">{{ t('customers.noLinkedLeads') }}</div>
             <div v-else class="space-y-2">
               <RouterLink
-                v-for="lead in linkedLeads"
-                :key="lead.id"
-                :to="`/app/opportunities/${lead.id}`"
+                v-for="record in linkedRecords"
+                :key="record.id"
+                :to="`/app/opportunities/${record.id}`"
                 class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
-                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ lead.title }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(lead.status)">{{ lead.status }}</span>
-                <span v-if="lead.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ formatAmount(lead.value, lead.currency) }}</span>
+                <span class="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ record.title }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusColor(record.status)">{{ record.status }}</span>
+                <span v-if="record.value != null" class="text-xs text-gray-500 dark:text-gray-400">{{ formatAmount(record.value, record.currency) }}</span>
               </RouterLink>
             </div>
           </div>

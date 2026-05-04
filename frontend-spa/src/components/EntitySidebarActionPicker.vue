@@ -118,50 +118,50 @@ const heroIconMap: Record<string, Component> = {
 
 // Map activity_type → i18n key (preserves multi-language support).
 const activityTypeLabelKey: Record<string, string> = {
-  comment: 'leadDetail.typeComment',
-  call: 'leadDetail.typeCall',
-  meeting: 'leadDetail.typeMeeting',
-  email_out: 'leadDetail.typeEmailOut',
-  email_in: 'leadDetail.typeEmailIn',
-  task: 'leadDetail.typeTask',
-  sms_out: 'leadDetail.typeSmsOut',
-  sms_in: 'leadDetail.typeSmsIn',
-  whatsapp_out: 'leadDetail.typeWhatsAppOut',
-  whatsapp_in: 'leadDetail.typeWhatsAppIn',
-  meeting_scheduled: 'leadDetail.typeMeetingScheduled',
-  call_scheduled: 'leadDetail.typeCallScheduled',
-  event_scheduled: 'leadDetail.typeEventScheduled',
-  link: 'leadDetail.typeLink',
-  voice_memo: 'leadDetail.typeVoiceMemo',
-  system_note: 'leadDetail.typeSystemNote',
-  file_upload: 'leadDetail.typeFileUpload',
-  todo_items: 'leadDetail.typeTodoItems',
-  proposal: 'leadDetail.typeProposal',
+  comment: 'recordDetail.typeComment',
+  call: 'recordDetail.typeCall',
+  meeting: 'recordDetail.typeMeeting',
+  email_out: 'recordDetail.typeEmailOut',
+  email_in: 'recordDetail.typeEmailIn',
+  task: 'recordDetail.typeTask',
+  sms_out: 'recordDetail.typeSmsOut',
+  sms_in: 'recordDetail.typeSmsIn',
+  whatsapp_out: 'recordDetail.typeWhatsAppOut',
+  whatsapp_in: 'recordDetail.typeWhatsAppIn',
+  meeting_scheduled: 'recordDetail.typeMeetingScheduled',
+  call_scheduled: 'recordDetail.typeCallScheduled',
+  event_scheduled: 'recordDetail.typeEventScheduled',
+  link: 'recordDetail.typeLink',
+  voice_memo: 'recordDetail.typeVoiceMemo',
+  system_note: 'recordDetail.typeSystemNote',
+  file_upload: 'recordDetail.typeFileUpload',
+  todo_items: 'recordDetail.typeTodoItems',
+  proposal: 'recordDetail.typeProposal',
   // Pseudo-tool for the unified messaging composer (no real activity_type).
-  message: 'leadDetail.typeMessage',
+  message: 'recordDetail.typeMessage',
 }
 
 // Short helper text shown below the action header so the user knows what
-// the activity is for. Keys point at `leadDetail.toolHelp.<activity_type>`.
+// the activity is for. Keys point at `recordDetail.toolHelp.<activity_type>`.
 const activityTypeHelpKey: Record<string, string> = {
-  comment: 'leadDetail.toolHelp.comment',
-  call: 'leadDetail.toolHelp.call',
-  meeting: 'leadDetail.toolHelp.meeting',
-  meeting_scheduled: 'leadDetail.toolHelp.meeting_scheduled',
-  event_scheduled: 'leadDetail.toolHelp.event_scheduled',
-  email_out: 'leadDetail.toolHelp.email_out',
-  email_in: 'leadDetail.toolHelp.email_in',
-  sms_out: 'leadDetail.toolHelp.sms_out',
-  sms_in: 'leadDetail.toolHelp.sms_in',
-  whatsapp_out: 'leadDetail.toolHelp.whatsapp_out',
-  whatsapp_in: 'leadDetail.toolHelp.whatsapp_in',
-  link: 'leadDetail.toolHelp.link',
-  file_upload: 'leadDetail.toolHelp.file_upload',
-  voice_memo: 'leadDetail.toolHelp.voice_memo',
-  system_note: 'leadDetail.toolHelp.system_note',
-  task: 'leadDetail.toolHelp.task',
-  todo_items: 'leadDetail.toolHelp.todo_items',
-  message: 'leadDetail.toolHelp.message',
+  comment: 'recordDetail.toolHelp.comment',
+  call: 'recordDetail.toolHelp.call',
+  meeting: 'recordDetail.toolHelp.meeting',
+  meeting_scheduled: 'recordDetail.toolHelp.meeting_scheduled',
+  event_scheduled: 'recordDetail.toolHelp.event_scheduled',
+  email_out: 'recordDetail.toolHelp.email_out',
+  email_in: 'recordDetail.toolHelp.email_in',
+  sms_out: 'recordDetail.toolHelp.sms_out',
+  sms_in: 'recordDetail.toolHelp.sms_in',
+  whatsapp_out: 'recordDetail.toolHelp.whatsapp_out',
+  whatsapp_in: 'recordDetail.toolHelp.whatsapp_in',
+  link: 'recordDetail.toolHelp.link',
+  file_upload: 'recordDetail.toolHelp.file_upload',
+  voice_memo: 'recordDetail.toolHelp.voice_memo',
+  system_note: 'recordDetail.toolHelp.system_note',
+  task: 'recordDetail.toolHelp.task',
+  todo_items: 'recordDetail.toolHelp.todo_items',
+  message: 'recordDetail.toolHelp.message',
 }
 
 // ─── Tool category grouping (UX layout) ────────────────────────────────────
@@ -187,7 +187,7 @@ interface ToolCategory {
 const TOOL_CATEGORIES: ToolCategory[] = [
   {
     key: 'communication',
-    labelKey: 'leadDetail.toolCategory.communication',
+    labelKey: 'recordDetail.toolCategory.communication',
     // Note: the 6 channel-specific email/SMS/WhatsApp tools (and `chat`) are
     // *not* listed here individually any more — they are replaced by the
     // unified pseudo-tool `'message'` further down, which surfaces
@@ -202,19 +202,19 @@ const TOOL_CATEGORIES: ToolCategory[] = [
   },
   {
     key: 'planning',
-    labelKey: 'leadDetail.toolCategory.planning',
+    labelKey: 'recordDetail.toolCategory.planning',
     activityTypes: ['meeting_scheduled', 'call_scheduled', 'event_scheduled', 'task', 'todo_items_added', 'proposal'],
     accent: 'blue',
   },
   {
     key: 'files',
-    labelKey: 'leadDetail.toolCategory.files',
+    labelKey: 'recordDetail.toolCategory.files',
     activityTypes: ['file_upload', 'voice_memo', 'link'],
     accent: 'emerald',
   },
   {
     key: 'system',
-    labelKey: 'leadDetail.toolCategory.system',
+    labelKey: 'recordDetail.toolCategory.system',
     activityTypes: ['system_note'],
     accent: 'amber',
   },
@@ -544,7 +544,7 @@ const _toolByActivityType = computed(() => {
   if (hasMessagingTools.value) {
     map.set('message', {
       activity_type: 'message',
-      label: t('leadDetail.typeMessage'),
+      label: t('recordDetail.typeMessage'),
       // Generic icon — the real channel icon is shown only after the user
       // resolves to a concrete tool inside the composer.
       icon: 'ChatBubbleLeftRightIcon',
@@ -593,7 +593,7 @@ const groupedActionItems = computed<ToolGroup[]>(() => {
   if (leftover.length) {
     groups.push({
       key: 'other',
-      labelKey: 'leadDetail.toolCategory.other',
+      labelKey: 'recordDetail.toolCategory.other',
       activityTypes: leftover.map((i) => i.value),
       accent: 'gray',
       items: leftover,
@@ -648,7 +648,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
     data-testid="entity-sidebar-action-picker"
   >
     <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-      {{ t('leadDetail.quickActions') }}
+      {{ t('recordDetail.quickActions') }}
     </p>
 
     <!-- Action type picker (grouped by UX category) — shown when no inline form is active -->
@@ -765,7 +765,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
             v-model="extraFields[prop.key]"
             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
           >
-            <option value="">{{ t('leadDetail.selectOption') }}</option>
+            <option value="">{{ t('recordDetail.selectOption') }}</option>
             <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
           </select>
           <input
@@ -785,8 +785,8 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         v-model="activityText"
         :placeholder="
           activeActionType === 'comment'
-            ? t('leadDetail.commentPlaceholder')
-            : t('leadDetail.notePlaceholder')
+            ? t('recordDetail.commentPlaceholder')
+            : t('recordDetail.notePlaceholder')
         "
         :disabled="activitySubmitting"
         :members="activeActionType === 'comment' ? teamMembers : []"
@@ -821,7 +821,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
             v-model="extraFields[prop.key]"
             class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
           >
-            <option value="">{{ t('leadDetail.selectOption') }}</option>
+            <option value="">{{ t('recordDetail.selectOption') }}</option>
             <option v-for="opt in prop.enum" :key="opt" :value="opt">{{ opt }}</option>
           </select>
 
@@ -865,7 +865,7 @@ function accentClasses(accent: string): { ring: string; text: string; hover: str
         class="w-full px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors"
         @click="addActivity()"
       >
-        {{ activitySubmitting ? '…' : t('leadDetail.activitySubmit') }}
+        {{ activitySubmitting ? '…' : t('recordDetail.activitySubmit') }}
       </button>
     </div>
   </div>

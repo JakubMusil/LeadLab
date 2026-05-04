@@ -22,8 +22,8 @@ export interface ConfigSchema {
 export type PluginPermission =
   | 'activities:read'
   | 'activities:write'
-  | 'leads:read'
-  | 'leads:write'
+  | 'records:read'
+  | 'records:write'
   | 'customers:read'
   | 'customers:write'
   | 'notifications:send'

@@ -393,9 +393,9 @@ async function addTask() {
     newTaskDescription.value = ''
     newTaskAssigneeId.value = ''
     newTaskWatcherIds.value = []
-    toast.success(t('leadDetail.taskCreated'))
+    toast.success(t('recordDetail.taskCreated'))
   } else {
-    toast.error(t('leadDetail.taskFailed'))
+    toast.error(t('recordDetail.taskFailed'))
   }
 }
 
@@ -413,9 +413,9 @@ async function completeTask(id: string, isCompleted: boolean) {
   if (res.ok) {
     const idx = tasks.value.findIndex((task) => task.id === id)
     if (idx !== -1) tasks.value[idx] = res.data
-    toast.success(isCompleted ? t('tasks.taskReopened') : t('leadDetail.taskCompleted'))
+    toast.success(isCompleted ? t('tasks.taskReopened') : t('recordDetail.taskCompleted'))
   } else {
-    toast.error(t('leadDetail.taskCompleteFailed'))
+    toast.error(t('recordDetail.taskCompleteFailed'))
   }
 }
 
@@ -454,19 +454,19 @@ async function doUpload(file: File) {
         try {
           const item = JSON.parse(xhr.responseText) as FileItem
           files.value.unshift(item)
-          toast.success(t('leadDetail.fileUploaded'))
+          toast.success(t('recordDetail.fileUploaded'))
         } catch {
           toast.error('Upload response parse error.')
         }
       } else {
-        toast.error(t('leadDetail.fileUploadFailed'))
+        toast.error(t('recordDetail.fileUploadFailed'))
       }
       resolve()
     }
     xhr.onerror = () => {
       uploadingFile.value = false
       uploadProgress.value = 0
-      toast.error(t('leadDetail.fileUploadFailed'))
+      toast.error(t('recordDetail.fileUploadFailed'))
       resolve()
     }
     xhr.send(fd)
@@ -516,7 +516,7 @@ function openEdit() {
 }
 
 async function submitEdit() {
-  if (!editTitle.value.trim()) { editError.value = t('leadDetail.editTitleRequired'); return }
+  if (!editTitle.value.trim()) { editError.value = t('recordDetail.editTitleRequired'); return }
   editLoading.value = true
   const result = await store.updateRecord(leadId.value, {
     title: editTitle.value.trim(),
@@ -530,7 +530,7 @@ async function submitEdit() {
   editLoading.value = false
   if (result.ok) {
     showEditModal.value = false
-    toast.success(t('leadDetail.updated'))
+    toast.success(t('recordDetail.updated'))
   } else {
     editError.value = result.error ?? 'Failed to update.'
   }
@@ -539,7 +539,7 @@ async function submitEdit() {
 async function deleteRecord() {
   const result = await store.deleteRecord(leadId.value)
   if (result.ok) {
-    toast.success(t('leadDetail.deleted'))
+    toast.success(t('recordDetail.deleted'))
     router.push('/app/records')
   } else {
     toast.error(result.error ?? 'Failed to delete.')
@@ -683,7 +683,7 @@ async function openContactDetail(id: string | null) {
   <div class="p-6">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap" aria-label="breadcrumb">
-      <RouterLink to="/app/records" class="hover:text-red-600 transition-colors">{{ t('leadDetail.backToLeads') }}</RouterLink>
+      <RouterLink to="/app/records" class="hover:text-red-600 transition-colors">{{ t('recordDetail.backToLeads') }}</RouterLink>
       <template v-if="currentCategory">
         <span class="text-gray-300" aria-hidden="true">›</span>
         <RouterLink
@@ -927,7 +927,7 @@ async function openContactDetail(id: string | null) {
             </h2>
             <dl class="space-y-2">
               <div class="flex justify-between items-center">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewStatus') }}</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewStatus') }}</dt>
                 <dd class="relative">
                   <button
                     class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
@@ -955,15 +955,15 @@ async function openContactDetail(id: string | null) {
                 </dd>
               </div>
               <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewSource') }}</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewSource') }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentRecord.source.replace('_', ' ') }}</dd>
               </div>
               <div v-if="store.currentRecord.value != null" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewValue') }}</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewValue') }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentRecord.value }} {{ store.currentRecord.currency }}</dd>
               </div>
               <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('leadDetail.overviewCreated') }}</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewCreated') }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentRecord.created_at).toLocaleDateString() }}</dd>
               </div>
               <div v-if="store.currentRecord.company_name" class="flex justify-between items-baseline">
@@ -987,8 +987,8 @@ async function openContactDetail(id: string | null) {
               <!-- Inline-editable description -->
             </dl>
             <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('leadDetail.edit') }}</button>
-              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteRecord">{{ t('leadDetail.delete') }}</button>
+              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('recordDetail.edit') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteRecord">{{ t('recordDetail.delete') }}</button>
             </div>
           </div>
 
@@ -1006,18 +1006,18 @@ async function openContactDetail(id: string | null) {
       </div>
     </template>
 
-    <div v-else class="text-center py-12 text-gray-400">{{ t('leadDetail.notFound') }}</div>
+    <div v-else class="text-center py-12 text-gray-400">{{ t('recordDetail.notFound') }}</div>
   </div>
 
   <!-- Edit Modal -->
   <Teleport to="body">
     <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="showEditModal = false">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="edit-record-title">
-        <h3 id="edit-record-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('leadDetail.editTitle') }}</h3>
+        <h3 id="edit-record-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('recordDetail.editTitle') }}</h3>
         <div v-if="editError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ editError }}</div>
         <form class="space-y-3" @submit.prevent="submitEdit">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormTitle') }}</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('recordDetail.editFormTitle') }}</label>
             <input v-model="editTitle" type="text" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
           </div>
 
@@ -1053,13 +1053,13 @@ async function openContactDetail(id: string | null) {
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormStatus') }}</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('recordDetail.editFormStatus') }}</label>
               <select v-model="editStatus" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
                 <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormSource') }}</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('recordDetail.editFormSource') }}</label>
               <select v-model="editSource" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
                 <option value="web">{{ t('leads.sourceWeb') }}</option>
                 <option value="email">{{ t('leads.sourceEmail') }}</option>
@@ -1072,18 +1072,18 @@ async function openContactDetail(id: string | null) {
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormValue') }}</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('recordDetail.editFormValue') }}</label>
               <input v-model="editValue" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('leadDetail.editFormCurrency') }}</label>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('recordDetail.editFormCurrency') }}</label>
               <input v-model="editCurrency" type="text" maxlength="3" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" />
             </div>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showEditModal = false">{{ t('leadDetail.editCancel') }}</button>
+            <button type="button" class="flex-1 rounded-xl border border-gray-200 dark:border-gray-600 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="showEditModal = false">{{ t('recordDetail.editCancel') }}</button>
             <button type="submit" :disabled="editLoading" class="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60">
-              {{ editLoading ? t('leadDetail.editSaving') : t('leadDetail.editSave') }}
+              {{ editLoading ? t('recordDetail.editSaving') : t('recordDetail.editSave') }}
             </button>
           </div>
         </form>

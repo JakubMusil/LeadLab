@@ -11,7 +11,7 @@ registerPlugin({
     description:
       'Send Slack messages to a configurable channel when key CRM events occur: new lead, lead won/lost, task overdue, proposal accepted.',
     iconUrl: 'https://cdn.leadlab.io/plugins/slack-notifications/icon.png',
-    permissions: ['notifications:send', 'leads:read'],
+    permissions: ['notifications:send', 'records:read'],
     configSchema: {
       type: 'object',
       properties: {

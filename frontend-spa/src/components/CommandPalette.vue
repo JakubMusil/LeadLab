@@ -69,7 +69,7 @@ const navCommands = computed<CommandItem[]>(() => [
 
 const leadItems = computed<CommandItem[]>(() =>
   leadsStore.records.slice(0, 50).map((l) => ({
-    id: `lead-${l.id}`,
+    id: `record-${l.id}`,
     label: l.title,
     description: `Record · ${l.status}`,
     icon: FunnelIcon,

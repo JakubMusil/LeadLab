@@ -55,7 +55,7 @@ class CommentTool(StreamlineTool):
         firm = context["firm"]
         user = context["user"]
         entity_title = context.get("entity_title", "")
-        lead = activity.record
+        record = activity.record
 
         mention_ids = payload.get("metadata", {}).get("mentions", [])
         if not mention_ids:
@@ -73,8 +73,8 @@ class CommentTool(StreamlineTool):
             "entity_type": activity.entity_type,
             "entity_id": activity.entity_id,
             "entity_title": entity_title,
-            "lead_id": str(lead.id) if lead else None,
-            "lead_title": lead.title if lead else None,
+            "lead_id": str(record.id) if record else None,
+            "lead_title": record.title if record else None,
             "by_user": getattr(user, "full_name", None) or user.email,
             "content_preview": activity.content_text[:_MENTION_PREVIEW_LENGTH],
         }
@@ -308,8 +308,8 @@ class StatusChangeTool(StreamlineTool):
     ) -> None:
         from crm.models import RecordStatus
 
-        lead = activity.record
-        if lead is None:
+        record = activity.record
+        if record is None:
             return
 
         metadata = payload.get("metadata", {})
@@ -317,9 +317,9 @@ class StatusChangeTool(StreamlineTool):
         if not new_status or new_status not in [s.value for s in RecordStatus]:
             return
 
-        old_status = lead.status
-        lead.status = new_status
-        lead.save(update_fields=["status", "updated_at"])
+        old_status = record.status
+        record.status = new_status
+        record.save(update_fields=["status", "updated_at"])
         activity.metadata = {**activity.metadata, "old_status": old_status}
         activity.save(update_fields=["metadata"])
 
@@ -2065,7 +2065,7 @@ class TodoItemsAddedTool(StreamlineTool):
             return
 
         # Resolve entity FK kwargs for Task creation
-        lead = getattr(activity, "lead", None)
+        record = activity.record
         customer = getattr(activity, "customer", None)
         proposal = getattr(activity, "proposal", None)
 
@@ -2083,7 +2083,7 @@ class TodoItemsAddedTool(StreamlineTool):
         for title in lines:
             task = Task.objects.create(
                 firm=firm,
-                lead=lead,
+                record=record,
                 customer=customer,
                 proposal=proposal,
                 title=title[:255],

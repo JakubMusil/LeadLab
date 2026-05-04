@@ -23,7 +23,7 @@ class CRMFixtureMixin:
             last_name="Doe",
             email="jane@example.com",
         )
-        self.lead = PipelineRecord.objects.create(
+        self.record = PipelineRecord.objects.create(
             firm=self.firm,
             customer=self.customer,
             title="Demo Deal",
@@ -52,7 +52,7 @@ class CustomerModelTest(CRMFixtureMixin, TestCase):
 
 class LeadModelTest(CRMFixtureMixin, TestCase):
     def test_lead_str(self):
-        self.assertIn("Demo Deal", str(self.lead))
+        self.assertIn("Demo Deal", str(self.record))
 
     def test_lead_default_status(self):
         lead = PipelineRecord.objects.create(firm=self.firm, title="Quick PipelineRecord")
@@ -64,7 +64,7 @@ class LeadModelTest(CRMFixtureMixin, TestCase):
 
     def test_lead_choices(self):
         valid_statuses = [s.value for s in RecordStatus]
-        self.assertIn(self.lead.status, valid_statuses)
+        self.assertIn(self.record.status, valid_statuses)
 
     def test_lead_firm_isolation(self):
         other_firm = Firm.objects.create(name="Isolate Firm")
@@ -75,17 +75,17 @@ class LeadModelTest(CRMFixtureMixin, TestCase):
 class ActivityModelTest(CRMFixtureMixin, TestCase):
     def test_create_comment_activity(self):
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=ActivityType.COMMENT,
             content_text="First contact made.",
         )
         self.assertEqual(activity.type, ActivityType.COMMENT)
-        self.assertEqual(activity.record, self.lead)
+        self.assertEqual(activity.record, self.record)
 
     def test_create_status_change_activity(self):
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=ActivityType.STATUS_CHANGE,
             metadata={"old_status": "new", "new_status": "contacted"},
@@ -95,7 +95,7 @@ class ActivityModelTest(CRMFixtureMixin, TestCase):
 
     def test_create_email_out_activity(self):
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.worker,
             type=ActivityType.EMAIL_OUT,
             content_text="Hi Jane, following up...",
@@ -104,14 +104,14 @@ class ActivityModelTest(CRMFixtureMixin, TestCase):
         self.assertEqual(activity.metadata["subject"], "Follow-up")
 
     def test_activities_ordered_newest_first(self):
-        a1 = Activity.objects.create(record=self.lead, type=ActivityType.COMMENT, content_text="A1")
-        a2 = Activity.objects.create(record=self.lead, type=ActivityType.CALL, content_text="A2")
-        activities = list(Activity.objects.filter(record=self.lead))
+        a1 = Activity.objects.create(record=self.record, type=ActivityType.COMMENT, content_text="A1")
+        a2 = Activity.objects.create(record=self.record, type=ActivityType.CALL, content_text="A2")
+        activities = list(Activity.objects.filter(record=self.record))
         self.assertEqual(activities[0].pk, a2.pk)  # newest first
 
     def test_activity_str(self):
         activity = Activity.objects.create(
-            record=self.lead, type=ActivityType.COMMENT, content_text="test"
+            record=self.record, type=ActivityType.COMMENT, content_text="test"
         )
         self.assertIn("Comment", str(activity))
 
@@ -119,14 +119,14 @@ class ActivityModelTest(CRMFixtureMixin, TestCase):
         other_firm = Firm.objects.create(name="Other Firm 2")
         other_lead = PipelineRecord.objects.create(firm=other_firm, title="Other PipelineRecord")
         Activity.objects.create(record=other_lead, type=ActivityType.COMMENT, content_text="x")
-        self.assertEqual(Activity.objects.filter(record=self.lead).count(), 0)
+        self.assertEqual(Activity.objects.filter(record=self.record).count(), 0)
 
 
 class TaskModelTest(CRMFixtureMixin, TestCase):
     def test_create_task(self):
         task = Task.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             assigned_to=self.worker,
             title="Send proposal",
         )
@@ -134,7 +134,7 @@ class TaskModelTest(CRMFixtureMixin, TestCase):
         self.assertIsNone(task.completed_at)
 
     def test_complete_task(self):
-        task = Task.objects.create(firm=self.firm, record=self.lead, title="Call back")
+        task = Task.objects.create(firm=self.firm, record=self.record, title="Call back")
         task.is_completed = True
         task.completed_at = timezone.now()
         task.save()
@@ -143,7 +143,7 @@ class TaskModelTest(CRMFixtureMixin, TestCase):
         self.assertIsNotNone(task.completed_at)
 
     def test_task_str(self):
-        task = Task.objects.create(firm=self.firm, record=self.lead, title="Follow up")
+        task = Task.objects.create(firm=self.firm, record=self.record, title="Follow up")
         self.assertIn("Follow up", str(task))
         self.assertIn("○", str(task))
         task.is_completed = True
@@ -161,7 +161,7 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
 
     def _build_activity(self, type_value, metadata=None, **kwargs):
         return Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=type_value,
             metadata=metadata or {},
@@ -201,7 +201,7 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         self.assertTrue(a.is_internal)
         # Filter index works (smoke).
         self.assertEqual(
-            Activity.objects.filter(record=self.lead, is_internal=True).count(), 1,
+            Activity.objects.filter(record=self.record, is_internal=True).count(), 1,
         )
 
     # ------------------------------------------------------------------
@@ -355,12 +355,12 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         tool = get_tool("assignee_change")
         tool.process_action(
             activity,
-            self.lead,
+            self.record,
             {"metadata": {
                 "old_assignee_id": str(self.owner.id),
                 "new_assignee_id": str(self.worker.id),
             }},
-            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.record.title},
         )
         self.assertEqual(
             Notification.objects.filter(
@@ -379,7 +379,7 @@ class StreamlineToolsTest(CRMFixtureMixin, TestCase):
         )
         get_tool("assignee_change").process_action(
             activity,
-            self.lead,
+            self.record,
             {"metadata": {"new_assignee_id": str(self.owner.id)}},
             {"firm": self.firm, "user": self.owner, "entity_title": ""},
         )
@@ -395,7 +395,7 @@ class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
 
     def _build_activity(self, type_value, metadata=None, **kwargs):
         return Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=type_value,
             metadata=metadata or {},
@@ -502,7 +502,7 @@ class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
 
         proposal = Proposal.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Test Proposal",
         )
         self.assertIsNone(proposal.first_viewed_at)
@@ -530,7 +530,7 @@ class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
         original = timezone.now() - timedelta(days=3)
         proposal = Proposal.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Test",
             first_viewed_at=original,
             view_count=5,
@@ -559,9 +559,9 @@ class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
         )
         get_tool("mention").process_action(
             activity,
-            self.lead,
+            self.record,
             {"metadata": {"mentioned_user_id": str(self.worker.id)}},
-            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.record.title},
         )
         self.assertEqual(
             Notification.objects.filter(
@@ -580,7 +580,7 @@ class StreamlinePhase6ToolsTest(CRMFixtureMixin, TestCase):
         )
         get_tool("mention").process_action(
             activity,
-            self.lead,
+            self.record,
             {"metadata": {"mentioned_user_id": str(self.owner.id)}},
             {"firm": self.firm, "user": self.owner, "entity_title": ""},
         )
@@ -593,7 +593,7 @@ class ActivityTaskLinkTest(CRMFixtureMixin, TestCase):
     """Phase 0 — Activity can now be linked to a Task entity."""
 
     def test_activity_can_be_linked_to_task(self):
-        task = Task.objects.create(firm=self.firm, record=self.lead, title="T")
+        task = Task.objects.create(firm=self.firm, record=self.record, title="T")
         a = Activity.objects.create(
             task=task,
             user=self.owner,
@@ -609,7 +609,7 @@ class ActivityReactionModelTest(CRMFixtureMixin, TestCase):
     def test_create_and_unique_per_user_emoji(self):
         from crm.models import ActivityReaction
         a = Activity.objects.create(
-            record=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="x"
+            record=self.record, user=self.owner, type=ActivityType.COMMENT, content_text="x"
         )
         ActivityReaction.objects.create(activity=a, user=self.owner, emoji="👍")
         # Same user, same emoji → unique constraint should kick in
@@ -651,7 +651,7 @@ class CRMAPIFixtureMixin:
             company_name="Acme",
             tags=["vip"],
         )
-        self.lead = PipelineRecord.objects.create(
+        self.record = PipelineRecord.objects.create(
             firm=self.firm,
             customer=self.customer,
             title="Test PipelineRecord",
@@ -847,12 +847,12 @@ class LeadListAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(data[0]["source"], "referral")
 
     def test_filter_by_tag(self):
-        # self.lead has customer with tag "vip"
+        # self.record has customer with tag "vip"
         PipelineRecord.objects.create(firm=self.firm, title="Untagged PipelineRecord")
         resp = self._get(self.URL, {"tag": "vip"})
         data = resp.json()
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]["id"], str(self.lead.id))
+        self.assertEqual(data[0]["id"], str(self.record.id))
 
     def test_filter_by_created_after(self):
         from django.utils import timezone
@@ -910,7 +910,7 @@ class LeadCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
 class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
     def test_get_lead(self):
-        resp = self._get(f"/api/v1/crm/opportunities/{self.lead.id}")
+        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["title"], "Test PipelineRecord")
 
@@ -920,21 +920,21 @@ class LeadGetAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 404)
 
 
-class LeadUpdateAPITest(CRMAPIFixtureMixin, TestCase):
-    def test_patch_lead_title(self):
-        resp = self._patch(f"/api/v1/crm/opportunities/{self.lead.id}", {"title": "Updated"})
+class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
+    def test_patch_record_title(self):
+        resp = self._patch(f"/api/v1/crm/opportunities/{self.record.id}", {"title": "Updated"})
         self.assertEqual(resp.status_code, 200)
-        self.lead.refresh_from_db()
-        self.assertEqual(self.lead.title, "Updated")
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.title, "Updated")
 
     def test_patch_status_creates_activity(self):
-        resp = self._patch(f"/api/v1/crm/opportunities/{self.lead.id}", {"status": "contacted"})
+        resp = self._patch(f"/api/v1/crm/opportunities/{self.record.id}", {"status": "contacted"})
         self.assertEqual(resp.status_code, 200)
-        self.lead.refresh_from_db()
-        self.assertEqual(self.lead.status, RecordStatus.CONTACTED)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, RecordStatus.CONTACTED)
         self.assertTrue(
             Activity.objects.filter(
-                record=self.lead, type=ActivityType.STATUS_CHANGE
+                record=self.record, type=ActivityType.STATUS_CHANGE
             ).exists()
         )
 
@@ -946,13 +946,13 @@ class LeadUpdateAPITest(CRMAPIFixtureMixin, TestCase):
 
 class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_lead_admin_succeeds(self):
-        resp = self._delete(f"/api/v1/crm/opportunities/{self.lead.id}")
+        resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 204)
-        self.assertFalse(PipelineRecord.objects.filter(id=self.lead.id).exists())
+        self.assertFalse(PipelineRecord.objects.filter(id=self.record.id).exists())
 
     def test_delete_lead_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
-        resp = self._delete(f"/api/v1/crm/opportunities/{self.lead.id}")
+        resp = self._delete(f"/api/v1/crm/opportunities/{self.record.id}")
         self.assertEqual(resp.status_code, 403)
 
 
@@ -960,25 +960,25 @@ class LeadDeleteAPITest(CRMAPIFixtureMixin, TestCase):
 
 class ActivityListAPITest(CRMAPIFixtureMixin, TestCase):
     def test_list_activities_empty(self):
-        resp = self._get(f"/api/v1/crm/opportunities/{self.lead.id}/activities")
+        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}/activities")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), [])
 
     def test_list_activities_after_comment(self):
         Activity.objects.create(
-            record=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="Hello"
+            record=self.record, user=self.owner, type=ActivityType.COMMENT, content_text="Hello"
         )
-        resp = self._get(f"/api/v1/crm/opportunities/{self.lead.id}/activities")
+        resp = self._get(f"/api/v1/crm/opportunities/{self.record.id}/activities")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.json()), 1)
 
     def test_list_activities_pagination(self):
         for i in range(5):
             Activity.objects.create(
-                record=self.lead, type=ActivityType.COMMENT, content_text=f"msg {i}"
+                record=self.record, type=ActivityType.COMMENT, content_text=f"msg {i}"
             )
         resp = self._get(
-            f"/api/v1/crm/opportunities/{self.lead.id}/activities",
+            f"/api/v1/crm/opportunities/{self.record.id}/activities",
             {"page": 1, "page_size": 3},
         )
         self.assertEqual(len(resp.json()), 3)
@@ -994,7 +994,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_comment_activity(self):
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "comment",
             "content_text": "First contact",
         })
@@ -1012,20 +1012,20 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_activity_invalid_type_returns_400(self):
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "invalid_type",
         })
         self.assertEqual(resp.status_code, 400)
 
     def test_status_change_activity_updates_lead(self):
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "status_change",
             "metadata": {"new_status": "contacted"},
         })
         self.assertEqual(resp.status_code, 201)
-        self.lead.refresh_from_db()
-        self.assertEqual(self.lead.status, "contacted")
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.status, "contacted")
 
     # ------------------------------------------------------------------
     # F-3 — payload validation against tool JSON Schema
@@ -1034,7 +1034,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
     def test_payload_missing_required_field_returns_400(self):
         """status_change requires metadata.new_status — empty metadata fails."""
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "status_change",
             "metadata": {},
         })
@@ -1046,7 +1046,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
     def test_payload_invalid_enum_returns_400(self):
         """status_change has new_status enum — bogus value fails."""
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "status_change",
             "metadata": {"new_status": "not_a_real_status"},
         })
@@ -1056,7 +1056,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
     def test_payload_negative_minimum_returns_400(self):
         """call.duration_minutes has minimum: 0 — negative value fails."""
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "call",
             "content_text": "Quick chat",
             "metadata": {"duration_minutes": -5},
@@ -1067,7 +1067,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
     def test_payload_unknown_metadata_keys_allowed(self):
         """Unknown metadata properties should pass (additionalProperties: true)."""
         resp = self._post(self.URL, {
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
             "type": "comment",
             "content_text": "Hello",
             "metadata": {"some_future_key": "anything"},
@@ -1086,13 +1086,13 @@ class TaskListAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.json(), [])
 
     def test_list_tasks_returns_firm_tasks(self):
-        Task.objects.create(firm=self.firm, record=self.lead, title="Do something")
+        Task.objects.create(firm=self.firm, record=self.record, title="Do something")
         resp = self._get(self.URL)
         self.assertEqual(len(resp.json()), 1)
 
     def test_filter_by_completed(self):
-        Task.objects.create(firm=self.firm, record=self.lead, title="Done", is_completed=True)
-        Task.objects.create(firm=self.firm, record=self.lead, title="Pending")
+        Task.objects.create(firm=self.firm, record=self.record, title="Done", is_completed=True)
+        Task.objects.create(firm=self.firm, record=self.record, title="Pending")
         resp = self._get(self.URL, {"completed": "true"})
         data = resp.json()
         self.assertEqual(len(data), 1)
@@ -1100,7 +1100,7 @@ class TaskListAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_pagination(self):
         for i in range(5):
-            Task.objects.create(firm=self.firm, record=self.lead, title=f"Task {i}")
+            Task.objects.create(firm=self.firm, record=self.record, title=f"Task {i}")
         resp = self._get(self.URL, {"page": 1, "page_size": 3})
         self.assertEqual(len(resp.json()), 3)
 
@@ -1110,17 +1110,17 @@ class TaskCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_task_returns_201(self):
         resp = self._post(self.URL, {
-            "lead_id": str(self.lead.id),
+            "lead_id": str(self.record.id),
             "title": "Send proposal",
         })
         self.assertEqual(resp.status_code, 201)
         self.assertFalse(resp.json()["is_completed"])
 
     def test_create_task_logs_task_assigned_activity(self):
-        self._post(self.URL, {"lead_id": str(self.lead.id), "title": "Task A"})
+        self._post(self.URL, {"lead_id": str(self.record.id), "title": "Task A"})
         self.assertTrue(
             Activity.objects.filter(
-                record=self.lead, type=ActivityType.TASK_ASSIGNED
+                record=self.record, type=ActivityType.TASK_ASSIGNED
             ).exists()
         )
 
@@ -1134,7 +1134,7 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
     def setUp(self):
         super().setUp()
         self.task = Task.objects.create(
-            firm=self.firm, record=self.lead, title="Call client"
+            firm=self.firm, record=self.record, title="Call client"
         )
 
     def test_complete_task_returns_200(self):
@@ -1146,7 +1146,7 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
         self._post(f"/api/v1/crm/tasks/{self.task.id}/complete", {})
         self.assertTrue(
             Activity.objects.filter(
-                record=self.lead, type=ActivityType.TASK_COMPLETED
+                record=self.record, type=ActivityType.TASK_COMPLETED
             ).exists()
         )
 
@@ -1156,7 +1156,7 @@ class TaskCompleteAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         # Only one TASK_COMPLETED activity should exist
         count = Activity.objects.filter(
-            record=self.lead, type=ActivityType.TASK_COMPLETED
+            record=self.record, type=ActivityType.TASK_COMPLETED
         ).count()
         self.assertEqual(count, 1)
 
@@ -1242,7 +1242,7 @@ class AttachmentAPIFixtureMixin(CRMAPIFixtureMixin):
 
 class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
     def test_list_attachments_empty(self):
-        resp = self._get(f"/api/v1/crm/records/{self.lead.id}/attachments")
+        resp = self._get(f"/api/v1/crm/records/{self.record.id}/attachments")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), [])
 
@@ -1261,20 +1261,20 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
             content_type="application/pdf",
             size_bytes=100,
         )
-        resp = self._get(f"/api/v1/crm/records/{self.lead.id}/attachments")
+        resp = self._get(f"/api/v1/crm/records/{self.record.id}/attachments")
         self.assertEqual(resp.json(), [])
 
     def test_list_attachments_pagination(self):
         for i in range(5):
             Document.objects.create(
                 firm=self.firm,
-                record=self.lead,
+                record=self.record,
                 name=f"file{i}.txt",
                 content_type="text/plain",
                 size_bytes=i,
             )
         resp = self._get(
-            f"/api/v1/crm/records/{self.lead.id}/attachments",
+            f"/api/v1/crm/records/{self.record.id}/attachments",
             {"page": 1, "page_size": 3},
         )
         self.assertEqual(len(resp.json()), 3)
@@ -1283,38 +1283,38 @@ class AttachmentListAPITest(AttachmentAPIFixtureMixin, TestCase):
 class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
     def tearDown(self):
         # Clean up any files written to MEDIA_ROOT during tests.
-        for doc in Document.objects.filter(record=self.lead):
+        for doc in Document.objects.filter(record=self.record):
             doc.file.delete(save=False)
         super().tearDown()
 
     def test_upload_returns_201(self):
-        resp = self._upload(self.lead.id)
+        resp = self._upload(self.record.id)
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data["original_filename"], "test.txt")
-        self.assertEqual(data["lead_id"], str(self.lead.id))
+        self.assertEqual(data["lead_id"], str(self.record.id))
         self.assertIn("url", data)
 
     def test_upload_creates_db_record(self):
-        self._upload(self.lead.id)
-        self.assertEqual(Document.objects.filter(record=self.lead).count(), 1)
+        self._upload(self.record.id)
+        self.assertEqual(Document.objects.filter(record=self.record).count(), 1)
 
     def test_upload_logs_file_upload_activity(self):
-        self._upload(self.lead.id)
+        self._upload(self.record.id)
         self.assertTrue(
             Activity.objects.filter(
-                record=self.lead, type=ActivityType.FILE_UPLOAD
+                record=self.record, type=ActivityType.FILE_UPLOAD
             ).exists()
         )
 
     def test_upload_activity_metadata_contains_filename(self):
-        self._upload(self.lead.id, name="report.pdf", content=b"PDF")
-        activity = Activity.objects.get(record=self.lead, type=ActivityType.FILE_UPLOAD)
+        self._upload(self.record.id, name="report.pdf", content=b"PDF")
+        activity = Activity.objects.get(record=self.record, type=ActivityType.FILE_UPLOAD)
         self.assertEqual(activity.metadata["filename"], "report.pdf")
 
     def test_upload_worker_allowed(self):
         self.client.login(username="worker@crm-api.com", password="pass")
-        resp = self._upload(self.lead.id)
+        resp = self._upload(self.record.id)
         self.assertEqual(resp.status_code, 201)
 
     def test_upload_nonexistent_lead_returns_404(self):
@@ -1323,12 +1323,12 @@ class AttachmentUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_upload_requires_authentication(self):
         self.client.logout()
-        resp = self._upload(self.lead.id)
+        resp = self._upload(self.record.id)
         self.assertIn(resp.status_code, [401, 403])
 
     def test_upload_file_too_large_returns_400(self):
         large_content = b"x" * (20 * 1024 * 1024 + 1)
-        resp = self._upload(self.lead.id, content=large_content)
+        resp = self._upload(self.record.id, content=large_content)
         self.assertEqual(resp.status_code, 400)
         self.assertIn("20 MB", resp.json()["detail"])
 
@@ -1339,7 +1339,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
         # Create a Document record without a physical file for delete tests.
         self.attachment = Document.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             name="deleteme.txt",
             content_type="text/plain",
             size_bytes=5,
@@ -1347,7 +1347,7 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_delete_attachment_admin_succeeds(self):
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.lead.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(Document.objects.filter(id=self.attachment.id).exists())
@@ -1355,13 +1355,13 @@ class AttachmentDeleteAPITest(AttachmentAPIFixtureMixin, TestCase):
     def test_delete_attachment_worker_returns_403(self):
         self.client.login(username="worker@crm-api.com", password="pass")
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.lead.id}/attachments/{self.attachment.id}"
+            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{self.attachment.id}"
         )
         self.assertEqual(resp.status_code, 403)
 
     def test_delete_nonexistent_attachment_returns_404(self):
         resp = self._delete(
-            f"/api/v1/crm/opportunities/{self.lead.id}/attachments/{uuid_module.uuid4()}"
+            f"/api/v1/crm/opportunities/{self.record.id}/attachments/{uuid_module.uuid4()}"
         )
         self.assertEqual(resp.status_code, 404)
 
@@ -1403,7 +1403,7 @@ class VoiceMemoUploadAPITest(AttachmentAPIFixtureMixin, TestCase):
 
     def test_upload_voice_memo_returns_metadata_without_creating_activity(self):
         before = Activity.objects.filter(type=ActivityType.VOICE_MEMO).count()
-        resp = self._upload_voice(record_id=str(self.lead.id))
+        resp = self._upload_voice(record_id=str(self.record.id))
         self.assertEqual(resp.status_code, 201, resp.content)
         body = resp.json()
         self.assertIn("document_id", body)
@@ -1456,7 +1456,7 @@ class FileUploadComposerAPITest(AttachmentAPIFixtureMixin, TestCase):
         f1 = SimpleUploadedFile("a.pdf", b"PDF1", content_type="application/pdf")
         f2 = SimpleUploadedFile("b.png", b"PNGDATA", content_type="image/png")
         resp = self.client.post(
-            f"{self.URL}?record_id={self.lead.id}",
+            f"{self.URL}?record_id={self.record.id}",
             data={"files": [f1, f2]},
             **self.firm_headers(),
         )
@@ -1559,11 +1559,11 @@ class FileUploadRemoteFetchTaskTest(TestCase):
 
     def setUp(self):
         self.firm = Firm.objects.create(name="Fetch firm")
-        self.lead = PipelineRecord.objects.create(firm=self.firm, title="Fetch lead")
+        self.record = PipelineRecord.objects.create(firm=self.firm, title="Fetch lead")
 
     def _make_activity(self, **metadata):
         return Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             type=ActivityType.FILE_UPLOAD,
             metadata=metadata,
         )
@@ -1635,7 +1635,7 @@ class TaskDocumentAPIFixtureMixin(CRMAPIFixtureMixin):
     def setUp(self):
         super().setUp()
         self.task = Task.objects.create(
-            firm=self.firm, record=self.lead, title="Doc test task"
+            firm=self.firm, record=self.record, title="Doc test task"
         )
 
     def _upload_doc(self, task_id, name="task.txt", content=b"task body"):
@@ -1676,7 +1676,7 @@ class TaskDocumentListAPITest(TaskDocumentAPIFixtureMixin, TestCase):
             content_type="text/plain", size_bytes=4,
         )
         Document.objects.create(
-            firm=self.firm, record=self.lead, name="leadonly.txt",
+            firm=self.firm, record=self.record, name="leadonly.txt",
             content_type="text/plain", size_bytes=8,
         )
         resp = self._get(f"/api/v1/crm/tasks/{self.task.id}/documents")
@@ -1813,7 +1813,7 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
         # Create a second lead so we can verify cross-lead aggregation
         self.lead2 = PipelineRecord.objects.create(firm=self.firm, title="Second PipelineRecord")
         self.a1 = Activity.objects.create(
-            record=self.lead, user=self.owner, type=ActivityType.COMMENT, content_text="First"
+            record=self.record, user=self.owner, type=ActivityType.COMMENT, content_text="First"
         )
         self.a2 = Activity.objects.create(
             record=self.lead2, user=self.worker, type=ActivityType.CALL, content_text="Call"
@@ -1852,7 +1852,7 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_pagination(self):
         for i in range(5):
-            Activity.objects.create(record=self.lead, type=ActivityType.COMMENT, content_text=f"m{i}")
+            Activity.objects.create(record=self.record, type=ActivityType.COMMENT, content_text=f"m{i}")
         resp = self._get(self.URL, {"page": 1, "page_size": 3})
         self.assertEqual(len(resp.json()), 3)
 
@@ -1878,19 +1878,19 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
         now = timezone.now()
         self.overdue_task = Task.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Overdue",
             due_date=now - dt.timedelta(days=2),
         )
         self.future_task = Task.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Future",
             due_date=now + dt.timedelta(days=2),
         )
         self.completed_overdue = Task.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Done (was overdue)",
             due_date=now - dt.timedelta(days=1),
             is_completed=True,
@@ -1911,7 +1911,7 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.json()[0]["lead_title"], "Test PipelineRecord")
 
     def test_no_due_date_tasks_excluded(self):
-        Task.objects.create(firm=self.firm, record=self.lead, title="No Due Date")
+        Task.objects.create(firm=self.firm, record=self.record, title="No Due Date")
         resp = self._get(self.URL)
         ids = {item["id"] for item in resp.json()}
         self.assertIn(str(self.overdue_task.id), ids)
@@ -1923,7 +1923,7 @@ class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):
         for i in range(5):
             Task.objects.create(
                 firm=self.firm,
-                record=self.lead,
+                record=self.record,
                 title=f"Old task {i}",
                 due_date=now - dt.timedelta(days=i + 3),
             )
@@ -2064,7 +2064,7 @@ class TimeEntryAPITest(CRMFixtureMixin, TestCase):
             "duration_minutes": 90,
             "description": "Design session",
             "is_billable": True,
-            "record_id": str(self.lead.id),
+            "record_id": str(self.record.id),
         }
         resp = self.client.post(
             "/api/v1/erp/time-entries",
@@ -2074,14 +2074,14 @@ class TimeEntryAPITest(CRMFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["duration_minutes"], 90)
-        self.assertEqual(data["record_id"], str(self.lead.id))
+        self.assertEqual(data["record_id"], str(self.record.id))
 
     def test_list_time_entries(self):
         TimeEntry.objects.create(
             firm=self.firm,
             user=self.owner,
             duration_minutes=30,
-            record=self.lead,
+            record=self.record,
         )
         resp = self.client.get("/api/v1/erp/time-entries")
         self.assertEqual(resp.status_code, 200)
@@ -2185,7 +2185,7 @@ class RevenueAPITest(CRMFixtureMixin, TestCase):
             "amount": "5000.00",
             "currency": "CZK",
             "date": "2025-02-01",
-            "lead_id": str(self.lead.id),
+            "lead_id": str(self.record.id),
         }
         resp = self.client.post(
             "/api/v1/erp/revenues",
@@ -2195,7 +2195,7 @@ class RevenueAPITest(CRMFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["title"], "Project payment")
-        self.assertEqual(data["lead_id"], str(self.lead.id))
+        self.assertEqual(data["lead_id"], str(self.record.id))
 
     def test_list_revenues(self):
         RevenueItem.objects.create(
@@ -2249,16 +2249,16 @@ class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
         tool = get_tool(activity_type)
         self.assertIsNotNone(tool)
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=activity_type,
             metadata=metadata,
         )
         tool.process_action(
             activity,
-            self.lead,
+            self.record,
             {"metadata": metadata},
-            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.record.title},
         )
         activity.refresh_from_db()
         return activity, Task.objects.get(id=activity.task_id)
@@ -2274,7 +2274,7 @@ class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
         self.assertEqual(task.status, TaskStatus.TODO)
         self.assertTrue(task.auto_close_on_expiry)
         self.assertEqual(task.firm_id, self.firm.id)
-        self.assertEqual(task.record_id, self.lead.id)
+        self.assertEqual(task.record_id, self.record.id)
         self.assertIsNotNone(task.due_date)
         # Activity is linked back to the task.
         self.assertEqual(activity.task_id, task.id)
@@ -2350,7 +2350,7 @@ class ScheduledActivityToolsTest(CRMFixtureMixin, TestCase):
         from crm.streamline.registry import get_tool
         start = timezone.now() + dt.timedelta(days=3)
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type="event_scheduled",
             metadata={
@@ -2374,7 +2374,7 @@ class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
     def _make_task(self, **overrides):
         defaults = dict(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Scheduled call",
             kind="call",
             auto_close_on_expiry=True,
@@ -2395,7 +2395,7 @@ class AutoExpireScheduledTasksTest(CRMFixtureMixin, TestCase):
         # An Activity of type TASK_EXPIRED is logged on the same lead.
         self.assertTrue(
             Activity.objects.filter(
-                record=self.lead, task=task, type=ActivityType.TASK_EXPIRED
+                record=self.record, task=task, type=ActivityType.TASK_EXPIRED
             ).exists()
         )
 
@@ -2472,14 +2472,14 @@ class ScheduledActivityRenderPayloadTest(CRMFixtureMixin, TestCase):
         from crm.streamline.registry import get_tool
         tool = get_tool(activity_type)
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type=activity_type,
             metadata=metadata,
         )
         tool.process_action(
-            activity, self.lead, {"metadata": metadata},
-            {"firm": self.firm, "user": self.owner, "entity_title": self.lead.title},
+            activity, self.record, {"metadata": metadata},
+            {"firm": self.firm, "user": self.owner, "entity_title": self.record.title},
         )
         activity.refresh_from_db()
         return tool.render_payload(activity), activity
@@ -2506,7 +2506,7 @@ class ScheduledActivityRenderPayloadTest(CRMFixtureMixin, TestCase):
         """An Activity not linked to a Task (e.g. legacy) renders nulls."""
         from crm.streamline.registry import get_tool
         activity = Activity.objects.create(
-            record=self.lead,
+            record=self.record,
             user=self.owner,
             type="meeting_scheduled",
             metadata={"start_at": "2026-01-01T10:00:00Z"},
@@ -2530,9 +2530,9 @@ class ActivityOutTaskIdExposureTest(CRMFixtureMixin, TestCase):
 
     def test_activity_out_serializer_exposes_task_id(self):
         from crm.api import _activity_out
-        task = Task.objects.create(firm=self.firm, record=self.lead, title="Parent task")
+        task = Task.objects.create(firm=self.firm, record=self.record, title="Parent task")
         activity = Activity.objects.create(
-            record=self.lead, user=self.owner, type="comment",
+            record=self.record, user=self.owner, type="comment",
             content_text="hello", task=task,
         )
         out = _activity_out(activity, self.owner)
@@ -2541,7 +2541,7 @@ class ActivityOutTaskIdExposureTest(CRMFixtureMixin, TestCase):
     def test_activity_out_task_id_is_none_when_unlinked(self):
         from crm.api import _activity_out
         activity = Activity.objects.create(
-            record=self.lead, user=self.owner, type="comment", content_text="hi",
+            record=self.record, user=self.owner, type="comment", content_text="hi",
         )
         out = _activity_out(activity, self.owner)
         self.assertIsNone(out["task_id"])
@@ -2558,7 +2558,7 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
         self.customer = Customer.objects.create(
             firm=self.firm, first_name="Mig", last_name="Test",
         )
-        self.lead = PipelineRecord.objects.create(
+        self.record = PipelineRecord.objects.create(
             firm=self.firm, customer=self.customer, title="Mig PipelineRecord",
             status=RecordStatus.NEW, source=RecordSource.WEB,
         )
@@ -2574,7 +2574,7 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
     def test_creates_task_for_legacy_meeting_scheduled_activity(self):
         start = (timezone.now() + dt.timedelta(days=1)).isoformat()
         a = Activity.objects.create(
-            record=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            record=self.record, type=ActivityType.MEETING_SCHEDULED,
             metadata={
                 "start_at": start,
                 "location": "HQ",
@@ -2591,15 +2591,15 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
         self.assertEqual(task.location, "HQ")
         self.assertEqual(task.attendees, ["x@example.com"])
         self.assertEqual(task.firm_id, self.firm.id)
-        self.assertEqual(task.record_id, self.lead.id)
+        self.assertEqual(task.record_id, self.record.id)
         self.assertTrue(task.metadata.get("backfilled"))
 
     def test_skips_activities_already_linked(self):
         existing_task = Task.objects.create(
-            firm=self.firm, record=self.lead, title="Already linked",
+            firm=self.firm, record=self.record, title="Already linked",
         )
         a = Activity.objects.create(
-            record=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            record=self.record, type=ActivityType.MEETING_SCHEDULED,
             metadata={"start_at": (timezone.now() + dt.timedelta(days=1)).isoformat()},
             task=existing_task,
         )
@@ -2611,7 +2611,7 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
 
     def test_skips_activities_without_start_at(self):
         a = Activity.objects.create(
-            record=self.lead, type=ActivityType.MEETING_SCHEDULED, metadata={},
+            record=self.record, type=ActivityType.MEETING_SCHEDULED, metadata={},
         )
         before = Task.objects.count()
         self._run_migration()
@@ -2621,7 +2621,7 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
 
     def test_is_idempotent_when_run_twice(self):
         Activity.objects.create(
-            record=self.lead, type=ActivityType.MEETING_SCHEDULED,
+            record=self.record, type=ActivityType.MEETING_SCHEDULED,
             metadata={"start_at": (timezone.now() + dt.timedelta(days=1)).isoformat()},
         )
         self._run_migration()
@@ -2631,7 +2631,7 @@ class BackfillMeetingScheduledTasksMigrationTest(TestCase):
 
     def test_does_not_touch_non_meeting_scheduled_activities(self):
         Activity.objects.create(
-            record=self.lead, type="comment", content_text="hi",
+            record=self.record, type="comment", content_text="hi",
         )
         before = Task.objects.count()
         self._run_migration()
@@ -2656,7 +2656,7 @@ class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
 
         def mk(due, end=None, **kw):
             defaults = dict(
-                firm=self.firm, record=self.lead, title=kw.pop("title", "T"),
+                firm=self.firm, record=self.record, title=kw.pop("title", "T"),
                 assigned_to=kw.pop("assigned_to", self.owner),
                 due_date=due, due_date_end=end,
             )
@@ -2721,7 +2721,7 @@ class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(row["kind"], "meeting")
         self.assertEqual(row["location"], "HQ")
         self.assertEqual(row["attendees"], ["a@b.cz"])
-        self.assertEqual(row["lead_id"], str(self.lead.id))
+        self.assertEqual(row["lead_id"], str(self.record.id))
         self.assertEqual(row["assigned_to_id"], str(self.owner.id))
         self.assertIn("start", row)
         self.assertIn("end", row)
@@ -2877,7 +2877,7 @@ class TaskOutcomePromptJobTest(CRMFixtureMixin, TestCase):
     def _make(self, **overrides):
         defaults = dict(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Calendar meeting",
             kind="meeting",
             auto_close_on_expiry=True,
@@ -2984,7 +2984,7 @@ class TaskOutcomeEndpointTest(CRMAPIFixtureMixin, TestCase):
         from crm.models import Task
         self.task = Task.objects.create(
             firm=self.firm,
-            record=self.lead,
+            record=self.record,
             title="Calendar call",
             kind="call",
             auto_close_on_expiry=True,
@@ -3013,7 +3013,7 @@ class TaskOutcomeEndpointTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(acts.count(), 1)
         self.assertEqual(acts.first().content_text, "Spoke with client, all good.")
         self.assertEqual(acts.first().metadata.get("outcome"), "held")
-        self.assertEqual(acts.first().lead, self.lead)
+        self.assertEqual(acts.first().lead, self.record)
 
     def test_held_meeting_kind_logs_meeting_activity(self):
         from crm.models import ActivityType
