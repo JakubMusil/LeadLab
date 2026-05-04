@@ -30,7 +30,7 @@
     "noAccount": "Nie masz konta?",
     "signUp": "Zarejestruj się",
     "brandingTagline": "Twój CRM dla nowoczesnych zespołów sprzedaży.",
-    "brandingDescription": "Zarządzaj rekordmi, śledź transakcje i zamykaj więcej z LeadLab.",
+    "brandingDescription": "Zarządzaj rekordami, śledź transakcje i zamykaj więcej z LeadLab.",
     "loginFailed": "Logowanie nie powiodło się."
   },
   "dashboard": {
@@ -896,7 +896,7 @@
     "pipelineConfigured": "Pipeline skonfigurowany",
     "getStarted": "Zaczynamy",
     "createWorkspace": "Utwórz obszar roboczy",
-    "createWorkspaceDesc": "Obszar roboczy to miejsce, gdzie Ty i Twój zespół zarządzacie rekordmi i klientami.",
+    "createWorkspaceDesc": "Obszar roboczy to miejsce, gdzie Ty i Twój zespół zarządzacie rekordami i klientami.",
     "workspaceName": "Nazwa obszaru roboczego",
     "workspaceNameRequired": "Nazwa obszaru roboczego jest wymagana.",
     "failedToCreate": "Nie udało się utworzyć obszaru roboczego.",

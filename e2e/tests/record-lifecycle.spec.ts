@@ -4,19 +4,19 @@
  * Covers:
  *   1. Navigate to Records list
  *   2. Create a new record
- *   3. Change lead status via inline badge editor
- *   4. Open lead detail and add a comment activity
- *   5. Create a task on the lead
+ *   3. Change record status via inline badge editor
+ *   4. Open record detail and add a comment activity
+ *   5. Create a task on the record
  *   6. Complete the task
  */
 import { test, expect } from '@playwright/test'
 
 test.describe('Record lifecycle', () => {
-  const recordTitle = `E2E Lead ${Date.now()}`
+  const recordTitle = `E2E Record ${Date.now()}`
 
   test('create a record', async ({ page }) => {
     await page.goto('/app/records')
-    await expect(page.getByRole('heading', { name: /leads/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /records/i })).toBeVisible()
 
     // Open create modal.
     await page.getByRole('button', { name: /new record/i }).click()
