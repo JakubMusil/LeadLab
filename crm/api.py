@@ -5754,7 +5754,7 @@ class TeamPerformanceRow(Schema):
     user_id: str
     email: str
     full_name: str
-    leads_owned: int
+    records_owned: int
     tasks_completed: int
     activities_logged: int
 
