@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import { type DocumentOut, docFileIcon, fmtDocBytes } from '@/types/documents'
 import { useAuthStore } from '@/stores/auth'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
@@ -150,6 +151,8 @@ function saveCurrentAsShortcut() {
 // ActivityTimeline ref (used to reload feed after sidebar quick-action submits).
 const activityTimelineRef = ref<InstanceType<typeof ActivityTimeline> | null>(null)
 
+// Streamline Create Modal state (opened from sidebar picker tool-selected event).
+const activeModalTool = ref('')
 // Edit mode
 const editing = ref(false)
 const editFirstName = ref('')
@@ -646,7 +649,7 @@ onMounted(async () => {
           <EntitySidebarActionPicker
             entity-type="customer"
             :entity-id="customerId"
-            @activity-added="activityTimelineRef?.load()"
+            @tool-selected="(type) => { activeModalTool = type }"
           />
 
           <!-- Employees card (for companies) -->
@@ -873,5 +876,15 @@ onMounted(async () => {
     :loading="deleteCustomerLoading"
     @confirm="deleteCustomer"
     @cancel="showDeleteCustomerModal = false"
+  />
+
+  <!-- Streamline Create Modal — opened from sidebar picker -->
+  <StreamlineCreateModal
+    :model-value="!!activeModalTool"
+    :action-type="activeModalTool"
+    entity-type="customer"
+    :entity-id="customerId"
+    @update:model-value="(v) => { if (!v) activeModalTool = '' }"
+    @activity-added="activityTimelineRef?.load()"
   />
 </template>

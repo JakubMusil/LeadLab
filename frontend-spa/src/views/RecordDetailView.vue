@@ -13,6 +13,7 @@ import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vu
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import StreamlineFilterDropdown from '@/components/StreamlineFilterDropdown.vue'
 import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import {
   CheckIcon,
@@ -26,6 +27,7 @@ import {
   ChevronDownIcon,
   XMarkIcon,
   FlagIcon,
+  PlusIcon,
 } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 
@@ -51,6 +53,22 @@ const selectedShortcutId = ref('overview')
 const customFilters = ref<Set<string>>(new Set())
 const newShortcutName = ref('')
 const allTools = ref<any[]>([])
+
+// ─── Streamline Create Modal state ────────────────────────────────────────
+const activeModalTool = ref('')
+
+// ─── Akce dropdown state ──────────────────────────────────────────────────
+const akceDropdownOpen = ref(false)
+const sidebarPickerRef = ref<InstanceType<typeof EntitySidebarActionPicker> | null>(null)
+
+function openModalTool(type: string) {
+  activeModalTool.value = type
+  akceDropdownOpen.value = false
+}
+
+function closeAkceDropdown() {
+  akceDropdownOpen.value = false
+}
 
 interface ShortcutPreset {
   id: string
@@ -868,7 +886,7 @@ async function saveFieldEdit(fieldKey: string) {
 
         <!-- Left Column: Activity Feed & Presets Switcher -->
         <div class="lg:col-span-2">
-          <!-- Switchers: Přehled + user presets + Filtry -->
+          <!-- Switchers: Přehled + user presets + Filtry + Akce -->
           <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
             <button
               class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -900,6 +918,40 @@ async function saveFieldEdit(fieldKey: string) {
                 @delete-shortcut="deleteShortcut"
                 @move-shortcut="(payload) => moveShortcut(payload.fromIdx, payload.toIdx)"
               />
+            </div>
+
+            <!-- Akce button — at the far right, opens a tool dropdown -->
+            <div class="relative ml-auto">
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                @click="akceDropdownOpen = !akceDropdownOpen"
+              >
+                <PlusIcon class="w-4 h-4" />
+                Akce
+              </button>
+
+              <!-- Akce dropdown -->
+              <div
+                v-if="akceDropdownOpen"
+                class="absolute right-0 top-full mt-1 z-30 w-52 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl py-2 overflow-hidden"
+              >
+                <template v-for="group in (sidebarPickerRef?.groupedActionItems ?? [])" :key="group.key">
+                  <div class="px-3 pt-2 pb-0.5">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      {{ t(group.labelKey) }}
+                    </p>
+                  </div>
+                  <button
+                    v-for="item in group.items"
+                    :key="item.value"
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                    @click="openModalTool(item.value)"
+                  >
+                    <component :is="item.icon" class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span class="flex-1 truncate">{{ item.label }}</span>
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
 
@@ -1200,12 +1252,10 @@ async function saveFieldEdit(fieldKey: string) {
 
           <!-- Quick actions card -->
           <EntitySidebarActionPicker
+            ref="sidebarPickerRef"
             entity-type="record"
             :entity-id="leadId"
-            :team-members="teamMembers"
-            :attachment-upload-url="`/api/v1/crm/records/${leadId}/attachments`"
-            @activity-added="activityTimelineRef?.load()"
-            @file-uploaded="(f) => { files.unshift(f as any) }"
+            @tool-selected="openModalTool"
           />
 
         </div>
@@ -1214,6 +1264,19 @@ async function saveFieldEdit(fieldKey: string) {
 
     <div v-else class="text-center py-12 text-gray-400">{{ t('recordDetail.notFound') }}</div>
   </div>
+
+  <!-- Streamline Create Modal — opened from sidebar picker and Akce button -->
+  <StreamlineCreateModal
+    :model-value="!!activeModalTool"
+    :action-type="activeModalTool"
+    entity-type="record"
+    :entity-id="leadId"
+    :team-members="teamMembers"
+    :attachment-upload-url="`/api/v1/crm/records/${leadId}/attachments`"
+    @update:model-value="(v) => { if (!v) activeModalTool = '' }"
+    @activity-added="activityTimelineRef?.load()"
+    @file-uploaded="(f) => { files.unshift(f as any) }"
+  />
 
   <!-- Edit Modal -->
   <Teleport to="body">
@@ -1367,6 +1430,9 @@ async function saveFieldEdit(fieldKey: string) {
 
   <!-- Status popup backdrop -->
   <div v-if="statusPopupOpen" class="fixed inset-0 z-5" @click="statusPopupOpen = false" />
+
+  <!-- Akce dropdown backdrop -->
+  <div v-if="akceDropdownOpen" class="fixed inset-0 z-20" @click="closeAkceDropdown" />
 
   <ConfirmDeleteModal
     :open="!!confirmDeleteAttachmentId"
