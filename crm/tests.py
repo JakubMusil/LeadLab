@@ -1110,14 +1110,14 @@ class TaskCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_task_returns_201(self):
         resp = self._post(self.URL, {
-            "lead_id": str(self.record.id),
+            "record_id": str(self.record.id),
             "title": "Send proposal",
         })
         self.assertEqual(resp.status_code, 201)
         self.assertFalse(resp.json()["is_completed"])
 
     def test_create_task_logs_task_assigned_activity(self):
-        self._post(self.URL, {"lead_id": str(self.record.id), "title": "Task A"})
+        self._post(self.URL, {"record_id": str(self.record.id), "title": "Task A"})
         self.assertTrue(
             Activity.objects.filter(
                 record=self.record, type=ActivityType.TASK_ASSIGNED
@@ -1126,7 +1126,7 @@ class TaskCreateAPITest(CRMAPIFixtureMixin, TestCase):
 
     def test_create_task_invalid_lead_returns_400(self):
         import uuid
-        resp = self._post(self.URL, {"lead_id": str(uuid.uuid4()), "title": "Orphan"})
+        resp = self._post(self.URL, {"record_id": str(uuid.uuid4()), "title": "Orphan"})
         self.assertEqual(resp.status_code, 400)
 
 
@@ -1198,7 +1198,7 @@ class TierLimitLeadCreateAPITest(TestCase):
             **self._firm_headers(),
         )
         self.assertEqual(resp.status_code, 402)
-        self.assertIn("50 leads", resp.json()["detail"])
+        self.assertIn("50 records", resp.json()["detail"])
 
     def test_create_lead_allowed_at_49_leads(self):
         PipelineRecord.objects.bulk_create([
@@ -1861,8 +1861,8 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
         other_lead = PipelineRecord.objects.create(firm=other_firm, title="Spy PipelineRecord")
         Activity.objects.create(record=other_lead, type=ActivityType.COMMENT, content_text="spy")
         resp = self._get(self.URL)
-        lead_ids = {item["lead_id"] for item in resp.json()}
-        self.assertNotIn(str(other_lead.id), lead_ids)
+        record_ids = {item["record_id"] for item in resp.json()}
+        self.assertNotIn(str(other_lead.id), record_ids)
 
     def test_requires_authentication(self):
         self.client.logout()
@@ -2195,7 +2195,7 @@ class RevenueAPITest(CRMFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["title"], "Project payment")
-        self.assertEqual(data["lead_id"], str(self.record.id))
+        self.assertEqual(data["record_id"], str(self.record.id))
 
     def test_list_revenues(self):
         RevenueItem.objects.create(
@@ -2721,7 +2721,7 @@ class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(row["kind"], "meeting")
         self.assertEqual(row["location"], "HQ")
         self.assertEqual(row["attendees"], ["a@b.cz"])
-        self.assertEqual(row["lead_id"], str(self.record.id))
+        self.assertEqual(row["record_id"], str(self.record.id))
         self.assertEqual(row["assigned_to_id"], str(self.owner.id))
         self.assertIn("start", row)
         self.assertIn("end", row)

@@ -97,7 +97,7 @@ class StreamlineTool(ABC):
         ----------
         activity : Activity
             The freshly created ``Activity`` instance.
-        entity : Lead | Customer | Proposal
+        entity : Record | Customer | Proposal
             The CRM entity this activity is attached to.
         payload : dict
             Raw request payload dict (from ``ActivityIn``).

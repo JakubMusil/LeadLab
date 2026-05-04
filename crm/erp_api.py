@@ -92,8 +92,8 @@ class TimeEntryOut(Schema):
             firm_id=str(obj.firm_id),
             user_id=str(obj.user_id) if obj.user_id else None,
             user_name=user_name,
-            record_id=str(obj.lead_id) if obj.lead_id else None,
-            record_title=obj.lead.title if obj.lead_id else None,
+            record_id=str(obj.record_id) if obj.record_id else None,
+            record_title=obj.record.title if obj.record_id else None,
             customer_id=str(obj.customer_id) if obj.customer_id else None,
             customer_name=(
                 f"{obj.customer.first_name} {obj.customer.last_name}".strip()
@@ -129,11 +129,11 @@ def list_time_entries(
 ):
     require_membership(request)
     firm = _firm(request)
-    qs = TimeEntry.objects.filter(firm=firm).select_related("user", "lead", "customer", "task")
+    qs = TimeEntry.objects.filter(firm=firm).select_related("user", "record", "customer", "task")
     if user_id:
         qs = qs.filter(user_id=user_id)
     if record_id:
-        qs = qs.filter(lead_id=record_id)
+        qs = qs.filter(record_id=record_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     if task_id:
@@ -158,13 +158,13 @@ def create_time_entry(request, payload: TimeEntryIn):
         hourly_rate=payload.hourly_rate,
         started_at=payload.started_at,
         ended_at=payload.ended_at,
-        lead_id=payload.record_id,
+        record_id=payload.record_id,
         customer_id=payload.customer_id,
         task_id=payload.task_id,
     )
     entry.refresh_from_db()
     return TimeEntryOut.from_obj(
-        TimeEntry.objects.select_related("user", "lead", "customer", "task").get(pk=entry.pk)
+        TimeEntry.objects.select_related("user", "record", "customer", "task").get(pk=entry.pk)
     )
 
 
@@ -173,7 +173,7 @@ def get_time_entry(request, entry_id: str):
     require_membership(request)
     firm = _firm(request)
     try:
-        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task").get(
+        entry = TimeEntry.objects.select_related("user", "record", "customer", "task").get(
             pk=entry_id, firm=firm
         )
     except TimeEntry.DoesNotExist:
@@ -187,7 +187,7 @@ def update_time_entry(request, entry_id: str, payload: TimeEntryPatch):
     require_membership(request)
     firm = _firm(request)
     try:
-        entry = TimeEntry.objects.select_related("user", "lead", "customer", "task").get(
+        entry = TimeEntry.objects.select_related("user", "record", "customer", "task").get(
             pk=entry_id, firm=firm
         )
     except TimeEntry.DoesNotExist:
@@ -195,13 +195,13 @@ def update_time_entry(request, entry_id: str, payload: TimeEntryPatch):
         raise ninja_errors.HttpError(404, "Not found")
     update_data = payload.dict(exclude_unset=True)
     if 'record_id' in update_data:
-        entry.lead_id = update_data.pop('record_id')
+        entry.record_id = update_data.pop('record_id')
     for field, value in update_data.items():
         setattr(entry, field, value)
     entry.save()
     entry.refresh_from_db()
     return TimeEntryOut.from_obj(
-        TimeEntry.objects.select_related("user", "lead", "customer", "task").get(pk=entry.pk)
+        TimeEntry.objects.select_related("user", "record", "customer", "task").get(pk=entry.pk)
     )
 
 
@@ -277,8 +277,8 @@ class ExpenseItemOut(Schema):
             firm_id=str(obj.firm_id),
             user_id=str(obj.user_id) if obj.user_id else None,
             user_name=user_name,
-            record_id=str(obj.lead_id) if obj.lead_id else None,
-            record_title=obj.lead.title if obj.lead_id else None,
+            record_id=str(obj.record_id) if obj.record_id else None,
+            record_title=obj.record.title if obj.record_id else None,
             customer_id=str(obj.customer_id) if obj.customer_id else None,
             customer_name=(
                 f"{obj.customer.first_name} {obj.customer.last_name}".strip()
@@ -311,9 +311,9 @@ def list_expenses(
 ):
     require_membership(request)
     firm = _firm(request)
-    qs = ExpenseItem.objects.filter(firm=firm).select_related("user", "lead", "customer", "task")
+    qs = ExpenseItem.objects.filter(firm=firm).select_related("user", "record", "customer", "task")
     if record_id:
-        qs = qs.filter(lead_id=record_id)
+        qs = qs.filter(record_id=record_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     if date_from:
@@ -336,12 +336,12 @@ def create_expense(request, payload: ExpenseItemIn):
         date=payload.date,
         recurrence=payload.recurrence,
         notes=payload.notes,
-        lead_id=payload.record_id,
+        record_id=payload.record_id,
         customer_id=payload.customer_id,
         task_id=payload.task_id,
     )
     return ExpenseItemOut.from_obj(
-        ExpenseItem.objects.select_related("user", "lead", "customer", "task").get(pk=obj.pk)
+        ExpenseItem.objects.select_related("user", "record", "customer", "task").get(pk=obj.pk)
     )
 
 
@@ -350,7 +350,7 @@ def update_expense(request, item_id: str, payload: ExpenseItemPatch):
     require_membership(request)
     firm = _firm(request)
     try:
-        obj = ExpenseItem.objects.select_related("user", "lead", "customer", "task").get(
+        obj = ExpenseItem.objects.select_related("user", "record", "customer", "task").get(
             pk=item_id, firm=firm
         )
     except ExpenseItem.DoesNotExist:
@@ -358,12 +358,12 @@ def update_expense(request, item_id: str, payload: ExpenseItemPatch):
         raise ninja_errors.HttpError(404, "Not found")
     upd = payload.dict(exclude_unset=True)
     if 'record_id' in upd:
-        obj.lead_id = upd.pop('record_id')
+        obj.record_id = upd.pop('record_id')
     for field, value in upd.items():
         setattr(obj, field, value)
     obj.save()
     return ExpenseItemOut.from_obj(
-        ExpenseItem.objects.select_related("user", "lead", "customer", "task").get(pk=obj.pk)
+        ExpenseItem.objects.select_related("user", "record", "customer", "task").get(pk=obj.pk)
     )
 
 
@@ -435,8 +435,8 @@ class RevenueItemOut(Schema):
             firm_id=str(obj.firm_id),
             user_id=str(obj.user_id) if obj.user_id else None,
             user_name=user_name,
-            record_id=str(obj.lead_id) if obj.lead_id else None,
-            record_title=obj.lead.title if obj.lead_id else None,
+            record_id=str(obj.record_id) if obj.record_id else None,
+            record_title=obj.record.title if obj.record_id else None,
             customer_id=str(obj.customer_id) if obj.customer_id else None,
             customer_name=(
                 f"{obj.customer.first_name} {obj.customer.last_name}".strip()
@@ -467,9 +467,9 @@ def list_revenues(
 ):
     require_membership(request)
     firm = _firm(request)
-    qs = RevenueItem.objects.filter(firm=firm).select_related("user", "lead", "customer")
+    qs = RevenueItem.objects.filter(firm=firm).select_related("user", "record", "customer")
     if record_id:
-        qs = qs.filter(lead_id=record_id)
+        qs = qs.filter(record_id=record_id)
     if customer_id:
         qs = qs.filter(customer_id=customer_id)
     if date_from:
@@ -492,11 +492,11 @@ def create_revenue(request, payload: RevenueItemIn):
         date=payload.date,
         recurrence=payload.recurrence,
         notes=payload.notes,
-        lead_id=payload.record_id,
+        record_id=payload.record_id,
         customer_id=payload.customer_id,
     )
     return RevenueItemOut.from_obj(
-        RevenueItem.objects.select_related("user", "lead", "customer").get(pk=obj.pk)
+        RevenueItem.objects.select_related("user", "record", "customer").get(pk=obj.pk)
     )
 
 
@@ -505,7 +505,7 @@ def update_revenue(request, item_id: str, payload: RevenueItemPatch):
     require_membership(request)
     firm = _firm(request)
     try:
-        obj = RevenueItem.objects.select_related("user", "lead", "customer").get(
+        obj = RevenueItem.objects.select_related("user", "record", "customer").get(
             pk=item_id, firm=firm
         )
     except RevenueItem.DoesNotExist:
@@ -513,12 +513,12 @@ def update_revenue(request, item_id: str, payload: RevenueItemPatch):
         raise ninja_errors.HttpError(404, "Not found")
     upd = payload.dict(exclude_unset=True)
     if 'record_id' in upd:
-        obj.lead_id = upd.pop('record_id')
+        obj.record_id = upd.pop('record_id')
     for field, value in upd.items():
         setattr(obj, field, value)
     obj.save()
     return RevenueItemOut.from_obj(
-        RevenueItem.objects.select_related("user", "lead", "customer").get(pk=obj.pk)
+        RevenueItem.objects.select_related("user", "record", "customer").get(pk=obj.pk)
     )
 
 
@@ -565,9 +565,9 @@ def reports_summary(
     rev_qs = RevenueItem.objects.filter(firm=firm)
 
     if record_id:
-        te_qs = te_qs.filter(lead_id=record_id)
-        ex_qs = ex_qs.filter(lead_id=record_id)
-        rev_qs = rev_qs.filter(lead_id=record_id)
+        te_qs = te_qs.filter(record_id=record_id)
+        ex_qs = ex_qs.filter(record_id=record_id)
+        rev_qs = rev_qs.filter(record_id=record_id)
     if customer_id:
         te_qs = te_qs.filter(customer_id=customer_id)
         ex_qs = ex_qs.filter(customer_id=customer_id)

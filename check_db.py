@@ -7,4 +7,4 @@ django.setup()
 from crm.models import Task, Activity, PipelineRecord
 print("Tasks:", Task.objects.count())
 print("Activities:", Activity.objects.count())
-print("Leads:", PipelineRecord.objects.count())
+print("Records:", PipelineRecord.objects.count())

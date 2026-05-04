@@ -37,7 +37,7 @@ class EmailSequencesPlugin(LeadLabPlugin):
             "individual sends."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/email-sequences/icon.png",
-        "permissions": ["leads:read", "activities:write", "notifications:send"],
+        "permissions": ["records:read", "activities:write", "notifications:send"],
         "activity_types": [SEQUENCE_EMAIL_SENT],
         "webhook_event_types": ["sequence.email_sent"],
         "config_schema": {

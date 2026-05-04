@@ -2,8 +2,8 @@
 Locust load-testing scenario for LeadLab.
 
 Simulates realistic multi-tenant CRM usage patterns.  The scenario covers the
-most frequently hit API paths: authentication, lead listing, customer listing,
-dashboard stats, and lead creation.
+most frequently hit API paths: authentication, record listing, customer listing,
+dashboard stats, and record creation.
 
 Usage:
   locust -f locustfile.py --host http://localhost:8000 \
@@ -39,10 +39,10 @@ class CRMTasks(SequentialTaskSet):
     """
     Simulates a sales rep's session:
       1. Hit the health endpoint (cheap probe).
-      2. Fetch leads list (most common read).
+      2. Fetch records list (most common read).
       3. Fetch customers list.
       4. Fetch dashboard stats.
-      5. Create a lead (write operation).
+      5. Create a record (write operation).
       6. Fetch the activity feed.
     """
 
@@ -58,15 +58,15 @@ class CRMTasks(SequentialTaskSet):
                 resp.failure(f"Health check failed: {resp.status_code}")
 
     @task
-    def list_leads(self):
+    def list_records(self):
         with self.client.get(
-            "/api/v1/crm/leads",
+            "/api/v1/crm/records",
             headers=_headers(self.firm_id),
-            name="/crm/leads (list)",
+            name="/crm/records (list)",
             catch_response=True,
         ) as resp:
             if resp.status_code not in (200, 401):
-                resp.failure(f"Leads list failed: {resp.status_code}")
+                resp.failure(f"Records list failed: {resp.status_code}")
 
     @task
     def list_customers(self):
@@ -91,23 +91,23 @@ class CRMTasks(SequentialTaskSet):
                 resp.failure(f"Dashboard stats failed: {resp.status_code}")
 
     @task
-    def create_lead(self):
+    def create_record(self):
         payload = json.dumps(
             {
-                "title": f"Locust Lead {time.time_ns()}",
+                "title": f"Locust Record {time.time_ns()}",
                 "status": "new",
                 "source": "web",
             }
         )
         with self.client.post(
-            "/api/v1/crm/leads",
+            "/api/v1/crm/records",
             data=payload,
             headers=_headers(self.firm_id),
-            name="/crm/leads (create)",
+            name="/crm/records (create)",
             catch_response=True,
         ) as resp:
             if resp.status_code not in (200, 201, 401):
-                resp.failure(f"Lead creation failed: {resp.status_code}")
+                resp.failure(f"Record creation failed: {resp.status_code}")
 
     @task
     def activity_feed(self):

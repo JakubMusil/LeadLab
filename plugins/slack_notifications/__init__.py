@@ -33,7 +33,7 @@ class SlackNotificationsPlugin(LeadLabPlugin):
             "occur: new lead, lead won/lost, task overdue, proposal accepted."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/slack-notifications/icon.png",
-        "permissions": ["notifications:send", "leads:read"],
+        "permissions": ["notifications:send", "records:read"],
         "activity_types": [],
         "webhook_event_types": [
             "lead.created",

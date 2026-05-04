@@ -73,8 +73,8 @@ class CommentTool(StreamlineTool):
             "entity_type": activity.entity_type,
             "entity_id": activity.entity_id,
             "entity_title": entity_title,
-            "lead_id": str(record.id) if record else None,
-            "lead_title": record.title if record else None,
+            "record_id": str(record.id) if record else None,
+            "record_title": record.title if record else None,
             "by_user": getattr(user, "full_name", None) or user.email,
             "content_preview": activity.content_text[:_MENTION_PREVIEW_LENGTH],
         }
@@ -1433,7 +1433,7 @@ class EventScheduledTool(_ScheduledActivityTool):
     Generic calendar event — modeled loosely on a Google Calendar event.
 
     Distinct from :class:`MeetingScheduledTool` (which is specifically a
-    sales meeting with a Lead) and :class:`CallScheduledTool` (a phone
+    sales meeting with a Record) and :class:`CallScheduledTool` (a phone
     appointment): an "event" can be anything that needs a calendar slot
     *and* a record on the entity timeline — a workshop, a webinar,
     annual review, internal kickoff, etc.

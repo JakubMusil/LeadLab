@@ -8,12 +8,12 @@ Usage in a Django Ninja router
 ------------------------------
     from firms.auth import require_membership, MembershipRole
 
-    @router.get("/leads")
+    @router.get("/records")
     def list_leads(request):
         membership = require_membership(request)          # any role
         # ... firm-scoped query using request.firm ...
 
-    @router.post("/leads")
+    @router.post("/records")
     def create_lead(request, payload: LeadIn):
         membership = require_membership(request, min_role=MembershipRole.WORKER)
         require_active_subscription(request.firm)
@@ -122,7 +122,7 @@ def check_tier_limits(firm: Firm) -> None:
 
     * 1 Firm  (checked externally at registration time)
     * 2 Users (Members)
-    * 50 Leads total
+    * 50 Records total
 
     Raises :exc:`SubscriptionRequired` if any limit is exceeded.
     """
@@ -144,6 +144,6 @@ def check_tier_limits(firm: Firm) -> None:
     lead_count = PipelineRecord.objects.filter(firm=firm).count()
     if lead_count >= 50:
         raise SubscriptionRequired(
-            "Free tier allows a maximum of 50 leads. "
-            "Upgrade to Pro for unlimited leads."
+            "Free tier allows a maximum of 50 records. "
+            "Upgrade to Pro for unlimited records."
         )

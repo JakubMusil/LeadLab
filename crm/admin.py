@@ -135,9 +135,9 @@ class ProposalItemInline(admin.TabularInline):
 
 @admin.register(Proposal)
 class ProposalAdmin(admin.ModelAdmin):
-    list_display = ("title", "status", "lead", "currency", "view_count", "firm", "created_at")
+    list_display = ("title", "status", "record", "currency", "view_count", "firm", "created_at")
     list_filter = ("firm", "status")
-    search_fields = ("title", "lead__title")
+    search_fields = ("title", "record__title")
     readonly_fields = ("public_token", "view_count", "first_viewed_at", "sent_at", "responded_at", "created_at", "updated_at")
     inlines = [ProposalItemInline]
 

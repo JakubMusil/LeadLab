@@ -373,7 +373,7 @@ class WebhookEndpoint(models.Model):
     )
     events = models.JSONField(
         default=list,
-        help_text="List of event names to subscribe to, e.g. ['lead.created', 'activity.created']. "
+        help_text="List of event names to subscribe to, e.g. ['record.created', 'activity.created']. "
                   "Empty list means all events.",
     )
     is_active = models.BooleanField(default=True)

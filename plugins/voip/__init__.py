@@ -27,7 +27,7 @@ class VoIPPlugin(LeadLabPlugin):
             "page. Call duration and recording URL are logged as a CALL activity."
         ),
         "icon_url": "https://cdn.leadlab.io/plugins/voip/icon.png",
-        "permissions": ["leads:read", "activities:write"],
+        "permissions": ["records:read", "activities:write"],
         "activity_types": ["call"],
         "webhook_event_types": ["call.completed"],
         "config_schema": {
