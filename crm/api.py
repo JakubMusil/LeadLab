@@ -5636,16 +5636,16 @@ def pipeline_velocity(request):
             type=ActivityType.STATUS_CHANGE,
             record__isnull=False,
         )
-        .values("lead_id", "metadata", "created_at")
-        .order_by("lead_id", "created_at")
+        .values("record_id", "metadata", "created_at")
+        .order_by("record_id", "created_at")
     )
 
-    # Group by lead — each row is a status_change Activity with new_status in metadata
+    # Group by record — each row is a status_change Activity with new_status in metadata
     lead_history: Dict[str, list] = {}
     for entry in history_qs:
         new_status = entry["metadata"].get("new_status") if isinstance(entry["metadata"], dict) else None
         if new_status:
-            lead_history.setdefault(str(entry["lead_id"]), []).append(
+            lead_history.setdefault(str(entry["record_id"]), []).append(
                 {"to_status": new_status, "changed_at": entry["created_at"]}
             )
 
