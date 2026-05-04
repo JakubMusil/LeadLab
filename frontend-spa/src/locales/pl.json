@@ -430,7 +430,31 @@
     "confirmDeleteStage": "Czy na pewno usunąć ten etap?",
     "stageDragHandle": "Przeciągnij, aby zmienić kolejność",
     "categoryCountLabel": "{count} aktywnych rekordów",
-    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}”…"
+    "quickCreatePlaceholderInCategory": "Szybkie dodanie do „{category}”…",
+    "fieldsTitle": "Pola",
+    "fieldDragHandle": "Przeciągnij, aby zmienić kolejność",
+    "fieldVisible": "Widoczne",
+    "fieldRequired": "Wymagane",
+    "fieldHidden": "Ukryte",
+    "noFields": "Brak skonfigurowanych pól.",
+    "addField": "Dodaj pole",
+    "cancel": "Anuluj",
+    "fieldKeyPlaceholder": "Wybierz pole…",
+    "fieldCreated": "Pole dodane.",
+    "fieldCreateFailed": "Nie udało się dodać pola.",
+    "fieldUpdated": "Pole zaktualizowane.",
+    "fieldUpdateFailed": "Nie udało się zaktualizować pola.",
+    "fieldDeleted": "Pole usunięte.",
+    "fieldDeleteFailed": "Nie udało się usunąć pola.",
+    "confirmDeleteField": "Czy na pewno usunąć to pole z kategorii?",
+    "fieldKey": {
+      "value_currency": "Wartość / Waluta",
+      "date_range": "Zakres dat",
+      "expires_at": "Data wygaśnięcia",
+      "notes": "Notatki",
+      "source": "Źródło",
+      "origin_record": "Rekord źródłowy"
+    }
   },
   "proposals": {
     "title": "Oferty",

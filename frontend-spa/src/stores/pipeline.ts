@@ -27,6 +27,12 @@ export interface CategoryFieldOut {
   order: number
 }
 
+export interface CategoryFieldIn {
+  is_visible?: boolean
+  is_required?: boolean
+  order?: number
+}
+
 export interface CategoryOut {
   id: string
   firm_id: string
@@ -215,6 +221,67 @@ export const usePipelineStore = defineStore('pipeline', () => {
   }
 
   // ---------------------------------------------------------------------------
+  // CategoryField CRUD
+  // ---------------------------------------------------------------------------
+
+  async function createField(
+    categoryId: string,
+    fieldKey: string,
+    payload: CategoryFieldIn,
+  ): Promise<{ ok: boolean; data?: CategoryFieldOut; error?: string }> {
+    const res = await api.post<CategoryFieldOut>(
+      `/api/v1/crm/categories/${categoryId}/fields/${fieldKey}`,
+      payload,
+    )
+    if (res.ok) {
+      const cat = categories.value.find((c) => c.id === categoryId)
+      if (cat) {
+        const existing = cat.fields.findIndex((f) => f.field_key === fieldKey)
+        if (existing !== -1) {
+          cat.fields[existing] = res.data
+        } else {
+          cat.fields.push(res.data)
+        }
+      }
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to create field.') }
+  }
+
+  async function updateField(
+    categoryId: string,
+    fieldKey: string,
+    payload: CategoryFieldIn,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.patch<CategoryFieldOut>(
+      `/api/v1/crm/categories/${categoryId}/fields/${fieldKey}`,
+      payload,
+    )
+    if (res.ok) {
+      const cat = categories.value.find((c) => c.id === categoryId)
+      if (cat) {
+        const idx = cat.fields.findIndex((f) => f.field_key === fieldKey)
+        if (idx !== -1) cat.fields[idx] = res.data
+      }
+      return { ok: true }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update field.') }
+  }
+
+  async function deleteField(
+    categoryId: string,
+    fieldKey: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const res = await api.delete(`/api/v1/crm/categories/${categoryId}/fields/${fieldKey}`)
+    if (res.ok || res.status === 204) {
+      const cat = categories.value.find((c) => c.id === categoryId)
+      if (cat) cat.fields = cat.fields.filter((f) => f.field_key !== fieldKey)
+      return { ok: true }
+    }
+    return { ok: false, error: extractErrorMessage(res.data, 'Cannot delete field.') }
+  }
+
+  // ---------------------------------------------------------------------------
   // React to WS category.updated event
   // ---------------------------------------------------------------------------
 
@@ -239,6 +306,9 @@ export const usePipelineStore = defineStore('pipeline', () => {
     createStage,
     updateStage,
     deleteStage,
+    createField,
+    updateField,
+    deleteField,
     handleCategoryUpdated,
   }
 })
