@@ -53,7 +53,7 @@ const router = createRouter({
         {
           path: 'records/:id',
           component: () => import('@/views/RecordDetailView.vue'),
-          meta: { title: 'Record Detail' },
+          meta: { title: 'Record Detail', isRecordDetail: true },
         },
         {
           path: 'records/:id/proposals/:pid?',

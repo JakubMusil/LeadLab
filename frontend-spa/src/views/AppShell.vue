@@ -59,7 +59,7 @@ const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
 const currentPageUrl = computed(() => window.location.href)
-const isRecordDetailPage = computed(() => route.meta?.title === 'Record Detail')
+const isRecordDetailPage = computed(() => !!route.meta?.isRecordDetail)
 
 watchEffect(() => {
   const color = firmStore.activeFirm?.primary_color ?? '#dc2626'
@@ -505,7 +505,7 @@ function formatNotifTime(ts: string): string {
         <div class="flex items-center gap-1.5 min-w-0 flex-shrink overflow-hidden">
           <template v-if="isRecordDetailPage && leadsStore.currentRecord">
             <FunnelIcon class="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-            <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[14rem] sm:max-w-xs">{{ leadsStore.currentRecord.title }}</span>
+            <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{{ leadsStore.currentRecord.title }}</span>
             <button
               class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/nav-permalink"
               :title="navPermalinkCopiedId === 'nav-page' ? 'Zkopírováno!' : 'Kopírovat odkaz'"
