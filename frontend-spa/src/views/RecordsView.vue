@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordOut } from '@/stores/records'
-import { usePipelineStore } from '@/stores/pipeline'
+import { usePipelineStore, type StageOut } from '@/stores/pipeline'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
 import { useAuthStore } from '@/stores/auth'
@@ -13,6 +13,8 @@ import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import Dropdown from '@/components/ui/Dropdown.vue'
 import { ConfirmDeleteModal } from '@/components/ui'
+import Modal from '@/components/ui/Modal.vue'
+import Button from '@/components/ui/Button.vue'
 import RecordScoreBadge from '@/components/RecordScoreBadge.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
@@ -753,6 +755,18 @@ async function onDrop(status: string) {
 const draggingStageRecord = ref<RecordOut | null>(null)
 const dragOverStageId = ref<string | null>(null)
 
+// Terminal stage confirmation modal state
+interface TerminalMovePayload {
+  record: RecordOut
+  stage: StageOut
+}
+const terminalMovePayload = ref<TerminalMovePayload | null>(null)
+const terminalMoveNote = ref('')
+const terminalAddCheckpoint = ref(false)
+const terminalCheckpointName = ref('')
+const terminalCheckpointDate = ref('')
+const terminalMoving = ref(false)
+
 function onStageDragStart(e: DragEvent, record: RecordOut) {
   draggingStageRecord.value = record
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
@@ -777,8 +791,46 @@ async function onStageDrop(stageId: string) {
   const record = draggingStageRecord.value
   draggingStageRecord.value = null
   const stage = currentCategoryStages.value.find(s => s.id === stageId)
+
+  // Show confirmation modal for terminal stages
+  if (stage?.is_terminal) {
+    terminalMovePayload.value = { record, stage }
+    terminalMoveNote.value = ''
+    terminalAddCheckpoint.value = false
+    terminalCheckpointName.value = ''
+    terminalCheckpointDate.value = ''
+    return
+  }
+
   const result = await store.patchStage(record.id, stageId, stage?.name ?? null)
   if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
+}
+
+async function confirmTerminalMove() {
+  if (!terminalMovePayload.value) return
+  terminalMoving.value = true
+  const { record, stage } = terminalMovePayload.value
+  const result = await store.patchStage(record.id, stage.id, stage.name)
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.terminalMoveFailed'))
+    terminalMoving.value = false
+    return
+  }
+  // Optionally create a checkpoint
+  if (terminalAddCheckpoint.value && terminalCheckpointName.value.trim()) {
+    const cpRes = await api.post(`/api/v1/crm/records/${record.id}/checkpoints`, {
+      name: terminalCheckpointName.value.trim(),
+      date: terminalCheckpointDate.value || null,
+      description: terminalMoveNote.value.trim(),
+    })
+    if (!cpRes.ok) toast.error(t('pipeline.terminalCheckpointFailed'))
+  }
+  terminalMoving.value = false
+  terminalMovePayload.value = null
+}
+
+function cancelTerminalMove() {
+  terminalMovePayload.value = null
 }
 
 function fmtValue(record: RecordOut) {
@@ -1772,6 +1824,92 @@ function showAssigneeAvatar(record: RecordOut): boolean {
     @confirm="confirmDelete(confirmDeleteId!)"
     @cancel="confirmDeleteId = null"
   />
+
+  <!-- Terminal stage confirmation modal -->
+  <Modal
+    :open="!!terminalMovePayload"
+    :title="terminalMovePayload ? t('pipeline.terminalMoveTitle').replace('{stage}', terminalMovePayload.stage.name) : ''"
+    size="sm"
+    @close="cancelTerminalMove"
+  >
+    <div class="space-y-4">
+      <!-- Subtitle -->
+      <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('pipeline.terminalMoveSubtitle') }}</p>
+
+      <!-- Record name badge -->
+      <div
+        v-if="terminalMovePayload"
+        class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+        :class="terminalMovePayload.stage.is_won
+          ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'"
+      >
+        <span
+          class="inline-block w-2 h-2 rounded-full flex-shrink-0"
+          :style="{ backgroundColor: terminalMovePayload?.stage.color || '#6b7280' }"
+        />
+        {{ terminalMovePayload?.record.title }}
+        <span class="ml-auto text-xs opacity-70">→ {{ terminalMovePayload?.stage.name }}</span>
+      </div>
+
+      <!-- Outcome note -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {{ t('pipeline.terminalMoveNote') }}
+        </label>
+        <textarea
+          v-model="terminalMoveNote"
+          rows="2"
+          :placeholder="t('pipeline.terminalMoveNotePlaceholder')"
+          class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+        />
+      </div>
+
+      <!-- Checkpoint option -->
+      <div class="space-y-2">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            v-model="terminalAddCheckpoint"
+            type="checkbox"
+            class="rounded border-gray-300 text-red-600 focus:ring-red-400"
+          />
+          <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('pipeline.terminalAddCheckpoint') }}</span>
+        </label>
+        <template v-if="terminalAddCheckpoint">
+          <input
+            v-model="terminalCheckpointName"
+            type="text"
+            :placeholder="t('pipeline.terminalCheckpointNamePlaceholder')"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('pipeline.terminalCheckpointDate') }}</label>
+            <input
+              v-model="terminalCheckpointDate"
+              type="date"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button variant="secondary" :disabled="terminalMoving" @click="cancelTerminalMove">
+        {{ t('pipeline.cancel') }}
+      </Button>
+      <Button
+        :variant="terminalMovePayload?.stage.is_won ? 'primary' : 'secondary'"
+        :loading="terminalMoving"
+        :class="terminalMovePayload?.stage.is_won
+          ? '!bg-green-600 hover:!bg-green-700 focus:!ring-green-500'
+          : ''"
+        @click="confirmTerminalMove"
+      >
+        {{ terminalMovePayload?.stage.is_won ? t('pipeline.terminalConfirmWon') : t('pipeline.terminalConfirmLost') }}
+      </Button>
+    </template>
+  </Modal>
 
   <!-- Global status popup backdrop -->
   <div v-if="statusPopupId" class="fixed inset-0 z-5" @click="statusPopupId = null" />
