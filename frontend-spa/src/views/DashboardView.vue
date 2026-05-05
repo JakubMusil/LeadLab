@@ -30,6 +30,9 @@ import WinLossWidget from '@/components/dashboard/WinLossWidget.vue'
 import ActivityHeatmapWidget from '@/components/dashboard/ActivityHeatmapWidget.vue'
 import TeamLeaderboardWidget from '@/components/dashboard/TeamLeaderboardWidget.vue'
 import DashboardTour from '@/components/dashboard/DashboardTour.vue'
+import WidgetConfigDialog from '@/components/dashboard/WidgetConfigDialog.vue'
+import { widgetHasConfig } from '@/stores/dashboard'
+import { Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 const firmStore = useFirmStore()
@@ -69,6 +72,7 @@ interface StatsData {
 const stats = ref<StatsData | null>(null)
 const loading = ref(false)
 const showLayoutEditor = ref(false)
+const configuringWidgetId = ref<string | null>(null)
 
 // Ref to MyTopRecordsWidget to call load() after quick-create
 const myTopRecordsRef = ref<InstanceType<typeof MyTopRecordsWidget> | null>(null)
@@ -287,6 +291,16 @@ onUnmounted(() => {
           <span class="drag-handle cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm" :title="t('dashboard.dragToReorder')" aria-hidden="true">⠿</span>
           <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ WIDGET_LABELS[widget.id as WidgetId] ?? widget.id }}</span>
           <button
+            v-if="widgetHasConfig(widget.id)"
+            type="button"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded"
+            :aria-label="`${t('dashboard.cfgConfigure')} ${WIDGET_LABELS[widget.id as WidgetId] ?? widget.id}`"
+            :title="t('dashboard.cfgConfigure')"
+            @click="configuringWidgetId = widget.id"
+          >
+            <Cog6ToothIcon class="w-4 h-4" aria-hidden="true" />
+          </button>
+          <button
             type="button"
             class="relative inline-flex h-5 w-9 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-color)] focus:ring-offset-2"
             :class="widget.visible ? 'bg-[color:var(--brand-color)]' : 'bg-gray-300 dark:bg-gray-600'"
@@ -399,5 +413,11 @@ onUnmounted(() => {
     </template>
 
     <div v-else class="text-center py-12 text-gray-400">{{ t('dashboard.failedToLoad') }}</div>
+
+    <WidgetConfigDialog
+      :widget-id="configuringWidgetId"
+      :widget-label="configuringWidgetId ? WIDGET_LABELS[configuringWidgetId as WidgetId] : ''"
+      @close="configuringWidgetId = null"
+    />
   </div>
 </template>

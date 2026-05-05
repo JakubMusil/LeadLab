@@ -15,12 +15,57 @@ export interface WidgetSize {
   h: number
 }
 
+export type WidgetSortOption = 'score' | 'value' | 'stale'
+
 export interface WidgetConfigOptions {
   category_id?: string | null
   scope?: DashboardScope
   range?: DashboardRange
-  sort?: 'score' | 'value' | 'stale'
+  sort?: WidgetSortOption
   limit?: number
+  days?: number
+}
+
+// ---------------------------------------------------------------------------
+// Per-widget config schema
+//
+// Drives the WidgetConfigDialog form: each entry lists the config fields a
+// widget exposes to the user. Widgets that don't appear in this map have no
+// configurable options and their gear icon stays hidden.
+// ---------------------------------------------------------------------------
+
+export type WidgetConfigFieldType = 'range' | 'scope' | 'category' | 'sort' | 'number'
+
+export interface WidgetConfigField {
+  key: keyof WidgetConfigOptions
+  type: WidgetConfigFieldType
+  /** Translation key under `dashboard.cfg*` for the field's label */
+  labelKey: string
+  /** For 'number' type: clamp range */
+  min?: number
+  max?: number
+  /** For 'sort' type: allowed values */
+  sortOptions?: WidgetSortOption[]
+}
+
+export const WIDGET_CONFIG_SCHEMA: Record<string, WidgetConfigField[] | undefined> = {
+  my_top_records: [
+    { key: 'sort', type: 'sort', labelKey: 'cfgSort', sortOptions: ['score', 'value', 'stale'] },
+    { key: 'limit', type: 'number', labelKey: 'cfgLimit', min: 3, max: 20 },
+  ],
+  stale_records: [
+    { key: 'days', type: 'number', labelKey: 'cfgDaysThreshold', min: 1, max: 90 },
+    { key: 'limit', type: 'number', labelKey: 'cfgLimit', min: 3, max: 20 },
+  ],
+  upcoming_checkpoints: [
+    { key: 'scope', type: 'scope', labelKey: 'cfgScope' },
+    { key: 'days', type: 'number', labelKey: 'cfgDaysAhead', min: 1, max: 60 },
+  ],
+}
+
+export function widgetHasConfig(id: string): boolean {
+  const fields = WIDGET_CONFIG_SCHEMA[id]
+  return Array.isArray(fields) && fields.length > 0
 }
 
 export interface WidgetConfig {

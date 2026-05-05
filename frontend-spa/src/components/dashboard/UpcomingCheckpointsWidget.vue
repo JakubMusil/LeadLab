@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { FlagIcon, CheckCircleIcon as CheckCircleOutlineIcon } from '@heroicons/vue/24/outline'
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/vue/24/solid'
 import { useI18n } from '@/composables/useI18n'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 interface CheckpointItem {
@@ -23,16 +24,25 @@ interface CheckpointsData {
 }
 
 const { t } = useI18n()
+const { scope, days } = useDashboardWidget('upcoming_checkpoints')
 
 const data = ref<CheckpointsData | null>(null)
 const loading = ref(false)
 const completing = ref<Set<string>>(new Set())
 
+const DEFAULT_UPCOMING_DAYS = 14
+
+const upcomingDays = computed(() => days.value ?? DEFAULT_UPCOMING_DAYS)
+
 async function load() {
   loading.value = true
   try {
+    const params = new URLSearchParams({
+      upcoming_days: String(upcomingDays.value),
+      scope: scope.value,
+    })
     const res = await api.get<CheckpointsData>(
-      '/api/v1/crm/dashboard/checkpoints?upcoming_days=14&scope=mine',
+      `/api/v1/crm/dashboard/checkpoints?${params}`,
     )
     if (res.ok) data.value = res.data
   } finally {
@@ -80,6 +90,7 @@ const overdueCount = computed(
 
 defineExpose({ load })
 onMounted(load)
+watch([scope, upcomingDays], load)
 </script>
 
 <template>
