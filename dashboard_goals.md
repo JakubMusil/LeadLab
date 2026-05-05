@@ -565,3 +565,43 @@ order=15, audience='admin').
   - 12-column responsive grid (Tailwind grid-cols-12 + per-widget colSpan/rowSpan).
   - Light/dark a mobile review.
   - Onboarding tour pro nový dashboard.
+
+### 2026-05-05 — Fáze 6 (✅ hotovo, UX vylepšení)
+
+Implementováno:
+
+- **Globální range picker** – přidán do hlavičky dashboardu vedle tlačítka
+  „Upravit layout". Pill přepínač s možnostmi 7d / 30d / 90d / QTD / YTD / Vše.
+  Hodnota uložena v `useDashboardLayoutStore.globalRange`, persistuje v layoutu.
+  `loadStats()` nyní posílá `?range=…`. `useDashboardWidget.range` fallbackuje
+  na globální rozsah, pokud není per-widget override.
+
+- **12-col CSS grid** – widgety jsou nyní rozmístěny v `grid grid-cols-12 gap-4`.
+  Každý widget má `colSpan` (1–12) v `DEFAULT_WIDGETS`. Na mobilech (`< md`)
+  všechny widgety zaujímají 12 sloupců. Speciální logika pro pár
+  `pipeline_chart` + `recent_activity` (8+4) nebo solo (12).
+  Odstraněna `bothChartAndActivity()` funkce.
+
+- **Onboarding tour** – nová komponenta `DashboardTour.vue`. Zobrazí se jednou
+  při první návštěvě dashboardu (flag `dashboard_tour_done_v1` v localStorage).
+  6 kroků: Welcome → KPI → Pipeline Funnel → Moje aktivity → Analytika →
+  Přizpůsobení. Backdrop, progress dots, klávesová obsluha (klik mimo = dismiss).
+  `<Teleport to="body">` pro správnou vrstvičkovost. i18n ve všech 4 jazycích.
+
+- **i18n** – přidány klíče `range7d`, `range30d`, `range90d`, `rangeQtd`,
+  `rangeYtd`, `rangeAll`, `tour*` (13 klíčů) v cs/en/de/pl.
+
+**Testy:** 100/100 ✅.
+
+### 2026-05-05 — Fáze 7 (✅ hotovo, cleanup)
+
+- **i18n audit:** grepem ověřeno, že v `dashboard.*` nejsou žádné nepoužívané
+  klíče (vše přidané v Fázích 1–6 je aktivně používáno).
+- **Dokumentace:** dashboard_goals.md aktualizován (tento zápis).
+
+> **Co bude následovat:** Dashboard je feature-complete dle MVP rozsahu z § 4.
+> Zbývá volitelně:
+> - E2E testy (Playwright) pokrývající custom layout + per-widget config.
+> - Per-widget config UI (modal pro nastavení rozsahu a scope jednotlivého widgetu).
+> - Widget `setup_progress` (onboarding banner jako widget).
+> - Saved view widget.
