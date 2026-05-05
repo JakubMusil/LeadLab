@@ -122,6 +122,8 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
 
   function setGlobalRange(r: DashboardRange) {
     globalRange.value = r
+    // Fire-and-forget: persist the new range immediately so it survives page reload
+    saveLayout().catch(() => undefined)
   }
 
   function onDragEnd() {

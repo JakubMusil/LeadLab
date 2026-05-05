@@ -27,7 +27,7 @@ function prev() {
 function dismiss() {
   visible.value = false
   try {
-    localStorage.setItem(TOUR_STORAGE_KEY, '1')
+    localStorage.setItem(TOUR_STORAGE_KEY, 'completed')
   } catch {
     // localStorage unavailable (e.g. private browsing) – ignore
   }

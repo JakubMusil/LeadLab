@@ -74,6 +74,7 @@ const showLayoutEditor = ref(false)
 const myTopRecordsRef = ref<InstanceType<typeof MyTopRecordsWidget> | null>(null)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // ---------------------------------------------------------------------------
 // Widget label map for layout editor
@@ -201,10 +202,15 @@ onMounted(async () => {
   refreshTimer = setInterval(loadStats, 60_000)
 })
 
-watch(() => layoutStore.globalRange, () => loadStats())
+watch(() => layoutStore.globalRange, () => {
+  // Debounce: avoid multiple rapid API calls if user clicks quickly through ranges
+  if (rangeDebounceTimer) clearTimeout(rangeDebounceTimer)
+  rangeDebounceTimer = setTimeout(() => loadStats(), 300)
+})
 
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+  if (rangeDebounceTimer) clearTimeout(rangeDebounceTimer)
 })
 </script>
 
