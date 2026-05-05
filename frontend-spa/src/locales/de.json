@@ -95,7 +95,7 @@
     "staleRecordsEmpty": "Alle Einträge haben aktuelle Aktivitäten.",
     "upcomingCheckpoints": "Bevorstehende Checkpoints",
     "upcomingCheckpointsEmpty": "Keine bevorstehenden Checkpoints in den nächsten 14 Tagen.",
-    "cpOverdue": "{n}T überfällig",
+    "cpOverdue": "{n} Tage überfällig",
     "cpOverdueLabel": "überfällig",
     "cpToday": "Heute",
     "cpTomorrow": "Morgen",
