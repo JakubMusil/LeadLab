@@ -1055,94 +1055,97 @@ function closeContactDetail() {
         </button>
       </div>
 
-      <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('records').length > 0" class="flex items-center gap-1 flex-wrap">
-        <div
-          v-for="view in savedViewsStore.viewsForEntity('records')"
-          :key="view.id"
-          class="flex items-center gap-0.5"
-        >
-          <button
-            class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-l-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            :title="view.name"
-            @click="router.push(`/app/records?view=${view.id}`)"
+      <!-- Right-side tools: pushed to the far right -->
+      <div class="ml-auto flex items-center gap-3 flex-wrap">
+        <!-- Saved views -->
+        <div v-if="savedViewsStore.viewsForEntity('records').length > 0" class="flex items-center gap-1 flex-wrap">
+          <div
+            v-for="view in savedViewsStore.viewsForEntity('records')"
+            :key="view.id"
+            class="flex items-center gap-0.5"
           >
-            <BookmarkIcon class="w-3.5 h-3.5" /> {{ view.name }}
-          </button>
-          <button
-            class="px-1.5 py-1 text-xs font-medium rounded-r-xl border border-l-0 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            :title="`Delete view: ${view.name}`"
-            :aria-label="`Delete saved view ${view.name}`"
-            @click="deleteSavedView(view.id)"
-          ><XMarkIcon class="w-3.5 h-3.5" /></button>
+            <button
+              class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-l-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              :title="view.name"
+              @click="router.push(`/app/records?view=${view.id}`)"
+            >
+              <BookmarkIcon class="w-3.5 h-3.5" /> {{ view.name }}
+            </button>
+            <button
+              class="px-1.5 py-1 text-xs font-medium rounded-r-xl border border-l-0 border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+              :title="`Delete view: ${view.name}`"
+              :aria-label="`Delete saved view ${view.name}`"
+              @click="deleteSavedView(view.id)"
+            ><XMarkIcon class="w-3.5 h-3.5" /></button>
+          </div>
         </div>
+
+        <!-- View toggle (Task-list style) -->
+        <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+          <button
+            v-for="mode in VIEW_MODES"
+            :key="mode"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            :class="viewMode === mode
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+            @click="viewMode = mode"
+          >
+            <component :is="viewModeIcons[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t(`leads.${mode}`) }}
+          </button>
+        </div>
+
+        <!-- Filters (table & list views) -->
+        <template v-if="viewMode !== 'kanban'">
+          <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.allStatuses') }}</option>
+            <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
+          </select>
+          <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.allSources') }}</option>
+            <option value="web">{{ t('leads.sourceWeb') }}</option>
+            <option value="email">{{ t('leads.sourceEmail') }}</option>
+            <option value="referral">{{ t('leads.sourceReferral') }}</option>
+            <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
+            <option value="social">{{ t('leads.sourceSocial') }}</option>
+            <option value="other">{{ t('leads.sourceOther') }}</option>
+          </select>
+          <!-- Advanced filters toggle -->
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
+            :class="hasActiveAdvancedFilters()
+              ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          >
+            <FunnelIcon class="w-3.5 h-3.5" />
+            {{ t('leads.advancedFilters') }}
+            <span v-if="hasActiveAdvancedFilters()" class="ml-0.5 w-4 h-4 bg-red-600 text-white rounded-full text-[10px] flex items-center justify-center">!</span>
+          </button>
+        </template>
+
+        <!-- Actions dropdown (import / export / save view) -->
+        <Dropdown :items="actionsDropdownItems" placement="right" :open-on-hover="true">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <span>{{ t('leads.actions') }}</span>
+            <ChevronDownIcon class="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        </Dropdown>
+
+        <!-- New record button: only shown when a category is selected -->
+        <button
+          v-if="currentCategory"
+          class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
+          @click="openCreate"
+        >{{ newRecordButtonLabel }}</button>
+
+        <!-- Hidden file input for CSV import -->
+        <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
       </div>
-
-      <!-- View toggle (Task-list style) -->
-      <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-        <button
-          v-for="mode in VIEW_MODES"
-          :key="mode"
-          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-          :class="viewMode === mode
-            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-          @click="viewMode = mode"
-        >
-          <component :is="viewModeIcons[mode]" class="w-4 h-4 inline-block mr-1 align-text-bottom" />{{ t(`leads.${mode}`) }}
-        </button>
-      </div>
-
-      <!-- Filters (table & list views) -->
-      <template v-if="viewMode !== 'kanban'">
-        <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-          <option value="">{{ t('leads.allStatuses') }}</option>
-          <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
-        </select>
-        <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-          <option value="">{{ t('leads.allSources') }}</option>
-          <option value="web">{{ t('leads.sourceWeb') }}</option>
-          <option value="email">{{ t('leads.sourceEmail') }}</option>
-          <option value="referral">{{ t('leads.sourceReferral') }}</option>
-          <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
-          <option value="social">{{ t('leads.sourceSocial') }}</option>
-          <option value="other">{{ t('leads.sourceOther') }}</option>
-        </select>
-        <!-- Advanced filters toggle -->
-        <button
-          type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors"
-          :class="hasActiveAdvancedFilters()
-            ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-          @click="showAdvancedFilters = !showAdvancedFilters"
-        >
-          <FunnelIcon class="w-3.5 h-3.5" />
-          {{ t('leads.advancedFilters') }}
-          <span v-if="hasActiveAdvancedFilters()" class="ml-0.5 w-4 h-4 bg-red-600 text-white rounded-full text-[10px] flex items-center justify-center">!</span>
-        </button>
-      </template>
-
-      <!-- Actions dropdown (import / export / save view) -->
-      <Dropdown :items="actionsDropdownItems" placement="right" :open-on-hover="true">
-        <button
-          type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          <span>{{ t('leads.actions') }}</span>
-          <ChevronDownIcon class="w-3.5 h-3.5" aria-hidden="true" />
-        </button>
-      </Dropdown>
-
-      <!-- New record button: only shown when a category is selected -->
-      <button
-        v-if="currentCategory"
-        class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
-        @click="openCreate"
-      >{{ newRecordButtonLabel }}</button>
-
-      <!-- Hidden file input for CSV import -->
-      <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
     </div>
 
     <!-- Quick-create inline form (only when a category is selected) -->

@@ -61,6 +61,11 @@ const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = us
 const currentPageUrl = computed(() => window.location.href)
 const isRecordDetailPage = computed(() => !!route.meta?.isRecordDetail)
 const isRecordsListPage = computed(() => route.path === '/app/records' && !isRecordDetailPage.value)
+const currentRecordCategory = computed(() =>
+  recordsStore.currentRecord?.category_id
+    ? pipelineStore.getCategoryById(recordsStore.currentRecord.category_id)
+    : undefined,
+)
 const recordsListTitle = computed(() => {
   if (!isRecordsListPage.value) return (route.meta?.title as string) ?? 'LeadLab'
   const catId = route.query.category_id as string | undefined
@@ -514,7 +519,16 @@ function formatNotifTime(ts: string): string {
         <!-- Page title -->
         <div class="flex items-center gap-1.5 min-w-0 flex-shrink overflow-hidden">
           <template v-if="isRecordDetailPage && recordsStore.currentRecord">
-            <FunnelIcon class="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+            <template v-if="currentRecordCategory">
+              <RouterLink
+                :to="`/app/records?category_id=${currentRecordCategory.id}`"
+                class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors flex-shrink-0"
+              >
+                <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: currentRecordCategory.color || '#94A3B8' }" aria-hidden="true"></span>
+                <span class="truncate max-w-[8rem]">{{ currentRecordCategory.name }}</span>
+              </RouterLink>
+              <span class="text-gray-300 dark:text-gray-600 flex-shrink-0" aria-hidden="true">/</span>
+            </template>
             <span class="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{{ recordsStore.currentRecord.title }}</span>
             <button
               class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors relative group/nav-permalink"
