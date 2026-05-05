@@ -369,15 +369,59 @@ checkpoints, team-leaderboard (admin OK / worker 403).
 > v Pythonu – řešeno přes `Query(None, alias="range")` + parametr
 > jménem `range_` v signature funkce (ninja standardní pattern).
 
+### 2026-05-05 — Fáze 2 (✅ hotovo, frontend foundation)
+
+Implementováno:
+
+- **Pinia store `useDashboardLayoutStore`** (`frontend-spa/src/stores/dashboard.ts`):
+  - Rozšířené schéma `WidgetConfig` o `size?: {w,h}`, `config?: WidgetConfigOptions`,
+    `audience?: 'all'|'admin'`.
+  - Typ `WidgetConfigOptions` s poli `category_id`, `scope`, `range`, `sort`, `limit`.
+  - Metody `loadLayout`, `saveLayout`, `toggleWidget`, `onDragEnd`,
+    `getWidgetConfigOptions`, `updateWidgetConfigOptions`.
+  - `DEFAULT_WIDGETS` přesunut sem (z `DashboardView.vue`).
+
+- **Composable `useDashboardWidget(id)`** (`frontend-spa/src/composables/useDashboardWidget.ts`):
+  - Poskytuje reaktivní `config`, `range`, `categoryId`, `scope`, `sort`, `limit`
+    z per-widget config uloženého v `dashboard_layout`.
+  - `updateConfig(updates)` pro per-widget persistenci.
+
+- **`components/dashboard/` adresář** – 6 samostatných widgetů:
+  - `StatCardsWidget.vue` – 4 KPI karty; zobrazuje `pipeline_value_canonical`
+    místo `pipeline_value` pro mixed-currency firmy.
+  - `PipelineChartWidget.vue` – bar chart (status × počet).
+  - `RecentActivityWidget.vue` – timeline posledních aktivit.
+  - `QuickCreateRecordWidget.vue` – rozšířeno o **Category** a **Stage** selecty
+    (závislé: stage se resetuje při změně kategorie, non-terminal stages only);
+    vytváří záznam s `category_id` + `current_stage_id`; zobrazí se jen
+    pokud firma má alespoň 1 aktivní kategorii.
+  - `MyTopRecordsWidget.vue` – top 5 aktivních záznamů dle score.
+  - `StatusBreakdownWidget.vue` – pills s proclinkem na filtrovaný seznam.
+
+- **`DashboardView.vue` zjednodušen** na layout host:
+  - Importuje widgetové komponenty, deleguje veškerý stav na `useDashboardLayoutStore`.
+  - Po quick-create volá `myTopRecordsRef?.load()` pro okamžitou aktualizaci.
+  - Při mountu `fetchCategories()` z `usePipelineStore` (pro QuickCreate widget).
+
+- **i18n úklid** (všechny 4 locale soubory – cs, en, de, pl):
+  - `totalLeads → totalRecords`
+  - `quickCreateLead → quickCreateRecord`
+  - `myTopLeads → myTopRecords` (oprava bugu – klíč chyběl, view používalo
+    `myTopRecords` ale locale měly jen `myTopLeads`)
+  - `myTopLeadsEmpty → myTopRecordsEmpty` (stejný bug)
+  - Smazány nepoužívané klíče: `noStatusHistory`, `noClosedLeads`, `noTrendData`
+  - Přidány nové klíče: `qcCategoryLabel`, `qcCategoryPlaceholder`,
+    `qcStageLabel`, `qcStagePlaceholder`
+
+- **Testy:** 100/100 ✅ (DashboardView.spec.ts aktualizován – přidány mocky
+  pro `usePipelineStore`, `window.matchMedia`, refaktorována helper funkce
+  `mockApiCalls` pro správné pořadí volání).
+
 **Co bude následovat:**
-- Fáze 2 – Frontend foundation:
-  - rozdělit `DashboardView.vue` na adresář
-    `frontend-spa/src/components/dashboard/*` (jeden soubor / widget),
-  - sdílený composable `useDashboardWidget(id)` (config + globální
-    range/scope/category context),
-  - rozšíření schématu `dashboard_layout` o `size{w,h}` a `config{}`,
-  - `quick_create_record` rozšířit o category + závislé stage selecty,
-  - i18n úklid (`totalLeads → totalRecords`,
-    `quickCreateLead → quickCreateRecord`, smazat nepoužívané klíče
-    s lead-doménou),
-  - role-based default layout (audience all/admin).
+- Fáze 3 – Nové „kategorie & stage" widgety:
+  - `CategoryOverviewWidget.vue` – dlaždice za každou aktivní kategorii
+    (records_total/open/won, value, win_rate, sparkline 30 dnů).
+  - `StageFunnelWidget.vue` – funnel pro zvolenou kategorii (stage × count/value
+    + conversion_to_next), výběr kategorie v hlavičce widgetu.
+  - `RecordStatusChartWidget.vue` – zachovaný „legacy" bar chart jako volitelný.
+
