@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordIn } from '@/stores/records'
+import { useRecordsStore, RECORD_STATUSES, type RecordIn } from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
@@ -24,7 +24,6 @@ import {
   DocumentIcon,
   CloudArrowUpIcon,
   PaperClipIcon,
-  ChevronDownIcon,
   XMarkIcon,
   FlagIcon,
   PlusIcon,
@@ -819,17 +818,6 @@ async function saveFieldEdit(fieldKey: string) {
 
 <template>
   <div class="p-6">
-    <!-- Breadcrumb -->
-    <nav v-if="currentCategory" class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap" aria-label="breadcrumb">
-      <RouterLink
-        :to="`/app/records?category_id=${currentCategory.id}`"
-        class="flex items-center gap-1 hover:text-red-600 transition-colors"
-      >
-        <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ backgroundColor: currentCategory.color || '#94A3B8' }" aria-hidden="true"></span>
-        {{ currentCategory.name }}
-      </RouterLink>
-    </nav>
-
     <!-- Loading skeleton -->
     <div v-if="store.loadingDetail" class="animate-pulse space-y-4">
       <div class="h-8 bg-gray-200 rounded w-64" />
@@ -925,7 +913,11 @@ async function saveFieldEdit(fieldKey: string) {
             </div>
 
             <!-- Akce button — at the far right, opens a tool dropdown -->
-            <div class="relative ml-auto">
+            <div
+              class="relative ml-auto"
+              @mouseenter="akceDropdownOpen = true"
+              @mouseleave="akceDropdownOpen = false"
+            >
               <button
                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
                 @click="akceDropdownOpen = !akceDropdownOpen"
@@ -997,13 +989,6 @@ async function saveFieldEdit(fieldKey: string) {
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4"
           >
             <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ t('pipeline.stageLabel') }}</div>
-            <!-- Progress bar -->
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-3">
-              <div
-                class="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
-                :style="{ width: stageProgress + '%' }"
-              ></div>
-            </div>
             <!-- Stage buttons -->
             <div class="flex flex-wrap gap-1">
               <button
@@ -1018,6 +1003,50 @@ async function saveFieldEdit(fieldKey: string) {
                 {{ stage.name }}
                 <span v-if="stage.is_terminal && stage.is_won" class="ml-1 text-green-500">✓</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Record detail card -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+            <!-- Record title as prominent heading -->
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
+              {{ store.currentRecord.title }}
+            </h2>
+            <dl class="space-y-2">
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewSource') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentRecord.source.replace('_', ' ') }}</dd>
+              </div>
+              <div v-if="store.currentRecord.value != null" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewValue') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentRecord.value }} {{ store.currentRecord.currency }}</dd>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewCreated') }}</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentRecord.created_at).toLocaleDateString() }}</dd>
+              </div>
+              <div v-if="store.currentRecord.company_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Společnost</dt>
+                <dd
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  @click="openContactDetail(store.currentRecord.company_id)"
+                >
+                  {{ store.currentRecord.company_name }}
+                </dd>
+              </div>
+              <div v-if="store.currentRecord.contact_person_name" class="flex justify-between items-baseline">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Kontaktní osoba</dt>
+                <dd
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  @click="openContactDetail(store.currentRecord.contact_person_id)"
+                >
+                  {{ store.currentRecord.contact_person_name }}
+                </dd>
+              </div>
+            </dl>
+            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('recordDetail.edit') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteRecord">{{ t('recordDetail.delete') }}</button>
             </div>
           </div>
 
@@ -1179,78 +1208,6 @@ async function saveFieldEdit(fieldKey: string) {
 
                 <div class="border-t border-gray-100 dark:border-gray-700/50 mt-3 last:hidden" />
               </div>
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <!-- Record title as prominent heading -->
-            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
-              {{ store.currentRecord.title }}
-            </h2>
-            <dl class="space-y-2">
-              <div class="flex justify-between items-center">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewStatus') }}</dt>
-                <dd class="relative">
-                  <button
-                    class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
-                    :class="getStatusMeta(store.currentRecord.status).color"
-                    @click="statusPopupOpen = !statusPopupOpen"
-                  >
-                    {{ getStatusMeta(store.currentRecord.status).label }}
-                    <ChevronDownIcon class="w-3 h-3 opacity-60" />
-                  </button>
-                  <div
-                    v-if="statusPopupOpen"
-                    class="absolute right-0 top-8 z-10 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg py-1"
-                  >
-                    <button
-                      v-for="s in RECORD_STATUSES"
-                      :key="s.value"
-                      class="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-                      :class="s.value === store.currentRecord.status ? 'font-semibold' : ''"
-                      @click="changeStatus(s.value)"
-                    >
-                      <span class="w-2 h-2 rounded-full flex-shrink-0" :class="s.color.split(' ')[0]" />
-                      {{ s.label }}
-                    </button>
-                  </div>
-                </dd>
-              </div>
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewSource') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{{ store.currentRecord.source.replace('_', ' ') }}</dd>
-              </div>
-              <div v-if="store.currentRecord.value != null" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewValue') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ store.currentRecord.value }} {{ store.currentRecord.currency }}</dd>
-              </div>
-              <div class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.overviewCreated') }}</dt>
-                <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ new Date(store.currentRecord.created_at).toLocaleDateString() }}</dd>
-              </div>
-              <div v-if="store.currentRecord.company_name" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Společnost</dt>
-                <dd
-                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  @click="openContactDetail(store.currentRecord.company_id)"
-                >
-                  {{ store.currentRecord.company_name }}
-                </dd>
-              </div>
-              <div v-if="store.currentRecord.contact_person_name" class="flex justify-between items-baseline">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Kontaktní osoba</dt>
-                <dd
-                  class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right truncate max-w-[10rem] cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  @click="openContactDetail(store.currentRecord.contact_person_id)"
-                >
-                  {{ store.currentRecord.contact_person_name }}
-                </dd>
-              </div>
-              <!-- Inline-editable description -->
-            </dl>
-            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-              <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('recordDetail.edit') }}</button>
-              <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteRecord">{{ t('recordDetail.delete') }}</button>
             </div>
           </div>
 
@@ -1431,9 +1388,6 @@ async function saveFieldEdit(fieldKey: string) {
       </div>
     </div>
   </Teleport>
-
-  <!-- Status popup backdrop -->
-  <div v-if="statusPopupOpen" class="fixed inset-0 z-5" @click="statusPopupOpen = false" />
 
   <!-- Akce dropdown backdrop -->
   <div v-if="akceDropdownOpen" class="fixed inset-0 z-20" @click="closeAkceDropdown" />
