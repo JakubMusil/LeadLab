@@ -109,7 +109,8 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
 
   function onDragEnd() {
     reindex()
-    saveLayout()
+    // Fire-and-forget: save errors are non-critical (layout restores on next load)
+    saveLayout().catch(() => undefined)
   }
 
   return {
