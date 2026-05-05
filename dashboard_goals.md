@@ -253,7 +253,7 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 - `stage_funnel` (s konverzemi)
 - `record_status_chart` zachovaný jako legacy/optional.
 
-### Fáze 4 — Akční widgety
+### Fáze 4 — Akční widgety *(✅ hotovo)*
 - `my_day` (Tasks + Checkpoints feed s ✓/snooze)
 - `stale_records`
 - `upcoming_checkpoints`
@@ -464,3 +464,56 @@ backward-compat s uloženými layouty uživatelů.
   - `MyDayWidget.vue` – feed Tasks + Checkpoints (dnes/overdue/tento týden) s ✓/snooze.
   - `StaleRecordsWidget.vue` – záznamy bez aktivity > N dnů.
   - `UpcomingCheckpointsWidget.vue` – nejbližší checkpointy.
+
+
+### 2026-05-05 — Fáze 4 (✅ hotovo, akční widgety)
+
+Implementováno v `frontend-spa/src/components/dashboard/`:
+
+- **`MyDayWidget.vue`** – volá `GET /api/v1/crm/dashboard/my-day`.
+  Zobrazuje Tasks + Checkpoints přiřazené přihlášenému uživateli,
+  rozdělené do tří bucketů: **Po termínu** (červeně), **Dnes** (oranžově),
+  **Tento týden** (modře). Každá položka má tlačítko ✓ (checkmark):
+  - Pro `task`: volá `POST /api/v1/crm/tasks/{id}/complete`.
+  - Pro `checkpoint`: volá `PATCH /api/v1/crm/records/{record_id}/checkpoints/{id}`
+    s `{ is_completed: true }`.
+  Po úspěšném dokončení se položka optimisticky odstraní ze seznamu.
+  Prázdný stav s ikonou ✓ (zelená) a textem „Žádné úkoly dnes!".
+  Proklik na záznam z každé položky přes `RouterLink`.
+
+- **`StaleRecordsWidget.vue`** – volá
+  `GET /api/v1/crm/dashboard/stale-records?days=14&limit=10`.
+  Zobrazuje otevřené záznamy bez aktivity > 14 dnů, seřazené
+  od nejdéle neaktivních. Badge s počtem dní (oranžový < 30 d,
+  červený ≥ 30 d). Zobrazuje kategorii › stage, hodnotu.
+  Proklik na detail záznamu.
+
+- **`UpcomingCheckpointsWidget.vue`** – volá
+  `GET /api/v1/crm/dashboard/checkpoints?upcoming_days=14&scope=mine`.
+  Seznam nejbližších nezavřených checkpointů (±14 dní).
+  Barevný label „dní do termínu": červeně (po termínu), oranžově (dnes),
+  jantarově (≤ 3 dny), šedě (> 3 dny). Tlačítko ✓ pro označení
+  checkpointu jako dokončeného (PATCH + optimistické odstranění).
+
+**Store (`dashboard.ts`):** přidány do `DEFAULT_WIDGETS`:
+`my_day` (visible=true, order=4), `upcoming_checkpoints` (visible=true, order=5),
+`stale_records` (visible=true, order=9). Stávající widgety přečíslovány.
+
+**DashboardView.vue** – importy + `v-else-if` větve + `WidgetId` union +
+`WIDGET_LABELS` rozšířeny o `my_day`, `stale_records`, `upcoming_checkpoints`.
+
+**i18n** (cs/en/de/pl) – přidány klíče:
+`myDay`, `myDayEmpty`, `myDayOverdue`, `myDayToday`, `myDayThisWeek`,
+`myDayComplete`, `staleRecords`, `staleRecordsDays`, `staleRecordsEmpty`,
+`upcomingCheckpoints`, `upcomingCheckpointsEmpty`,
+`cpOverdue`, `cpOverdueLabel`, `cpToday`, `cpTomorrow`, `cpInDays`, `cpComplete`.
+
+**Testy:** 100/100 frontend ✅.
+
+**Co bude následovat:**
+- Fáze 5 – Analytika:
+  - `PipelineTrendWidget.vue` – 30/90d křivka (Chart.js Line) volaná z
+    `GET /api/v1/crm/dashboard/trend`.
+  - `WinLossWidget.vue` – win-rate gauge + ø cycle time.
+  - `ActivityHeatmapWidget.vue` – týdenní heatmapa aktivit.
+  - `TeamLeaderboardWidget.vue` – žebříček uživatelů (admin only).

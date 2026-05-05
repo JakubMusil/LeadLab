@@ -22,6 +22,9 @@ import StatusBreakdownWidget from '@/components/dashboard/StatusBreakdownWidget.
 import CategoryOverviewWidget from '@/components/dashboard/CategoryOverviewWidget.vue'
 import StageFunnelWidget from '@/components/dashboard/StageFunnelWidget.vue'
 import RecordStatusChartWidget from '@/components/dashboard/RecordStatusChartWidget.vue'
+import MyDayWidget from '@/components/dashboard/MyDayWidget.vue'
+import StaleRecordsWidget from '@/components/dashboard/StaleRecordsWidget.vue'
+import UpcomingCheckpointsWidget from '@/components/dashboard/UpcomingCheckpointsWidget.vue'
 
 const { t } = useI18n()
 const firmStore = useFirmStore()
@@ -71,7 +74,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 // Widget label map for layout editor
 // ---------------------------------------------------------------------------
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints'
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   stat_cards: t('dashboard.statCards'),
@@ -83,6 +86,9 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   category_overview: t('dashboard.categoryOverview'),
   stage_funnel: t('dashboard.stageFunnel'),
   record_status_chart: t('dashboard.recordStatusChart'),
+  my_day: t('dashboard.myDay'),
+  stale_records: t('dashboard.staleRecords'),
+  upcoming_checkpoints: t('dashboard.upcomingCheckpoints'),
 }))
 
 // ---------------------------------------------------------------------------
@@ -312,6 +318,21 @@ onUnmounted(() => {
         <RecordStatusChartWidget
           v-else-if="widget.id === 'record_status_chart'"
           :records-by-status="stats.records_by_status"
+        />
+
+        <!-- My day (tasks + checkpoints feed) -->
+        <MyDayWidget
+          v-else-if="widget.id === 'my_day'"
+        />
+
+        <!-- Stale records -->
+        <StaleRecordsWidget
+          v-else-if="widget.id === 'stale_records'"
+        />
+
+        <!-- Upcoming checkpoints -->
+        <UpcomingCheckpointsWidget
+          v-else-if="widget.id === 'upcoming_checkpoints'"
         />
 
       </template>
