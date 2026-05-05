@@ -25,6 +25,10 @@ import RecordStatusChartWidget from '@/components/dashboard/RecordStatusChartWid
 import MyDayWidget from '@/components/dashboard/MyDayWidget.vue'
 import StaleRecordsWidget from '@/components/dashboard/StaleRecordsWidget.vue'
 import UpcomingCheckpointsWidget from '@/components/dashboard/UpcomingCheckpointsWidget.vue'
+import PipelineTrendWidget from '@/components/dashboard/PipelineTrendWidget.vue'
+import WinLossWidget from '@/components/dashboard/WinLossWidget.vue'
+import ActivityHeatmapWidget from '@/components/dashboard/ActivityHeatmapWidget.vue'
+import TeamLeaderboardWidget from '@/components/dashboard/TeamLeaderboardWidget.vue'
 
 const { t } = useI18n()
 const firmStore = useFirmStore()
@@ -74,7 +78,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 // Widget label map for layout editor
 // ---------------------------------------------------------------------------
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints' | 'pipeline_trend' | 'win_loss' | 'activity_heatmap' | 'team_leaderboard'
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   stat_cards: t('dashboard.statCards'),
@@ -89,6 +93,10 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   my_day: t('dashboard.myDay'),
   stale_records: t('dashboard.staleRecords'),
   upcoming_checkpoints: t('dashboard.upcomingCheckpoints'),
+  pipeline_trend: t('dashboard.pipelineTrend'),
+  win_loss: t('dashboard.winLoss'),
+  activity_heatmap: t('dashboard.activityHeatmap'),
+  team_leaderboard: t('dashboard.teamLeaderboard'),
 }))
 
 // ---------------------------------------------------------------------------
@@ -333,6 +341,27 @@ onUnmounted(() => {
         <!-- Upcoming checkpoints -->
         <UpcomingCheckpointsWidget
           v-else-if="widget.id === 'upcoming_checkpoints'"
+        />
+
+        <!-- Pipeline trend -->
+        <PipelineTrendWidget
+          v-else-if="widget.id === 'pipeline_trend'"
+        />
+
+        <!-- Win / Loss -->
+        <WinLossWidget
+          v-else-if="widget.id === 'win_loss'"
+          :stats="stats"
+        />
+
+        <!-- Activity heatmap -->
+        <ActivityHeatmapWidget
+          v-else-if="widget.id === 'activity_heatmap'"
+        />
+
+        <!-- Team leaderboard (admin) -->
+        <TeamLeaderboardWidget
+          v-else-if="widget.id === 'team_leaderboard'"
         />
 
       </template>

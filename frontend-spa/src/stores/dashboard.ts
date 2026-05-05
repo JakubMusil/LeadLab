@@ -49,6 +49,10 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stale_records', visible: true, order: 9, audience: 'all' },
   { id: 'status_breakdown', visible: true, order: 10, audience: 'all' },
   { id: 'record_status_chart', visible: false, order: 11, audience: 'all' },
+  { id: 'pipeline_trend', visible: true, order: 12, audience: 'all' },
+  { id: 'win_loss', visible: true, order: 13, audience: 'all' },
+  { id: 'activity_heatmap', visible: true, order: 14, audience: 'all' },
+  { id: 'team_leaderboard', visible: false, order: 15, audience: 'admin' },
 ]
 
 // ---------------------------------------------------------------------------
