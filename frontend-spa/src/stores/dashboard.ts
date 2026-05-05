@@ -39,10 +39,13 @@ export interface WidgetConfig {
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stat_cards', visible: true, order: 0, audience: 'all' },
   { id: 'quick_create_record', visible: true, order: 1, audience: 'all' },
-  { id: 'pipeline_chart', visible: true, order: 2, audience: 'all' },
-  { id: 'recent_activity', visible: true, order: 3, audience: 'all' },
-  { id: 'my_top_records', visible: true, order: 4, audience: 'all' },
-  { id: 'status_breakdown', visible: true, order: 5, audience: 'all' },
+  { id: 'category_overview', visible: true, order: 2, audience: 'all' },
+  { id: 'stage_funnel', visible: true, order: 3, audience: 'all' },
+  { id: 'pipeline_chart', visible: true, order: 4, audience: 'all' },
+  { id: 'recent_activity', visible: true, order: 5, audience: 'all' },
+  { id: 'my_top_records', visible: true, order: 6, audience: 'all' },
+  { id: 'status_breakdown', visible: true, order: 7, audience: 'all' },
+  { id: 'record_status_chart', visible: false, order: 8, audience: 'all' },
 ]
 
 // ---------------------------------------------------------------------------

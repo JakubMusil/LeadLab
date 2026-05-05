@@ -19,6 +19,9 @@ import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget.vu
 import QuickCreateRecordWidget from '@/components/dashboard/QuickCreateRecordWidget.vue'
 import MyTopRecordsWidget from '@/components/dashboard/MyTopRecordsWidget.vue'
 import StatusBreakdownWidget from '@/components/dashboard/StatusBreakdownWidget.vue'
+import CategoryOverviewWidget from '@/components/dashboard/CategoryOverviewWidget.vue'
+import StageFunnelWidget from '@/components/dashboard/StageFunnelWidget.vue'
+import RecordStatusChartWidget from '@/components/dashboard/RecordStatusChartWidget.vue'
 
 const { t } = useI18n()
 const firmStore = useFirmStore()
@@ -68,7 +71,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 // Widget label map for layout editor
 // ---------------------------------------------------------------------------
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart'
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   stat_cards: t('dashboard.statCards'),
@@ -77,6 +80,9 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   status_breakdown: t('dashboard.statusBreakdown'),
   my_top_records: t('dashboard.myTopRecords'),
   quick_create_record: t('dashboard.quickCreateRecord'),
+  category_overview: t('dashboard.categoryOverview'),
+  stage_funnel: t('dashboard.stageFunnel'),
+  record_status_chart: t('dashboard.recordStatusChart'),
 }))
 
 // ---------------------------------------------------------------------------
@@ -289,6 +295,22 @@ onUnmounted(() => {
         <!-- Status breakdown -->
         <StatusBreakdownWidget
           v-else-if="widget.id === 'status_breakdown'"
+          :records-by-status="stats.records_by_status"
+        />
+
+        <!-- Category overview -->
+        <CategoryOverviewWidget
+          v-else-if="widget.id === 'category_overview'"
+        />
+
+        <!-- Stage funnel -->
+        <StageFunnelWidget
+          v-else-if="widget.id === 'stage_funnel'"
+        />
+
+        <!-- Record status chart (legacy optional) -->
+        <RecordStatusChartWidget
+          v-else-if="widget.id === 'record_status_chart'"
           :records-by-status="stats.records_by_status"
         />
 

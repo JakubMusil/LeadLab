@@ -71,7 +71,19 @@
     "qcCreate": "Create",
     "qcCreated": "Record created",
     "qcFailed": "Failed to create record",
-    "qcTitleRequired": "Title is required"
+    "qcTitleRequired": "Title is required",
+    "categoryOverview": "Category Overview",
+    "categoryOverviewEmpty": "No active categories. Set up your pipeline first.",
+    "setupPipeline": "Set up pipeline",
+    "catRecordsOpen": "won: {n}",
+    "catValueOpen": "value: {value}",
+    "catWinRate": "Win rate: {pct}%",
+    "uncategorized": "Uncategorized",
+    "stageFunnel": "Stage Funnel",
+    "stageFunnelEmpty": "No stages for this category.",
+    "funnelSelectCategory": "Select category",
+    "funnelRecords": "{n} records",
+    "recordStatusChart": "Records by Status"
   },
   "leads": {
     "title": "Records",

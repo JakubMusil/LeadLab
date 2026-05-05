@@ -71,7 +71,19 @@
     "qcCreate": "Vytvořit",
     "qcCreated": "Záznam vytvořen",
     "qcFailed": "Nepodařilo se vytvořit záznam",
-    "qcTitleRequired": "Zadejte název"
+    "qcTitleRequired": "Zadejte název",
+    "categoryOverview": "Přehled kategorií",
+    "categoryOverviewEmpty": "Žádné aktivní kategorie. Nejprve nastavte pipeline.",
+    "setupPipeline": "Nastavit pipeline",
+    "catRecordsOpen": "vyhráno: {n}",
+    "catValueOpen": "hodnota: {value}",
+    "catWinRate": "Win rate: {pct}%",
+    "uncategorized": "Bez kategorie",
+    "stageFunnel": "Stage funnel",
+    "stageFunnelEmpty": "Pro tuto kategorii nejsou žádné stages.",
+    "funnelSelectCategory": "Vybrat kategorii",
+    "funnelRecords": "{n} záznamů",
+    "recordStatusChart": "Záznamy podle stavu"
   },
   "leads": {
     "title": "Záznamy",
