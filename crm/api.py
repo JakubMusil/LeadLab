@@ -5304,7 +5304,6 @@ def get_dashboard_trend(
     elif metric == "value_pipeline":
         # Snapshot of current pipeline value per "creation date" bucket
         # (interpretation: cumulative pipeline value as of each day).
-        running = 0.0
         rows = list(
             records_qs.exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
             .order_by("created_at")
@@ -5319,7 +5318,6 @@ def get_dashboard_trend(
         # Convert to running total
         for i in range(1, len(points)):
             points[i]["value"] += points[i - 1]["value"]
-            running = points[i]["value"]
     elif metric == "activities":
         act_qs = Activity.objects.filter(record__firm=request.firm, created_at__gte=since)
         if category_id:
@@ -5565,7 +5563,9 @@ def get_dashboard_checkpoints(
     )
     if scope != "firm":
         qs = qs.filter(record__assigned_to=request.user)
-    qs = qs.filter(Q(date__lte=horizon) | Q(date__lt=today)).order_by("date")[:100]
+    # ``date <= horizon`` already covers overdue items because horizon ≥ today.
+    # Checkpoints without a date are considered backlog and excluded here.
+    qs = qs.filter(date__lte=horizon).order_by("date")[:100]
 
     items: List[Dict[str, Any]] = []
     for cp in qs:
