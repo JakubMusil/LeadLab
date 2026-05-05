@@ -169,7 +169,15 @@
     "cfgDaysAhead": "Tage im Voraus",
     "cfgScope": "Bereich",
     "cfgScopeMine": "Meine",
-    "cfgScopeFirm": "Gesamte Firma"
+    "cfgScopeFirm": "Gesamte Firma",
+    "cfgCategory": "Kategorie",
+    "cfgAllCategories": "Alle Kategorien",
+    "cfgTimeRange": "Zeitraum",
+    "setupProgress": "Einrichtungsfortschritt",
+    "setupProgressDesc": "{done} von {total} Schritten erledigt",
+    "setupStepFirm": "Firmenname einrichten",
+    "setupStepPipeline": "Pipeline-Kategorie erstellen",
+    "setupAllDone": "Einrichtung abgeschlossen! 🎉"
   },
   "leads": {
     "title": "Einträge",

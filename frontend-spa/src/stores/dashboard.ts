@@ -61,6 +61,18 @@ export const WIDGET_CONFIG_SCHEMA: Record<string, WidgetConfigField[] | undefine
     { key: 'scope', type: 'scope', labelKey: 'cfgScope' },
     { key: 'days', type: 'number', labelKey: 'cfgDaysAhead', min: 1, max: 60 },
   ],
+  category_overview: [
+    { key: 'range', type: 'range', labelKey: 'cfgTimeRange' },
+    { key: 'scope', type: 'scope', labelKey: 'cfgScope' },
+  ],
+  stage_funnel: [
+    { key: 'category_id', type: 'category', labelKey: 'cfgCategory' },
+    { key: 'range', type: 'range', labelKey: 'cfgTimeRange' },
+  ],
+  pipeline_trend: [
+    { key: 'category_id', type: 'category', labelKey: 'cfgCategory' },
+    { key: 'range', type: 'range', labelKey: 'cfgTimeRange' },
+  ],
 }
 
 export function widgetHasConfig(id: string): boolean {
@@ -99,6 +111,7 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'win_loss', colSpan: 4, visible: true, order: 13, audience: 'all' },
   { id: 'activity_heatmap', colSpan: 12, visible: true, order: 14, audience: 'all' },
   { id: 'team_leaderboard', colSpan: 12, visible: false, order: 15, audience: 'admin' },
+  { id: 'setup_progress', colSpan: 12, visible: true, order: 16, audience: 'admin' },
 ]
 
 // ---------------------------------------------------------------------------

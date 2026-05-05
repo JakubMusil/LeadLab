@@ -11,6 +11,7 @@ import {
   type DashboardRange,
 } from '@/stores/dashboard'
 import { useDashboardLayoutStore } from '@/stores/dashboard'
+import { usePipelineStore } from '@/stores/pipeline'
 
 const props = defineProps<{
   /** Widget id; when null/empty, the dialog is hidden. */
@@ -25,6 +26,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const layoutStore = useDashboardLayoutStore()
+const pipelineStore = usePipelineStore()
+
+const activeCategories = computed(() => pipelineStore.categories.filter((c) => c.is_active))
 
 const fields = computed<WidgetConfigField[]>(() => {
   if (!props.widgetId) return []
@@ -186,6 +190,23 @@ function clampNumber(field: WidgetConfigField, raw: string): number {
               class="w-32 px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200"
               @change="setField(field.key, clampNumber(field, ($event.target as HTMLInputElement).value))"
             />
+
+            <!-- Category -->
+            <select
+              v-else-if="field.type === 'category'"
+              :value="config.category_id ?? ''"
+              class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200"
+              @change="setField('category_id', ($event.target as HTMLSelectElement).value || null)"
+            >
+              <option value="">{{ t('dashboard.cfgAllCategories') }}</option>
+              <option
+                v-for="cat in activeCategories"
+                :key="cat.id"
+                :value="cat.id"
+              >
+                {{ cat.icon ? cat.icon + ' ' : '' }}{{ cat.name }}
+              </option>
+            </select>
 
             <p v-if="field.type === 'number' && (field.min != null || field.max != null)" class="text-[11px] text-gray-400">
               {{ t('dashboard.cfgRange', { min: field.min ?? 0, max: field.max ?? 0 }) }}

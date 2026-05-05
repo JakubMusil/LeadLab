@@ -169,7 +169,15 @@
     "cfgDaysAhead": "Days ahead",
     "cfgScope": "Scope",
     "cfgScopeMine": "Mine",
-    "cfgScopeFirm": "Whole firm"
+    "cfgScopeFirm": "Whole firm",
+    "cfgCategory": "Category",
+    "cfgAllCategories": "All categories",
+    "cfgTimeRange": "Time range",
+    "setupProgress": "Setup progress",
+    "setupProgressDesc": "{done} of {total} steps done",
+    "setupStepFirm": "Set up firm name",
+    "setupStepPipeline": "Create a pipeline category",
+    "setupAllDone": "Setup complete! 🎉"
   },
   "leads": {
     "title": "Records",

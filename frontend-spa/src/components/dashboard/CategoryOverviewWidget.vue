@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { useMoney } from '@/composables/useMoney'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 interface CategoryOverviewItem {
@@ -28,6 +29,7 @@ interface CategoryOverviewData {
 const { t } = useI18n()
 const { formatAmount } = useMoney()
 const router = useRouter()
+const { range, scope } = useDashboardWidget('category_overview')
 
 const data = ref<CategoryOverviewData | null>(null)
 const loading = ref(false)
@@ -35,7 +37,10 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await api.get<CategoryOverviewData>('/api/v1/crm/dashboard/category-overview')
+    const params = new URLSearchParams()
+    params.set('range', range.value)
+    if (scope.value === 'mine') params.set('owner_id', 'me')
+    const res = await api.get<CategoryOverviewData>(`/api/v1/crm/dashboard/category-overview?${params.toString()}`)
     if (res.ok) data.value = res.data
   } finally {
     loading.value = false
@@ -60,6 +65,7 @@ function openCategory(categoryId: string) {
   router.push({ path: '/app/records', query: { category: categoryId } })
 }
 
+watch([range, scope], () => load())
 defineExpose({ load })
 onMounted(load)
 </script>

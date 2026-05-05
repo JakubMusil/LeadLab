@@ -14,6 +14,7 @@ import {
 import { useI18n } from '@/composables/useI18n'
 import { useMoney } from '@/composables/useMoney'
 import { useChartTheme } from '@/composables/useChartTheme'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 ChartJS.register(LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend, Filler)
@@ -35,11 +36,23 @@ interface TrendData {
 const { t } = useI18n()
 const { formatAmount } = useMoney()
 const { tickColor, gridColor } = useChartTheme()
+const { range: configRange, categoryId, updateConfig } = useDashboardWidget('pipeline_trend')
 
 const data = ref<TrendData | null>(null)
 const loading = ref(false)
 const selectedMetric = ref<TrendMetric>('created')
-const selectedRange = ref<TrendRange>('30d')
+
+// Local range: constrained to 30d/90d (trend widget only supports these)
+// Falls back to configRange when it's one of those values; otherwise defaults to 30d
+const selectedRange = computed<TrendRange>(() => {
+  const r = configRange.value
+  return r === '90d' ? '90d' : '30d'
+})
+
+// Allow the local 30d/90d toggle to write back to per-widget config
+function setLocalRange(r: TrendRange) {
+  updateConfig({ range: r })
+}
 
 const isValueMetric = computed(() =>
   selectedMetric.value === 'value_won' || selectedMetric.value === 'value_pipeline',
@@ -51,6 +64,7 @@ async function load() {
     const params = new URLSearchParams()
     params.set('metric', selectedMetric.value)
     params.set('range', selectedRange.value)
+    if (categoryId.value) params.set('category_id', categoryId.value)
     const res = await api.get<TrendData>(`/api/v1/crm/dashboard/trend?${params.toString()}`)
     if (res.ok) data.value = res.data
   } finally {
@@ -58,7 +72,7 @@ async function load() {
   }
 }
 
-watch([selectedMetric, selectedRange], () => load())
+watch([selectedMetric, selectedRange, categoryId], () => load())
 
 const METRIC_COLORS: Record<TrendMetric, string> = {
   created: '#6366f1',
@@ -166,7 +180,7 @@ onMounted(load)
             :class="selectedRange === r
               ? 'bg-[color:var(--brand-color)] text-white'
               : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'"
-            @click="selectedRange = r"
+            @click="setLocalRange(r)"
           >
             {{ r === '30d' ? t('dashboard.trendRange30d') : t('dashboard.trendRange90d') }}
           </button>
