@@ -293,11 +293,11 @@ onUnmounted(() => {
     </div>
 
     <template v-else-if="stats">
-      <div class="grid grid-cols-12 gap-4">
+      <div class="grid grid-cols-12 gap-4 items-stretch">
         <div
           v-for="widget in visibleWidgets"
           :key="widget.id"
-          class="col-span-12"
+          class="col-span-12 [&>*]:h-full"
           :class="colSpanClass(widget)"
         >
           <StatCardsWidget
