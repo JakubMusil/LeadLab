@@ -258,7 +258,7 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 - `stale_records`
 - `upcoming_checkpoints`
 
-### Fáze 5 — Analytika
+### Fáze 5 — Analytika *(✅ hotovo)*
 - `pipeline_trend`
 - `win_loss`
 - `activity_heatmap`
@@ -517,3 +517,51 @@ Implementováno v `frontend-spa/src/components/dashboard/`:
   - `WinLossWidget.vue` – win-rate gauge + ø cycle time.
   - `ActivityHeatmapWidget.vue` – týdenní heatmapa aktivit.
   - `TeamLeaderboardWidget.vue` – žebříček uživatelů (admin only).
+
+
+### 2026-05-05 — Fáze 5 (✅ hotovo, analytika)
+
+Implementováno v `frontend-spa/src/components/dashboard/`:
+
+- **`PipelineTrendWidget.vue`** – volá `GET /api/v1/crm/dashboard/trend`.
+  Line chart (Chart.js) s volbou metriky (Vytvořeno / Vyhráno / Hodnota pipeline /
+  Aktivity) a rozsahu (30d / 90d). Pro hodnotové metriky zobrazuje
+  formátované částky přes `useMoney`. Prázdný stav pro intervalová data.
+
+- **`WinLossWidget.vue`** – čte data ze stats propů (conversion_rate,
+  records_by_status, avg_cycle_days, won_value_canonical). SVG půlkruhový
+  gauge win-rate, pod ním tabulka: won/lost/canceled počty, hodnota
+  vyhráno, průměrná délka cyklu. Prázdný stav pokud nejsou uzavřené záznamy.
+
+- **`ActivityHeatmapWidget.vue`** – volá `GET /api/v1/crm/dashboard/trend?metric=activities&range=90d`.
+  Renderuje 13×7 mřížku (GitHub-style heatmap) – intenzita 0–4 mapovaná
+  na amber barvy (light + dark mode). Tooltip s datumem a počtem aktivit.
+  Legenda „Méně → Více". Prázdný stav pro nulová data.
+
+- **`TeamLeaderboardWidget.vue`** – volá `GET /api/v1/crm/dashboard/team-leaderboard`.
+  Tabulka uživatelů (won_count, won_value_canonical, activities_count,
+  records_open). Zlatý odznak pro #1. Zobrazuje lock-screen pro 403
+  (worker nemá přístup). Skeleton loading.
+
+**Store (`dashboard.ts`):** přidány do `DEFAULT_WIDGETS`:
+`pipeline_trend` (visible=true, order=12), `win_loss` (visible=true, order=13),
+`activity_heatmap` (visible=true, order=14), `team_leaderboard` (visible=false,
+order=15, audience='admin').
+
+**DashboardView.vue** – importy + `v-else-if` větve + `WidgetId` union +
+`WIDGET_LABELS` rozšířeny. `WinLossWidget` dostává `:stats="stats"` prop.
+
+**i18n** (cs/en/de/pl) – přidány klíče: `pipelineTrend`, `pipelineTrendEmpty`,
+`trendSelectMetric`, `trendMetricCreated/Won/Value/Activities`, `trendRange30d/90d`,
+`winLoss`, `winLossEmpty`, `wlWon/Lost/Canceled/Value`, `avgCycleDays`, `cycleDays`,
+`activityHeatmap`, `activityHeatmapEmpty`, `heatmapLess/More`,
+`teamLeaderboard`, `teamLeaderboardEmpty/Forbidden`, `lbUser/Won/Value/Activities/Open`.
+
+**Testy:** 100/100 frontend ✅. Žádné nové TS chyby (pre-existing chyby v jiných views).
+
+**Co bude následovat:**
+- Fáze 6 – UX vylepšení:
+  - Globální range picker v hlavičce dashboardu.
+  - 12-column responsive grid (Tailwind grid-cols-12 + per-widget colSpan/rowSpan).
+  - Light/dark a mobile review.
+  - Onboarding tour pro nový dashboard.
