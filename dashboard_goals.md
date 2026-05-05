@@ -228,9 +228,9 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 > Každá fáze je samostatný PR / dávka. Po dokončení fáze sem agent zapíše
 > shrnutí a co bude následovat.
 
-### Fáze 0 — Plán a souhlas *(probíhá / čeká na uživatele)*
+### Fáze 0 — Plán a souhlas *(✅ hotovo)*
 - ✅ Sepsat tento dokument.
-- ⏳ Uživatel potvrdí prioritizaci widgetů (které ANO, které NE, co první).
+- ✅ Uživatel potvrdil prioritizaci a odpovědi (viz § 4).
 
 ### Fáze 1 — Backend rozšíření `/stats` + nové endpointy
 - Rozšířit `StatsOut` o canonical hodnoty, range / category / owner filtry.
@@ -278,17 +278,27 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 
 ---
 
-## 4. Otevřené otázky pro uživatele
+## 4. Rozhodnutí uživatele (zafixováno 2026-05-05)
 
-1. **Které widgety chceš v MVP** (Fáze 2–3) a které lze odložit?
-2. **Mají existovat dva výchozí dashboardy** (admin vs. member), nebo jen
-   per-uživatel?
-3. **Range picker** – globální (sdílený všemi widgety) nebo per-widget?
-   Doporučuji globální + per-widget override.
-4. **Mixed currencies** – preferuješ vždy převod na firemní default (canonical)
-   nebo přepínač „native / canonical“? Doporučuji canonical + tooltip s breakdown.
-5. **Grid vs. stack** – stojí za to investovat do skutečného 12-col gridu,
-   nebo stačí současné stackování s lepším clusterováním?
+1. **MVP rozsah** → **všechny** widgety z katalogu § 2.2, nic neodkládáme.
+2. **Defaultní dashboard** → **jeden** výchozí layout, který si uživatel
+   následně přizpůsobí per-user. Žádné dva oddělené default dashboardy
+   (admin vs. member). Místo toho widgety klasifikujeme dle role:
+   - `audience: "all"` – default vidí každý.
+   - `audience: "admin"` – default vidí jen `owner`/`admin` (manažerské
+     widgety: `team_leaderboard`, `setup_progress`, `win_loss`,
+     `category_overview` v scope `firm`, …). Worker je má **k dispozici**
+     v editoru layoutu (visible=false), ale ve výchozím stavu skryté.
+3. **Range picker** → **globální v hlavičce dashboardu** + **per-widget
+   override** (každý widget si může držet vlastní `range` v configu).
+4. **Mixed currencies** → vždy **canonical** (firm default currency),
+   tooltip s breakdown podle nativních měn.
+5. **Grid vs. stack** → rozhodnuto **lehký 12-col CSS grid**
+   (Tailwind `grid-cols-12` + per-widget `colSpan`/`rowSpan`),
+   bez externí knihovny `vue-grid-layout`. Důvody: minimalizace bundle,
+   skvěle se kombinuje s existujícím `vue-draggable-plus`, jednodušší dark
+   mode/a11y, méně runtime práce. Pokud později vyvstane potřeba volného
+   resize gripperu, doplníme – schéma `size:{w,h}` to už podporuje.
 
 ---
 
@@ -299,9 +309,75 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
   `Category/Stage/CategoryField/Checkpoint/PipelineRecord`.
 - Identifikováno 15 mezer (viz § 1.2).
 - Navrženo 16 widgetů v cílovém katalogu (§ 2.2), API rozšíření a fázování.
-- **Co bude následovat:** Čekáme na potvrzení uživatele:
-  - prioritizace widgetů pro MVP,
-  - odpovědi na otázky v § 4.
-  Po potvrzení začneme **Fází 1** (backend rozšíření `/stats` + první z nových
-  endpointů – pravděpodobně `category-overview` a `stage-funnel`, protože jsou
-  základem pro 2 nejvíce požadované widgety).
+- **Rozhodnutí uživatele zaneseno do § 4** (všechny widgety v MVP, single
+  default layout s role-based visibility, globální range + per-widget
+  override, canonical měny, 12-col CSS grid).
+
+### 2026-05-05 — Fáze 1 (start)
+- Plán: rozšířit `GET /api/v1/crm/stats` o query parametry
+  `range / category_id / owner_id` a přidat canonical hodnoty
+  + `avg_cycle_days`, `created_in_range`, `won_in_range`, `lost_in_range`.
+- Postupně přidat `/dashboard/category-overview`, `/stage-funnel`,
+  `/trend`, `/my-day`, `/stale-records`, `/checkpoints`,
+  `/team-leaderboard` (admin only).
+- Testy doplnit do `crm/tests.py` (samostatná třída `DashboardAPITest`).
+- **Co bude následovat** (po dokončení backend Fáze 1): Fáze 2 –
+  refactor `DashboardView.vue` na adresář `components/dashboard/*`,
+  zavedení per-widget config schématu a globálního range pickeru.
+
+### 2026-05-05 — Fáze 1 (✅ hotovo, backend)
+
+Implementováno v `crm/api.py`:
+
+- **`GET /api/v1/crm/stats`** rozšířen o query parametry `range`
+  (`7d|30d|90d|qtd|ytd|all`), `category_id`, `owner_id` (UUID nebo `me`).
+  V odpovědi přidáno: `pipeline_value_canonical`, `won_value_canonical`,
+  `canonical_currency`, `avg_cycle_days`, `created_in_range`,
+  `won_in_range`, `lost_in_range`, `range`, `currency_breakdown[]`
+  (per-currency value + canonical → pro tooltip).
+  Backwards-compat: bez parametrů se chová identicky jako dosud
+  (kromě nově přidaných polí, která jsou aditivní).
+- **`GET /api/v1/crm/dashboard/category-overview`** – per-category
+  agregace (`records_total/open/won`, `value_open_canonical`,
+  `value_won_canonical`, `win_rate`, `sparkline[30]`) +
+  `uncategorized` bucket pokud existují záznamy bez kategorie.
+- **`GET /api/v1/crm/dashboard/stage-funnel?category_id=&range=&owner_id=`**
+  – stages dané kategorie s `count`, `value_canonical`,
+  `conversion_to_next` (clamped 0..1). Bez `category_id` se vezme
+  první aktivní kategorie. 404 pro neznámou kategorii.
+- **`GET /api/v1/crm/dashboard/trend?metric=&range=&category_id=&owner_id=`**
+  – timeseries po dnech. Metriky: `created | won | lost | value_won
+  | value_pipeline | activities`. Default `created`, default range `30d`.
+- **`GET /api/v1/crm/dashboard/my-day`** – `Task` + `Checkpoint` přiřazené
+  aktuálnímu uživateli, bucketed do `overdue / today / this_week`.
+- **`GET /api/v1/crm/dashboard/stale-records?days=&category_id=&owner_id=&limit=`**
+  – otevřené záznamy bez aktivity > N dnů (default 14).
+- **`GET /api/v1/crm/dashboard/checkpoints?upcoming_days=&scope=mine|firm`**
+  – nejbližší nezavřené checkpointy.
+- **`GET /api/v1/crm/dashboard/team-leaderboard?range=`**
+  – per-user agregáty (`won_count`, `won_value_canonical`,
+  `activities_count`, `records_open`). Vyžaduje role
+  owner/admin (jinak 403).
+
+**Testy:** `crm.tests.DashboardAPITest` – 16 testů, všechny ✅ green.
+Pokrývají: nové filtry na `/stats`, category-overview, stage-funnel
+(včetně 404 a default kategorie), trend (default + neznámá metrika),
+my-day (overdue/today/this_week + checkpointy), stale-records,
+checkpoints, team-leaderboard (admin OK / worker 403).
+
+> **Drobnost:** parametr `range` v API kolidoval s built-in `range()`
+> v Pythonu – řešeno přes `Query(None, alias="range")` + parametr
+> jménem `range_` v signature funkce (ninja standardní pattern).
+
+**Co bude následovat:**
+- Fáze 2 – Frontend foundation:
+  - rozdělit `DashboardView.vue` na adresář
+    `frontend-spa/src/components/dashboard/*` (jeden soubor / widget),
+  - sdílený composable `useDashboardWidget(id)` (config + globální
+    range/scope/category context),
+  - rozšíření schématu `dashboard_layout` o `size{w,h}` a `config{}`,
+  - `quick_create_record` rozšířit o category + závislé stage selecty,
+  - i18n úklid (`totalLeads → totalRecords`,
+    `quickCreateLead → quickCreateRecord`, smazat nepoužívané klíče
+    s lead-doménou),
+  - role-based default layout (audience all/admin).

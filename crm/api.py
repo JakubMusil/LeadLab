@@ -13,12 +13,12 @@ from decimal import Decimal
 from typing import Any, Dict, List, NamedTuple, Optional
 
 from django.core.cache import cache
-from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Q, Sum
+from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Max, Q, Sum
 from django.utils.dateparse import parse_datetime
 
 from django.db import transaction
 from django.utils import timezone as tz
-from ninja import File, Router, Schema, UploadedFile
+from ninja import File, Query, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
 from crm.models import (
@@ -4813,6 +4813,12 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
     return 201, _task_out(task, request.user)
 
 
+class CurrencyBreakdownItem(Schema):
+    currency: str
+    value: float
+    canonical_value: Optional[float] = None
+
+
 class StatsOut(Schema):
     total_records: int
     records_by_status: Dict[str, int]
@@ -4824,19 +4830,72 @@ class StatsOut(Schema):
     conversion_rate: float
     recent_activities: List[ActivityOut]
     mixed_currencies: bool = False
+    # ---- v2.3 dashboard extensions (all optional / backwards-compat) ----
+    pipeline_value_canonical: float = 0.0
+    won_value_canonical: float = 0.0
+    canonical_currency: Optional[str] = None
+    avg_cycle_days: Optional[float] = None
+    created_in_range: int = 0
+    won_in_range: int = 0
+    lost_in_range: int = 0
+    range: Optional[str] = None
+    currency_breakdown: List[CurrencyBreakdownItem] = []
+
+
+# Allowed ``range`` query param values for dashboard endpoints.
+_RANGE_DAYS = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+    "qtd": 90,   # quarter ≈ 90d for simplicity
+    "ytd": None,  # special-cased below
+    "all": None,
+}
+
+
+def _resolve_range(range_key: Optional[str]):
+    """Return (since_datetime|None, normalized_key)."""
+    key = (range_key or "all").lower()
+    if key not in _RANGE_DAYS:
+        key = "all"
+    now = tz.now()
+    if key == "ytd":
+        return now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0), key
+    days = _RANGE_DAYS[key]
+    if days is None:
+        return None, key
+    return now - dt.timedelta(days=days), key
 
 
 @router.get("/stats", auth=django_auth, response={200: StatsOut, 403: ErrorOut})
-def get_stats(request):
-    """Return aggregated stats for the current Firm."""
+def get_stats(
+    request,
+    range_: Optional[str] = Query(None, alias="range"),
+    category_id: Optional[str] = None,
+    owner_id: Optional[str] = None,
+):
+    """Return aggregated stats for the current Firm.
+
+    Optional query parameters:
+      - ``range``  : 7d | 30d | 90d | qtd | ytd | all (default: all)
+      - ``category_id`` : restrict to one ``Category`` (UUID).
+      - ``owner_id``    : restrict to one ``assigned_to`` user (UUID or 'me').
+    """
     try:
         require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     now = tz.now()
+    since, range_key = _resolve_range(range_)
 
     records_qs = PipelineRecord.objects.filter(firm=request.firm)
+    if category_id:
+        records_qs = records_qs.filter(category_id=category_id)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        records_qs = records_qs.filter(assigned_to_id=oid)
+
     status_counts = {s.value: 0 for s in RecordStatus}
     for row in records_qs.values("status").annotate(n=Count("id")):
         status_counts[row["status"]] = row["n"]
@@ -4845,29 +4904,93 @@ def get_stats(request):
     same_currency_qs = records_qs.filter(currency=default_currency)
     mixed_currencies = records_qs.exclude(currency=default_currency).exists()
 
+    open_q = ~Q(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
+
+    # Native (same-currency) totals (kept for backwards compat with old UI).
     pipeline_value = float(
-        same_currency_qs.exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
-        .aggregate(total=Sum("value"))["total"]
-        or 0
+        same_currency_qs.filter(open_q).aggregate(total=Sum("value"))["total"] or 0
     )
     won_value = float(
         same_currency_qs.filter(status=RecordStatus.WON).aggregate(total=Sum("value"))["total"] or 0
     )
 
+    # Canonical totals across all currencies (mixed-currency safe).
+    pipeline_value_canonical = float(
+        records_qs.filter(open_q).aggregate(total=Sum("canonical_amount"))["total"] or 0
+    )
+    won_value_canonical = float(
+        records_qs.filter(status=RecordStatus.WON)
+        .aggregate(total=Sum("canonical_amount"))["total"] or 0
+    )
+
+    # Per-currency breakdown for tooltip display.
+    breakdown: List[Dict[str, Any]] = []
+    for row in (
+        records_qs.filter(open_q)
+        .values("currency")
+        .annotate(value=Sum("value"), canonical=Sum("canonical_amount"))
+    ):
+        breakdown.append({
+            "currency": row["currency"],
+            "value": float(row["value"] or 0),
+            "canonical_value": float(row["canonical"]) if row["canonical"] is not None else None,
+        })
+
     total_records = records_qs.count()
     won_records = status_counts.get(RecordStatus.WON, 0)
     conversion_rate = round(won_records / total_records, 4) if total_records else 0.0
 
+    # In-range deltas.
+    if since is not None:
+        in_range_qs = records_qs.filter(created_at__gte=since)
+        created_in_range = in_range_qs.count()
+    else:
+        created_in_range = total_records
+
+    if since is not None:
+        won_in_range = records_qs.filter(
+            status=RecordStatus.WON, updated_at__gte=since
+        ).count()
+        lost_in_range = records_qs.filter(
+            status__in=[RecordStatus.LOST, RecordStatus.CANCELED],
+            updated_at__gte=since,
+        ).count()
+    else:
+        won_in_range = won_records
+        lost_in_range = (
+            status_counts.get(RecordStatus.LOST, 0)
+            + status_counts.get(RecordStatus.CANCELED, 0)
+        )
+
+    # Average cycle time (created_at → updated_at on WON records, in days).
+    won_records_qs = records_qs.filter(status=RecordStatus.WON)
+    if since is not None:
+        won_records_qs = won_records_qs.filter(updated_at__gte=since)
+    avg_cycle_days: Optional[float] = None
+    cycle_pairs = list(won_records_qs.values_list("created_at", "updated_at")[:1000])
+    if cycle_pairs:
+        total_seconds = sum((u - c).total_seconds() for c, u in cycle_pairs if u and c)
+        if total_seconds > 0:
+            avg_cycle_days = round(total_seconds / 86400.0 / len(cycle_pairs), 2)
+
+    # Tasks (also scoped to owner if requested).
     tasks_qs = Task.objects.filter(firm=request.firm, is_completed=False)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        tasks_qs = tasks_qs.filter(assigned_to_id=oid)
     total_tasks_pending = tasks_qs.count()
     total_tasks_overdue = tasks_qs.filter(due_date__lt=now).count()
 
     total_customers = Customer.objects.filter(firm=request.firm).count()
 
+    activities_qs = Activity.objects.filter(record__firm=request.firm)
+    if category_id:
+        activities_qs = activities_qs.filter(record__category_id=category_id)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        activities_qs = activities_qs.filter(record__assigned_to_id=oid)
     recent_activities = (
-        Activity.objects.filter(record__firm=request.firm)
-        .select_related("record", "user")
-        .order_by("-created_at")[:10]
+        activities_qs.select_related("record", "user").order_by("-created_at")[:10]
     )
 
     return 200, {
@@ -4881,7 +5004,670 @@ def get_stats(request):
         "conversion_rate": conversion_rate,
         "recent_activities": [_activity_out(a) for a in recent_activities],
         "mixed_currencies": mixed_currencies,
+        "pipeline_value_canonical": pipeline_value_canonical,
+        "won_value_canonical": won_value_canonical,
+        "canonical_currency": default_currency,
+        "avg_cycle_days": avg_cycle_days,
+        "created_in_range": created_in_range,
+        "won_in_range": won_in_range,
+        "lost_in_range": lost_in_range,
+        "range": range_key,
+        "currency_breakdown": breakdown,
     }
+
+
+# ===========================================================================
+# v2.3 — DASHBOARD WIDGET ENDPOINTS
+# ===========================================================================
+#
+# These endpoints power the new pipeline-aware dashboard widgets.  All of them
+# accept optional ``range`` / ``category_id`` / ``owner_id`` filters where
+# meaningful and return canonical (firm default currency) money values.
+
+class CategoryOverviewItem(Schema):
+    category_id: str
+    name: str
+    icon: str = ""
+    color: str = ""
+    records_total: int
+    records_open: int
+    records_won: int
+    value_open_canonical: float
+    value_won_canonical: float
+    win_rate: float
+    sparkline: List[int]  # creations per day, last 30 days
+
+
+class CategoryOverviewOut(Schema):
+    canonical_currency: Optional[str] = None
+    items: List[CategoryOverviewItem]
+    uncategorized: Optional[CategoryOverviewItem] = None
+
+
+@router.get(
+    "/dashboard/category-overview",
+    auth=django_auth,
+    response={200: CategoryOverviewOut, 403: ErrorOut},
+)
+def get_dashboard_category_overview(
+    request,
+    range_: Optional[str] = Query(None, alias="range"),
+    owner_id: Optional[str] = None,
+):
+    """Per-category aggregates for the dashboard ``category_overview`` widget."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    since, _ = _resolve_range(range_)
+    sparkline_since = tz.now() - dt.timedelta(days=30)
+
+    base_records = PipelineRecord.objects.filter(firm=request.firm)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        base_records = base_records.filter(assigned_to_id=oid)
+    if since is not None:
+        # ``range`` filters the *active* / time-bound aggregates; sparkline is
+        # always last 30 days regardless.
+        scoped_records = base_records.filter(created_at__gte=since)
+    else:
+        scoped_records = base_records
+
+    open_q = ~Q(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
+
+    def _build_item(category, qs):
+        total = qs.count()
+        won = qs.filter(status=RecordStatus.WON).count()
+        win_rate = round(won / total, 4) if total else 0.0
+        value_open = float(qs.filter(open_q).aggregate(t=Sum("canonical_amount"))["t"] or 0)
+        value_won = float(qs.filter(status=RecordStatus.WON).aggregate(t=Sum("canonical_amount"))["t"] or 0)
+        # Sparkline (30 days, count of created records per day).
+        spark_days = [0] * 30
+        spark_qs = qs.filter(created_at__gte=sparkline_since).values_list("created_at", flat=True)
+        for created in spark_qs:
+            day_idx = (created.date() - sparkline_since.date()).days
+            if 0 <= day_idx < 30:
+                spark_days[day_idx] += 1
+        return {
+            "category_id": str(category.id) if category else "",
+            "name": category.name if category else "—",
+            "icon": getattr(category, "icon", "") or "",
+            "color": getattr(category, "color", "") or "",
+            "records_total": total,
+            "records_open": qs.filter(open_q).count(),
+            "records_won": won,
+            "value_open_canonical": value_open,
+            "value_won_canonical": value_won,
+            "win_rate": win_rate,
+            "sparkline": spark_days,
+        }
+
+    items: List[Dict[str, Any]] = []
+    for cat in Category.objects.filter(firm=request.firm, is_active=True).order_by("order", "name"):
+        items.append(_build_item(cat, scoped_records.filter(category=cat)))
+
+    uncat_qs = scoped_records.filter(category__isnull=True)
+    uncategorized = _build_item(None, uncat_qs) if uncat_qs.exists() else None
+
+    return 200, {
+        "canonical_currency": request.firm.default_currency,
+        "items": items,
+        "uncategorized": uncategorized,
+    }
+
+
+class StageFunnelStage(Schema):
+    stage_id: str
+    name: str
+    color: str = ""
+    is_terminal: bool = False
+    is_won: bool = False
+    order: int
+    count: int
+    value_canonical: float
+    conversion_to_next: Optional[float] = None  # ratio 0..1, null for last stage
+
+
+class StageFunnelOut(Schema):
+    category_id: Optional[str]
+    category_name: Optional[str]
+    canonical_currency: Optional[str] = None
+    stages: List[StageFunnelStage]
+
+
+@router.get(
+    "/dashboard/stage-funnel",
+    auth=django_auth,
+    response={200: StageFunnelOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_dashboard_stage_funnel(
+    request,
+    category_id: Optional[str] = None,
+    range_: Optional[str] = Query(None, alias="range"),
+    owner_id: Optional[str] = None,
+):
+    """Stage-by-stage funnel for the chosen ``Category``.
+
+    If ``category_id`` is omitted, the first active category for the firm is
+    used (or returns an empty funnel if none exist).
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    if category_id:
+        category = Category.objects.filter(firm=request.firm, id=category_id).first()
+        if category is None:
+            return 404, {"detail": "Category not found."}
+    else:
+        category = (
+            Category.objects.filter(firm=request.firm, is_active=True)
+            .order_by("order", "name")
+            .first()
+        )
+
+    if category is None:
+        return 200, {
+            "category_id": None,
+            "category_name": None,
+            "canonical_currency": request.firm.default_currency,
+            "stages": [],
+        }
+
+    since, _ = _resolve_range(range_)
+    records_qs = PipelineRecord.objects.filter(firm=request.firm, category=category)
+    if since is not None:
+        records_qs = records_qs.filter(created_at__gte=since)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        records_qs = records_qs.filter(assigned_to_id=oid)
+
+    stages = list(category.stages.all().order_by("order"))
+    stage_data: List[Dict[str, Any]] = []
+    counts: List[int] = []
+    for st in stages:
+        qs = records_qs.filter(current_stage=st)
+        c = qs.count()
+        v = float(qs.aggregate(t=Sum("canonical_amount"))["t"] or 0)
+        counts.append(c)
+        stage_data.append({
+            "stage_id": str(st.id),
+            "name": st.label or st.name,
+            "color": st.color or "",
+            "is_terminal": st.is_terminal,
+            "is_won": st.is_won,
+            "order": st.order,
+            "count": c,
+            "value_canonical": v,
+            "conversion_to_next": None,
+        })
+
+    # Conversion = count(next) / count(self) (clamped 0..1).
+    for i in range(len(stage_data) - 1):
+        if counts[i] > 0:
+            stage_data[i]["conversion_to_next"] = round(min(counts[i + 1] / counts[i], 1.0), 4)
+
+    return 200, {
+        "category_id": str(category.id),
+        "category_name": category.name,
+        "canonical_currency": request.firm.default_currency,
+        "stages": stage_data,
+    }
+
+
+class TrendPoint(Schema):
+    date: str  # ISO date YYYY-MM-DD
+    value: float
+
+
+class TrendOut(Schema):
+    metric: str
+    range: str
+    canonical_currency: Optional[str] = None
+    points: List[TrendPoint]
+
+
+@router.get(
+    "/dashboard/trend",
+    auth=django_auth,
+    response={200: TrendOut, 403: ErrorOut},
+)
+def get_dashboard_trend(
+    request,
+    metric: str = "created",
+    range_: Optional[str] = Query(None, alias="range"),
+    category_id: Optional[str] = None,
+    owner_id: Optional[str] = None,
+):
+    """Time-series for the ``pipeline_trend`` widget.
+
+    ``metric`` ∈ {created, won, lost, value_won, value_pipeline, activities}.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    valid_metrics = {"created", "won", "lost", "value_won", "value_pipeline", "activities"}
+    if metric not in valid_metrics:
+        metric = "created"
+
+    since, range_key = _resolve_range(range_)
+    if since is None:
+        since = tz.now() - dt.timedelta(days=30)
+        range_key = "30d"
+
+    days = max(1, (tz.now().date() - since.date()).days + 1)
+    points: List[Dict[str, Any]] = [
+        {"date": (since.date() + dt.timedelta(days=i)).isoformat(), "value": 0.0}
+        for i in range(days)
+    ]
+    index_for = {p["date"]: i for i, p in enumerate(points)}
+
+    records_qs = PipelineRecord.objects.filter(firm=request.firm)
+    if category_id:
+        records_qs = records_qs.filter(category_id=category_id)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        records_qs = records_qs.filter(assigned_to_id=oid)
+
+    if metric == "created":
+        rows = records_qs.filter(created_at__gte=since).values_list("created_at", flat=True)
+        for ts in rows:
+            key = ts.date().isoformat()
+            if key in index_for:
+                points[index_for[key]]["value"] += 1
+    elif metric == "won":
+        rows = records_qs.filter(status=RecordStatus.WON, updated_at__gte=since).values_list("updated_at", flat=True)
+        for ts in rows:
+            key = ts.date().isoformat()
+            if key in index_for:
+                points[index_for[key]]["value"] += 1
+    elif metric == "lost":
+        rows = records_qs.filter(
+            status__in=[RecordStatus.LOST, RecordStatus.CANCELED], updated_at__gte=since
+        ).values_list("updated_at", flat=True)
+        for ts in rows:
+            key = ts.date().isoformat()
+            if key in index_for:
+                points[index_for[key]]["value"] += 1
+    elif metric == "value_won":
+        rows = records_qs.filter(
+            status=RecordStatus.WON, updated_at__gte=since
+        ).values_list("updated_at", "canonical_amount")
+        for ts, amt in rows:
+            key = ts.date().isoformat()
+            if key in index_for and amt is not None:
+                points[index_for[key]]["value"] += float(amt)
+    elif metric == "value_pipeline":
+        # Snapshot of current pipeline value per "creation date" bucket
+        # (interpretation: cumulative pipeline value as of each day).
+        rows = list(
+            records_qs.exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
+            .order_by("created_at")
+            .values_list("created_at", "canonical_amount")
+        )
+        for ts, amt in rows:
+            key = ts.date().isoformat()
+            if amt is None:
+                continue
+            if key in index_for:
+                points[index_for[key]]["value"] += float(amt)
+        # Convert to running total
+        for i in range(1, len(points)):
+            points[i]["value"] += points[i - 1]["value"]
+    elif metric == "activities":
+        act_qs = Activity.objects.filter(record__firm=request.firm, created_at__gte=since)
+        if category_id:
+            act_qs = act_qs.filter(record__category_id=category_id)
+        if owner_id:
+            oid = request.user.id if owner_id == "me" else owner_id
+            act_qs = act_qs.filter(record__assigned_to_id=oid)
+        for ts in act_qs.values_list("created_at", flat=True):
+            key = ts.date().isoformat()
+            if key in index_for:
+                points[index_for[key]]["value"] += 1
+
+    return 200, {
+        "metric": metric,
+        "range": range_key,
+        "canonical_currency": request.firm.default_currency,
+        "points": points,
+    }
+
+
+class MyDayTask(Schema):
+    id: str
+    kind: str  # "task" | "checkpoint"
+    title: str
+    record_id: Optional[str] = None
+    record_title: Optional[str] = None
+    due_date: Optional[datetime] = None
+    priority: Optional[str] = None
+    is_completed: bool = False
+
+
+class MyDayOut(Schema):
+    overdue: List[MyDayTask]
+    today: List[MyDayTask]
+    this_week: List[MyDayTask]
+
+
+@router.get(
+    "/dashboard/my-day",
+    auth=django_auth,
+    response={200: MyDayOut, 403: ErrorOut},
+)
+def get_dashboard_my_day(request):
+    """Tasks + checkpoints for the current user, bucketed by due-date."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    now = tz.now()
+    today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    week_end = today_end + dt.timedelta(days=7)
+
+    overdue: List[Dict[str, Any]] = []
+    today: List[Dict[str, Any]] = []
+    this_week: List[Dict[str, Any]] = []
+
+    # Tasks assigned to the current user.
+    tasks = (
+        Task.objects.filter(
+            firm=request.firm, assigned_to=request.user, is_completed=False
+        )
+        .select_related("record")
+        .order_by("due_date")
+    )
+    for t in tasks:
+        item = {
+            "id": str(t.id),
+            "kind": "task",
+            "title": t.title,
+            "record_id": str(t.record_id) if getattr(t, "record_id", None) else None,
+            "record_title": getattr(t.record, "title", None) if getattr(t, "record", None) else None,
+            "due_date": t.due_date,
+            "priority": t.priority,
+            "is_completed": t.is_completed,
+        }
+        if t.due_date is None:
+            this_week.append(item)
+        elif t.due_date < now:
+            overdue.append(item)
+        elif t.due_date <= today_end:
+            today.append(item)
+        elif t.due_date <= week_end:
+            this_week.append(item)
+
+    # Checkpoints on records assigned to the current user.
+    cps = (
+        Checkpoint.objects.filter(
+            record__firm=request.firm,
+            record__assigned_to=request.user,
+            is_completed=False,
+        )
+        .select_related("record")
+    )
+    for cp in cps:
+        if cp.date is None:
+            continue
+        cp_due = dt.datetime.combine(cp.date, dt.time(23, 59, 0), tzinfo=now.tzinfo)
+        item = {
+            "id": str(cp.id),
+            "kind": "checkpoint",
+            "title": cp.name,
+            "record_id": str(cp.record_id),
+            "record_title": cp.record.title if cp.record else None,
+            "due_date": cp_due,
+            "priority": None,
+            "is_completed": cp.is_completed,
+        }
+        if cp_due < now:
+            overdue.append(item)
+        elif cp_due <= today_end:
+            today.append(item)
+        elif cp_due <= week_end:
+            this_week.append(item)
+
+    overdue.sort(key=lambda x: x["due_date"] or now)
+    today.sort(key=lambda x: x["due_date"] or now)
+    this_week.sort(key=lambda x: x["due_date"] or now)
+
+    return 200, {"overdue": overdue, "today": today, "this_week": this_week}
+
+
+class StaleRecordItem(Schema):
+    id: str
+    title: str
+    category_id: Optional[str] = None
+    category_name: Optional[str] = None
+    stage_id: Optional[str] = None
+    stage_name: Optional[str] = None
+    status: str
+    value_canonical: Optional[float] = None
+    assigned_to_id: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    last_activity_at: Optional[datetime] = None
+    days_since_activity: int
+
+
+class StaleRecordsOut(Schema):
+    threshold_days: int
+    items: List[StaleRecordItem]
+
+
+@router.get(
+    "/dashboard/stale-records",
+    auth=django_auth,
+    response={200: StaleRecordsOut, 403: ErrorOut},
+)
+def get_dashboard_stale_records(
+    request,
+    days: int = 14,
+    category_id: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    limit: int = 20,
+):
+    """Records whose last activity is older than ``days`` (or none at all)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    days = max(1, min(int(days or 14), 365))
+    limit = max(1, min(int(limit or 20), 100))
+    threshold = tz.now() - dt.timedelta(days=days)
+
+    qs = (
+        PipelineRecord.objects.filter(firm=request.firm)
+        .exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
+        .select_related("category", "current_stage", "assigned_to")
+    )
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+    if owner_id:
+        oid = request.user.id if owner_id == "me" else owner_id
+        qs = qs.filter(assigned_to_id=oid)
+
+    # Annotate with last activity timestamp; fall back to record's updated_at.
+    qs = qs.annotate(last_activity=Max("activities__created_at"))
+    qs = qs.filter(Q(last_activity__lt=threshold) | Q(last_activity__isnull=True))
+    qs = qs.order_by("last_activity", "updated_at")[:limit]
+
+    now = tz.now()
+    items: List[Dict[str, Any]] = []
+    for r in qs:
+        last = r.last_activity or r.updated_at
+        days_since = max(0, (now - last).days) if last else days
+        items.append({
+            "id": str(r.id),
+            "title": r.title,
+            "category_id": str(r.category_id) if r.category_id else None,
+            "category_name": r.category.name if r.category else None,
+            "stage_id": str(r.current_stage_id) if r.current_stage_id else None,
+            "stage_name": (r.current_stage.label or r.current_stage.name) if r.current_stage else None,
+            "status": r.status,
+            "value_canonical": float(r.canonical_amount) if r.canonical_amount is not None else None,
+            "assigned_to_id": str(r.assigned_to_id) if r.assigned_to_id else None,
+            "assigned_to_name": _user_display_name(r.assigned_to),
+            "last_activity_at": r.last_activity,
+            "days_since_activity": days_since,
+        })
+
+    return 200, {"threshold_days": days, "items": items}
+
+
+class CheckpointDashboardItem(Schema):
+    id: str
+    name: str
+    date: Optional[str] = None  # ISO date
+    is_completed: bool
+    record_id: str
+    record_title: str
+    category_name: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    days_until: Optional[int] = None  # negative = overdue
+
+
+class CheckpointsOut(Schema):
+    items: List[CheckpointDashboardItem]
+
+
+@router.get(
+    "/dashboard/checkpoints",
+    auth=django_auth,
+    response={200: CheckpointsOut, 403: ErrorOut},
+)
+def get_dashboard_checkpoints(
+    request,
+    upcoming_days: int = 14,
+    scope: str = "mine",  # "mine" | "firm"
+):
+    """Upcoming checkpoints for the current user (or whole firm if scope=firm)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    upcoming_days = max(1, min(int(upcoming_days or 14), 365))
+    today = tz.now().date()
+    horizon = today + dt.timedelta(days=upcoming_days)
+
+    qs = (
+        Checkpoint.objects.filter(record__firm=request.firm, is_completed=False)
+        .select_related("record", "record__category", "record__assigned_to")
+    )
+    if scope != "firm":
+        qs = qs.filter(record__assigned_to=request.user)
+    # ``date <= horizon`` already covers overdue items because horizon ≥ today.
+    # Checkpoints without a date are considered backlog and excluded here.
+    qs = qs.filter(date__lte=horizon).order_by("date")[:100]
+
+    items: List[Dict[str, Any]] = []
+    for cp in qs:
+        days_until = None
+        if cp.date is not None:
+            days_until = (cp.date - today).days
+        items.append({
+            "id": str(cp.id),
+            "name": cp.name,
+            "date": cp.date.isoformat() if cp.date else None,
+            "is_completed": cp.is_completed,
+            "record_id": str(cp.record_id),
+            "record_title": cp.record.title if cp.record else "",
+            "category_name": cp.record.category.name if cp.record and cp.record.category else None,
+            "assigned_to_name": _user_display_name(cp.record.assigned_to) if cp.record else None,
+            "days_until": days_until,
+        })
+    return 200, {"items": items}
+
+
+class LeaderboardEntry(Schema):
+    user_id: str
+    name: str
+    won_count: int
+    won_value_canonical: float
+    activities_count: int
+    records_open: int
+
+
+class TeamLeaderboardOut(Schema):
+    range: str
+    canonical_currency: Optional[str] = None
+    entries: List[LeaderboardEntry]
+
+
+@router.get(
+    "/dashboard/team-leaderboard",
+    auth=django_auth,
+    response={200: TeamLeaderboardOut, 403: ErrorOut},
+)
+def get_dashboard_team_leaderboard(
+    request,
+    range_: Optional[str] = Query(None, alias="range"),
+):
+    """Per-user aggregates for the ``team_leaderboard`` widget (admin only)."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    membership = Membership.objects.filter(user=request.user, firm=request.firm).first()
+    if membership is None or not membership.is_admin_or_above:
+        return 403, {"detail": "Admin access required."}
+
+    since, range_key = _resolve_range(range_)
+
+    members = (
+        Membership.objects.filter(firm=request.firm)
+        .select_related("user")
+    )
+
+    entries: List[Dict[str, Any]] = []
+    for m in members:
+        u = m.user
+        if u is None:
+            continue
+
+        records_qs = PipelineRecord.objects.filter(firm=request.firm, assigned_to=u)
+        won_qs = records_qs.filter(status=RecordStatus.WON)
+        if since is not None:
+            won_qs = won_qs.filter(updated_at__gte=since)
+
+        won_count = won_qs.count()
+        won_value = float(won_qs.aggregate(t=Sum("canonical_amount"))["t"] or 0)
+        records_open = records_qs.exclude(
+            status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED]
+        ).count()
+
+        act_qs = Activity.objects.filter(record__firm=request.firm, user=u)
+        if since is not None:
+            act_qs = act_qs.filter(created_at__gte=since)
+        activities_count = act_qs.count()
+
+        entries.append({
+            "user_id": str(u.id),
+            "name": _user_display_name(u) or u.email,
+            "won_count": won_count,
+            "won_value_canonical": won_value,
+            "activities_count": activities_count,
+            "records_open": records_open,
+        })
+
+    entries.sort(key=lambda e: (-e["won_value_canonical"], -e["won_count"]))
+
+    return 200, {
+        "range": range_key,
+        "canonical_currency": request.firm.default_currency,
+        "entries": entries,
+    }
+
+
+
 
 
 # ===========================================================================
