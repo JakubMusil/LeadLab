@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { usePipelineStore } from '@/stores/pipeline'
-import { useDashboardLayoutStore, type WidgetConfig } from '@/stores/dashboard'
+import { useDashboardLayoutStore, type WidgetConfig, type DashboardRange } from '@/stores/dashboard'
 import { api } from '@/api'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useI18n } from '@/composables/useI18n'
@@ -29,6 +29,7 @@ import PipelineTrendWidget from '@/components/dashboard/PipelineTrendWidget.vue'
 import WinLossWidget from '@/components/dashboard/WinLossWidget.vue'
 import ActivityHeatmapWidget from '@/components/dashboard/ActivityHeatmapWidget.vue'
 import TeamLeaderboardWidget from '@/components/dashboard/TeamLeaderboardWidget.vue'
+import DashboardTour from '@/components/dashboard/DashboardTour.vue'
 
 const { t } = useI18n()
 const firmStore = useFirmStore()
@@ -73,6 +74,7 @@ const showLayoutEditor = ref(false)
 const myTopRecordsRef = ref<InstanceType<typeof MyTopRecordsWidget> | null>(null)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // ---------------------------------------------------------------------------
 // Widget label map for layout editor
@@ -107,7 +109,8 @@ async function loadStats() {
   if (!firmStore.activeFirm) return
   loading.value = true
   try {
-    const res = await api.get<StatsData>('/api/v1/crm/stats')
+    const params = new URLSearchParams({ range: layoutStore.globalRange })
+    const res = await api.get<StatsData>(`/api/v1/crm/stats?${params.toString()}`)
     if (res.ok) stats.value = res.data
   } finally {
     loading.value = false
@@ -120,17 +123,51 @@ function onRecordCreated() {
 }
 
 // ---------------------------------------------------------------------------
+// Range picker options
+// ---------------------------------------------------------------------------
+
+const RANGE_OPTIONS = computed(() => [
+  { value: '7d' as DashboardRange, label: t('dashboard.range7d') },
+  { value: '30d' as DashboardRange, label: t('dashboard.range30d') },
+  { value: '90d' as DashboardRange, label: t('dashboard.range90d') },
+  { value: 'qtd' as DashboardRange, label: t('dashboard.rangeQtd') },
+  { value: 'ytd' as DashboardRange, label: t('dashboard.rangeYtd') },
+  { value: 'all' as DashboardRange, label: t('dashboard.rangeAll') },
+])
+
+const COL_SPAN_CLASSES: Record<number, string> = {
+  1: 'md:col-span-1',
+  2: 'md:col-span-2',
+  3: 'md:col-span-3',
+  4: 'md:col-span-4',
+  5: 'md:col-span-5',
+  6: 'md:col-span-6',
+  7: 'md:col-span-7',
+  8: 'md:col-span-8',
+  9: 'md:col-span-9',
+  10: 'md:col-span-10',
+  11: 'md:col-span-11',
+  12: 'md:col-span-12',
+}
+
+// ---------------------------------------------------------------------------
 // Layout helpers
 // ---------------------------------------------------------------------------
 
 const visibleWidgets = computed(() => layoutStore.visibleWidgets)
 
-function bothChartAndActivity(widget: WidgetConfig) {
-  return (
-    visibleWidgets.value.some((w) => w.id === 'pipeline_chart') &&
-    visibleWidgets.value.some((w) => w.id === 'recent_activity') &&
-    widget.id === 'pipeline_chart'
-  )
+function effectiveColSpan(widget: WidgetConfig): number {
+  const PAIRED = new Set(['pipeline_chart', 'recent_activity'])
+  if (PAIRED.has(widget.id)) {
+    const bothVisible = visibleWidgets.value.some(w => w.id === 'pipeline_chart') &&
+                        visibleWidgets.value.some(w => w.id === 'recent_activity')
+    if (!bothVisible) return 12
+  }
+  return widget.colSpan ?? 12
+}
+
+function colSpanClass(widget: WidgetConfig): string {
+  return COL_SPAN_CLASSES[effectiveColSpan(widget)] ?? 'md:col-span-12'
 }
 
 // ---------------------------------------------------------------------------
@@ -165,13 +202,22 @@ onMounted(async () => {
   refreshTimer = setInterval(loadStats, 60_000)
 })
 
+watch(() => layoutStore.globalRange, () => {
+  // Debounce: avoid multiple rapid API calls if user clicks quickly through ranges
+  if (rangeDebounceTimer) clearTimeout(rangeDebounceTimer)
+  rangeDebounceTimer = setTimeout(() => loadStats(), 300)
+})
+
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+  if (rangeDebounceTimer) clearTimeout(rangeDebounceTimer)
 })
 </script>
 
 <template>
   <div class="p-6 space-y-6">
+    <DashboardTour />
+
     <!-- Setup banner -->
     <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4 relative">
       <div>
@@ -191,16 +237,30 @@ onUnmounted(() => {
     </div>
 
     <!-- Dashboard header with layout button -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-y-2">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Dashboard</h2>
-      <button
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        @click="showLayoutEditor = !showLayoutEditor"
-        :aria-expanded="showLayoutEditor"
-      >
-        <Squares2X2Icon class="w-4 h-4" aria-hidden="true" />
-        {{ t('dashboard.customiseLayout') }}
-      </button>
+      <div class="flex flex-wrap items-center gap-2 gap-y-2">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          @click="showLayoutEditor = !showLayoutEditor"
+          :aria-expanded="showLayoutEditor"
+        >
+          <Squares2X2Icon class="w-4 h-4" aria-hidden="true" />
+          {{ t('dashboard.customiseLayout') }}
+        </button>
+        <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+          <button
+            v-for="r in RANGE_OPTIONS"
+            :key="r.value"
+            type="button"
+            class="px-2.5 py-1 text-xs font-medium rounded-lg transition-colors"
+            :class="layoutStore.globalRange === r.value ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+            @click="layoutStore.setGlobalRange(r.value)"
+          >
+            {{ r.label }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Layout editor -->
@@ -256,115 +316,86 @@ onUnmounted(() => {
     </div>
 
     <template v-else-if="stats">
-      <template v-for="widget in visibleWidgets" :key="widget.id">
-
-        <!-- Stat cards -->
-        <StatCardsWidget
-          v-if="widget.id === 'stat_cards'"
-          :stats="stats"
-        />
-
-        <!-- Pipeline chart + Recent activity (rendered as a pair when both visible) -->
+      <div class="grid grid-cols-12 gap-4">
         <div
-          v-else-if="widget.id === 'pipeline_chart' || widget.id === 'recent_activity'"
-          class="grid lg:grid-cols-3 gap-4"
+          v-for="widget in visibleWidgets"
+          :key="widget.id"
+          class="col-span-12"
+          :class="colSpanClass(widget)"
         >
-          <!-- Both visible: chart 2/3, activity 1/3 -->
-          <template v-if="bothChartAndActivity(widget)">
-            <div class="lg:col-span-2">
-              <PipelineChartWidget :records-by-status="stats.records_by_status" />
-            </div>
-            <div>
-              <RecentActivityWidget :activities="stats.recent_activities" />
-            </div>
-          </template>
+          <StatCardsWidget
+            v-if="widget.id === 'stat_cards'"
+            :stats="stats"
+          />
 
-          <!-- Chart only -->
-          <template v-else-if="widget.id === 'pipeline_chart' && !visibleWidgets.some((w) => w.id === 'recent_activity')">
-            <div class="lg:col-span-3">
-              <PipelineChartWidget :records-by-status="stats.records_by_status" />
-            </div>
-          </template>
+          <PipelineChartWidget
+            v-else-if="widget.id === 'pipeline_chart'"
+            :records-by-status="stats.records_by_status"
+          />
 
-          <!-- Recent activity only -->
-          <template v-else-if="widget.id === 'recent_activity' && !visibleWidgets.some((w) => w.id === 'pipeline_chart')">
-            <div class="lg:col-span-3">
-              <RecentActivityWidget :activities="stats.recent_activities" />
-            </div>
-          </template>
+          <RecentActivityWidget
+            v-else-if="widget.id === 'recent_activity'"
+            :activities="stats.recent_activities"
+          />
+
+          <QuickCreateRecordWidget
+            v-else-if="widget.id === 'quick_create_record'"
+            @created="onRecordCreated"
+          />
+
+          <MyTopRecordsWidget
+            v-else-if="widget.id === 'my_top_records'"
+            ref="myTopRecordsRef"
+          />
+
+          <StatusBreakdownWidget
+            v-else-if="widget.id === 'status_breakdown'"
+            :records-by-status="stats.records_by_status"
+          />
+
+          <CategoryOverviewWidget
+            v-else-if="widget.id === 'category_overview'"
+          />
+
+          <StageFunnelWidget
+            v-else-if="widget.id === 'stage_funnel'"
+          />
+
+          <RecordStatusChartWidget
+            v-else-if="widget.id === 'record_status_chart'"
+            :records-by-status="stats.records_by_status"
+          />
+
+          <MyDayWidget
+            v-else-if="widget.id === 'my_day'"
+          />
+
+          <StaleRecordsWidget
+            v-else-if="widget.id === 'stale_records'"
+          />
+
+          <UpcomingCheckpointsWidget
+            v-else-if="widget.id === 'upcoming_checkpoints'"
+          />
+
+          <PipelineTrendWidget
+            v-else-if="widget.id === 'pipeline_trend'"
+          />
+
+          <WinLossWidget
+            v-else-if="widget.id === 'win_loss'"
+            :stats="stats"
+          />
+
+          <ActivityHeatmapWidget
+            v-else-if="widget.id === 'activity_heatmap'"
+          />
+
+          <TeamLeaderboardWidget
+            v-else-if="widget.id === 'team_leaderboard'"
+          />
         </div>
-
-        <!-- Quick create record -->
-        <QuickCreateRecordWidget
-          v-else-if="widget.id === 'quick_create_record'"
-          @created="onRecordCreated"
-        />
-
-        <!-- My top records -->
-        <MyTopRecordsWidget
-          v-else-if="widget.id === 'my_top_records'"
-          ref="myTopRecordsRef"
-        />
-
-        <!-- Status breakdown -->
-        <StatusBreakdownWidget
-          v-else-if="widget.id === 'status_breakdown'"
-          :records-by-status="stats.records_by_status"
-        />
-
-        <!-- Category overview -->
-        <CategoryOverviewWidget
-          v-else-if="widget.id === 'category_overview'"
-        />
-
-        <!-- Stage funnel -->
-        <StageFunnelWidget
-          v-else-if="widget.id === 'stage_funnel'"
-        />
-
-        <!-- Record status chart (legacy optional) -->
-        <RecordStatusChartWidget
-          v-else-if="widget.id === 'record_status_chart'"
-          :records-by-status="stats.records_by_status"
-        />
-
-        <!-- My day (tasks + checkpoints feed) -->
-        <MyDayWidget
-          v-else-if="widget.id === 'my_day'"
-        />
-
-        <!-- Stale records -->
-        <StaleRecordsWidget
-          v-else-if="widget.id === 'stale_records'"
-        />
-
-        <!-- Upcoming checkpoints -->
-        <UpcomingCheckpointsWidget
-          v-else-if="widget.id === 'upcoming_checkpoints'"
-        />
-
-        <!-- Pipeline trend -->
-        <PipelineTrendWidget
-          v-else-if="widget.id === 'pipeline_trend'"
-        />
-
-        <!-- Win / Loss -->
-        <WinLossWidget
-          v-else-if="widget.id === 'win_loss'"
-          :stats="stats"
-        />
-
-        <!-- Activity heatmap -->
-        <ActivityHeatmapWidget
-          v-else-if="widget.id === 'activity_heatmap'"
-        />
-
-        <!-- Team leaderboard (admin) -->
-        <TeamLeaderboardWidget
-          v-else-if="widget.id === 'team_leaderboard'"
-        />
-
-      </template>
+      </div>
     </template>
 
     <div v-else class="text-center py-12 text-gray-400">{{ t('dashboard.failedToLoad') }}</div>

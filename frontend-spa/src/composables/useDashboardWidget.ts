@@ -13,7 +13,7 @@ export function useDashboardWidget(id: string) {
 
   const config = computed<WidgetConfigOptions>(() => layoutStore.getWidgetConfigOptions(id))
 
-  const range = computed<DashboardRange>(() => config.value.range ?? '30d')
+  const range = computed<DashboardRange>(() => config.value.range ?? layoutStore.globalRange)
   const categoryId = computed<string | null>(() => config.value.category_id ?? null)
   const scope = computed<DashboardScope>(() => config.value.scope ?? 'mine')
   const sort = computed(() => config.value.sort ?? 'score')

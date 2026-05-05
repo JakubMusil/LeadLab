@@ -27,6 +27,7 @@ export interface WidgetConfig {
   id: string
   visible: boolean
   order: number
+  colSpan?: number
   size?: WidgetSize
   config?: WidgetConfigOptions
   audience?: DashboardAudience
@@ -37,22 +38,22 @@ export interface WidgetConfig {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: 'stat_cards', visible: true, order: 0, audience: 'all' },
-  { id: 'quick_create_record', visible: true, order: 1, audience: 'all' },
-  { id: 'category_overview', visible: true, order: 2, audience: 'all' },
-  { id: 'stage_funnel', visible: true, order: 3, audience: 'all' },
-  { id: 'my_day', visible: true, order: 4, audience: 'all' },
-  { id: 'upcoming_checkpoints', visible: true, order: 5, audience: 'all' },
-  { id: 'pipeline_chart', visible: true, order: 6, audience: 'all' },
-  { id: 'recent_activity', visible: true, order: 7, audience: 'all' },
-  { id: 'my_top_records', visible: true, order: 8, audience: 'all' },
-  { id: 'stale_records', visible: true, order: 9, audience: 'all' },
-  { id: 'status_breakdown', visible: true, order: 10, audience: 'all' },
-  { id: 'record_status_chart', visible: false, order: 11, audience: 'all' },
-  { id: 'pipeline_trend', visible: true, order: 12, audience: 'all' },
-  { id: 'win_loss', visible: true, order: 13, audience: 'all' },
-  { id: 'activity_heatmap', visible: true, order: 14, audience: 'all' },
-  { id: 'team_leaderboard', visible: false, order: 15, audience: 'admin' },
+  { id: 'stat_cards', colSpan: 12, visible: true, order: 0, audience: 'all' },
+  { id: 'quick_create_record', colSpan: 4, visible: true, order: 1, audience: 'all' },
+  { id: 'category_overview', colSpan: 12, visible: true, order: 2, audience: 'all' },
+  { id: 'stage_funnel', colSpan: 8, visible: true, order: 3, audience: 'all' },
+  { id: 'my_day', colSpan: 4, visible: true, order: 4, audience: 'all' },
+  { id: 'upcoming_checkpoints', colSpan: 6, visible: true, order: 5, audience: 'all' },
+  { id: 'pipeline_chart', colSpan: 8, visible: true, order: 6, audience: 'all' },
+  { id: 'recent_activity', colSpan: 4, visible: true, order: 7, audience: 'all' },
+  { id: 'my_top_records', colSpan: 6, visible: true, order: 8, audience: 'all' },
+  { id: 'stale_records', colSpan: 6, visible: true, order: 9, audience: 'all' },
+  { id: 'status_breakdown', colSpan: 12, visible: true, order: 10, audience: 'all' },
+  { id: 'record_status_chart', colSpan: 12, visible: false, order: 11, audience: 'all' },
+  { id: 'pipeline_trend', colSpan: 8, visible: true, order: 12, audience: 'all' },
+  { id: 'win_loss', colSpan: 4, visible: true, order: 13, audience: 'all' },
+  { id: 'activity_heatmap', colSpan: 12, visible: true, order: 14, audience: 'all' },
+  { id: 'team_leaderboard', colSpan: 12, visible: false, order: 15, audience: 'admin' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -62,6 +63,7 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
 export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
   const widgets = ref<WidgetConfig[]>([...DEFAULT_WIDGETS])
   const savingLayout = ref(false)
+  const globalRange = ref<DashboardRange>('30d')
 
   const visibleWidgets = computed(() =>
     widgets.value
@@ -94,7 +96,7 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
   }
 
   async function loadLayout(): Promise<void> {
-    const res = await api.get<{ layout: WidgetConfig[] }>('/api/v1/crm/dashboard-layout')
+    const res = await api.get<{ layout: WidgetConfig[]; globalRange?: string }>('/api/v1/crm/dashboard-layout')
     if (res.ok && res.data.layout && res.data.layout.length > 0) {
       const saved = res.data.layout
       const savedIds = new Set(saved.map((w) => w.id))
@@ -104,6 +106,7 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
         ...DEFAULT_WIDGETS.filter((d) => !savedIds.has(d.id)),
       ]
       widgets.value = merged
+      if (res.data.globalRange) globalRange.value = res.data.globalRange as DashboardRange
     }
   }
 
@@ -111,10 +114,16 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
     savingLayout.value = true
     try {
       reindex()
-      await api.put('/api/v1/crm/dashboard-layout', { layout: widgets.value })
+      await api.put('/api/v1/crm/dashboard-layout', { layout: widgets.value, globalRange: globalRange.value })
     } finally {
       savingLayout.value = false
     }
+  }
+
+  function setGlobalRange(r: DashboardRange) {
+    globalRange.value = r
+    // Fire-and-forget: persist the new range immediately so it survives page reload
+    saveLayout().catch(() => undefined)
   }
 
   function onDragEnd() {
@@ -127,6 +136,8 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
     widgets,
     visibleWidgets,
     savingLayout,
+    globalRange,
+    setGlobalRange,
     getWidgetEntry,
     getWidgetConfigOptions,
     updateWidgetConfigOptions,
