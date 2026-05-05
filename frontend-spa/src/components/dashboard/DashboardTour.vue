@@ -26,12 +26,20 @@ function prev() {
 }
 function dismiss() {
   visible.value = false
-  localStorage.setItem(TOUR_STORAGE_KEY, '1')
+  try {
+    localStorage.setItem(TOUR_STORAGE_KEY, '1')
+  } catch {
+    // localStorage unavailable (e.g. private browsing) – ignore
+  }
 }
 
 onMounted(() => {
-  if (!localStorage.getItem(TOUR_STORAGE_KEY)) {
-    visible.value = true
+  try {
+    if (!localStorage.getItem(TOUR_STORAGE_KEY)) {
+      visible.value = true
+    }
+  } catch {
+    // localStorage unavailable – skip tour
   }
 })
 </script>

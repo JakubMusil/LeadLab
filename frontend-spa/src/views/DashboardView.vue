@@ -108,7 +108,8 @@ async function loadStats() {
   if (!firmStore.activeFirm) return
   loading.value = true
   try {
-    const res = await api.get<StatsData>('/api/v1/crm/stats?range=' + layoutStore.globalRange)
+    const params = new URLSearchParams({ range: layoutStore.globalRange })
+    const res = await api.get<StatsData>(`/api/v1/crm/stats?${params.toString()}`)
     if (res.ok) stats.value = res.data
   } finally {
     loading.value = false
@@ -133,6 +134,21 @@ const RANGE_OPTIONS = computed(() => [
   { value: 'all' as DashboardRange, label: t('dashboard.rangeAll') },
 ])
 
+const COL_SPAN_CLASSES: Record<number, string> = {
+  1: 'md:col-span-1',
+  2: 'md:col-span-2',
+  3: 'md:col-span-3',
+  4: 'md:col-span-4',
+  5: 'md:col-span-5',
+  6: 'md:col-span-6',
+  7: 'md:col-span-7',
+  8: 'md:col-span-8',
+  9: 'md:col-span-9',
+  10: 'md:col-span-10',
+  11: 'md:col-span-11',
+  12: 'md:col-span-12',
+}
+
 // ---------------------------------------------------------------------------
 // Layout helpers
 // ---------------------------------------------------------------------------
@@ -147,6 +163,10 @@ function effectiveColSpan(widget: WidgetConfig): number {
     if (!bothVisible) return 12
   }
   return widget.colSpan ?? 12
+}
+
+function colSpanClass(widget: WidgetConfig): string {
+  return COL_SPAN_CLASSES[effectiveColSpan(widget)] ?? 'md:col-span-12'
 }
 
 // ---------------------------------------------------------------------------
@@ -295,7 +315,7 @@ onUnmounted(() => {
           v-for="widget in visibleWidgets"
           :key="widget.id"
           class="col-span-12"
-          :class="`md:col-span-${effectiveColSpan(widget)}`"
+          :class="colSpanClass(widget)"
         >
           <StatCardsWidget
             v-if="widget.id === 'stat_cards'"
