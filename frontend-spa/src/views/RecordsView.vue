@@ -168,7 +168,8 @@ const filterContactPersonId = ref('')
 const showAdvancedFilters = ref(false)
 
 function hasActiveAdvancedFilters() {
-  return !!(filterAssignedTo.value || filterCreatedBy.value || filterValueMin.value ||
+  return !!(filterStatus.value || filterSource.value ||
+            filterAssignedTo.value || filterCreatedBy.value || filterValueMin.value ||
             filterValueMax.value || filterCreatedAfter.value || filterCreatedBefore.value ||
             filterUpdatedAfter.value || filterUpdatedBefore.value ||
             filterStageId.value || filterCompanyId.value || filterCompanyName.value || filterContactPersonId.value)
@@ -202,6 +203,8 @@ function loadRecords(page = 1) {
 }
 
 function clearAdvancedFilters() {
+  filterStatus.value = ''
+  filterSource.value = ''
   filterAssignedTo.value = ''
   filterCreatedBy.value = ''
   filterValueMin.value = ''
@@ -1097,19 +1100,6 @@ function closeContactDetail() {
 
         <!-- Filters (table & list views) -->
         <template v-if="viewMode !== 'kanban'">
-          <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-            <option value="">{{ t('leads.allStatuses') }}</option>
-            <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
-          </select>
-          <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:border-red-400">
-            <option value="">{{ t('leads.allSources') }}</option>
-            <option value="web">{{ t('leads.sourceWeb') }}</option>
-            <option value="email">{{ t('leads.sourceEmail') }}</option>
-            <option value="referral">{{ t('leads.sourceReferral') }}</option>
-            <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
-            <option value="social">{{ t('leads.sourceSocial') }}</option>
-            <option value="other">{{ t('leads.sourceOther') }}</option>
-          </select>
           <!-- Advanced filters toggle -->
           <button
             type="button"
@@ -1126,7 +1116,7 @@ function closeContactDetail() {
         </template>
 
         <!-- Actions dropdown (import / export / save view) -->
-        <Dropdown :items="actionsDropdownItems" placement="right" :open-on-hover="true">
+        <Dropdown :items="actionsDropdownItems" placement="left" :open-on-hover="true">
           <button
             type="button"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1170,6 +1160,27 @@ function closeContactDetail() {
       class="mb-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700"
     >
       <div class="flex flex-wrap gap-3 items-end">
+        <!-- Stav (status) -->
+        <div class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.colStatus') }}</label>
+          <select v-model="filterStatus" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.filterAll') }}</option>
+            <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabel(s.value) }}</option>
+          </select>
+        </div>
+        <!-- Zdroj (source) -->
+        <div class="flex flex-col gap-1 min-w-36">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.colSource') }}</label>
+          <select v-model="filterSource" class="rounded-xl border border-gray-200 dark:border-gray-600 text-sm px-3 py-1.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:outline-none focus:border-red-400">
+            <option value="">{{ t('leads.filterAll') }}</option>
+            <option value="web">{{ t('leads.sourceWeb') }}</option>
+            <option value="email">{{ t('leads.sourceEmail') }}</option>
+            <option value="referral">{{ t('leads.sourceReferral') }}</option>
+            <option value="cold_call">{{ t('leads.sourceColdCall') }}</option>
+            <option value="social">{{ t('leads.sourceSocial') }}</option>
+            <option value="other">{{ t('leads.sourceOther') }}</option>
+          </select>
+        </div>
         <!-- Řešitel (assigned_to) -->
         <div class="flex flex-col gap-1 min-w-36">
           <label class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('leads.filterAssignedTo') }}</label>
@@ -1288,11 +1299,11 @@ function closeContactDetail() {
         </div>
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('leads.noLeadsFound') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
-          <template v-if="filterStatus || filterSource">{{ t('leads.filterSubtitle') }}</template>
+          <template v-if="hasActiveAdvancedFilters()">{{ t('leads.filterSubtitle') }}</template>
           <template v-else>{{ t('leads.pipelineSubtitle') }}</template>
         </p>
         <button
-          v-if="!filterStatus && !filterSource"
+          v-if="!hasActiveAdvancedFilters()"
           class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
           @click="openCreate"
         >{{ t('leads.createFirst') }}</button>
@@ -1470,11 +1481,11 @@ function closeContactDetail() {
       <div v-if="store.records.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('leads.noLeadsFound') }}</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
-          <template v-if="filterStatus || filterSource">{{ t('leads.filterSubtitle') }}</template>
+          <template v-if="hasActiveAdvancedFilters()">{{ t('leads.filterSubtitle') }}</template>
           <template v-else>{{ t('leads.pipelineSubtitle') }}</template>
         </p>
         <button
-          v-if="!filterStatus && !filterSource"
+          v-if="!hasActiveAdvancedFilters()"
           class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
           @click="openCreate"
         >{{ t('leads.createFirst') }}</button>
@@ -1703,7 +1714,7 @@ function closeContactDetail() {
             />
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{ t('leads.saveViewDescription', { status: filterStatus || t('leads.filterAll'), source: filterSource || t('leads.filterAll') }) }}
+            {{ t('leads.saveViewDescription') }}
             <template v-if="hasActiveAdvancedFilters()"> + {{ t('leads.saveViewAdvanced') }}</template>
             <template v-if="sortField !== DEFAULT_SORT_FIELD || sortDir !== DEFAULT_SORT_DIR"> · {{ t('leads.saveViewSort', { field: t(`leads.col_${sortField}`), dir: t(`leads.sort_${sortDir}`) }) }}</template>
           </p>
