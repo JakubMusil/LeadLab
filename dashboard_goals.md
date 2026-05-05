@@ -602,6 +602,63 @@ Implementováno:
 > **Co bude následovat:** Dashboard je feature-complete dle MVP rozsahu z § 4.
 > Zbývá volitelně:
 > - E2E testy (Playwright) pokrývající custom layout + per-widget config.
-> - Per-widget config UI (modal pro nastavení rozsahu a scope jednotlivého widgetu).
+> - ~~Per-widget config UI (modal pro nastavení rozsahu a scope jednotlivého widgetu).~~ ✅ hotovo (Fáze 8)
 > - Widget `setup_progress` (onboarding banner jako widget).
 > - Saved view widget.
+
+### 2026-05-05 — Fáze 8 (✅ hotovo, per-widget config UI)
+
+Implementováno:
+
+- **Per-widget config schéma** v `frontend-spa/src/stores/dashboard.ts`:
+  - Rozšířený typ `WidgetConfigOptions` o pole `days?: number`.
+  - Nový typ `WidgetSortOption = 'score' | 'value' | 'stale'`.
+  - Mapa `WIDGET_CONFIG_SCHEMA: Record<string, WidgetConfigField[] | undefined>`,
+    která definuje, jaká pole má každý widget v konfiguračním dialogu.
+    Aktuálně mapováno: `my_top_records` (sort + limit), `stale_records`
+    (days + limit), `upcoming_checkpoints` (scope + days).
+  - Helper `widgetHasConfig(id)` pro podmíněné zobrazování ⚙️ ikony.
+
+- **`WidgetConfigDialog.vue`** (`frontend-spa/src/components/dashboard/`):
+  - Modal `<Teleport to="body">` s click-mimo + Escape pro zavření.
+  - Form se renderuje dynamicky podle `WIDGET_CONFIG_SCHEMA[widgetId]`.
+  - Podpora typů polí: `range` (pill přepínač + tlačítko „Globální"),
+    `scope` (pill přepínač Mine/Firm), `sort` (`<select>`),
+    `number` (input s min/max clamp + placeholder „Výchozí" pro reset).
+  - Změny se ukládají optimisticky do `useDashboardLayoutStore` a perzistují
+    se voláním `saveLayout()` při zavření dialogu.
+  - Přístupné: `role="dialog"`, `aria-modal`, ESC handler.
+
+- **DashboardView.vue** – v layout editoru přidána ⚙️ ikona
+  (`Cog6ToothIcon`) vedle visibility toggle. Zobrazí se pouze pro widgety
+  s konfigurovatelnými poli (`widgetHasConfig`). Klik otevře dialog
+  prostřednictvím `configuringWidgetId` ref.
+
+- **Wired widgety** na `useDashboardWidget` – nahrazení hardcoded hodnot:
+  - **`MyTopRecordsWidget.vue`** – respektuje `sort` (score/value/stale)
+    a `limit` z configu. `watch([sort, limit], load)` reloads na změnu.
+    Stale fallbackuje na `updated_at` (true `last_activity_at` na `RecordOut` není).
+  - **`StaleRecordsWidget.vue`** – respektuje `days` (default 14) a `limit`
+    (default 10). Skládá `?days=&limit=` query parametry dynamicky.
+    Header počet dní (`{n} dní`) je nyní reaktivní.
+  - **`UpcomingCheckpointsWidget.vue`** – respektuje `scope` (mine/firm)
+    a `days` (default 14). Skládá query přes `URLSearchParams`.
+    `watch([scope, upcomingDays], load)` reloads na změnu.
+
+- **i18n** – nové klíče v `dashboard.*` ve všech 4 locale souborech
+  (cs/en/de/pl): `cfgConfigure`, `cfgClose`, `cfgDone`, `cfgDialogTitle`,
+  `cfgHint`, `cfgUseGlobal`, `cfgUseDefault`, `cfgRange`, `cfgSort`,
+  `cfgSortScore`, `cfgSortValue`, `cfgSortStale`, `cfgLimit`,
+  `cfgDaysThreshold`, `cfgDaysAhead`, `cfgScope`, `cfgScopeMine`,
+  `cfgScopeFirm`.
+
+**Testy:** 100/100 ✅. Žádné nové TS chyby v rámci dashboardu (předchozí
+chyby v `CalendarView.vue`, `RecordsView.vue`, `TaskDetailView.vue`,
+`TasksView.vue`, `DashboardTour.vue` nejsou součástí této změny).
+
+**Co bude následovat (zbývající volitelné položky):**
+- Widget `setup_progress` – povýšit stávající setup banner na widget.
+- Saved view widget – top N řádků z uloženého filtru z Records.
+- Rozšíření per-widget configu na další widgety (`category_overview`,
+  `pipeline_trend`, `stage_funnel` – range/scope/category override).
+- E2E testy (Playwright) pokrývající layout + per-widget config.

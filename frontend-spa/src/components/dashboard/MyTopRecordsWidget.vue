@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { StarIcon } from '@heroicons/vue/24/outline'
 import { useI18n } from '@/composables/useI18n'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { getStatusMeta, type RecordOut } from '@/stores/records'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const router = useRouter()
+const { sort, limit } = useDashboardWidget('my_top_records')
 
 const myTopRecords = ref<RecordOut[]>([])
 const loading = ref(false)
@@ -30,6 +32,19 @@ function statusLabelFor(status: string): string {
   return STATUS_LABELS.value[status] ?? getStatusMeta(status).label
 }
 
+function compareForSort(a: RecordOut, b: RecordOut): number {
+  if (sort.value === 'value') {
+    return (Number(b.value ?? 0)) - (Number(a.value ?? 0))
+  }
+  if (sort.value === 'stale') {
+    // Approximate staleness by least-recently updated record (true last_activity_at not on RecordOut).
+    const at = a.updated_at ? new Date(a.updated_at).getTime() : 0
+    const bt = b.updated_at ? new Date(b.updated_at).getTime() : 0
+    return at - bt
+  }
+  return (b.score ?? 0) - (a.score ?? 0)
+}
+
 async function load() {
   if (!firmStore.activeFirm || !authStore.user) return
   loading.value = true
@@ -41,22 +56,20 @@ async function load() {
     const res = await api.get<RecordOut[]>(`/api/v1/crm/records?${params}`)
     if (res.ok) {
       const active = res.data.filter((l) => !['won', 'lost', 'canceled'].includes(l.status))
-      myTopRecords.value = active
-        .slice()
-        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-        .slice(0, 5)
+      myTopRecords.value = active.slice().sort(compareForSort).slice(0, limit.value)
     }
   } finally {
     loading.value = false
   }
 }
 
+onMounted(load)
+watch([sort, limit], load)
+defineExpose({ load })
+
 function openRecordDetail(id: string) {
   router.push(`/app/records/${id}`)
 }
-
-defineExpose({ load })
-onMounted(load)
 </script>
 
 <template>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
 import { useI18n } from '@/composables/useI18n'
 import { useMoney } from '@/composables/useMoney'
 import { getStatusMeta } from '@/stores/records'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 interface StaleRecordItem {
@@ -29,17 +30,22 @@ interface StaleRecordsData {
 
 const { t } = useI18n()
 const { formatAmount } = useMoney()
+const { days, limit } = useDashboardWidget('stale_records')
 
 const data = ref<StaleRecordsData | null>(null)
 const loading = ref(false)
 
-const THRESHOLD_DAYS = 14
+const DEFAULT_THRESHOLD_DAYS = 14
+const DEFAULT_LIMIT = 10
+
+const thresholdDays = computed(() => days.value ?? DEFAULT_THRESHOLD_DAYS)
+const itemLimit = computed(() => limit.value ?? DEFAULT_LIMIT)
 
 async function load() {
   loading.value = true
   try {
     const res = await api.get<StaleRecordsData>(
-      `/api/v1/crm/dashboard/stale-records?days=${THRESHOLD_DAYS}&limit=10`,
+      `/api/v1/crm/dashboard/stale-records?days=${thresholdDays.value}&limit=${itemLimit.value}`,
     )
     if (res.ok) data.value = res.data
   } finally {
@@ -49,6 +55,7 @@ async function load() {
 
 defineExpose({ load })
 onMounted(load)
+watch([thresholdDays, itemLimit], load)
 </script>
 
 <template>
@@ -58,7 +65,7 @@ onMounted(load)
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
         <ExclamationTriangleIcon class="w-4 h-4 text-amber-500" aria-hidden="true" />
         {{ t('dashboard.staleRecords') }}
-        <span class="text-xs font-normal text-gray-400">({{ t('dashboard.staleRecordsDays', { n: THRESHOLD_DAYS }) }})</span>
+        <span class="text-xs font-normal text-gray-400">({{ t('dashboard.staleRecordsDays', { n: thresholdDays }) }})</span>
       </h3>
       <RouterLink
         to="/app/records"

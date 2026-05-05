@@ -18,6 +18,7 @@ export function useDashboardWidget(id: string) {
   const scope = computed<DashboardScope>(() => config.value.scope ?? 'mine')
   const sort = computed(() => config.value.sort ?? 'score')
   const limit = computed<number>(() => config.value.limit ?? 5)
+  const days = computed<number | undefined>(() => config.value.days)
 
   function updateConfig(updates: Partial<WidgetConfigOptions>) {
     layoutStore.updateWidgetConfigOptions(id, updates)
@@ -30,6 +31,7 @@ export function useDashboardWidget(id: string) {
     scope,
     sort,
     limit,
+    days,
     updateConfig,
   }
 }
