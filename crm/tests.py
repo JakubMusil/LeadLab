@@ -3131,3 +3131,258 @@ class TaskOutcomeEndpointTest(CRMAPIFixtureMixin, TestCase):
             **self.firm_headers(),
         )
         self.assertIn(resp.status_code, (401, 403))
+
+
+# ===========================================================================
+# v2.3 — DASHBOARD WIDGET ENDPOINTS
+# ===========================================================================
+
+from crm.models import Category, Stage, Checkpoint  # noqa: E402
+
+
+class DashboardAPITest(CRMAPIFixtureMixin, TestCase):
+    """Tests for ``/api/v1/crm/stats`` filters and the new dashboard endpoints."""
+
+    def setUp(self):
+        super().setUp()
+        # Pipeline taxonomy
+        self.category = Category.objects.create(firm=self.firm, name="Sales")
+        self.stage_new = Stage.objects.create(category=self.category, name="New", order=0)
+        self.stage_won = Stage.objects.create(
+            category=self.category, name="Won", order=1, is_terminal=True, is_won=True
+        )
+        self.other_category = Category.objects.create(firm=self.firm, name="Support")
+
+        # Records: one in each category, one WON
+        self.record.category = self.category
+        self.record.current_stage = self.stage_new
+        self.record.value = 1000
+        self.record.currency = self.firm.default_currency
+        self.record.save()
+
+        self.record_won = PipelineRecord.objects.create(
+            firm=self.firm,
+            customer=self.customer,
+            title="Won Deal",
+            status=RecordStatus.WON,
+            source=RecordSource.WEB,
+            category=self.category,
+            current_stage=self.stage_won,
+            value=2500,
+            currency=self.firm.default_currency,
+            assigned_to=self.owner,
+        )
+        self.record_other = PipelineRecord.objects.create(
+            firm=self.firm,
+            customer=self.customer,
+            title="Support Ticket",
+            status=RecordStatus.NEW,
+            source=RecordSource.WEB,
+            category=self.other_category,
+            value=500,
+            currency=self.firm.default_currency,
+        )
+
+    # ---- /stats with filters --------------------------------------------
+
+    def test_stats_returns_canonical_and_range_fields(self):
+        resp = self._get("/api/v1/crm/stats")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # New keys present
+        for key in (
+            "pipeline_value_canonical",
+            "won_value_canonical",
+            "canonical_currency",
+            "avg_cycle_days",
+            "created_in_range",
+            "won_in_range",
+            "lost_in_range",
+            "range",
+            "currency_breakdown",
+        ):
+            self.assertIn(key, data)
+        self.assertEqual(data["canonical_currency"], self.firm.default_currency)
+        self.assertEqual(data["range"], "all")
+
+    def test_stats_filters_by_category(self):
+        resp = self._get("/api/v1/crm/stats", {"category_id": str(self.category.id)})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # Only 2 records belong to Sales category (record + record_won)
+        self.assertEqual(data["total_records"], 2)
+
+    def test_stats_filters_by_owner_me(self):
+        # record_won is assigned_to owner, others are not
+        resp = self._get("/api/v1/crm/stats", {"owner_id": "me"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["total_records"], 1)
+
+    def test_stats_filters_by_range(self):
+        resp = self._get("/api/v1/crm/stats", {"range": "7d"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["range"], "7d")
+        # All records were created just now → in range
+        self.assertGreaterEqual(data["created_in_range"], 3)
+
+    # ---- /dashboard/category-overview -----------------------------------
+
+    def test_category_overview_lists_active_categories(self):
+        resp = self._get("/api/v1/crm/dashboard/category-overview")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["canonical_currency"], self.firm.default_currency)
+        names = [item["name"] for item in data["items"]]
+        self.assertIn("Sales", names)
+        self.assertIn("Support", names)
+        sales = next(i for i in data["items"] if i["name"] == "Sales")
+        self.assertEqual(sales["records_total"], 2)
+        self.assertEqual(sales["records_won"], 1)
+        self.assertEqual(len(sales["sparkline"]), 30)
+
+    # ---- /dashboard/stage-funnel ----------------------------------------
+
+    def test_stage_funnel_for_category(self):
+        resp = self._get(
+            "/api/v1/crm/dashboard/stage-funnel",
+            {"category_id": str(self.category.id)},
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["category_id"], str(self.category.id))
+        self.assertEqual(len(data["stages"]), 2)
+        self.assertEqual(data["stages"][0]["count"], 1)  # New
+        self.assertEqual(data["stages"][1]["count"], 1)  # Won
+
+    def test_stage_funnel_unknown_category_returns_404(self):
+        resp = self._get(
+            "/api/v1/crm/dashboard/stage-funnel",
+            {"category_id": "00000000-0000-0000-0000-000000000000"},
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    def test_stage_funnel_default_picks_first_active_category(self):
+        resp = self._get("/api/v1/crm/dashboard/stage-funnel")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        # Either Sales or Support — both active. We just want a category id.
+        self.assertIsNotNone(data["category_id"])
+
+    # ---- /dashboard/trend ------------------------------------------------
+
+    def test_trend_returns_points_for_default_range(self):
+        resp = self._get("/api/v1/crm/dashboard/trend", {"metric": "created"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["metric"], "created")
+        self.assertGreater(len(data["points"]), 0)
+        # Sum of points over 30d should at least equal the records we created.
+        total = sum(p["value"] for p in data["points"])
+        self.assertGreaterEqual(total, 3)
+
+    def test_trend_invalid_metric_falls_back_to_created(self):
+        resp = self._get("/api/v1/crm/dashboard/trend", {"metric": "nonsense"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["metric"], "created")
+
+    # ---- /dashboard/my-day ----------------------------------------------
+
+    def test_my_day_groups_tasks_by_due_date(self):
+        now = timezone.now()
+        Task.objects.create(
+            firm=self.firm,
+            assigned_to=self.owner,
+            record=self.record,
+            title="Overdue task",
+            due_date=now - dt.timedelta(days=2),
+        )
+        Task.objects.create(
+            firm=self.firm,
+            assigned_to=self.owner,
+            record=self.record,
+            title="Today task",
+            due_date=now + dt.timedelta(hours=1),
+        )
+        Task.objects.create(
+            firm=self.firm,
+            assigned_to=self.owner,
+            record=self.record,
+            title="Next-week task",
+            due_date=now + dt.timedelta(days=3),
+        )
+        resp = self._get("/api/v1/crm/dashboard/my-day")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data["overdue"]), 1)
+        self.assertEqual(len(data["today"]), 1)
+        # this_week may also include checkpoints
+        self.assertGreaterEqual(len(data["this_week"]), 1)
+
+    def test_my_day_includes_checkpoints(self):
+        Checkpoint.objects.create(
+            record=self.record_won,
+            name="Project kickoff",
+            date=timezone.now().date() + dt.timedelta(days=2),
+        )
+        resp = self._get("/api/v1/crm/dashboard/my-day")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        names = [item["title"] for item in data["this_week"]]
+        self.assertIn("Project kickoff", names)
+
+    # ---- /dashboard/stale-records ---------------------------------------
+
+    def test_stale_records_uses_threshold(self):
+        # Record older than threshold and never had any activity → stale
+        old = PipelineRecord.objects.create(
+            firm=self.firm,
+            customer=self.customer,
+            title="Old Record",
+            status=RecordStatus.NEW,
+            source=RecordSource.WEB,
+            category=self.category,
+        )
+        PipelineRecord.objects.filter(pk=old.pk).update(
+            updated_at=timezone.now() - dt.timedelta(days=30),
+            created_at=timezone.now() - dt.timedelta(days=30),
+        )
+        resp = self._get("/api/v1/crm/dashboard/stale-records", {"days": 14})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["threshold_days"], 14)
+        ids = {item["id"] for item in data["items"]}
+        self.assertIn(str(old.id), ids)
+
+    # ---- /dashboard/checkpoints -----------------------------------------
+
+    def test_checkpoints_lists_upcoming(self):
+        # Make record assigned to owner so it appears in default scope=mine
+        self.record.assigned_to = self.owner
+        self.record.save()
+        cp = Checkpoint.objects.create(
+            record=self.record,
+            name="Next milestone",
+            date=timezone.now().date() + dt.timedelta(days=3),
+        )
+        resp = self._get("/api/v1/crm/dashboard/checkpoints")
+        self.assertEqual(resp.status_code, 200)
+        ids = {item["id"] for item in resp.json()["items"]}
+        self.assertIn(str(cp.id), ids)
+
+    # ---- /dashboard/team-leaderboard ------------------------------------
+
+    def test_team_leaderboard_admin_only(self):
+        # owner is OWNER → should pass
+        resp = self._get("/api/v1/crm/dashboard/team-leaderboard")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["canonical_currency"], self.firm.default_currency)
+        self.assertGreaterEqual(len(data["entries"]), 1)
+
+    def test_team_leaderboard_forbidden_for_worker(self):
+        self.client.logout()
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._get("/api/v1/crm/dashboard/team-leaderboard")
+        self.assertEqual(resp.status_code, 403)

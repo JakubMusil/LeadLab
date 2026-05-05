@@ -324,3 +324,60 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 - **Co bude následovat** (po dokončení backend Fáze 1): Fáze 2 –
   refactor `DashboardView.vue` na adresář `components/dashboard/*`,
   zavedení per-widget config schématu a globálního range pickeru.
+
+### 2026-05-05 — Fáze 1 (✅ hotovo, backend)
+
+Implementováno v `crm/api.py`:
+
+- **`GET /api/v1/crm/stats`** rozšířen o query parametry `range`
+  (`7d|30d|90d|qtd|ytd|all`), `category_id`, `owner_id` (UUID nebo `me`).
+  V odpovědi přidáno: `pipeline_value_canonical`, `won_value_canonical`,
+  `canonical_currency`, `avg_cycle_days`, `created_in_range`,
+  `won_in_range`, `lost_in_range`, `range`, `currency_breakdown[]`
+  (per-currency value + canonical → pro tooltip).
+  Backwards-compat: bez parametrů se chová identicky jako dosud
+  (kromě nově přidaných polí, která jsou aditivní).
+- **`GET /api/v1/crm/dashboard/category-overview`** – per-category
+  agregace (`records_total/open/won`, `value_open_canonical`,
+  `value_won_canonical`, `win_rate`, `sparkline[30]`) +
+  `uncategorized` bucket pokud existují záznamy bez kategorie.
+- **`GET /api/v1/crm/dashboard/stage-funnel?category_id=&range=&owner_id=`**
+  – stages dané kategorie s `count`, `value_canonical`,
+  `conversion_to_next` (clamped 0..1). Bez `category_id` se vezme
+  první aktivní kategorie. 404 pro neznámou kategorii.
+- **`GET /api/v1/crm/dashboard/trend?metric=&range=&category_id=&owner_id=`**
+  – timeseries po dnech. Metriky: `created | won | lost | value_won
+  | value_pipeline | activities`. Default `created`, default range `30d`.
+- **`GET /api/v1/crm/dashboard/my-day`** – `Task` + `Checkpoint` přiřazené
+  aktuálnímu uživateli, bucketed do `overdue / today / this_week`.
+- **`GET /api/v1/crm/dashboard/stale-records?days=&category_id=&owner_id=&limit=`**
+  – otevřené záznamy bez aktivity > N dnů (default 14).
+- **`GET /api/v1/crm/dashboard/checkpoints?upcoming_days=&scope=mine|firm`**
+  – nejbližší nezavřené checkpointy.
+- **`GET /api/v1/crm/dashboard/team-leaderboard?range=`**
+  – per-user agregáty (`won_count`, `won_value_canonical`,
+  `activities_count`, `records_open`). Vyžaduje role
+  owner/admin (jinak 403).
+
+**Testy:** `crm.tests.DashboardAPITest` – 16 testů, všechny ✅ green.
+Pokrývají: nové filtry na `/stats`, category-overview, stage-funnel
+(včetně 404 a default kategorie), trend (default + neznámá metrika),
+my-day (overdue/today/this_week + checkpointy), stale-records,
+checkpoints, team-leaderboard (admin OK / worker 403).
+
+> **Drobnost:** parametr `range` v API kolidoval s built-in `range()`
+> v Pythonu – řešeno přes `Query(None, alias="range")` + parametr
+> jménem `range_` v signature funkce (ninja standardní pattern).
+
+**Co bude následovat:**
+- Fáze 2 – Frontend foundation:
+  - rozdělit `DashboardView.vue` na adresář
+    `frontend-spa/src/components/dashboard/*` (jeden soubor / widget),
+  - sdílený composable `useDashboardWidget(id)` (config + globální
+    range/scope/category context),
+  - rozšíření schématu `dashboard_layout` o `size{w,h}` a `config{}`,
+  - `quick_create_record` rozšířit o category + závislé stage selecty,
+  - i18n úklid (`totalLeads → totalRecords`,
+    `quickCreateLead → quickCreateRecord`, smazat nepoužívané klíče
+    s lead-doménou),
+  - role-based default layout (audience all/admin).
