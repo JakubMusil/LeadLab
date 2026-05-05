@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'channels',
     # Brute-force protection (v1.9)
     'axes',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
