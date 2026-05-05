@@ -1,0 +1,307 @@
+# Dashboard – revize a plán vylepšení
+
+> Cíl: po přechodu z **Lead** na **Record / Category / Stage** systém kompletně
+> zrevidovat widgety na úvodní stránce (`/app` → `DashboardView.vue`) tak, aby
+> odpovídaly aktuálnímu pipeline modelu, podporovaly **uživatelem definované
+> kategorie záznamů** a přinesly další funkce, které uživatelé v dashboardu
+> ocení.
+>
+> Tento dokument je zároveň **plán** i **deník postupu**. Pod každou fází je
+> sekce *Status / Postup*, kterou agent průběžně aktualizuje. Na konci každé
+> dokončené dávky práce se v sekci **„Co bude následovat“** uvádí další krok.
+
+---
+
+## 1. Analýza současného stavu
+
+Soubor: `frontend-spa/src/views/DashboardView.vue` (≈ 617 řádků).
+API: `GET /api/v1/crm/stats` (`crm/api.py` ≈ ř. 4816–4884) a
+`GET/PUT /api/v1/crm/dashboard-layout` (uloženo na `User`).
+
+### 1.1 Stávající widgety
+
+| ID                    | Popis                                                                                  |
+|-----------------------|----------------------------------------------------------------------------------------|
+| `stat_cards`          | 4 karty: Celkem záznamů, Zákazníci, Pipeline (hodnota + Won), Otevřené úkoly + overdue |
+| `quick_create_record` | Inline formulář (Title + Status + Value)                                               |
+| `pipeline_chart`      | Bar chart záznamů podle **legacy** `RecordStatus` (new/contacted/proposal/…)           |
+| `recent_activity`     | Posledních 10 aktivit napříč firmou (timeline)                                         |
+| `my_top_records`      | 5 mých aktivních záznamů s nejvyšším `score`                                           |
+| `status_breakdown`    | „Pills“ s počty podle stejného legacy statusu, prokliky filtrují `?status=…`           |
+
+### 1.2 Hlavní problémy / mezery
+
+1. **Hardcoded statusy** – frontend používá `RECORD_STATUSES` (`new, contacted,
+   proposal, negotiation, won, lost, canceled`) a obarvení v `STATUS_COLORS` /
+   `STATUS_LABELS`. Aktuální systém staví na `Category` + `Stage`
+   (`is_terminal`, `is_won`, vlastní barva) definovaných na firmu. **Status zůstává
+   jako globální „top-level“ příznak**, ale skutečnou pipeline tvoří stages.
+   → Widgety pipeline/status jsou polopravdivé pro firmy s vlastními kategoriemi.
+
+2. **Žádný pohled per kategorie** – není možné vidět „Obchodní kategorie vs.
+   Reklamace“ nebo „Projekty A vs. B“. Firmy s více kategoriemi vidí jen
+   souhrnnou trubku.
+
+3. **Žádný stage funnel** – chybí klasický CRM **funnel** (záznamy / hodnota
+   v jednotlivých `Stage` zvolené kategorie) včetně konverzí mezi stages.
+
+4. **„Quick create“ není category-aware** – formulář vytváří záznam jen
+   s `title/status/value`. Po vytvoření chybí jak `category_id`, tak
+   `current_stage_id`, takže nový záznam se neobjeví na žádném pipeline boardu.
+   Label „Rychlé vytvoření **leadu**“ (`qcCreated`/`qcFailed`/`quickCreateLead`)
+   v překladech ještě reflektuje starou doménu.
+
+5. **i18n drobnosti** – v `cs.json` jsou ještě klíče `totalLeads`, `myTopLeads`,
+   `myTopLeadsEmpty`, `quickCreateLead`. Texty jsou už „Záznam…“, ale klíče
+   matou. Některé klíče (`noClosedLeads`, `noStatusHistory`, `noTrendData`,
+   `myTopLeads`, `myTopLeadsEmpty`) **nejsou nikde použity** – pozůstatky.
+
+6. **Recent activity** – lineární výpis 10 položek bez filtru (typ, autor,
+   kategorie). U firmy s mnoha aktivitami widget rychle „zestárne“.
+
+7. **My top records** – řadí podle `score`, ale **nereflektuje pipeline
+   progress** (např. záznam ve stage „Realizace“ s nulovým skóre je často
+   důležitější). Skóre v aktuálním systému často není nastaveno.
+
+8. **Žádný úkol-centric widget** – v kartě je jen souhrn počtu a overdue;
+   uživatel nevidí, co má dnes/zítra dělat.
+
+9. **Žádný checkpoint / deadline widget** – `Checkpoint` model existuje
+   (`record.checkpoints`), ale dashboard ho ignoruje.
+
+10. **Žádný trend** – chybí 7/30denní vývoj (vytvořeno, vyhráno, prohráno,
+    aktivit). Za měsíc nelze říct, jestli se firmě daří lépe nebo hůře.
+
+11. **Žádný Win/Loss** – konverzní rate je jen jedno číslo schované pod
+    „Total leads“. Chybí win-rate, ø doba do uzavření, top důvody ztrát.
+
+12. **Žádné per-uživatelské zaměření kromě „my top records“** – manažer nevidí
+    výkon týmu, řadový uživatel nevidí, kde má rezervy.
+
+13. **Layout je vertikální stack** – widgety jsou v 1 sloupci napříč šířkou,
+    s pevně daným seskupením `pipeline_chart` + `recent_activity`. Žádná
+    skutečná „grid“ konfigurace (šířka, výška).
+
+14. **Žádná per-widget nastavení** – nelze říct „chart pro kategorii X“,
+    „top records pro celou firmu (manažerský pohled)“ atd.
+
+15. **Stats endpoint je „one-size-fits-all“** – počítá vše bez ohledu na to, co
+    je viditelné. Žádná podpora pro range / scope (kategorie, uživatel,
+    interval). Měna je řešena „same currency only“ s warning bannerem; chybí
+    využití `canonical_amount` pro mixed-currency report.
+
+---
+
+## 2. Návrh cílového řešení
+
+### 2.1 Vodicí principy
+
+- **Driven by pipeline configuration** – kde vidíme „status“, ukážeme buď
+  `Stage` zvolené kategorie, nebo top-level `RecordStatus`, nikdy ne mix.
+- **Category-aware vždy** – widgety mají scope `all categories` /
+  `single category`. Default = první aktivní kategorie nebo „all“.
+- **Owner-aware** – přepínač `Můj pohled` / `Celá firma` (manažer/admin) tam,
+  kde to dává smysl.
+- **Time-range** – globální přepínač (Dnes / 7 dnů / 30 dnů / kvartál / vlastní)
+  s persistencí do `dashboard_layout`.
+- **Soft persona splits** – výchozí widgety jiné pro `owner/admin` (přehledové)
+  a `member` (osobní – moje úkoly, můj výkon).
+- **Empty-state friendly** – každý widget má vlastní prázdný stav s CTA
+  (např. „Nastavit pipeline“, „Vytvořit první kategorii“).
+- **i18n napříč cs/en/de/pl** – nové klíče v `dashboard.*`, žádné nové „lead“
+  klíče, deprecated klíče vyčistit.
+- **Dark mode + a11y** – role/aria-labely, kontrast, klávesová obsluha
+  drag & drop už máme.
+
+### 2.2 Plánovaný katalog widgetů
+
+> Sloupec „Replace?“ ukazuje, zda je nahrazen / sloučen některý současný widget.
+
+| Klíč                       | Popis                                                                                           | Replace?                |
+|----------------------------|-------------------------------------------------------------------------------------------------|-------------------------|
+| `kpi_cards`                | Konfigurovatelné KPI: Records (active/won), Pipeline value (canonical), Win rate, Tasks, Avg cycle days, Activities (last X days). Volitelná sada karet. | ✏️ `stat_cards`          |
+| `category_overview`        | Dlaždice za každou aktivní `Category`: # záznamů, hodnota, % ve win-stage, sparkline 30 dnů. Click → filtr záznamů na danou kategorii. | 🆕                       |
+| `stage_funnel`             | Funnel pro **zvolenou kategorii** (volba v hlavičce widgetu): počet a hodnota v každé stage + meziúrovňová konverze. | ✏️ `pipeline_chart`      |
+| `record_status_chart`      | Volitelný „klasický“ bar chart počtu záznamů podle `RecordStatus` (kompatibilita / firmy bez vlastní pipeline). | ✏️ `pipeline_chart`      |
+| `quick_create_record`      | Vylepšený formulář: Category → Stage (závislé) → Title → Value (currency) → Owner (admin). Po vytvoření redirect/preview. | ✏️ stávající             |
+| `my_day`                   | Sloučený osobní pohled: Dnes/Po termínu/Tento týden – `Task` + `Checkpoint` v jednom feedu, s rychlým ✓ a snooze. | 🆕 (rozšíření Tasks)     |
+| `my_top_records`           | Top moje **otevřené** záznamy. Řadit lze: skóre / hodnota / poslední aktivita / nejdéle bez aktivity. | ✏️ stávající             |
+| `stale_records`            | „Záznamy bez aktivity > N dnů“ (default 14), filtr by category/owner. | 🆕                       |
+| `recent_activity`          | Filtrovatelný feed (typ, autor, kategorie); skupinování po dnech; lazy-load stránkování. | ✏️ stávající             |
+| `activity_heatmap`         | Týdenní heatmapa aktivit (typ × den, nebo uživatel × den) – vizualizace tempa práce. | 🆕                       |
+| `win_loss`                 | Win-rate gauge + breakdown důvodů ztrát (`status_change` metadata + free text), ø cycle time. | 🆕                       |
+| `pipeline_trend`           | 30/90denní křivka: vytvořeno / vyhráno / hodnota pipeline. | 🆕                       |
+| `upcoming_checkpoints`     | Nejbližší checkpointy napříč mými / firemními záznamy (date, record). | 🆕 (využití `Checkpoint`)|
+| `team_leaderboard` (admin) | Žebříček uživatelů: # vyhráno / hodnota / aktivita za zvolené období. | 🆕                       |
+| `saved_view`               | Univerzální „výřez“ libovolného saved view ze stránky Records (top N řádků z uloženého filtru). | 🆕 (volitelné)           |
+| `setup_progress`           | Onboarding banner povýšený na widget – progres nastavení (kategorie, importy, integrace). | ✏️ stávající banner      |
+
+> `status_breakdown` (pills) — zachováme jako sub-feature `record_status_chart`
+> nebo zrušíme (decision v Phase 1 review).
+
+### 2.3 Per-widget nastavení (uloženo v `dashboard_layout`)
+
+Rozšíření schématu jednoho prvku layoutu:
+
+```jsonc
+{
+  "id": "stage_funnel",
+  "visible": true,
+  "order": 3,
+  "size": { "w": 2, "h": 2 },          // grid units, optional
+  "config": {
+    "category_id": "uuid|null",
+    "scope": "mine|firm",
+    "range": "7d|30d|90d|qtd|custom",
+    "sort": "score|value|stale",
+    "limit": 5
+  }
+}
+```
+
+Backend toleruje neznámá pole (forward-compat). Frontend default-fuje chybějící
+hodnoty.
+
+### 2.4 API změny
+
+Přidat / rozšířit:
+
+- `GET /api/v1/crm/stats` – nepovinné query parametry:
+  - `range=7d|30d|90d|ytd|all`
+  - `category_id=<uuid>` (filtruje pipeline_value, status counts, activities)
+  - `owner_id=<uuid|me>` (per-uživatel scope)
+  - V odpovědi přidat: `pipeline_value_canonical`, `won_value_canonical`,
+    `avg_cycle_days`, `created_in_range`, `won_in_range`, `lost_in_range`.
+
+- `GET /api/v1/crm/dashboard/category-overview` – list kategorií +
+  agregace (records_total, records_open, value_open_canonical, value_won_canonical,
+  win_rate, sparkline 30d).
+
+- `GET /api/v1/crm/dashboard/stage-funnel?category_id=…&range=…` – pole stages
+  s `count`, `value`, `value_canonical`, `conversion_to_next`.
+
+- `GET /api/v1/crm/dashboard/trend?metric=created|won|value&range=…` – timeseries
+  (den / týden).
+
+- `GET /api/v1/crm/dashboard/my-day` – konsolidace `Task` + `Checkpoint`
+  pro `request.user`, group by *overdue / today / this_week*.
+
+- `GET /api/v1/crm/dashboard/stale-records?days=14&category_id=…` – top N
+  záznamů bez aktivity.
+
+- `GET /api/v1/crm/dashboard/team-leaderboard?range=…` – per-user agregáty
+  (pouze pro `owner/admin`).
+
+- `GET /api/v1/crm/dashboard/checkpoints?upcoming_days=14` – seznam checkpointů.
+
+Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuje
+`canonical_amount` na PipelineRecord).
+
+### 2.5 Frontend foundation
+
+- Vytvořit `frontend-spa/src/components/dashboard/` adresář a každý widget jako
+  samostatnou komponentu (`KpiCardsWidget.vue`, `StageFunnelWidget.vue`, …).
+- `DashboardView.vue` se zjednoduší na **layout host** + registr widgetů.
+- Sdílený composable `useDashboardWidget(id)` – načte/uloží `config`, poskytne
+  `range`, `categoryId`, `scope` jako reaktivní reference.
+- Použít `usePipelineStore` pro seznam kategorií / stages (cache).
+- Použít `useMoney` (`canonical_amount` pro mixed currencies) místo „same
+  currency only“.
+
+### 2.6 i18n úklid
+
+- Přejmenovat klíče v `dashboard.*`:
+  `totalLeads → totalRecords`, `myTopLeads → myTopRecords` (klíč
+  `myTopRecords` už je použit ve view, ale v cs.json je jen `myTopLeads` –
+  bug → opravit), `quickCreateLead → quickCreateRecord`,
+  `qcCreated/qcFailed` – sjednotit na „Záznam…“.
+- Smazat nepoužívané klíče (`noClosedLeads`, `noStatusHistory`, `noTrendData`,
+  `myTopLeads`, `myTopLeadsEmpty`) **až poté co je potvrdíme grepem**.
+- Zachovat backward-compat fallback po jeden release (v `t()` zkusit nový,
+  pak starý) pokud uživatelské překlady nejsou hotové ve všech jazycích.
+- Lokalizace ve všech 4 souborech (`cs`, `en`, `de`, `pl`).
+
+---
+
+## 3. Fáze realizace
+
+> Každá fáze je samostatný PR / dávka. Po dokončení fáze sem agent zapíše
+> shrnutí a co bude následovat.
+
+### Fáze 0 — Plán a souhlas *(probíhá / čeká na uživatele)*
+- ✅ Sepsat tento dokument.
+- ⏳ Uživatel potvrdí prioritizaci widgetů (které ANO, které NE, co první).
+
+### Fáze 1 — Backend rozšíření `/stats` + nové endpointy
+- Rozšířit `StatsOut` o canonical hodnoty, range / category / owner filtry.
+- Implementovat `category-overview`, `stage-funnel`, `trend`, `my-day`,
+  `stale-records`, `checkpoints`, `team-leaderboard`.
+- Unit testy v `crm/tests/test_dashboard_*.py`.
+- Žádný frontend dopad (kromě toho, že stávající `/stats` zůstane funkční).
+
+### Fáze 2 — Frontend foundation a refactor stávajících widgetů
+- Vytvořit `components/dashboard/*` strukturu, přesunout stávající 6 widgetů
+  do samostatných komponent.
+- Zavést per-widget `config` v layoutu (forward-compat schéma).
+- `quick_create_record` rozšířit o `category` + `stage` (závislé selecty),
+  validovat dle `CategoryField` (required/visible).
+- Vyčistit `RECORD_STATUSES` hardcoding tam, kde už je nahrazen stage daty.
+- i18n úklid + nové klíče.
+
+### Fáze 3 — Nové „kategorie & stage“ widgety
+- `category_overview`
+- `stage_funnel` (s konverzemi)
+- `record_status_chart` zachovaný jako legacy/optional.
+
+### Fáze 4 — Akční widgety
+- `my_day` (Tasks + Checkpoints feed s ✓/snooze)
+- `stale_records`
+- `upcoming_checkpoints`
+
+### Fáze 5 — Analytika
+- `pipeline_trend`
+- `win_loss`
+- `activity_heatmap`
+- `team_leaderboard` (admin gated)
+
+### Fáze 6 — UX vylepšení
+- Globální range picker v hlavičce dashboardu.
+- 12-column responsive grid (volitelně knihovna `vue-grid-layout` nebo CSS grid
+  + tailwind), uložení šířky/výšky widgetu.
+- Light/dark a mobile review.
+- Onboarding tour pro nový dashboard.
+
+### Fáze 7 — Polishing & cleanup
+- Smazat nepoužívané i18n klíče.
+- Dokumentace v `docs/` (pokud projekt má) nebo screenshoty v PR.
+- E2E test pokrývající custom layout + per-widget config.
+
+---
+
+## 4. Otevřené otázky pro uživatele
+
+1. **Které widgety chceš v MVP** (Fáze 2–3) a které lze odložit?
+2. **Mají existovat dva výchozí dashboardy** (admin vs. member), nebo jen
+   per-uživatel?
+3. **Range picker** – globální (sdílený všemi widgety) nebo per-widget?
+   Doporučuji globální + per-widget override.
+4. **Mixed currencies** – preferuješ vždy převod na firemní default (canonical)
+   nebo přepínač „native / canonical“? Doporučuji canonical + tooltip s breakdown.
+5. **Grid vs. stack** – stojí za to investovat do skutečného 12-col gridu,
+   nebo stačí současné stackování s lepším clusterováním?
+
+---
+
+## 5. Deník postupu
+
+### 2026-05-05 — Fáze 0
+- Naskenován `DashboardView.vue` a `/api/v1/crm/stats`, modely
+  `Category/Stage/CategoryField/Checkpoint/PipelineRecord`.
+- Identifikováno 15 mezer (viz § 1.2).
+- Navrženo 16 widgetů v cílovém katalogu (§ 2.2), API rozšíření a fázování.
+- **Co bude následovat:** Čekáme na potvrzení uživatele:
+  - prioritizace widgetů pro MVP,
+  - odpovědi na otázky v § 4.
+  Po potvrzení začneme **Fází 1** (backend rozšíření `/stats` + první z nových
+  endpointů – pravděpodobně `category-overview` a `stage-funnel`, protože jsou
+  základem pro 2 nejvíce požadované widgety).
