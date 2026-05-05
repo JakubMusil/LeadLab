@@ -169,7 +169,15 @@
     "cfgDaysAhead": "Dni do przodu",
     "cfgScope": "Zakres",
     "cfgScopeMine": "Moje",
-    "cfgScopeFirm": "Cała firma"
+    "cfgScopeFirm": "Cała firma",
+    "cfgCategory": "Kategoria",
+    "cfgAllCategories": "Wszystkie kategorie",
+    "cfgTimeRange": "Zakres czasu",
+    "setupProgress": "Postęp konfiguracji",
+    "setupProgressDesc": "{done} z {total} kroków gotowe",
+    "setupStepFirm": "Ustaw nazwę firmy",
+    "setupStepPipeline": "Utwórz kategorię pipeline",
+    "setupAllDone": "Konfiguracja zakończona! 🎉"
   },
   "leads": {
     "title": "Rekordy",

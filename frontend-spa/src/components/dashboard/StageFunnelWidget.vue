@@ -12,6 +12,7 @@ import { useI18n } from '@/composables/useI18n'
 import { useMoney } from '@/composables/useMoney'
 import { useChartTheme } from '@/composables/useChartTheme'
 import { usePipelineStore } from '@/stores/pipeline'
+import { useDashboardWidget } from '@/composables/useDashboardWidget'
 import { api } from '@/api'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
@@ -39,10 +40,13 @@ const { t } = useI18n()
 const { formatAmount } = useMoney()
 const { tickColor, gridColor } = useChartTheme()
 const pipelineStore = usePipelineStore()
+const { range, categoryId, updateConfig } = useDashboardWidget('stage_funnel')
 
 const data = ref<StageFunnelData | null>(null)
 const loading = ref(false)
-const selectedCategoryId = ref<string | null>(null)
+
+// Local ref mirrors the config; changes persist to layout store
+const selectedCategoryId = ref<string | null>(categoryId.value)
 
 const activeCategories = computed(() => pipelineStore.categories.filter((c) => c.is_active))
 
@@ -51,6 +55,7 @@ async function load() {
   try {
     const params = new URLSearchParams()
     if (selectedCategoryId.value) params.set('category_id', selectedCategoryId.value)
+    params.set('range', range.value)
     const qs = params.toString()
     const url = `/api/v1/crm/dashboard/stage-funnel${qs ? '?' + qs : ''}`
     const res = await api.get<StageFunnelData>(url)
@@ -66,7 +71,19 @@ async function load() {
   }
 }
 
-watch(selectedCategoryId, () => load())
+// Persist inline category selection to config AND trigger reload
+watch(selectedCategoryId, (val) => {
+  updateConfig({ category_id: val })
+  load()
+})
+
+// Sync when config changes externally (e.g. via WidgetConfigDialog)
+watch(categoryId, (val) => {
+  selectedCategoryId.value = val
+})
+
+// Reload on range change
+watch(range, () => load())
 
 // Non-terminal stages for the funnel bars
 const funnelStages = computed(() => (data.value?.stages ?? []).filter((s) => !s.is_terminal))

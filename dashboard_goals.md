@@ -662,3 +662,60 @@ chyby v `CalendarView.vue`, `RecordsView.vue`, `TaskDetailView.vue`,
 - Rozšíření per-widget configu na další widgety (`category_overview`,
   `pipeline_trend`, `stage_funnel` – range/scope/category override).
 - E2E testy (Playwright) pokrývající layout + per-widget config.
+
+### 2026-05-05 — Fáze 9 (✅ hotovo, per-widget config rozšíření + `setup_progress` widget)
+
+Implementováno:
+
+- **Rozšíření `WIDGET_CONFIG_SCHEMA`** v `frontend-spa/src/stores/dashboard.ts`:
+  - `category_overview`: pole `range` (cfgTimeRange) + `scope` (cfgScope).
+  - `stage_funnel`: pole `category_id` (cfgCategory) + `range` (cfgTimeRange).
+  - `pipeline_trend`: pole `category_id` (cfgCategory) + `range` (cfgTimeRange).
+
+- **`WidgetConfigDialog.vue`** – přidán renderer pro typ `category`:
+  - Importuje `usePipelineStore`, computed `activeCategories`.
+  - `<select>` s první možností „Všechny kategorie" (null → API bez filtru)
+    a poté aktivní kategorie (emoji icon + name).
+
+- **`CategoryOverviewWidget.vue`** napojeno na `useDashboardWidget('category_overview')`:
+  - Předává `?range=` z config (fallback global range) a `?owner_id=me`
+    pokud `scope === 'mine'`. Reloaduje na změnu `range` nebo `scope`.
+
+- **`StageFunnelWidget.vue`** napojeno na `useDashboardWidget('stage_funnel')`:
+  - `selectedCategoryId` inicializován z `categoryId` (config) a persistuje
+    zpět do configu přes `updateConfig({ category_id })` při každé změně.
+  - Bidirectionální sync: změna kategorie z dialogu (přes `categoryId` watcher)
+    se propaguje do lokálního selectu a naopak.
+  - Předává `?range=` do API, reloaduje na změnu.
+
+- **`PipelineTrendWidget.vue`** napojeno na `useDashboardWidget('pipeline_trend')`:
+  - `selectedRange` je nyní `computed<TrendRange>` z config range (fallback 30d).
+  - Lokální tlačítka 30d/90d volají `setLocalRange(r)` → `updateConfig({ range })`.
+  - Předává `?category_id=` do API pokud nastaven; reloaduje na změnu.
+
+- **`SetupProgressWidget.vue`** – nová komponenta:
+  - Zobrazí se jako widget (viditelný, order=16, audience=admin).
+  - Stavový checklist: „Nastavit název firmy" + „Vytvořit pipeline kategorii".
+  - Progress bar (červený → zelený), CTA odkaz na onboarding.
+  - Dismiss zavře widget a zapíše `onboarding_complete_{firm_id}` do localStorage
+    (stejný klíč jako byl v DashboardView bannerů).
+  - Backcompat: stávající banner v DashboardView **odstraněn** (widget ho plně
+    nahrazuje). DashboardView je nyní čistší layout host.
+
+- **`dashboard.ts`**: přidán `setup_progress` do `DEFAULT_WIDGETS`
+  (colSpan=12, visible=true, order=16, audience=admin).
+
+- **`DashboardView.vue`**: přidán import a `v-else-if` větev pro `setup_progress`;
+  odstraněn standalone banner, `dismissSetupBanner`, `showSetupBanner`,
+  `hideSetupBanner`, `XMarkIcon`, nepoužívaný `RouterLink` import.
+
+- **i18n** – přidány klíče v `dashboard.*` ve všech 4 locale souborech
+  (cs/en/de/pl): `cfgCategory`, `cfgAllCategories`, `cfgTimeRange`,
+  `setupProgress`, `setupProgressDesc`, `setupStepFirm`, `setupStepPipeline`,
+  `setupAllDone`.
+
+**Testy:** 100/100 frontend ✅, 16/16 backend ✅.
+
+**Co bude následovat (zbývající volitelné položky):**
+- Saved view widget – top N řádků z uloženého filtru z Records.
+- E2E testy (Playwright) pokrývající layout + per-widget config.

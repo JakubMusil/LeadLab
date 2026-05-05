@@ -169,7 +169,15 @@
     "cfgDaysAhead": "Dnů dopředu",
     "cfgScope": "Rozsah",
     "cfgScopeMine": "Moje",
-    "cfgScopeFirm": "Celá firma"
+    "cfgScopeFirm": "Celá firma",
+    "cfgCategory": "Kategorie",
+    "cfgAllCategories": "Všechny kategorie",
+    "cfgTimeRange": "Časové rozmezí",
+    "setupProgress": "Průvodce nastavením",
+    "setupProgressDesc": "{done} z {total} kroků hotovo",
+    "setupStepFirm": "Nastavit název firmy",
+    "setupStepPipeline": "Vytvořit pipeline kategorii",
+    "setupAllDone": "Nastavení dokončeno! 🎉"
   },
   "leads": {
     "title": "Záznamy",

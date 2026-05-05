@@ -6,10 +6,8 @@ import { useDashboardLayoutStore, type WidgetConfig, type DashboardRange } from 
 import { api } from '@/api'
 import { VueDraggable } from 'vue-draggable-plus'
 import { useI18n } from '@/composables/useI18n'
-import { RouterLink } from 'vue-router'
 import {
   Squares2X2Icon,
-  XMarkIcon,
 } from '@heroicons/vue/24/outline'
 
 // Widget components
@@ -31,6 +29,7 @@ import ActivityHeatmapWidget from '@/components/dashboard/ActivityHeatmapWidget.
 import TeamLeaderboardWidget from '@/components/dashboard/TeamLeaderboardWidget.vue'
 import DashboardTour from '@/components/dashboard/DashboardTour.vue'
 import WidgetConfigDialog from '@/components/dashboard/WidgetConfigDialog.vue'
+import SetupProgressWidget from '@/components/dashboard/SetupProgressWidget.vue'
 import { widgetHasConfig } from '@/stores/dashboard'
 import { Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
@@ -84,7 +83,7 @@ let rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 // Widget label map for layout editor
 // ---------------------------------------------------------------------------
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints' | 'pipeline_trend' | 'win_loss' | 'activity_heatmap' | 'team_leaderboard'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints' | 'pipeline_trend' | 'win_loss' | 'activity_heatmap' | 'team_leaderboard' | 'setup_progress'
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   stat_cards: t('dashboard.statCards'),
@@ -103,6 +102,7 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   win_loss: t('dashboard.winLoss'),
   activity_heatmap: t('dashboard.activityHeatmap'),
   team_leaderboard: t('dashboard.teamLeaderboard'),
+  setup_progress: t('dashboard.setupProgress'),
 }))
 
 // ---------------------------------------------------------------------------
@@ -175,25 +175,6 @@ function colSpanClass(widget: WidgetConfig): string {
 }
 
 // ---------------------------------------------------------------------------
-// Setup banner
-// ---------------------------------------------------------------------------
-
-const dismissSetupBanner = ref(false)
-
-const showSetupBanner = computed(() => {
-  if (dismissSetupBanner.value) return false
-  if (!firmStore.activeFirm) return false
-  return !localStorage.getItem('onboarding_complete_' + firmStore.activeFirm.id)
-})
-
-function hideSetupBanner() {
-  dismissSetupBanner.value = true
-  if (firmStore.activeFirm) {
-    localStorage.setItem('onboarding_complete_' + firmStore.activeFirm.id, '1')
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
@@ -221,24 +202,6 @@ onUnmounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <DashboardTour />
-
-    <!-- Setup banner -->
-    <div v-if="showSetupBanner" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 flex items-center justify-between gap-4 relative">
-      <div>
-        <div class="text-sm font-semibold text-red-900 dark:text-red-100">{{ t('dashboard.completeSetup') }}</div>
-        <div class="text-xs text-red-700 dark:text-red-300 mt-0.5">{{ t('dashboard.setupBannerText') }}</div>
-      </div>
-      <div class="flex items-center gap-3 flex-shrink-0">
-        <RouterLink to="/app/onboarding" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
-          {{ t('dashboard.continueSetup') }}
-        </RouterLink>
-        <button
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm px-2 py-1"
-          @click="hideSetupBanner"
-          aria-label="Dismiss banner"
-        ><XMarkIcon class="w-4 h-4" /></button>
-      </div>
-    </div>
 
     <!-- Dashboard header with layout button -->
     <div class="flex flex-wrap items-center justify-between gap-y-2">
@@ -407,6 +370,10 @@ onUnmounted(() => {
 
           <TeamLeaderboardWidget
             v-else-if="widget.id === 'team_leaderboard'"
+          />
+
+          <SetupProgressWidget
+            v-else-if="widget.id === 'setup_progress'"
           />
         </div>
       </div>
