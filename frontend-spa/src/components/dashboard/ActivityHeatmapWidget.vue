@@ -66,6 +66,20 @@ const grid = computed(() => {
   return weeks
 })
 
+const totals = computed(() => {
+  const points = data.value?.points ?? []
+  let total = 0
+  let activeDays = 0
+  let peak = 0
+  for (const p of points) {
+    total += p.value
+    if (p.value > 0) activeDays++
+    if (p.value > peak) peak = p.value
+  }
+  const avg = activeDays > 0 ? total / activeDays : 0
+  return { total, activeDays, peak, avg }
+})
+
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 // Intensity → Tailwind color class
@@ -89,35 +103,43 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 h-full flex flex-col">
     <!-- Header -->
-    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      {{ t('dashboard.activityHeatmap') }}
-    </h3>
+    <div class="flex items-start justify-between mb-3">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        {{ t('dashboard.activityHeatmap') }}
+      </h3>
+      <div v-if="data && totals.total > 0" class="text-right">
+        <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('dashboard.heatmapLast90d') }}</div>
+        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {{ t('dashboard.heatmapTotalActivities', { n: totals.total }) }}
+        </div>
+      </div>
+    </div>
 
     <!-- Skeleton -->
-    <div v-if="loading && !data" class="animate-pulse">
-      <div class="h-28 bg-gray-100 dark:bg-gray-700 rounded-xl" />
+    <div v-if="loading && !data" class="animate-pulse flex-1">
+      <div class="h-32 bg-gray-100 dark:bg-gray-700 rounded-xl" />
     </div>
 
     <!-- Empty state -->
     <div
       v-else-if="data && data.points.every((p) => p.value === 0)"
-      class="text-center py-6 text-sm text-gray-400"
+      class="text-center py-6 text-sm text-gray-400 flex-1 flex items-center justify-center"
     >
       {{ t('dashboard.activityHeatmapEmpty') }}
     </div>
 
     <!-- Heatmap grid -->
     <template v-else-if="data">
-      <div class="overflow-x-auto">
-        <div class="flex gap-0.5 min-w-0">
+      <div class="overflow-x-auto flex-1">
+        <div class="flex gap-1 min-w-0">
           <!-- Day-of-week labels -->
-          <div class="flex flex-col gap-0.5 mr-1">
+          <div class="flex flex-col gap-1 mr-1.5">
             <div
               v-for="(label, di) in DAY_LABELS"
               :key="di"
-              class="h-3 w-4 text-[9px] text-gray-400 dark:text-gray-500 flex items-center"
+              class="h-4 w-5 text-[10px] text-gray-400 dark:text-gray-500 flex items-center"
             >
               {{ di % 2 === 1 ? label : '' }}
             </div>
@@ -126,12 +148,12 @@ onMounted(load)
           <div
             v-for="(week, wi) in grid"
             :key="wi"
-            class="flex flex-col gap-0.5"
+            class="flex flex-col gap-1"
           >
             <div
               v-for="(cell, di) in week"
               :key="di"
-              class="w-3 h-3 rounded-sm transition-colors"
+              class="w-4 h-4 rounded-[3px] transition-colors"
               :class="cellClass(cell.intensity)"
               :title="cellTitle(cell)"
               role="img"
@@ -140,11 +162,20 @@ onMounted(load)
           </div>
         </div>
       </div>
-      <!-- Legend -->
-      <div class="flex items-center gap-1 mt-2 text-[10px] text-gray-400">
-        <span>{{ t('dashboard.heatmapLess') }}</span>
-        <div v-for="i in 5" :key="i" class="w-3 h-3 rounded-sm" :class="cellClass(i - 1)" />
-        <span>{{ t('dashboard.heatmapMore') }}</span>
+
+      <!-- Footer: summary stats + legend -->
+      <div class="flex items-center justify-between mt-3 gap-4 flex-wrap">
+        <div v-if="totals.total > 0" class="flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+          <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.activeDays }}</span> {{ t('dashboard.heatmapActiveDays') }}</span>
+          <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.avg.toFixed(1) }}</span> {{ t('dashboard.heatmapAvgPerDay') }}</span>
+          <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.peak }}</span> {{ t('dashboard.heatmapPeak') }}</span>
+        </div>
+        <div v-else class="text-[11px] text-gray-400">&nbsp;</div>
+        <div class="flex items-center gap-1 text-[10px] text-gray-400">
+          <span>{{ t('dashboard.heatmapLess') }}</span>
+          <div v-for="i in 5" :key="i" class="w-3 h-3 rounded-sm" :class="cellClass(i - 1)" />
+          <span>{{ t('dashboard.heatmapMore') }}</span>
+        </div>
       </div>
     </template>
   </div>

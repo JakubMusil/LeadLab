@@ -103,9 +103,14 @@ onMounted(load)
         role="button"
         :aria-label="item.name"
       >
-        <!-- Category name + icon -->
+        <!-- Category name -->
         <div class="flex items-center gap-2 mb-2">
-          <span v-if="item.icon" class="text-base leading-none" aria-hidden="true">{{ item.icon }}</span>
+          <span
+            v-if="item.color"
+            class="inline-block w-2 h-2 rounded-full flex-shrink-0"
+            :style="{ backgroundColor: item.color }"
+            aria-hidden="true"
+          />
           <span class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ item.name }}</span>
         </div>
 

@@ -719,3 +719,111 @@ Implementováno:
 **Co bude následovat (zbývající volitelné položky):**
 - Saved view widget – top N řádků z uloženého filtru z Records.
 - E2E testy (Playwright) pokrývající layout + per-widget config.
+
+### 2026-05-05 — Fáze 10 (✅ hotovo, UX/UI polishing dle zpětné vazby uživatele)
+
+Uživatelský požadavek (cs):
+> Ve widgetu Přehled kategorií se u jednotlivých kategorií nezobrazují správně
+> ikony. Ani by neměli, je to hard code, protože my ty ikony nedefinujeme.
+> Nebudeme je proto uvádět vůbec.
+>
+> Widget heatmapa aktivit je velice krátká a přesto zabírá celou šířku.
+> Udělejme s tím něco.
+>
+> Rychlé vytvoření záznamu vylepšíme. Bude to scénář kdy máme jen telefonní
+> číslo a voláme první cold call. Vymysli jakým způsobem a co tam naše
+> operátorka bude vyplňovat a zadávat aby snadno vytvořila tímto způsobem
+> svou novou příležitost.
+>
+> Nakonec proudí widgety a vymyslí vylepšení z hlediska UX a UI a rovnou
+> zapracuj.
+
+Implementováno:
+
+- **`CategoryOverviewWidget.vue` – odstranění emoji ikon.**
+  - V dlaždici kategorie už nezobrazujeme `item.icon` (hard-coded glyph
+    z backendu, který nemá smysluplný význam). Místo toho používáme
+    drobnou barevnou tečku (2 × 2 px) v barvě kategorie (`item.color`),
+    která vizuálně mapuje dlaždici na borderLeft sparkline a zachovává
+    odlišení kategorií, aniž by se opírala o náhodné emoji.
+  - Stejná úprava aplikována v `WidgetConfigDialog.vue` (select pro výběr
+    kategorie už nezobrazuje `cat.icon` před názvem).
+
+- **`ActivityHeatmapWidget.vue` – přepracovaný layout.**
+  - Default `colSpan` snížen z 12 → 6 ve `DEFAULT_WIDGETS`, takže widget
+    už nezabírá celou šířku.
+  - Buňky zvětšeny `w-3 h-3` → `w-4 h-4` (s `gap-1` místo `gap-0.5`),
+    heatmapa nyní vizuálně vyplní výšku karty.
+  - Přidány meta-statistiky v hlavičce („Posledních 90 dní" + počet
+    aktivit) a v patičce („aktivních dní", „ø na aktivní den", „max
+    za den") – widget už neobsahuje jen mřížku.
+  - Root karta má `h-full flex flex-col`, aby se spolu s ostatními
+    widgety v řádku vizuálně srovnala (viz globální `[&>*]:h-full`).
+  - Nové i18n klíče: `heatmapLast90d`, `heatmapTotalActivities`,
+    `heatmapActiveDays`, `heatmapAvgPerDay`, `heatmapPeak` ve všech
+    4 jazycích.
+
+- **`QuickCreateRecordWidget.vue` – přepracováno pro „cold call" scénář.**
+  - **Scénář:** operátorka má pouze telefonní číslo a chystá se uskutečnit
+    první cold call. Widget musí umožnit jedním stiskem vytvořit záznam
+    + kontakt + okamžitě skočit do detailu, aby tam mohla logovat hovor.
+  - **Pole formuláře:**
+    1. **Telefon** (povinné, primární, velký input s `PhoneIcon`).
+       Validace: alespoň 6 číslic. `inputmode="tel"` + `autocomplete="tel"`.
+    2. **Jméno kontaktu** (nepovinné, `UserIcon`).
+    3. **Firma** (nepovinné, `BuildingOfficeIcon`).
+    4. **Kategorie** (zobrazí se jen když firma má > 1 aktivní kategorii;
+       jinak silently default = první aktivní kategorie).
+  - **Co se stane při Submit:**
+    1. `POST /api/v1/crm/directory` – vytvoří se Customer typu `person`
+       s telefonním číslem (jméno = Jméno kontaktu nebo telefon jako fallback).
+    2. `POST /api/v1/crm/records` – vytvoří se Záznam s
+       `source='cold_call'`, `status='contacted'`, `contact_person_id` =
+       právě vytvořený customer, `category_id` = výchozí kategorie,
+       `current_stage_id` = první non-terminal stage této kategorie.
+    3. Toast „Záznam vytvořen" + `emit('created')` + `router.push('/app/records/{id}')`
+       → operátorka okamžitě stojí v detailu, kde aktivuje tlačítko „Hovor"
+       a začne logovat call.
+  - **Title záznamu** sestaven inteligentně: `"Jméno — Firma"` /
+    `Jméno` / `Firma` / `"Cold call: <phone>"` jako fallback.
+  - Odstraněna stará pole „Title / Status / Value / Stage" – pro tento
+    scénář nejsou relevantní (operátorka je vyplní později po hovoru).
+  - Layout je vertikální (flex column s `mt-auto` na CTA), dobře sedí
+    do `colSpan=4`.
+  - Přidány i18n klíče: `qcColdCallHint`, `qcPhoneLabel`, `qcPhonePlaceholder`,
+    `qcPhoneRequired`, `qcContactLabel`, `qcContactPlaceholder`, `qcCompanyLabel`,
+    `qcCompanyPlaceholder`, `qcOptional`, `qcDefault`, `qcStartCall`,
+    `qcColdCallTitle` ve všech 4 jazycích.
+
+- **Obecná UX/UI vylepšení:**
+  - **Aligned widget heights** – v `DashboardView.vue` mají grid items
+    nově `[&>*]:h-full` (Tailwind arbitrary variant), takže každý widget
+    natáhne kořenovou kartu na výšku celého řádku. To eliminuje vizuální
+    nesoulad mezi spárovanými widgety v jednom řádku
+    (např. PipelineChart 8 + WinLoss 4).
+  - **Logičtější default layout** – nové `DEFAULT_WIDGETS` pořadí
+    seskupuje widgety do tematických řádků, takže grid se vyplňuje
+    bez prázdných míst:
+    1. `stat_cards` (12) — KPI
+    2. `quick_create_record` (4) + `my_day` (4) + `upcoming_checkpoints` (4)
+       — „dnešní akční trio" (kontakt, úkoly, checkpointy = 12)
+    3. `category_overview` (12) — přehled kategorií
+    4. `stage_funnel` (8) + `recent_activity` (4) — 12
+    5. `my_top_records` (6) + `stale_records` (6) — 12
+    6. `pipeline_chart` (8) + `win_loss` (4) — 12
+    7. `pipeline_trend` (6) + `activity_heatmap` (6) — 12
+    8. `status_breakdown` (12)
+    9. `record_status_chart` (12, hidden), `team_leaderboard` (12, hidden, admin),
+       `setup_progress` (12, admin)
+  - **`upcoming_checkpoints`** colSpan 6 → 4 aby se vešel do trio.
+
+**Testy:** 100/100 frontend ✅. Type-check čistý (jen pre-existing chyby
+v `CalendarView`, `RecordsView`, `TaskDetailView`, `TasksView`, `DashboardTour`
+mimo scope této změny).
+
+**Co bude následovat:**
+- Saved view widget (top N řádků z uloženého filtru).
+- E2E testy (Playwright) pokrývající layout + per-widget config.
+- Případně přidat „cold call follow-up" – po vytvoření záznamu z widgetu
+  rovnou nabídnout dialog pro logování výsledku hovoru, pokud uživatelské
+  testování ukáže, že redirect do detailu je málo.

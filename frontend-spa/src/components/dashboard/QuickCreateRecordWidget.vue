@@ -1,159 +1,242 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { PlusIcon } from '@heroicons/vue/24/outline'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { PhoneIcon, UserIcon, BuildingOfficeIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
-import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordIn } from '@/stores/records'
+import { useRecordsStore, type RecordIn } from '@/stores/records'
+import { useCustomersStore } from '@/stores/customers'
 import { usePipelineStore } from '@/stores/pipeline'
 
 const emit = defineEmits<{ created: [] }>()
 
 const { t } = useI18n()
 const toast = useToast()
+const router = useRouter()
 const recordsStore = useRecordsStore()
+const customersStore = useCustomersStore()
 const pipelineStore = usePipelineStore()
 
-// Form state
-const qcTitle = ref('')
-const qcStatus = ref('new')
-const qcValue = ref('')
-const qcCategoryId = ref('')
-const qcStageId = ref('')
-const qcSubmitting = ref(false)
-const qcError = ref('')
+// ---------------------------------------------------------------------------
+// Cold-call form state
+// ---------------------------------------------------------------------------
+// Scenario: the operator has only a phone number and is about to make her
+// first cold call. The minimum required field is the phone number; everything
+// else is optional. When the form is submitted we create a Customer (person)
+// holding the phone number, a Record linked to that contact (source =
+// "cold_call", status = "contacted") and immediately navigate to the new
+// record's detail view so the operator can log the call right there.
 
-// Active categories from pipeline store
+const phone = ref('')
+const contactName = ref('')
+const companyName = ref('')
+const categoryId = ref('')
+const submitting = ref(false)
+const errorMsg = ref('')
+
 const activeCategories = computed(() =>
   pipelineStore.categories.filter((c) => c.is_active),
 )
 
-// Stages for the selected category
-const stagesForCategory = computed(() => {
-  if (!qcCategoryId.value) return []
-  return pipelineStore.getStagesForCategory(qcCategoryId.value).filter((s) => !s.is_terminal)
+const showCategorySelect = computed(() => activeCategories.value.length > 1)
+
+// Default category = first active (selected silently when only one exists)
+const effectiveCategoryId = computed(() => {
+  if (categoryId.value) return categoryId.value
+  return activeCategories.value[0]?.id ?? ''
 })
 
-// Reset stage selection when category changes
-watch(qcCategoryId, () => {
-  qcStageId.value = ''
-})
-
-const STATUS_LABELS = computed<Record<string, string>>(() => ({
-  new: t('leads.statusNew'),
-  contacted: t('leads.statusContacted'),
-  proposal: t('leads.statusProposal'),
-  negotiation: t('leads.statusNegotiation'),
-  won: t('leads.statusWon'),
-  lost: t('leads.statusLost'),
-  canceled: t('leads.statusCanceled'),
-}))
-
-function statusLabelFor(status: string): string {
-  return STATUS_LABELS.value[status] ?? getStatusMeta(status).label
+// Pick the first non-terminal stage of the category, ordered by `order`
+function firstStageId(catId: string): string {
+  if (!catId) return ''
+  const stages = pipelineStore.getStagesForCategory(catId).filter((s) => !s.is_terminal)
+  if (!stages.length) return ''
+  // getStagesForCategory already returns sorted but be defensive
+  return stages[0]?.id ?? ''
 }
 
-async function submitQuickCreate() {
-  const title = qcTitle.value.trim()
-  if (!title) {
-    qcError.value = t('dashboard.qcTitleRequired')
+const phoneValid = computed(() => phone.value.replace(/[^0-9+]/g, '').length >= 6)
+const canSubmit = computed(() => phoneValid.value && !submitting.value)
+
+// Build a sensible record title from the provided data
+function buildTitle(): string {
+  const name = contactName.value.trim()
+  const company = companyName.value.trim()
+  const tel = phone.value.trim()
+  if (name && company) return `${name} — ${company}`
+  if (name) return name
+  if (company) return company
+  return t('dashboard.qcColdCallTitle', { phone: tel })
+}
+
+// Split contact name into first/last (best-effort)
+function splitName(full: string): { first: string; last: string } {
+  const trimmed = full.trim()
+  if (!trimmed) return { first: '', last: '' }
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return { first: parts[0] ?? '', last: '' }
+  return { first: parts[0] ?? '', last: parts.slice(1).join(' ') }
+}
+
+async function submit() {
+  errorMsg.value = ''
+  if (!phoneValid.value) {
+    errorMsg.value = t('dashboard.qcPhoneRequired')
     return
   }
-  qcSubmitting.value = true
-  qcError.value = ''
+  submitting.value = true
   try {
-    const valueNum = qcValue.value ? parseFloat(qcValue.value) : null
-    const payload: RecordIn = {
-      title,
-      status: qcStatus.value,
-      value: valueNum != null && !isNaN(valueNum) ? valueNum : null,
-      category_id: qcCategoryId.value || null,
-      current_stage_id: qcStageId.value || null,
+    // 1) Create a Customer (person) holding the phone number. If a contact
+    //    name is missing we use the phone number as the first_name fallback
+    //    so the customer is still searchable.
+    const { first, last } = splitName(contactName.value)
+    const customerRes = await customersStore.createCustomer({
+      type: 'person',
+      first_name: first || phone.value.trim(),
+      last_name: last,
+      phone: phone.value.trim(),
+      company_name: companyName.value.trim() || undefined,
+    })
+
+    if (!customerRes.ok || !customerRes.data) {
+      errorMsg.value = customerRes.error ?? t('dashboard.qcFailed')
+      return
     }
 
-    const res = await recordsStore.createRecord(payload)
-    if (res.ok) {
-      toast.success(t('dashboard.qcCreated'))
-      qcTitle.value = ''
-      qcStatus.value = 'new'
-      qcValue.value = ''
-      qcCategoryId.value = ''
-      qcStageId.value = ''
-      emit('created')
-    } else {
-      qcError.value = res.error ?? t('dashboard.qcFailed')
+    const catId = effectiveCategoryId.value
+    const stageId = firstStageId(catId)
+
+    // 2) Create the Record linked to the freshly created contact
+    const payload: RecordIn = {
+      title: buildTitle(),
+      status: 'contacted',
+      source: 'cold_call',
+      contact_person_id: customerRes.data.id,
+      category_id: catId || null,
+      current_stage_id: stageId || null,
     }
+    const recordRes = await recordsStore.createRecord(payload)
+    if (!recordRes.ok || !recordRes.data) {
+      errorMsg.value = recordRes.error ?? t('dashboard.qcFailed')
+      return
+    }
+
+    toast.success(t('dashboard.qcCreated'))
+    emit('created')
+
+    // Reset form
+    const newId = recordRes.data.id
+    phone.value = ''
+    contactName.value = ''
+    companyName.value = ''
+    categoryId.value = ''
+
+    // 3) Open the new record so the operator can immediately log the call
+    router.push({ path: `/app/records/${newId}` })
   } finally {
-    qcSubmitting.value = false
+    submitting.value = false
   }
 }
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-    <div class="flex items-center justify-between mb-4">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 h-full flex flex-col">
+    <div class="flex items-start justify-between mb-1">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-        <PlusIcon class="w-4 h-4 text-red-600" aria-hidden="true" />
+        <PhoneIcon class="w-4 h-4 text-red-600" aria-hidden="true" />
         {{ t('dashboard.quickCreateRecord') }}
       </h3>
     </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+      {{ t('dashboard.qcColdCallHint') }}
+    </p>
 
-    <form class="space-y-2" @submit.prevent="submitQuickCreate">
-      <!-- Row 1: Title + Status + Value -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
-        <input
-          v-model="qcTitle"
-          type="text"
-          :placeholder="t('dashboard.qcTitlePlaceholder')"
-          :aria-label="t('dashboard.qcTitlePlaceholder')"
-          class="md:col-span-5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
-        />
-        <select
-          v-model="qcStatus"
-          :aria-label="t('dashboard.qcStatusLabel')"
-          class="md:col-span-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
-        >
-          <option v-for="s in RECORD_STATUSES" :key="s.value" :value="s.value">{{ statusLabelFor(s.value) }}</option>
-        </select>
-        <input
-          v-model="qcValue"
-          type="number"
-          min="0"
-          step="any"
-          :placeholder="t('dashboard.qcValuePlaceholder')"
-          :aria-label="t('dashboard.qcValuePlaceholder')"
-          class="md:col-span-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
-        />
-        <button
-          type="submit"
-          :disabled="qcSubmitting || !qcTitle.trim()"
-          class="md:col-span-2 bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ qcSubmitting ? t('common.saving') : t('dashboard.qcCreate') }}
-        </button>
-      </div>
+    <form class="space-y-3 flex-1 flex flex-col" @submit.prevent="submit">
+      <!-- Phone (primary, required) -->
+      <label class="block">
+        <span class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          {{ t('dashboard.qcPhoneLabel') }} <span class="text-red-600" aria-hidden="true">*</span>
+        </span>
+        <div class="relative">
+          <PhoneIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            v-model="phone"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            :placeholder="t('dashboard.qcPhonePlaceholder')"
+            :aria-label="t('dashboard.qcPhoneLabel')"
+            required
+            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/40"
+          />
+        </div>
+      </label>
 
-      <!-- Row 2: Category + Stage (shown only when pipeline has categories) -->
-      <div v-if="activeCategories.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <!-- Contact name (optional) -->
+      <label class="block">
+        <span class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          {{ t('dashboard.qcContactLabel') }}
+          <span class="text-gray-400 font-normal">{{ t('dashboard.qcOptional') }}</span>
+        </span>
+        <div class="relative">
+          <UserIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            v-model="contactName"
+            type="text"
+            autocomplete="name"
+            :placeholder="t('dashboard.qcContactPlaceholder')"
+            :aria-label="t('dashboard.qcContactLabel')"
+            class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+          />
+        </div>
+      </label>
+
+      <!-- Company (optional) -->
+      <label class="block">
+        <span class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          {{ t('dashboard.qcCompanyLabel') }}
+          <span class="text-gray-400 font-normal">{{ t('dashboard.qcOptional') }}</span>
+        </span>
+        <div class="relative">
+          <BuildingOfficeIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            v-model="companyName"
+            type="text"
+            autocomplete="organization"
+            :placeholder="t('dashboard.qcCompanyPlaceholder')"
+            :aria-label="t('dashboard.qcCompanyLabel')"
+            class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+          />
+        </div>
+      </label>
+
+      <!-- Category (only when multiple) -->
+      <label v-if="showCategorySelect" class="block">
+        <span class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          {{ t('dashboard.qcCategoryLabel') }}
+        </span>
         <select
-          v-model="qcCategoryId"
+          v-model="categoryId"
           :aria-label="t('dashboard.qcCategoryLabel')"
-          class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+          class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
         >
-          <option value="">{{ t('dashboard.qcCategoryPlaceholder') }}</option>
+          <option value="">{{ activeCategories[0]?.name ?? '' }} ({{ t('dashboard.qcDefault') }})</option>
           <option v-for="cat in activeCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
         </select>
-        <select
-          v-model="qcStageId"
-          :disabled="!qcCategoryId || stagesForCategory.length === 0"
-          :aria-label="t('dashboard.qcStageLabel')"
-          class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400 disabled:opacity-50"
+      </label>
+
+      <!-- Submit -->
+      <div class="mt-auto pt-1 space-y-2">
+        <button
+          type="submit"
+          :disabled="!canSubmit"
+          class="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <option value="">{{ t('dashboard.qcStagePlaceholder') }}</option>
-          <option v-for="stage in stagesForCategory" :key="stage.id" :value="stage.id">{{ stage.label || stage.name }}</option>
-        </select>
+          {{ submitting ? t('common.saving') : t('dashboard.qcStartCall') }}
+          <ArrowRightIcon v-if="!submitting" class="w-4 h-4" aria-hidden="true" />
+        </button>
+        <p v-if="errorMsg" class="text-xs text-red-600 dark:text-red-400" role="alert">{{ errorMsg }}</p>
       </div>
     </form>
-
-    <p v-if="qcError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ qcError }}</p>
   </div>
 </template>
