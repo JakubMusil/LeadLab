@@ -60,6 +60,16 @@ const { t } = useI18n()
 const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
 const currentPageUrl = computed(() => window.location.href)
 const isRecordDetailPage = computed(() => !!route.meta?.isRecordDetail)
+const isRecordsListPage = computed(() => route.path === '/app/records' && !isRecordDetailPage.value)
+const recordsListTitle = computed(() => {
+  if (!isRecordsListPage.value) return (route.meta?.title as string) ?? 'LeadLab'
+  const catId = route.query.category_id as string | undefined
+  if (catId) {
+    const cat = pipelineStore.getCategoryById(catId)
+    if (cat) return cat.name
+  }
+  return t('leads.title')
+})
 
 watchEffect(() => {
   const color = firmStore.activeFirm?.primary_color ?? '#dc2626'
@@ -519,7 +529,7 @@ function formatNotifTime(ts: string): string {
             </button>
           </template>
           <h1 v-else class="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
-            {{ (route.meta?.title as string) ?? 'LeadLab' }}
+            {{ recordsListTitle }}
           </h1>
         </div>
 

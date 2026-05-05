@@ -1036,10 +1036,6 @@ function closeContactDetail() {
   <div class="p-6">
     <!-- Header -->
     <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">
-        {{ currentCategory ? currentCategory.name : t('leads.title') }}
-      </h2>
-
       <!-- Category selector -->
       <div v-if="pipelineStore.categories.length > 0" class="flex items-center gap-1">
         <button
