@@ -71,7 +71,19 @@
     "qcCreate": "Utwórz",
     "qcCreated": "Rekord utworzony",
     "qcFailed": "Nie udało się utworzyć rekordu",
-    "qcTitleRequired": "Tytuł jest wymagany"
+    "qcTitleRequired": "Tytuł jest wymagany",
+    "categoryOverview": "Przegląd kategorii",
+    "categoryOverviewEmpty": "Brak aktywnych kategorii. Najpierw skonfiguruj pipeline.",
+    "setupPipeline": "Skonfiguruj pipeline",
+    "catRecordsOpen": "wygrane: {n}",
+    "catValueOpen": "wartość: {value}",
+    "catWinRate": "Win rate: {pct}%",
+    "uncategorized": "Bez kategorii",
+    "stageFunnel": "Funnel etapów",
+    "stageFunnelEmpty": "Brak etapów dla tej kategorii.",
+    "funnelSelectCategory": "Wybierz kategorię",
+    "funnelRecords": "{n} rekordów",
+    "recordStatusChart": "Rekordy według statusu"
   },
   "leads": {
     "title": "Rekordy",

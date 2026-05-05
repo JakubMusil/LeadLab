@@ -248,7 +248,7 @@ Sdílení helperu pro **canonical-money** agregace v `crm/money.py` (už existuj
 - Vyčistit `RECORD_STATUSES` hardcoding tam, kde už je nahrazen stage daty.
 - i18n úklid + nové klíče.
 
-### Fáze 3 — Nové „kategorie & stage“ widgety
+### Fáze 3 — Nové „kategorie & stage“ widgety *(✅ hotovo)*
 - `category_overview`
 - `stage_funnel` (s konverzemi)
 - `record_status_chart` zachovaný jako legacy/optional.
@@ -425,3 +425,42 @@ Implementováno:
     + conversion_to_next), výběr kategorie v hlavičce widgetu.
   - `RecordStatusChartWidget.vue` – zachovaný „legacy" bar chart jako volitelný.
 
+
+### 2026-05-05 — Fáze 3 (✅ hotovo, nové widgety)
+
+Implementováno v `frontend-spa/src/components/dashboard/`:
+
+- **`CategoryOverviewWidget.vue`** – volá `GET /api/v1/crm/dashboard/category-overview`.
+  Grid dlaždic za každou aktivní kategorii (název, ikona, records_open, records_won,
+  value_open_canonical, win_rate, SVG sparkline 30 dnů). Dlaždice klikatelná → proklik
+  do `/app/records?category=<id>`. Prázdný stav s CTA „Nastavit pipeline".
+  Uncategorized bucket pokud existuje.
+
+- **`StageFunnelWidget.vue`** – volá `GET /api/v1/crm/dashboard/stage-funnel`.
+  Horizontální Bar chart (Chart.js, `indexAxis: 'y'`) non-terminal stages s počty;
+  tooltip ukazuje `value_canonical` a `conversion_to_next`. Výběr kategorie přes
+  `<select>` v hlavičce widgetu (jen pokud firma má > 1 kategorii). Terminal stages
+  zobrazeny jako barevné pills pod grafem.
+
+- **`RecordStatusChartWidget.vue`** – legacy/optional verze, totožná logika jako
+  `PipelineChartWidget`, nový widget ID `record_status_chart`. Ve výchozím layoutu
+  `visible: false` (uživatel ji může zapnout v layout editoru).
+
+**Store (`dashboard.ts`):** přidány do `DEFAULT_WIDGETS`:
+`category_overview` (visible=true, order=2), `stage_funnel` (visible=true, order=3),
+`record_status_chart` (visible=false, order=8). `pipeline_chart` zachován pro
+backward-compat s uloženými layouty uživatelů.
+
+**DashboardView.vue** – importy + `v-else-if` větve + `WidgetId` union + `WIDGET_LABELS` rozšířeny.
+
+**i18n** (cs/en/de/pl) – přidány klíče: `categoryOverview`, `categoryOverviewEmpty`,
+`setupPipeline`, `catRecordsOpen`, `catValueOpen`, `catWinRate`, `uncategorized`,
+`stageFunnel`, `stageFunnelEmpty`, `funnelSelectCategory`, `funnelRecords`, `recordStatusChart`.
+
+**Testy:** 100/100 frontend ✅. Žádné nové TS chyby (pre-existing chyby v jiných views).
+
+**Co bude následovat:**
+- Fáze 4 – Akční widgety:
+  - `MyDayWidget.vue` – feed Tasks + Checkpoints (dnes/overdue/tento týden) s ✓/snooze.
+  - `StaleRecordsWidget.vue` – záznamy bez aktivity > N dnů.
+  - `UpcomingCheckpointsWidget.vue` – nejbližší checkpointy.
