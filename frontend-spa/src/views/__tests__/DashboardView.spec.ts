@@ -7,6 +7,21 @@ import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import DashboardView from '../DashboardView.vue'
 
+// Mock window.matchMedia (used by useChartTheme / useTheme)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
 // Mock Chart.js / vue-chartjs
 vi.mock('vue-chartjs', () => ({
   Bar: { template: '<canvas />' },
@@ -26,7 +41,15 @@ vi.mock('chart.js', () => ({
 
 vi.mock('@/stores/firm', () => ({
   useFirmStore: () => ({
-    activeFirm: { id: '1', name: 'Test Firm' },
+    activeFirm: { id: '1', name: 'Test Firm', default_currency: 'CZK' },
+  }),
+}))
+
+vi.mock('@/stores/pipeline', () => ({
+  usePipelineStore: () => ({
+    categories: [],
+    fetchCategories: vi.fn().mockResolvedValue({ ok: true }),
+    getStagesForCategory: vi.fn().mockReturnValue([]),
   }),
 }))
 
@@ -63,6 +86,13 @@ const router = createRouter({
   ],
 })
 
+function mockApiCalls(statsResponse: { ok: boolean; status: number; data: unknown }) {
+  // Call 1: loadLayout (no saved layout)
+  vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null } as ReturnType<typeof api.get> extends Promise<infer T> ? T : never)
+  // Call 2: loadStats
+  vi.mocked(api.get).mockResolvedValueOnce(statsResponse as ReturnType<typeof api.get> extends Promise<infer T> ? T : never)
+}
+
 describe('DashboardView', () => {
   beforeEach(async () => {
     setActivePinia(createPinia())
@@ -72,8 +102,7 @@ describe('DashboardView', () => {
   })
 
   it('shows loading skeleton or fallback initially when no stats', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 500, data: null })
+    mockApiCalls({ ok: false, status: 500, data: null })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -82,8 +111,7 @@ describe('DashboardView', () => {
   })
 
   it('renders stat cards after data loads', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats })
+    mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -93,8 +121,7 @@ describe('DashboardView', () => {
   })
 
   it('shows pipeline value', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats })
+    mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -103,8 +130,7 @@ describe('DashboardView', () => {
   })
 
   it('shows overdue tasks in red when overdue > 0', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats })
+    mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -114,8 +140,7 @@ describe('DashboardView', () => {
   })
 
   it('shows conversion rate', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats })
+    mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -124,8 +149,7 @@ describe('DashboardView', () => {
   })
 
   it('shows status breakdown section', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: true, status: 200, data: mockStats })
+    mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
@@ -135,8 +159,7 @@ describe('DashboardView', () => {
   })
 
   it('shows error state when API fails', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 404, data: null })
-    vi.mocked(api.get).mockResolvedValueOnce({ ok: false, status: 500, data: null })
+    mockApiCalls({ ok: false, status: 500, data: null })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
