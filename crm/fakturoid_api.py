@@ -186,7 +186,7 @@ def create_from_proposal(request, proposal_id: str):
 
     # Build line items from proposal items
     lines = []
-    for item in sorted(proposal.items.all(), key=lambda i: (i.position, str(i.created_at))):
+    for item in sorted(proposal.items.all(), key=lambda i: (i.position, i.created_at)):
         unit_price_after_discount = float(item.unit_price) * (1 - float(item.discount) / 100)
         lines.append({
             "name": item.description,

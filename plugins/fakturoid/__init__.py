@@ -12,7 +12,7 @@ Configuration (stored in PluginConfig.config):
   auto_send     : bool  — If true, automatically deliver the document by e-mail after creation
                           (requires the contact to have an e-mail address set)
 
-Fakturoid API v3 docs: https://www.fakturoid.cz/api/v3
+Fakturoid API v2 docs: https://fakturoid.docs.apiary.io/
 """
 from __future__ import annotations
 
@@ -391,8 +391,8 @@ class FakturoidPlugin(LeadLabPlugin):
                     fire_resp.status_code, doc_type, doc_id,
                 )
                 return False
-        except Exception as exc:
-            logger.error("Fakturoid fire event error for %s/%s: %s", doc_type, doc_id, exc)
+        except Exception:
+            logger.error("Fakturoid fire event network error for %s/%s", doc_type, doc_id)
             return False
 
 

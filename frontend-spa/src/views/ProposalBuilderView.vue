@@ -175,8 +175,18 @@ async function createInFakturoid() {
   }
 
   fakturoidCreating.value = true
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const res = await api.post<any>(`/api/v1/integrations/fakturoid/from-proposal/${currentProposal.value.id}`)
+  interface FakturoidFromProposalResponse {
+    ok: boolean
+    document_type: string
+    number: string
+    html_url: string
+    sent: boolean
+    error?: string
+    detail?: string
+  }
+  const res = await api.post<FakturoidFromProposalResponse>(
+    `/api/v1/integrations/fakturoid/from-proposal/${currentProposal.value.id}`
+  )
   fakturoidCreating.value = false
 
   if (res.ok && res.data?.ok) {
