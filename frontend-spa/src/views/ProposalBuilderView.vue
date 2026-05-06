@@ -167,13 +167,6 @@ async function loadFakturoidConfig() {
 async function createInFakturoid() {
   if (!currentProposal.value) return
 
-  if (fakturoidAutoSend.value) {
-    const hasCustomer = Boolean(currentProposal.value.customer_id || currentProposal.value.record_id)
-    if (!hasCustomer) {
-      toast.info(t('fakturoid.noEmailWarning'))
-    }
-  }
-
   fakturoidCreating.value = true
   interface FakturoidFromProposalResponse {
     ok: boolean

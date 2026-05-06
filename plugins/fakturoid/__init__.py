@@ -98,7 +98,8 @@ class FakturoidPlugin(LeadLabPlugin):
         Return the Fakturoid config dict for *firm_id* or None if not configured.
 
         Returns a dict with keys: ``slug``, ``email``, ``api_token``,
-        ``document_type`` ("invoice" or "quotation"), ``auto_send`` (bool).
+        ``document_type`` ("invoice" or "quotation", default "invoice"),
+        ``auto_send`` (bool, default False).
         Returns None when the plugin is disabled or any required value is missing.
         """
         try:
@@ -197,6 +198,7 @@ class FakturoidPlugin(LeadLabPlugin):
 
         When *auto_send* is True the invoice is delivered to the contact by e-mail
         immediately after creation using the Fakturoid fire event API.
+        If the fire event fails, ``sent`` is still set to False in the result.
 
         Returns ``{"ok": True, "invoice": {...}, "sent": bool}`` on success or
         ``{"ok": False, "error": ...}`` on failure.
@@ -387,12 +389,12 @@ class FakturoidPlugin(LeadLabPlugin):
                 return True
             else:
                 logger.warning(
-                    "Fakturoid fire event returned HTTP %s for %s/%s",
-                    fire_resp.status_code, doc_type, doc_id,
+                    "Fakturoid fire event returned HTTP %s for %s",
+                    fire_resp.status_code, doc_type,
                 )
                 return False
         except Exception:
-            logger.error("Fakturoid fire event network error for %s/%s", doc_type, doc_id)
+            logger.error("Fakturoid fire event network error for %s", doc_type)
             return False
 
 
