@@ -81,9 +81,11 @@ def resolve_effective_permissions(membership: "Membership") -> set[str]:
         codes = set()
 
     if not codes:
-        # Fallback to legacy map so pre-migration memberships still work
+        # Fallback to legacy map so pre-migration memberships still work.
+        # Use ``primary_role`` (which prefers M2M roles over the legacy CharField)
+        # so any out-of-band role assignment is still reflected here.
         from firms.permissions import LEGACY_ROLE_PERMISSIONS
-        legacy_perms = LEGACY_ROLE_PERMISSIONS.get(membership.role, frozenset())
+        legacy_perms = LEGACY_ROLE_PERMISSIONS.get(membership.primary_role, frozenset())
         codes = {p.value for p in legacy_perms}
 
     return codes
@@ -104,10 +106,8 @@ def resolve_scope(membership: "Membership", permission: Permission | str) -> str
        (if any grant exists → scope becomes at least ``Scope.CATEGORY``)
     3. Owner shortcut → always ``Scope.ALL``
     """
-    from firms.models import MembershipRole
-
     # Owner always gets ALL scope
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return Scope.ALL
 
     effective = membership.default_scope or Scope.OWN
@@ -162,10 +162,8 @@ def filter_records_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     if membership is None:
         return qs.none()
 
-    from firms.models import MembershipRole
-
     # Owner sees everything
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return qs
 
     scope = resolve_scope(membership, Permission.RECORD_VIEW)
@@ -276,9 +274,7 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     if membership is None:
         return qs.none()
 
-    from firms.models import MembershipRole
-
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return qs
 
     user = request.user
@@ -327,9 +323,7 @@ def filter_proposals_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     if membership is None:
         return qs.none()
 
-    from firms.models import MembershipRole
-
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return qs
 
     user = request.user
@@ -370,9 +364,7 @@ def filter_tasks_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     if membership is None:
         return qs.none()
 
-    from firms.models import MembershipRole
-
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return qs
 
     user = request.user

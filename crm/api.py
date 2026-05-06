@@ -1758,7 +1758,7 @@ def delete_activity(request, activity_id: str):
         return 404, {"detail": "Activity not found."}
 
     # Permission: author or admin/owner
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
     is_author = activity.user_id and str(activity.user_id) == str(request.user.id)
     if not is_author and not is_admin:
         return 403, {"detail": "You can only delete your own activities."}
@@ -2423,7 +2423,7 @@ def list_calendar_tasks(
             )
         }
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
 
     qs = Task.objects.filter(firm=request.firm).select_related(
         "record", "customer", "proposal", "assigned_to",
@@ -2496,7 +2496,7 @@ def list_tasks(
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
 
     qs = filter_tasks_qs(
         Task.objects.filter(firm=request.firm).select_related(
@@ -3293,7 +3293,7 @@ def delete_task_document(request, task_id: str, document_id: str):
     except Document.DoesNotExist:
         return 404, {"detail": "Document not found."}
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
     if str(doc.uploaded_by_id) != str(request.user.id) and not is_admin:
         return 403, {"detail": "You can only delete your own documents."}
 
@@ -4299,7 +4299,7 @@ def delete_time_log(request, task_id: str, log_id: str):
     except TaskTimeLog.DoesNotExist:
         return 404, {"detail": "Time log not found."}
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
     if not is_admin and (log.user_id is None or str(log.user_id) != str(request.user.id)):
         return 403, {"detail": "You can only delete your own time log entries."}
 
@@ -4506,7 +4506,7 @@ def approve_task(request, task_id: str):
     if task.approval_status != Task.ApprovalStatus.PENDING:
         return 400, {"detail": "Task does not have a pending approval request."}
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
     is_approver = task.approval_requested_from_id and str(task.approval_requested_from_id) == str(request.user.id)
     if not is_approver and not is_admin:
         return 403, {"detail": "Only the designated approver or an admin can approve this task."}
@@ -4549,7 +4549,7 @@ def reject_task(request, task_id: str, payload: ApprovalRejectIn):
     if task.approval_status != Task.ApprovalStatus.PENDING:
         return 400, {"detail": "Task does not have a pending approval request."}
 
-    is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
+    is_admin = membership.is_admin_or_above
     is_approver = task.approval_requested_from_id and str(task.approval_requested_from_id) == str(request.user.id)
     if not is_approver and not is_admin:
         return 403, {"detail": "Only the designated approver or an admin can reject this task."}

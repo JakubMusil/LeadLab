@@ -311,6 +311,50 @@ class Membership(models.Model):
             return min(codes, key=lambda c: _priority.get(c, 99))
         return self.role
 
+    def _sync_legacy_role_to_m2m(self) -> None:
+        """Synchronise the M2M ``roles`` relation so the system Role matching
+        the legacy ``role`` CharField is always present.
+
+        Called automatically from the membership post_save signal whenever
+        a Membership row is created or its ``role`` field is updated.  This
+        dual-write keeps the two representations in sync so that query code
+        can gradually migrate from ``membership.role`` to ``membership.roles``
+        without breaking existing behaviour.
+
+        The ``LEGACY_TO_SYSTEM_ROLE`` mapping is used so that the deprecated
+        ``worker`` value is transparently resolved to the ``member`` system role.
+        """
+        try:
+            from firms.role_seeds import LEGACY_TO_SYSTEM_ROLE  # avoid circular at module level
+            system_code = LEGACY_TO_SYSTEM_ROLE.get(self.role, self.role)
+            system_role = Role.objects.filter(
+                firm_id=self.firm_id,
+                code=system_code,
+                is_system=True,
+            ).first()
+            if system_role is None:
+                return  # System roles not yet seeded (e.g. fresh test DB)
+
+            # Find current system roles assigned to this membership.
+            current_system_roles = list(self.roles.filter(is_system=True))
+            current_system_pks = {r.pk for r in current_system_roles}
+
+            if current_system_pks == {system_role.pk}:
+                return  # Already in sync – nothing to do.
+
+            # Remove stale system roles and add the correct one atomically.
+            self.roles.remove(*[r for r in current_system_roles if r.pk != system_role.pk])
+            self.roles.add(system_role)
+        except Exception:  # noqa: BLE001
+            # Gracefully degrade – failure to sync should never break the main request.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to sync legacy role '%s' to M2M for Membership %s",
+                self.role,
+                self.pk,
+                exc_info=True,
+            )
+
 
 class TeamMembership(models.Model):
     """M2M through-table: Team ↔ Membership.
