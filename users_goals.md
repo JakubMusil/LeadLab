@@ -782,3 +782,26 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Merge do `main` a tag `v2.0-permissions`
 - v2.1: Drop column `Membership.role` (po ověření zpětné kompatibility)
+
+
+### Phase 8 dokončení – Aktualizace README.md ✅ (2026-05-06)
+
+**Větev**: `copilot/users-goals-phase8-readme-update`
+
+**Co bylo uděláno:**
+
+- **Aktualizace `README.md`** (Phase 8, krok 4 – zbývající část):
+  - Popis „Three roles per Firm: Owner, Admin, and Worker" nahrazen novým popisem granulárního RBAC systému: 5 systémových rolí, permission kódy, scope, per-category/per-record granty, audit log
+  - Všechna výskyty `Worker+` v API tabulkách nahrazeny na `Member+` (odpovídá přejmenování WORKER → MEMBER z Fáze 8)
+  - Přidány nové sekce API tabulek:
+    - **Roles & Permissions** – permission-catalogue, CRUD rolí, PUT permissions, me/permissions endpoint
+    - **Teams** – CRUD týmů, add/remove member
+    - **Audit Log** – pageable audit-log endpoint
+  - Přidány chybějící endpointy do CRM sekce:
+    - `GET/POST/DELETE /records/{id}/grants` – per-record ACL granty
+    - `GET /records/{id}/access` – přehled přístupů
+    - `GET/POST/DELETE /categories/{id}/grants` – per-category ACL granty
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions`
+- v2.1: Drop column `Membership.role` (po ověření zpětné kompatibility)
