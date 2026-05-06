@@ -77,6 +77,133 @@ class MembershipRole(models.TextChoices):
     WORKER = "worker", "Worker"
 
 
+# ---------------------------------------------------------------------------
+# Phase 2 – Permission catalogue, Role, Team
+# ---------------------------------------------------------------------------
+
+
+class PermissionRecord(models.Model):
+    """
+    Catalogue of all action × resource permission codes.
+    Seeded by a data migration; the table is effectively read-only in
+    production (managed only by Django migrations).
+    """
+
+    code = models.CharField(
+        primary_key=True,
+        max_length=60,
+        help_text="Dot-notation permission code, e.g. 'record.edit'.",
+    )
+    group = models.CharField(
+        max_length=40,
+        db_index=True,
+        help_text="Logical group shown in the permissions UI (e.g. 'Records', 'Billing').",
+    )
+    description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "permission"
+        verbose_name_plural = "permissions"
+        ordering = ["group", "code"]
+
+    def __str__(self):
+        return self.code
+
+
+class Role(models.Model):
+    """Per-firm role definition.  System roles are pre-created for every Firm."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="roles",
+    )
+    code = models.CharField(
+        max_length=60,
+        help_text="Short identifier, e.g. 'member', 'sales-lead'.  Unique within firm.",
+    )
+    name = models.CharField(max_length=100)
+    is_system = models.BooleanField(
+        default=False,
+        help_text="System roles are pre-created per firm and cannot be deleted.",
+    )
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    permissions = models.ManyToManyField(
+        PermissionRecord,
+        through="RolePermission",
+        related_name="roles",
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "role"
+        verbose_name_plural = "roles"
+        unique_together = [("firm", "code")]
+        ordering = ["firm", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.firm})"
+
+
+class RolePermission(models.Model):
+    """M2M through-table: Role ↔ PermissionRecord."""
+
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="role_permissions")
+    permission = models.ForeignKey(
+        PermissionRecord,
+        on_delete=models.CASCADE,
+        related_name="role_permissions",
+    )
+
+    class Meta:
+        unique_together = [("role", "permission")]
+
+    def __str__(self):
+        return f"{self.role.code} → {self.permission_id}"
+
+
+class Team(models.Model):
+    """Group of members within a firm (single-level, no nested teams)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="teams",
+    )
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, blank=True)
+    color = models.CharField(
+        max_length=7,
+        blank=True,
+        default="#6366f1",
+        help_text="Hex colour used in the UI, e.g. '#6366f1'.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "team"
+        verbose_name_plural = "teams"
+        unique_together = [("firm", "slug")]
+        ordering = ["firm", "name"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)
+            candidate = base_slug
+            counter = 1
+            while Team.objects.filter(firm=self.firm, slug=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.firm})"
+
+
 class Membership(models.Model):
     """
     Relates a User to a Firm with a specific role.
@@ -86,6 +213,11 @@ class Membership(models.Model):
         - Only the Owner can delete the Firm.
         - Admin can invite/remove Workers.
         - Worker has read/write access to CRM data but cannot manage billing or team.
+
+    Phase 2 additions:
+        - ``roles``        – M2M to ``Role``; replaces legacy ``role`` in Phase 4+.
+        - ``default_scope`` – coarse visibility scope for query filtering.
+        - ``team``          – optional primary team assignment.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -99,10 +231,38 @@ class Membership(models.Model):
         on_delete=models.CASCADE,
         related_name="memberships",
     )
+    # Legacy flat role – retained as the authoritative source until Phase 8.
     role = models.CharField(
         max_length=20,
         choices=MembershipRole.choices,
         default=MembershipRole.WORKER,
+    )
+    # Phase 2 – new granular role assignments.
+    roles = models.ManyToManyField(
+        Role,
+        related_name="memberships",
+        blank=True,
+        verbose_name="Roles",
+    )
+    # Default scope controls which records a member sees when no finer-grained
+    # grant is present.  Effective in Phase 4 (PERMISSIONS_V2_ENABLED=True).
+    default_scope = models.CharField(
+        max_length=20,
+        choices=[
+            ("own", "Own (created by or assigned to me)"),
+            ("team", "Team (my team's records)"),
+            ("category", "Category (specific categories)"),
+            ("all", "All records in workspace"),
+        ],
+        default="own",
+    )
+    # Optional primary team assignment – used for scope=team resolution.
+    team = models.ForeignKey(
+        Team,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="primary_memberships",
     )
     weekly_digest_enabled = models.BooleanField(
         default=True,
@@ -130,6 +290,28 @@ class Membership(models.Model):
     @property
     def is_admin_or_above(self):
         return self.role in (MembershipRole.OWNER, MembershipRole.ADMIN)
+
+
+class TeamMembership(models.Model):
+    """M2M through-table: Team ↔ Membership.
+
+    Allows a single Membership to participate in multiple Teams while the
+    ``Membership.team`` FK captures the *primary* team for scope resolution.
+    """
+
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_memberships")
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.CASCADE,
+        related_name="team_memberships",
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("team", "membership")]
+
+    def __str__(self):
+        return f"{self.membership} in {self.team}"
 
 
 _INVITATION_EXPIRY_DAYS = 7

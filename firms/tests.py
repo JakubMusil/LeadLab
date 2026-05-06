@@ -1262,3 +1262,254 @@ class PermissionMatrixTests(TestCase):
 
     def test_unknown_min_role_denied(self):
         self.assertFalse(self.has_min_role(self.worker_m, "superuser"))
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 – Model tests: PermissionRecord, Role, RolePermission, Team, TeamMembership
+# ---------------------------------------------------------------------------
+
+from firms.models import PermissionRecord, Role, RolePermission, Team, TeamMembership
+
+
+class PermissionRecordModelTest(TestCase):
+    def test_create_and_str(self):
+        p = PermissionRecord.objects.create(
+            code="custom.action",
+            group="Custom",
+            description="A custom action",
+        )
+        self.assertEqual(str(p), "custom.action")
+
+    def test_code_is_primary_key(self):
+        p = PermissionRecord.objects.create(code="pk.test", group="Test", description="")
+        self.assertEqual(p.pk, "pk.test")
+
+    def test_ordering_by_group_then_code(self):
+        # Create some records in a specific non-alphabetical order.
+        PermissionRecord.objects.create(code="z.action", group="A", description="")
+        PermissionRecord.objects.create(code="a.action", group="B", description="")
+        PermissionRecord.objects.create(code="m.action", group="A", description="")
+        # Within group "A", codes should appear alphabetically.
+        group_a = list(
+            PermissionRecord.objects.filter(group="A").values_list("code", flat=True)
+        )
+        self.assertEqual(group_a, sorted(group_a))
+
+
+class RoleModelTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Role Test Firm")
+
+    def test_create_role(self):
+        role = Role.objects.create(
+            firm=self.firm,
+            code="sales-lead",
+            name="Sales Lead",
+            is_system=False,
+            description="Leads the sales team",
+        )
+        self.assertIsNotNone(role.id)
+        self.assertIn("Sales Lead", str(role))
+        self.assertIn("Role Test Firm", str(role))
+
+    def test_unique_together_firm_code(self):
+        from django.db import IntegrityError
+        Role.objects.create(firm=self.firm, code="dup-role", name="Dup")
+        with self.assertRaises(IntegrityError):
+            Role.objects.create(firm=self.firm, code="dup-role", name="Dup 2")
+
+    def test_same_code_different_firms(self):
+        firm2 = Firm.objects.create(name="Other Firm")
+        r1 = Role.objects.create(firm=self.firm, code="analyst", name="Analyst")
+        r2 = Role.objects.create(firm=firm2, code="analyst", name="Analyst")
+        self.assertNotEqual(r1.id, r2.id)
+
+    def test_assign_permissions_via_role_permission(self):
+        role = Role.objects.create(firm=self.firm, code="tester", name="Tester")
+        perm = PermissionRecord.objects.create(code="test.perm", group="Test", description="")
+        RolePermission.objects.create(role=role, permission=perm)
+        self.assertIn(perm, role.permissions.all())
+
+
+class TeamModelTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Team Test Firm")
+
+    def test_create_team_auto_slug(self):
+        team = Team(firm=self.firm, name="Sales West")
+        team.save()
+        self.assertEqual(team.slug, "sales-west")
+        self.assertIn("Sales West", str(team))
+
+    def test_slug_uniqueness_within_firm(self):
+        Team.objects.create(firm=self.firm, name="Alpha")
+        t2 = Team(firm=self.firm, name="Alpha")
+        t2.save()
+        self.assertNotEqual(t2.slug, "alpha")
+        self.assertTrue(t2.slug.startswith("alpha-"))
+
+    def test_same_slug_different_firms_allowed(self):
+        firm2 = Firm.objects.create(name="Other Firm")
+        t1 = Team.objects.create(firm=self.firm, name="Alpha")
+        t2 = Team.objects.create(firm=firm2, name="Alpha")
+        self.assertEqual(t1.slug, t2.slug)
+
+    def test_unique_together_firm_slug(self):
+        from django.db import IntegrityError
+        Team.objects.create(firm=self.firm, name="Bravo", slug="bravo")
+        with self.assertRaises(IntegrityError):
+            Team.objects.create(firm=self.firm, name="Bravo 2", slug="bravo")
+
+
+class TeamMembershipModelTest(TestCase):
+    def setUp(self):
+        self.firm = Firm.objects.create(name="TM Firm")
+        self.owner = User.objects.create_user(email="tm-owner@example.com", password="pass")
+        self.member = User.objects.create_user(email="tm-member@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.member_m = Membership.objects.create(user=self.member, firm=self.firm, role=MembershipRole.WORKER)
+        self.team = Team.objects.create(firm=self.firm, name="Engineering")
+
+    def test_add_membership_to_team(self):
+        tm = TeamMembership.objects.create(team=self.team, membership=self.member_m)
+        self.assertIsNotNone(tm.joined_at)
+        self.assertIn(str(self.team), str(tm))
+
+    def test_unique_team_membership(self):
+        from django.db import IntegrityError
+        TeamMembership.objects.create(team=self.team, membership=self.member_m)
+        with self.assertRaises(IntegrityError):
+            TeamMembership.objects.create(team=self.team, membership=self.member_m)
+
+
+class MembershipPhase2FieldsTest(TestCase):
+    """Verify the new Phase-2 fields on Membership."""
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="P2 Firm")
+        self.user = User.objects.create_user(email="p2-user@example.com", password="pass")
+        self.m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+
+    def test_default_scope_is_own(self):
+        self.assertEqual(self.m.default_scope, "own")
+
+    def test_team_fk_nullable(self):
+        self.assertIsNone(self.m.team)
+
+    def test_assign_role_to_membership(self):
+        role = Role.objects.create(firm=self.firm, code="tester-role", name="Tester")
+        self.m.roles.add(role)
+        self.assertIn(role, self.m.roles.all())
+
+    def test_assign_team_to_membership(self):
+        team = Team.objects.create(firm=self.firm, name="Dev")
+        self.m.team = team
+        self.m.save()
+        self.m.refresh_from_db()
+        self.assertEqual(self.m.team, team)
+
+    def test_team_deleted_sets_null(self):
+        team = Team.objects.create(firm=self.firm, name="Temp Team")
+        self.m.team = team
+        self.m.save()
+        team.delete()
+        self.m.refresh_from_db()
+        self.assertIsNone(self.m.team)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 – Data migration tests (seed_system_roles)
+# ---------------------------------------------------------------------------
+
+
+class SeedSystemRolesDataMigrationTest(TestCase):
+    """
+    Verify that the 0004_seed_system_roles data migration produces the
+    expected system roles and permission assignments.
+
+    The migration runs automatically when the test database is created.
+    These tests verify the resulting state using the real model classes.
+    """
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Seed Test Firm")
+        # Trigger system role creation for this new firm.
+        from firms.migrations._seed_helpers import (
+            create_system_roles_for_firm,
+            seed_permission_catalogue,
+        )
+        seed_permission_catalogue()
+        create_system_roles_for_firm(self.firm)
+
+        self.owner_user = User.objects.create_user(email="seed-owner@example.com", password="pass")
+        self.worker_user = User.objects.create_user(email="seed-worker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(
+            user=self.owner_user, firm=self.firm, role=MembershipRole.OWNER
+        )
+        self.worker_m = Membership.objects.create(
+            user=self.worker_user, firm=self.firm, role=MembershipRole.WORKER
+        )
+
+    def test_system_roles_created_for_firm(self):
+        """Each Firm should have four system roles after migration."""
+        codes = set(Role.objects.filter(firm=self.firm, is_system=True).values_list("code", flat=True))
+        self.assertSetEqual(codes, {"owner", "admin", "member", "guest"})
+
+    def test_permission_catalogue_seeded(self):
+        """All 16 permission codes from the Permission enum must be in the catalogue."""
+        from firms.permissions import Permission
+        db_codes = set(PermissionRecord.objects.values_list("code", flat=True))
+        for perm in Permission:
+            self.assertIn(perm.value, db_codes, f"{perm.value} missing from catalogue")
+
+    def test_owner_role_has_all_permissions(self):
+        owner_role = Role.objects.get(firm=self.firm, code="owner")
+        from firms.permissions import Permission
+        role_codes = set(owner_role.permissions.values_list("code", flat=True))
+        for perm in Permission:
+            self.assertIn(perm.value, role_codes, f"Owner missing {perm.value}")
+
+    def test_guest_role_is_read_only(self):
+        guest_role = Role.objects.get(firm=self.firm, code="guest")
+        role_codes = set(guest_role.permissions.values_list("code", flat=True))
+        write_perms = {
+            "record.create", "record.edit", "record.delete",
+            "category.manage", "team.manage", "role.manage",
+            "billing.manage", "firm.delete", "firm.transfer",
+            "integrations.manage",
+        }
+        self.assertTrue(
+            write_perms.isdisjoint(role_codes),
+            f"Guest has unexpected perms: {write_perms & role_codes}",
+        )
+        self.assertIn("record.view", role_codes)
+
+    def test_assign_owner_membership_to_system_role(self):
+        """Owner Membership can be linked to the 'owner' system role."""
+        from firms.migrations._seed_helpers import link_membership_to_system_role
+        link_membership_to_system_role(self.owner_m)
+        owner_role = Role.objects.get(firm=self.firm, code="owner")
+        self.assertIn(owner_role, self.owner_m.roles.all())
+
+    def test_assign_worker_membership_to_member_role(self):
+        """Worker Membership can be linked to the 'member' system role."""
+        from firms.migrations._seed_helpers import link_membership_to_system_role
+        link_membership_to_system_role(self.worker_m)
+        member_role = Role.objects.get(firm=self.firm, code="member")
+        self.assertIn(member_role, self.worker_m.roles.all())
+
+    def test_multiple_firms_get_independent_roles(self):
+        """Roles from different Firms must be separate objects."""
+        from firms.migrations._seed_helpers import create_system_roles_for_firm
+        firm2 = Firm.objects.create(name="Second Firm")
+        create_system_roles_for_firm(firm2)
+        owner_role_1 = Role.objects.get(firm=self.firm, code="owner")
+        owner_role_2 = Role.objects.get(firm=firm2, code="owner")
+        self.assertNotEqual(owner_role_1.id, owner_role_2.id)
+
+    def test_seed_is_idempotent(self):
+        """Running the seed twice must not create duplicate roles."""
+        from firms.migrations._seed_helpers import create_system_roles_for_firm
+        create_system_roles_for_firm(self.firm)
+        count = Role.objects.filter(firm=self.firm, is_system=True).count()
+        self.assertEqual(count, 4)
