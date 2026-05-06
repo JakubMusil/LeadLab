@@ -23,6 +23,7 @@ Usage in a Django Ninja router
 from django.http import HttpRequest
 
 from firms.models import Firm, Membership, MembershipRole
+from firms.permissions import has_min_role
 
 # ---------------------------------------------------------------------------
 # Exceptions (subclass of Exception so they can be caught as regular errors
@@ -51,18 +52,6 @@ class FirmNotFound(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Role ordering — higher index = more privileges
-# ---------------------------------------------------------------------------
-
-_ROLE_ORDER = [MembershipRole.WORKER, MembershipRole.ADMIN, MembershipRole.OWNER]
-
-
-def _role_rank(role: str) -> int:
-    try:
-        return _ROLE_ORDER.index(role)
-    except ValueError:
-        return -1
-
 
 # ---------------------------------------------------------------------------
 # Core enforcement helpers
@@ -92,7 +81,7 @@ def require_membership(
             f"User '{request.user.email}' is not a member of firm '{request.firm.name}'."
         )
 
-    if _role_rank(membership.role) < _role_rank(min_role):
+    if not has_min_role(membership, min_role):
         raise PermissionDenied(
             f"Role '{membership.get_role_display()}' is insufficient. "
             f"Required: '{MembershipRole(min_role).label}'."

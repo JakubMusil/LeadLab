@@ -166,6 +166,14 @@ CELERY_BEAT_SCHEDULE = {
 # Safe-remove: number of days before a soft-deleted record is hard-deleted.
 SOFT_DELETE_PURGE_DAYS = int(os.environ.get("SOFT_DELETE_PURGE_DAYS", "30"))
 
+# ---------------------------------------------------------------------------
+# Permission system (Phase 1+)
+# When False (default), firms.auth enforces the legacy OWNER/ADMIN/WORKER
+# role hierarchy.  Set to True in Phase 4+ to enable the new DB-backed
+# Role/Grant resolution in crm/permissions.py.
+# ---------------------------------------------------------------------------
+PERMISSIONS_V2_ENABLED = os.environ.get("PERMISSIONS_V2_ENABLED", "False") == "True"
+
 # Stripe
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
