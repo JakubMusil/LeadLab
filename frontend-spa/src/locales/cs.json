@@ -2295,6 +2295,18 @@
     "discount": "Sleva",
     "taxVat": "DPH"
   },
+  "fakturoid": {
+    "createInFakturoid": "Fakturoid",
+    "createInvoice": "Vytvořit fakturu ve Fakturoidu",
+    "createQuotation": "Vytvořit nabídku ve Fakturoidu",
+    "creating": "Vytvářím…",
+    "noEmailWarning": "Kontakt nemá vyplněný e-mail. Odeslání e-mailem nebude možné. Přidejte e-mail ke kontaktu nebo vypněte automatické odesílání v nastavení pluginu.",
+    "successInvoice": "Faktura {number} vytvořena ve Fakturoidu.",
+    "successInvoiceSent": "Faktura {number} vytvořena a odeslána zákazníkovi.",
+    "successQuotation": "Nabídka {number} vytvořena ve Fakturoidu.",
+    "successQuotationSent": "Nabídka {number} vytvořena a odeslána zákazníkovi.",
+    "error": "Nepodařilo se vytvořit doklad ve Fakturoidu."
+  },
   "proposalTemplates": {
     "title": "Šablony nabídek",
     "noTemplates": "Zatím žádné šablony nabídek",

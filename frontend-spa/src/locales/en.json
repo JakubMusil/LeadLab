@@ -2294,6 +2294,18 @@
     "discount": "Discount",
     "taxVat": "Tax / VAT"
   },
+  "fakturoid": {
+    "createInFakturoid": "Fakturoid",
+    "createInvoice": "Create invoice in Fakturoid",
+    "createQuotation": "Create quotation in Fakturoid",
+    "creating": "Creating…",
+    "noEmailWarning": "The contact has no e-mail address. Auto-send will not be possible. Add an e-mail to the contact or disable auto-send in the Fakturoid plugin settings.",
+    "successInvoice": "Invoice {number} created in Fakturoid.",
+    "successInvoiceSent": "Invoice {number} created and sent to the customer.",
+    "successQuotation": "Quotation {number} created in Fakturoid.",
+    "successQuotationSent": "Quotation {number} created and sent to the customer.",
+    "error": "Failed to create document in Fakturoid."
+  },
   "proposalTemplates": {
     "title": "Proposal Templates",
     "noTemplates": "No proposal templates yet",

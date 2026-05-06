@@ -2294,6 +2294,18 @@
     "discount": "Rabatt",
     "taxVat": "MwSt."
   },
+  "fakturoid": {
+    "createInFakturoid": "Fakturoid",
+    "createInvoice": "Rechnung in Fakturoid erstellen",
+    "createQuotation": "Angebot in Fakturoid erstellen",
+    "creating": "Erstelle…",
+    "noEmailWarning": "Der Kontakt hat keine E-Mail-Adresse. Auto-Versand ist nicht möglich. Bitte E-Mail beim Kontakt ergänzen oder Auto-Versand in den Fakturoid-Plugin-Einstellungen deaktivieren.",
+    "successInvoice": "Rechnung {number} in Fakturoid erstellt.",
+    "successInvoiceSent": "Rechnung {number} erstellt und an den Kunden gesendet.",
+    "successQuotation": "Angebot {number} in Fakturoid erstellt.",
+    "successQuotationSent": "Angebot {number} erstellt und an den Kunden gesendet.",
+    "error": "Dokument konnte nicht in Fakturoid erstellt werden."
+  },
   "proposalTemplates": {
     "title": "Angebotsvorlagen",
     "noTemplates": "Noch keine Angebotsvorlagen",
