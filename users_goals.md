@@ -701,7 +701,7 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - [ ] Merge do `main` a release `v2.0-permissions` vystaven.
 - [ ] e2e scénáře (5 use-cases ze sekce 5) procházejí v CI.
 - [x] Dokumentace v `docs/permissions/` kompletní.
-- [ ] Audit log dostupný v UI (Settings → Audit) i přes API.
+- [x] Audit log dostupný v UI (Settings → Audit) i přes API.
 - [x] Žádná regrese v existujících integracích (Fakturoid, webhooks, plugins) – 199 testů zelených.
 
 
@@ -724,4 +724,29 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Merge do `main` a tag `v2.0-permissions`
 - Drop column `Membership.role` (v2.1)
-- UI pro Audit log v SettingsView
+- ~~UI pro Audit log v SettingsView~~ ✅ Hotovo (viz níže)
+
+
+### Post-Phase 8 – Audit Log UI ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-ae57a3fe-8811-4c1a-b705-8d959065178b`
+
+**Co bylo uděláno:**
+
+- Vytvořen `frontend-spa/src/views/AuditLogSettingsView.vue`:
+  - Tabulka audit log záznamů: actor_email, action (badge), target_type+target_id (zkrácené), created_at (lokalizovaný datum+čas)
+  - Filtrace podle `action` a `target_type` (select dropdowns s předdefinovanými hodnotami)
+  - Stránkování: tlačítka Předchozí / Další (detekuje hasMore pomocí +1 extra záznamu)
+  - Loading skeleton (5 placeholder řádků animací)
+  - Empty state pokud nejsou záznamy
+  - Watch na firmId pro re-fetch při přepnutí workspace
+- Aktualizován `frontend-spa/src/views/SettingsView.vue`:
+  - Import `AuditLogSettingsView`
+  - `activeTab` typ rozšířen o `'audit'`
+  - Nová záložka „Audit log" (viditelná pouze pro `canManageRoles`)
+  - Nový panel `v-show="activeTab === 'audit'"` s `<AuditLogSettingsView />`
+- Všechny frontend testy zelené: 100/100 OK
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions`
+- Drop column `Membership.role` (v2.1)

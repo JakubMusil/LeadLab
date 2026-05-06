@@ -2745,6 +2745,8 @@
     "auditTarget": "Cíl",
     "auditTime": "Čas",
     "noAuditEntries": "Žádné záznamy v audit logu",
+    "auditActionAll": "Všechny akce",
+    "auditTargetAll": "Všechny cíle",
     "noDescription": "Bez popisu",
     "grantAccess": "Udělit přístup",
     "noMembers": "Žádní členové v tomto týmu"
