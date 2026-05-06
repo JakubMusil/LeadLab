@@ -1843,9 +1843,11 @@ def update_activity(request, activity_id: str, payload: ActivityUpdateIn):
 
     if payload.visibility is not None:
         from crm.models import ActivityVisibility
-        if payload.visibility in (ActivityVisibility.PUBLIC, ActivityVisibility.RESTRICTED):
-            activity.visibility = payload.visibility
-            update_fields.append("visibility")
+        valid_values = {ActivityVisibility.PUBLIC, ActivityVisibility.RESTRICTED}
+        if payload.visibility not in valid_values:
+            return 400, {"detail": f"Invalid visibility value '{payload.visibility}'. Must be 'public' or 'restricted'."}
+        activity.visibility = payload.visibility
+        update_fields.append("visibility")
 
     activity.save(update_fields=update_fields)
 

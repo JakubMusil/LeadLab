@@ -3929,7 +3929,7 @@ class StreamlineVisibilityTests(TestCase):
         # worker_a authored the restricted activity → should see it
         self.assertIn(self.restricted_activity.id, ids)
 
-    def test_worker_team_scope_sees_all(self):
+    def test_worker_all_scope_sees_all(self):
         """Worker with scope=all sees all activities including restricted."""
         from django.test import override_settings
         from crm.permissions import filter_activities_qs
