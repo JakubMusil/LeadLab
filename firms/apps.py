@@ -75,6 +75,21 @@ def _on_firm_post_delete(sender, instance, **kwargs):
         deleting.discard(str(instance.pk))
 
 
+def _on_firm_post_save(sender, instance, created, **kwargs):
+    """Seed system roles for a newly created Firm."""
+    if not created:
+        return
+    try:
+        from firms.seed import create_system_roles_for_firm
+        create_system_roles_for_firm(instance)
+    except Exception:
+        _logger.warning(
+            "Failed to seed system roles for new Firm %s",
+            instance.pk,
+            exc_info=True,
+        )
+
+
 def _on_role_post_save(sender, instance, created, **kwargs):
     action = "role.created" if created else "role.updated"
     _log_audit(
@@ -140,6 +155,12 @@ class FirmsConfig(AppConfig):
             sender=Firm,
             weak=False,
             dispatch_uid="firms_audit_firm_post_delete",
+        )
+        post_save.connect(
+            _on_firm_post_save,
+            sender=Firm,
+            weak=False,
+            dispatch_uid="firms_seed_roles_firm_post_save",
         )
 
         post_save.connect(

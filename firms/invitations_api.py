@@ -142,7 +142,20 @@ def accept_invitation(request, token: str, payload: AcceptInvitationIn):
         if Membership.objects.filter(user=user, firm=firm).exists():
             return 400, {"detail": "You are already a member of this Firm."}
 
-        Membership.objects.create(user=user, firm=firm, role=invitation.role)
+        membership = Membership.objects.create(
+            user=user,
+            firm=firm,
+            role=invitation.role,
+            default_scope=invitation.invited_default_scope or "own",
+            team_id=invitation.invited_team_id,
+        )
+        # Apply granular roles if specified in the invitation.
+        if invitation.invited_role_codes:
+            from firms.models import Role
+            roles = Role.objects.filter(
+                firm=firm, code__in=invitation.invited_role_codes
+            )
+            membership.roles.set(roles)
         invitation.accepted_at = django_timezone.now()
         invitation.save(update_fields=["accepted_at"])
 

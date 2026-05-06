@@ -83,6 +83,10 @@ class MembershipOut(Schema):
 class MemberInviteIn(Schema):
     email: str
     role: str = MembershipRole.WORKER
+    # Phase 6 – extended invite settings
+    role_codes: List[str] = []
+    default_scope: str = "own"
+    team_id: Optional[str] = None
 
 
 class InvitationOut(Schema):
@@ -812,7 +816,13 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
         existing_invitation.expires_at = _default_expiry()
         existing_invitation.role = payload.role
         existing_invitation.invited_by = request.user
-        existing_invitation.save(update_fields=["expires_at", "role", "invited_by"])
+        existing_invitation.invited_role_codes = payload.role_codes
+        existing_invitation.invited_default_scope = payload.default_scope
+        existing_invitation.invited_team_id = payload.team_id or None
+        existing_invitation.save(update_fields=[
+            "expires_at", "role", "invited_by",
+            "invited_role_codes", "invited_default_scope", "invited_team_id",
+        ])
         invitation = existing_invitation
     else:
         invitation = Invitation.objects.create(
@@ -820,6 +830,9 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
             firm=firm,
             role=payload.role,
             invited_by=request.user,
+            invited_role_codes=payload.role_codes,
+            invited_default_scope=payload.default_scope,
+            invited_team_id=payload.team_id or None,
         )
 
     # Dispatch the email asynchronously (gracefully degrades if Celery is not running).
@@ -834,6 +847,78 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
         )
 
     return 202, _invitation_out(invitation)
+
+
+# ---------------------------------------------------------------------------
+# Audit Log (Phase 6)
+# ---------------------------------------------------------------------------
+
+class AuditLogOut(Schema):
+    id: str
+    action: str
+    target_type: str
+    target_id: str
+    actor_email: Optional[str]
+    payload: dict
+    created_at: str
+
+
+@router.get(
+    "/{firm_id}/audit-log",
+    auth=django_auth,
+    response={200: List[AuditLogOut], 403: ErrorOut, 404: ErrorOut},
+    tags=["audit"],
+)
+def list_audit_log(
+    request,
+    firm_id: str,
+    action: Optional[str] = None,
+    target_type: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+):
+    """
+    Return a paginated audit log of permission-related changes for the firm.
+
+    Requires ``role.manage`` permission (Admin or Owner).
+
+    Query params:
+        action      – filter by action code, e.g. 'role.created'
+        target_type – filter by target type, e.g. 'role', 'membership'
+        page        – page number (1-indexed)
+        page_size   – entries per page (max 200)
+    """
+    from firms.models import PermissionAuditLog
+
+    try:
+        firm, _ = _get_firm_and_check_admin(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Admin or Owner access required."}
+
+    qs = PermissionAuditLog.objects.filter(firm=firm).select_related("actor")
+    if action:
+        qs = qs.filter(action=action)
+    if target_type:
+        qs = qs.filter(target_type=target_type)
+
+    page_size = min(max(1, page_size), 200)
+    offset = (max(1, page) - 1) * page_size
+    entries = qs.order_by("-created_at")[offset: offset + page_size]
+
+    return 200, [
+        {
+            "id": str(e.id),
+            "action": e.action,
+            "target_type": e.target_type,
+            "target_id": e.target_id,
+            "actor_email": e.actor.email if e.actor else None,
+            "payload": e.payload,
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in entries
+    ]
 
 
 def _invitation_out(invitation: Invitation) -> dict:

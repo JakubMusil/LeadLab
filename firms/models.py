@@ -434,6 +434,30 @@ class Invitation(models.Model):
     expires_at = models.DateTimeField(default=_default_expiry)
     accepted_at = models.DateTimeField(null=True, blank=True)
 
+    # Phase 6 – extended invite settings applied to Membership on accept.
+    # ``role_codes`` stores a JSON list of Role.code strings so the invite can
+    # pre-assign granular roles without needing a FK to Role (roles may not
+    # exist on the accepting side yet if DB is recreated from invitation data).
+    invited_role_codes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of Role.code strings to assign to the Membership on accept.",
+    )
+    invited_default_scope = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Default scope to apply to the Membership on accept (own/team/category/all).",
+    )
+    invited_team = models.ForeignKey(
+        "Team",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pending_invitations",
+        help_text="Team to assign the invitee to on accept.",
+    )
+
     class Meta:
         verbose_name = "invitation"
         verbose_name_plural = "invitations"

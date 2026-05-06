@@ -1785,3 +1785,218 @@ class RequirePermissionV2FlagTest(TestCase):
         req = self._make_request(self.worker, self.worker_m)
         with self.assertRaises(PermissionDenied):
             require_permission(req, Permission.BILLING_MANAGE)
+
+
+# ===========================================================================
+# Phase 6 – Roles API & Teams API tests
+# ===========================================================================
+
+
+class RolesAPITest(TestCase):
+    """Tests for firms/roles_api.py endpoints."""
+
+    def setUp(self):
+        from firms.models import PermissionRecord, Role
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="RolesAPIFirm")
+        self.owner = User.objects.create_user(email="rolesowner@example.com", password="pass")
+        self.admin = User.objects.create_user(email="rolesadmin@example.com", password="pass")
+        self.worker = User.objects.create_user(email="rolesworker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.admin_m = Membership.objects.create(user=self.admin, firm=self.firm, role=MembershipRole.ADMIN)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+
+    def _make_request(self, user, membership):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_list_roles_returns_system_roles(self):
+        """list_roles returns at least the seeded system roles for the firm."""
+        from firms.roles_api import list_roles
+        req = self._make_request(self.owner, self.owner_m)
+        status, result = list_roles(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 200)
+        codes = [r["code"] for r in result]
+        self.assertIn("owner", codes)
+        self.assertIn("member", codes)
+
+    def test_permission_catalogue_returned(self):
+        """list_permission_catalogue returns PermissionRecord entries."""
+        from firms.roles_api import list_permission_catalogue
+        req = self._make_request(self.worker, self.worker_m)
+        status, result = list_permission_catalogue(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 200)
+        self.assertGreater(len(result), 0)
+        codes = [p["code"] for p in result]
+        self.assertIn("record.view", codes)
+
+    def test_create_custom_role(self):
+        """Admin can create a custom role with non-elevated permissions."""
+        from firms.roles_api import create_role, RoleCreateIn
+        # Give admin the role.manage permission via system role
+        from firms.models import Role as RoleModel
+        admin_sys_role = RoleModel.objects.get(firm=self.firm, code="admin")
+        self.admin_m.roles.add(admin_sys_role)
+
+        req = self._make_request(self.admin, self.admin_m)
+        payload = RoleCreateIn(
+            code="sales-lead",
+            name="Sales Lead",
+            permissions=["record.view", "record.create"],
+        )
+        status, result = create_role(req, firm_id=str(self.firm.id), payload=payload)
+        self.assertEqual(status, 201)
+        self.assertEqual(result["code"], "sales-lead")
+        self.assertIn("record.view", result["permissions"])
+
+    def test_worker_cannot_create_role(self):
+        """Worker without role.manage permission is denied."""
+        from firms.roles_api import create_role, RoleCreateIn
+        req = self._make_request(self.worker, self.worker_m)
+        payload = RoleCreateIn(code="x", name="X")
+        status, result = create_role(req, firm_id=str(self.firm.id), payload=payload)
+        self.assertEqual(status, 403)
+
+    def test_cannot_delete_system_role(self):
+        """Attempting to delete a system role returns 403."""
+        from firms.roles_api import delete_role
+        from firms.models import Role as RoleModel
+        # Give owner the role.manage permission via its system role
+        owner_sys_role = RoleModel.objects.get(firm=self.firm, code="owner")
+        self.owner_m.roles.add(owner_sys_role)
+        system_role = RoleModel.objects.get(firm=self.firm, code="member")
+        req = self._make_request(self.owner, self.owner_m)
+        status, result = delete_role(req, firm_id=str(self.firm.id), role_id=str(system_role.id))
+        self.assertEqual(status, 403)
+
+
+class TeamsAPITest(TestCase):
+    """Tests for firms/teams_api.py endpoints."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="TeamsAPIFirm")
+        self.owner = User.objects.create_user(email="teamsowner@example.com", password="pass")
+        self.worker = User.objects.create_user(email="teamsworker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+
+    def _make_request(self, user, membership):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_list_teams_empty(self):
+        from firms.teams_api import list_teams
+        req = self._make_request(self.owner, self.owner_m)
+        status, result = list_teams(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 200)
+        self.assertEqual(result, [])
+
+    def test_create_team(self):
+        from firms.teams_api import create_team, TeamCreateIn
+        req = self._make_request(self.owner, self.owner_m)
+        payload = TeamCreateIn(name="Sales CZ", color="#ff0000")
+        status, result = create_team(req, firm_id=str(self.firm.id), payload=payload)
+        self.assertEqual(status, 201)
+        self.assertEqual(result["name"], "Sales CZ")
+        self.assertEqual(result["color"], "#ff0000")
+        self.assertEqual(result["member_count"], 0)
+
+    def test_worker_cannot_create_team(self):
+        from firms.teams_api import create_team, TeamCreateIn
+        req = self._make_request(self.worker, self.worker_m)
+        payload = TeamCreateIn(name="Unauthorized")
+        status, _ = create_team(req, firm_id=str(self.firm.id), payload=payload)
+        self.assertEqual(status, 403)
+
+    def test_add_and_remove_team_member(self):
+        from firms.teams_api import create_team, add_team_member, remove_team_member, TeamCreateIn
+        # Create a team first
+        req = self._make_request(self.owner, self.owner_m)
+        _, team = create_team(req, firm_id=str(self.firm.id), payload=TeamCreateIn(name="Dev Team"))
+
+        # Add worker to team
+        status, result = add_team_member(
+            req,
+            firm_id=str(self.firm.id),
+            team_id=team["id"],
+            membership_id=str(self.worker_m.id),
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(result["member_count"], 1)
+
+        # Remove worker from team
+        status, result = remove_team_member(
+            req,
+            firm_id=str(self.firm.id),
+            team_id=team["id"],
+            membership_id=str(self.worker_m.id),
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(result["member_count"], 0)
+
+    def test_delete_team(self):
+        from firms.teams_api import create_team, delete_team, TeamCreateIn
+        from firms.models import Team
+        req = self._make_request(self.owner, self.owner_m)
+        _, team = create_team(req, firm_id=str(self.firm.id), payload=TeamCreateIn(name="Temp"))
+        status, _ = delete_team(req, firm_id=str(self.firm.id), team_id=team["id"])
+        self.assertEqual(status, 204)
+        self.assertFalse(Team.objects.filter(id=team["id"]).exists())
+
+
+class AuditLogAPITest(TestCase):
+    """Tests for the GET /firms/{id}/audit-log endpoint."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="AuditFirm")
+        self.owner = User.objects.create_user(email="auditowner@example.com", password="pass")
+        self.worker = User.objects.create_user(email="auditworker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+
+    def _make_request(self, user, membership):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_owner_can_read_audit_log(self):
+        from firms.api import list_audit_log
+        req = self._make_request(self.owner, self.owner_m)
+        status, result = list_audit_log(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 200)
+        self.assertIsInstance(result, list)
+
+    def test_worker_denied_audit_log(self):
+        from firms.api import list_audit_log
+        req = self._make_request(self.worker, self.worker_m)
+        status, _ = list_audit_log(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 403)
+
+    def test_audit_log_contains_membership_events(self):
+        """Audit log should contain the membership.created event from setUp."""
+        from firms.api import list_audit_log
+        from firms.models import PermissionAuditLog
+        # Manually create an audit entry for this firm
+        PermissionAuditLog.objects.create(
+            firm=self.firm,
+            actor=self.owner,
+            action="role.created",
+            target_type="role",
+            target_id="test-id",
+            payload={"code": "test"},
+        )
+        req = self._make_request(self.owner, self.owner_m)
+        status, result = list_audit_log(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 200)
+        actions = [e["action"] for e in result]
+        self.assertIn("role.created", actions)

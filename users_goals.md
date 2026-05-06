@@ -529,6 +529,54 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Fáze 6: Admin API – CRUD pro `Role`, `Team`, `CategoryGrant`, `RecordGrant` + audit log endpoint
 
+
+### Fáze 6 – Admin API: Role, Team, Grants ✅ (2026-05-06)
+
+**Větev**: `copilot/continue-users-goals-work`
+
+**Co bylo uděláno:**
+- Vytvořen `firms/roles_api.py` s endpointy:
+  - `GET /firms/{id}/permission-catalogue` – statický číselník všech kódů (čitelný všemi členy)
+  - `GET /firms/{id}/roles` – výpis všech rolí (systémových i vlastních) firmy
+  - `POST /firms/{id}/roles` – vytvoření vlastní role (guard: `role.manage` + privilege escalation check)
+  - `PATCH /firms/{id}/roles/{role_id}` – úprava název/popis vlastní role (systémové nepůjde)
+  - `DELETE /firms/{id}/roles/{role_id}` – smazání vlastní role (systémové nelze)
+  - `PUT /firms/{id}/roles/{role_id}/permissions` – přepsání sady oprávnění vlastní role (guard: `role.manage` + escalation check + ochrana `billing/firm.*` pro non-Owner)
+- Vytvořen `firms/teams_api.py` s endpointy:
+  - `GET /firms/{id}/teams` – výpis týmů firmy (čitelný všemi členy)
+  - `POST /firms/{id}/teams` – vytvoření týmu (guard: `team.manage`)
+  - `PATCH /firms/{id}/teams/{team_id}` – úprava týmu (guard: `team.manage`)
+  - `DELETE /firms/{id}/teams/{team_id}` – smazání týmu (guard: `team.manage`)
+  - `POST /firms/{id}/teams/{team_id}/members/{membership_id}` – přidání člena do týmu
+  - `DELETE /firms/{id}/teams/{team_id}/members/{membership_id}` – odebrání člena z týmu
+- Rozšířen `firms/models.py::Invitation` o pole:
+  - `invited_role_codes` (JSONField) – kódy rolí přiřazených při přijetí pozvánky
+  - `invited_default_scope` (CharField) – výchozí scope nového člena
+  - `invited_team` (FK→Team, nullable) – tým do kterého vstoupí nový člen
+- Vytvořena migrace `firms/migrations/0006_invitation_extended_fields.py`
+- Rozšířen `firms/api.py::MemberInviteIn` a `create_invitation` – pozvánka nyní přijímá `role_codes[]`, `default_scope`, `team_id`
+- Rozšířen `firms/invitations_api.py::accept_invitation` – při přijetí pozvánky nastaví `default_scope`, `team`, přiřadí granulární role
+- Přidán endpoint `GET /firms/{id}/audit-log` v `firms/api.py` – stránkovatelný, filtrovatelný (`action`, `target_type`, `page`, `page_size`). Guard: Admin nebo Owner
+- Přidány grant endpointy do `crm/api.py`:
+  - `GET /crm/categories/{id}/grants` – výpis grantů kategorie (guard: `category.manage`)
+  - `POST /crm/categories/{id}/grants` – udělení grantu (upsert; guard: `category.manage`)
+  - `DELETE /crm/categories/{id}/grants/{grant_id}` – odvolání grantu
+  - `GET /crm/records/{id}/access` – kdo má přístup k záznamu (category + record granty; guard: `record.view`)
+  - `GET /crm/records/{id}/grants` – výpis record grantů (guard: `record.edit`)
+  - `POST /crm/records/{id}/grants` – udělení per-record grantu s volitelným `expires_at`
+  - `DELETE /crm/records/{id}/grants/{grant_id}` – odvolání per-record grantu
+- Přidán `post_save` signal na `Firm` v `firms/apps.py` → automaticky seeduje systémové role pro nově vytvořené Firmy (předtím fungovalo pouze přes datovou migraci pro existující firmy)
+- Nastaveno `PERMISSIONS_V2_ENABLED=True` jako výchozí hodnota v `leadlab/settings.py` (lze přetížit env proměnnou)
+- Zaregistrovány nové routery `roles_router` a `teams_router` v `leadlab/api.py`
+- Přidáno 13 nových testů:
+  - `firms/tests.py::RolesAPITest` (5 testů)
+  - `firms/tests.py::TeamsAPITest` (5 testů)
+  - `firms/tests.py::AuditLogAPITest` (3 testy)
+- Všechny testy zelené (66 existujících + 13 nových = 79 OK)
+
+**Co bude následovat:**
+- Fáze 7: Frontend UI – Pinia store `permissions.ts`, `RolesSettingsView.vue`, `TeamsSettingsView.vue`, `RecordShareModal.vue`, `useCan` composable, i18n klíče
+
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
 - [ ] Pokrytí: `firms/permissions.py` ≥ 95 %, `crm/permissions.py` ≥ 90 %.
