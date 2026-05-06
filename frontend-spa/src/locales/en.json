@@ -1597,7 +1597,12 @@
     "typeTodoItems": "Bulk tasks",
     "typeChecklist": "Checklist",
     "checklistCheck": "Mark as done",
-    "checklistUncheck": "Mark as undone"
+    "checklistUncheck": "Mark as undone",
+    "overviewTab": "Overview",
+    "actionsBtn": "Actions",
+    "newViewLabel": "New view:",
+    "shortcutNamePlaceholder": "Shortcut name…",
+    "saveAsShortcut": "Save as shortcut"
   },
   "sequences": {
     "title": "Email Sequences",

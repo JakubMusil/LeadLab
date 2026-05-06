@@ -885,7 +885,7 @@ async function saveFieldEdit(fieldKey: string) {
               :class="selectedShortcutId === 'overview' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
               @click="selectedShortcutId = 'overview'"
             >
-              Přehled
+              {{ t('recordDetail.overviewTab') }}
             </button>
 
             <!-- User defined shortcuts -->
@@ -923,7 +923,7 @@ async function saveFieldEdit(fieldKey: string) {
                 @click="akceDropdownOpen = !akceDropdownOpen"
               >
                 <PlusIcon class="w-4 h-4" />
-                Akce
+                {{ t('recordDetail.actionsBtn') }}
               </button>
 
               <!-- Akce dropdown -->
@@ -953,11 +953,11 @@ async function saveFieldEdit(fieldKey: string) {
 
           <!-- Quick action to save custom filter as shortcut if it's selected -->
           <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
-            <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('recordDetail.newViewLabel') }}</span>
             <input
               v-model="newShortcutName"
               type="text"
-              placeholder="Název zkratky..."
+              :placeholder="t('recordDetail.shortcutNamePlaceholder')"
               class="text-xs rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
             />
             <button
@@ -965,7 +965,7 @@ async function saveFieldEdit(fieldKey: string) {
               :disabled="!newShortcutName.trim()"
               @click="saveCurrentAsShortcut"
             >
-              Uložit jako zkratku
+              {{ t('recordDetail.saveAsShortcut') }}
             </button>
           </div>
 

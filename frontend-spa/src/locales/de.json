@@ -1597,7 +1597,12 @@
     "typePaymentReceived": "Zahlung erhalten",
     "typeInvoiceSent": "Rechnung gesendet",
     "typeSignatureRequested": "Unterschrift angefordert",
-    "typeSignatureCompleted": "Unterschrift abgeschlossen"
+    "typeSignatureCompleted": "Unterschrift abgeschlossen",
+    "overviewTab": "Übersicht",
+    "actionsBtn": "Aktionen",
+    "newViewLabel": "Neue Ansicht:",
+    "shortcutNamePlaceholder": "Kürzel-Name…",
+    "saveAsShortcut": "Als Kürzel speichern"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
