@@ -251,7 +251,12 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
     customer.company = company
     for field, value in data.items():
         setattr(customer, field, value)
-    customer.save()
+    from crm.apps import set_current_user, clear_current_user
+    set_current_user(request.user)
+    try:
+        customer.save()
+    finally:
+        clear_current_user()
     return 200, _customer_out(customer)
 
 

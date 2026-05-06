@@ -594,7 +594,12 @@ def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
     update_data = payload.dict(exclude_none=True)
     for field, value in update_data.items():
         setattr(proposal, field, value)
-    proposal.save()
+    from crm.apps import set_current_user, clear_current_user
+    set_current_user(request.user)
+    try:
+        proposal.save()
+    finally:
+        clear_current_user()
     proposal.refresh_from_db()
     return 200, _proposal_out(proposal)
 
