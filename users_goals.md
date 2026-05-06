@@ -1060,6 +1060,60 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 **Co bude následovat:**
 - Merge do `main` a tag `v2.7`
-- Volitelně: Frontend podpora `expires_at` v UI správy členů (TeamsSettingsView / members tab)
-- Volitelně: E-mailové upozornění uživateli N dní před expirací členství
+- ~~Volitelně: Frontend podpora `expires_at` v UI správy členů~~ ✅ Hotovo v2.8
+- ~~Volitelně: E-mailové upozornění uživateli N dní před expirací členství~~ ✅ Hotovo v2.8
+
+
+### v2.8 – Frontend `expires_at` UI + e-mail notifikace před expirací ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-documentation-one-more-time`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py` – `Membership.last_expiry_notification_at`**:
+  - Nové pole `DateTimeField(null=True, blank=True)` – sleduje kdy byl odeslán poslední varovný e-mail
+  - Zabraňuje opakovanému posílání e-mailů v rámci téhož varovacího okna (cooldown 6 dní)
+
+- **`firms/migrations/0012_membership_expiry_notification.py`** – schémová migrace přidávající sloupec
+
+- **`crm/tasks.py` – nový `@shared_task notify_expiring_memberships()`**:
+  - Vyhledá všechna `Membership` kde `expires_at` je v rozmezí `(now, now+7 dní)` a `last_expiry_notification_at` je `null` nebo starší než 6 dní
+  - Odešle uživateli e-mail s informací o nadcházející expiraci (kolik dní zbývá, přesné datum)
+  - Nastaví `last_expiry_notification_at = now` po úspěšném odeslání
+  - Logy: celkový počet odeslaných e-mailů
+
+- **`leadlab/settings.py` – CELERY_BEAT_SCHEDULE**:
+  - Přidán `'notify-expiring-memberships'`: task `crm.tasks.notify_expiring_memberships`, plán každou noc v 01:30 UTC (30 minut před cleanup taskem)
+
+- **`frontend-spa/src/views/TeamView.vue`** – UI pro zobrazení a editaci `expires_at`:
+  - `Member` interface rozšířen o `expires_at?: string | null`
+  - `editingExpiresAt: ref<string>('')` – nový state pro datum expirace v edit módu
+  - `startEditRole()` – předvyplní datum z `member.expires_at` (konverze ISO→YYYY-MM-DD)
+  - `saveRole()` – odesílá `expires_at` (ISO string nebo null) při PATCHi role
+  - Expiry badge v každém řádku člena:
+    - Červený badge „Access expired" pokud je datum v minulosti
+    - Oranžový badge „Expires tomorrow" / „Expires in N days" pro budoucí expiraci
+    - Skrytý pokud `expires_at` není nastaven (trvalý přístup)
+  - Date input `<input type="date">` v edit sekci pro nastavení/vymazání data expirace
+  - Nové helpery `isMemberExpired(m)` a `memberExpiryLabel(m)` pro badge logiku
+
+- **i18n** – přidány klíče pod `team.*` ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `team.memberExpiresAtLabel` – popisek date inputu
+  - `team.memberExpired` – badge text pro vypršené členství
+  - `team.memberExpiresTomorrow` – badge text pro expiraci zítra
+  - `team.memberExpiresInDays` – badge text s počtem dní (parametr `{days}`)
+
+- **Testy** – přidáno 6 nových testů `NotifyExpiringMembershipsTaskTest` do `firms/tests.py`:
+  - `test_notifies_member_expiring_soon` – odesílá e-mail při expiraci do 7 dní
+  - `test_does_not_notify_already_expired` – přeskočí vypršené členství
+  - `test_does_not_notify_far_future_expiry` – přeskočí expiraci za >7 dní
+  - `test_does_not_notify_recently_notified` – přeskočí pokud byl e-mail odeslán v cooldown okně
+  - `test_updates_last_expiry_notification_at` – aktualizuje timestamp po odeslání
+  - `test_does_not_notify_permanent_memberships` – přeskočí členství bez `expires_at`
+- 218/218 testů zelených (+ 6 nových); 100/100 frontend testů zelených
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.8`
+- Volitelně: Zobrazit celý záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
+- Volitelně: Transfer Ownership (2-step confirm e-mailem + UI) z `open questions` sekce 7
 

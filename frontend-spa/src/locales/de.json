@@ -749,7 +749,11 @@
     "failedToRemove": "Mitglied konnte nicht entfernt werden.",
     "noMembersHint": "Laden Sie Kollegen zur Zusammenarbeit an Datensätzen ein.",
     "roleAdmin": "Administrator",
-    "roleWorker": "Mitarbeiter"
+    "roleWorker": "Mitarbeiter",
+    "memberExpiresAtLabel": "Ablaufdatum des Zugriffs (leer lassen für dauerhaften Zugriff)",
+    "memberExpired": "Zugriff abgelaufen",
+    "memberExpiresTomorrow": "Läuft morgen ab",
+    "memberExpiresInDays": "Läuft in {days} Tagen ab"
   },
   "calendar": {
     "title": "Kalender",

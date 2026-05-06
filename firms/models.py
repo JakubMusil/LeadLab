@@ -332,6 +332,16 @@ class Membership(models.Model):
             "A Celery task runs nightly to hard-delete expired memberships."
         ),
     )
+    # v2.8 – tracks when the last expiry-warning email was sent so the nightly
+    # notify task can avoid sending duplicate warnings.
+    last_expiry_notification_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Set by the notify_expiring_memberships task when it sends a warning email. "
+            "Used to prevent duplicate notifications within the same warning window."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = MembershipManager()

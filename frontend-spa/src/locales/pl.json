@@ -749,7 +749,11 @@
     "failedToRemove": "Nie udało się usunąć członka.",
     "noMembersHint": "Zaproś współpracowników do pracy przy rekordach.",
     "roleAdmin": "Administrator",
-    "roleWorker": "Pracownik"
+    "roleWorker": "Pracownik",
+    "memberExpiresAtLabel": "Data wygaśnięcia dostępu (zostaw puste dla stałego dostępu)",
+    "memberExpired": "Dostęp wygasł",
+    "memberExpiresTomorrow": "Wygasa jutro",
+    "memberExpiresInDays": "Wygasa za {days} dni"
   },
   "calendar": {
     "title": "Kalendarz",

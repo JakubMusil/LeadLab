@@ -749,7 +749,11 @@
     "failedToRemove": "Failed to remove member.",
     "noMembersHint": "Invite colleagues to collaborate on records.",
     "roleAdmin": "Admin",
-    "roleWorker": "Worker"
+    "roleWorker": "Worker",
+    "memberExpiresAtLabel": "Access expiry date (leave empty for permanent access)",
+    "memberExpired": "Access expired",
+    "memberExpiresTomorrow": "Expires tomorrow",
+    "memberExpiresInDays": "Expires in {days} days"
   },
   "calendar": {
     "title": "Calendar",

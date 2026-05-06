@@ -1923,3 +1923,92 @@ def expire_memberships(self):
 
     logger.info("expire_memberships: removed %d expired membership(s)", deleted_count)
     return {"deleted": deleted_count}
+
+
+# ---------------------------------------------------------------------------
+# v2.8 – Notify users N days before their membership expires
+# ---------------------------------------------------------------------------
+
+_EXPIRY_WARNING_DAYS = 7   # send the warning when this many days remain
+_EXPIRY_NOTIFY_COOLDOWN_DAYS = 6  # do not resend within this many days
+
+
+@shared_task(bind=True, max_retries=0)
+def notify_expiring_memberships(self):
+    """
+    Nightly task that sends a warning email to workspace members whose
+    ``expires_at`` timestamp falls within the next
+    ``_EXPIRY_WARNING_DAYS`` days.
+
+    To avoid duplicate emails the task records the send time in
+    ``Membership.last_expiry_notification_at`` and skips memberships that
+    received a notification less than ``_EXPIRY_NOTIFY_COOLDOWN_DAYS``
+    days ago.
+
+    Scheduled via ``CELERY_BEAT_SCHEDULE`` to run nightly at 01:30 UTC
+    (before the ``expire_memberships`` cleanup at 02:00 UTC).
+    """
+    from django.conf import settings as django_settings
+    from django.core.mail import send_mail
+    from django.db import models as db_models
+    from django.utils import timezone
+    from firms.models import Membership
+
+    now = timezone.now()
+    warning_cutoff = now + datetime.timedelta(days=_EXPIRY_WARNING_DAYS)
+    cooldown_cutoff = now - datetime.timedelta(days=_EXPIRY_NOTIFY_COOLDOWN_DAYS)
+
+    # Memberships that will expire within the warning window and are not yet expired.
+    candidates = (
+        Membership.objects.filter(
+            expires_at__gt=now,
+            expires_at__lte=warning_cutoff,
+        )
+        .filter(
+            # Either never notified, or the previous notification is older than the cooldown.
+            db_models.Q(last_expiry_notification_at__isnull=True)
+            | db_models.Q(last_expiry_notification_at__lt=cooldown_cutoff)
+        )
+        .select_related("user", "firm")
+    )
+
+    notified_count = 0
+    for membership in candidates:
+        user = membership.user
+        if not user or not getattr(user, "email", None):
+            continue
+
+        firm_name = membership.firm.name
+        # Use ceil of total_seconds to get accurate day counts for same-day/sub-day expiries.
+        import math  # noqa: PLC0415
+        days_left = max(1, math.ceil((membership.expires_at - now).total_seconds() / 86400))
+        expiry_str = membership.expires_at.strftime("%Y-%m-%d %H:%M UTC")
+
+        subject = f"[LeadLab] Your access to '{firm_name}' expires in {days_left} day(s)"
+        body = (
+            f"Hello {getattr(user, 'first_name', '') or user.email},\n\n"
+            f"This is a reminder that your membership in the LeadLab workspace "
+            f"'{firm_name}' will expire on {expiry_str} "
+            f"(in approximately {days_left} day(s)).\n\n"
+            f"After this date you will no longer have access to the workspace. "
+            f"Please contact a workspace administrator if you need your access extended.\n\n"
+            f"– The LeadLab Team\n"
+        )
+
+        try:
+            from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.app")
+            send_mail(subject, body, from_email, [user.email], fail_silently=False)
+            membership.last_expiry_notification_at = now
+            membership.save(update_fields=["last_expiry_notification_at"])
+            notified_count += 1
+        except (OSError, RuntimeError) as exc:
+            # Catch transport-level errors (connection refused, SMTP errors, etc.)
+            # without silencing programming errors that should propagate to monitoring.
+            logger.warning(
+                "notify_expiring_memberships: failed to send email to %s: %s",
+                user.email,
+                exc,
+            )
+
+    logger.info("notify_expiring_memberships: sent %d warning email(s)", notified_count)
+    return {"notified": notified_count}

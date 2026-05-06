@@ -2184,3 +2184,120 @@ class MembershipExpiresAtTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIsNone(data["expires_at"])
+
+
+class NotifyExpiringMembershipsTaskTest(TestCase):
+    """Tests for the v2.8 notify_expiring_memberships Celery task."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.firm = Firm.objects.create(name="Notify Firm")
+        self.owner_user = User.objects.create_user(
+            email="notifyowner@test.com", password="pass"
+        )
+        self.member_user = User.objects.create_user(
+            email="notifymember@test.com", password="pass"
+        )
+        self.owner_m = Membership.objects.create(
+            user=self.owner_user, firm=self.firm, role="owner"
+        )
+        self.member_m = Membership.objects.create(
+            user=self.member_user, firm=self.firm, role="member"
+        )
+
+    def test_notifies_member_expiring_soon(self):
+        """Sends email to a member whose membership expires within 7 days."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from crm.tasks import notify_expiring_memberships
+
+        self.member_m.expires_at = timezone.now() + datetime.timedelta(days=3)
+        self.member_m.save(update_fields=["expires_at"])
+
+        with patch("django.core.mail.send_mail") as mock_send:
+            result = notify_expiring_memberships()
+
+        self.assertEqual(result["notified"], 1)
+        mock_send.assert_called_once()
+        call_args = mock_send.call_args
+        self.assertIn("notifymember@test.com", call_args[0][3])
+
+    def test_does_not_notify_already_expired(self):
+        """Does NOT notify members whose membership has already expired."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from crm.tasks import notify_expiring_memberships
+
+        self.member_m.expires_at = timezone.now() - datetime.timedelta(days=1)
+        self.member_m.save(update_fields=["expires_at"])
+
+        with patch("django.core.mail.send_mail") as mock_send:
+            result = notify_expiring_memberships()
+
+        self.assertEqual(result["notified"], 0)
+        mock_send.assert_not_called()
+
+    def test_does_not_notify_far_future_expiry(self):
+        """Does NOT notify members expiring more than 7 days away."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from crm.tasks import notify_expiring_memberships
+
+        self.member_m.expires_at = timezone.now() + datetime.timedelta(days=30)
+        self.member_m.save(update_fields=["expires_at"])
+
+        with patch("django.core.mail.send_mail") as mock_send:
+            result = notify_expiring_memberships()
+
+        self.assertEqual(result["notified"], 0)
+        mock_send.assert_not_called()
+
+    def test_does_not_notify_recently_notified(self):
+        """Does NOT re-send if notification was sent within the cooldown window."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from crm.tasks import notify_expiring_memberships
+
+        now = timezone.now()
+        self.member_m.expires_at = now + datetime.timedelta(days=3)
+        self.member_m.last_expiry_notification_at = now - datetime.timedelta(days=2)
+        self.member_m.save(update_fields=["expires_at", "last_expiry_notification_at"])
+
+        with patch("django.core.mail.send_mail") as mock_send:
+            result = notify_expiring_memberships()
+
+        self.assertEqual(result["notified"], 0)
+        mock_send.assert_not_called()
+
+    def test_updates_last_expiry_notification_at(self):
+        """Sets last_expiry_notification_at after a successful send."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from crm.tasks import notify_expiring_memberships
+
+        self.member_m.expires_at = timezone.now() + datetime.timedelta(days=3)
+        self.member_m.save(update_fields=["expires_at"])
+
+        with patch("django.core.mail.send_mail"):
+            notify_expiring_memberships()
+
+        self.member_m.refresh_from_db()
+        self.assertIsNotNone(self.member_m.last_expiry_notification_at)
+
+    def test_does_not_notify_permanent_memberships(self):
+        """Does NOT notify members with no expiry set."""
+        from unittest.mock import patch
+        from crm.tasks import notify_expiring_memberships
+
+        # member_m has no expires_at set
+        with patch("django.core.mail.send_mail") as mock_send:
+            result = notify_expiring_memberships()
+
+        self.assertEqual(result["notified"], 0)
+        mock_send.assert_not_called()
