@@ -166,6 +166,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.expire_memberships',
         'schedule': crontab(hour=2, minute=0),
     },
+    # v2.8 – warn users N days before their membership expires (runs before cleanup)
+    'notify-expiring-memberships': {
+        'task': 'crm.tasks.notify_expiring_memberships',
+        'schedule': crontab(hour=1, minute=30),
+    },
 }
 
 # Safe-remove: number of days before a soft-deleted record is hard-deleted.

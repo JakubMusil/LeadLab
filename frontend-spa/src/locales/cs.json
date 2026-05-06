@@ -750,7 +750,11 @@
     "failedToRemove": "Nepodařilo se odebrat člena.",
     "noMembersHint": "Pozvěte kolegy ke spolupráci na záznamech.",
     "roleAdmin": "Administrátor",
-    "roleWorker": "Pracovník"
+    "roleWorker": "Pracovník",
+    "memberExpiresAtLabel": "Datum expirace přístupu (ponechte prázdné pro trvalý přístup)",
+    "memberExpired": "Přístup vypršel",
+    "memberExpiresTomorrow": "Expiruje zítra",
+    "memberExpiresInDays": "Expiruje za {days} dní"
   },
   "calendar": {
     "title": "Kalendář",

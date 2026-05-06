@@ -13,7 +13,7 @@ const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()
 
-interface Member { id: string; user_email: string; user_full_name: string; role: string; firm_id: string }
+interface Member { id: string; user_email: string; user_full_name: string; role: string; firm_id: string; expires_at?: string | null }
 interface Invitation { id: string; email: string; role: string; is_expired: boolean; is_accepted: boolean; expires_at: string }
 
 const members = ref<Member[]>([])
@@ -26,6 +26,7 @@ const inviteError = ref('')
 const confirmRemoveId = ref<string | null>(null)
 const editingRoleId = ref<string | null>(null)
 const editingRole = ref('')
+const editingExpiresAt = ref<string>('')
 
 const ROLES = ['worker', 'admin', 'owner']
 
@@ -92,10 +93,21 @@ async function removeMember(membershipId: string) {
 function startEditRole(member: Member) {
   editingRoleId.value = member.id
   editingRole.value = member.role
+  // Pre-populate expires_at field (convert ISO datetime to date string for <input type="date">)
+  if (member.expires_at) {
+    editingExpiresAt.value = member.expires_at.slice(0, 10)
+  } else {
+    editingExpiresAt.value = ''
+  }
 }
 
 async function saveRole(membershipId: string) {
-  const res = await api.patch<Member>(`/api/v1/firms/${firmId.value}/members/${membershipId}`, { role: editingRole.value })
+  const payload: { role: string; expires_at?: string | null } = { role: editingRole.value }
+  // Send expires_at: ISO string if set, null to clear it
+  payload.expires_at = editingExpiresAt.value
+    ? new Date(editingExpiresAt.value).toISOString()
+    : null
+  const res = await api.patch<Member>(`/api/v1/firms/${firmId.value}/members/${membershipId}`, payload)
   editingRoleId.value = null
   if (res.ok) {
     const idx = members.value.findIndex((m) => m.id === membershipId)
@@ -116,6 +128,23 @@ function invitationStatus(inv: Invitation): string {
   if (inv.is_accepted) return t('team.acceptedLabel')
   if (inv.is_expired) return t('team.expiredLabel')
   return t('team.pendingLabel')
+}
+
+/** Return true when member.expires_at is in the past. */
+function isMemberExpired(m: Member): boolean {
+  if (!m.expires_at) return false
+  return new Date(m.expires_at) <= new Date()
+}
+
+/** Return a human-readable summary of membership expiry for display in the UI. */
+function memberExpiryLabel(m: Member): string {
+  if (!m.expires_at) return ''
+  const exp = new Date(m.expires_at)
+  const now = new Date()
+  if (exp <= now) return t('team.memberExpired')
+  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86_400_000)
+  if (daysLeft === 1) return t('team.memberExpiresTomorrow')
+  return t('team.memberExpiresInDays', { days: daysLeft })
 }
 
 const pendingInvitations = computed(() => invitations.value.filter((i) => !i.is_accepted))
@@ -155,13 +184,25 @@ onMounted(loadTeam)
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ m.user_full_name || m.user_email }}</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ m.user_email }}</p>
+            <!-- Expiry badge -->
+            <span
+              v-if="m.expires_at"
+              class="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium"
+              :class="isMemberExpired(m) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
+            >{{ memberExpiryLabel(m) }}</span>
           </div>
 
           <!-- Role badge / editor -->
-          <div v-if="editingRoleId === m.id && canManage" class="flex items-center gap-2">
+          <div v-if="editingRoleId === m.id && canManage" class="flex items-center gap-2 flex-wrap">
             <select v-model="editingRole" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1 focus:outline-none focus:border-red-400">
               <option v-for="r in ROLES.filter(r => r !== 'owner')" :key="r" :value="r">{{ r }}</option>
             </select>
+            <input
+              v-model="editingExpiresAt"
+              type="date"
+              :title="t('team.memberExpiresAtLabel')"
+              class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs px-2 py-1 focus:outline-none focus:border-red-400"
+            />
             <button class="text-xs bg-red-600 text-white px-2 py-1 rounded-lg" @click="saveRole(m.id)">{{ t('team.save') }}</button>
             <button class="text-xs border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-lg" @click="editingRoleId = null">{{ t('team.cancel') }}</button>
           </div>
