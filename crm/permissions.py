@@ -158,6 +158,10 @@ def filter_records_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     """
     Return *qs* filtered to records the requesting user may see.
     """
+    # Superuser sees everything.
+    if getattr(request.user, "is_superuser", False) is True:
+        return qs
+
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -270,6 +274,10 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     - The activity author (``activity.user == request.user``).
     - Users whose effective scope for the parent record is ``team`` or ``all``.
     """
+    # Superuser sees everything.
+    if getattr(request.user, "is_superuser", False) is True:
+        return qs
+
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -319,6 +327,10 @@ def filter_proposals_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
       parent record (if any), OR
     - The proposal is directly created by / assigned to the user.
     """
+    # Superuser sees everything.
+    if getattr(request.user, "is_superuser", False) is True:
+        return qs
+
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -360,6 +372,10 @@ def filter_tasks_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     - It is assigned to or created by the user, OR
     - It is linked to a record the user can see.
     """
+    # Superuser sees everything.
+    if getattr(request.user, "is_superuser", False) is True:
+        return qs
+
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
