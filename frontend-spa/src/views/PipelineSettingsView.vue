@@ -114,8 +114,12 @@ async function loadCategoryGrants() {
   categoryGrantsLoading.value = true
   const res = await api.get<GrantOut[]>(`/api/v1/crm/categories/${selectedCategoryId.value}/grants`)
   categoryGrantsLoading.value = false
-  if (res.ok) categoryGrants.value = res.data
-  else categoryGrants.value = []
+  if (res.ok) {
+    categoryGrants.value = res.data
+  } else {
+    categoryGrants.value = []
+    console.warn('[PipelineSettings] Failed to load category grants:', res)
+  }
 }
 
 async function addCategoryGrant() {
@@ -217,7 +221,7 @@ onMounted(async () => {
   }
   if (pipelineStore.categories.length > 0 && !selectedCategoryId.value) {
     selectedCategoryId.value = pipelineStore.categories[0]!.id
-    await loadCategoryGrants()
+    void loadCategoryGrants()
   }
 })
 
@@ -1217,7 +1221,7 @@ const newPattern = computed({
                 </div>
                 <button
                   class="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  :title="t('permissions.shareRevoked')"
+                  :title="t('permissions.revokeAccess')"
                   @click="removeCategoryGrant(grant.id)"
                 >
                   <TrashIcon class="w-4 h-4" />

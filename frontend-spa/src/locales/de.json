@@ -2736,7 +2736,7 @@
     "shareRevoked": "Zugriff widerrufen.",
     "failedToShare": "Zugriff konnte nicht gewährt werden.",
     "failedToRevoke": "Zugriff konnte nicht widerrufen werden.",
-    "currentAccess": "Aktueller Zugriff",
+    "revokeAccess": "Zugriff entziehen",
     "noGrants": "Keine expliziten Zugriffe",
     "expiresAt": "Läuft ab am",
     "grantedBy": "Gewährt von",

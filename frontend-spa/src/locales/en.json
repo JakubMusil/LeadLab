@@ -2736,7 +2736,7 @@
     "shareRevoked": "Access revoked.",
     "failedToShare": "Failed to grant access.",
     "failedToRevoke": "Failed to revoke access.",
-    "currentAccess": "Current access",
+    "revokeAccess": "Revoke access",
     "noGrants": "No explicit grants",
     "expiresAt": "Expires at",
     "grantedBy": "Granted by",

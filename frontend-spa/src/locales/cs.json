@@ -2737,6 +2737,7 @@
     "shareRevoked": "Přístup odebrán.",
     "failedToShare": "Nepodařilo se udělit přístup.",
     "failedToRevoke": "Nepodařilo se odebrat přístup.",
+    "revokeAccess": "Odebrat přístup",
     "currentAccess": "Aktuální přístupy",
     "noGrants": "Žádné explicitní přístupy",
     "expiresAt": "Platí do",
