@@ -3703,33 +3703,30 @@ class FilterRecordsQsTest(TestCase):
         return req
 
     def test_flag_off_returns_all(self):
-        """When PERMISSIONS_V2_ENABLED=False, filter is a no-op."""
-        from django.test import override_settings
+        """Without a membership, filter returns empty queryset."""
         from crm.permissions import filter_records_qs
-        qs = PipelineRecord.objects.filter(firm=self.firm)
-        with override_settings(PERMISSIONS_V2_ENABLED=False):
-            req = self._make_request(self.worker_a, self.worker_a_m)
-            result = filter_records_qs(qs, req)
-        self.assertEqual(result.count(), qs.count())
+        from django.test import RequestFactory
+        req = RequestFactory().get("/")
+        req.user = self.worker_a
+        req.firm = self.firm
+        req.membership = None
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        self.assertEqual(qs.count(), 0)
 
     def test_owner_sees_all_records(self):
-        """With flag on, owner sees every record."""
-        from django.test import override_settings
+        """Owner sees every record."""
         from crm.permissions import filter_records_qs
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            req = self._make_request(self.owner, self.owner_m)
-            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        req = self._make_request(self.owner, self.owner_m)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
         self.assertIn(self.record_a, qs)
         self.assertIn(self.record_b, qs)
         self.assertIn(self.record_unowned, qs)
 
     def test_worker_own_scope_sees_only_own(self):
         """Worker with scope=own sees only records assigned to or created by them."""
-        from django.test import override_settings
         from crm.permissions import filter_records_qs
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            req = self._make_request(self.worker_a, self.worker_a_m)
-            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        req = self._make_request(self.worker_a, self.worker_a_m)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.record_a.id, ids)
         self.assertNotIn(self.record_b.id, ids)
@@ -3737,20 +3734,17 @@ class FilterRecordsQsTest(TestCase):
 
     def test_worker_all_scope_sees_all(self):
         """Worker with scope=all sees every record."""
-        from django.test import override_settings
         from crm.permissions import filter_records_qs
         self.worker_a_m.default_scope = "all"
         self.worker_a_m.save()
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            req = self._make_request(self.worker_a, self.worker_a_m)
-            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        req = self._make_request(self.worker_a, self.worker_a_m)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.record_b.id, ids)
         self.assertIn(self.record_unowned.id, ids)
 
     def test_record_grant_gives_access(self):
         """A RecordGrant allows a worker to see a record outside their scope."""
-        from django.test import override_settings
         from crm.models import RecordGrant
         from crm.permissions import filter_records_qs
         # worker_a has scope=own, but gets a direct grant to record_b
@@ -3760,24 +3754,21 @@ class FilterRecordsQsTest(TestCase):
             principal_id=self.worker_a.id,
             level="view",
         )
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            req = self._make_request(self.worker_a, self.worker_a_m)
-            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        req = self._make_request(self.worker_a, self.worker_a_m)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.record_a.id, ids)
         self.assertIn(self.record_b.id, ids)
 
     def test_no_membership_returns_none(self):
         """Without membership, filter returns empty queryset."""
-        from django.test import override_settings
         from crm.permissions import filter_records_qs
         from django.test import RequestFactory
         req = RequestFactory().get("/")
         req.user = self.worker_a
         req.firm = self.firm
         req.membership = None
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
         self.assertEqual(qs.count(), 0)
 
 
@@ -3889,41 +3880,35 @@ class StreamlineVisibilityTests(TestCase):
 
     def test_owner_sees_all_activities(self):
         """Owner always sees all activities regardless of visibility."""
-        from django.test import override_settings
         from crm.permissions import filter_activities_qs
         req = self._make_request(self.owner, self.owner_m)
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            qs = filter_activities_qs(
-                Activity.objects.filter(record=self.record), req
-            )
+        qs = filter_activities_qs(
+            Activity.objects.filter(record=self.record), req
+        )
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.public_activity.id, ids)
         self.assertIn(self.restricted_activity.id, ids)
 
     def test_worker_own_scope_sees_only_public_and_own_restricted(self):
         """Worker with scope=own sees public activities; restricted only if they authored it."""
-        from django.test import override_settings
         from crm.permissions import filter_activities_qs
         req = self._make_request(self.worker_c, self.worker_c_m)
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            # worker_c cannot see the record at all since scope=own, record belongs to worker_a
-            # so no activities should be returned
-            qs = filter_activities_qs(
-                Activity.objects.filter(record=self.record), req
-            )
+        # worker_c cannot see the record at all since scope=own, record belongs to worker_a
+        # so no activities should be returned
+        qs = filter_activities_qs(
+            Activity.objects.filter(record=self.record), req
+        )
         ids = list(qs.values_list("id", flat=True))
         self.assertNotIn(self.public_activity.id, ids)
         self.assertNotIn(self.restricted_activity.id, ids)
 
     def test_worker_own_scope_sees_own_restricted(self):
         """worker_a (scope=own, author) sees both activities on their own record."""
-        from django.test import override_settings
         from crm.permissions import filter_activities_qs
         req = self._make_request(self.worker_a, self.worker_a_m)
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            qs = filter_activities_qs(
-                Activity.objects.filter(record=self.record), req
-            )
+        qs = filter_activities_qs(
+            Activity.objects.filter(record=self.record), req
+        )
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.public_activity.id, ids)
         # worker_a authored the restricted activity → should see it
@@ -3931,28 +3916,28 @@ class StreamlineVisibilityTests(TestCase):
 
     def test_worker_all_scope_sees_all(self):
         """Worker with scope=all sees all activities including restricted."""
-        from django.test import override_settings
         from crm.permissions import filter_activities_qs
         from firms.permissions import Scope
         # Give worker_b scope=all so they can see all records and all activities
         self.worker_b_m.default_scope = Scope.ALL
         self.worker_b_m.save()
         req = self._make_request(self.worker_b, self.worker_b_m)
-        with override_settings(PERMISSIONS_V2_ENABLED=True):
-            qs = filter_activities_qs(
-                Activity.objects.filter(record=self.record), req
-            )
+        qs = filter_activities_qs(
+            Activity.objects.filter(record=self.record), req
+        )
         ids = list(qs.values_list("id", flat=True))
         self.assertIn(self.public_activity.id, ids)
         self.assertIn(self.restricted_activity.id, ids)
 
-    def test_flag_disabled_no_filtering(self):
-        """When PERMISSIONS_V2_ENABLED=False, no filtering is applied."""
-        from django.test import override_settings
+    def test_no_membership_returns_empty(self):
+        """Without membership, filter returns empty queryset."""
         from crm.permissions import filter_activities_qs
-        req = self._make_request(self.worker_c, self.worker_c_m)
-        with override_settings(PERMISSIONS_V2_ENABLED=False):
-            qs = filter_activities_qs(
-                Activity.objects.filter(record=self.record), req
-            )
-        self.assertEqual(qs.count(), 2)
+        from django.test import RequestFactory
+        req = RequestFactory().get("/")
+        req.user = self.worker_c
+        req.firm = self.firm
+        req.membership = None
+        qs = filter_activities_qs(
+            Activity.objects.filter(record=self.record), req
+        )
+        self.assertEqual(qs.count(), 0)

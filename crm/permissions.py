@@ -14,12 +14,6 @@ Provides:
 * ``filter_activities_qs(qs, request)`` – scope-aware Activity queryset.
 * ``filter_proposals_qs(qs, request)`` – scope-aware Proposal queryset.
 * ``filter_tasks_qs(qs, request)``     – scope-aware Task queryset.
-
-Feature flag
-------------
-When ``settings.PERMISSIONS_V2_ENABLED`` is ``False`` (the default during
-Phases 1–3) every filter helper is a no-op and returns the original queryset
-unchanged.  Set to ``True`` to activate the new resolver.
 """
 
 from __future__ import annotations
@@ -27,7 +21,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
@@ -164,13 +157,7 @@ def _get_record_grant_model():
 def filter_records_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     """
     Return *qs* filtered to records the requesting user may see.
-
-    When ``PERMISSIONS_V2_ENABLED`` is ``False`` the queryset is returned
-    unchanged (legacy behaviour: caller already filters by ``firm``).
     """
-    if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
-        return qs
-
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -285,9 +272,6 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     - The activity author (``activity.user == request.user``).
     - Users whose effective scope for the parent record is ``team`` or ``all``.
     """
-    if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
-        return qs
-
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -339,9 +323,6 @@ def filter_proposals_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
       parent record (if any), OR
     - The proposal is directly created by / assigned to the user.
     """
-    if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
-        return qs
-
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()
@@ -385,9 +366,6 @@ def filter_tasks_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     - It is assigned to or created by the user, OR
     - It is linked to a record the user can see.
     """
-    if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
-        return qs
-
     membership: "Membership | None" = getattr(request, "membership", None)
     if membership is None:
         return qs.none()

@@ -1195,7 +1195,7 @@ class PermissionMatrixTests(TestCase):
         self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_EDIT))
 
     def test_worker_has_record_delete(self):
-        self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_DELETE))
+        self.assertFalse(self.can(self.worker_m, self.Permission.RECORD_DELETE))
 
     def test_worker_has_activity_create(self):
         self.assertTrue(self.can(self.worker_m, self.Permission.ACTIVITY_CREATE))
@@ -1651,8 +1651,8 @@ class MembershipAuditSignalTest(TestCase):
 # Phase 4 – require_permission tests
 # ===========================================================================
 
-class RequirePermissionLegacyFlagTest(TestCase):
-    """Tests for require_permission with PERMISSIONS_V2_ENABLED=False (default)."""
+class RequirePermissionTest(TestCase):
+    """Tests for require_permission (always uses V2 DB-backed resolution)."""
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -1671,7 +1671,6 @@ class RequirePermissionLegacyFlagTest(TestCase):
         req.membership = membership
         return req
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_owner_has_all_permissions(self):
         req = self._make_request(self.owner, self.owner_m)
         # Owner should pass every permission check
@@ -1682,38 +1681,32 @@ class RequirePermissionLegacyFlagTest(TestCase):
             result = require_permission(req, perm)
             self.assertEqual(result, self.owner_m, f"Owner should have {perm}")
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_worker_has_record_permissions(self):
         req = self._make_request(self.worker, self.worker_m)
         for perm in [Permission.RECORD_VIEW, Permission.RECORD_CREATE, Permission.RECORD_EDIT]:
             result = require_permission(req, perm)
             self.assertEqual(result, self.worker_m)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_worker_denied_billing(self):
         req = self._make_request(self.worker, self.worker_m)
         with self.assertRaises(PermissionDenied):
             require_permission(req, Permission.BILLING_MANAGE)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_worker_denied_role_manage(self):
         req = self._make_request(self.worker, self.worker_m)
         with self.assertRaises(PermissionDenied):
             require_permission(req, Permission.ROLE_MANAGE)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_admin_has_role_manage(self):
         req = self._make_request(self.admin, self.admin_m)
         result = require_permission(req, Permission.ROLE_MANAGE)
         self.assertEqual(result, self.admin_m)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_admin_denied_billing(self):
         req = self._make_request(self.admin, self.admin_m)
         with self.assertRaises(PermissionDenied):
             require_permission(req, Permission.BILLING_MANAGE)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_unauthenticated_raises(self):
         req = self.factory.get("/")
         req.user = MagicMock(is_authenticated=False)
@@ -1722,7 +1715,6 @@ class RequirePermissionLegacyFlagTest(TestCase):
         with self.assertRaises(AuthenticationRequired):
             require_permission(req, Permission.RECORD_VIEW)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=False)
     def test_no_membership_raises(self):
         req = self.factory.get("/")
         req.user = self.worker
@@ -1733,7 +1725,7 @@ class RequirePermissionLegacyFlagTest(TestCase):
 
 
 class RequirePermissionV2FlagTest(TestCase):
-    """Tests for require_permission with PERMISSIONS_V2_ENABLED=True (DB-backed)."""
+    """Tests for require_permission using DB-backed role resolution."""
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -1750,14 +1742,12 @@ class RequirePermissionV2FlagTest(TestCase):
         req.membership = membership
         return req
 
-    @override_settings(PERMISSIONS_V2_ENABLED=True)
     def test_owner_passes_all_v2(self):
-        """Owner always passes in V2 mode (shortcut path)."""
+        """Owner always passes (shortcut path)."""
         req = self._make_request(self.owner, self.owner_m)
         result = require_permission(req, Permission.BILLING_MANAGE)
         self.assertEqual(result, self.owner_m)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=True)
     def test_worker_with_db_role_record_view(self):
         """Worker with DB 'member' system role can view records."""
         from firms.models import Role
@@ -1771,7 +1761,6 @@ class RequirePermissionV2FlagTest(TestCase):
         result = require_permission(req, Permission.RECORD_VIEW)
         self.assertEqual(result, self.worker_m)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=True)
     def test_worker_without_db_role_uses_legacy_fallback(self):
         """When no DB roles assigned, legacy map is used as fallback."""
         req = self._make_request(self.worker, self.worker_m)
@@ -1779,9 +1768,8 @@ class RequirePermissionV2FlagTest(TestCase):
         result = require_permission(req, Permission.RECORD_VIEW)
         self.assertEqual(result, self.worker_m)
 
-    @override_settings(PERMISSIONS_V2_ENABLED=True)
     def test_worker_denied_billing_v2(self):
-        """Worker cannot access billing even in V2 mode (no roles assigned)."""
+        """Worker cannot access billing (no roles assigned, falls back to legacy)."""
         req = self._make_request(self.worker, self.worker_m)
         with self.assertRaises(PermissionDenied):
             require_permission(req, Permission.BILLING_MANAGE)
