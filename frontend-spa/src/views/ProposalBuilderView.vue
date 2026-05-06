@@ -134,6 +134,72 @@ const showCatalog = ref(false)
 const addingFromCatalog = ref(false)
 const selectedCatalogIds = ref<string[]>([])
 
+// Fakturoid
+interface FakturoidPluginConfig {
+  enabled: boolean
+  document_type: string
+  auto_send: boolean
+}
+const fakturoidConfig = ref<FakturoidPluginConfig | null>(null)
+const fakturoidCreating = ref(false)
+
+const fakturoidEnabled = computed(() => fakturoidConfig.value?.enabled === true)
+const fakturoidDocumentType = computed(() => fakturoidConfig.value?.document_type ?? 'invoice')
+const fakturoidAutoSend = computed(() => fakturoidConfig.value?.auto_send === true)
+
+async function loadFakturoidConfig() {
+  if (!firmStore.activeFirm) return
+  const res = await api.get<{ plugin_name: string; enabled: boolean; config: Record<string, unknown> }[]>(
+    `/api/v1/plugins/${firmStore.activeFirm.id}/plugin-configs/`
+  )
+  if (res.ok) {
+    const pc = res.data.find((p) => p.plugin_name === 'fakturoid')
+    if (pc) {
+      fakturoidConfig.value = {
+        enabled: pc.enabled,
+        document_type: (pc.config?.document_type as string) || 'invoice',
+        auto_send: Boolean(pc.config?.auto_send),
+      }
+    }
+  }
+}
+
+async function createInFakturoid() {
+  if (!currentProposal.value) return
+
+  if (fakturoidAutoSend.value) {
+    const hasCustomer = Boolean(currentProposal.value.customer_id || currentProposal.value.record_id)
+    if (!hasCustomer) {
+      toast.info(t('fakturoid.noEmailWarning'))
+    }
+  }
+
+  fakturoidCreating.value = true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await api.post<any>(`/api/v1/integrations/fakturoid/from-proposal/${currentProposal.value.id}`)
+  fakturoidCreating.value = false
+
+  if (res.ok && res.data?.ok) {
+    const { document_type, number, sent } = res.data
+    const isQuotation = document_type === 'quotation'
+    const msgKey = isQuotation
+      ? (sent ? 'fakturoid.successQuotationSent' : 'fakturoid.successQuotation')
+      : (sent ? 'fakturoid.successInvoiceSent' : 'fakturoid.successInvoice')
+    toast.success(t(msgKey, { number: number || '—' }))
+    // Refresh activity timeline to show the new streamline entry
+    activityTimelineRef.value?.load?.()
+  } else {
+    const errMsg = res.data?.error || res.data?.detail || t('fakturoid.error')
+    // Show the API error message so the user understands what went wrong
+    // (e.g. missing e-mail when auto_send is enabled)
+    if (res.status === 422) {
+      toast.info(errMsg)
+    } else {
+      toast.error(errMsg || t('fakturoid.error'))
+    }
+  }
+}
+
 // Public link
 const publicLinkCopied = ref(false)
 const sendingProposal = ref(false)
@@ -535,6 +601,7 @@ onMounted(async () => {
   await loadProposals()
   await loadTemplates()
   await loadCatalogItems()
+  await loadFakturoidConfig()
   const pid = proposalId.value
   if (pid) {
     await loadProposal(pid)
@@ -698,6 +765,20 @@ watch(
               class="px-3 py-1.5 rounded-xl border border-red-200 text-sm text-red-600 hover:bg-red-50"
               @click="deleteProposal(currentProposal.id)"
             >{{ t('common.delete') }}</button>
+
+            <!-- Fakturoid integration button — only shown when plugin is enabled -->
+            <button
+              v-if="fakturoidEnabled"
+              class="px-3 py-1.5 rounded-xl border border-orange-200 text-sm text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+              :disabled="fakturoidCreating"
+              :title="fakturoidDocumentType === 'quotation' ? t('fakturoid.createQuotation') : t('fakturoid.createInvoice')"
+              @click="createInFakturoid"
+            >
+              <span v-if="fakturoidCreating">{{ t('fakturoid.creating') }}</span>
+              <span v-else>
+                {{ fakturoidDocumentType === 'quotation' ? '📄 ' + t('fakturoid.createQuotation') : '🧾 ' + t('fakturoid.createInvoice') }}
+              </span>
+            </button>
           </div>
 
           <!-- Two-panel layout: editor + live preview -->

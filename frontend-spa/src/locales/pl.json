@@ -2294,6 +2294,18 @@
     "discount": "Zniżka",
     "taxVat": "VAT"
   },
+  "fakturoid": {
+    "createInFakturoid": "Fakturoid",
+    "createInvoice": "Utwórz fakturę w Fakturoid",
+    "createQuotation": "Utwórz ofertę w Fakturoid",
+    "creating": "Tworzę…",
+    "noEmailWarning": "Kontakt nie ma adresu e-mail. Automatyczne wysyłanie nie jest możliwe. Dodaj e-mail do kontaktu lub wyłącz automatyczne wysyłanie w ustawieniach wtyczki Fakturoid.",
+    "successInvoice": "Faktura {number} utworzona w Fakturoid.",
+    "successInvoiceSent": "Faktura {number} utworzona i wysłana do klienta.",
+    "successQuotation": "Oferta {number} utworzona w Fakturoid.",
+    "successQuotationSent": "Oferta {number} utworzona i wysłana do klienta.",
+    "error": "Nie udało się utworzyć dokumentu w Fakturoid."
+  },
   "proposalTemplates": {
     "title": "Szablony ofert",
     "noTemplates": "Brak szablonów ofert",

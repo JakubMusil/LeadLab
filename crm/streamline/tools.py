@@ -1592,6 +1592,10 @@ class InvoiceSentTool(_SimpleLogTool):
         "url": {"type": "string", "format": "uri", "title": "Invoice URL"},
         # Hidden — populated by accounting integrations
         "provider": {"type": "string", "title": "Provider", "x-hidden": True},
+        # Hidden — "invoice" or "quotation"; used by the frontend for display differentiation
+        "document_type": {"type": "string", "title": "Document Type", "x-hidden": True},
+        # Hidden — whether the document was automatically sent by e-mail
+        "sent": {"type": "boolean", "title": "Auto-sent", "x-hidden": True},
     }
     required_fields = ["invoice_number"]
 
