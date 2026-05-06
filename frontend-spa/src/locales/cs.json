@@ -554,7 +554,7 @@
     "transferOwnershipConfirmDesc": "{from} vás pozval stát se vlastníkem pracovního prostoru {firm}.",
     "transferOwnershipFrom": "Od",
     "transferOwnershipTo": "Komu",
-    "transferOwnershipConfirmWarning": "Přijetím se stanete vlastníkem tohoto pracovního prostoru. Aktuální vlastník bude přejmenován na Admina.",
+    "transferOwnershipConfirmWarning": "Přijetím se stanete vlastníkem tohoto pracovního prostoru. Aktuální vlastník bude přeřazen na roli Admina.",
     "transferOwnershipAcceptBtn": "Přijmout vlastnictví",
     "transferOwnershipSuccessTitle": "Vlastnictví převedeno!",
     "transferOwnershipSuccessDesc": "Nyní jste vlastníkem tohoto pracovního prostoru. Přesměrování na dashboard…",
