@@ -65,7 +65,7 @@ interface StreamlineTool {
 }
 
 const props = defineProps<{
-  entityType: 'record' | 'customer' | 'realization' | 'management' | 'proposal'
+  entityType: 'record' | 'customer' | 'realization' | 'management' | 'proposal' | 'task'
   entityId: string
 }>()
 

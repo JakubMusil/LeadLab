@@ -11,6 +11,9 @@ import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vu
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import TaskOutcomeModal from '@/components/TaskOutcomeModal.vue'
 import StreamlineItemList from '@/components/StreamlineItemList.vue'
+import StreamlineFilterDropdown, { type StreamlineToolItem } from '@/components/StreamlineFilterDropdown.vue'
+import EntitySidebarActionPicker from '@/components/EntitySidebarActionPicker.vue'
+import StreamlineCreateModal from '@/components/StreamlineCreateModal.vue'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import type { Component } from 'vue'
 import {
@@ -29,6 +32,7 @@ import {
   DocumentIcon,
   XCircleIcon,
   MinusCircleIcon,
+  PlusIcon,
 } from '@heroicons/vue/24/outline'
 import { useClipboard } from '@/composables/useClipboard'
 import { ConfirmDeleteModal } from '@/components/ui'
@@ -1019,11 +1023,196 @@ async function saveCustomFieldValue(fieldId: string, newValue: unknown) {
 // ---------------------------------------------------------------------------
 onMounted(async () => {
   await Promise.all([loadMembers(), loadRecords(), loadTask(), loadDependencies(), loadTimeLogs(), loadActiveTimer()])
+  loadShortcuts()
+  loadTools()
 })
 
 onUnmounted(() => {
   stopTickInterval()
 })
+
+// ---------------------------------------------------------------------------
+// Status progress bar (mirrors Record's stage progress design)
+// ---------------------------------------------------------------------------
+const TASK_PROGRESS_FLOW = ['todo', 'in_progress', 'done'] as const
+
+const displayedTaskStatuses = computed(() => {
+  const current = task.value?.status ?? 'todo'
+  const base: { value: string; label: string }[] = [
+    { value: 'todo', label: t('tasks.statusTodo') },
+    { value: 'in_progress', label: t('tasks.statusInProgress') },
+    { value: 'done', label: t('tasks.statusDone') },
+  ]
+  if (current === 'blocked') {
+    // Substitute middle stage with "Blocked"
+    base[1] = { value: 'blocked', label: t('tasks.statusBlocked') }
+  } else if (current === 'cancelled') {
+    base.push({ value: 'cancelled', label: t('tasks.statusCancelled') })
+  }
+  return base
+})
+
+const currentTaskStatusIndex = computed(() => {
+  const current = task.value?.status ?? 'todo'
+  return displayedTaskStatuses.value.findIndex((s) => s.value === current)
+})
+
+function getTaskStatusBg(status: string) {
+  switch (status) {
+    case 'todo': return 'bg-gray-400'
+    case 'in_progress': return 'bg-blue-500'
+    case 'done': return 'bg-green-500'
+    case 'blocked': return 'bg-red-500'
+    case 'cancelled': return 'bg-gray-500'
+    default: return 'bg-blue-500'
+  }
+}
+
+function getTaskStatusHex(status: string) {
+  switch (status) {
+    case 'todo': return '#9ca3af'
+    case 'in_progress': return '#3b82f6'
+    case 'done': return '#22c55e'
+    case 'blocked': return '#ef4444'
+    case 'cancelled': return '#6b7280'
+    default: return '#3b82f6'
+  }
+}
+
+async function changeTaskStatus(newStatus: string) {
+  if (!task.value) return
+  if (task.value.status === newStatus) return
+  const result = await tasksStore.updateTask(task.value.id, { status: newStatus })
+  if (result.ok && result.data) {
+    task.value = result.data
+    toast.success(t('tasks.taskUpdated'))
+    reloadTimeline()
+  } else {
+    toast.error(result.error ?? t('tasks.updateFailed'))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shortcuts / Filtry / Akce — same UX as RecordDetailView
+// ---------------------------------------------------------------------------
+interface ShortcutPreset {
+  id: string
+  name: string
+  visible_activity_types: string[]
+}
+const selectedShortcutId = ref('overview')
+const customFilters = ref<Set<string>>(new Set())
+const newShortcutName = ref('')
+const allTools = ref<StreamlineToolItem[]>([])
+const shortcuts = ref<ShortcutPreset[]>([])
+
+const shortcutsKey = computed(() => {
+  const userId = authStore.user?.id || 'guest'
+  return `leadlab_task_shortcuts_u${userId}`
+})
+
+function loadShortcuts() {
+  const data = localStorage.getItem(shortcutsKey.value)
+  if (data) {
+    try {
+      shortcuts.value = JSON.parse(data)
+    } catch {
+      shortcuts.value = []
+    }
+  } else {
+    shortcuts.value = [
+      { id: 'sc-comments', name: t('activityTimeline.comments') || 'Komentáře', visible_activity_types: ['comment'] },
+      { id: 'sc-files', name: 'Soubory', visible_activity_types: ['file_upload'] },
+      { id: 'sc-time', name: t('tasks.timeTracking') || 'Time', visible_activity_types: ['time_logged'] },
+    ]
+  }
+}
+
+function saveShortcutsToLocalStorage() {
+  localStorage.setItem(shortcutsKey.value, JSON.stringify(shortcuts.value))
+}
+
+function moveShortcut(fromIdx: number, toIdx: number) {
+  const arr = [...shortcuts.value]
+  const item = arr[fromIdx]
+  if (!item) return
+  arr.splice(fromIdx, 1)
+  arr.splice(toIdx, 0, item)
+  shortcuts.value = arr
+  saveShortcutsToLocalStorage()
+}
+
+function deleteShortcut(id: string) {
+  shortcuts.value = shortcuts.value.filter((s) => s.id !== id)
+  saveShortcutsToLocalStorage()
+  if (selectedShortcutId.value === id) {
+    selectedShortcutId.value = 'overview'
+  }
+}
+
+async function loadTools() {
+  const res = await api.get<typeof allTools.value>('/api/v1/streamline/tools')
+  if (res.ok) allTools.value = res.data
+}
+
+const availableTools = computed(() => [...allTools.value])
+
+const importantToolsSet = computed(() => {
+  return new Set(
+    availableTools.value
+      .filter((tool) => tool.default_visibility === 'important')
+      .map((tool) => tool.activity_type),
+  )
+})
+
+const currentVisibleTypes = computed(() => {
+  if (selectedShortcutId.value === 'overview') return importantToolsSet.value
+  if (selectedShortcutId.value === 'custom') return customFilters.value
+  const preset = shortcuts.value.find((s) => s.id === selectedShortcutId.value)
+  if (preset) return new Set(preset.visible_activity_types)
+  return importantToolsSet.value
+})
+
+function onCustomFilterChange(next: string[] | null) {
+  if (next === null) {
+    customFilters.value = importantToolsSet.value
+  } else {
+    customFilters.value = new Set(next)
+  }
+  selectedShortcutId.value = 'custom'
+}
+
+function saveCurrentAsShortcut() {
+  const name = newShortcutName.value.trim()
+  if (!name) return
+  const id = `sc-${Date.now()}`
+  shortcuts.value.push({
+    id,
+    name,
+    visible_activity_types: Array.from(customFilters.value),
+  })
+  saveShortcutsToLocalStorage()
+  selectedShortcutId.value = id
+  newShortcutName.value = ''
+}
+
+// ─── Akce dropdown / Streamline create modal ──────────────────────────────
+const akceDropdownOpen = ref(false)
+const sidebarPickerRef = ref<InstanceType<typeof EntitySidebarActionPicker> | null>(null)
+const activeModalTool = ref('')
+
+function openModalTool(type: string) {
+  activeModalTool.value = type
+  akceDropdownOpen.value = false
+}
+
+function closeModalTool() {
+  activeModalTool.value = ''
+}
+
+function closeAkceDropdown() {
+  akceDropdownOpen.value = false
+}
 </script>
 
 <template>
@@ -1047,8 +1236,143 @@ onUnmounted(() => {
 
     <!-- Content -->
     <template v-else-if="task">
+      <!-- ===================== STATUS PROGRESS BAR ===================== -->
+      <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm select-none">
+        <div class="flex items-center justify-between gap-1 select-none">
+          <button
+            v-for="(s, i) in displayedTaskStatuses"
+            :key="s.value"
+            type="button"
+            class="flex-1 flex flex-col gap-1.5 items-center relative cursor-pointer"
+            :title="s.label"
+            @click="changeTaskStatus(s.value)"
+          >
+            <div
+              class="w-full h-1.5 rounded-full transition-all duration-300"
+              :class="[
+                i <= currentTaskStatusIndex ? getTaskStatusBg(s.value) : 'bg-gray-200 dark:bg-gray-700',
+                i === currentTaskStatusIndex ? 'scale-y-125' : ''
+              ]"
+              :style="i === currentTaskStatusIndex ? { boxShadow: '0 0 0 2px ' + getTaskStatusHex(s.value) + '80' } : {}"
+            />
+            <span
+              class="text-[10px] sm:text-xs font-semibold select-none text-center transition-colors"
+              :class="i <= currentTaskStatusIndex ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'"
+            >
+              {{ s.label }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================== 2-COLUMN LAYOUT ===================== -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Activity Feed & Presets Switcher -->
+        <div class="lg:col-span-2">
+          <!-- Switchers: Přehled + user presets + Filtry + Akce -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+            <button
+              class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === 'overview' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = 'overview'"
+            >
+              Přehled
+            </button>
+            <button
+              v-for="shortcut in shortcuts"
+              :key="shortcut.id"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedShortcutId === shortcut.id ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="selectedShortcutId = shortcut.id"
+            >
+              {{ shortcut.name }}
+            </button>
+
+            <!-- Filtry button -->
+            <div class="relative flex items-center h-full">
+              <StreamlineFilterDropdown
+                :tools="availableTools"
+                :model-value="currentVisibleTypes"
+                :is-customised="selectedShortcutId === 'custom'"
+                :shortcuts="shortcuts"
+                @update:visible="onCustomFilterChange"
+                @delete-shortcut="deleteShortcut"
+                @move-shortcut="(payload) => moveShortcut(payload.fromIdx, payload.toIdx)"
+              />
+            </div>
+
+            <!-- Akce button -->
+            <div
+              class="relative ml-auto"
+              @mouseenter="akceDropdownOpen = true"
+              @mouseleave="akceDropdownOpen = false"
+            >
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                @click="akceDropdownOpen = !akceDropdownOpen"
+              >
+                <PlusIcon class="w-4 h-4" />
+                Akce
+              </button>
+              <div
+                v-if="akceDropdownOpen"
+                class="absolute right-0 top-full mt-1 z-30 w-52 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl py-2 overflow-hidden"
+              >
+                <template v-for="group in (sidebarPickerRef?.groupedActionItems ?? [])" :key="group.key">
+                  <div class="px-3 pt-2 pb-0.5">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      {{ t(group.labelKey) }}
+                    </p>
+                  </div>
+                  <button
+                    v-for="item in group.items"
+                    :key="item.value"
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                    @click="openModalTool(item.value)"
+                  >
+                    <component :is="item.icon" class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                    <span class="flex-1 truncate">{{ item.label }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save custom filter as shortcut -->
+          <div v-if="selectedShortcutId === 'custom'" class="flex items-center gap-2 mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700 w-fit">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Nové zobrazení:</span>
+            <input
+              v-model="newShortcutName"
+              type="text"
+              placeholder="Název zkratky..."
+              class="text-xs rounded-xl border border-gray-300 dark:border-gray-600 px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-red-400"
+            />
+            <button
+              class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50"
+              :disabled="!newShortcutName.trim()"
+              @click="saveCurrentAsShortcut"
+            >
+              Uložit jako zkratku
+            </button>
+          </div>
+
+          <!-- Activity feed -->
+          <ActivityTimeline
+            ref="activityTimelineRef"
+            entity-type="task"
+            :entity-id="taskId"
+            :hide-composer="true"
+            :hide-filter-dropdown="true"
+            :override-visible-types="currentVisibleTypes"
+          />
+        </div>
+
+        <!-- Right Column: Task detail + extras -->
+        <div class="space-y-4">
+
       <!-- ===================== TASK HEADER ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
 
         <!-- Breadcrumb -->
         <nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
@@ -1334,7 +1658,7 @@ onUnmounted(() => {
 
 
       <!-- ===================== ZÁVISLOSTI ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
             <LinkIcon class="w-5 h-5 text-gray-500" /> {{ t('tasks.dependencies') }}
@@ -1526,7 +1850,7 @@ onUnmounted(() => {
       </div>
 
       <!-- ===================== TIME TRACKING ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -1753,7 +2077,7 @@ onUnmounted(() => {
       </div>
 
       <!-- ===================== PHASE 7: RECURRENCE ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             🔁 {{ t('tasks.recurrence') }}
@@ -1786,7 +2110,7 @@ onUnmounted(() => {
       </div>
 
       <!-- ===================== PHASE 7: APPROVAL ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <CheckCircleIcon class="w-5 h-5 text-green-500" /> {{ t('tasks.approval') }}
@@ -1844,7 +2168,7 @@ onUnmounted(() => {
       <!-- ===================== PHASE 8: CUSTOM FIELDS ===================== -->
       <div
         v-if="customFields.length > 0"
-        class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6"
+        class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4"
       >
         <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
           🔧 {{ t('tasks.customFields') }}
@@ -1935,7 +2259,7 @@ onUnmounted(() => {
       </div>
 
       <!-- ===================== DESCRIPTION ===================== -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
             📝 {{ t('tasks.descriptionSection') }}
@@ -1979,21 +2303,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- ===================== UNIFIED ACTIVITY TIMELINE (Streamline) ===================== -->
-      <!-- Replaces the legacy task-specific timeline.  The shared ActivityTimeline component
-           handles rendering of comments, system events, file uploads, reactions, real-time
-           updates and provides the action-picker composer for any registered Streamline tool. -->
-      <ActivityTimeline
-        ref="activityTimelineRef"
-        entity-type="task"
-        :entity-id="taskId"
-        class="mb-6"
-      />
-
-      <!-- Watchers row (kept here for context, was previously inside the timeline footer) -->
+      <!-- Watchers row -->
       <div
         v-if="task!.watcher_ids.length"
-        class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 mb-6 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+        class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap"
       >
         <span class="font-medium flex items-center gap-1"><BellIcon class="w-4 h-4" /> {{ t('tasks.watchersSection') }}</span>
         <div class="flex flex-wrap gap-1">
@@ -2007,7 +2320,32 @@ onUnmounted(() => {
           </span>
         </div>
       </div>
+
+      <!-- Quick actions card (Streamline tools sidebar) -->
+      <EntitySidebarActionPicker
+        ref="sidebarPickerRef"
+        entity-type="task"
+        :entity-id="taskId"
+        @tool-selected="openModalTool"
+      />
+
+        </div><!-- /right column -->
+      </div><!-- /grid -->
     </template>
+
+    <!-- Streamline Create Modal — opened from sidebar picker and Akce button -->
+    <StreamlineCreateModal
+      :model-value="!!activeModalTool"
+      :action-type="activeModalTool"
+      entity-type="task"
+      :entity-id="taskId"
+      :team-members="teamMembers"
+      @update:model-value="(v) => { if (!v) closeModalTool() }"
+      @activity-added="reloadTimeline()"
+    />
+
+    <!-- Akce dropdown backdrop -->
+    <div v-if="akceDropdownOpen" class="fixed inset-0 z-20" @click="closeAkceDropdown" />
 
     <!-- ===================== EDIT TASK MODAL ===================== -->
     <Teleport to="body">
