@@ -67,6 +67,7 @@ from firms.auth import (
 )
 from firms.models import Membership
 
+from crm.apps import set_current_user, clear_current_user
 from crm.events import broadcast_event
 from crm.soft_delete import perform_soft_delete
 
@@ -251,7 +252,6 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
     customer.company = company
     for field, value in data.items():
         setattr(customer, field, value)
-    from crm.apps import set_current_user, clear_current_user
     set_current_user(request.user)
     try:
         customer.save()

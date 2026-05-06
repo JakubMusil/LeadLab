@@ -56,6 +56,7 @@ from crm.models import (
     ProposalTemplate,
     ProposalTemplateItem,
 )
+from crm.apps import set_current_user, clear_current_user
 from crm.soft_delete import perform_soft_delete
 from firms.auth import (
     MembershipRole,
@@ -594,7 +595,6 @@ def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
     update_data = payload.dict(exclude_none=True)
     for field, value in update_data.items():
         setattr(proposal, field, value)
-    from crm.apps import set_current_user, clear_current_user
     set_current_user(request.user)
     try:
         proposal.save()
