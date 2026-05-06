@@ -121,14 +121,8 @@ def _on_membership_post_save(sender, instance, created, update_fields=None, **kw
         action=action,
         target_type="membership",
         target_id=instance.pk,
-        payload={"user_id": str(instance.user_id), "role": instance.role},
+        payload={"user_id": str(instance.user_id), "role": instance.primary_role},
     )
-    # Keep M2M ``roles`` in sync with the legacy ``role`` CharField whenever a
-    # membership is created or its ``role`` field is explicitly updated.
-    # We only trigger sync when ``update_fields`` explicitly includes ``"role"``
-    # (or for new instances) to avoid spurious M2M queries on unrelated saves.
-    if created or (update_fields is not None and "role" in update_fields):
-        instance._sync_legacy_role_to_m2m()
 
 
 def _on_membership_post_delete(sender, instance, **kwargs):
@@ -138,7 +132,7 @@ def _on_membership_post_delete(sender, instance, **kwargs):
         action="membership.deleted",
         target_type="membership",
         target_id=instance.pk,
-        payload={"user_id": str(instance.user_id), "role": instance.role},
+        payload={"user_id": str(instance.user_id), "role": instance.primary_role},
     )
 
 

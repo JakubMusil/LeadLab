@@ -147,11 +147,21 @@ def create_system_roles_for_firm(firm) -> None:
 
 
 def link_membership_to_system_role(membership) -> None:
-    """Assign the matching system role to *membership* based on its legacy ``role`` field."""
+    """Assign the matching system role to *membership* based on its *primary_role*.
+
+    Uses ``primary_role`` (derived from M2M ``roles``) rather than the removed
+    legacy ``role`` CharField.  Falls back to ``'member'`` (standard member
+    access) rather than ``'guest'`` (read-only) because this function is called
+    in contexts where a meaningful default assignment is expected – e.g. after
+    accepting an invitation without explicit role codes.
+    """
     from firms.models import Role  # local import
-    system_code = LEGACY_TO_SYSTEM_ROLE.get(membership.role)
-    if system_code is None:
-        return
+    role_code = membership.primary_role
+    # Override the 'guest' fallback from primary_role (which is returned when no
+    # M2M roles are assigned) with 'member' – the sensible default for a new member.
+    if role_code == "guest":
+        role_code = "member"
+    system_code = LEGACY_TO_SYSTEM_ROLE.get(role_code, role_code)
     try:
         role = Role.objects.get(firm=membership.firm, code=system_code)
     except Role.DoesNotExist:

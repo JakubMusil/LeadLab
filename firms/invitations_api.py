@@ -145,11 +145,12 @@ def accept_invitation(request, token: str, payload: AcceptInvitationIn):
         membership = Membership.objects.create(
             user=user,
             firm=firm,
-            role=invitation.role,
+            role=invitation.role,  # handled by MembershipManager → assigns system role via M2M
             default_scope=invitation.invited_default_scope or "own",
             team_id=invitation.invited_team_id,
         )
-        # Apply granular roles if specified in the invitation.
+        # Apply granular roles if specified in the invitation (overrides the
+        # default system role assigned above from invitation.role).
         if invitation.invited_role_codes:
             from firms.models import Role
             roles = Role.objects.filter(

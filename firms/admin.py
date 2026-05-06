@@ -20,7 +20,7 @@ class MembershipInline(admin.TabularInline):
     model = Membership
     extra = 1
     autocomplete_fields = ["user"]
-    fields = ("user", "role", "created_at")
+    fields = ("user", "default_scope", "created_at")
     readonly_fields = ("created_at",)
 
 
@@ -36,8 +36,8 @@ class FirmAdmin(admin.ModelAdmin):
 
 @admin.register(Membership)
 class MembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "firm", "role", "created_at")
-    list_filter = ("role",)
+    list_display = ("user", "firm", "primary_role", "created_at")
+    list_filter = ("default_scope",)
     search_fields = ("user__email", "firm__name")
     autocomplete_fields = ["user", "firm"]
     readonly_fields = ("created_at",)

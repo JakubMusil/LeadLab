@@ -114,7 +114,9 @@ class TenantMiddlewareTest(TestCase):
         middleware = TenantMiddleware(self._get_response)
         middleware(request)
         self.assertIsNotNone(request.membership)
-        self.assertEqual(request.membership.role, MembershipRole.WORKER)
+        # WORKER is the legacy alias for MEMBER; primary_role returns 'member'
+        # (the system role code) after M2M assignment by MembershipManager.
+        self.assertEqual(request.membership.primary_role, "member")
 
 
 class FirmAuthTest(TestCase):
@@ -249,9 +251,9 @@ class CreateFirmAPITest(FirmsAPIFixtureMixin, TestCase):
         resp = self._post(self.URL, {"name": "Owned Firm"})
         self.assertEqual(resp.status_code, 201)
         firm = Firm.objects.get(name="Owned Firm")
-        self.assertTrue(
-            Membership.objects.filter(user=self.owner, firm=firm, role=MembershipRole.OWNER).exists()
-        )
+        membership = Membership.objects.filter(user=self.owner, firm=firm).first()
+        self.assertIsNotNone(membership)
+        self.assertEqual(membership.primary_role, "owner")
 
 
 class GetFirmAPITest(FirmsAPIFixtureMixin, TestCase):
@@ -1991,59 +1993,53 @@ class AuditLogAPITest(TestCase):
 
 
 # ===========================================================================
-# v2.1 – Sync legacy role → M2M roles
+# v2.2 – Role field dropped; MembershipManager + _assign_system_role_by_code
 # ===========================================================================
 
 
-class LegacyRoleSyncTest(TestCase):
-    """Tests for _sync_legacy_role_to_m2m() and the post_save signal wiring."""
+class MembershipRoleV22Test(TestCase):
+    """Tests for v2.2 behaviour: legacy ``role`` column removed, M2M-only."""
 
     def setUp(self):
-        self.firm = Firm.objects.create(name="Sync Test Firm")
-        self.user = User.objects.create_user(email="synctestuser@example.com", password="pass")
+        self.firm = Firm.objects.create(name="V22 Test Firm")
+        self.user = User.objects.create_user(email="v22testuser@example.com", password="pass")
 
-    def test_new_membership_syncs_system_role(self):
-        """Creating a Membership with role='worker' should auto-assign the 'member' system Role.
+    def test_create_with_role_kwarg_assigns_system_role(self):
+        """MembershipManager.create(role='worker') should assign the 'member' system Role via M2M.
 
-        WORKER is a deprecated alias for MEMBER; the sync maps both to the 'member' system role.
+        WORKER is a deprecated alias for MEMBER; LEGACY_TO_SYSTEM_ROLE maps it.
         """
         m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
         role_codes = list(m.roles.values_list("code", flat=True))
-        # WORKER maps to the 'member' system role via LEGACY_TO_SYSTEM_ROLE
         self.assertIn(
             "member",
             role_codes,
             f"Expected 'member' system role in M2M (WORKER→MEMBER alias), got: {role_codes}",
         )
 
-    def test_sync_helper_updates_m2m_on_role_change(self):
-        """Calling _sync_legacy_role_to_m2m() after changing legacy role updates M2M."""
+    def test_assign_system_role_by_code_changes_m2m(self):
+        """_assign_system_role_by_code() replaces the active system role in M2M."""
         m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
-        # Change the legacy role and call sync manually
-        m.role = MembershipRole.ADMIN
-        m.save(update_fields=["role"])
-        # Signal should have synced M2M; admin system role should now be present
-        m.refresh_from_db()
+        # Upgrade to admin
+        m._assign_system_role_by_code("admin")
         role_codes = list(m.roles.values_list("code", flat=True))
         self.assertIn("admin", role_codes, f"Expected 'admin' in M2M roles, got: {role_codes}")
+        self.assertNotIn("member", role_codes, "Old 'member' system role should have been removed")
 
-    def test_primary_role_prefers_m2m_over_legacy(self):
-        """primary_role returns M2M-derived role even if legacy field differs."""
+    def test_primary_role_returns_highest_m2m_role(self):
+        """primary_role returns the highest-priority code from M2M."""
         m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
-        # Manually set an 'admin' M2M role without touching legacy field
         from firms.models import Role
         admin_role = Role.objects.filter(firm=self.firm, code="admin", is_system=True).first()
         if admin_role:
             m.roles.set([admin_role])
-            # primary_role should see 'admin' from M2M despite legacy field being 'worker'
             self.assertEqual(m.primary_role, "admin")
 
     def test_membership_out_uses_primary_role(self):
-        """_membership_out serialiser returns primary_role not legacy role field."""
+        """_membership_out serialiser returns primary_role."""
         from firms.api import _membership_out
         m = Membership.objects.create(
             user=self.user, firm=self.firm, role=MembershipRole.WORKER
         )
         result = _membership_out(m)
-        # primary_role should match (via M2M or fallback to legacy)
         self.assertEqual(result["role"], m.primary_role)
