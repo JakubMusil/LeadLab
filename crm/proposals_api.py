@@ -634,7 +634,7 @@ def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
 
     update_data = payload.dict(exclude_none=True)
     assigned_to_id = update_data.pop("assigned_to_id", None)
-    if assigned_to_id is not None:
+    if assigned_to_id:
         assigned_to, err = _resolve_user_in_firm(assigned_to_id, request.firm)
         if err:
             return err

@@ -272,7 +272,7 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
         return 403, {"detail": str(exc)}
 
     try:
-        customer = Customer.objects.get(id=customer_id, firm=request.firm)
+        customer = Customer.objects.select_related('created_by', 'assigned_to').get(id=customer_id, firm=request.firm)
     except Customer.DoesNotExist:
         return 404, {"detail": "Customer not found."}
 
