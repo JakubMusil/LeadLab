@@ -853,3 +853,74 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Merge do `main` a tag `v2.0-permissions`
 - v2.2: Skutečné odstranění sloupce `Membership.role` z DB (drop column migration)
   - Předpokladem je ověření zpětné kompatibility všech API klientů a write pathů
+
+
+### v2.2 – Drop sloupce `Membership.role` ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-documentation-another-one`
+
+**Co bylo uděláno:**
+
+- **`firms/migrations/0008_drop_membership_role.py`** – migrace odstraňuje sloupec `role` z tabulky `Membership`:
+  - Čistý `RemoveField` bez ztráty dat (M2M `roles` bylo plně synchronizováno v2.1)
+
+- **`firms/models.py` – `Membership` model refaktorován**:
+  - Sloupec `role = CharField(choices=MembershipRole)` odstraněn
+  - Přidána třída `MembershipManager(models.Manager)`:
+    - `create(**kwargs)` intercepts `role=` kwarg, poté co vytvoří DB řádek zavolá `_assign_system_role_by_code()` pro přiřazení M2M role
+    - Zachovává zpětnou kompatibilitu – všechna `Membership.objects.create(role=...)` v testech i kódu fungují dál
+  - `is_owner` property: `self.role == MembershipRole.OWNER` → `self.primary_role == "owner"`
+  - `is_admin_or_above` property: `self.role in (...)` → `self.primary_role in ("owner", "admin")`
+  - `primary_role` property: odstraněn fallback na `self.role`, výchozí hodnota `"guest"` (nejrestriktnější)
+  - Nahrazena metoda `_sync_legacy_role_to_m2m()` metodou `_assign_system_role_by_code(role_code)`:
+    - Normalizes code přes `LEGACY_TO_SYSTEM_ROLE` (worker→member)
+    - Nahradí aktuální systémové role v M2M touto jednou rolí
+    - Custom roles jsou zachovány
+  - `__str__` opraveno: `get_role_display()` → `primary_role`
+  - `Meta.ordering`: `["firm", "role"]` → `["firm", "created_at"]`
+
+- **`firms/api.py`** – write paths aktualizovány:
+  - `invite_member()`: `Membership.objects.get_or_create(defaults={"role": ...})` → handled by MembershipManager
+  - `update_member_role()`: `target.role = ...` + `target.save(update_fields=["role"])` → `target._assign_system_role_by_code(payload.role)`
+  - `update_branding()`: `membership.role != MembershipRole.OWNER` → `not membership.is_owner`
+
+- **`firms/roles_api.py`** – odstraněny `MembershipRole` a `membership.role` přístupy:
+  - `_actor_permission_codes()`: `membership.role == OWNER` → `membership.is_owner`
+  - `me/permissions` endpoint: `"role": membership.role` → `"role": membership.primary_role`
+  - `create_role()`, `set_role_permissions()`: `membership.role != OWNER` → `not membership.is_owner`
+  - Import `MembershipRole` odstraněn
+
+- **`firms/apps.py`** – audit log signály vyčištěny:
+  - `_on_membership_post_save`: `"role": instance.role` → `"role": instance.primary_role`; odstraněno volání `instance._sync_legacy_role_to_m2m()`
+  - `_on_membership_post_delete`: `"role": instance.role` → `"role": instance.primary_role`
+
+- **`firms/auth.py`** – odstraněno volání `membership.get_role_display()`:
+  - Chybové zprávy v `require_membership()` a `require_permission()` nyní používají `membership.primary_role`
+
+- **`firms/role_seeds.py`** – `link_membership_to_system_role()` aktualizována:
+  - Místo `membership.role` (odstraněno pole) nyní čte `membership.primary_role`
+
+- **`firms/admin.py`** – odstraněny reference na neexistující pole `role`:
+  - `MembershipInline.fields`: `("user", "role", "created_at")` → `("user", "default_scope", "created_at")`
+  - `MembershipAdmin.list_display`: `"role"` → `"primary_role"` (property funguje v admin)
+  - `MembershipAdmin.list_filter`: `("role",)` → `("default_scope",)`
+
+- **`firms/tests.py`** – testy aktualizovány:
+  - `TenantMiddlewareTest.test_membership_resolved`: `membership.role == WORKER` → `membership.primary_role == "member"` (WORKER se mapuje na 'member')
+  - `CreateFirmAPITest.test_create_firm_makes_creator_owner`: `Membership.objects.filter(role=OWNER)` → filter + check `primary_role == "owner"`
+  - Třída `LegacyRoleSyncTest` přejmenována na `MembershipRoleV22Test` s aktualizovanými testy:
+    - `test_create_with_role_kwarg_assigns_system_role` – Manager povolí `role=` kwarg a přiřadí M2M
+    - `test_assign_system_role_by_code_changes_m2m` – `_assign_system_role_by_code("admin")` nahradí member→admin
+    - `test_primary_role_returns_highest_m2m_role` – `primary_role` vrací nejvyšší M2M roli
+    - `test_membership_out_uses_primary_role` – API serializer vrací správný kód
+
+**Verifikace:**
+- Migrace prošla na čisté DB i na DB s daty
+- Cílené testy: 23 zelených (TenantMiddlewareTest, CreateFirmAPITest, RolesAPITest, TeamsAPITest, AuditLogAPITest, MembershipRoleV22Test)
+- Všechny `crm.tests` permission testy zelené (FilterRecordsQsTest, ResolveEffectivePermissionsTest, StreamlineVisibilityTests)
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions` / `v2.2`
+- Volitelně: smazat `MembershipRole.WORKER` (deprecated alias) v budoucím releasu
+- Volitelně: přejmenovat `MembershipRole` na `InvitationRole` pro sémantiku (hodnoty zůstanou stejné)
+

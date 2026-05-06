@@ -22,7 +22,7 @@ from firms.auth import (
     PermissionDenied,
     require_permission,
 )
-from firms.models import Firm, Membership, MembershipRole, PermissionRecord, Role, RolePermission
+from firms.models import Firm, Membership, PermissionRecord, Role, RolePermission
 from firms.permissions import Permission, Scope
 
 router = Router(tags=["roles"])
@@ -101,7 +101,7 @@ def _actor_permission_codes(membership: Membership) -> set[str]:
     permissions they do not themselves hold.  Owners hold all permissions.
     For non-owners the set is derived from their DB-backed Role assignments.
     """
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return {p.code for p in PermissionRecord.objects.all()}
     codes: set[str] = set()
     for role in membership.roles.prefetch_related("permissions").all():
@@ -172,7 +172,7 @@ def get_my_permissions(request, firm_id: str):
     return 200, {
         "permissions": sorted(effective),
         "scope": scope,
-        "role": membership.role,  # legacy role field
+        "role": membership.primary_role,
         "roles": roles,
         "can_manage_roles": Permission.ROLE_MANAGE.value in effective,
         "can_manage_teams": Permission.TEAM_MANAGE.value in effective,
@@ -227,7 +227,7 @@ def create_role(request, firm_id: str, payload: RoleCreateIn):
 
     # Disallow creating roles with billing/firm management permissions for non-owners.
     protected = {Permission.BILLING_MANAGE.value, Permission.FIRM_DELETE.value, Permission.FIRM_TRANSFER.value}
-    if membership.role != MembershipRole.OWNER:
+    if not membership.is_owner:
         bad = [p for p in payload.permissions if p in protected]
         if bad:
             return 403, {"detail": f"Only the Owner can assign these permissions: {bad}"}
@@ -346,7 +346,7 @@ def set_role_permissions(request, firm_id: str, role_id: str, payload: RolePermi
         return 403, {"detail": f"Cannot grant permissions you do not hold: {forbidden}"}
 
     protected = {Permission.BILLING_MANAGE.value, Permission.FIRM_DELETE.value, Permission.FIRM_TRANSFER.value}
-    if membership.role != MembershipRole.OWNER:
+    if not membership.is_owner:
         bad = [p for p in payload.permissions if p in protected]
         if bad:
             return 403, {"detail": f"Only the Owner can assign these permissions: {bad}"}

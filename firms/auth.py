@@ -83,8 +83,8 @@ def require_membership(
 
     if not has_min_role(membership, min_role):
         raise PermissionDenied(
-            f"Role '{membership.get_role_display()}' is insufficient. "
-            f"Required: '{MembershipRole(min_role).label}'."
+            f"Role '{membership.primary_role}' is insufficient. "
+            f"Required: '{min_role}'."
         )
 
     return membership
@@ -134,7 +134,7 @@ def require_permission(
 
     if perm_code not in effective:
         raise PermissionDenied(
-            f"Permission '{perm_code}' is not granted to role '{membership.get_role_display()}'."
+            f"Permission '{perm_code}' is not granted to role '{membership.primary_role}'."
         )
 
     return membership

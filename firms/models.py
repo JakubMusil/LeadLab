@@ -206,20 +206,52 @@ class Team(models.Model):
         return f"{self.name} ({self.firm})"
 
 
+# ---------------------------------------------------------------------------
+# MembershipManager – handles legacy ``role=`` kwarg transparently
+# ---------------------------------------------------------------------------
+
+class MembershipManager(models.Manager):
+    """Custom manager that intercepts the deprecated ``role=`` keyword argument.
+
+    Callers may still pass ``role='owner'`` (or a ``MembershipRole`` value) to
+    ``create()`` / ``get_or_create()``.  The manager strips the kwarg from the
+    SQL INSERT (the column no longer exists) and, after the row is persisted,
+    calls ``_assign_system_role_by_code()`` to maintain the M2M ``roles``
+    relation.
+    """
+
+    def create(self, **kwargs):
+        role = kwargs.pop("role", None)
+        obj = super().create(**kwargs)
+        if role is not None:
+            try:
+                obj._assign_system_role_by_code(str(role))
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "MembershipManager.create: failed to assign system role '%s' to %s",
+                    role,
+                    obj.pk,
+                    exc_info=True,
+                )
+        return obj
+
+
 class Membership(models.Model):
     """
-    Relates a User to a Firm with a specific role.
+    Relates a User to a Firm via M2M ``roles``.
 
     Business rules:
         - Each Firm has exactly one Owner (enforced at application level).
         - Only the Owner can delete the Firm.
-        - Admin can invite/remove Workers.
-        - Worker has read/write access to CRM data but cannot manage billing or team.
+        - Admin can invite/remove members.
+        - Member has read/write access to CRM data but cannot manage billing or team.
 
-    Phase 2 additions:
-        - ``roles``        – M2M to ``Role``; replaces legacy ``role`` in Phase 4+.
-        - ``default_scope`` – coarse visibility scope for query filtering.
-        - ``team``          – optional primary team assignment.
+    The legacy ``role`` CharField was removed in v2.2.  Use ``roles`` (M2M to
+    ``Role``) and the ``primary_role`` property for all role-related logic.
+    ``MembershipManager.create()`` transparently handles any ``role=`` kwarg
+    still present in tests and legacy call-sites by mapping it to the matching
+    system ``Role`` via M2M.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -233,13 +265,8 @@ class Membership(models.Model):
         on_delete=models.CASCADE,
         related_name="memberships",
     )
-    # Legacy flat role – retained as the authoritative source until Phase 8.
-    role = models.CharField(
-        max_length=20,
-        choices=MembershipRole.choices,
-        default=MembershipRole.WORKER,
-    )
-    # Phase 2 – new granular role assignments.
+    # v2.2: legacy ``role`` CharField removed – M2M ``roles`` is now authoritative.
+    # Phase 2 – granular role assignments.
     roles = models.ManyToManyField(
         Role,
         related_name="memberships",
@@ -272,14 +299,16 @@ class Membership(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    objects = MembershipManager()
+
     class Meta:
         verbose_name = "membership"
         verbose_name_plural = "memberships"
         unique_together = [("user", "firm")]
-        ordering = ["firm", "role"]
+        ordering = ["firm", "created_at"]
 
     def __str__(self):
-        return f"{self.user} – {self.firm} ({self.get_role_display()})"
+        return f"{self.user} – {self.firm} ({self.primary_role})"
 
     # ------------------------------------------------------------------
     # Convenience helpers
@@ -287,20 +316,20 @@ class Membership(models.Model):
 
     @property
     def is_owner(self):
-        return self.role == MembershipRole.OWNER
+        return self.primary_role == "owner"
 
     @property
     def is_admin_or_above(self):
-        return self.role in (MembershipRole.OWNER, MembershipRole.ADMIN)
+        return self.primary_role in ("owner", "admin")
 
     @property
     def primary_role(self) -> str:
         """Return the highest-priority role *code* derived from the M2M ``roles``
-        relation, falling back to the legacy ``role`` CharField.
+        relation.
 
         Priority order (highest wins): owner → admin → member → worker → guest → other.
-        This property provides a single read-only view so serialisers can switch
-        from ``role`` to ``primary_role`` without a breaking change.
+        Returns ``'guest'`` as the most restrictive fallback when no roles are
+        assigned (this should not happen in a correctly initialised workspace).
         """
         _priority = {"owner": 0, "admin": 1, "member": 2, "worker": 3, "guest": 4}
         try:
@@ -309,51 +338,35 @@ class Membership(models.Model):
             codes = []
         if codes:
             return min(codes, key=lambda c: _priority.get(c, 99))
-        return self.role
+        return "guest"
 
-    def _sync_legacy_role_to_m2m(self) -> None:
-        """Synchronise the M2M ``roles`` relation so the system Role matching
-        the legacy ``role`` CharField is always present.
+    def _assign_system_role_by_code(self, role_code: str) -> None:
+        """Assign the system Role matching *role_code* to this membership via M2M.
 
-        Called automatically from the membership post_save signal whenever
-        a Membership row is created or its ``role`` field is updated.  This
-        dual-write keeps the two representations in sync so that query code
-        can gradually migrate from ``membership.role`` to ``membership.roles``
-        without breaking existing behaviour.
+        Replaces any previously assigned *system* roles so there is exactly one
+        system role active at a time.  Custom (non-system) roles are preserved.
 
-        The ``LEGACY_TO_SYSTEM_ROLE`` mapping is used so that the deprecated
-        ``worker`` value is transparently resolved to the ``member`` system role.
+        This is the canonical write path used by all code that previously wrote
+        to the legacy ``role`` CharField.
         """
+        from firms.role_seeds import LEGACY_TO_SYSTEM_ROLE  # avoid circular at module level
+        # Normalise: e.g. 'worker' → 'member'
+        system_code = LEGACY_TO_SYSTEM_ROLE.get(str(role_code), str(role_code))
         try:
-            from firms.role_seeds import LEGACY_TO_SYSTEM_ROLE  # avoid circular at module level
-            system_code = LEGACY_TO_SYSTEM_ROLE.get(self.role, self.role)
-            system_role = Role.objects.filter(
+            system_role = Role.objects.get(
                 firm_id=self.firm_id,
                 code=system_code,
                 is_system=True,
-            ).first()
-            if system_role is None:
-                return  # System roles not yet seeded (e.g. fresh test DB)
-
-            # Find current system roles assigned to this membership.
-            current_system_roles = list(self.roles.filter(is_system=True))
-            current_system_pks = {r.pk for r in current_system_roles}
-
-            if current_system_pks == {system_role.pk}:
-                return  # Already in sync – nothing to do.
-
-            # Remove stale system roles and add the correct one atomically.
-            self.roles.remove(*[r for r in current_system_roles if r.pk != system_role.pk])
-            self.roles.add(system_role)
-        except Exception:  # noqa: BLE001
-            # Gracefully degrade – failure to sync should never break the main request.
-            import logging
-            logging.getLogger(__name__).warning(
-                "Failed to sync legacy role '%s' to M2M for Membership %s",
-                self.role,
-                self.pk,
-                exc_info=True,
             )
+        except Role.DoesNotExist:
+            return  # System roles not yet seeded (e.g. fresh test DB without seed)
+
+        current_system_roles = list(self.roles.filter(is_system=True))
+        if len(current_system_roles) == 1 and current_system_roles[0].pk == system_role.pk:
+            return  # Already correct – nothing to do.
+
+        self.roles.remove(*[r for r in current_system_roles if r.pk != system_role.pk])
+        self.roles.add(system_role)
 
 
 class TeamMembership(models.Model):

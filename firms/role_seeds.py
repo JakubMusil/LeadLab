@@ -147,11 +147,15 @@ def create_system_roles_for_firm(firm) -> None:
 
 
 def link_membership_to_system_role(membership) -> None:
-    """Assign the matching system role to *membership* based on its legacy ``role`` field."""
+    """Assign the matching system role to *membership* based on its *primary_role*.
+
+    Uses ``primary_role`` (derived from M2M ``roles``) rather than the removed
+    legacy ``role`` CharField.  Falls back to ``'member'`` when no role can be
+    determined.
+    """
     from firms.models import Role  # local import
-    system_code = LEGACY_TO_SYSTEM_ROLE.get(membership.role)
-    if system_code is None:
-        return
+    role_code = membership.primary_role or "member"
+    system_code = LEGACY_TO_SYSTEM_ROLE.get(role_code, role_code)
     try:
         role = Role.objects.get(firm=membership.firm, code=system_code)
     except Role.DoesNotExist:

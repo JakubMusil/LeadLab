@@ -596,7 +596,7 @@ def export_exchange_rates_csv(request, firm_id: str, include_history: bool = Fal
 def update_branding(request, firm_id: str, payload: FirmBrandingIn = Form(...), logo: UploadedFile = File(None)):
     """Update firm logo and/or primary color. Owner only."""
     membership = require_membership(request, firm_id)
-    if membership.role != MembershipRole.OWNER:
+    if not membership.is_owner:
         raise PermissionDenied()
     firm = membership.firm
     if logo is not None:
@@ -658,7 +658,7 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
     membership, created = Membership.objects.get_or_create(
         user=invitee,
         firm=firm,
-        defaults={"role": payload.role},
+        defaults={"role": payload.role},  # handled transparently by MembershipManager
     )
     if not created:
         return 400, {"detail": "User is already a member of this Firm."}
@@ -725,8 +725,7 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
     if payload.role == MembershipRole.OWNER:
         return 403, {"detail": "Cannot assign the Owner role."}
 
-    target.role = payload.role
-    target.save(update_fields=["role"])
+    target._assign_system_role_by_code(payload.role)
     target.refresh_from_db()
     return 200, _membership_out(target)
 
