@@ -9,7 +9,7 @@ from typing import List, Optional
 from ninja import Router, Schema
 from ninja.security import django_auth
 
-from firms.auth import InvitationRole, MembershipRole, require_membership
+from firms.auth import InvitationRole, require_membership
 from firms.models import Firm, WebhookDelivery, WebhookEndpoint
 from firms.token_auth import BearerTokenAuth
 

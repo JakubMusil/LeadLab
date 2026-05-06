@@ -20,7 +20,7 @@ from ninja.security import django_auth
 
 from crm.events import broadcast_event
 from crm.models import Category, CategoryField, Stage, PipelineRecord
-from firms.auth import InvitationRole, MembershipRole, PermissionDenied, require_membership
+from firms.auth import InvitationRole, PermissionDenied, require_membership
 
 pipeline_config_router = Router(tags=["pipeline-config"])
 logger = logging.getLogger(__name__)
@@ -233,7 +233,7 @@ def list_categories(request):
 def create_category(request, payload: CategoryIn):
     """Create a new category. Requires admin or owner role."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -266,7 +266,7 @@ def create_category(request, payload: CategoryIn):
 def update_category(request, category_id: str, payload: CategoryUpdateIn):
     """Update a category's name, color, icon, order, or active status."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -303,7 +303,7 @@ def update_category(request, category_id: str, payload: CategoryUpdateIn):
 def delete_category(request, category_id: str):
     """Delete a category. Returns 409 if any records reference it."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -353,7 +353,7 @@ def list_stages(request, category_id: str):
 def create_stage(request, category_id: str, payload: StageIn):
     """Create a stage within a category. Requires admin or owner role."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -389,7 +389,7 @@ def create_stage(request, category_id: str, payload: StageIn):
 def update_stage(request, category_id: str, stage_id: str, payload: StageUpdateIn):
     """Update a stage's properties."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -431,7 +431,7 @@ def update_stage(request, category_id: str, stage_id: str, payload: StageUpdateI
 def delete_stage(request, category_id: str, stage_id: str):
     """Delete a stage. Returns 409 if records use this stage."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -486,7 +486,7 @@ def list_fields(request, category_id: str):
 def create_field(request, category_id: str, field_key: str, payload: CategoryFieldUpdateIn):
     """Enable or update a field for a category. Returns 201 on creation, 200 if already exists."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -520,7 +520,7 @@ def create_field(request, category_id: str, field_key: str, payload: CategoryFie
 def update_field(request, category_id: str, field_key: str, payload: CategoryFieldUpdateIn):
     """Update an existing field configuration."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -552,7 +552,7 @@ def update_field(request, category_id: str, field_key: str, payload: CategoryFie
 def delete_field(request, category_id: str, field_key: str):
     """Remove a field configuration from a category."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
