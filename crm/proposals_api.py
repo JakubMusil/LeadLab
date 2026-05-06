@@ -57,12 +57,15 @@ from crm.models import (
     ProposalTemplateItem,
 )
 from crm.apps import set_current_user, clear_current_user
+from crm.permissions import filter_proposals_qs, filter_records_qs
 from crm.soft_delete import perform_soft_delete
 from firms.auth import (
     MembershipRole,
     PermissionDenied,
     require_membership,
+    require_permission,
 )
+from firms.permissions import Permission
 from crm.api import _activity_out as _shared_activity_out, _resolve_user_in_firm
 
 proposals_router = Router(tags=["proposals"])
@@ -460,11 +463,16 @@ def list_all_proposals(request, status: Optional[str] = None, record_id: Optiona
                        customer_id: Optional[str] = None):
     """List all proposals for the active firm, with optional filters."""
     try:
-        require_membership(request)
+        require_permission(request, Permission.PROPOSAL_CREATE)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
 
-    qs = Proposal.objects.filter(firm=request.firm).select_related('created_by', 'assigned_to').prefetch_related("items").order_by("-created_at")
+    qs = filter_proposals_qs(
+        Proposal.objects.filter(firm=request.firm).select_related('created_by', 'assigned_to').prefetch_related("items").order_by("-created_at"),
+        request,
+    )
     if status:
         qs = qs.filter(status=status)
     if record_id:
@@ -482,8 +490,10 @@ def list_all_proposals(request, status: Optional[str] = None, record_id: Optiona
 def create_standalone_proposal(request, payload: ProposalIn):
     """Create a proposal, optionally linked to any CRM entity."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_permission(request, Permission.PROPOSAL_CREATE)
     except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+    except Exception as exc:
         return 403, {"detail": str(exc)}
 
     import uuid as _uuid

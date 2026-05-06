@@ -13,9 +13,11 @@ from firms.auth import (
     check_tier_limits,
     require_active_subscription,
     require_membership,
+    require_permission,
 )
 from firms.middleware import TenantMiddleware
 from firms.models import Firm, Membership
+from firms.permissions import Permission
 from users.models import User
 
 
@@ -1643,3 +1645,143 @@ class MembershipAuditSignalTest(TestCase):
             firm=self.firm, action="membership.deleted"
         ).count()
         self.assertEqual(new_count, initial_count + 1)
+
+
+# ===========================================================================
+# Phase 4 – require_permission tests
+# ===========================================================================
+
+class RequirePermissionLegacyFlagTest(TestCase):
+    """Tests for require_permission with PERMISSIONS_V2_ENABLED=False (default)."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="Phase4 Firm")
+        self.owner = User.objects.create_user(email="p4owner@example.com", password="pass")
+        self.admin = User.objects.create_user(email="p4admin@example.com", password="pass")
+        self.worker = User.objects.create_user(email="p4worker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.admin_m = Membership.objects.create(user=self.admin, firm=self.firm, role=MembershipRole.ADMIN)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+
+    def _make_request(self, user, membership):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_owner_has_all_permissions(self):
+        req = self._make_request(self.owner, self.owner_m)
+        # Owner should pass every permission check
+        for perm in [
+            Permission.RECORD_VIEW, Permission.RECORD_CREATE, Permission.RECORD_EDIT,
+            Permission.RECORD_DELETE, Permission.BILLING_MANAGE, Permission.FIRM_DELETE,
+        ]:
+            result = require_permission(req, perm)
+            self.assertEqual(result, self.owner_m, f"Owner should have {perm}")
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_worker_has_record_permissions(self):
+        req = self._make_request(self.worker, self.worker_m)
+        for perm in [Permission.RECORD_VIEW, Permission.RECORD_CREATE, Permission.RECORD_EDIT]:
+            result = require_permission(req, perm)
+            self.assertEqual(result, self.worker_m)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_worker_denied_billing(self):
+        req = self._make_request(self.worker, self.worker_m)
+        with self.assertRaises(PermissionDenied):
+            require_permission(req, Permission.BILLING_MANAGE)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_worker_denied_role_manage(self):
+        req = self._make_request(self.worker, self.worker_m)
+        with self.assertRaises(PermissionDenied):
+            require_permission(req, Permission.ROLE_MANAGE)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_admin_has_role_manage(self):
+        req = self._make_request(self.admin, self.admin_m)
+        result = require_permission(req, Permission.ROLE_MANAGE)
+        self.assertEqual(result, self.admin_m)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_admin_denied_billing(self):
+        req = self._make_request(self.admin, self.admin_m)
+        with self.assertRaises(PermissionDenied):
+            require_permission(req, Permission.BILLING_MANAGE)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_unauthenticated_raises(self):
+        req = self.factory.get("/")
+        req.user = MagicMock(is_authenticated=False)
+        req.firm = self.firm
+        from firms.auth import AuthenticationRequired
+        with self.assertRaises(AuthenticationRequired):
+            require_permission(req, Permission.RECORD_VIEW)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=False)
+    def test_no_membership_raises(self):
+        req = self.factory.get("/")
+        req.user = self.worker
+        req.firm = self.firm
+        req.membership = None
+        with self.assertRaises(PermissionDenied):
+            require_permission(req, Permission.RECORD_VIEW)
+
+
+class RequirePermissionV2FlagTest(TestCase):
+    """Tests for require_permission with PERMISSIONS_V2_ENABLED=True (DB-backed)."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="Phase4V2 Firm")
+        self.owner = User.objects.create_user(email="v2owner@example.com", password="pass")
+        self.worker = User.objects.create_user(email="v2worker@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+
+    def _make_request(self, user, membership):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    @override_settings(PERMISSIONS_V2_ENABLED=True)
+    def test_owner_passes_all_v2(self):
+        """Owner always passes in V2 mode (shortcut path)."""
+        req = self._make_request(self.owner, self.owner_m)
+        result = require_permission(req, Permission.BILLING_MANAGE)
+        self.assertEqual(result, self.owner_m)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=True)
+    def test_worker_with_db_role_record_view(self):
+        """Worker with DB 'member' system role can view records."""
+        from firms.models import Role
+        # Seed system roles for this firm (normally done by data migration)
+        from firms.migrations._seed_helpers import create_system_roles_for_firm as seed_system_roles_for_firm
+        seed_system_roles_for_firm(self.firm)
+        member_role = Role.objects.get(firm=self.firm, code="member")
+        self.worker_m.roles.add(member_role)
+
+        req = self._make_request(self.worker, self.worker_m)
+        result = require_permission(req, Permission.RECORD_VIEW)
+        self.assertEqual(result, self.worker_m)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=True)
+    def test_worker_without_db_role_uses_legacy_fallback(self):
+        """When no DB roles assigned, legacy map is used as fallback."""
+        req = self._make_request(self.worker, self.worker_m)
+        # Worker legacy map includes RECORD_VIEW
+        result = require_permission(req, Permission.RECORD_VIEW)
+        self.assertEqual(result, self.worker_m)
+
+    @override_settings(PERMISSIONS_V2_ENABLED=True)
+    def test_worker_denied_billing_v2(self):
+        """Worker cannot access billing even in V2 mode (no roles assigned)."""
+        req = self._make_request(self.worker, self.worker_m)
+        with self.assertRaises(PermissionDenied):
+            require_permission(req, Permission.BILLING_MANAGE)
