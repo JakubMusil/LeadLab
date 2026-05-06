@@ -1598,7 +1598,12 @@
     "typePaymentReceived": "Přijatá platba",
     "typeInvoiceSent": "Odeslaná faktura",
     "typeSignatureRequested": "Požadavek na podpis",
-    "typeSignatureCompleted": "Podpis dokončen"
+    "typeSignatureCompleted": "Podpis dokončen",
+    "overviewTab": "Přehled",
+    "actionsBtn": "Akce",
+    "newViewLabel": "Nové zobrazení:",
+    "shortcutNamePlaceholder": "Název zkratky…",
+    "saveAsShortcut": "Uložit jako zkratku"
   },
   "sequences": {
     "title": "E-mailové sekvence",

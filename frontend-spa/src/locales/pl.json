@@ -1597,7 +1597,12 @@
     "typePaymentReceived": "Otrzymana płatność",
     "typeInvoiceSent": "Wysłana faktura",
     "typeSignatureRequested": "Żądanie podpisu",
-    "typeSignatureCompleted": "Podpis ukończony"
+    "typeSignatureCompleted": "Podpis ukończony",
+    "overviewTab": "Przegląd",
+    "actionsBtn": "Akcje",
+    "newViewLabel": "Nowy widok:",
+    "shortcutNamePlaceholder": "Nazwa skrótu…",
+    "saveAsShortcut": "Zapisz jako skrót"
   },
   "sequences": {
     "title": "Sekwencje e-mail",
