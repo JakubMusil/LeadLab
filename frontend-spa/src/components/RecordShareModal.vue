@@ -48,9 +48,9 @@ const selectedLevel = ref<'view' | 'edit' | 'manage'>('view')
 const expiresAt = ref('')
 
 const ACCESS_LEVELS = [
-  { value: 'view', label: '' },
-  { value: 'edit', label: '' },
-  { value: 'manage', label: '' },
+  { value: 'view' as const },
+  { value: 'edit' as const },
+  { value: 'manage' as const },
 ]
 
 async function loadData() {
@@ -200,7 +200,7 @@ watch(() => props.open, (val) => {
             class="w-full inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             <UserPlusIcon class="h-4 w-4" />
-            {{ t('permissions.shareGranted').replace('.', '') }}
+            {{ t('permissions.grantAccess') }}
           </button>
         </div>
       </div>

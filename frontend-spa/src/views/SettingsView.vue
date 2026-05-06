@@ -891,7 +891,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         @click="activeTab = 'roles'"
       >{{ t('permissions.tabRoles') }}</button>
       <button
-        v-if="permissionsStore.canManageTeams || permissionsStore.canManageRoles"
+        v-if="permissionsStore.canManageTeams"
         :class="activeTab === 'teams' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
         @click="activeTab = 'teams'"

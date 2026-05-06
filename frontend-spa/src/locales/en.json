@@ -2744,6 +2744,8 @@
     "auditTarget": "Target",
     "auditTime": "Time",
     "noAuditEntries": "No audit log entries",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "grantAccess": "Grant access",
+    "noMembers": "No members in this team"
   }
 }

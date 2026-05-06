@@ -257,7 +257,7 @@ onMounted(loadData)
               </button>
             </div>
             <div v-if="team.members.length === 0" class="text-xs text-gray-400 py-1">
-              {{ t('permissions.noTeams') }}
+              {{ t('permissions.noMembers') }}
             </div>
           </div>
 
