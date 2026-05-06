@@ -9,6 +9,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useTasksStore } from '@/stores/tasks'
 import { usePermissionsStore } from '@/stores/permissions'
+import { useCan } from '@/composables/useCan'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
@@ -57,6 +58,7 @@ const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
 const tasksStore = useTasksStore()
 const permissionsStore = usePermissionsStore()
+const { can } = useCan()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
@@ -211,7 +213,8 @@ const navSections = computed(() => [
       { label: t('nav.tasks'), icon: ClipboardDocumentListIcon, path: '/app/tasks' },
       { label: t('nav.calendar'), icon: CalendarDaysIcon, path: '/app/calendar' },
       { label: t('nav.timesheets'), icon: ClockIcon, path: '/app/timesheets' },
-      { label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' },
+      // Reports – only visible to users with report.view permission
+      ...(can('report.view') ? [{ label: t('nav.reports'), icon: DocumentChartBarIcon, path: '/app/reports' }] : []),
     ],
   },
   {
@@ -236,7 +239,8 @@ const navSections = computed(() => [
     label: t('appShell.sectionSettings'),
     items: [
       { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
-      { label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' },
+      // Plugins/Integrations – only visible to users with integrations.manage permission
+      ...(can('integrations.manage') ? [{ label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' }] : []),
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
       ...(authStore.user?.is_staff || authStore.user?.is_superuser ? [{ label: t('nav.superAdmin'), icon: ShieldCheckIcon, path: '/app/superadmin' }] : []),
     ],

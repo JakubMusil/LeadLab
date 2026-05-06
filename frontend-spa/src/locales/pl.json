@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Oznacz jako Wygrane ✓",
     "terminalConfirmLost": "Potwierdź przeniesienie",
     "terminalMoveFailed": "Nie udało się przenieść rekordu do tego etapu.",
-    "terminalCheckpointFailed": "Rekord przeniesiony, ale nie udało się utworzyć punktu kontrolnego."
+    "terminalCheckpointFailed": "Rekord przeniesiony, ale nie udało się utworzyć punktu kontrolnego.",
+    "categoryAccess": "Dostęp do kategorii",
+    "categoryGrantAdd": "Dodaj dostęp",
+    "categoryGrantUserIdPlaceholder": "UUID użytkownika…"
   },
   "proposals": {
     "title": "Oferty",
@@ -2733,7 +2736,7 @@
     "shareRevoked": "Dostęp cofnięty.",
     "failedToShare": "Nie udało się przyznać dostępu.",
     "failedToRevoke": "Nie udało się cofnąć dostępu.",
-    "currentAccess": "Bieżący dostęp",
+    "revokeAccess": "Cofnij dostęp",
     "noGrants": "Brak jawnych przyznań",
     "expiresAt": "Wygasa",
     "grantedBy": "Przyznane przez",

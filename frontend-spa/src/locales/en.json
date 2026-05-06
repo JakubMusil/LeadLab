@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Mark as Won ✓",
     "terminalConfirmLost": "Confirm move",
     "terminalMoveFailed": "Failed to move record to this stage.",
-    "terminalCheckpointFailed": "Record moved, but checkpoint could not be created."
+    "terminalCheckpointFailed": "Record moved, but checkpoint could not be created.",
+    "categoryAccess": "Category Access",
+    "categoryGrantAdd": "Add Access",
+    "categoryGrantUserIdPlaceholder": "User UUID…"
   },
   "proposals": {
     "title": "Proposals",
@@ -2733,7 +2736,7 @@
     "shareRevoked": "Access revoked.",
     "failedToShare": "Failed to grant access.",
     "failedToRevoke": "Failed to revoke access.",
-    "currentAccess": "Current access",
+    "revokeAccess": "Revoke access",
     "noGrants": "No explicit grants",
     "expiresAt": "Expires at",
     "grantedBy": "Granted by",
