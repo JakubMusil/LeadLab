@@ -365,7 +365,27 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 ---
 
-## 8. Definition of Done (celý projekt)
+## 9. Pracovní postup (log)
+
+### Fáze 1 – Foundation ✅ (2026-05-06)
+
+**Větvě**: `copilot/update-users-goals-documentation`
+
+**Co bylo uděláno:**
+- Vytvořen `firms/permissions.py` s:
+  - `Permission` enum (18 kódů: record.*, category.*, team.manage, role.manage, billing.manage, firm.delete/transfer, integrations.manage, report.view, activity.create, streamline.view_all, proposal.create)
+  - `Scope` enum (OWN / TEAM / CATEGORY / ALL)
+  - `LEGACY_ROLE_PERMISSIONS` mapa (OWNER → vše, ADMIN → vše kromě billing/firm, WORKER → základní CRM)
+  - `can(membership, permission, scope=None) -> bool`
+  - `has_min_role(membership, min_role) -> bool` – bridge pro zpětnou kompatibilitu
+- Refaktorován `firms/auth.py::require_membership` – interně volá `has_min_role()` místo `_role_rank()`
+- Přidán `PERMISSIONS_V2_ENABLED = False` do `leadlab/settings.py`
+- Přidán `PermissionMatrixTests` do `firms/tests.py` (45 testů pokrývajících celou matici role × permission)
+- Všechny existující testy prošly (90 tests OK)
+
+**Co bude následovat:**
+- Fáze 2: datový model `Role`, `Permission`, `RolePermission`, `Team`, `TeamMembership` + datová migrace + admin registrace
+
 
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).

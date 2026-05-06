@@ -1067,3 +1067,198 @@ class WebhookAPITest(TestCase):
         self.client.force_login(worker)
         resp = self.client.get(f"/api/v1/firms/{self.firm.id}/webhooks")
         self.assertEqual(resp.status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Permission matrix tests (Phase 1 – firms.permissions)
+# ---------------------------------------------------------------------------
+
+
+class PermissionMatrixTests(TestCase):
+    """
+    Verify that LEGACY_ROLE_PERMISSIONS correctly maps every combination of
+    role × permission to the expected ALLOW / DENY outcome.
+
+    These tests act as a regression guard: if the mapping is accidentally
+    changed, at least one assertion here will fail.
+    """
+
+    def setUp(self):
+        from firms.permissions import Permission, can, has_min_role
+
+        self.Permission = Permission
+        self.can = can
+        self.has_min_role = has_min_role
+
+        self.user = User.objects.create_user(email="perm_user@test.com", password="pass")
+        self.firm = Firm.objects.create(name="Perm Firm")
+        self.owner_m = Membership.objects.create(
+            user=self.user, firm=self.firm, role=MembershipRole.OWNER
+        )
+        # Additional users for admin / worker memberships
+        self.admin_user = User.objects.create_user(email="perm_admin@test.com", password="pass")
+        self.admin_m = Membership.objects.create(
+            user=self.admin_user, firm=self.firm, role=MembershipRole.ADMIN
+        )
+        self.worker_user = User.objects.create_user(email="perm_worker@test.com", password="pass")
+        self.worker_m = Membership.objects.create(
+            user=self.worker_user, firm=self.firm, role=MembershipRole.WORKER
+        )
+
+    # --- Owner: should have ALL permissions ---
+
+    def test_owner_has_record_view(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.RECORD_VIEW))
+
+    def test_owner_has_record_create(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.RECORD_CREATE))
+
+    def test_owner_has_record_edit(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.RECORD_EDIT))
+
+    def test_owner_has_record_delete(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.RECORD_DELETE))
+
+    def test_owner_has_category_manage(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.CATEGORY_MANAGE))
+
+    def test_owner_has_role_manage(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.ROLE_MANAGE))
+
+    def test_owner_has_billing_manage(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.BILLING_MANAGE))
+
+    def test_owner_has_firm_delete(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.FIRM_DELETE))
+
+    def test_owner_has_firm_transfer(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.FIRM_TRANSFER))
+
+    def test_owner_has_integrations_manage(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.INTEGRATIONS_MANAGE))
+
+    def test_owner_has_team_manage(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.TEAM_MANAGE))
+
+    def test_owner_has_streamline_view_all(self):
+        self.assertTrue(self.can(self.owner_m, self.Permission.STREAMLINE_VIEW_ALL))
+
+    # --- Admin: has most permissions but NOT billing/firm-ownership ---
+
+    def test_admin_has_record_view(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.RECORD_VIEW))
+
+    def test_admin_has_record_create(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.RECORD_CREATE))
+
+    def test_admin_has_record_edit(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.RECORD_EDIT))
+
+    def test_admin_has_record_delete(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.RECORD_DELETE))
+
+    def test_admin_has_category_manage(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.CATEGORY_MANAGE))
+
+    def test_admin_has_role_manage(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.ROLE_MANAGE))
+
+    def test_admin_has_team_manage(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.TEAM_MANAGE))
+
+    def test_admin_has_integrations_manage(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.INTEGRATIONS_MANAGE))
+
+    def test_admin_has_streamline_view_all(self):
+        self.assertTrue(self.can(self.admin_m, self.Permission.STREAMLINE_VIEW_ALL))
+
+    def test_admin_lacks_billing_manage(self):
+        self.assertFalse(self.can(self.admin_m, self.Permission.BILLING_MANAGE))
+
+    def test_admin_lacks_firm_delete(self):
+        self.assertFalse(self.can(self.admin_m, self.Permission.FIRM_DELETE))
+
+    def test_admin_lacks_firm_transfer(self):
+        self.assertFalse(self.can(self.admin_m, self.Permission.FIRM_TRANSFER))
+
+    # --- Worker: basic CRM actions only ---
+
+    def test_worker_has_record_view(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_VIEW))
+
+    def test_worker_has_record_create(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_CREATE))
+
+    def test_worker_has_record_edit(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_EDIT))
+
+    def test_worker_has_record_delete(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.RECORD_DELETE))
+
+    def test_worker_has_activity_create(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.ACTIVITY_CREATE))
+
+    def test_worker_has_proposal_create(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.PROPOSAL_CREATE))
+
+    def test_worker_has_category_view(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.CATEGORY_VIEW))
+
+    def test_worker_has_report_view(self):
+        self.assertTrue(self.can(self.worker_m, self.Permission.REPORT_VIEW))
+
+    def test_worker_lacks_category_manage(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.CATEGORY_MANAGE))
+
+    def test_worker_lacks_role_manage(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.ROLE_MANAGE))
+
+    def test_worker_lacks_team_manage(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.TEAM_MANAGE))
+
+    def test_worker_lacks_billing_manage(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.BILLING_MANAGE))
+
+    def test_worker_lacks_firm_delete(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.FIRM_DELETE))
+
+    def test_worker_lacks_firm_transfer(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.FIRM_TRANSFER))
+
+    def test_worker_lacks_integrations_manage(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.INTEGRATIONS_MANAGE))
+
+    def test_worker_lacks_streamline_view_all(self):
+        self.assertFalse(self.can(self.worker_m, self.Permission.STREAMLINE_VIEW_ALL))
+
+    # --- has_min_role: backward-compat bridge ---
+
+    def test_owner_passes_owner_min_role(self):
+        self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.OWNER))
+
+    def test_owner_passes_admin_min_role(self):
+        self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.ADMIN))
+
+    def test_owner_passes_worker_min_role(self):
+        self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.WORKER))
+
+    def test_admin_fails_owner_min_role(self):
+        self.assertFalse(self.has_min_role(self.admin_m, MembershipRole.OWNER))
+
+    def test_admin_passes_admin_min_role(self):
+        self.assertTrue(self.has_min_role(self.admin_m, MembershipRole.ADMIN))
+
+    def test_admin_passes_worker_min_role(self):
+        self.assertTrue(self.has_min_role(self.admin_m, MembershipRole.WORKER))
+
+    def test_worker_fails_owner_min_role(self):
+        self.assertFalse(self.has_min_role(self.worker_m, MembershipRole.OWNER))
+
+    def test_worker_fails_admin_min_role(self):
+        self.assertFalse(self.has_min_role(self.worker_m, MembershipRole.ADMIN))
+
+    def test_worker_passes_worker_min_role(self):
+        self.assertTrue(self.has_min_role(self.worker_m, MembershipRole.WORKER))
+
+    def test_unknown_min_role_denied(self):
+        self.assertFalse(self.has_min_role(self.worker_m, "superuser"))
