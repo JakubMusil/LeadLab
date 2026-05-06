@@ -380,7 +380,7 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
   - `has_min_role(membership, min_role) -> bool` – bridge pro zpětnou kompatibilitu
 - Refaktorován `firms/auth.py::require_membership` – interně volá `has_min_role()` místo `_role_rank()`
 - Přidán `PERMISSIONS_V2_ENABLED = False` do `leadlab/settings.py`
-- Přidán `PermissionMatrixTests` do `firms/tests.py` (45 testů pokrývajících celou matici role × permission)
+- Přidán `PermissionMatrixTests` do `firms/tests.py` (50 nových testů pokrývajících celou matici role × permission)
 - Všechny existující testy prošly (90 tests OK)
 
 **Co bude následovat:**

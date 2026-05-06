@@ -21,11 +21,14 @@ Phase 1 – Foundation
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from firms.models import Membership
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +158,18 @@ def can(
     parameter is accepted for forward-compatibility but is not evaluated
     until ``PERMISSIONS_V2_ENABLED`` is active (Phase 4).
     """
-    role_perms = LEGACY_ROLE_PERMISSIONS.get(membership.role, frozenset())
+    # Unknown membership role → deny and log a warning so misconfigurations
+    # surface quickly (returning an empty frozenset is the secure default but
+    # could be hard to diagnose without a log message).
+    role_perms = LEGACY_ROLE_PERMISSIONS.get(membership.role)
+    if role_perms is None:
+        logger.warning(
+            "can(): unrecognised membership role %r for membership %s – denying permission %r",
+            membership.role,
+            membership.pk,
+            permission,
+        )
+        return False
     return permission in role_perms
 
 

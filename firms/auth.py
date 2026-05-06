@@ -52,19 +52,6 @@ class FirmNotFound(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Role ordering — higher index = more privileges
-# (kept for reference; enforcement now delegates to firms.permissions.can)
-# ---------------------------------------------------------------------------
-
-_ROLE_ORDER = [MembershipRole.WORKER, MembershipRole.ADMIN, MembershipRole.OWNER]
-
-
-def _role_rank(role: str) -> int:
-    try:
-        return _ROLE_ORDER.index(role)
-    except ValueError:
-        return -1
-
 
 # ---------------------------------------------------------------------------
 # Core enforcement helpers
