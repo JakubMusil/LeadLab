@@ -1897,7 +1897,9 @@ def expire_memberships(self):
     from firms.models import Membership, PermissionAuditLog
 
     now = timezone.now()
-    expired = Membership.objects.filter(expires_at__isnull=False, expires_at__lte=now)
+    expired = Membership.objects.filter(
+        expires_at__isnull=False, expires_at__lte=now
+    ).select_related("user", "firm")
 
     deleted_count = 0
     for membership in expired:
@@ -1909,7 +1911,7 @@ def expire_memberships(self):
                 target_type="membership",
                 target_id=str(membership.id),
                 payload={
-                    "user_email": membership.user.email if membership.user_id else None,
+                    "user_email": membership.user.email if membership.user else None,
                     "primary_role": membership.primary_role,
                     "expires_at": membership.expires_at.isoformat(),
                 },

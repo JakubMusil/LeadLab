@@ -704,7 +704,7 @@ def remove_member(request, firm_id: str, membership_id: str):
 )
 def update_member_role(request, firm_id: str, membership_id: str, payload: MemberRoleUpdateIn):
     """Update a member's role and/or expiry (Admin/Owner only; cannot change Owner's role)."""
-    from datetime import datetime
+    from django.utils.dateparse import parse_datetime
     try:
         firm = Firm.objects.get(id=firm_id, is_active=True)
     except Firm.DoesNotExist:
@@ -736,10 +736,10 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
         if payload.expires_at is None:
             target.expires_at = None
         else:
-            try:
-                target.expires_at = datetime.fromisoformat(payload.expires_at)
-            except (ValueError, TypeError):
+            parsed = parse_datetime(payload.expires_at)
+            if parsed is None:
                 return 400, {"detail": "Invalid expires_at format; use ISO-8601."}
+            target.expires_at = parsed
         target.save(update_fields=["expires_at"])
 
     target.refresh_from_db()
