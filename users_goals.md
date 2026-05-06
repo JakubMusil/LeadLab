@@ -693,12 +693,35 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 **Co bude následovat:**
 - Merge do `main` a tag `v2.0-permissions`
-- e2e testy pro 5 use-cases ze sekce 5
+- ~~e2e testy pro 5 use-cases ze sekce 5~~ ✅ Hotovo (viz níže)
 - Drop column `Membership.role` (plánováno pro v2.1 po ověření zpětné kompatibility)
 
 - [x] 8 fází implementováno na větvi `copilot/update-users-goals-document-please-work`.
+- [x] e2e testy pro 5 use-cases vytvořeny v `e2e/tests/permissions.spec.ts`.
 - [ ] Merge do `main` a release `v2.0-permissions` vystaven.
 - [ ] e2e scénáře (5 use-cases ze sekce 5) procházejí v CI.
 - [x] Dokumentace v `docs/permissions/` kompletní.
 - [ ] Audit log dostupný v UI (Settings → Audit) i přes API.
 - [x] Žádná regrese v existujících integracích (Fakturoid, webhooks, plugins) – 199 testů zelených.
+
+
+### Post-Phase 8 – e2e testy oprávnění ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-b9026ad6-21a2-4368-b1d2-f3c217269313`
+
+**Co bylo uděláno:**
+
+- Vytvořen `e2e/tests/permissions.spec.ts` pokrývající všech 5 use-cases ze sekce 5:
+  - **UC1** – Member se `scope=own` vidí v listu záznamů jen ty, kde je `created_by`/`assigned_to` (ne záznamy vlastníka)
+  - **UC2** – Owner udělí Member-ovi per-record grant (`level=view`) → Member nově vidí daný záznam přes API i v detailu
+  - **UC3** – Owner vytvoří tým, přidá Member-a, Member vytvoří vlastní záznam → Owner (scope=all) vidí záznamy obou
+  - **UC4** – Owner udělí Member-ovi časově omezený grant (`expires_at = now+30d`) → Member přistupuje k záznamu, grant je viditelný v `/access` endpointu
+  - **UC5 + UC5b** – Member (worker role) nemůže smazat firmu (`DELETE /firms/{id}` → 403); `GET /me/permissions` vrací `firm.delete` jen pro Owner-a, ne pro Member-a
+- Testy využívají multi-user setup: primární Owner context (ze `auth.setup.ts`) + sekundární `APIRequestContext` vytvořený přes `playwright.request.newContext()` a přihlašení přes session cookies
+- Helpery: `loginAs(playwright, baseURL, email, password)` – vrací autentizovaný `APIRequestContext` pro sekundárního uživatele
+- Sled testů je serializovaný (`test.describe.serial`) – `beforeAll` registruje member uživatele, přidá ho do firmy; testy sdílí `firmId`, `ownerRecordId`, `memberEmail`
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions`
+- Drop column `Membership.role` (v2.1)
+- UI pro Audit log v SettingsView
