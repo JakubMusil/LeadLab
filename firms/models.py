@@ -238,6 +238,29 @@ class MembershipManager(models.Manager):
                 )
         return obj
 
+    def get_or_create(self, defaults=None, **kwargs):
+        """Override that strips a deprecated ``role`` kwarg from ``defaults``.
+
+        ``Membership.role`` was dropped in v2.2; callers may still pass
+        ``defaults={"role": "..."}`` for backward compatibility. We pop the key
+        before delegating to Django, then assign the matching system role on
+        the M2M ``roles`` relation when a new row is created.
+        """
+        defaults = dict(defaults) if defaults else {}
+        role = defaults.pop("role", None)
+        obj, created = super().get_or_create(defaults=defaults, **kwargs)
+        if created and role is not None:
+            try:
+                obj._assign_system_role_by_code(str(role))
+            except Exception as exc:  # noqa: BLE001
+                _logger.warning(
+                    "MembershipManager.get_or_create: failed to assign system role '%s' to %s: %s",
+                    role,
+                    obj.pk,
+                    exc,
+                )
+        return obj, created
+
 
 class Membership(models.Model):
     """
@@ -501,7 +524,7 @@ class Invitation(models.Model):
     role = models.CharField(
         max_length=20,
         choices=MembershipRole.choices,
-        default=MembershipRole.WORKER,
+        default=MembershipRole.MEMBER,
     )
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -84,7 +84,7 @@ class MembershipOut(Schema):
 
 class MemberInviteIn(Schema):
     email: str
-    role: str = MembershipRole.WORKER
+    role: str = MembershipRole.MEMBER
     # Phase 6 – extended invite settings
     role_codes: List[str] = []
     default_scope: str = "own"
