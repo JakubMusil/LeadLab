@@ -2301,3 +2301,218 @@ class NotifyExpiringMembershipsTaskTest(TestCase):
 
         self.assertEqual(result["notified"], 0)
         mock_send.assert_not_called()
+
+
+class OwnershipTransferAPITest(TestCase):
+    """Tests for POST/GET/DELETE /firms/{id}/transfer-ownership endpoints."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="TransferFirm")
+        self.owner_user = User.objects.create_user(email="transfer_owner@example.com", password="pass")
+        self.admin_user = User.objects.create_user(email="transfer_admin@example.com", password="pass")
+        self.member_user = User.objects.create_user(email="transfer_member@example.com", password="pass")
+
+        self.owner_m = Membership.objects.create(user=self.owner_user, firm=self.firm, role=InvitationRole.OWNER)
+        self.admin_m = Membership.objects.create(user=self.admin_user, firm=self.firm, role=InvitationRole.ADMIN)
+        self.member_m = Membership.objects.create(user=self.member_user, firm=self.firm, role=InvitationRole.MEMBER)
+
+    def _req(self, user):
+        req = self.factory.post("/")
+        req.user = user
+        return req
+
+    def test_owner_can_initiate_transfer(self):
+        """Owner can initiate an ownership transfer to an existing member."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            status, result = initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(result["to_user_email"], self.admin_user.email)
+        self.assertTrue(result["is_pending"])
+        self.assertFalse(result["is_confirmed"])
+
+    def test_non_owner_cannot_initiate_transfer(self):
+        """Admin (non-owner) cannot initiate a transfer."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+
+        payload = TransferOwnershipIn(to_user_id=str(self.member_m.id))
+        with patch("django.core.mail.send_mail"):
+            status, result = initiate_ownership_transfer(
+                self._req(self.admin_user), firm_id=str(self.firm.id), payload=payload
+            )
+        self.assertEqual(status, 403)
+
+    def test_cannot_transfer_to_self(self):
+        """Owner cannot transfer to themselves."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+
+        payload = TransferOwnershipIn(to_user_id=str(self.owner_m.id))
+        with patch("django.core.mail.send_mail"):
+            status, result = initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+        self.assertEqual(status, 400)
+
+    def test_confirm_transfer_changes_roles(self):
+        """After confirmation, new owner gets owner role and old owner gets admin role."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn, confirm_ownership_transfer
+        from firms.models import OwnershipTransfer
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            status, _ = initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+        self.assertEqual(status, 200)
+
+        transfer = OwnershipTransfer.objects.get(firm=self.firm, confirmed_at__isnull=True)
+
+        req_confirm = self.factory.post("/")
+        req_confirm.user = self.admin_user
+        status2, result2 = confirm_ownership_transfer(
+            req_confirm, firm_id=str(self.firm.id), token=str(transfer.token)
+        )
+        self.assertEqual(status2, 200)
+        self.assertTrue(result2["is_confirmed"])
+
+        # Old owner is now admin
+        self.owner_m.refresh_from_db()
+        self.assertEqual(self.owner_m.primary_role, "admin")
+
+        # New owner is now owner
+        self.admin_m.refresh_from_db()
+        self.assertEqual(self.admin_m.primary_role, "owner")
+
+    def test_wrong_user_cannot_confirm(self):
+        """A user who is not the designated new owner cannot confirm the transfer."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn, confirm_ownership_transfer
+        from firms.models import OwnershipTransfer
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+
+        transfer = OwnershipTransfer.objects.get(firm=self.firm, confirmed_at__isnull=True)
+
+        req_confirm = self.factory.post("/")
+        req_confirm.user = self.member_user  # Not the designated new owner
+        status, result = confirm_ownership_transfer(
+            req_confirm, firm_id=str(self.firm.id), token=str(transfer.token)
+        )
+        self.assertEqual(status, 403)
+
+    def test_expired_transfer_cannot_be_confirmed(self):
+        """Expired transfer tokens are rejected."""
+        import datetime
+        from unittest.mock import patch
+        from django.utils import timezone
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn, confirm_ownership_transfer
+        from firms.models import OwnershipTransfer
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+
+        transfer = OwnershipTransfer.objects.get(firm=self.firm, confirmed_at__isnull=True)
+        # Force expiry
+        transfer.expires_at = timezone.now() - datetime.timedelta(hours=1)
+        transfer.save(update_fields=["expires_at"])
+
+        req_confirm = self.factory.post("/")
+        req_confirm.user = self.admin_user
+        status, result = confirm_ownership_transfer(
+            req_confirm, firm_id=str(self.firm.id), token=str(transfer.token)
+        )
+        self.assertEqual(status, 400)
+
+    def test_owner_can_cancel_pending_transfer(self):
+        """Owner can cancel a pending transfer."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn, cancel_ownership_transfer
+        from firms.models import OwnershipTransfer
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+
+        req = self.factory.delete("/")
+        req.user = self.owner_user
+        status, _ = cancel_ownership_transfer(req, firm_id=str(self.firm.id))
+        self.assertEqual(status, 204)
+        self.assertFalse(OwnershipTransfer.objects.filter(firm=self.firm, confirmed_at__isnull=True).exists())
+
+    def test_initiating_new_transfer_cancels_previous(self):
+        """Starting a new transfer cancels any existing pending one."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+        from firms.models import OwnershipTransfer
+
+        payload1 = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload1
+            )
+
+        payload2 = TransferOwnershipIn(to_user_id=str(self.member_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload2
+            )
+
+        pending = OwnershipTransfer.objects.filter(firm=self.firm, confirmed_at__isnull=True)
+        self.assertEqual(pending.count(), 1)
+        self.assertEqual(pending.first().to_user, self.member_user)
+
+    def test_audit_log_created_on_transfer_initiation(self):
+        """PermissionAuditLog entry is created when transfer is initiated."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+        from firms.models import PermissionAuditLog
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail"):
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+
+        self.assertTrue(
+            PermissionAuditLog.objects.filter(
+                firm=self.firm, action="ownership.transfer_initiated"
+            ).exists()
+        )
+
+    def test_email_sent_on_initiation(self):
+        """An email is dispatched to the new owner when a transfer is initiated."""
+        from unittest.mock import patch
+        from firms.api import initiate_ownership_transfer, TransferOwnershipIn
+
+        payload = TransferOwnershipIn(to_user_id=str(self.admin_m.id))
+        with patch("django.core.mail.send_mail") as mock_send:
+            initiate_ownership_transfer(
+                self._req(self.owner_user), firm_id=str(self.firm.id), payload=payload
+            )
+        mock_send.assert_called_once()
+        call_kwargs = mock_send.call_args
+        # send_mail(subject, message, from_email, recipient_list, fail_silently=True)
+        # recipient_list is the 4th positional arg (index 3) or keyword arg
+        if call_kwargs.args:
+            recipient_list = call_kwargs.args[3]
+        else:
+            recipient_list = call_kwargs.kwargs.get("recipient_list", [])
+        self.assertIn(self.admin_user.email, recipient_list)

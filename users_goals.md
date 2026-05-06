@@ -1117,3 +1117,64 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Volitelně: Zobrazit celý záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
 - Volitelně: Transfer Ownership (2-step confirm e-mailem + UI) z `open questions` sekce 7
 
+
+### v2.9 – Transfer Ownership (2-step potvrdit e-mailem + UI) ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-a240d7a0-b3a9-48d9-ab54-adb992ff8e9a`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py` – nový model `OwnershipTransfer`**:
+  - Pole: `id` (UUID PK), `firm` (FK→Firm CASCADE), `from_user` (FK→User CASCADE), `to_user` (FK→User CASCADE), `token` (UUID unique, db_index), `created_at`, `expires_at` (48 hodin, default), `confirmed_at` (nullable)
+  - Properties: `is_expired`, `is_confirmed`, `is_pending`
+  - `PermissionAuditLog.ACTION_CHOICES` rozšířen o `ownership.transfer_initiated`, `ownership.transfer_confirmed`, `ownership.transfer_cancelled`
+  - Helper funkce `_default_transfer_expiry()`
+
+- **`firms/migrations/0013_ownership_transfer.py`** – schémová migrace
+
+- **`firms/api.py` – nové endpointy Transfer Ownership**:
+  - `POST /firms/{id}/transfer-ownership` – Owner spustí převod; automaticky zruší existující pending transfer; odešle e-mail novému vlastníkovi s potvrzovacím linkem; vytvoří `PermissionAuditLog` záznam
+  - `POST /firms/{id}/transfer-ownership/{token}/confirm` – nový vlastník potvrdí; demotuje starého vlastníka na Admin; elevuje nového na Owner; nastaví `confirmed_at`; audit log
+  - `DELETE /firms/{id}/transfer-ownership` – Owner zruší pending transfer; audit log
+  - `GET /firms/{id}/transfer-ownership` – vrátí pending transfer nebo null (přístupný všem členům)
+  - Schémata: `TransferOwnershipIn` (to_user_id), `OwnershipTransferOut`
+
+- **`firms/admin.py`** – registrován `OwnershipTransferAdmin` (read-only přehled)
+
+- **Frontend – `frontend-spa/src/views/SettingsView.vue`**:
+  - Import `useCan` composable, `isOwner` computed
+  - Stav: `pendingTransfer`, `transferMembers`, `showTransferForm`, `transferTargetMembershipId`, `transferLoading/Error/Success`
+  - Funkce: `loadPendingTransfer()`, `loadTransferMembers()`, `initiateTransfer()`, `cancelTransfer()`
+  - `loadPendingTransfer()` volán v `onMounted`
+  - Nová sekce „Transfer Ownership" ve workspace záložce (viditelná jen pro `isOwner`):
+    - Banner pending transferu s možností zrušit
+    - Formulář pro výběr nového vlastníka ze select (lazy load členů)
+    - Feedback: success/error zprávy
+
+- **Frontend – `frontend-spa/src/views/OwnershipTransferConfirmView.vue`** (nový):
+  - Zobrazí přehled pending transferu (from/to/expires)
+  - Tlačítko „Accept Ownership" + varování o důsledcích
+  - Po potvrzení přesměruje na dashboard
+  - Error/success stavy
+
+- **Router** – nová route `/app/ownership-transfer/:firmId/:token/confirm`
+
+- **i18n** – přidáno 20 klíčů pod `settings.transferOwnership*` ve všech 4 lokalizacích (cs/en/de/pl)
+
+- **Testy** – přidáno 10 nových testů `OwnershipTransferAPITest` do `firms/tests.py`:
+  - `test_owner_can_initiate_transfer`
+  - `test_non_owner_cannot_initiate_transfer`
+  - `test_cannot_transfer_to_self`
+  - `test_confirm_transfer_changes_roles`
+  - `test_wrong_user_cannot_confirm`
+  - `test_expired_transfer_cannot_be_confirmed`
+  - `test_owner_can_cancel_pending_transfer`
+  - `test_initiating_new_transfer_cancels_previous`
+  - `test_audit_log_created_on_transfer_initiation`
+  - `test_email_sent_on_initiation`
+- 228/228 testů zelených (+ 10 nových); 100/100 frontend testů zelených; TypeScript: 0 nových chyb
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.9`
+- Volitelně: Zobrazit záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
+

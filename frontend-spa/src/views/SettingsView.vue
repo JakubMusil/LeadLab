@@ -18,12 +18,14 @@ import RolesSettingsView from '@/views/RolesSettingsView.vue'
 import TeamsSettingsView from '@/views/TeamsSettingsView.vue'
 import AuditLogSettingsView from '@/views/AuditLogSettingsView.vue'
 import { usePermissionsStore } from '@/stores/permissions'
+import { useCan } from '@/composables/useCan'
 
 const recordScoringStore = useRecordScoringStore()
 
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const permissionsStore = usePermissionsStore()
+const { isOwner } = useCan()
 const toast = useToast()
 const router = useRouter()
 const { isPro } = storeToRefs(firmStore)
@@ -110,6 +112,83 @@ const activeTab = ref<'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'a
 const confirmDeleteWorkspace = ref(false)
 const dangerLoading = ref(false)
 const confirmDeleteText = ref('')
+
+// Transfer Ownership
+interface TransferOut {
+  id: string
+  firm_id: string
+  from_user_email: string
+  to_user_email: string
+  expires_at: string
+  is_pending: boolean
+  is_confirmed: boolean
+}
+interface TransferMember {
+  id: string
+  user_email: string
+  user_full_name: string
+}
+const transferLoading = ref(false)
+const transferError = ref('')
+const transferSuccess = ref('')
+const pendingTransfer = ref<TransferOut | null>(null)
+const transferTargetMembershipId = ref('')
+const showTransferForm = ref(false)
+const transferMembers = ref<TransferMember[]>([])
+
+async function loadPendingTransfer() {
+  if (!firmStore.activeFirm) return
+  const res = await api.get<TransferOut | null>(`/api/v1/firms/${firmStore.activeFirm.id}/transfer-ownership`)
+  if (res.ok) {
+    pendingTransfer.value = res.data ?? null
+  }
+}
+
+async function loadTransferMembers() {
+  if (!firmStore.activeFirm) return
+  const res = await api.get<TransferMember[]>(`/api/v1/firms/${firmStore.activeFirm.id}/members`)
+  if (res.ok && Array.isArray(res.data)) {
+    // Exclude the current user (they can't transfer to themselves)
+    transferMembers.value = res.data.filter(m => m.user_email !== authStore.user?.email)
+  }
+}
+
+async function initiateTransfer() {
+  if (!firmStore.activeFirm || !transferTargetMembershipId.value) return
+  transferLoading.value = true
+  transferError.value = ''
+  transferSuccess.value = ''
+  try {
+    const res = await api.post<TransferOut>(`/api/v1/firms/${firmStore.activeFirm.id}/transfer-ownership`, {
+      to_user_id: transferTargetMembershipId.value,
+    })
+    if (res.ok && res.data) {
+      pendingTransfer.value = res.data
+      transferSuccess.value = t('settings.transferOwnershipSent')
+      showTransferForm.value = false
+      transferTargetMembershipId.value = ''
+    } else {
+      transferError.value = ((res.data as unknown) as { detail?: string })?.detail ?? t('settings.transferOwnershipError')
+    }
+  } finally {
+    transferLoading.value = false
+  }
+}
+
+async function cancelTransfer() {
+  if (!firmStore.activeFirm) return
+  transferLoading.value = true
+  transferError.value = ''
+  try {
+    const res = await api.delete(`/api/v1/firms/${firmStore.activeFirm.id}/transfer-ownership`)
+    if (res.ok) {
+      pendingTransfer.value = null
+      transferSuccess.value = t('settings.transferOwnershipCancelled')
+    }
+  } finally {
+    transferLoading.value = false
+  }
+}
 
 // Currency & formatting settings
 const { firmCurrency, formatAmount } = useMoney()
@@ -506,6 +585,8 @@ onMounted(() => {
       if (firmStore.isPro) loadExchangeRates()
       // Initialize permissions store
       permissionsStore.init(firmStore.activeFirm.id)
+      // Load pending ownership transfer (owner only)
+      loadPendingTransfer()
     }
   })
   // Seed the workspace name from the cached store value immediately so the input is not blank
@@ -1758,6 +1839,59 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
           </div>
         </div>
       </Teleport>
+    </div>
+
+    <!-- Transfer Ownership (Owner only) -->
+    <div v-if="isOwner" class="bg-white rounded-2xl border border-amber-200 p-5">
+      <h2 class="text-sm font-semibold text-amber-700 mb-1">{{ t('settings.transferOwnershipSection') }}</h2>
+      <p class="text-xs text-gray-500 mb-4">{{ t('settings.transferOwnershipDesc') }}</p>
+
+      <!-- Pending transfer banner -->
+      <div v-if="pendingTransfer" class="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
+        <p class="font-medium text-amber-800">{{ t('settings.transferOwnershipPending') }}</p>
+        <p class="text-amber-700 mt-1">{{ t('settings.transferOwnershipPendingTo', { email: pendingTransfer.to_user_email }) }}</p>
+        <p class="text-xs text-amber-600 mt-1">{{ t('settings.transferOwnershipExpires', { date: new Date(pendingTransfer.expires_at).toLocaleString() }) }}</p>
+        <button
+          :disabled="transferLoading"
+          class="mt-3 px-3 py-1.5 border border-amber-400 text-amber-700 rounded-lg text-xs hover:bg-amber-100 disabled:opacity-50"
+          @click="cancelTransfer"
+        >{{ t('settings.transferOwnershipCancel') }}</button>
+      </div>
+
+      <!-- Success message -->
+      <div v-if="transferSuccess" class="mb-3 rounded-xl bg-green-50 border border-green-200 px-4 py-2 text-sm text-green-700">{{ transferSuccess }}</div>
+      <!-- Error message -->
+      <div v-if="transferError" class="mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">{{ transferError }}</div>
+
+      <!-- Initiate transfer form -->
+      <div v-if="!pendingTransfer">
+        <button
+          v-if="!showTransferForm"
+          class="px-4 py-2 border border-amber-400 text-amber-700 rounded-xl text-sm hover:bg-amber-50"
+          @click="showTransferForm = true; loadTransferMembers()"
+        >{{ t('settings.transferOwnershipBtn') }}</button>
+
+        <div v-else class="space-y-3">
+          <label class="block text-xs font-medium text-gray-600">{{ t('settings.transferOwnershipSelectMember') }}</label>
+          <select
+            v-model="transferTargetMembershipId"
+            class="w-full rounded-xl border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+          >
+            <option value="">{{ t('settings.transferOwnershipSelectPlaceholder') }}</option>
+            <option v-for="m in transferMembers" :key="m.id" :value="m.id">
+              {{ m.user_full_name || m.user_email }} ({{ m.user_email }})
+            </option>
+          </select>
+          <div class="flex gap-2">
+            <button class="flex-1 rounded-xl border border-gray-200 py-2 text-sm" @click="showTransferForm = false; transferTargetMembershipId = ''; transferError = ''">{{ t('common.cancel') }}</button>
+            <button
+              :disabled="transferLoading || !transferTargetMembershipId"
+              class="flex-1 bg-amber-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+              @click="initiateTransfer"
+            >{{ transferLoading ? '…' : t('settings.transferOwnershipConfirmBtn') }}</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Danger zone -->

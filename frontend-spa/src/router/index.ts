@@ -31,6 +31,10 @@ const router = createRouter({
       component: () => import('@/views/AcceptInviteView.vue'),
     },
     {
+      path: '/app/ownership-transfer/:firmId/:token/confirm',
+      component: () => import('@/views/OwnershipTransferConfirmView.vue'),
+    },
+    {
       path: '/app/onboarding',
       component: () => import('@/views/OnboardingView.vue'),
       meta: { requiresAuth: true },

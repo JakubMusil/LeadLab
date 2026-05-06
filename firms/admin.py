@@ -5,6 +5,7 @@ from firms.models import (
     Firm,
     Invitation,
     Membership,
+    OwnershipTransfer,
     PermissionAuditLog,
     PermissionRecord,
     Role,
@@ -148,3 +149,11 @@ class PermissionAuditLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(OwnershipTransfer)
+class OwnershipTransferAdmin(admin.ModelAdmin):
+    list_display = ("firm", "from_user", "to_user", "created_at", "expires_at", "confirmed_at")
+    list_filter = ("firm",)
+    search_fields = ("from_user__email", "to_user__email", "firm__name")
+    readonly_fields = ("id", "firm", "from_user", "to_user", "token", "created_at", "expires_at", "confirmed_at")
