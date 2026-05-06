@@ -3655,3 +3655,159 @@ class GrantAuditSignalTest(TestCase):
         grant.delete()
         new_count = PermissionAuditLog.objects.filter(action="record_grant.deleted").count()
         self.assertEqual(new_count, initial + 1)
+
+
+# ===========================================================================
+# Phase 4 – Query scoping tests (crm.permissions)
+# ===========================================================================
+
+class FilterRecordsQsTest(TestCase):
+    """Tests for filter_records_qs with PERMISSIONS_V2_ENABLED=True."""
+
+    def setUp(self):
+        from django.test import RequestFactory
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="Scope Firm", subscription_tier="pro")
+        self.owner = User.objects.create_user(email="scope_owner@example.com", password="pass")
+        self.worker_a = User.objects.create_user(email="scope_workerA@example.com", password="pass")
+        self.worker_b = User.objects.create_user(email="scope_workerB@example.com", password="pass")
+        self.owner_m = Membership.objects.create(
+            user=self.owner, firm=self.firm, role=MembershipRole.OWNER, default_scope="all"
+        )
+        self.worker_a_m = Membership.objects.create(
+            user=self.worker_a, firm=self.firm, role=MembershipRole.WORKER, default_scope="own"
+        )
+        self.worker_b_m = Membership.objects.create(
+            user=self.worker_b, firm=self.firm, role=MembershipRole.WORKER, default_scope="own"
+        )
+        # Create records
+        self.record_a = PipelineRecord.objects.create(
+            firm=self.firm, title="Record A", status=RecordStatus.NEW,
+            created_by=self.worker_a, assigned_to=self.worker_a,
+        )
+        self.record_b = PipelineRecord.objects.create(
+            firm=self.firm, title="Record B", status=RecordStatus.NEW,
+            created_by=self.worker_b, assigned_to=self.worker_b,
+        )
+        self.record_unowned = PipelineRecord.objects.create(
+            firm=self.firm, title="Unowned Record", status=RecordStatus.NEW,
+            created_by=None, assigned_to=None,
+        )
+
+    def _make_request(self, user, membership):
+        from django.test import RequestFactory
+        req = RequestFactory().get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_flag_off_returns_all(self):
+        """When PERMISSIONS_V2_ENABLED=False, filter is a no-op."""
+        from django.test import override_settings
+        from crm.permissions import filter_records_qs
+        qs = PipelineRecord.objects.filter(firm=self.firm)
+        with override_settings(PERMISSIONS_V2_ENABLED=False):
+            req = self._make_request(self.worker_a, self.worker_a_m)
+            result = filter_records_qs(qs, req)
+        self.assertEqual(result.count(), qs.count())
+
+    def test_owner_sees_all_records(self):
+        """With flag on, owner sees every record."""
+        from django.test import override_settings
+        from crm.permissions import filter_records_qs
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            req = self._make_request(self.owner, self.owner_m)
+            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        self.assertIn(self.record_a, qs)
+        self.assertIn(self.record_b, qs)
+        self.assertIn(self.record_unowned, qs)
+
+    def test_worker_own_scope_sees_only_own(self):
+        """Worker with scope=own sees only records assigned to or created by them."""
+        from django.test import override_settings
+        from crm.permissions import filter_records_qs
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            req = self._make_request(self.worker_a, self.worker_a_m)
+            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.record_a.id, ids)
+        self.assertNotIn(self.record_b.id, ids)
+        self.assertNotIn(self.record_unowned.id, ids)
+
+    def test_worker_all_scope_sees_all(self):
+        """Worker with scope=all sees every record."""
+        from django.test import override_settings
+        from crm.permissions import filter_records_qs
+        self.worker_a_m.default_scope = "all"
+        self.worker_a_m.save()
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            req = self._make_request(self.worker_a, self.worker_a_m)
+            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.record_b.id, ids)
+        self.assertIn(self.record_unowned.id, ids)
+
+    def test_record_grant_gives_access(self):
+        """A RecordGrant allows a worker to see a record outside their scope."""
+        from django.test import override_settings
+        from crm.models import RecordGrant
+        from crm.permissions import filter_records_qs
+        # worker_a has scope=own, but gets a direct grant to record_b
+        RecordGrant.objects.create(
+            record=self.record_b,
+            principal_type="user",
+            principal_id=self.worker_a.id,
+            level="view",
+        )
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            req = self._make_request(self.worker_a, self.worker_a_m)
+            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.record_a.id, ids)
+        self.assertIn(self.record_b.id, ids)
+
+    def test_no_membership_returns_none(self):
+        """Without membership, filter returns empty queryset."""
+        from django.test import override_settings
+        from crm.permissions import filter_records_qs
+        from django.test import RequestFactory
+        req = RequestFactory().get("/")
+        req.user = self.worker_a
+        req.firm = self.firm
+        req.membership = None
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        self.assertEqual(qs.count(), 0)
+
+
+class ResolveEffectivePermissionsTest(TestCase):
+    """Tests for resolve_effective_permissions."""
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Eff Perm Firm")
+        self.user = User.objects.create_user(email="effperm@example.com", password="pass")
+        self.membership = Membership.objects.create(
+            user=self.user, firm=self.firm, role=MembershipRole.WORKER
+        )
+
+    def test_fallback_to_legacy_when_no_db_roles(self):
+        """Without DB roles, falls back to LEGACY_ROLE_PERMISSIONS."""
+        from crm.permissions import resolve_effective_permissions
+        perms = resolve_effective_permissions(self.membership)
+        self.assertIn("record.view", perms)
+        self.assertIn("record.create", perms)
+        self.assertNotIn("billing.manage", perms)
+
+    def test_uses_db_roles_when_assigned(self):
+        """With DB roles, uses their permission set."""
+        from crm.permissions import resolve_effective_permissions
+        from firms.models import PermissionRecord, Role, RolePermission
+        role = Role.objects.create(firm=self.firm, code="custom", name="Custom Role")
+        perm = PermissionRecord.objects.get_or_create(
+            code="record.view", defaults={"group": "Records", "description": "View records"}
+        )[0]
+        RolePermission.objects.create(role=role, permission=perm)
+        self.membership.roles.add(role)
+        perms = resolve_effective_permissions(self.membership)
+        self.assertIn("record.view", perms)

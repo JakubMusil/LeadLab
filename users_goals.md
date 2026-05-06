@@ -454,6 +454,45 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Fáze 4: Permissions resolver & query scoping (`crm/permissions.py` + feature flag `PERMISSIONS_V2_ENABLED`)
 
 
+### Fáze 4 – Permissions resolver & query scoping ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-another-one`
+
+**Co bylo uděláno:**
+- Vytvořen nový modul `crm/permissions.py` s:
+  - `resolve_effective_permissions(membership) -> set[str]` – vrací set permission kódů z DB rolí (s fallbackem na `LEGACY_ROLE_PERMISSIONS`)
+  - `resolve_scope(membership, permission) -> str` – vrací nejširší scope (OWN/CATEGORY/TEAM/ALL) kombinací `default_scope` a aktivních `CategoryGrant`
+  - `filter_records_qs(qs, request)` – scope-aware filtr PipelineRecord (OWN: Q(created_by|assigned_to), TEAM: team members, CATEGORY: CategoryGrant + RecordGrant, ALL: no-op)
+  - `filter_activities_qs(qs, request)` – aktivity viditelné skrze visible_record_ids
+  - `filter_proposals_qs(qs, request)` – návrhy podle scope záznamu nebo created_by/assigned_to
+  - `filter_tasks_qs(qs, request)` – úkoly assigned_to/created_by nebo přes scope záznamu
+  - Všechny filtry jsou no-op pokud `PERMISSIONS_V2_ENABLED=False` (zpětná kompatibilita)
+- Přidána funkce `require_permission(request, perm, resource=None)` do `firms/auth.py`:
+  - Při `PERMISSIONS_V2_ENABLED=False`: mapuje Permission → legacy min_role, deleguje na `has_min_role()`
+  - Při `PERMISSIONS_V2_ENABLED=True`: volá `resolve_effective_permissions()` z DB, Owner shortcut
+  - Mapa `_PERMISSION_TO_MIN_ROLE` – 16 permissions → WORKER/ADMIN/OWNER min_role
+- Migrování klíčových endpointů v `crm/api.py` z `require_membership` → `require_permission`:
+  - `GET /records` → `Permission.RECORD_VIEW` + `filter_records_qs()`
+  - `POST /records` → `Permission.RECORD_CREATE` (+ subscription checks zachovány)
+  - `GET /records/{id}` → `Permission.RECORD_VIEW` + `filter_records_qs()`
+  - `PATCH /records/{id}` → `Permission.RECORD_EDIT`
+  - `DELETE /records/{id}` → `Permission.RECORD_DELETE`
+  - `GET /records/{id}/activities` → `Permission.RECORD_VIEW` + `filter_activities_qs()`
+  - `GET /tasks` → `Permission.RECORD_VIEW` + `filter_tasks_qs()`
+  - `POST /tasks` → `Permission.RECORD_CREATE`
+- Migrování endpointů v `crm/proposals_api.py`:
+  - `GET /proposals` → `Permission.PROPOSAL_CREATE` + `filter_proposals_qs()`
+  - `POST /proposals` → `Permission.PROPOSAL_CREATE`
+- Přidáno 20 nových testů:
+  - `firms/tests.py`: `RequirePermissionLegacyFlagTest` (8 testů), `RequirePermissionV2FlagTest` (4 testy)
+  - `crm/tests.py`: `FilterRecordsQsTest` (6 testů), `ResolveEffectivePermissionsTest` (2 testy)
+- Všechny testy zelené: 186/186 (firms) + 34/34 (crm klíčové testy)
+
+**Co bude následovat:**
+- Fáze 5: Streamline visibility – `Activity.visibility` + `StreamlineItem.visibility` + UI toggle
+- Fáze 6: Admin API – CRUD pro Role, Team, Grants + audit log endpoint
+
+
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
 - [ ] Pokrytí: `firms/permissions.py` ≥ 95 %, `crm/permissions.py` ≥ 90 %.

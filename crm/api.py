@@ -64,11 +64,14 @@ from firms.auth import (
     check_tier_limits,
     require_active_subscription,
     require_membership,
+    require_permission,
 )
 from firms.models import Membership
+from firms.permissions import Permission
 
 from crm.apps import set_current_user, clear_current_user
 from crm.events import broadcast_event
+from crm.permissions import filter_records_qs, filter_activities_qs, filter_tasks_qs
 from crm.soft_delete import perform_soft_delete
 
 router = Router(tags=["crm"])
@@ -773,11 +776,11 @@ def list_records(
     page_size: int = 20,
 ):
     try:
-        require_membership(request)
+        require_permission(request, Permission.RECORD_VIEW)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    qs = PipelineRecord.objects.filter(firm=request.firm)
+    qs = filter_records_qs(PipelineRecord.objects.filter(firm=request.firm), request)
     if status:
         qs = qs.filter(status=status)
     if assigned_to:
@@ -830,12 +833,14 @@ def list_records(
 @router.post("/records", auth=django_auth, response={201: RecordOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
 def create_record(request, payload: RecordIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_permission(request, Permission.RECORD_CREATE)
         require_active_subscription(request.firm)
         check_tier_limits(request.firm)
     except SubscriptionRequired as exc:
         return 402, {"detail": str(exc)}
     except PermissionDenied as exc:
+        return 403, {"detail": str(exc)}
+    except Exception as exc:
         return 403, {"detail": str(exc)}
 
     customer = None
@@ -944,12 +949,15 @@ def create_record(request, payload: RecordIn):
 @router.get("/records/{record_id}", auth=django_auth, response={200: RecordOut, 403: ErrorOut, 404: ErrorOut})
 def get_record(request, record_id: str):
     try:
-        require_membership(request)
+        require_permission(request, Permission.RECORD_VIEW)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        record = PipelineRecord.objects.select_related('created_by').get(id=record_id, firm=request.firm)
+        record = filter_records_qs(
+            PipelineRecord.objects.select_related('created_by').filter(firm=request.firm),
+            request,
+        ).get(id=record_id)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
     return 200, _record_out(record)
@@ -958,7 +966,7 @@ def get_record(request, record_id: str):
 @router.patch("/records/{record_id}", auth=django_auth, response={200: RecordOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
 def update_record(request, record_id: str, payload: RecordUpdateIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_permission(request, Permission.RECORD_EDIT)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -1113,7 +1121,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
 @router.delete("/records/{record_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
 def delete_record(request, record_id: str):
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_permission(request, Permission.RECORD_DELETE)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -1411,17 +1419,22 @@ def list_customer_activities(request, customer_id: str, page: int = 1, page_size
 def list_activities(request, record_id: str, page: int = 1, page_size: int = 20):
     """Return the timeline for a Record, newest first (paginated)."""
     try:
-        require_membership(request)
+        require_permission(request, Permission.RECORD_VIEW)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     try:
-        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+        record = filter_records_qs(
+            PipelineRecord.objects.filter(firm=request.firm), request
+        ).get(id=record_id)
     except PipelineRecord.DoesNotExist:
         return 404, {"detail": "Record not found."}
 
     offset = (page - 1) * page_size
-    activities = Activity.objects.filter(record=record).select_related('user').prefetch_related('reactions').order_by("-created_at")[offset:offset + page_size]
+    activities = filter_activities_qs(
+        Activity.objects.filter(record=record).select_related('user').prefetch_related('reactions'),
+        request,
+    ).order_by("-created_at")[offset:offset + page_size]
     return 200, [_activity_out(a, request.user) for a in activities]
 
 
@@ -2463,14 +2476,17 @@ def list_tasks(
       or all tasks (for admins/owners).
     """
     try:
-        membership = require_membership(request)
+        membership = require_permission(request, Permission.RECORD_VIEW)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
     is_admin = membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)
 
-    qs = Task.objects.filter(firm=request.firm).select_related(
-        "record", "assigned_to", "completed_by", "created_by", "proposal", "customer",
+    qs = filter_tasks_qs(
+        Task.objects.filter(firm=request.firm).select_related(
+            "record", "assigned_to", "completed_by", "created_by", "proposal", "customer",
+        ),
+        request,
     )
     if assigned_to_id == "all":
         if not is_admin:
@@ -2516,7 +2532,7 @@ def list_tasks(
 @router.post("/tasks", auth=django_auth, response={201: TaskOut, 400: ErrorOut, 403: ErrorOut})
 def create_task(request, payload: TaskIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_permission(request, Permission.RECORD_CREATE)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
