@@ -56,7 +56,7 @@
 ### Platform
 
 - **Multi-tenancy** — Every record is strictly scoped to one Firm; users can belong to multiple Firms with independent roles.
-- **Role-based access control** — Three roles per Firm: Owner, Admin, and Worker.
+- **Granular permissions system** — Five system roles per Firm: Owner, Admin, Manager, Member, and Guest. Configurable custom roles with per-action permission codes (`record.view`, `record.edit`, `record.delete`, `category.manage`, `team.manage`, `billing.manage`, …). Per-user visibility scope (own / team / category / all). Per-category and per-record ACL grants with optional expiry. Full permission audit log.
 - **Email invitations** — Invite team members by email; new users register directly from the invitation link.
 - **Subscription tiers** — Free and Pro plans enforced at the API layer, backed by Stripe Checkout.
 - **API tokens** — Personal Bearer tokens for machine-to-machine access alongside session auth.
@@ -250,6 +250,35 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | POST | `/{firm_id}/exchange-rates` | Admin+ | Create / update a manual exchange rate |
 | GET | `/{firm_id}/exchange-rates/export.csv` | member | Export exchange rates as CSV |
 
+### Roles & Permissions — `/api/v1/firms/{firm_id}/`
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/{firm_id}/permission-catalogue` | member | List all available permission codes |
+| GET | `/{firm_id}/roles` | member | List system and custom roles for the Firm |
+| POST | `/{firm_id}/roles` | Admin+ | Create a custom role |
+| PATCH | `/{firm_id}/roles/{role_id}` | Admin+ | Update a custom role's name / description |
+| DELETE | `/{firm_id}/roles/{role_id}` | Admin+ | Delete a custom role |
+| PUT | `/{firm_id}/roles/{role_id}/permissions` | Admin+ | Replace the permission set of a custom role |
+| GET | `/{firm_id}/me/permissions` | member | Return the caller's effective permissions, scope, and role codes |
+
+### Teams — `/api/v1/firms/{firm_id}/`
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/{firm_id}/teams` | member | List all teams in the Firm |
+| POST | `/{firm_id}/teams` | Admin+ | Create a team |
+| PATCH | `/{firm_id}/teams/{team_id}` | Admin+ | Update a team |
+| DELETE | `/{firm_id}/teams/{team_id}` | Admin+ | Delete a team |
+| POST | `/{firm_id}/teams/{team_id}/members/{membership_id}` | Admin+ | Add a member to a team |
+| DELETE | `/{firm_id}/teams/{team_id}/members/{membership_id}` | Admin+ | Remove a member from a team |
+
+### Audit Log — `/api/v1/firms/{firm_id}/`
+
+| Method | Path | Role | Description |
+|---|---|---|---|
+| GET | `/{firm_id}/audit-log` | Admin+ | Paginated permission audit log (filter by action, target_type) |
+
 ### Invitations (public) — `/api/v1/invitations/`
 
 | Method | Path | Auth | Description |
@@ -264,9 +293,9 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/customers` | member | List / search contacts |
-| POST | `/customers` | Worker+ | Create a contact |
+| POST | `/customers` | Member+ | Create a contact |
 | GET | `/customers/{id}` | member | Get a contact |
-| PUT | `/customers/{id}` | Worker+ | Replace a contact |
+| PUT | `/customers/{id}` | Member+ | Replace a contact |
 | DELETE | `/customers/{id}` | Admin+ | Delete a contact |
 
 #### Pipeline Records
@@ -274,15 +303,19 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/records` | member | List records (filter by status / category / assignee / source / tag / date) |
-| POST | `/records` | Worker+ | Create a record |
+| POST | `/records` | Member+ | Create a record |
 | GET | `/records/{id}` | member | Get a record |
-| PATCH | `/records/{id}` | Worker+ | Update a record (stage/status changes auto-logged) |
+| PATCH | `/records/{id}` | Member+ | Update a record (stage/status changes auto-logged) |
 | DELETE | `/records/{id}` | Admin+ | Delete a record |
 | GET | `/records/{id}/activities` | member | Paginated activity timeline |
 | GET | `/records/{id}/checkpoints` | member | List checkpoints |
-| POST | `/records/{id}/checkpoints` | Worker+ | Create a checkpoint |
-| PATCH | `/records/{id}/checkpoints/{cp_id}` | Worker+ | Update a checkpoint |
+| POST | `/records/{id}/checkpoints` | Member+ | Create a checkpoint |
+| PATCH | `/records/{id}/checkpoints/{cp_id}` | Member+ | Update a checkpoint |
 | DELETE | `/records/{id}/checkpoints/{cp_id}` | Admin+ | Delete a checkpoint |
+| GET | `/records/{id}/access` | member | List all users with access to the record (category + record grants) |
+| GET | `/records/{id}/grants` | Member+ | List per-record ACL grants |
+| POST | `/records/{id}/grants` | Member+ | Add a per-record ACL grant (optional expiry) |
+| DELETE | `/records/{id}/grants/{grant_id}` | Member+ | Revoke a per-record ACL grant |
 
 #### Pipeline Configuration (Categories / Stages / Fields)
 
@@ -300,34 +333,37 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | POST | `/categories/{id}/fields/{field_key}` | Admin+ | Enable / upsert a field |
 | PATCH | `/categories/{id}/fields/{field_key}` | Admin+ | Update a field's visibility / required flag |
 | DELETE | `/categories/{id}/fields/{field_key}` | Admin+ | Remove a field from the category |
+| GET | `/categories/{id}/grants` | Admin+ | List ACL grants for a category |
+| POST | `/categories/{id}/grants` | Admin+ | Add or update a category ACL grant |
+| DELETE | `/categories/{id}/grants/{grant_id}` | Admin+ | Revoke a category ACL grant |
 
 #### Activities & Proposals
 
 | Method | Path | Role | Description |
 |---|---|---|---|
-| POST | `/activities` | Worker+ | Log an activity |
-| PATCH | `/activities/{id}` | Worker+ | Edit an activity |
-| DELETE | `/activities/{id}` | Worker+ | Soft-delete an activity |
-| POST | `/activities/{id}/reactions` | Worker+ | Add / toggle an emoji reaction |
+| POST | `/activities` | Member+ | Log an activity |
+| PATCH | `/activities/{id}` | Member+ | Edit an activity |
+| DELETE | `/activities/{id}` | Member+ | Soft-delete an activity |
+| POST | `/activities/{id}/reactions` | Member+ | Add / toggle an emoji reaction |
 | GET | `/proposals` | member | List proposals |
-| POST | `/proposals` | Worker+ | Create a proposal |
+| POST | `/proposals` | Member+ | Create a proposal |
 | GET | `/proposals/{id}` | member | Get a proposal |
-| PATCH | `/proposals/{id}` | Worker+ | Update a proposal |
+| PATCH | `/proposals/{id}` | Member+ | Update a proposal |
 
 #### Tasks
 
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/tasks` | member | List tasks (filter by status / priority / kind / assignee / tag) |
-| POST | `/tasks` | Worker+ | Create a task |
+| POST | `/tasks` | Member+ | Create a task |
 | GET | `/tasks/{id}` | member | Get a task |
-| PATCH | `/tasks/{id}` | Worker+ | Update a task |
+| PATCH | `/tasks/{id}` | Member+ | Update a task |
 | DELETE | `/tasks/{id}` | Admin+ | Delete a task |
-| POST | `/tasks/{id}/complete` | Worker+ | Mark a task as completed |
-| POST | `/tasks/{id}/approve` | Worker+ | Approve or reject a task |
+| POST | `/tasks/{id}/complete` | Member+ | Mark a task as completed |
+| POST | `/tasks/{id}/approve` | Member+ | Approve or reject a task |
 | GET | `/tasks/{id}/streamline-items` | member | List checklist / sub-task items |
-| POST | `/tasks/{id}/streamline-items` | Worker+ | Add checklist / sub-task items |
-| PATCH | `/tasks/{id}/streamline-items/{item_id}` | Worker+ | Toggle or update an item |
+| POST | `/tasks/{id}/streamline-items` | Member+ | Add checklist / sub-task items |
+| PATCH | `/tasks/{id}/streamline-items/{item_id}` | Member+ | Toggle or update an item |
 
 #### Automations
 
@@ -347,20 +383,20 @@ Interactive API docs are available at `/api/v1/docs` when the server is running.
 | Method | Path | Role | Description |
 |---|---|---|---|
 | GET | `/time-entries` | member | List time entries (filter by user, entity, date) |
-| POST | `/time-entries` | Worker+ | Create a time entry |
-| PATCH | `/time-entries/{id}` | Worker+ | Edit a time entry |
-| DELETE | `/time-entries/{id}` | Worker+ | Delete a time entry |
+| POST | `/time-entries` | Member+ | Create a time entry |
+| PATCH | `/time-entries/{id}` | Member+ | Edit a time entry |
+| DELETE | `/time-entries/{id}` | Member+ | Delete a time entry |
 | GET | `/expenses` | member | List expense items |
-| POST | `/expenses` | Worker+ | Create an expense item |
-| PATCH | `/expenses/{id}` | Worker+ | Update an expense item |
+| POST | `/expenses` | Member+ | Create an expense item |
+| PATCH | `/expenses/{id}` | Member+ | Update an expense item |
 | DELETE | `/expenses/{id}` | Admin+ | Delete an expense item |
 | GET | `/revenues` | member | List revenue items |
-| POST | `/revenues` | Worker+ | Create a revenue item |
-| PATCH | `/revenues/{id}` | Worker+ | Update a revenue item |
+| POST | `/revenues` | Member+ | Create a revenue item |
+| PATCH | `/revenues/{id}` | Member+ | Update a revenue item |
 | DELETE | `/revenues/{id}` | Admin+ | Delete a revenue item |
 | GET | `/reports/summary` | member | Aggregated P&L summary |
 | GET | `/documents` | member | List documents (filter by entity) |
-| POST | `/documents` | Worker+ | Upload a document |
+| POST | `/documents` | Member+ | Upload a document |
 | DELETE | `/documents/{id}` | Admin+ | Delete a document |
 
 ### Integrations — `/api/v1/integrations/`
