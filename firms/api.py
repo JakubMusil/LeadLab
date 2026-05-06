@@ -953,3 +953,307 @@ def _invitation_out(invitation: Invitation) -> dict:
         "is_expired": invitation.is_expired,
         "is_accepted": invitation.is_accepted,
     }
+
+
+# ---------------------------------------------------------------------------
+# Ownership Transfer
+# ---------------------------------------------------------------------------
+
+
+class TransferOwnershipIn(Schema):
+    to_user_id: str  # UUID of the target Membership (user who will become new owner)
+
+
+class OwnershipTransferOut(Schema):
+    id: str
+    firm_id: str
+    from_user_email: str
+    to_user_email: str
+    expires_at: str
+    is_pending: bool
+    is_confirmed: bool
+
+
+@router.post(
+    "/{firm_id}/transfer-ownership",
+    auth=django_auth,
+    response={200: OwnershipTransferOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    tags=["firms"],
+)
+def initiate_ownership_transfer(request, firm_id: str, payload: TransferOwnershipIn):
+    """
+    Initiate an ownership transfer for the given Firm.
+
+    Only the current Owner can call this endpoint.  The target user must
+    already be a member of the Firm.  An email with a confirmation link is
+    sent to the new owner; they have 48 hours to confirm.
+
+    Any existing pending (unconfirmed) transfer for this Firm is automatically
+    cancelled before the new one is created.
+    """
+    from django.core.mail import send_mail
+    from django.conf import settings as django_settings
+    from firms.models import OwnershipTransfer
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not membership.is_owner:
+        return 403, {"detail": "Only the Owner can initiate an ownership transfer."}
+
+    # Resolve target membership
+    try:
+        target_membership = Membership.objects.select_related("user").get(
+            id=payload.to_user_id, firm=firm
+        )
+    except Membership.DoesNotExist:
+        return 404, {"detail": "Target membership not found in this Firm."}
+
+    if target_membership.user == request.user:
+        return 400, {"detail": "Cannot transfer ownership to yourself."}
+
+    with transaction.atomic():
+        # Cancel any existing pending transfers for this firm
+        OwnershipTransfer.objects.filter(
+            firm=firm, confirmed_at__isnull=True
+        ).delete()
+
+        transfer = OwnershipTransfer.objects.create(
+            firm=firm,
+            from_user=request.user,
+            to_user=target_membership.user,
+        )
+
+        # Write audit log entry
+        from firms.models import PermissionAuditLog
+        try:
+            PermissionAuditLog.objects.create(
+                firm=firm,
+                actor=request.user,
+                action="ownership.transfer_initiated",
+                target_type="ownership_transfer",
+                target_id=str(transfer.id),
+                payload={
+                    "to_user_email": target_membership.user.email,
+                    "expires_at": transfer.expires_at.isoformat(),
+                },
+            )
+        except Exception:
+            pass  # Never block the transfer creation due to audit log failure
+
+    # Send confirmation email to the new owner
+    confirm_url = (
+        f"{getattr(django_settings, 'FRONTEND_BASE_URL', 'http://localhost:5173')}"
+        f"/app/ownership-transfer/{firm.id}/{transfer.token}/confirm"
+    )
+    try:
+        from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.app")
+        send_mail(
+            subject=f"[LeadLab] Confirm ownership transfer – {firm.name}",
+            message=(
+                f"Hi,\n\n"
+                f"{request.user.email} has invited you to become the new Owner of "
+                f"the workspace \"{firm.name}\" on LeadLab.\n\n"
+                f"To accept, click the link below (valid for 48 hours):\n"
+                f"{confirm_url}\n\n"
+                f"If you did not expect this, you can safely ignore this email.\n\n"
+                f"— The LeadLab team"
+            ),
+            from_email=from_email,
+            recipient_list=[target_membership.user.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass  # Email failure must not roll back the transfer record
+
+    return 200, {
+        "id": str(transfer.id),
+        "firm_id": str(firm.id),
+        "from_user_email": request.user.email,
+        "to_user_email": target_membership.user.email,
+        "expires_at": transfer.expires_at.isoformat(),
+        "is_pending": transfer.is_pending,
+        "is_confirmed": transfer.is_confirmed,
+    }
+
+
+@router.post(
+    "/{firm_id}/transfer-ownership/{token}/confirm",
+    auth=django_auth,
+    response={200: OwnershipTransferOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+    tags=["firms"],
+)
+def confirm_ownership_transfer(request, firm_id: str, token: str):
+    """
+    Confirm a pending ownership transfer.
+
+    Only the *designated new owner* (the ``to_user`` on the transfer record)
+    can call this endpoint.  On success:
+        - The current owner's system role is demoted to *admin*.
+        - The new owner's system role is elevated to *owner*.
+        - ``confirmed_at`` is set on the transfer.
+        - A ``PermissionAuditLog`` entry is written.
+    """
+    from django.utils import timezone as tz
+    from firms.models import OwnershipTransfer, PermissionAuditLog
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        transfer = OwnershipTransfer.objects.select_related(
+            "from_user", "to_user"
+        ).get(token=token, firm=firm, confirmed_at__isnull=True)
+    except OwnershipTransfer.DoesNotExist:
+        return 404, {"detail": "Transfer not found or already confirmed."}
+
+    if transfer.is_expired:
+        return 400, {"detail": "This transfer confirmation link has expired."}
+
+    if transfer.to_user != request.user:
+        return 403, {
+            "detail": "Only the designated new owner can confirm this transfer."
+        }
+
+    with transaction.atomic():
+        # Demote current owner → admin
+        try:
+            old_owner_membership = Membership.objects.get(
+                user=transfer.from_user, firm=firm
+            )
+            old_owner_membership._assign_system_role_by_code("admin")
+        except Membership.DoesNotExist:
+            pass  # Former owner no longer a member – proceed anyway
+
+        # Elevate new owner → owner
+        new_owner_membership, _ = Membership.objects.get_or_create(
+            user=transfer.to_user, firm=firm
+        )
+        new_owner_membership._assign_system_role_by_code("owner")
+
+        # Mark transfer as confirmed
+        transfer.confirmed_at = tz.now()
+        transfer.save(update_fields=["confirmed_at"])
+
+        # Audit log
+        try:
+            PermissionAuditLog.objects.create(
+                firm=firm,
+                actor=request.user,
+                action="ownership.transfer_confirmed",
+                target_type="ownership_transfer",
+                target_id=str(transfer.id),
+                payload={
+                    "from_user_email": transfer.from_user.email,
+                    "to_user_email": transfer.to_user.email,
+                },
+            )
+        except Exception:
+            pass
+
+    return 200, {
+        "id": str(transfer.id),
+        "firm_id": str(firm.id),
+        "from_user_email": transfer.from_user.email,
+        "to_user_email": transfer.to_user.email,
+        "expires_at": transfer.expires_at.isoformat(),
+        "is_pending": transfer.is_pending,
+        "is_confirmed": transfer.is_confirmed,
+    }
+
+
+@router.delete(
+    "/{firm_id}/transfer-ownership",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+    tags=["firms"],
+)
+def cancel_ownership_transfer(request, firm_id: str):
+    """
+    Cancel any pending ownership transfer for the given Firm (Owner only).
+    """
+    from firms.models import OwnershipTransfer, PermissionAuditLog
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not membership.is_owner:
+        return 403, {"detail": "Only the Owner can cancel an ownership transfer."}
+
+    deleted, _ = OwnershipTransfer.objects.filter(
+        firm=firm, confirmed_at__isnull=True
+    ).delete()
+
+    if deleted:
+        try:
+            PermissionAuditLog.objects.create(
+                firm=firm,
+                actor=request.user,
+                action="ownership.transfer_cancelled",
+                target_type="ownership_transfer",
+                target_id=str(firm.id),
+                payload={},
+            )
+        except Exception:
+            pass
+
+    return 204, None
+
+
+@router.get(
+    "/{firm_id}/transfer-ownership",
+    auth=django_auth,
+    response={200: Optional[OwnershipTransferOut], 403: ErrorOut, 404: ErrorOut},
+    tags=["firms"],
+)
+def get_pending_ownership_transfer(request, firm_id: str):
+    """
+    Return the pending ownership transfer for the given Firm, if any.
+
+    Accessible to all members of the Firm.
+    """
+    from firms.models import OwnershipTransfer
+
+    try:
+        firm = Firm.objects.get(id=firm_id)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    if not Membership.objects.filter(user=request.user, firm=firm).exists():
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    try:
+        transfer = OwnershipTransfer.objects.select_related(
+            "from_user", "to_user"
+        ).filter(firm=firm, confirmed_at__isnull=True).latest("created_at")
+    except OwnershipTransfer.DoesNotExist:
+        return 200, None
+
+    if transfer.is_expired:
+        return 200, None
+
+    return 200, {
+        "id": str(transfer.id),
+        "firm_id": str(firm.id),
+        "from_user_email": transfer.from_user.email,
+        "to_user_email": transfer.to_user.email,
+        "expires_at": transfer.expires_at.isoformat(),
+        "is_pending": transfer.is_pending,
+        "is_confirmed": transfer.is_confirmed,
+    }

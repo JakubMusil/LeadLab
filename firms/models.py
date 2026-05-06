@@ -474,6 +474,9 @@ class PermissionAuditLog(models.Model):
         ("category_grant.deleted", "CategoryGrant deleted"),
         ("record_grant.created", "RecordGrant created"),
         ("record_grant.deleted", "RecordGrant deleted"),
+        ("ownership.transfer_initiated", "Ownership transfer initiated"),
+        ("ownership.transfer_confirmed", "Ownership transfer confirmed"),
+        ("ownership.transfer_cancelled", "Ownership transfer cancelled"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -605,6 +608,93 @@ class Invitation(models.Model):
     @property
     def is_accepted(self):
         return self.accepted_at is not None
+
+
+# ---------------------------------------------------------------------------
+# v2.9 – Ownership Transfer
+# ---------------------------------------------------------------------------
+
+_TRANSFER_EXPIRY_HOURS = 48
+
+
+def _default_transfer_expiry():
+    return django_timezone.now() + timedelta(hours=_TRANSFER_EXPIRY_HOURS)
+
+
+class OwnershipTransfer(models.Model):
+    """
+    Pending 2-step ownership transfer for a Firm.
+
+    Lifecycle:
+        1. Current Owner calls ``POST /firms/{id}/transfer-ownership`` →
+           creates this record with a random ``token`` and emails the new
+           owner a confirmation link.
+        2. New owner visits the link and calls
+           ``POST /firms/{id}/transfer-ownership/{token}/confirm``.
+        3. On confirmation the current owner's system role is demoted to
+           *admin* and the new owner's system role is elevated to *owner*.
+           ``confirmed_at`` is set and a ``PermissionAuditLog`` entry written.
+
+    Only one pending (unconfirmed) transfer is allowed per firm at a time.
+    An existing pending transfer is cancelled (deleted) when a new one is
+    initiated.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="ownership_transfers",
+    )
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="initiated_transfers",
+        help_text="The current Owner who initiated the transfer.",
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="incoming_transfers",
+        help_text="The user who will become the new Owner.",
+    )
+    token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+        help_text="Secret token sent to the new owner to confirm the transfer.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
+        default=_default_transfer_expiry,
+        help_text="The transfer confirmation link expires after this timestamp.",
+    )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Set when the new owner confirms the transfer.",
+    )
+
+    class Meta:
+        verbose_name = "ownership transfer"
+        verbose_name_plural = "ownership transfers"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OwnershipTransfer({self.firm} → {self.to_user})"
+
+    @property
+    def is_expired(self) -> bool:
+        return django_timezone.now() > self.expires_at
+
+    @property
+    def is_confirmed(self) -> bool:
+        return self.confirmed_at is not None
+
+    @property
+    def is_pending(self) -> bool:
+        return not self.is_confirmed and not self.is_expired
 
 
 # ---------------------------------------------------------------------------
