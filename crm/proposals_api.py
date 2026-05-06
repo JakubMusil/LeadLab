@@ -63,7 +63,7 @@ from firms.auth import (
     PermissionDenied,
     require_membership,
 )
-from crm.api import _activity_out as _shared_activity_out
+from crm.api import _activity_out as _shared_activity_out, _resolve_user_in_firm
 
 proposals_router = Router(tags=["proposals"])
 
@@ -121,6 +121,10 @@ class ProposalOut(Schema):
     responded_at: Optional[datetime]
     total_value: Decimal
     items: List[ProposalItemOut]
+    created_by_id: Optional[str]
+    created_by_name: Optional[str]
+    assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -129,6 +133,7 @@ class ProposalIn(Schema):
     title: str
     record_id: Optional[str] = None
     customer_id: Optional[str] = None
+    assigned_to_id: Optional[str] = None
     status: str = ProposalStatus.DRAFT
     expiry_date: Optional[str] = None
     currency: str = "CZK"
@@ -140,6 +145,7 @@ class ProposalIn(Schema):
 class ProposalUpdateIn(Schema):
     title: Optional[str] = None
     status: Optional[str] = None
+    assigned_to_id: Optional[str] = None
     expiry_date: Optional[str] = None
     currency: Optional[str] = None
     notes: Optional[str] = None
@@ -287,6 +293,20 @@ def _item_out(item: ProposalItem) -> dict:
 
 def _proposal_out(proposal: Proposal) -> dict:
     items = list(proposal.items.all())
+    created_by_name: Optional[str] = None
+    if proposal.created_by_id:
+        try:
+            cb = proposal.created_by
+            created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
+        except Exception:
+            pass
+    assigned_to_name: Optional[str] = None
+    if proposal.assigned_to_id:
+        try:
+            at = proposal.assigned_to
+            assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
+        except Exception:
+            pass
     return {
         "id": str(proposal.id),
         "record_id": str(proposal.record_id) if proposal.record_id else None,
@@ -307,6 +327,10 @@ def _proposal_out(proposal: Proposal) -> dict:
         "responded_at": proposal.responded_at,
         "total_value": sum((i.total for i in items), Decimal("0")),
         "items": [_item_out(i) for i in items],
+        "created_by_id": str(proposal.created_by_id) if proposal.created_by_id else None,
+        "created_by_name": created_by_name,
+        "assigned_to_id": str(proposal.assigned_to_id) if proposal.assigned_to_id else None,
+        "assigned_to_name": assigned_to_name,
         "created_at": proposal.created_at,
         "updated_at": proposal.updated_at,
     }
@@ -370,7 +394,7 @@ def _log_proposal_created_activity(proposal: Proposal, user) -> None:
 
 def _get_proposal(proposal_id: str, firm) -> Optional[Proposal]:
     try:
-        return Proposal.objects.prefetch_related("items").get(
+        return Proposal.objects.select_related('created_by', 'assigned_to').prefetch_related("items").get(
             id=proposal_id, firm=firm
         )
     except Proposal.DoesNotExist:
@@ -440,7 +464,7 @@ def list_all_proposals(request, status: Optional[str] = None, record_id: Optiona
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
-    qs = Proposal.objects.filter(firm=request.firm).prefetch_related("items").order_by("-created_at")
+    qs = Proposal.objects.filter(firm=request.firm).select_related('created_by', 'assigned_to').prefetch_related("items").order_by("-created_at")
     if status:
         qs = qs.filter(status=status)
     if record_id:
@@ -479,6 +503,12 @@ def create_standalone_proposal(request, payload: ProposalIn):
         except Customer.DoesNotExist:
             return 404, {"detail": "Customer not found."}
 
+    assigned_to = None
+    if payload.assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
+
     proposal = Proposal.objects.create(
         firm=request.firm,
         record=record,
@@ -490,6 +520,8 @@ def create_standalone_proposal(request, payload: ProposalIn):
         notes=payload.notes,
         intro_text=payload.intro_text,
         closing_text=payload.closing_text,
+        created_by=request.user,
+        assigned_to=assigned_to,
         public_token=_uuid.uuid4(),
         token_expires_at=tz.now() + timedelta(days=_PUBLIC_LINK_TTL_DAYS),
     )
@@ -519,6 +551,7 @@ def list_proposals(request, record_id: str):
 
     proposals = (
         Proposal.objects.filter(record=record)
+        .select_related('created_by', 'assigned_to')
         .prefetch_related("items")
         .order_by("-created_at")
     )
@@ -542,6 +575,11 @@ def create_proposal(request, record_id: str, payload: ProposalIn):
         return 404, {"detail": "PipelineRecord not found."}
 
     import uuid as _uuid
+    assigned_to = None
+    if payload.assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(payload.assigned_to_id, request.firm)
+        if err:
+            return err
     proposal = Proposal.objects.create(
         firm=request.firm,
         record=record,
@@ -552,6 +590,8 @@ def create_proposal(request, record_id: str, payload: ProposalIn):
         notes=payload.notes,
         intro_text=payload.intro_text,
         closing_text=payload.closing_text,
+        created_by=request.user,
+        assigned_to=assigned_to,
         public_token=_uuid.uuid4(),
         token_expires_at=tz.now() + timedelta(days=_PUBLIC_LINK_TTL_DAYS),
     )
@@ -593,6 +633,12 @@ def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
         return 404, {"detail": "Proposal not found."}
 
     update_data = payload.dict(exclude_none=True)
+    assigned_to_id = update_data.pop("assigned_to_id", None)
+    if assigned_to_id is not None:
+        assigned_to, err = _resolve_user_in_firm(assigned_to_id, request.firm)
+        if err:
+            return err
+        proposal.assigned_to = assigned_to
     for field, value in update_data.items():
         setattr(proposal, field, value)
     set_current_user(request.user)
