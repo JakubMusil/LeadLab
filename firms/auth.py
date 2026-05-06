@@ -46,6 +46,8 @@ class SuperuserMembership:
     is_admin_or_above: bool = True
     is_expired: bool = False
     default_scope: str = "all"
+    # Superusers are not assigned to any specific team; team-level scoping is
+    # irrelevant because they already have global access to all records.
     team = None
 
     def __init__(self, request: HttpRequest) -> None:
@@ -58,6 +60,8 @@ class SuperuserMembership:
         self.id = None
 
     # Expose a no-op for method callers that expect a real Membership.
+    # This method exists solely for interface compatibility with ``Membership``
+    # and is intentionally empty: superuser sentinels do not persist to the DB.
     def _assign_system_role_by_code(self, role_code: str) -> None:  # pragma: no cover
         pass
 
