@@ -6,9 +6,11 @@ from django.apps import AppConfig
 # (e.g. invitation acceptance) can attach the acting user to audit entries.
 # ---------------------------------------------------------------------------
 
+import logging
 import threading
 
 _local = threading.local()
+_logger = logging.getLogger(__name__)
 
 
 def set_current_user(user) -> None:
@@ -32,11 +34,11 @@ def _is_firm_being_deleted(firm_pk) -> bool:
 # ---------------------------------------------------------------------------
 
 def _log_audit(firm, actor, action, target_type, target_id, payload=None):
-    """Create a PermissionAuditLog entry.  Silently skips during migrations or cascade deletes."""
+    """Create a PermissionAuditLog entry.  Skips during cascade deletes or migrations."""
+    # Skip if this firm is currently being deleted (cascade)
+    if _is_firm_being_deleted(firm.pk):
+        return
     try:
-        # Skip if this firm is currently being deleted (cascade)
-        if _is_firm_being_deleted(firm.pk):
-            return
         from firms.models import PermissionAuditLog
         PermissionAuditLog.objects.create(
             firm=firm,
@@ -47,8 +49,16 @@ def _log_audit(firm, actor, action, target_type, target_id, payload=None):
             payload=payload or {},
         )
     except Exception:
-        # Silently ignore failures — e.g. during migrations or unexpected states
-        pass
+        # The most likely cause is a DB error during migrations or an unexpected
+        # table state.  We log at WARNING level so it's visible but does not
+        # break the main operation.
+        _logger.warning(
+            "Failed to create PermissionAuditLog entry: action=%s target=%s/%s",
+            action,
+            target_type,
+            target_id,
+            exc_info=True,
+        )
 
 
 def _on_firm_pre_delete(sender, instance, **kwargs):

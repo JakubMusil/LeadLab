@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from django.apps import AppConfig
@@ -8,6 +9,7 @@ from django.apps import AppConfig
 # ---------------------------------------------------------------------------
 
 _local = threading.local()
+_logger = logging.getLogger(__name__)
 
 
 def set_current_user(user) -> None:
@@ -228,7 +230,11 @@ class CrmConfig(AppConfig):
                     },
                 )
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to log audit entry for category_grant.created pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
 
         def _on_category_grant_post_delete(sender, instance, **kwargs):
             try:
@@ -251,7 +257,11 @@ class CrmConfig(AppConfig):
                     },
                 )
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to log audit entry for category_grant.deleted pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
 
         def _on_record_grant_post_save(sender, instance, created, **kwargs):
             if not created:
@@ -276,7 +286,11 @@ class CrmConfig(AppConfig):
                     },
                 )
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to log audit entry for record_grant.created pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
 
         def _on_record_grant_post_delete(sender, instance, **kwargs):
             try:
@@ -299,7 +313,11 @@ class CrmConfig(AppConfig):
                     },
                 )
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to log audit entry for record_grant.deleted pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
 
         post_save.connect(
             _on_category_grant_post_save,
