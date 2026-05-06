@@ -387,6 +387,40 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Fáze 2: datový model `Role`, `Permission`, `RolePermission`, `Team`, `TeamMembership` + datová migrace + admin registrace
 
 
+### Fáze 2 – Datový model ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document`
+
+**Co bylo uděláno:**
+- Přidány modely do `firms/models.py`:
+  - `PermissionRecord(code PK, group, description)` – katalog oprávnění
+  - `Role(id UUID, firm FK, code, name, is_system, description, created_at)` + `unique_together=(firm, code)`
+  - `RolePermission(role FK, permission FK)` – M2M through-tabulka Role ↔ PermissionRecord
+  - `Team(id UUID, firm FK, name, slug, color, created_at)` + auto-slug + `unique_together=(firm, slug)`
+  - `TeamMembership(team FK, membership FK, joined_at)` – M2M through-tabulka Team ↔ Membership
+  - Rozšíření `Membership`: přidána pole `roles` (M2M→Role), `default_scope` (CharField, default=`own`), `team` (FK→Team, nullable)
+- Vytvořena schémová migrace `firms/migrations/0003_roles_and_teams.py`
+- Vytvořena datová migrace `firms/migrations/0004_seed_system_roles.py`:
+  - Seeduje `PermissionRecord` katalog (16 kódů)
+  - Pro každou existující `Firm` vytvoří 4 systémové role: Owner, Admin, Member, Guest
+  - Přiřadí oprávnění každé roli (idempotentní)
+  - Stávající `Membership` propojí s odpovídající systémovou rolí přes M2M
+- Vytvořen helper modul `firms/migrations/_seed_data.py` (sdílená data)
+- Vytvořen helper modul `firms/migrations/_seed_helpers.py` (pro testy i budoucí Firm.post_save signal)
+- Aktualizován `firms/admin.py`: registrovány `PermissionRecord`, `Role`, `RolePermission` (inline), `Team`, `TeamMembership` (inline)
+- Přidáno 26 nových testů do `firms/tests.py`:
+  - `PermissionRecordModelTest` (3 testy)
+  - `RoleModelTest` (4 testy)
+  - `TeamModelTest` (4 testy)
+  - `TeamMembershipModelTest` (2 testy)
+  - `MembershipPhase2FieldsTest` (5 testů)
+  - `SeedSystemRolesDataMigrationTest` (8 testů)
+- Všechny testy zelené: 166/166 OK
+
+**Co bude následovat:**
+- Fáze 3: Per-category & per-record ACL (`CategoryGrant`, `RecordGrant`, `PermissionAuditLog` + signály + manager metody)
+
+
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
 - [ ] Pokrytí: `firms/permissions.py` ≥ 95 %, `crm/permissions.py` ≥ 90 %.
