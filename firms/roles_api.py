@@ -3,6 +3,7 @@ Django Ninja API router – Role & Permission management (Phase 6)
 
 Endpoints:
     GET    /firms/{firm_id}/permission-catalogue        — static list of all permission codes
+    GET    /firms/{firm_id}/me/permissions              — current user's effective permissions + scope + roles
     GET    /firms/{firm_id}/roles                       — list roles for the firm
     POST   /firms/{firm_id}/roles                       — create a custom role
     PATCH  /firms/{firm_id}/roles/{role_id}             — update a custom role
@@ -22,7 +23,7 @@ from firms.auth import (
     require_permission,
 )
 from firms.models import Firm, Membership, MembershipRole, PermissionRecord, Role, RolePermission
-from firms.permissions import Permission
+from firms.permissions import Permission, Scope
 
 router = Router(tags=["roles"])
 
@@ -131,6 +132,51 @@ def list_permission_catalogue(request, firm_id: str):
         {"code": p.code, "group": p.group, "description": p.description}
         for p in perms
     ]
+
+
+# ---------------------------------------------------------------------------
+# Current user's effective permissions
+# ---------------------------------------------------------------------------
+
+class MyPermissionsOut(Schema):
+    permissions: List[str]
+    scope: str
+    role: str
+    roles: List[str]
+    can_manage_roles: bool
+    can_manage_teams: bool
+
+
+@router.get(
+    "/{firm_id}/me/permissions",
+    auth=django_auth,
+    response={200: MyPermissionsOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_my_permissions(request, firm_id: str):
+    """Return the effective permissions and scope for the authenticated user in this firm."""
+    try:
+        firm, membership = _get_firm_and_membership(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except (PermissionDenied, AuthenticationRequired):
+        return 403, {"detail": "Access denied."}
+
+    # Use crm.permissions resolver (lazy import to avoid circular deps)
+    from crm.permissions import resolve_effective_permissions, resolve_scope
+
+    effective = resolve_effective_permissions(membership)
+    scope = resolve_scope(membership, Permission.RECORD_VIEW)
+
+    roles = list(membership.roles.values_list("code", flat=True))
+
+    return 200, {
+        "permissions": sorted(effective),
+        "scope": scope,
+        "role": membership.role,  # legacy role field
+        "roles": roles,
+        "can_manage_roles": Permission.ROLE_MANAGE.value in effective,
+        "can_manage_teams": Permission.TEAM_MANAGE.value in effective,
+    }
 
 
 # ---------------------------------------------------------------------------
