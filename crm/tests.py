@@ -3386,3 +3386,272 @@ class DashboardAPITest(CRMAPIFixtureMixin, TestCase):
         self.client.login(username="worker@crm-api.com", password="pass")
         resp = self._get("/api/v1/crm/dashboard/team-leaderboard")
         self.assertEqual(resp.status_code, 403)
+
+
+# ===========================================================================
+# Phase 3 – CategoryGrant, RecordGrant, audit log signals, users_with_access()
+# ===========================================================================
+
+import uuid as _uuid
+
+from crm.models import Category, CategoryGrant, PipelineRecord, RecordGrant
+
+
+class CategoryGrantModelTest(TestCase):
+    """Unit tests for CategoryGrant model."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="catgrant_owner@ex.com", password="pass")
+        self.other = User.objects.create_user(email="catgrant_other@ex.com", password="pass")
+        self.firm = Firm.objects.create(name="CatGrant Test Firm")
+        self.membership = Membership.objects.create(
+            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+        )
+        self.category = Category.objects.create(firm=self.firm, name="Sales")
+
+    def test_create_user_grant(self):
+        """A 'user' CategoryGrant can be created."""
+        grant = CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+            granted_by=self.membership,
+        )
+        self.assertEqual(grant.level, "view")
+        self.assertEqual(grant.principal_type, "user")
+
+    def test_create_team_grant(self):
+        """A 'team' CategoryGrant can be created."""
+        team_id = _uuid.uuid4()
+        grant = CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="team",
+            principal_id=team_id,
+            level="edit",
+        )
+        self.assertEqual(grant.principal_type, "team")
+        self.assertEqual(str(grant.principal_id), str(team_id))
+
+    def test_unique_principal_constraint(self):
+        """Duplicate (category, principal_type, principal_id) is rejected."""
+        from django.db import IntegrityError
+        uid = _uuid.uuid4()
+        CategoryGrant.objects.create(
+            category=self.category, principal_type="user", principal_id=uid, level="view"
+        )
+        with self.assertRaises(Exception):
+            CategoryGrant.objects.create(
+                category=self.category, principal_type="user", principal_id=uid, level="edit"
+            )
+
+    def test_str_representation(self):
+        """CategoryGrant __str__ includes level, principal info, and category."""
+        grant = CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="manage",
+        )
+        s = str(grant)
+        self.assertIn("manage", s)
+        self.assertIn("user", s)
+
+    def test_users_with_access_method(self):
+        """Category.users_with_access() returns users with a user grant."""
+        CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+        )
+        qs = self.category.users_with_access()
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.other.id, ids)
+        self.assertNotIn(self.owner.id, ids)
+
+    def test_users_with_access_excludes_team_grants(self):
+        """Category.users_with_access() does not return teams."""
+        CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="team",
+            principal_id=_uuid.uuid4(),
+            level="view",
+        )
+        qs = self.category.users_with_access()
+        self.assertEqual(qs.count(), 0)
+
+    def test_cascade_on_category_delete(self):
+        """Deleting a Category cascades to its grants."""
+        CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+        )
+        self.category.delete()
+        self.assertEqual(CategoryGrant.objects.count(), 0)
+
+
+class RecordGrantModelTest(TestCase):
+    """Unit tests for RecordGrant model."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="recgrant_owner@ex.com", password="pass")
+        self.other = User.objects.create_user(email="recgrant_other@ex.com", password="pass")
+        self.firm = Firm.objects.create(name="RecGrant Test Firm")
+        self.membership = Membership.objects.create(
+            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+        )
+        self.record = PipelineRecord.objects.create(
+            firm=self.firm, title="Test Record", created_by=self.owner
+        )
+
+    def test_create_user_grant(self):
+        """A 'user' RecordGrant can be created."""
+        grant = RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+            granted_by=self.membership,
+        )
+        self.assertEqual(grant.level, "view")
+
+    def test_create_with_expiry(self):
+        """RecordGrant can have an expires_at timestamp."""
+        from django.utils import timezone
+        expires = timezone.now() + dt.timedelta(days=30)
+        grant = RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+            expires_at=expires,
+        )
+        self.assertIsNotNone(grant.expires_at)
+
+    def test_unique_principal_constraint(self):
+        """Duplicate (record, principal_type, principal_id) is rejected."""
+        uid = _uuid.uuid4()
+        RecordGrant.objects.create(
+            record=self.record, principal_type="user", principal_id=uid, level="view"
+        )
+        with self.assertRaises(Exception):
+            RecordGrant.objects.create(
+                record=self.record, principal_type="user", principal_id=uid, level="edit"
+            )
+
+    def test_str_representation(self):
+        """RecordGrant __str__ includes level and principal type."""
+        grant = RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="edit",
+        )
+        s = str(grant)
+        self.assertIn("edit", s)
+        self.assertIn("user", s)
+
+    def test_users_with_access_method(self):
+        """PipelineRecord.users_with_access() returns users with a user grant."""
+        RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+        )
+        qs = self.record.users_with_access()
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.other.id, ids)
+        self.assertNotIn(self.owner.id, ids)
+
+    def test_users_with_access_excludes_team_grants(self):
+        """PipelineRecord.users_with_access() does not return teams."""
+        RecordGrant.objects.create(
+            record=self.record,
+            principal_type="team",
+            principal_id=_uuid.uuid4(),
+            level="view",
+        )
+        qs = self.record.users_with_access()
+        self.assertEqual(qs.count(), 0)
+
+    def test_cascade_on_record_delete(self):
+        """Deleting a PipelineRecord cascades to its grants."""
+        RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.other.id,
+            level="view",
+        )
+        record_id = self.record.pk
+        self.record.delete()
+        self.assertEqual(RecordGrant.objects.filter(record_id=record_id).count(), 0)
+
+
+class GrantAuditSignalTest(TestCase):
+    """Post-save / post-delete signals on grants create PermissionAuditLog entries."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="grtsig_owner@ex.com", password="pass")
+        self.firm = Firm.objects.create(name="Grant Signal Firm")
+        self.category = Category.objects.create(firm=self.firm, name="Test Category")
+        self.record = PipelineRecord.objects.create(
+            firm=self.firm, title="Signal Record", created_by=self.owner
+        )
+
+    def test_category_grant_create_logs_audit(self):
+        """Creating a CategoryGrant logs 'category_grant.created' in audit."""
+        from firms.models import PermissionAuditLog
+        initial = PermissionAuditLog.objects.filter(action="category_grant.created").count()
+        CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.owner.id,
+            level="view",
+        )
+        new_count = PermissionAuditLog.objects.filter(action="category_grant.created").count()
+        self.assertEqual(new_count, initial + 1)
+
+    def test_category_grant_delete_logs_audit(self):
+        """Deleting a CategoryGrant logs 'category_grant.deleted' in audit."""
+        from firms.models import PermissionAuditLog
+        grant = CategoryGrant.objects.create(
+            category=self.category,
+            principal_type="user",
+            principal_id=self.owner.id,
+            level="view",
+        )
+        initial = PermissionAuditLog.objects.filter(action="category_grant.deleted").count()
+        grant.delete()
+        new_count = PermissionAuditLog.objects.filter(action="category_grant.deleted").count()
+        self.assertEqual(new_count, initial + 1)
+
+    def test_record_grant_create_logs_audit(self):
+        """Creating a RecordGrant logs 'record_grant.created' in audit."""
+        from firms.models import PermissionAuditLog
+        initial = PermissionAuditLog.objects.filter(action="record_grant.created").count()
+        RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.owner.id,
+            level="view",
+        )
+        new_count = PermissionAuditLog.objects.filter(action="record_grant.created").count()
+        self.assertEqual(new_count, initial + 1)
+
+    def test_record_grant_delete_logs_audit(self):
+        """Deleting a RecordGrant logs 'record_grant.deleted' in audit."""
+        from firms.models import PermissionAuditLog
+        grant = RecordGrant.objects.create(
+            record=self.record,
+            principal_type="user",
+            principal_id=self.owner.id,
+            level="view",
+        )
+        initial = PermissionAuditLog.objects.filter(action="record_grant.deleted").count()
+        grant.delete()
+        new_count = PermissionAuditLog.objects.filter(action="record_grant.deleted").count()
+        self.assertEqual(new_count, initial + 1)

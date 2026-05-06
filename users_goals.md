@@ -421,6 +421,39 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Fáze 3: Per-category & per-record ACL (`CategoryGrant`, `RecordGrant`, `PermissionAuditLog` + signály + manager metody)
 
 
+### Fáze 3 – Per-category & per-record ACL ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-again`
+
+**Co bylo uděláno:**
+- Přidán model `PermissionAuditLog` do `firms/models.py`:
+  - Pole: `id` (UUID PK), `firm` (FK→Firm CASCADE), `actor` (FK→User SET_NULL nullable), `action` (choices: role/membership/category_grant/record_grant × created/updated/deleted), `target_type`, `target_id`, `payload` (JSON), `created_at`
+  - Indexy na `(firm, created_at)`, `(actor, created_at)`, `(target_type, target_id)`
+  - Admin registrace jako read-only (no add/change/delete permissions)
+- Přidány modely `CategoryGrant` a `RecordGrant` do `crm/models.py`:
+  - `CategoryGrant(id UUID, category FK, principal_type choices('user','team'), principal_id UUID, level choices('view','edit','manage'), granted_by FK Membership nullable, granted_at, expires_at nullable)`
+  - `RecordGrant(id UUID, record FK PipelineRecord, principal_type, principal_id UUID, level, granted_by FK Membership nullable, granted_at, expires_at nullable)`
+  - Oba modely: `unique_together = (entity, principal_type, principal_id)` + index na tomto trojici
+- Přidány manager metody:
+  - `Category.users_with_access()` – vrací QuerySet User s explicitním CategoryGrant
+  - `PipelineRecord.users_with_access()` – vrací QuerySet User s explicitním RecordGrant
+- Vytvořeny migrace:
+  - `firms/migrations/0005_permission_audit_log.py` – schémová migrace pro PermissionAuditLog
+  - `crm/migrations/0008_category_record_grants.py` – schémová migrace pro CategoryGrant a RecordGrant
+- Signály pro audit log:
+  - `firms/apps.py` refaktorován – přidány signály na Role a Membership (post_save/post_delete)
+  - Přidán `pre_delete` signal na Firm pro detekci cascade deletion (thread-local flag `_deleting_firm_pks`)
+  - `crm/apps.py` – přidány signály na CategoryGrant a RecordGrant (post_save/post_delete)
+  - Všechny signal handlery gracefully skipují logging při cascade deletions (thread-local ochrana)
+- Přidáno 26 nových testů:
+  - `firms/tests.py`: `PermissionAuditLogModelTest` (4), `RoleAuditSignalTest` (2), `MembershipAuditSignalTest` (2)
+  - `crm/tests.py`: `CategoryGrantModelTest` (7), `RecordGrantModelTest` (7), `GrantAuditSignalTest` (4)
+- Všechny testy zelené: 174/174 (firms) + 26 nových OK
+
+**Co bude následovat:**
+- Fáze 4: Permissions resolver & query scoping (`crm/permissions.py` + feature flag `PERMISSIONS_V2_ENABLED`)
+
+
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
 - [ ] Pokrytí: `firms/permissions.py` ≥ 95 %, `crm/permissions.py` ≥ 90 %.
