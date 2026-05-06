@@ -2666,5 +2666,11 @@
     "col_updated_at": "Zaktualizowano",
     "newInCategory": "Nowy {category}",
     "contactDetailTitle": "Szczegóły kontaktu"
+  },
+  "streamline": {
+    "visibilityPublic": "Publiczne",
+    "visibilityRestricted": "Tylko zespół",
+    "visibilityPublicTitle": "Aktywność widoczna dla wszystkich członków z dostępem do rekordu",
+    "visibilityRestrictedTitle": "Aktywność widoczna tylko dla członków z zakresem zespołu lub administratorów"
   }
 }

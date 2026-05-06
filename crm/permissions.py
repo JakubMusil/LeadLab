@@ -280,6 +280,10 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     - It has no parent record (customer/task/proposal-only) → always visible to
       any authenticated member of the firm.
     - Its parent record is visible according to ``filter_records_qs``.
+
+    Additionally, ``visibility='restricted'`` activities are only visible to:
+    - The activity author (``activity.user == request.user``).
+    - Users whose effective scope for the parent record is ``team`` or ``all``.
     """
     if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
         return qs
@@ -293,6 +297,8 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
     if membership.role == MembershipRole.OWNER:
         return qs
 
+    user = request.user
+
     # For activities linked to a record, apply record-level scoping.
     from crm.models import PipelineRecord  # noqa: PLC0415
 
@@ -301,8 +307,21 @@ def filter_activities_qs(qs: QuerySet, request: "HttpRequest") -> QuerySet:
         request,
     ).values_list("id", flat=True)
 
-    return qs.filter(
-        Q(record_id__isnull=True) | Q(record_id__in=visible_record_ids)
+    # Determine whether this user has wide enough scope to see restricted activities.
+    scope = resolve_scope(membership, Permission.RECORD_VIEW)
+    user_sees_restricted = scope in (Scope.TEAM, Scope.ALL)
+
+    # Base filter: only activities whose parent record is visible.
+    record_filter = Q(record_id__isnull=True) | Q(record_id__in=visible_record_ids)
+
+    if user_sees_restricted:
+        # Wide scope – no additional restriction on visibility field.
+        return qs.filter(record_filter)
+
+    # Narrow scope (own / category): restricted activities are only visible if
+    # the requesting user is the author.
+    return qs.filter(record_filter).filter(
+        Q(visibility="public") | Q(user=user)
     )
 
 

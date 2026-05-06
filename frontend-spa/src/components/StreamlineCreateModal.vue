@@ -45,6 +45,7 @@ import {
   InformationCircleIcon,
   QuestionMarkCircleIcon,
   XMarkIcon,
+  EyeSlashIcon,
 } from '@heroicons/vue/24/outline'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ const heroIconMap: Record<string, Component> = {
   CalendarDaysIcon,
   LinkIcon,
   MicrophoneIcon,
+  EyeSlashIcon,
   InformationCircleIcon,
 }
 
@@ -329,6 +331,7 @@ const boolFields = ref<Record<string, boolean>>({})
 const activityText = ref('')
 const activitySubmitting = ref(false)
 const richEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const visibilityRestricted = ref(false)
 
 const taskTitle = ref('')
 const taskDueDate = ref('')
@@ -377,6 +380,7 @@ function resetForm() {
   activitySubmitting.value = false
   taskSubmitting.value = false
   proposalSubmitting.value = false
+  visibilityRestricted.value = false
 
   if (props.actionType === 'message') {
     messageChannel.value = ''
@@ -587,6 +591,7 @@ async function addActivity() {
     type: resolvedType,
     content_text: activityText.value,
     metadata,
+    visibility: visibilityRestricted.value ? 'restricted' : 'public',
   })
   activitySubmitting.value = false
   if (res.ok) {
@@ -1197,24 +1202,44 @@ watch(
             <!-- Footer — hidden for voice_memo and file_upload (they own their own buttons) -->
             <div
               v-if="actionType !== 'voice_memo' && actionType !== 'file_upload'"
-              class="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 flex-shrink-0"
+              class="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 flex-shrink-0"
             >
+              <!-- Visibility toggle — only for activity types that make sense -->
               <button
+                v-if="actionType !== 'task' && actionType !== 'todo_items_added' && actionType !== 'proposal'"
                 type="button"
-                class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
-                @click="close"
+                :title="visibilityRestricted ? t('streamline.visibilityRestrictedTitle') : t('streamline.visibilityPublicTitle')"
+                :class="[
+                  'flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg transition-colors',
+                  visibilityRestricted
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                    : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700',
+                ]"
+                @click="visibilityRestricted = !visibilityRestricted"
               >
-                {{ t('common.cancel', 'Zrušit') }}
+                <EyeSlashIcon class="w-3.5 h-3.5" />
+                <span>{{ visibilityRestricted ? t('streamline.visibilityRestricted') : t('streamline.visibilityPublic') }}</span>
               </button>
-              <button
-                type="button"
-                data-testid="streamline-create-modal-submit"
-                :disabled="submitDisabled"
-                class="px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
-                @click="handleSubmit"
-              >
-                {{ submitLabel }}
-              </button>
+              <span v-else />
+
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                  @click="close"
+                >
+                  {{ t('common.cancel', 'Zrušit') }}
+                </button>
+                <button
+                  type="button"
+                  data-testid="streamline-create-modal-submit"
+                  :disabled="submitDisabled"
+                  class="px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
+                  @click="handleSubmit"
+                >
+                  {{ submitLabel }}
+                </button>
+              </div>
             </div>
           </div>
         </Transition>

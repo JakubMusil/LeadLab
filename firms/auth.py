@@ -101,7 +101,7 @@ _PERMISSION_TO_MIN_ROLE: dict[str, str] = {
     Permission.RECORD_VIEW: MembershipRole.WORKER,
     Permission.RECORD_CREATE: MembershipRole.WORKER,
     Permission.RECORD_EDIT: MembershipRole.WORKER,
-    Permission.RECORD_DELETE: MembershipRole.WORKER,
+    Permission.RECORD_DELETE: MembershipRole.ADMIN,
     Permission.CATEGORY_VIEW: MembershipRole.WORKER,
     Permission.ACTIVITY_CREATE: MembershipRole.WORKER,
     Permission.PROPOSAL_CREATE: MembershipRole.WORKER,

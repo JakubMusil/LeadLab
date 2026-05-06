@@ -1307,6 +1307,7 @@ class ActivityOut(Schema):
     content_text: str
     metadata: Dict[str, Any]
     is_internal: bool = False
+    visibility: str = "public"
     created_at: datetime
     # Tool-specific data; None when the activity type has no registered tool
     tool_payload: Optional[Dict[str, Any]] = None
@@ -1326,6 +1327,7 @@ class ActivityOut(Schema):
 class ActivityUpdateIn(Schema):
     content_text: str = ""
     metadata: Optional[Dict[str, Any]] = None
+    visibility: Optional[str] = None
 
 
 class ActivityIn(Schema):
@@ -1338,6 +1340,7 @@ class ActivityIn(Schema):
     content_text: str = ""
     metadata: Dict[str, Any] = {}
     is_internal: bool = False
+    visibility: str = "public"
 
 
 def _user_display_name(user) -> Optional[str]:
@@ -1385,6 +1388,7 @@ def _activity_out(a: Activity, requesting_user=None) -> dict:
         "content_text": a.content_text,
         "metadata": a.metadata,
         "is_internal": a.is_internal,
+        "visibility": a.visibility,
         "created_at": a.created_at,
         "tool_payload": tool.render_payload(a) if tool is not None else None,
         "reactions": reactions,
@@ -1648,6 +1652,7 @@ def create_activity(request, payload: ActivityIn):
             content_text=payload.content_text,
             metadata=payload.metadata,
             is_internal=payload.is_internal,
+            visibility=payload.visibility,
         )
         tool.process_action(activity, entity, payload.model_dump(), context)
 
@@ -1835,6 +1840,15 @@ def update_activity(request, activity_id: str, payload: ActivityUpdateIn):
 
     activity.is_edited = True
     activity.edited_at = tz.now()
+
+    if payload.visibility is not None:
+        from crm.models import ActivityVisibility
+        valid_values = {ActivityVisibility.PUBLIC, ActivityVisibility.RESTRICTED}
+        if payload.visibility not in valid_values:
+            return 400, {"detail": f"Invalid visibility value '{payload.visibility}'. Must be 'public' or 'restricted'."}
+        activity.visibility = payload.visibility
+        update_fields.append("visibility")
+
     activity.save(update_fields=update_fields)
 
     # We do not broadcast event for edits right now, frontend relies on page reload or 

@@ -2666,5 +2666,11 @@
     "col_updated_at": "Geändert",
     "newInCategory": "Neue {category}",
     "contactDetailTitle": "Kontaktdetails"
+  },
+  "streamline": {
+    "visibilityPublic": "Öffentlich",
+    "visibilityRestricted": "Nur Team",
+    "visibilityPublicTitle": "Aktivität ist für alle Mitglieder mit Zugriff auf den Datensatz sichtbar",
+    "visibilityRestrictedTitle": "Aktivität ist nur für Mitglieder mit Team-Scope oder Admins sichtbar"
   }
 }

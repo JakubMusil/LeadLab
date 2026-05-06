@@ -2667,5 +2667,11 @@
     "col_updated_at": "Upraveno",
     "newInCategory": "Nová {category}",
     "contactDetailTitle": "Detail kontaktu"
+  },
+  "streamline": {
+    "visibilityPublic": "Veřejné",
+    "visibilityRestricted": "Jen pro tým",
+    "visibilityPublicTitle": "Aktivita je viditelná všem členům s přístupem k záznamu",
+    "visibilityRestrictedTitle": "Aktivita je viditelná pouze členům s rozsahem týmu nebo správcům"
   }
 }

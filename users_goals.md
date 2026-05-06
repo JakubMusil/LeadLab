@@ -488,10 +488,46 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
   - `crm/tests.py`: `FilterRecordsQsTest` (6 testů), `ResolveEffectivePermissionsTest` (2 testy)
 - Všechny testy zelené: 186/186 (firms) + 34/34 (crm klíčové testy)
 
-**Co bude následovat:**
-- Fáze 5: Streamline visibility – `Activity.visibility` + `StreamlineItem.visibility` + UI toggle
-- Fáze 6: Admin API – CRUD pro Role, Team, Grants + audit log endpoint
+### Fáze 5 – Streamline visibility ✅ (2026-05-06)
 
+**Větev**: `copilot/update-users-goals-document-yet-again`
+
+**Co bylo uděláno:**
+- Přidán `ActivityVisibility` enum do `crm/models.py` (PUBLIC='public', RESTRICTED='restricted')
+- Přidáno pole `visibility` do modelu `Activity`:
+  - `CharField(choices=ActivityVisibility, default=ActivityVisibility.PUBLIC, db_index=True)`
+  - S dokumentačním help_text popisujícím sémantiku
+- Vytvořena schémová migrace `crm/migrations/0009_activity_visibility.py`
+- Aktualizován `filter_activities_qs` v `crm/permissions.py`:
+  - Aktivity s `visibility='restricted'` jsou viditelné pouze uživatelům se scope `TEAM`/`ALL` nebo autorovi aktivity
+  - Uživatelé se scope `OWN`/`CATEGORY` vidí pouze `public` aktivity + ty, kde jsou autorem
+  - No-op pokud `PERMISSIONS_V2_ENABLED=False` (zpětná kompatibilita)
+- Aktualizovány API schémata v `crm/api.py`:
+  - `ActivityOut`: přidáno pole `visibility: str = "public"`
+  - `ActivityIn`: přidáno pole `visibility: str = "public"` (předáno při vytváření)
+  - `ActivityUpdateIn`: přidáno pole `visibility: Optional[str] = None` (volitelná změna)
+  - `_activity_out()` helper: vrací `visibility` z modelu
+  - `create_activity()`: ukládá `visibility` z payloadu
+  - `update_activity()`: respektuje volitelnou změnu `visibility`
+- Opraven bug z Fáze 4: `_PERMISSION_TO_MIN_ROLE[RECORD_DELETE]` byl `WORKER`, nyní správně `ADMIN`
+- Frontend (`StreamlineCreateModal.vue`):
+  - Přidán `visibilityRestricted: ref(false)` a reset v `resetForm()`
+  - Přidán import `EyeSlashIcon` z `@heroicons/vue/24/outline`
+  - Footer modalu rozšířen o toggle tlačítko visibility (zobrazí se pro všechny typy kromě task/todo_items/proposal)
+  - `addActivity()` předává `visibility: visibilityRestricted.value ? 'restricted' : 'public'`
+- i18n klíče přidány do všech 4 locale souborů pod namespace `streamline.*`:
+  - `streamline.visibilityPublic`, `streamline.visibilityRestricted`
+  - `streamline.visibilityPublicTitle`, `streamline.visibilityRestrictedTitle`
+- Přidáno 6 nových testů `StreamlineVisibilityTests` do `crm/tests.py`:
+  - `test_activity_visibility_field_default_public` – ověření výchozí hodnoty
+  - `test_owner_sees_all_activities` – owner vidí vše
+  - `test_worker_own_scope_sees_only_public_and_own_restricted` – worker bez přístupu k záznamu
+  - `test_worker_own_scope_sees_own_restricted` – autor vidí vlastní restricted
+  - `test_worker_team_scope_sees_all` – wide-scope worker vidí i restricted
+  - `test_flag_disabled_no_filtering` – PERMISSIONS_V2_ENABLED=False = žádný filtr
+
+**Co bude následovat:**
+- Fáze 6: Admin API – CRUD pro `Role`, `Team`, `CategoryGrant`, `RecordGrant` + audit log endpoint
 
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
