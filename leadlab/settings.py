@@ -172,7 +172,7 @@ SOFT_DELETE_PURGE_DAYS = int(os.environ.get("SOFT_DELETE_PURGE_DAYS", "30"))
 # role hierarchy.  Set to True in Phase 4+ to enable the new DB-backed
 # Role/Grant resolution in crm/permissions.py.
 # ---------------------------------------------------------------------------
-PERMISSIONS_V2_ENABLED = os.environ.get("PERMISSIONS_V2_ENABLED", "False") == "True"
+PERMISSIONS_V2_ENABLED = os.environ.get("PERMISSIONS_V2_ENABLED", "True") == "True"
 
 # Stripe
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')

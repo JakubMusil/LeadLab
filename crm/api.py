@@ -7295,3 +7295,280 @@ def upsert_task_custom_fields(request, task_id: str, payload: TaskCustomFieldVal
         )
 
     return 200, _task_out(task, request.user)
+
+
+# ===========================================================================
+# Phase 6 – Per-category & per-record Grant endpoints
+# ===========================================================================
+
+from crm.models import CategoryGrant, RecordGrant  # noqa: E402 – placed here to avoid circular at module load
+
+
+class GrantIn(Schema):
+    principal_type: str   # "user" or "team"
+    principal_id: str     # UUID of user or team
+    level: str            # "view" / "edit" / "manage"
+    expires_at: Optional[str] = None  # ISO 8601 datetime, optional
+
+
+class GrantOut(Schema):
+    id: str
+    principal_type: str
+    principal_id: str
+    level: str
+    granted_by_id: Optional[str]
+    granted_at: str
+    expires_at: Optional[str]
+
+
+class GrantAccessOut(Schema):
+    category_grants: List[GrantOut]
+    record_grants: List[GrantOut]
+
+
+def _grant_out(grant) -> dict:
+    return {
+        "id": str(grant.id),
+        "principal_type": grant.principal_type,
+        "principal_id": str(grant.principal_id),
+        "level": grant.level,
+        "granted_by_id": str(grant.granted_by_id) if grant.granted_by_id else None,
+        "granted_at": grant.granted_at.isoformat(),
+        "expires_at": grant.expires_at.isoformat() if grant.expires_at else None,
+    }
+
+
+def _parse_expires_at(expires_at_str: Optional[str]):
+    if not expires_at_str:
+        return None
+    parsed = parse_datetime(expires_at_str)
+    if parsed is None:
+        raise ValueError(f"Invalid expires_at datetime: {expires_at_str!r}")
+    return parsed
+
+
+# ---------------------------------------------------------------------------
+# Category grants
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/categories/{category_id}/grants",
+    auth=django_auth,
+    response={200: List[GrantOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_category_grants(request, category_id: str):
+    """List all access grants for a category. Requires ``category.manage``."""
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        category = Category.objects.get(id=category_id, firm=request.firm)
+    except Category.DoesNotExist:
+        return 404, {"detail": "Category not found."}
+
+    grants = CategoryGrant.objects.filter(category=category)
+    return 200, [_grant_out(g) for g in grants]
+
+
+@router.post(
+    "/categories/{category_id}/grants",
+    auth=django_auth,
+    response={201: GrantOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_category_grant(request, category_id: str, payload: GrantIn):
+    """Grant access to a category for a user or team. Requires ``category.manage``."""
+    try:
+        membership = require_permission(request, Permission.CATEGORY_MANAGE)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        category = Category.objects.get(id=category_id, firm=request.firm)
+    except Category.DoesNotExist:
+        return 404, {"detail": "Category not found."}
+
+    if payload.principal_type not in ("user", "team"):
+        return 400, {"detail": "principal_type must be 'user' or 'team'."}
+    if payload.level not in ("view", "edit", "manage"):
+        return 400, {"detail": "level must be 'view', 'edit', or 'manage'."}
+
+    try:
+        import uuid as _uuid
+        principal_uuid = _uuid.UUID(payload.principal_id)
+    except ValueError:
+        return 400, {"detail": "principal_id must be a valid UUID."}
+
+    try:
+        expires_at = _parse_expires_at(payload.expires_at)
+    except ValueError as exc:
+        return 400, {"detail": str(exc)}
+
+    grant, created = CategoryGrant.objects.update_or_create(
+        category=category,
+        principal_type=payload.principal_type,
+        principal_id=principal_uuid,
+        defaults={
+            "level": payload.level,
+            "granted_by": membership,
+            "expires_at": expires_at,
+        },
+    )
+    status = 201 if created else 200
+    return status, _grant_out(grant)
+
+
+@router.delete(
+    "/categories/{category_id}/grants/{grant_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_category_grant(request, category_id: str, grant_id: str):
+    """Revoke a category access grant. Requires ``category.manage``."""
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        Category.objects.get(id=category_id, firm=request.firm)
+    except Category.DoesNotExist:
+        return 404, {"detail": "Category not found."}
+
+    try:
+        grant = CategoryGrant.objects.get(id=grant_id, category__id=category_id)
+    except CategoryGrant.DoesNotExist:
+        return 404, {"detail": "Grant not found."}
+
+    grant.delete()
+    return 204, None
+
+
+# ---------------------------------------------------------------------------
+# Record grants
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/records/{record_id}/access",
+    auth=django_auth,
+    response={200: GrantAccessOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_record_access(request, record_id: str):
+    """Return all grants (category-level and record-level) effective for a record.
+
+    Useful for the "Share" UI dialog.  Requires at least ``record.view``.
+    """
+    try:
+        require_permission(request, Permission.RECORD_VIEW)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        record = PipelineRecord.objects.select_related("category").get(
+            id=record_id, firm=request.firm
+        )
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    category_grants = CategoryGrant.objects.filter(category=record.category) if record.category else []
+    record_grants = RecordGrant.objects.filter(record=record)
+
+    return 200, {
+        "category_grants": [_grant_out(g) for g in category_grants],
+        "record_grants": [_grant_out(g) for g in record_grants],
+    }
+
+
+@router.get(
+    "/records/{record_id}/grants",
+    auth=django_auth,
+    response={200: List[GrantOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_record_grants(request, record_id: str):
+    """List direct (per-record) access grants. Requires ``record.edit``."""
+    try:
+        require_permission(request, Permission.RECORD_EDIT)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    grants = RecordGrant.objects.filter(record=record)
+    return 200, [_grant_out(g) for g in grants]
+
+
+@router.post(
+    "/records/{record_id}/grants",
+    auth=django_auth,
+    response={201: GrantOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_record_grant(request, record_id: str, payload: GrantIn):
+    """Grant access to a record for a user or team. Requires ``record.edit``."""
+    try:
+        membership = require_permission(request, Permission.RECORD_EDIT)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        record = PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    if payload.principal_type not in ("user", "team"):
+        return 400, {"detail": "principal_type must be 'user' or 'team'."}
+    if payload.level not in ("view", "edit", "manage"):
+        return 400, {"detail": "level must be 'view', 'edit', or 'manage'."}
+
+    try:
+        import uuid as _uuid
+        principal_uuid = _uuid.UUID(payload.principal_id)
+    except ValueError:
+        return 400, {"detail": "principal_id must be a valid UUID."}
+
+    try:
+        expires_at = _parse_expires_at(payload.expires_at)
+    except ValueError as exc:
+        return 400, {"detail": str(exc)}
+
+    grant, created = RecordGrant.objects.update_or_create(
+        record=record,
+        principal_type=payload.principal_type,
+        principal_id=principal_uuid,
+        defaults={
+            "level": payload.level,
+            "granted_by": membership,
+            "expires_at": expires_at,
+        },
+    )
+    status = 201 if created else 200
+    return status, _grant_out(grant)
+
+
+@router.delete(
+    "/records/{record_id}/grants/{grant_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_record_grant(request, record_id: str, grant_id: str):
+    """Revoke a per-record access grant. Requires ``record.edit``."""
+    try:
+        require_permission(request, Permission.RECORD_EDIT)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        PipelineRecord.objects.get(id=record_id, firm=request.firm)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    try:
+        grant = RecordGrant.objects.get(id=grant_id, record__id=record_id)
+    except RecordGrant.DoesNotExist:
+        return 404, {"detail": "Grant not found."}
+
+    grant.delete()
+    return 204, None

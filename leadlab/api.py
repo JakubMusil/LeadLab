@@ -18,7 +18,9 @@ from crm.push_api import router as push_router
 from firms.api import router as firms_router
 from firms.billing_api import billing_router
 from firms.invitations_api import public_router as public_invitations_router
+from firms.roles_api import router as roles_router
 from firms.stripe_webhook import webhook_router
+from firms.teams_api import router as teams_router
 from firms.token_auth import BearerTokenAuth
 from firms.tokens_api import router as tokens_router
 from firms.webhooks_api import router as webhooks_router
@@ -38,6 +40,8 @@ api = NinjaAPI(
 api.add_router("/users/", users_router)
 api.add_router("/firms/", firms_router)
 api.add_router("/firms/", billing_router)
+api.add_router("/firms/", roles_router)
+api.add_router("/firms/", teams_router)
 api.add_router("/firms/", tokens_router)
 api.add_router("/firms/", webhooks_router)
 api.add_router("/invitations/", public_invitations_router)
