@@ -5,6 +5,7 @@ from firms.models import (
     Firm,
     Invitation,
     Membership,
+    PermissionAuditLog,
     PermissionRecord,
     Role,
     RolePermission,
@@ -129,3 +130,21 @@ class TeamAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at")
     prepopulated_fields = {"slug": ("name",)}
     inlines = [TeamMembershipInline]
+
+
+@admin.register(PermissionAuditLog)
+class PermissionAuditLogAdmin(admin.ModelAdmin):
+    list_display = ("action", "target_type", "target_id", "actor", "firm", "created_at")
+    list_filter = ("action", "target_type", "firm")
+    search_fields = ("target_id", "actor__email", "firm__name")
+    readonly_fields = ("id", "firm", "actor", "action", "target_type", "target_id", "payload", "created_at")
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

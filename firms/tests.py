@@ -1513,3 +1513,133 @@ class SeedSystemRolesDataMigrationTest(TestCase):
         create_system_roles_for_firm(self.firm)
         count = Role.objects.filter(firm=self.firm, is_system=True).count()
         self.assertEqual(count, 4)
+
+
+# ===========================================================================
+# Phase 3 – PermissionAuditLog, CategoryGrant, RecordGrant
+# ===========================================================================
+
+class PermissionAuditLogModelTest(TestCase):
+    """Unit tests for the PermissionAuditLog model."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="audit@example.com", password="pass")
+        self.firm = Firm.objects.create(name="Audit Test Firm")
+
+    def test_create_audit_log_entry(self):
+        """PermissionAuditLog can be created with required fields."""
+        from firms.models import PermissionAuditLog
+        entry = PermissionAuditLog.objects.create(
+            firm=self.firm,
+            actor=self.user,
+            action="role.created",
+            target_type="role",
+            target_id="some-uuid",
+            payload={"code": "manager", "name": "Manager"},
+        )
+        self.assertIsNotNone(entry.pk)
+        self.assertEqual(entry.action, "role.created")
+
+    def test_audit_log_ordering_descending(self):
+        """PermissionAuditLog is ordered by -created_at."""
+        from firms.models import PermissionAuditLog
+        e1 = PermissionAuditLog.objects.create(
+            firm=self.firm, action="role.created", target_type="role", target_id="1"
+        )
+        e2 = PermissionAuditLog.objects.create(
+            firm=self.firm, action="role.deleted", target_type="role", target_id="2"
+        )
+        qs = list(PermissionAuditLog.objects.filter(firm=self.firm))
+        # Most recent first
+        self.assertEqual(qs[0].pk, e2.pk)
+        self.assertEqual(qs[1].pk, e1.pk)
+
+    def test_audit_log_actor_nullable(self):
+        """PermissionAuditLog can be created without an actor (system action)."""
+        from firms.models import PermissionAuditLog
+        entry = PermissionAuditLog.objects.create(
+            firm=self.firm,
+            actor=None,
+            action="membership.created",
+            target_type="membership",
+            target_id="abc",
+        )
+        self.assertIsNone(entry.actor)
+
+    def test_audit_log_str(self):
+        """PermissionAuditLog __str__ includes action and target."""
+        from firms.models import PermissionAuditLog
+        entry = PermissionAuditLog.objects.create(
+            firm=self.firm,
+            action="role.updated",
+            target_type="role",
+            target_id="xyz",
+        )
+        s = str(entry)
+        self.assertIn("role.updated", s)
+        self.assertIn("xyz", s)
+
+
+class RoleAuditSignalTest(TestCase):
+    """Post-save / post-delete signals on Role create PermissionAuditLog entries."""
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Signal Test Firm")
+
+    def test_role_created_signal(self):
+        """Creating a Role produces a 'role.created' audit entry."""
+        from firms.models import PermissionAuditLog, Role
+        initial_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="role.created"
+        ).count()
+        Role.objects.create(firm=self.firm, code="test-role", name="Test Role")
+        new_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="role.created"
+        ).count()
+        self.assertEqual(new_count, initial_count + 1)
+
+    def test_role_deleted_signal(self):
+        """Deleting a Role produces a 'role.deleted' audit entry."""
+        from firms.models import PermissionAuditLog, Role
+        role = Role.objects.create(firm=self.firm, code="delete-me", name="Delete Me")
+        initial_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="role.deleted"
+        ).count()
+        role.delete()
+        new_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="role.deleted"
+        ).count()
+        self.assertEqual(new_count, initial_count + 1)
+
+
+class MembershipAuditSignalTest(TestCase):
+    """Post-save / post-delete signals on Membership create PermissionAuditLog entries."""
+
+    def setUp(self):
+        self.firm = Firm.objects.create(name="Membership Signal Firm")
+        self.user = User.objects.create_user(email="memb@example.com", password="pass")
+
+    def test_membership_created_signal(self):
+        """Creating a Membership produces a 'membership.created' audit entry."""
+        from firms.models import PermissionAuditLog
+        initial_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="membership.created"
+        ).count()
+        Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        new_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="membership.created"
+        ).count()
+        self.assertEqual(new_count, initial_count + 1)
+
+    def test_membership_deleted_signal(self):
+        """Deleting a Membership produces a 'membership.deleted' audit entry."""
+        from firms.models import PermissionAuditLog
+        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        initial_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="membership.deleted"
+        ).count()
+        m.delete()
+        new_count = PermissionAuditLog.objects.filter(
+            firm=self.firm, action="membership.deleted"
+        ).count()
+        self.assertEqual(new_count, initial_count + 1)

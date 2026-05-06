@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from django.apps import AppConfig
@@ -8,6 +9,7 @@ from django.apps import AppConfig
 # ---------------------------------------------------------------------------
 
 _local = threading.local()
+_logger = logging.getLogger(__name__)
 
 
 def set_current_user(user) -> None:
@@ -177,7 +179,7 @@ class CrmConfig(AppConfig):
         # -------------------------------------------------------------------
         # Register entity-change signals after models are fully loaded
         # -------------------------------------------------------------------
-        from django.db.models.signals import pre_save, post_save
+        from django.db.models.signals import pre_save, post_save, post_delete
         from crm.models import PipelineRecord, Customer, Proposal
 
         _entities = [
@@ -199,3 +201,145 @@ class CrmConfig(AppConfig):
                 weak=False,
                 dispatch_uid=f"crm_entity_change_post_{model.__name__.lower()}",
             )
+
+        # -------------------------------------------------------------------
+        # Phase 3 – Audit log signals for CategoryGrant and RecordGrant
+        # -------------------------------------------------------------------
+        from crm.models import CategoryGrant, RecordGrant
+
+        def _on_category_grant_post_save(sender, instance, created, **kwargs):
+            if not created:
+                return  # grants are not updated, only created/deleted
+            try:
+                from firms.apps import _is_firm_being_deleted, get_current_user
+                from firms.models import PermissionAuditLog
+                firm = instance.category.firm
+                if _is_firm_being_deleted(firm.pk):
+                    return
+                PermissionAuditLog.objects.create(
+                    firm=firm,
+                    actor=get_current_user(),
+                    action="category_grant.created",
+                    target_type="category_grant",
+                    target_id=str(instance.pk),
+                    payload={
+                        "category_id": str(instance.category_id),
+                        "principal_type": instance.principal_type,
+                        "principal_id": str(instance.principal_id),
+                        "level": instance.level,
+                    },
+                )
+            except Exception:
+                _logger.warning(
+                    "Failed to log audit entry for category_grant.created pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
+
+        def _on_category_grant_post_delete(sender, instance, **kwargs):
+            try:
+                from firms.apps import _is_firm_being_deleted, get_current_user
+                from firms.models import PermissionAuditLog
+                firm = instance.category.firm
+                if _is_firm_being_deleted(firm.pk):
+                    return
+                PermissionAuditLog.objects.create(
+                    firm=firm,
+                    actor=get_current_user(),
+                    action="category_grant.deleted",
+                    target_type="category_grant",
+                    target_id=str(instance.pk),
+                    payload={
+                        "category_id": str(instance.category_id),
+                        "principal_type": instance.principal_type,
+                        "principal_id": str(instance.principal_id),
+                        "level": instance.level,
+                    },
+                )
+            except Exception:
+                _logger.warning(
+                    "Failed to log audit entry for category_grant.deleted pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
+
+        def _on_record_grant_post_save(sender, instance, created, **kwargs):
+            if not created:
+                return
+            try:
+                from firms.apps import _is_firm_being_deleted, get_current_user
+                from firms.models import PermissionAuditLog
+                firm = instance.record.firm
+                if _is_firm_being_deleted(firm.pk):
+                    return
+                PermissionAuditLog.objects.create(
+                    firm=firm,
+                    actor=get_current_user(),
+                    action="record_grant.created",
+                    target_type="record_grant",
+                    target_id=str(instance.pk),
+                    payload={
+                        "record_id": str(instance.record_id),
+                        "principal_type": instance.principal_type,
+                        "principal_id": str(instance.principal_id),
+                        "level": instance.level,
+                    },
+                )
+            except Exception:
+                _logger.warning(
+                    "Failed to log audit entry for record_grant.created pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
+
+        def _on_record_grant_post_delete(sender, instance, **kwargs):
+            try:
+                from firms.apps import _is_firm_being_deleted, get_current_user
+                from firms.models import PermissionAuditLog
+                firm = instance.record.firm
+                if _is_firm_being_deleted(firm.pk):
+                    return
+                PermissionAuditLog.objects.create(
+                    firm=firm,
+                    actor=get_current_user(),
+                    action="record_grant.deleted",
+                    target_type="record_grant",
+                    target_id=str(instance.pk),
+                    payload={
+                        "record_id": str(instance.record_id),
+                        "principal_type": instance.principal_type,
+                        "principal_id": str(instance.principal_id),
+                        "level": instance.level,
+                    },
+                )
+            except Exception:
+                _logger.warning(
+                    "Failed to log audit entry for record_grant.deleted pk=%s",
+                    instance.pk,
+                    exc_info=True,
+                )
+
+        post_save.connect(
+            _on_category_grant_post_save,
+            sender=CategoryGrant,
+            weak=False,
+            dispatch_uid="crm_audit_category_grant_post_save",
+        )
+        post_delete.connect(
+            _on_category_grant_post_delete,
+            sender=CategoryGrant,
+            weak=False,
+            dispatch_uid="crm_audit_category_grant_post_delete",
+        )
+        post_save.connect(
+            _on_record_grant_post_save,
+            sender=RecordGrant,
+            weak=False,
+            dispatch_uid="crm_audit_record_grant_post_save",
+        )
+        post_delete.connect(
+            _on_record_grant_post_delete,
+            sender=RecordGrant,
+            weak=False,
+            dispatch_uid="crm_audit_record_grant_post_delete",
+        )

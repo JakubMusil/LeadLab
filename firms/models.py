@@ -314,6 +314,83 @@ class TeamMembership(models.Model):
         return f"{self.membership} in {self.team}"
 
 
+# ---------------------------------------------------------------------------
+# Phase 3 – Permission Audit Log
+# ---------------------------------------------------------------------------
+
+
+class PermissionAuditLog(models.Model):
+    """
+    Append-only audit trail for all permission-related changes.
+
+    Created automatically by post_save / post_delete signals on:
+    ``Role``, ``Membership``, ``CategoryGrant``, ``RecordGrant``.
+
+    The log is intentionally append-only – update and delete operations are
+    prohibited at the application level (the admin shows it as readonly).
+    ``target_type`` / ``target_id`` use a simple string tag so no GenericFK
+    dependency is needed.
+    """
+
+    ACTION_CHOICES = [
+        ("role.created", "Role created"),
+        ("role.updated", "Role updated"),
+        ("role.deleted", "Role deleted"),
+        ("membership.created", "Membership created"),
+        ("membership.updated", "Membership updated"),
+        ("membership.deleted", "Membership deleted"),
+        ("category_grant.created", "CategoryGrant created"),
+        ("category_grant.deleted", "CategoryGrant deleted"),
+        ("record_grant.created", "RecordGrant created"),
+        ("record_grant.deleted", "RecordGrant deleted"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(
+        Firm,
+        on_delete=models.CASCADE,
+        related_name="permission_audit_logs",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="permission_audit_logs",
+        help_text="The user who performed the action. Null for system/migration actions.",
+    )
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES, db_index=True)
+    target_type = models.CharField(
+        max_length=40,
+        db_index=True,
+        help_text="Type tag of the affected object (e.g. 'role', 'membership').",
+    )
+    target_id = models.CharField(
+        max_length=40,
+        db_index=True,
+        help_text="String representation of the affected object's PK.",
+    )
+    payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Snapshot of changed fields or relevant context.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "permission audit log"
+        verbose_name_plural = "permission audit logs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["firm", "-created_at"]),
+            models.Index(fields=["actor", "-created_at"]),
+            models.Index(fields=["target_type", "target_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.action} on {self.target_type}#{self.target_id} by {self.actor}"
+
+
 _INVITATION_EXPIRY_DAYS = 7
 
 

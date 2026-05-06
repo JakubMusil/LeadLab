@@ -275,6 +275,21 @@ class Category(TenantModel):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+    def users_with_access(self):
+        """
+        Return a queryset of Users who have an explicit CategoryGrant on this
+        category.  Used by the UI "Access" panel on the pipeline settings page.
+
+        The result is lazy-imported to avoid a forward-reference cycle at
+        module load time (CategoryGrant is defined below PipelineRecord).
+        """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = self.grants.filter(
+            principal_type="user",
+        ).values_list("principal_id", flat=True)
+        return User.objects.filter(id__in=user_ids)
+
 
 class Stage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -499,6 +514,18 @@ class PipelineRecord(SoftDeleteMixin, TenantModel):
         # Recalculate canonical amount on value/currency change
         _recalc_canonical(self, amount_field="value")
         super().save(*args, **kwargs)
+
+    def users_with_access(self):
+        """
+        Return a queryset of Users who have an explicit RecordGrant on this
+        record.  Used by the UI "Share" panel on the record detail page.
+        """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user_ids = self.grants.filter(
+            principal_type="user",
+        ).values_list("principal_id", flat=True)
+        return User.objects.filter(id__in=user_ids)
 
     # -----------------------------------------------------------------------
     # Streamline toolbar registry
@@ -2794,3 +2821,135 @@ class Document(SoftDeleteMixin, TenantModel):
 
     def __str__(self):
         return self.name
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 – Per-category & per-record ACL (CategoryGrant, RecordGrant)
+# ---------------------------------------------------------------------------
+
+_PRINCIPAL_TYPE_CHOICES = [
+    ("user", "User"),
+    ("team", "Team"),
+]
+
+_GRANT_LEVEL_CHOICES = [
+    ("view", "View"),
+    ("edit", "Edit"),
+    ("manage", "Manage"),
+]
+
+
+class CategoryGrant(models.Model):
+    """
+    Per-category access control entry.
+
+    Grants a user or team access to all records within a Category at the
+    specified level (view / edit / manage).  These grants are additive –
+    there are no negative/deny grants (KISS).
+
+    ``principal_type`` + ``principal_id`` together identify the grantee:
+    - "user" → UUID of a User
+    - "team" → UUID of a Team (firms.Team)
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="grants",
+    )
+    principal_type = models.CharField(
+        max_length=10,
+        choices=_PRINCIPAL_TYPE_CHOICES,
+        db_index=True,
+    )
+    principal_id = models.UUIDField(db_index=True)
+    level = models.CharField(max_length=10, choices=_GRANT_LEVEL_CHOICES)
+    granted_by = models.ForeignKey(
+        "firms.Membership",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="category_grants_given",
+        help_text="Membership of the user who created this grant.",
+    )
+    granted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When set, the grant is automatically revoked after this timestamp.",
+    )
+
+    class Meta:
+        verbose_name = "category grant"
+        verbose_name_plural = "category grants"
+        ordering = ["-granted_at"]
+        indexes = [
+            models.Index(
+                fields=["category", "principal_type", "principal_id"],
+                name="crm_catgrant_cat_princ_idx",
+            ),
+        ]
+        unique_together = [("category", "principal_type", "principal_id")]
+
+    def __str__(self):
+        return (
+            f"CategoryGrant({self.level}) "
+            f"{self.principal_type}:{self.principal_id} → {self.category}"
+        )
+
+
+class RecordGrant(models.Model):
+    """
+    Per-record access control entry.
+
+    Grants a user or team access to a single PipelineRecord at the specified
+    level (view / edit / manage).  Supports optional expiry for time-boxed
+    access (e.g. external auditor scenario).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    record = models.ForeignKey(
+        PipelineRecord,
+        on_delete=models.CASCADE,
+        related_name="grants",
+    )
+    principal_type = models.CharField(
+        max_length=10,
+        choices=_PRINCIPAL_TYPE_CHOICES,
+        db_index=True,
+    )
+    principal_id = models.UUIDField(db_index=True)
+    level = models.CharField(max_length=10, choices=_GRANT_LEVEL_CHOICES)
+    granted_by = models.ForeignKey(
+        "firms.Membership",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="record_grants_given",
+        help_text="Membership of the user who created this grant.",
+    )
+    granted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When set, the grant is automatically revoked after this timestamp.",
+    )
+
+    class Meta:
+        verbose_name = "record grant"
+        verbose_name_plural = "record grants"
+        ordering = ["-granted_at"]
+        indexes = [
+            models.Index(
+                fields=["record", "principal_type", "principal_id"],
+                name="crm_recgrant_rec_princ_idx",
+            ),
+        ]
+        unique_together = [("record", "principal_type", "principal_id")]
+
+    def __str__(self):
+        return (
+            f"RecordGrant({self.level}) "
+            f"{self.principal_type}:{self.principal_id} → {self.record_id}"
+        )
