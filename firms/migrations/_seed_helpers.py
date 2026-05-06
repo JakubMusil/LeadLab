@@ -59,8 +59,14 @@ def create_system_roles_for_firm(firm) -> None:
 
 
 def link_membership_to_system_role(membership) -> None:
-    """Assign the matching system role to *membership* based on its legacy ``role`` field."""
-    system_code = LEGACY_TO_SYSTEM_ROLE.get(membership.role)
+    """Assign the matching system role to *membership* based on its primary role.
+
+    After Phase 8 the legacy ``Membership.role`` column was dropped; we now
+    derive the legacy code from ``primary_role`` (which itself reflects the
+    M2M ``roles`` relation). This helper remains useful for tests and for the
+    historical data migration in ``0004_seed_system_roles.py``.
+    """
+    system_code = LEGACY_TO_SYSTEM_ROLE.get(membership.primary_role)
     if system_code is None:
         return
     try:

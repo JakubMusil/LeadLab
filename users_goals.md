@@ -924,3 +924,25 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Volitelně: smazat `MembershipRole.WORKER` (deprecated alias) v budoucím releasu
 - Volitelně: přejmenovat `MembershipRole` na `InvitationRole` pro sémantiku (hodnoty zůstanou stejné)
 
+
+### v2.3 – Invitation default → MEMBER + manager fix ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-progress`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py::Invitation.role`** – výchozí hodnota přepnuta z deprecated `MembershipRole.WORKER` na kanonický `MembershipRole.MEMBER`. Hodnota `worker` zůstává platnou volbou (jako alias) pro zpětnou kompatibilitu.
+- **`firms/api.py::MemberInviteIn.role`** – výchozí hodnota schématu sjednocena s modelem (`MembershipRole.MEMBER`). Klienti, kteří dnes pole `role` neposílají, dostanou Member místo deprecated Worker.
+- **`firms/migrations/0009_invitation_default_member.py`** – nová migrace (`AlterField` na `Invitation.role`).
+- **`firms/models.py::MembershipManager.get_or_create()`** – přidán override, který pop-uje `defaults={"role": ...}` a po vytvoření Membership přiřadí odpovídající systémovou roli přes `_assign_system_role_by_code()`. Opravuje pre-existing bug po v2.2 (drop sloupce `Membership.role`), kde `firms/api.py::invite_member` selhával na `FieldError: Invalid field name(s) for model Membership: 'role'`.
+- **`firms/migrations/_seed_helpers.py::link_membership_to_system_role`** – `membership.role` (zaniklé pole) → `membership.primary_role`. Opravuje 2 pre-existing test errors v `SeedSystemRolesDataMigrationTest`.
+
+**Verifikace:**
+- `python manage.py test firms` – 203/203 OK (předtím 200/203 s 3 erorry, nesouvisející s defaultem invitation; všechny opraveny v rámci tohoto PR jako bezprostředně související bugy v module družině)
+- `python manage.py test crm.tests.FilterRecordsQsTest crm.tests.ResolveEffectivePermissionsTest crm.tests.StreamlineVisibilityTests crm.tests.CategoryGrantModelTest crm.tests.RecordGrantModelTest` – 28/28 OK
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.3` / `v2.0-permissions`
+- v2.4 (volitelně): odstranit `MembershipRole.WORKER` enum value (po release period kde byly všechny invites migrovány na MEMBER) – aktuálně blokováno tím, že stále tisíce řádků v testech a fixtures používá string `"worker"`
+- v2.5 (volitelně): přejmenovat `MembershipRole` na `InvitationRole` (sémantika po dropu `Membership.role`)
+
