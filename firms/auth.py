@@ -26,6 +26,46 @@ from firms.models import Firm, Membership, InvitationRole
 from firms.permissions import Permission, has_min_role
 
 # ---------------------------------------------------------------------------
+# SuperuserMembership sentinel
+# ---------------------------------------------------------------------------
+
+
+class SuperuserMembership:
+    """Lightweight sentinel returned by auth gates when ``request.user.is_superuser``.
+
+    Django superusers bypass all firm-level permission and role checks.
+    They are above Owners and have full access to every workspace and resource.
+    This sentinel exposes the same interface as ``firms.models.Membership`` so
+    that callers of ``require_membership`` / ``require_permission`` can use the
+    returned object without special-casing the superuser path.
+    """
+
+    # Role constants so callers can use the same attributes as a real Membership.
+    primary_role: str = "owner"
+    is_owner: bool = True
+    is_admin_or_above: bool = True
+    is_expired: bool = False
+    default_scope: str = "all"
+    team = None
+
+    def __init__(self, request: HttpRequest) -> None:
+        self.firm = getattr(request, "firm", None)
+        self.firm_id = self.firm.pk if self.firm else None
+        self.user = request.user
+        self.user_id = request.user.pk if request.user else None
+        # Expose pk as None – superuser sentinel is not a real DB row.
+        self.pk = None
+        self.id = None
+
+    # Expose a no-op for method callers that expect a real Membership.
+    def _assign_system_role_by_code(self, role_code: str) -> None:  # pragma: no cover
+        pass
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<SuperuserMembership user={self.user_id} firm={self.firm_id}>"
+
+
+# ---------------------------------------------------------------------------
 # Exceptions (subclass of Exception so they can be caught as regular errors
 # or converted to HTTP responses by the API layer).
 # ---------------------------------------------------------------------------
@@ -61,12 +101,17 @@ class FirmNotFound(Exception):
 def require_membership(
     request: HttpRequest,
     min_role: str = InvitationRole.MEMBER,
-) -> Membership:
+) -> "Membership | SuperuserMembership":
     """
     Validate that the current request has a valid authenticated user with an
     active Membership in ``request.firm`` at *at least* ``min_role``.
 
-    Returns the resolved :class:`~firms.models.Membership` on success.
+    Django superusers (``request.user.is_superuser``) bypass all firm-level
+    membership and role checks – they are above Owners and always get a
+    :class:`SuperuserMembership` sentinel back.
+
+    Returns the resolved :class:`~firms.models.Membership` (or
+    :class:`SuperuserMembership` for superusers) on success.
     Raises one of the custom exceptions above on failure.
     """
     if not request.user or not request.user.is_authenticated:
@@ -74,6 +119,12 @@ def require_membership(
 
     if not getattr(request, "firm", None):
         raise FirmNotFound("No active Firm found for this request.")
+
+    # Superuser short-circuit: Django superusers have full access to every firm.
+    # Use strict identity check (is True) to guard against MagicMock in tests
+    # where mock.is_superuser returns a truthy sentinel rather than a real bool.
+    if getattr(request.user, "is_superuser", False) is True:
+        return SuperuserMembership(request)
 
     membership: Membership | None = getattr(request, "membership", None)
     if membership is None:
@@ -105,15 +156,19 @@ def require_permission(
     perm: Permission,
     *,
     resource=None,  # noqa: ARG001 – used in Phase 6+ for per-resource checks
-) -> Membership:
+) -> "Membership | SuperuserMembership":
     """
     Validate that the current request holds *perm*.
 
-    Resolves the membership's effective permissions from the DB-backed
-    ``Role`` / ``RolePermission`` tables via
+    Django superusers (``request.user.is_superuser``) bypass all permission
+    checks and receive a :class:`SuperuserMembership` sentinel.
+
+    For regular users, resolves the membership's effective permissions from the
+    DB-backed ``Role`` / ``RolePermission`` tables via
     :func:`crm.permissions.resolve_effective_permissions`.
 
-    Returns the resolved :class:`~firms.models.Membership` on success.
+    Returns the resolved :class:`~firms.models.Membership` (or
+    :class:`SuperuserMembership` for superusers) on success.
     Raises one of the standard auth exceptions on failure.
     """
     if not request.user or not request.user.is_authenticated:
@@ -121,6 +176,12 @@ def require_permission(
 
     if not getattr(request, "firm", None):
         raise FirmNotFound("No active Firm found for this request.")
+
+    # Superuser short-circuit: Django superusers have full access to every firm.
+    # Use strict identity check (is True) to guard against MagicMock in tests
+    # where mock.is_superuser returns a truthy sentinel rather than a real bool.
+    if getattr(request.user, "is_superuser", False) is True:
+        return SuperuserMembership(request)
 
     membership: Membership | None = getattr(request, "membership", None)
     if membership is None:

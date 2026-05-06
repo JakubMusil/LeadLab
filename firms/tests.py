@@ -2516,3 +2516,112 @@ class OwnershipTransferAPITest(TestCase):
         else:
             recipient_list = call_kwargs.kwargs.get("recipient_list", [])
         self.assertIn(self.admin_user.email, recipient_list)
+
+
+class SuperadminAccessTest(TestCase):
+    """Tests that Django superusers bypass all firm-level permission checks."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.firm = Firm.objects.create(name="SA Firm")
+        self.superuser = User.objects.create_superuser(
+            email="superadmin@leadlab.dev", password="adminpass"
+        )
+        # A regular owner and member for comparison
+        self.owner = User.objects.create_user(email="saowner@example.com", password="pass")
+        self.member = User.objects.create_user(email="samember@example.com", password="pass")
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=InvitationRole.OWNER)
+        self.member_m = Membership.objects.create(user=self.member, firm=self.firm, role=InvitationRole.MEMBER)
+
+    def _make_req(self, user, membership=None):
+        req = self.factory.get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_superuser_not_member_passes_require_membership(self):
+        """Superuser without a firm membership passes require_membership."""
+        from firms.auth import SuperuserMembership
+        req = self._make_req(self.superuser, membership=None)
+        result = require_membership(req)
+        self.assertIsInstance(result, SuperuserMembership)
+
+    def test_superuser_not_member_passes_require_permission(self):
+        """Superuser without a firm membership passes all require_permission checks."""
+        from firms.auth import SuperuserMembership
+        req = self._make_req(self.superuser, membership=None)
+        for perm in [
+            Permission.RECORD_VIEW, Permission.RECORD_CREATE, Permission.RECORD_DELETE,
+            Permission.BILLING_MANAGE, Permission.FIRM_DELETE, Permission.FIRM_TRANSFER,
+            Permission.ROLE_MANAGE, Permission.TEAM_MANAGE,
+        ]:
+            result = require_permission(req, perm)
+            self.assertIsInstance(result, SuperuserMembership, f"Superuser should pass {perm}")
+
+    def test_superuser_as_member_passes_require_permission(self):
+        """Superuser who also has a membership passes all permission checks."""
+        from firms.auth import SuperuserMembership
+        # Give the superuser a real membership (e.g. as Member – lowest role)
+        su_membership = Membership.objects.create(user=self.superuser, firm=self.firm, role=InvitationRole.MEMBER)
+        req = self._make_req(self.superuser, membership=su_membership)
+        result = require_permission(req, Permission.BILLING_MANAGE)
+        self.assertIsInstance(result, SuperuserMembership)
+
+    def test_superuser_sentinel_is_owner_and_admin(self):
+        """SuperuserMembership has owner-level properties."""
+        from firms.auth import SuperuserMembership
+        req = self._make_req(self.superuser, membership=None)
+        sentinel = SuperuserMembership(req)
+        self.assertTrue(sentinel.is_owner)
+        self.assertTrue(sentinel.is_admin_or_above)
+        self.assertFalse(sentinel.is_expired)
+        self.assertEqual(sentinel.primary_role, "owner")
+        self.assertEqual(sentinel.default_scope, "all")
+        self.assertEqual(sentinel.firm, self.firm)
+        self.assertEqual(sentinel.user, self.superuser)
+
+    def test_superuser_min_role_check_skipped(self):
+        """Superuser bypasses min_role even when it's OWNER."""
+        from firms.auth import SuperuserMembership
+        req = self._make_req(self.superuser, membership=None)
+        result = require_membership(req, min_role=InvitationRole.OWNER)
+        self.assertIsInstance(result, SuperuserMembership)
+
+    def test_regular_user_still_needs_membership(self):
+        """Non-superuser without membership still gets PermissionDenied."""
+        stranger = User.objects.create_user(email="stranger@example.com", password="pass")
+        req = self._make_req(stranger, membership=None)
+        with self.assertRaises(PermissionDenied):
+            require_membership(req)
+
+    def test_superuser_filter_records_sees_all(self):
+        """Superuser sees all records regardless of scope."""
+        from crm.permissions import filter_records_qs
+        from crm.models import PipelineRecord, Category
+
+        cat = Category.objects.create(name="Cat", firm=self.firm)
+        r1 = PipelineRecord.objects.create(title="R1", firm=self.firm, category=cat, created_by=self.owner)
+        r2 = PipelineRecord.objects.create(title="R2", firm=self.firm, category=cat, created_by=self.member)
+
+        req = self._make_req(self.superuser, membership=None)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(r1.id, ids)
+        self.assertIn(r2.id, ids)
+
+    def test_regular_member_only_sees_own_records(self):
+        """Control test: regular member with scope=own sees only their records."""
+        from crm.permissions import filter_records_qs
+        from crm.models import PipelineRecord, Category
+
+        cat = Category.objects.create(name="CatX", firm=self.firm)
+        owner_record = PipelineRecord.objects.create(title="OwnRec", firm=self.firm, category=cat, created_by=self.owner)
+        member_record = PipelineRecord.objects.create(title="MemberRec", firm=self.firm, category=cat, created_by=self.member)
+
+        req = self._make_req(self.member, membership=self.member_m)
+        qs = filter_records_qs(PipelineRecord.objects.filter(firm=self.firm), req)
+        ids = list(qs.values_list("id", flat=True))
+        # Member sees only their own record
+        self.assertIn(member_record.id, ids)
+        self.assertNotIn(owner_record.id, ids)

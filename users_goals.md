@@ -88,13 +88,15 @@
 
 | Role | Popis | Permissions (zkratky) |
 |---|---|---|
-| **Owner** | Plný přístup, nemůže být odebrán. Jediný kdo může smazat firmu, transferovat vlastnictví, spravovat billing. | `*` (super-set, fixní) |
+| **Superadmin** *(globální)* | Django `is_superuser=True`. Nad všemi firmami a Ownery. Přístup ke každému workspacu bez nutnosti členství. | `*` (vše, bez výjimek, přes všechny firmy) |
+| **Owner** | Plný přístup, nemůže být odebrán. Jediný kdo může smazat firmu, transferovat vlastnictví, spravovat billing. | `*` (super-set, fixní, v rámci firmy) |
 | **Admin** | Spravuje členy, role, kategorie, integrace. | vše kromě `firm.delete`, `firm.transfer`, `billing.manage` |
 | **Manager** *(nová)* | Spravuje vlastní tým + jeho záznamy. | `team.manage(own)`, `record.* (scope=team)`, `category.view`, `report.view` |
 | **Member** *(přejmenovaný `Worker`)* | Standardní obchodník/uživatel. Default scope = `own`, lze rozšířit. | `record.* (scope=own|category)`, `activity.create`, `proposal.create` |
 | **Guest** *(nová)* | Read-only host (např. externí auditor). | `record.view (scope=category|record)` |
 
 > Owner a Admin jsou `is_system=True` a nelze je smazat ani editovat sadu permissions. Custom role lze vytvářet libovolně, ale nesmí dostat `firm.delete`/`billing.manage`.
+> Superadmin je implementován přes Django vestavěný `User.is_superuser` flag – **není to firma-level role**, ale globální systémová úroveň (LeadLab support staff).
 
 ### 2.4 Pravidla delegace
 
@@ -109,6 +111,7 @@
 
 ```
 def can(user, firm, action, resource=None):
+    0. Je-li user.is_superuser    → ALLOW (globální zkratka, nad všemi firmami)
     1. Není-li firm membership → DENY
     2. Je-li Owner             → ALLOW (zkratka)
     3. effective_perms = ∪ rolí.permissions ∪ direct grants
@@ -1178,3 +1181,45 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Merge do `main` a tag `v2.9`
 - Volitelně: Zobrazit záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
 
+
+### v3.0 – Superadmin přístup nad Ownery ✅ (2026-05-06)
+
+**Větev**: `copilot/add-superadmin-access`
+
+**Co bylo uděláno:**
+
+- **Konceptuální úprava** – doplněna role **Superadmin** do tabulky systémových rolí (sekce 2.3) a do rozhodovacího algoritmu (sekce 2.5, krok 0):
+  - Superadmin = Django `User.is_superuser=True` – globální systémová úroveň (LeadLab support), nad všemi firmami
+  - Jediná role nadřazená Owner; Owner zůstává nejvyšší *per-firm* úrovní
+  - Superadmin nepotřebuje mít `Membership` v dané firmě – přistupuje ke všemu
+
+- **`firms/auth.py` – nová třída `SuperuserMembership`**:
+  - Lehký sentinel objekt vracený auth bránami místo `Membership` pokud `request.user.is_superuser is True`
+  - Exponuje stejné rozhraní jako `Membership`: `is_owner=True`, `is_admin_or_above=True`, `primary_role="owner"`, `default_scope="all"`, `is_expired=False`, `firm`, `firm_id`, `user`, `user_id`
+  - No-op `_assign_system_role_by_code()` pro kompatibilitu s kódem volajícím tuto metodu na vráceném objektu
+
+- **`firms/auth.py` – `require_membership()` a `require_permission()`**:
+  - Přidán superuser short-circuit těsně po kontrole autentizace a existence firmy
+  - Kontrola `getattr(request.user, "is_superuser", False) is True` (striktní identity check) – chrání před MagicMock v testech
+  - Superuser obejde: kontrolu membership existence, kontrolu expirace, min_role check, permission resolution
+
+- **`crm/permissions.py` – filter funkce**:
+  - `filter_records_qs()`, `filter_activities_qs()`, `filter_proposals_qs()`, `filter_tasks_qs()`: přidán superuser short-circuit na začátku (`if getattr(request.user, "is_superuser", False) is True: return qs`)
+  - Superuser vidí *vše* bez ohledu na scope nebo granty
+
+- **Testy** – přidáno 8 nových testů `SuperadminAccessTest` do `firms/tests.py`:
+  - `test_superuser_not_member_passes_require_membership` – superuser bez Membership projde
+  - `test_superuser_not_member_passes_require_permission` – superuser bez Membership projde všechna oprávnění
+  - `test_superuser_as_member_passes_require_permission` – superuser s Membership (i nejnižší rolí) projde billing/firm permissions
+  - `test_superuser_sentinel_is_owner_and_admin` – sentinel má správné vlastnosti
+  - `test_superuser_min_role_check_skipped` – superuser obejde i OWNER min_role check
+  - `test_regular_user_still_needs_membership` – normální uživatel bez Membership stále dostane 403
+  - `test_superuser_filter_records_sees_all` – superuser vidí záznamy všech uživatelů ve firmě
+  - `test_regular_member_only_sees_own_records` – kontrolní test: člen s `scope=own` vidí jen své záznamy
+
+- 236/236 testů zelených (+ 8 nových)
+
+**Co bude následovat:**
+- Volitelně: Zobrazit superadmin badge/indikátor v admin rozhraní pro lepší viditelnost
+- Volitelně: Audit log záznam pro přístupy superadmina do firmy (pro security auditing)
+- Volitelně: Frontend indikátor v Settings pro owners, že superadmini mají přístup k workspacu
