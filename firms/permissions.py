@@ -129,8 +129,7 @@ _OWNER_PERMISSIONS: frozenset[Permission] = frozenset(
 LEGACY_ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "owner": _OWNER_PERMISSIONS,
     "admin": _ADMIN_PERMISSIONS,
-    "member": _WORKER_PERMISSIONS,  # Canonical name (WORKER was renamed to MEMBER in Phase 8)
-    "worker": _WORKER_PERMISSIONS,  # Deprecated alias kept for backward compatibility
+    "member": _WORKER_PERMISSIONS,
     "guest": frozenset({Permission.RECORD_VIEW}),
 }
 
@@ -138,7 +137,7 @@ LEGACY_ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
 # legacy role level.  Used by ``has_min_role`` to express legacy "min_role"
 # checks through ``can()`` so there is one code-path for authorization.
 _MIN_ROLE_SENTINEL: dict[str, Permission] = {
-    "worker": Permission.RECORD_VIEW,    # every valid member can view records
+    "member": Permission.RECORD_VIEW,    # every valid member can view records
     "admin": Permission.ROLE_MANAGE,     # only admin+ can manage roles
     "owner": Permission.FIRM_DELETE,     # only owner can delete the firm
 }
@@ -177,7 +176,7 @@ def can(
 
 def has_min_role(membership: "Membership", min_role: str) -> bool:
     """Return ``True`` if *membership* holds at least the permissions
-    associated with *min_role* (WORKER < ADMIN < OWNER).
+    associated with *min_role* (MEMBER < ADMIN < OWNER).
 
     This is a backward-compatibility bridge that allows ``require_membership``
     in ``firms.auth`` to delegate its role-rank check to ``can()``, keeping

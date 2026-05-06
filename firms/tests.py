@@ -50,7 +50,7 @@ class MembershipModelTest(TestCase):
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER
         )
         self.worker_membership = Membership.objects.create(
-            user=self.worker, firm=self.firm, role=MembershipRole.WORKER
+            user=self.worker, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     def test_is_owner_property(self):
@@ -70,7 +70,7 @@ class MembershipModelTest(TestCase):
         from django.db import IntegrityError
         with self.assertRaises(IntegrityError):
             Membership.objects.create(
-                user=self.owner, firm=self.firm, role=MembershipRole.WORKER
+                user=self.owner, firm=self.firm, role=MembershipRole.MEMBER
             )
 
 
@@ -80,7 +80,7 @@ class TenantMiddlewareTest(TestCase):
         self.user = User.objects.create_user(email="user@example.com", password="pass")
         self.firm = Firm.objects.create(name="Middleware Firm")
         self.membership = Membership.objects.create(
-            user=self.user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.user, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     def _get_response(self, request):
@@ -125,7 +125,7 @@ class FirmAuthTest(TestCase):
         self.user = User.objects.create_user(email="auth@example.com", password="pass")
         self.firm = Firm.objects.create(name="Auth Firm")
         self.membership = Membership.objects.create(
-            user=self.user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.user, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     def _make_request(self, firm=None, membership=None, authenticated=True):
@@ -178,7 +178,7 @@ class FirmAuthTest(TestCase):
 
     def test_check_tier_limits_member_count(self):
         extra_user = User.objects.create_user(email="extra@example.com", password="pass")
-        Membership.objects.create(user=extra_user, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=extra_user, firm=self.firm, role=MembershipRole.MEMBER)
         with self.assertRaises(SubscriptionRequired):
             check_tier_limits(self.firm)
 
@@ -207,7 +207,7 @@ class FirmsAPIFixtureMixin:
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER
         )
         self.worker_membership = Membership.objects.create(
-            user=self.worker, firm=self.firm, role=MembershipRole.WORKER
+            user=self.worker, firm=self.firm, role=MembershipRole.MEMBER
         )
         self.client.login(username="owner@api.com", password="pass")
 
@@ -361,7 +361,7 @@ class InvitationModelTest(TestCase):
         inv = Invitation.objects.create(
             email="invitee@example.com",
             firm=self.firm,
-            role=MembershipRole.WORKER,
+            role=MembershipRole.MEMBER,
             invited_by=self.user,
         )
         self.assertIsNotNone(inv.token)
@@ -475,7 +475,7 @@ class PreviewInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         self.invitation = Invitation.objects.create(
             email="preview@example.com",
             firm=self.firm,
-            role=MembershipRole.WORKER,
+            role=MembershipRole.MEMBER,
             invited_by=self.owner,
         )
 
@@ -518,7 +518,7 @@ class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         self.invitation = Invitation.objects.create(
             email="acceptme@example.com",
             firm=self.firm,
-            role=MembershipRole.WORKER,
+            role=MembershipRole.MEMBER,
             invited_by=self.owner,
         )
 
@@ -534,7 +534,7 @@ class AcceptInvitationAPITest(InvitationAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["user_email"], "acceptme@example.com")
-        self.assertEqual(data["role"], "worker")
+        self.assertEqual(data["role"], "member")
         # Account created
         self.assertTrue(User.objects.filter(email="acceptme@example.com").exists())
         # Membership created
@@ -861,7 +861,7 @@ class TierLimitInviteMemberAPITest(TestCase):
         # Free-tier firm with 2 members — at the limit.
         self.firm = Firm.objects.create(name="Free Tier Firm", subscription_tier="free")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
         self.client.login(username="owner@tier.com", password="pass")
 
     def test_invite_third_member_blocked_on_free(self):
@@ -885,7 +885,7 @@ class TierLimitCreateInvitationAPITest(TestCase):
         self.worker = User.objects.create_user(email="worker@inv_tier.com", password="pass")
         self.firm = Firm.objects.create(name="Free Inv Firm", subscription_tier="free")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
         self.client.login(username="owner@inv_tier.com", password="pass")
 
     def test_invite_third_member_blocked_on_free(self):
@@ -1067,7 +1067,7 @@ class WebhookAPITest(TestCase):
 
     def test_worker_cannot_manage_webhooks(self):
         worker = User.objects.create_user(email="wh_worker@example.com", password="pass")
-        Membership.objects.create(user=worker, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=worker, firm=self.firm, role=MembershipRole.MEMBER)
         self.client.force_login(worker)
         resp = self.client.get(f"/api/v1/firms/{self.firm.id}/webhooks")
         self.assertEqual(resp.status_code, 403)
@@ -1106,7 +1106,7 @@ class PermissionMatrixTests(TestCase):
         )
         self.worker_user = User.objects.create_user(email="perm_worker@test.com", password="pass")
         self.worker_m = Membership.objects.create(
-            user=self.worker_user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.worker_user, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     # --- Owner: should have ALL permissions ---
@@ -1244,7 +1244,7 @@ class PermissionMatrixTests(TestCase):
         self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.ADMIN))
 
     def test_owner_passes_worker_min_role(self):
-        self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.WORKER))
+        self.assertTrue(self.has_min_role(self.owner_m, MembershipRole.MEMBER))
 
     def test_admin_fails_owner_min_role(self):
         self.assertFalse(self.has_min_role(self.admin_m, MembershipRole.OWNER))
@@ -1253,7 +1253,7 @@ class PermissionMatrixTests(TestCase):
         self.assertTrue(self.has_min_role(self.admin_m, MembershipRole.ADMIN))
 
     def test_admin_passes_worker_min_role(self):
-        self.assertTrue(self.has_min_role(self.admin_m, MembershipRole.WORKER))
+        self.assertTrue(self.has_min_role(self.admin_m, MembershipRole.MEMBER))
 
     def test_worker_fails_owner_min_role(self):
         self.assertFalse(self.has_min_role(self.worker_m, MembershipRole.OWNER))
@@ -1262,7 +1262,7 @@ class PermissionMatrixTests(TestCase):
         self.assertFalse(self.has_min_role(self.worker_m, MembershipRole.ADMIN))
 
     def test_worker_passes_worker_min_role(self):
-        self.assertTrue(self.has_min_role(self.worker_m, MembershipRole.WORKER))
+        self.assertTrue(self.has_min_role(self.worker_m, MembershipRole.MEMBER))
 
     def test_unknown_min_role_denied(self):
         self.assertFalse(self.has_min_role(self.worker_m, "superuser"))
@@ -1371,7 +1371,7 @@ class TeamMembershipModelTest(TestCase):
         self.owner = User.objects.create_user(email="tm-owner@example.com", password="pass")
         self.member = User.objects.create_user(email="tm-member@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        self.member_m = Membership.objects.create(user=self.member, firm=self.firm, role=MembershipRole.WORKER)
+        self.member_m = Membership.objects.create(user=self.member, firm=self.firm, role=MembershipRole.MEMBER)
         self.team = Team.objects.create(firm=self.firm, name="Engineering")
 
     def test_add_membership_to_team(self):
@@ -1392,7 +1392,7 @@ class MembershipPhase2FieldsTest(TestCase):
     def setUp(self):
         self.firm = Firm.objects.create(name="P2 Firm")
         self.user = User.objects.create_user(email="p2-user@example.com", password="pass")
-        self.m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        self.m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
 
     def test_default_scope_is_own(self):
         self.assertEqual(self.m.default_scope, "own")
@@ -1451,7 +1451,7 @@ class SeedSystemRolesDataMigrationTest(TestCase):
             user=self.owner_user, firm=self.firm, role=MembershipRole.OWNER
         )
         self.worker_m = Membership.objects.create(
-            user=self.worker_user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.worker_user, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     def test_system_roles_created_for_firm(self):
@@ -1629,7 +1629,7 @@ class MembershipAuditSignalTest(TestCase):
         initial_count = PermissionAuditLog.objects.filter(
             firm=self.firm, action="membership.created"
         ).count()
-        Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
         new_count = PermissionAuditLog.objects.filter(
             firm=self.firm, action="membership.created"
         ).count()
@@ -1638,7 +1638,7 @@ class MembershipAuditSignalTest(TestCase):
     def test_membership_deleted_signal(self):
         """Deleting a Membership produces a 'membership.deleted' audit entry."""
         from firms.models import PermissionAuditLog
-        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
         initial_count = PermissionAuditLog.objects.filter(
             firm=self.firm, action="membership.deleted"
         ).count()
@@ -1664,7 +1664,7 @@ class RequirePermissionTest(TestCase):
         self.worker = User.objects.create_user(email="p4worker@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
         self.admin_m = Membership.objects.create(user=self.admin, firm=self.firm, role=MembershipRole.ADMIN)
-        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
     def _make_request(self, user, membership):
         req = self.factory.get("/")
@@ -1735,7 +1735,7 @@ class RequirePermissionV2FlagTest(TestCase):
         self.owner = User.objects.create_user(email="v2owner@example.com", password="pass")
         self.worker = User.objects.create_user(email="v2worker@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
     def _make_request(self, user, membership):
         req = self.factory.get("/")
@@ -1794,7 +1794,7 @@ class RolesAPITest(TestCase):
         self.worker = User.objects.create_user(email="rolesworker@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
         self.admin_m = Membership.objects.create(user=self.admin, firm=self.firm, role=MembershipRole.ADMIN)
-        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
     def _make_request(self, user, membership):
         req = self.factory.get("/")
@@ -1872,7 +1872,7 @@ class TeamsAPITest(TestCase):
         self.owner = User.objects.create_user(email="teamsowner@example.com", password="pass")
         self.worker = User.objects.create_user(email="teamsworker@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
     def _make_request(self, user, membership):
         req = self.factory.get("/")
@@ -1950,7 +1950,7 @@ class AuditLogAPITest(TestCase):
         self.owner = User.objects.create_user(email="auditowner@example.com", password="pass")
         self.worker = User.objects.create_user(email="auditworker@example.com", password="pass")
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        self.worker_m = Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
     def _make_request(self, user, membership):
         req = self.factory.get("/")
@@ -2009,7 +2009,7 @@ class MembershipRoleV22Test(TestCase):
 
         WORKER is a deprecated alias for MEMBER; LEGACY_TO_SYSTEM_ROLE maps it.
         """
-        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
         role_codes = list(m.roles.values_list("code", flat=True))
         self.assertIn(
             "member",
@@ -2019,7 +2019,7 @@ class MembershipRoleV22Test(TestCase):
 
     def test_assign_system_role_by_code_changes_m2m(self):
         """_assign_system_role_by_code() replaces the active system role in M2M."""
-        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
         # Upgrade to admin
         m._assign_system_role_by_code("admin")
         role_codes = list(m.roles.values_list("code", flat=True))
@@ -2028,7 +2028,7 @@ class MembershipRoleV22Test(TestCase):
 
     def test_primary_role_returns_highest_m2m_role(self):
         """primary_role returns the highest-priority code from M2M."""
-        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.WORKER)
+        m = Membership.objects.create(user=self.user, firm=self.firm, role=MembershipRole.MEMBER)
         from firms.models import Role
         admin_role = Role.objects.filter(firm=self.firm, code="admin", is_system=True).first()
         if admin_role:
@@ -2039,7 +2039,7 @@ class MembershipRoleV22Test(TestCase):
         """_membership_out serialiser returns primary_role."""
         from firms.api import _membership_out
         m = Membership.objects.create(
-            user=self.user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.user, firm=self.firm, role=MembershipRole.MEMBER
         )
         result = _membership_out(m)
         self.assertEqual(result["role"], m.primary_role)

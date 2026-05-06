@@ -6,7 +6,7 @@ limits inside Django Ninja API endpoints (and plain Django views).
 
 Usage in a Django Ninja router
 ------------------------------
-    from firms.auth import require_membership, MembershipRole
+    from firms.auth import require_membership, InvitationRole, MembershipRole
 
     @router.get("/records")
     def list_leads(request):
@@ -15,14 +15,14 @@ Usage in a Django Ninja router
 
     @router.post("/records")
     def create_lead(request, payload: LeadIn):
-        membership = require_membership(request, min_role=MembershipRole.WORKER)
+        membership = require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
         # ...
 """
 
 from django.http import HttpRequest
 
-from firms.models import Firm, Membership, MembershipRole
+from firms.models import Firm, Membership, InvitationRole, MembershipRole
 from firms.permissions import Permission, has_min_role
 
 # ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ class FirmNotFound(Exception):
 
 def require_membership(
     request: HttpRequest,
-    min_role: str = MembershipRole.WORKER,
+    min_role: str = MembershipRole.MEMBER,
 ) -> Membership:
     """
     Validate that the current request has a valid authenticated user with an

@@ -20,6 +20,7 @@ from ninja.security import django_auth
 from firms.auth import (
     AuthenticationRequired,
     FirmNotFound,
+    InvitationRole,
     MembershipRole,
     PermissionDenied,
     SubscriptionRequired,

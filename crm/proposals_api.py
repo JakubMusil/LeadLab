@@ -575,7 +575,7 @@ def list_proposals(request, record_id: str):
 )
 def create_proposal(request, record_id: str, payload: ProposalIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -634,7 +634,7 @@ def get_proposal(request, proposal_id: str):
 )
 def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -667,7 +667,7 @@ def update_proposal(request, proposal_id: str, payload: ProposalUpdateIn):
 )
 def delete_proposal(request, proposal_id: str):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -711,7 +711,7 @@ def send_proposal(request, proposal_id: str):
     the expiry window so the recipient gets a fresh 30-day link.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -750,7 +750,7 @@ def apply_template(request, proposal_id: str, payload: ApplyTemplateIn):
     appends the template's line items (preserving existing items).
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -988,7 +988,7 @@ def list_items(request, proposal_id: str):
 )
 def create_item(request, proposal_id: str, payload: ProposalItemIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1010,7 +1010,7 @@ def create_item(request, proposal_id: str, payload: ProposalItemIn):
 )
 def update_item(request, proposal_id: str, item_id: str, payload: ProposalItemIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1036,7 +1036,7 @@ def update_item(request, proposal_id: str, item_id: str, payload: ProposalItemIn
 )
 def delete_item(request, proposal_id: str, item_id: str):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1064,7 +1064,7 @@ def reorder_items(request, proposal_id: str, payload: ItemReorderIn):
     Payload: { "items": [{"id": "...", "position": 0}, ...] }
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1107,7 +1107,7 @@ def list_templates(request):
 )
 def create_template(request, payload: ProposalTemplateIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1142,7 +1142,7 @@ def get_template(request, template_id: str):
 )
 def update_template(request, template_id: str, payload: ProposalTemplateIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1204,7 +1204,7 @@ def list_template_items(request, template_id: str):
 )
 def create_template_item(request, template_id: str, payload: ProposalTemplateItemIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1224,7 +1224,7 @@ def create_template_item(request, template_id: str, payload: ProposalTemplateIte
 )
 def update_template_item(request, template_id: str, item_id: str, payload: ProposalTemplateItemIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1251,7 +1251,7 @@ def update_template_item(request, template_id: str, item_id: str, payload: Propo
 )
 def delete_template_item(request, template_id: str, item_id: str):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1508,7 +1508,7 @@ def add_items_from_catalog(request, proposal_id: str, payload: AddFromCatalogIn)
     Payload: { "item_ids": ["<uuid>", ...] }
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1576,7 +1576,7 @@ def list_firm_proposal_items(request):
 def create_firm_proposal_item(request, payload: FirmProposalItemIn):
     """Add a new item to the firm's proposal catalog."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1592,7 +1592,7 @@ def create_firm_proposal_item(request, payload: FirmProposalItemIn):
 def update_firm_proposal_item(request, item_id: str, payload: FirmProposalItemIn):
     """Update an existing catalog item."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1615,7 +1615,7 @@ def update_firm_proposal_item(request, item_id: str, payload: FirmProposalItemIn
 def delete_firm_proposal_item(request, item_id: str):
     """Delete a catalog item."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 

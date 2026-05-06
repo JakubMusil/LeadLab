@@ -39,7 +39,7 @@ from crm.models import (
     TaskPriority,
     TaskStatus,
 )
-from firms.models import Firm, Membership, MembershipRole
+from firms.models import Firm, Membership, InvitationRole, MembershipRole
 
 User = get_user_model()
 
