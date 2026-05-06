@@ -161,6 +161,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'crm.tasks.fetch_ecb_exchange_rates',
         'schedule': crontab(hour=17, minute=30),
     },
+    # v2.7 – remove expired Memberships (time-limited access grants)
+    'expire-memberships': {
+        'task': 'crm.tasks.expire_memberships',
+        'schedule': crontab(hour=2, minute=0),
+    },
 }
 
 # Safe-remove: number of days before a soft-deleted record is hard-deleted.

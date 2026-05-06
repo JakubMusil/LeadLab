@@ -39,7 +39,7 @@ from crm.models import (
     TaskPriority,
     TaskStatus,
 )
-from firms.models import Firm, Membership, InvitationRole, MembershipRole
+from firms.models import Firm, Membership, InvitationRole
 
 User = get_user_model()
 
@@ -588,7 +588,7 @@ class Command(BaseCommand):
         Membership.objects.get_or_create(
             user=user,
             firm=firm,
-            defaults={"role": MembershipRole.OWNER},
+            defaults={"role": InvitationRole.OWNER},
         )
 
         # ---- pipeline categories ----

@@ -29,7 +29,7 @@ from crm.models import (
     AutomationTrigger,
 )
 from crm.soft_delete import perform_soft_delete
-from firms.auth import InvitationRole, MembershipRole, PermissionDenied, require_membership
+from firms.auth import InvitationRole, PermissionDenied, require_membership
 
 logger = logging.getLogger(__name__)
 
@@ -339,7 +339,7 @@ def list_automation_templates(request):
 def create_rule_from_template(request, template_id: str):
     """Create a new AutomationRule pre-populated from a built-in template."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -387,7 +387,7 @@ def list_automation_rules(request):
 def create_automation_rule(request, payload: AutomationRuleIn):
     """Create a new AutomationRule."""
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -436,7 +436,7 @@ def get_automation_rule(request, rule_id: str):
 )
 def update_automation_rule(request, rule_id: str, payload: AutomationRulePatch):
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -465,7 +465,7 @@ def update_automation_rule(request, rule_id: str, payload: AutomationRulePatch):
 )
 def delete_automation_rule(request, rule_id: str):
     try:
-        require_membership(request, min_role=MembershipRole.ADMIN)
+        require_membership(request, min_role=InvitationRole.ADMIN)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 

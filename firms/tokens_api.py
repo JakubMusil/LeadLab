@@ -14,7 +14,7 @@ from django.utils import timezone as tz
 from ninja import Router, Schema
 from ninja.security import django_auth
 
-from firms.auth import InvitationRole, MembershipRole, PermissionDenied, require_membership
+from firms.auth import InvitationRole, PermissionDenied, require_membership
 from firms.models import APIToken, Firm, Membership
 from firms.token_auth import BearerTokenAuth
 

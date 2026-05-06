@@ -995,3 +995,71 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Merge do `main` a tag `v2.5`
 - Volitelně v budoucnu: odstranit alias `MembershipRole = InvitationRole` a aktualizovat všechny importy na `InvitationRole`
 
+
+### v2.6 – Odstranění alias `MembershipRole` ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-documentation-yet-again`
+
+**Co bylo uděláno:**
+
+- **Bulk rename** `MembershipRole` → `InvitationRole` ve všech non-migračních `.py` souborech (13 souborů, 177 výskytů):
+  - `crm/api.py`, `crm/automations_api.py`, `crm/management/commands/load_demo_data.py`, `crm/pipeline_config_api.py`, `crm/proposals_api.py`, `crm/tests.py`
+  - `firms/api.py`, `firms/auth.py`, `firms/billing_api.py`, `firms/tests.py`, `firms/tokens_api.py`, `firms/webhooks_api.py`
+- **`firms/models.py`** – odstraněna definice backward-compat aliasu `MembershipRole = InvitationRole` a doprovodný docstring komentář
+- **`firms/auth.py`** – odstraněn `MembershipRole` z importů a re-exportů (jen `InvitationRole` zůstává)
+- Verifikace: 203 testů zelených (nezměněno)
+
+**Co bude následovat:**
+- v2.7: přidat `Membership.expires_at` (dohodnuté v open questions Fáze 6)
+
+
+### v2.7 – `Membership.expires_at` (časově omezené členství) ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-documentation-yet-again`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py` – `Membership.expires_at`**:
+  - Nové pole `DateTimeField(null=True, blank=True)` – volitelná expirace členství
+  - Nová property `is_expired: bool` – vrací True pokud `expires_at` je nastaveno a již uplynulo
+  - `PermissionAuditLog.ACTION_CHOICES` rozšířen o `("membership.expired", "Membership expired")`
+
+- **`firms/migrations/0011_membership_expires_at.py`** – schémová migrace přidávající sloupec
+
+- **`firms/auth.py`** – kontrola expirace v obou auth gates:
+  - `require_membership()`: nová kontrola `if membership.is_expired: raise PermissionDenied(...)`
+  - `require_permission()`: stejná kontrola před Owner shortcut
+
+- **`firms/api.py`** – API podpora:
+  - `MemberRoleUpdateIn`: nové pole `expires_at: Optional[str] = None` (ISO-8601 nebo null)
+  - `MembershipOut`: nové pole `expires_at: Optional[str] = None`
+  - `_membership_out()`: zahrnuje `expires_at` v serializaci
+  - `update_member_role()`: zpracovává `expires_at` – nastaví nebo vymaže expiraci, validuje ISO-8601 formát
+  - Endpoint decorator: přidán `400: ErrorOut` pro neplatný formát
+
+- **`crm/tasks.py` – nový `@shared_task expire_memberships()`**:
+  - Vyhledá všechna `Membership` kde `expires_at <= now()`
+  - Pro každé zanechá `PermissionAuditLog` záznam (action=`membership.expired`)
+  - Hard-delete expired memberships
+  - Loguje celkový počet smazaných členství
+
+- **`leadlab/settings.py` – CELERY_BEAT_SCHEDULE**:
+  - Přidán `'expire-memberships'`: task `crm.tasks.expire_memberships`, plán každou noc ve 02:00 UTC
+
+- **Testy** – přidáno 9 nových testů `MembershipExpiresAtTest` do `firms/tests.py`:
+  - `test_is_expired_false_when_no_expiry` – bez nastavení nikdy nevypršené
+  - `test_is_expired_false_for_future_date` – budoucí datum = není vypršené
+  - `test_is_expired_true_for_past_date` – minulé datum = vypršené
+  - `test_require_membership_rejects_expired` – gate vrátí 403
+  - `test_require_permission_rejects_expired` – gate vrátí 403
+  - `test_expire_memberships_task_deletes_expired` – task smaže vypršené
+  - `test_expire_memberships_task_preserves_active` – task nenaruší aktivní
+  - `test_update_member_role_sets_expires_at` – PATCH endpoint nastaví expiraci
+  - `test_update_member_role_clears_expires_at` – PATCH s null vymaže expiraci
+- 212/212 testů zelených (+ 9 nových)
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.7`
+- Volitelně: Frontend podpora `expires_at` v UI správy členů (TeamsSettingsView / members tab)
+- Volitelně: E-mailové upozornění uživateli N dní před expirací členství
+

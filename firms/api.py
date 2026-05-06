@@ -21,7 +21,6 @@ from firms.auth import (
     AuthenticationRequired,
     FirmNotFound,
     InvitationRole,
-    MembershipRole,
     PermissionDenied,
     SubscriptionRequired,
     check_tier_limits,
@@ -70,6 +69,7 @@ class FirmBrandingIn(Schema):
 
 class MemberRoleUpdateIn(Schema):
     role: str
+    expires_at: Optional[str] = None  # ISO-8601 datetime; null clears the expiry
 
 
 class MembershipOut(Schema):
@@ -81,11 +81,12 @@ class MembershipOut(Schema):
     firm_id: str
     roles: List[str] = []
     permissions: List[str] = []
+    expires_at: Optional[str] = None  # ISO-8601 or null
 
 
 class MemberInviteIn(Schema):
     email: str
-    role: str = MembershipRole.MEMBER
+    role: str = InvitationRole.MEMBER
     # Phase 6 – extended invite settings
     role_codes: List[str] = []
     default_scope: str = "own"
@@ -190,6 +191,7 @@ def _membership_out(m: Membership) -> dict:
         "firm_id": str(m.firm_id),
         "roles": role_codes,
         "permissions": permissions,
+        "expires_at": m.expires_at.isoformat() if m.expires_at else None,
     }
 
 
@@ -211,7 +213,7 @@ def create_firm(request, payload: FirmIn):
         Membership.objects.create(
             user=request.user,
             firm=firm,
-            role=MembershipRole.OWNER,
+            role=InvitationRole.OWNER,
         )
         seed_for_firm(firm)
     return 201, _firm_out(firm)
@@ -643,7 +645,7 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
     if not caller_membership.is_admin_or_above:
         return 403, {"detail": "Only Admins and Owners can invite members."}
 
-    if payload.role == MembershipRole.OWNER:
+    if payload.role == InvitationRole.OWNER:
         return 400, {"detail": "Cannot assign the Owner role via invite."}
 
     try:
@@ -698,10 +700,11 @@ def remove_member(request, firm_id: str, membership_id: str):
 @router.patch(
     "/{firm_id}/members/{membership_id}",
     auth=django_auth,
-    response={200: MembershipOut, 403: ErrorOut, 404: ErrorOut},
+    response={200: MembershipOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
 )
 def update_member_role(request, firm_id: str, membership_id: str, payload: MemberRoleUpdateIn):
-    """Update a member's role (Admin/Owner only; cannot change Owner's role)."""
+    """Update a member's role and/or expiry (Admin/Owner only; cannot change Owner's role)."""
+    from django.utils.dateparse import parse_datetime
     try:
         firm = Firm.objects.get(id=firm_id, is_active=True)
     except Firm.DoesNotExist:
@@ -723,10 +726,22 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
     if target.is_owner:
         return 403, {"detail": "The Owner's role cannot be changed."}
 
-    if payload.role == MembershipRole.OWNER:
+    if payload.role == InvitationRole.OWNER:
         return 403, {"detail": "Cannot assign the Owner role."}
 
     target._assign_system_role_by_code(payload.role)
+
+    # Handle expires_at update (explicit null clears expiry)
+    if "expires_at" in payload.dict(exclude_unset=False):
+        if payload.expires_at is None:
+            target.expires_at = None
+        else:
+            parsed = parse_datetime(payload.expires_at)
+            if parsed is None:
+                return 400, {"detail": "Invalid expires_at format; use ISO-8601."}
+            target.expires_at = parsed
+        target.save(update_fields=["expires_at"])
+
     target.refresh_from_db()
     return 200, _membership_out(target)
 
@@ -790,7 +805,7 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
     if not caller_membership.is_admin_or_above:
         return 403, {"detail": "Only Admins and Owners can send invitations."}
 
-    if payload.role == MembershipRole.OWNER:
+    if payload.role == InvitationRole.OWNER:
         return 400, {"detail": "Cannot assign the Owner role via invitation."}
 
     # Prevent re-inviting someone who is already a member.

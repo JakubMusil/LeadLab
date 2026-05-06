@@ -75,19 +75,10 @@ class Firm(models.Model):
 
 
 class InvitationRole(models.TextChoices):
-    """Choices for the ``Invitation.role`` field.
-
-    This enum was previously named ``MembershipRole`` when it was also used
-    to define the (now-dropped) ``Membership.role`` column.  The alias
-    ``MembershipRole = InvitationRole`` is kept for backward compatibility.
-    """
+    """Choices for the ``Invitation.role`` field."""
     OWNER = "owner", "Owner"
     ADMIN = "admin", "Admin"
     MEMBER = "member", "Member"
-
-
-# Backward-compatibility alias – remove in a future release.
-MembershipRole = InvitationRole
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +321,17 @@ class Membership(models.Model):
         default=True,
         help_text="Receive a weekly email digest with pipeline summary for this workspace.",
     )
+    # v2.7 – time-limited memberships (e.g. temporary deputies, external auditors).
+    # When set, the membership is automatically revoked after this timestamp.
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Optional expiry date-time for this membership.  After this point the "
+            "member will be treated as if they have no membership (403 on all requests). "
+            "A Celery task runs nightly to hard-delete expired memberships."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = MembershipManager()
@@ -354,6 +356,14 @@ class Membership(models.Model):
     @property
     def is_admin_or_above(self):
         return self.primary_role in ("owner", "admin")
+
+    @property
+    def is_expired(self) -> bool:
+        """Return True if this membership has passed its ``expires_at`` deadline."""
+        if self.expires_at is None:
+            return False
+        from django.utils import timezone as django_tz
+        return django_tz.now() > self.expires_at
 
     @property
     def primary_role(self) -> str:
@@ -449,6 +459,7 @@ class PermissionAuditLog(models.Model):
         ("membership.created", "Membership created"),
         ("membership.updated", "Membership updated"),
         ("membership.deleted", "Membership deleted"),
+        ("membership.expired", "Membership expired"),
         ("category_grant.created", "CategoryGrant created"),
         ("category_grant.deleted", "CategoryGrant deleted"),
         ("record_grant.created", "RecordGrant created"),

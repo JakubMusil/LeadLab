@@ -1876,3 +1876,50 @@ def recalculate_canonical_amounts_for_firm(firm_id: str):
         firm_id, updated, failed,
     )
     return {"updated": updated, "failed": failed}
+
+
+# ---------------------------------------------------------------------------
+# v2.7 – Expire time-limited Memberships
+# ---------------------------------------------------------------------------
+
+@shared_task(bind=True, max_retries=0)
+def expire_memberships(self):
+    """
+    Nightly task that hard-deletes Membership rows whose ``expires_at``
+    timestamp has passed.
+
+    Logs a PermissionAuditLog entry for each deleted membership so that
+    administrators have a full audit trail of expired access grants.
+
+    Scheduled via ``CELERY_BEAT_SCHEDULE`` to run nightly at 02:00 UTC.
+    """
+    from django.utils import timezone
+    from firms.models import Membership, PermissionAuditLog
+
+    now = timezone.now()
+    expired = Membership.objects.filter(
+        expires_at__isnull=False, expires_at__lte=now
+    ).select_related("user", "firm")
+
+    deleted_count = 0
+    for membership in expired:
+        try:
+            PermissionAuditLog.objects.create(
+                firm=membership.firm,
+                actor=None,  # system action
+                action="membership.expired",
+                target_type="membership",
+                target_id=str(membership.id),
+                payload={
+                    "user_email": membership.user.email if membership.user else None,
+                    "primary_role": membership.primary_role,
+                    "expires_at": membership.expires_at.isoformat(),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("expire_memberships: could not write audit log: %s", exc)
+        membership.delete()
+        deleted_count += 1
+
+    logger.info("expire_memberships: removed %d expired membership(s)", deleted_count)
+    return {"deleted": deleted_count}

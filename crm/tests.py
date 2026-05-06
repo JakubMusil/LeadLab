@@ -3,7 +3,7 @@ from django.utils import timezone
 import datetime as dt
 
 from crm.models import Activity, ActivityType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
-from firms.models import Firm, Membership, MembershipRole
+from firms.models import Firm, Membership, InvitationRole
 from users.models import User
 
 
@@ -14,8 +14,8 @@ class CRMFixtureMixin:
         self.owner = User.objects.create_user(email="owner@crm.com", password="pass")
         self.worker = User.objects.create_user(email="worker@crm.com", password="pass")
         self.firm = Firm.objects.create(name="CRM Firm", subscription_tier="pro")
-        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
+        Membership.objects.create(user=self.owner, firm=self.firm, role=InvitationRole.OWNER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=InvitationRole.MEMBER)
 
         self.customer = Customer.objects.create(
             firm=self.firm,
@@ -637,10 +637,10 @@ class CRMAPIFixtureMixin:
         self.worker = User.objects.create_user(email="worker@crm-api.com", password="pass")
         self.firm = Firm.objects.create(name="CRM API Firm", subscription_tier="pro")
         self.owner_membership = Membership.objects.create(
-            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+            user=self.owner, firm=self.firm, role=InvitationRole.OWNER
         )
         self.worker_membership = Membership.objects.create(
-            user=self.worker, firm=self.firm, role=MembershipRole.MEMBER
+            user=self.worker, firm=self.firm, role=InvitationRole.MEMBER
         )
         self.customer = Customer.objects.create(
             firm=self.firm,
@@ -1180,7 +1180,7 @@ class TierLimitRecordCreateAPITest(TestCase):
         self.owner = User.objects.create_user(email="owner@record_tier.com", password="pass")
         # Free-tier firm with only 1 member to avoid hitting the member limit.
         self.firm = Firm.objects.create(name="Free PipelineRecord Firm", subscription_tier="free")
-        Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        Membership.objects.create(user=self.owner, firm=self.firm, role=InvitationRole.OWNER)
         self.client.login(username="owner@record_tier.com", password="pass")
 
     def _firm_headers(self):
@@ -2112,12 +2112,12 @@ class TimeEntryAPITest(CRMFixtureMixin, TestCase):
         self.assertFalse(TimeEntry.objects.filter(pk=entry.pk).exists())
 
     def test_firm_isolation(self):
-        from firms.models import Firm, Membership, MembershipRole
+        from firms.models import Firm, Membership, InvitationRole
         other_firm = Firm.objects.create(name="Other ERP Firm", subscription_tier="pro")
         other_user = __import__("users.models", fromlist=["User"]).User.objects.create_user(
             email="erp_other@test.com", password="pass"
         )
-        Membership.objects.create(user=other_user, firm=other_firm, role=MembershipRole.OWNER)
+        Membership.objects.create(user=other_user, firm=other_firm, role=InvitationRole.OWNER)
         TimeEntry.objects.create(firm=other_firm, user=other_user, duration_minutes=45)
         resp = self.client.get("/api/v1/erp/time-entries")
         self.assertEqual(resp.status_code, 200)
@@ -2525,7 +2525,7 @@ class ActivityOutTaskIdExposureTest(CRMFixtureMixin, TestCase):
         super().setUp()
         Membership.objects.get_or_create(
             user=self.owner, firm=self.firm,
-            defaults={"role": MembershipRole.OWNER},
+            defaults={"role": InvitationRole.OWNER},
         )
 
     def test_activity_out_serializer_exposes_task_id(self):
@@ -2850,7 +2850,7 @@ class CalendarTasksAPITest(CRMAPIFixtureMixin, TestCase):
     def test_firm_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Cal")
         other_user = User.objects.create_user(email="other@cal.com", password="pass")
-        Membership.objects.create(user=other_user, firm=other_firm, role=MembershipRole.OWNER)
+        Membership.objects.create(user=other_user, firm=other_firm, role=InvitationRole.OWNER)
         Task.objects.create(
             firm=other_firm, title="Cross-firm",
             due_date=dt.datetime(2026, 5, 3, 10, 0, tzinfo=dt.timezone.utc),
@@ -3405,7 +3405,7 @@ class CategoryGrantModelTest(TestCase):
         self.other = User.objects.create_user(email="catgrant_other@ex.com", password="pass")
         self.firm = Firm.objects.create(name="CatGrant Test Firm")
         self.membership = Membership.objects.create(
-            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+            user=self.owner, firm=self.firm, role=InvitationRole.OWNER
         )
         self.category = Category.objects.create(firm=self.firm, name="Sales")
 
@@ -3501,7 +3501,7 @@ class RecordGrantModelTest(TestCase):
         self.other = User.objects.create_user(email="recgrant_other@ex.com", password="pass")
         self.firm = Firm.objects.create(name="RecGrant Test Firm")
         self.membership = Membership.objects.create(
-            user=self.owner, firm=self.firm, role=MembershipRole.OWNER
+            user=self.owner, firm=self.firm, role=InvitationRole.OWNER
         )
         self.record = PipelineRecord.objects.create(
             firm=self.firm, title="Test Record", created_by=self.owner
@@ -3672,13 +3672,13 @@ class FilterRecordsQsTest(TestCase):
         self.worker_a = User.objects.create_user(email="scope_workerA@example.com", password="pass")
         self.worker_b = User.objects.create_user(email="scope_workerB@example.com", password="pass")
         self.owner_m = Membership.objects.create(
-            user=self.owner, firm=self.firm, role=MembershipRole.OWNER, default_scope="all"
+            user=self.owner, firm=self.firm, role=InvitationRole.OWNER, default_scope="all"
         )
         self.worker_a_m = Membership.objects.create(
-            user=self.worker_a, firm=self.firm, role=MembershipRole.MEMBER, default_scope="own"
+            user=self.worker_a, firm=self.firm, role=InvitationRole.MEMBER, default_scope="own"
         )
         self.worker_b_m = Membership.objects.create(
-            user=self.worker_b, firm=self.firm, role=MembershipRole.MEMBER, default_scope="own"
+            user=self.worker_b, firm=self.firm, role=InvitationRole.MEMBER, default_scope="own"
         )
         # Create records
         self.record_a = PipelineRecord.objects.create(
@@ -3779,7 +3779,7 @@ class ResolveEffectivePermissionsTest(TestCase):
         self.firm = Firm.objects.create(name="Eff Perm Firm")
         self.user = User.objects.create_user(email="effperm@example.com", password="pass")
         self.membership = Membership.objects.create(
-            user=self.user, firm=self.firm, role=MembershipRole.MEMBER
+            user=self.user, firm=self.firm, role=InvitationRole.MEMBER
         )
 
     def test_fallback_to_legacy_when_no_db_roles(self):
@@ -3830,15 +3830,15 @@ class StreamlineVisibilityTests(TestCase):
         self.worker_b = User.objects.create_user(email="vis_worker_b@example.com", password="pass")
         self.worker_c = User.objects.create_user(email="vis_worker_c@example.com", password="pass")
 
-        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=InvitationRole.OWNER)
         self.worker_a_m = Membership.objects.create(
-            user=self.worker_a, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.OWN
+            user=self.worker_a, firm=self.firm, role=InvitationRole.MEMBER, default_scope=Scope.OWN
         )
         self.worker_b_m = Membership.objects.create(
-            user=self.worker_b, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.TEAM
+            user=self.worker_b, firm=self.firm, role=InvitationRole.MEMBER, default_scope=Scope.TEAM
         )
         self.worker_c_m = Membership.objects.create(
-            user=self.worker_c, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.OWN
+            user=self.worker_c, firm=self.firm, role=InvitationRole.MEMBER, default_scope=Scope.OWN
         )
 
         self.record = PipelineRecord.objects.create(
