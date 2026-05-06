@@ -94,7 +94,12 @@ def _get_firm_and_membership(request, firm_id: str):
 
 
 def _actor_permission_codes(membership: Membership) -> set[str]:
-    """Return effective permission codes for the actor (used for escalation check)."""
+    """Return the set of permission codes the actor can grant to others.
+
+    Used for privilege escalation prevention: an actor cannot assign
+    permissions they do not themselves hold.  Owners hold all permissions.
+    For non-owners the set is derived from their DB-backed Role assignments.
+    """
     if membership.role == MembershipRole.OWNER:
         return {p.code for p in PermissionRecord.objects.all()}
     codes: set[str] = set()

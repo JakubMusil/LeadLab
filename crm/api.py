@@ -61,6 +61,8 @@ from firms.auth import (
     MembershipRole,
     PermissionDenied,
     SubscriptionRequired,
+    AuthenticationRequired,
+    FirmNotFound,
     check_tier_limits,
     require_active_subscription,
     require_membership,
@@ -7301,6 +7303,8 @@ def upsert_task_custom_fields(request, task_id: str, payload: TaskCustomFieldVal
 # Phase 6 – Per-category & per-record Grant endpoints
 # ===========================================================================
 
+import uuid as _uuid  # noqa: E402 – used by grant endpoints below
+
 from crm.models import CategoryGrant, RecordGrant  # noqa: E402 – placed here to avoid circular at module load
 
 
@@ -7360,7 +7364,7 @@ def list_category_grants(request, category_id: str):
     """List all access grants for a category. Requires ``category.manage``."""
     try:
         require_permission(request, Permission.CATEGORY_MANAGE)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7381,7 +7385,7 @@ def create_category_grant(request, category_id: str, payload: GrantIn):
     """Grant access to a category for a user or team. Requires ``category.manage``."""
     try:
         membership = require_permission(request, Permission.CATEGORY_MANAGE)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7395,7 +7399,6 @@ def create_category_grant(request, category_id: str, payload: GrantIn):
         return 400, {"detail": "level must be 'view', 'edit', or 'manage'."}
 
     try:
-        import uuid as _uuid
         principal_uuid = _uuid.UUID(payload.principal_id)
     except ValueError:
         return 400, {"detail": "principal_id must be a valid UUID."}
@@ -7428,7 +7431,7 @@ def delete_category_grant(request, category_id: str, grant_id: str):
     """Revoke a category access grant. Requires ``category.manage``."""
     try:
         require_permission(request, Permission.CATEGORY_MANAGE)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7461,7 +7464,7 @@ def get_record_access(request, record_id: str):
     """
     try:
         require_permission(request, Permission.RECORD_VIEW)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7489,7 +7492,7 @@ def list_record_grants(request, record_id: str):
     """List direct (per-record) access grants. Requires ``record.edit``."""
     try:
         require_permission(request, Permission.RECORD_EDIT)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7510,7 +7513,7 @@ def create_record_grant(request, record_id: str, payload: GrantIn):
     """Grant access to a record for a user or team. Requires ``record.edit``."""
     try:
         membership = require_permission(request, Permission.RECORD_EDIT)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:
@@ -7524,7 +7527,6 @@ def create_record_grant(request, record_id: str, payload: GrantIn):
         return 400, {"detail": "level must be 'view', 'edit', or 'manage'."}
 
     try:
-        import uuid as _uuid
         principal_uuid = _uuid.UUID(payload.principal_id)
     except ValueError:
         return 400, {"detail": "principal_id must be a valid UUID."}
@@ -7557,7 +7559,7 @@ def delete_record_grant(request, record_id: str, grant_id: str):
     """Revoke a per-record access grant. Requires ``record.edit``."""
     try:
         require_permission(request, Permission.RECORD_EDIT)
-    except Exception as exc:
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
         return 403, {"detail": str(exc)}
 
     try:

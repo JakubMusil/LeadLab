@@ -80,7 +80,7 @@ def _on_firm_post_save(sender, instance, created, **kwargs):
     if not created:
         return
     try:
-        from firms.migrations._seed_helpers import create_system_roles_for_firm
+        from firms.seed import create_system_roles_for_firm
         create_system_roles_for_firm(instance)
     except Exception:
         _logger.warning(
