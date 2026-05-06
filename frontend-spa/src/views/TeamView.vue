@@ -133,8 +133,12 @@ function invitationStatus(inv: Invitation): string {
 /** Return true when member.expires_at is in the past. */
 function isMemberExpired(m: Member): boolean {
   if (!m.expires_at) return false
+  // Full datetime comparison: a membership that expired at 10:00 will show as expired at 10:01.
   return new Date(m.expires_at) <= new Date()
 }
+
+/** Milliseconds in one day – used for day-count calculations below. */
+const MS_PER_DAY = 86_400_000
 
 /** Return a human-readable summary of membership expiry for display in the UI. */
 function memberExpiryLabel(m: Member): string {
@@ -142,7 +146,7 @@ function memberExpiryLabel(m: Member): string {
   const exp = new Date(m.expires_at)
   const now = new Date()
   if (exp <= now) return t('team.memberExpired')
-  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86_400_000)
+  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / MS_PER_DAY)
   if (daysLeft === 1) return t('team.memberExpiresTomorrow')
   return t('team.memberExpiresInDays', { days: daysLeft })
 }

@@ -1979,7 +1979,9 @@ def notify_expiring_memberships(self):
             continue
 
         firm_name = membership.firm.name
-        days_left = max(1, (membership.expires_at - now).days)
+        # Use ceil of total_seconds to get accurate day counts for same-day/sub-day expiries.
+        import math  # noqa: PLC0415
+        days_left = max(1, math.ceil((membership.expires_at - now).total_seconds() / 86400))
         expiry_str = membership.expires_at.strftime("%Y-%m-%d %H:%M UTC")
 
         subject = f"[LeadLab] Your access to '{firm_name}' expires in {days_left} day(s)"
@@ -1999,7 +2001,9 @@ def notify_expiring_memberships(self):
             membership.last_expiry_notification_at = now
             membership.save(update_fields=["last_expiry_notification_at"])
             notified_count += 1
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, RuntimeError) as exc:
+            # Catch transport-level errors (connection refused, SMTP errors, etc.)
+            # without silencing programming errors that should propagate to monitoring.
             logger.warning(
                 "notify_expiring_memberships: failed to send email to %s: %s",
                 user.email,
