@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Als Gewonnen markieren ✓",
     "terminalConfirmLost": "Verschiebung bestätigen",
     "terminalMoveFailed": "Datensatz konnte nicht in diese Phase verschoben werden.",
-    "terminalCheckpointFailed": "Datensatz verschoben, aber Checkpoint konnte nicht erstellt werden."
+    "terminalCheckpointFailed": "Datensatz verschoben, aber Checkpoint konnte nicht erstellt werden.",
+    "categoryAccess": "Kategoriezugriff",
+    "categoryGrantAdd": "Zugriff hinzufügen",
+    "categoryGrantUserIdPlaceholder": "Benutzer-UUID…"
   },
   "proposals": {
     "title": "Angebote",

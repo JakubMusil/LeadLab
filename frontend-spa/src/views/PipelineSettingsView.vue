@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut, type CategoryFieldOut } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
@@ -8,6 +8,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { ConfirmDeleteModal } from '@/components/ui'
+import { useCan } from '@/composables/useCan'
 import {
   PlusIcon,
   TrashIcon,
@@ -15,6 +16,7 @@ import {
   CheckIcon,
   XMarkIcon,
   Bars3Icon,
+  LockOpenIcon,
 } from '@heroicons/vue/24/outline'
 
 const pipelineStore = usePipelineStore()
@@ -22,6 +24,7 @@ const toast = useToast()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const { t } = useI18n()
+const { can } = useCan()
 
 // ---------------------------------------------------------------------------
 // State
@@ -83,6 +86,68 @@ const savingField = ref(false)
 const pendingDeleteCategoryId = ref<string | null>(null)
 const pendingDeleteStageId = ref<string | null>(null)
 const pendingDeleteFieldKey = ref<string | null>(null)
+
+// ---------------------------------------------------------------------------
+// Category Access Grants
+// ---------------------------------------------------------------------------
+
+interface GrantOut {
+  id: string
+  principal_type: string
+  principal_id: string
+  level: string
+  granted_by_id: string | null
+  granted_at: string
+  expires_at: string | null
+}
+
+const categoryGrants = ref<GrantOut[]>([])
+const categoryGrantsLoading = ref(false)
+const showGrantForm = ref(false)
+const newGrantPrincipalId = ref('')
+const newGrantLevel = ref('view')
+const savingGrant = ref(false)
+
+async function loadCategoryGrants() {
+  if (!selectedCategoryId.value) return
+  if (!can('category.manage')) return
+  categoryGrantsLoading.value = true
+  const res = await api.get<GrantOut[]>(`/api/v1/crm/categories/${selectedCategoryId.value}/grants`)
+  categoryGrantsLoading.value = false
+  if (res.ok) categoryGrants.value = res.data
+  else categoryGrants.value = []
+}
+
+async function addCategoryGrant() {
+  if (!selectedCategoryId.value || !newGrantPrincipalId.value.trim()) return
+  savingGrant.value = true
+  const res = await api.post<GrantOut>(`/api/v1/crm/categories/${selectedCategoryId.value}/grants`, {
+    principal_type: 'user',
+    principal_id: newGrantPrincipalId.value.trim(),
+    level: newGrantLevel.value,
+  })
+  savingGrant.value = false
+  if (res.ok) {
+    toast.success(t('permissions.shareGranted'))
+    newGrantPrincipalId.value = ''
+    newGrantLevel.value = 'view'
+    showGrantForm.value = false
+    await loadCategoryGrants()
+  } else {
+    toast.error(t('permissions.failedToShare'))
+  }
+}
+
+async function removeCategoryGrant(grantId: string) {
+  if (!selectedCategoryId.value) return
+  const res = await api.delete(`/api/v1/crm/categories/${selectedCategoryId.value}/grants/${grantId}`)
+  if (res.ok) {
+    toast.success(t('permissions.shareRevoked'))
+    categoryGrants.value = categoryGrants.value.filter((g) => g.id !== grantId)
+  } else {
+    toast.error(t('permissions.failedToRevoke'))
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Computed
@@ -152,7 +217,14 @@ onMounted(async () => {
   }
   if (pipelineStore.categories.length > 0 && !selectedCategoryId.value) {
     selectedCategoryId.value = pipelineStore.categories[0]!.id
+    await loadCategoryGrants()
   }
+})
+
+// Reload grants when selected category changes
+watch(selectedCategoryId, () => {
+  categoryGrants.value = []
+  if (selectedCategoryId.value) void loadCategoryGrants()
 })
 
 // ---------------------------------------------------------------------------
@@ -166,6 +238,8 @@ function selectCategory(id: string) {
   showNewStageForm.value = false
   cancelEditField()
   showNewFieldForm.value = false
+  showGrantForm.value = false
+  void loadCategoryGrants()
 }
 
 function startEditCategory(cat: CategoryOut) {
@@ -1110,6 +1184,89 @@ const newPattern = computed({
               <PlusIcon class="w-4 h-4" />
               {{ t('pipeline.addField') }}
             </button>
+          </div>
+
+          <!-- Category Access Grants -->
+          <div v-if="can('category.manage')">
+            <div class="flex items-center gap-2 mb-3">
+              <LockOpenIcon class="w-4 h-4 text-gray-500" />
+              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.categoryAccess') }}</div>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="categoryGrantsLoading" class="text-xs text-gray-400 py-2">{{ t('pipeline.loadingCategories') }}</div>
+
+            <!-- Grants list -->
+            <div v-else class="space-y-2">
+              <div
+                v-for="grant in categoryGrants"
+                :key="grant.id"
+                class="flex items-center justify-between p-2 border border-gray-100 rounded-lg bg-white text-sm group"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-gray-500 text-xs uppercase tracking-wide flex-shrink-0">{{ grant.principal_type }}</span>
+                  <span class="font-mono text-xs text-gray-600 truncate">{{ grant.principal_id }}</span>
+                  <span
+                    class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    :class="{
+                      'bg-blue-50 text-blue-700': grant.level === 'view',
+                      'bg-amber-50 text-amber-700': grant.level === 'edit',
+                      'bg-red-50 text-red-700': grant.level === 'manage',
+                    }"
+                  >{{ t(`permissions.access${grant.level.charAt(0).toUpperCase() + grant.level.slice(1)}`) }}</span>
+                </div>
+                <button
+                  class="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  :title="t('permissions.shareRevoked')"
+                  @click="removeCategoryGrant(grant.id)"
+                >
+                  <TrashIcon class="w-4 h-4" />
+                </button>
+              </div>
+
+              <div v-if="!categoryGrantsLoading && categoryGrants.length === 0" class="text-xs text-gray-400 py-1">
+                {{ t('permissions.noGrants') }}
+              </div>
+
+              <!-- Add grant form -->
+              <div v-if="showGrantForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2 mt-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    v-model="newGrantPrincipalId"
+                    :placeholder="t('pipeline.categoryGrantUserIdPlaceholder')"
+                    class="col-span-2 text-sm border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300"
+                  />
+                  <select
+                    v-model="newGrantLevel"
+                    class="col-span-2 text-sm border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                  >
+                    <option value="view">{{ t('permissions.accessView') }}</option>
+                    <option value="edit">{{ t('permissions.accessEdit') }}</option>
+                    <option value="manage">{{ t('permissions.accessManage') }}</option>
+                  </select>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    class="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                    :disabled="savingGrant || !newGrantPrincipalId.trim()"
+                    @click="addCategoryGrant"
+                  >{{ t('pipeline.categoryGrantAdd') }}</button>
+                  <button
+                    class="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
+                    @click="showGrantForm = false"
+                  >{{ t('pipeline.cancel') }}</button>
+                </div>
+              </div>
+
+              <button
+                v-if="!showGrantForm"
+                class="flex items-center gap-1 mt-1 text-sm text-indigo-600 hover:text-indigo-700"
+                @click="showGrantForm = true"
+              >
+                <PlusIcon class="w-4 h-4" />
+                {{ t('pipeline.categoryGrantAdd') }}
+              </button>
+            </div>
           </div>
         </template>
 

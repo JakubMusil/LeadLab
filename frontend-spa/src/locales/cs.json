@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Označit jako Vyhráno ✓",
     "terminalConfirmLost": "Potvrdit přesun",
     "terminalMoveFailed": "Nepodařilo se přesunout záznam do této fáze.",
-    "terminalCheckpointFailed": "Záznam přesunut, ale kontrolní bod se nepodařilo vytvořit."
+    "terminalCheckpointFailed": "Záznam přesunut, ale kontrolní bod se nepodařilo vytvořit.",
+    "categoryAccess": "Přístupy ke kategorii",
+    "categoryGrantAdd": "Přidat přístup",
+    "categoryGrantUserIdPlaceholder": "UUID uživatele…"
   },
   "proposals": {
     "title": "Nabídky",

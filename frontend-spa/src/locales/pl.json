@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Oznacz jako Wygrane ✓",
     "terminalConfirmLost": "Potwierdź przeniesienie",
     "terminalMoveFailed": "Nie udało się przenieść rekordu do tego etapu.",
-    "terminalCheckpointFailed": "Rekord przeniesiony, ale nie udało się utworzyć punktu kontrolnego."
+    "terminalCheckpointFailed": "Rekord przeniesiony, ale nie udało się utworzyć punktu kontrolnego.",
+    "categoryAccess": "Dostęp do kategorii",
+    "categoryGrantAdd": "Dodaj dostęp",
+    "categoryGrantUserIdPlaceholder": "UUID użytkownika…"
   },
   "proposals": {
     "title": "Oferty",

@@ -645,7 +645,10 @@
     "terminalConfirmWon": "Mark as Won ✓",
     "terminalConfirmLost": "Confirm move",
     "terminalMoveFailed": "Failed to move record to this stage.",
-    "terminalCheckpointFailed": "Record moved, but checkpoint could not be created."
+    "terminalCheckpointFailed": "Record moved, but checkpoint could not be created.",
+    "categoryAccess": "Category Access",
+    "categoryGrantAdd": "Add Access",
+    "categoryGrantUserIdPlaceholder": "User UUID…"
   },
   "proposals": {
     "title": "Proposals",

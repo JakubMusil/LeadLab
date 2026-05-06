@@ -750,3 +750,35 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Merge do `main` a tag `v2.0-permissions`
 - Drop column `Membership.role` (v2.1)
+
+
+### Phase 7 dokončení – Menu hiding + Category Access ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-md`
+
+**Co bylo uděláno:**
+
+- **Phase 7 Step 8 – Skrytí položek menu** (`AppShell.vue`):
+  - Import `useCan` composable do `AppShell.vue`
+  - `nav.reports` zobrazit pouze pokud `can('report.view')` – skryto pro Guest/Member bez tohoto oprávnění
+  - `appShell.sectionPlugins` (Integrace) zobrazit pouze pokud `can('integrations.manage')` – skryto pro Member/Guest
+  - Implementace přes podmíněné spread (`...condition ? [item] : []`) v `navSections` computed
+
+- **Phase 7 Step 6 – Sekce „Přístupy ke kategorii"** (`PipelineSettingsView.vue`):
+  - Import `useCan` composable a `LockOpenIcon`
+  - Přidány `watch` + `loadCategoryGrants()` – načte granty při změně vybrané kategorie
+  - Přidána sekce ve template (viditelná pouze pro `can('category.manage')`):
+    - Tabulka existujících grantů s `principal_type`, `principal_id`, `level` badge (color-coded)
+    - Tlačítko na smazání grantu (hover-only TrashIcon)
+    - Empty state „Žádné explicitní přístupy"
+    - Formulář pro přidání nového grantu: `principal_id` (UUID) + select `level` + save/cancel
+  - i18n klíče přidány do všech 4 locale souborů (`cs`, `en`, `de`, `pl`):
+    - `pipeline.categoryAccess` – název sekce
+    - `pipeline.categoryGrantAdd` – tlačítko přidat
+    - `pipeline.categoryGrantUserIdPlaceholder` – placeholder inputu
+
+- Všechny frontend testy zelené: 100/100 OK, TypeScript build: 0 chyb
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions`
+- v2.1: Drop column `Membership.role` (po ověření zpětné kompatibility)
