@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import timedelta
@@ -7,6 +8,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone as django_timezone
 from django.utils.text import slugify
+
+_logger = logging.getLogger(__name__)
 
 
 class Firm(models.Model):
@@ -226,13 +229,12 @@ class MembershipManager(models.Manager):
         if role is not None:
             try:
                 obj._assign_system_role_by_code(str(role))
-            except Exception:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "MembershipManager.create: failed to assign system role '%s' to %s",
+            except Exception as exc:  # noqa: BLE001 – degrade gracefully; never block the create
+                _logger.warning(
+                    "MembershipManager.create: failed to assign system role '%s' to %s: %s",
                     role,
                     obj.pk,
-                    exc_info=True,
+                    exc,
                 )
         return obj
 
