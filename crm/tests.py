@@ -3811,3 +3811,148 @@ class ResolveEffectivePermissionsTest(TestCase):
         self.membership.roles.add(role)
         perms = resolve_effective_permissions(self.membership)
         self.assertIn("record.view", perms)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 – Streamline visibility tests
+# ---------------------------------------------------------------------------
+
+class StreamlineVisibilityTests(TestCase):
+    """
+    Phase 5: verify that Activity.visibility='restricted' is correctly
+    filtered when PERMISSIONS_V2_ENABLED=True.
+
+    Scenario:
+    - firm with owner, worker_a (scope=own), worker_b (scope=team)
+    - record owned by worker_a
+    - public activity + restricted activity on that record by worker_a
+    - worker_b has scope=team → should see both activities
+    - worker_c has scope=own → should only see the restricted activity if
+      they are the author; otherwise only public
+    """
+
+    def setUp(self):
+        from firms.permissions import Scope
+        self.firm = Firm.objects.create(name="Visibility Firm", subscription_tier="pro")
+        self.owner = User.objects.create_user(email="vis_owner@example.com", password="pass")
+        self.worker_a = User.objects.create_user(email="vis_worker_a@example.com", password="pass")
+        self.worker_b = User.objects.create_user(email="vis_worker_b@example.com", password="pass")
+        self.worker_c = User.objects.create_user(email="vis_worker_c@example.com", password="pass")
+
+        self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
+        self.worker_a_m = Membership.objects.create(
+            user=self.worker_a, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.OWN
+        )
+        self.worker_b_m = Membership.objects.create(
+            user=self.worker_b, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.TEAM
+        )
+        self.worker_c_m = Membership.objects.create(
+            user=self.worker_c, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.OWN
+        )
+
+        self.record = PipelineRecord.objects.create(
+            firm=self.firm, title="Test Record",
+            created_by=self.worker_a, assigned_to=self.worker_a,
+        )
+        self.public_activity = Activity.objects.create(
+            record=self.record,
+            user=self.worker_a,
+            type=ActivityType.COMMENT,
+            content_text="Public note",
+            visibility="public",
+        )
+        self.restricted_activity = Activity.objects.create(
+            record=self.record,
+            user=self.worker_a,
+            type=ActivityType.COMMENT,
+            content_text="Team-only note",
+            visibility="restricted",
+        )
+
+    def _make_request(self, user, membership):
+        from django.test import RequestFactory
+        req = RequestFactory().get("/")
+        req.user = user
+        req.firm = self.firm
+        req.membership = membership
+        return req
+
+    def test_activity_visibility_field_default_public(self):
+        """New activities default to visibility='public'."""
+        a = Activity.objects.create(
+            record=self.record,
+            user=self.worker_a,
+            type=ActivityType.COMMENT,
+            content_text="Default",
+        )
+        self.assertEqual(a.visibility, "public")
+
+    def test_owner_sees_all_activities(self):
+        """Owner always sees all activities regardless of visibility."""
+        from django.test import override_settings
+        from crm.permissions import filter_activities_qs
+        req = self._make_request(self.owner, self.owner_m)
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            qs = filter_activities_qs(
+                Activity.objects.filter(record=self.record), req
+            )
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.public_activity.id, ids)
+        self.assertIn(self.restricted_activity.id, ids)
+
+    def test_worker_own_scope_sees_only_public_and_own_restricted(self):
+        """Worker with scope=own sees public activities; restricted only if they authored it."""
+        from django.test import override_settings
+        from crm.permissions import filter_activities_qs
+        req = self._make_request(self.worker_c, self.worker_c_m)
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            # worker_c cannot see the record at all since scope=own, record belongs to worker_a
+            # so no activities should be returned
+            qs = filter_activities_qs(
+                Activity.objects.filter(record=self.record), req
+            )
+        ids = list(qs.values_list("id", flat=True))
+        self.assertNotIn(self.public_activity.id, ids)
+        self.assertNotIn(self.restricted_activity.id, ids)
+
+    def test_worker_own_scope_sees_own_restricted(self):
+        """worker_a (scope=own, author) sees both activities on their own record."""
+        from django.test import override_settings
+        from crm.permissions import filter_activities_qs
+        req = self._make_request(self.worker_a, self.worker_a_m)
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            qs = filter_activities_qs(
+                Activity.objects.filter(record=self.record), req
+            )
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.public_activity.id, ids)
+        # worker_a authored the restricted activity → should see it
+        self.assertIn(self.restricted_activity.id, ids)
+
+    def test_worker_team_scope_sees_all(self):
+        """Worker with scope=all sees all activities including restricted."""
+        from django.test import override_settings
+        from crm.permissions import filter_activities_qs
+        from firms.permissions import Scope
+        # Give worker_b scope=all so they can see all records and all activities
+        self.worker_b_m.default_scope = Scope.ALL
+        self.worker_b_m.save()
+        req = self._make_request(self.worker_b, self.worker_b_m)
+        with override_settings(PERMISSIONS_V2_ENABLED=True):
+            qs = filter_activities_qs(
+                Activity.objects.filter(record=self.record), req
+            )
+        ids = list(qs.values_list("id", flat=True))
+        self.assertIn(self.public_activity.id, ids)
+        self.assertIn(self.restricted_activity.id, ids)
+
+    def test_flag_disabled_no_filtering(self):
+        """When PERMISSIONS_V2_ENABLED=False, no filtering is applied."""
+        from django.test import override_settings
+        from crm.permissions import filter_activities_qs
+        req = self._make_request(self.worker_c, self.worker_c_m)
+        with override_settings(PERMISSIONS_V2_ENABLED=False):
+            qs = filter_activities_qs(
+                Activity.objects.filter(record=self.record), req
+            )
+        self.assertEqual(qs.count(), 2)

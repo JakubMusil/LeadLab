@@ -607,6 +607,11 @@ class Checkpoint(SoftDeleteMixin, models.Model):
 # Activity (Polymorphic timeline log)
 # ---------------------------------------------------------------------------
 
+class ActivityVisibility(models.TextChoices):
+    PUBLIC = "public", "Public"
+    RESTRICTED = "restricted", "Restricted"
+
+
 class Activity(models.Model):
     """
     A timeline event linked to exactly one CRM entity
@@ -687,7 +692,18 @@ class Activity(models.Model):
             "level — this field is purely a flag."
         ),
     )
-    
+    visibility = models.CharField(
+        max_length=10,
+        choices=ActivityVisibility.choices,
+        default=ActivityVisibility.PUBLIC,
+        db_index=True,
+        help_text=(
+            "Controls who can see this activity. 'public' (default) = visible to all "
+            "members who can see the parent record. 'restricted' = visible only to "
+            "users with scope=team or scope=all, or the activity author."
+        ),
+    )
+
     # Edit tracking
     is_edited = models.BooleanField(default=False, db_index=True)
     edited_at = models.DateTimeField(null=True, blank=True)

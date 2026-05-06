@@ -2666,5 +2666,11 @@
     "col_updated_at": "Updated",
     "newInCategory": "New {category}",
     "contactDetailTitle": "Contact details"
+  },
+  "streamline": {
+    "visibilityPublic": "Public",
+    "visibilityRestricted": "Team only",
+    "visibilityPublicTitle": "Activity is visible to all members with access to the record",
+    "visibilityRestrictedTitle": "Activity is visible only to members with team scope or admins"
   }
 }
