@@ -2744,6 +2744,8 @@
     "auditTarget": "Ziel",
     "auditTime": "Zeit",
     "noAuditEntries": "Keine Auditprotokolleinträge",
+    "auditActionAll": "Alle Aktionen",
+    "auditTargetAll": "Alle Ziele",
     "noDescription": "Keine Beschreibung",
     "grantAccess": "Zugriff gewähren",
     "noMembers": "Keine Mitglieder in diesem Team"

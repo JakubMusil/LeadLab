@@ -125,7 +125,7 @@ watch(firmId, () => {
           class="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
           @change="applyFilters"
         >
-          <option value="">— {{ t('permissions.auditAction') }} —</option>
+          <option value="">— {{ t('permissions.auditActionAll') }} —</option>
           <option v-for="a in ACTION_OPTIONS" :key="a" :value="a">{{ a }}</option>
         </select>
       </div>
@@ -136,7 +136,7 @@ watch(firmId, () => {
           class="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
           @change="applyFilters"
         >
-          <option value="">— {{ t('permissions.auditTarget') }} —</option>
+          <option value="">— {{ t('permissions.auditTargetAll') }} —</option>
           <option v-for="tt in TARGET_TYPE_OPTIONS" :key="tt" :value="tt">{{ tt }}</option>
         </select>
       </div>
@@ -176,7 +176,7 @@ watch(firmId, () => {
               </span>
             </td>
             <td class="px-4 py-2 text-gray-600 dark:text-gray-400 text-xs font-mono">
-              {{ entry.target_type }}: {{ entry.target_id.slice(0, 8) }}…
+              {{ entry.target_type }}: {{ (entry.target_id ?? '').slice(0, 8) }}{{ (entry.target_id ?? '').length > 8 ? '…' : '' }}
             </td>
             <td class="px-4 py-2 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
               {{ formatDate(entry.created_at) }}
