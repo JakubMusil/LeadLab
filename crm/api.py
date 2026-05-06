@@ -210,7 +210,7 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
 @router.post("/directory", auth=django_auth, response={201: CustomerOut, 403: ErrorOut})
 def create_customer(request, payload: CustomerIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -272,7 +272,7 @@ def get_customer(request, customer_id: str):
 @router.put("/directory/{customer_id}", auth=django_auth, response={200: CustomerOut, 403: ErrorOut, 404: ErrorOut})
 def update_customer(request, customer_id: str, payload: CustomerIn):
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -1206,7 +1206,7 @@ def list_checkpoints(request, record_id: str):
 def create_checkpoint(request, record_id: str, payload: CheckpointIn):
     """Create a checkpoint for a record."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1240,7 +1240,7 @@ def create_checkpoint(request, record_id: str, payload: CheckpointIn):
 def update_checkpoint(request, record_id: str, checkpoint_id: str, payload: CheckpointUpdateIn):
     """Update a checkpoint."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1279,7 +1279,7 @@ def update_checkpoint(request, record_id: str, checkpoint_id: str, payload: Chec
 def delete_checkpoint(request, record_id: str, checkpoint_id: str):
     """Delete a checkpoint."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except PermissionDenied as exc:
         return 403, {"detail": str(exc)}
 
@@ -1585,7 +1585,7 @@ def create_activity(request, payload: ActivityIn):
     for the given activity type, which handles all type-specific side-effects.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -2670,7 +2670,7 @@ def create_task(request, payload: TaskIn):
 def update_task(request, task_id: str, payload: TaskUpdateIn):
     """Partially update a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -2828,7 +2828,7 @@ def update_task(request, task_id: str, payload: TaskUpdateIn):
 def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = None):
     """Mark a Task as completed, log a TASK_COMPLETED Activity, and optionally create a follow-up task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -2925,7 +2925,7 @@ def complete_task(request, task_id: str, payload: Optional[CompleteTaskIn] = Non
 def reopen_task(request, task_id: str):
     """Mark a completed Task as not completed (reopen it)."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3001,7 +3001,7 @@ def record_task_outcome(request, task_id: str, payload: TaskOutcomeIn):
     task they are allowed to see (mirrors ``complete_task``).
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3230,7 +3230,7 @@ def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
     in the unified task timeline.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3279,7 +3279,7 @@ def upload_task_document(request, task_id: str, file: UploadedFile = File(...)):
 def delete_task_document(request, task_id: str, document_id: str):
     """Soft-delete a document attached to a task. Only uploader or admin/owner may delete."""
     try:
-        membership = require_membership(request, min_role=MembershipRole.WORKER)
+        membership = require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3417,7 +3417,7 @@ def list_streamline_items(request, task_id: str):
 def create_streamline_items(request, task_id: str, payload: StreamlineItemCreateIn):
     """Add one or more streamline items to a task (multi-line text split)."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
     try:
@@ -3469,7 +3469,7 @@ def create_streamline_items(request, task_id: str, payload: StreamlineItemCreate
 def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateIn):
     """Toggle resolve status of a streamline item."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
     try:
@@ -3519,7 +3519,7 @@ def update_streamline_item(request, item_id: str, payload: StreamlineItemUpdateI
 def delete_streamline_item(request, item_id: str):
     """Delete a streamline item."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
     try:
@@ -3625,7 +3625,7 @@ def list_task_dependencies(request, task_id: str):
 def create_task_dependency(request, task_id: str, payload: TaskDependencyIn):
     """Add a dependency from this task to another task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3673,7 +3673,7 @@ def create_task_dependency(request, task_id: str, payload: TaskDependencyIn):
 def delete_task_dependency(request, task_id: str, dependency_id: str):
     """Remove a dependency."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3726,7 +3726,7 @@ def delete_task(request, task_id: str):
 def archive_task(request, task_id: str):
     """Archive a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3749,7 +3749,7 @@ def archive_task(request, task_id: str):
 def unarchive_task(request, task_id: str):
     """Unarchive a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3771,7 +3771,7 @@ def unarchive_task(request, task_id: str):
 def pin_task(request, task_id: str):
     """Pin a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3793,7 +3793,7 @@ def pin_task(request, task_id: str):
 def unpin_task(request, task_id: str):
     """Unpin a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3855,7 +3855,7 @@ def _copy_task(original: Task, firm, created_by, title: str) -> Task:
 def copy_task(request, task_id: str, payload: TaskCopyIn):
     """Create a copy of a task, optionally including checklist, subtasks and attachments."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3901,7 +3901,7 @@ class TaskMoveIn(Schema):
 def move_task(request, task_id: str, payload: TaskMoveIn):
     """Move a task to a different entity (record/proposal/customer) or make it standalone."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -3948,7 +3948,7 @@ class TaskPublicLinkOut(Schema):
 def get_task_public_link(request, task_id: str):
     """Get or create a public share link for a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4053,7 +4053,7 @@ def batch_task_action(request, payload: TaskBatchIn):
         return 400, {"detail": f"Invalid action. Choose from: {', '.join(sorted(valid_actions))}."}
 
     # delete requires ADMIN, others require WORKER
-    required_role = MembershipRole.ADMIN if payload.action == "delete" else MembershipRole.WORKER
+    required_role = MembershipRole.ADMIN if payload.action == "delete" else MembershipRole.MEMBER
     try:
         require_membership(request, min_role=required_role)
     except Exception as exc:
@@ -4242,7 +4242,7 @@ def list_time_logs(request, task_id: str):
 def create_time_log(request, task_id: str, payload: TaskTimeLogIn):
     """Manually log time worked on a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4321,7 +4321,7 @@ def start_timer(request, task_id: str):
     should stop that timer first.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4356,7 +4356,7 @@ def stop_timer(request, task_id: str):
     logs a ``time_logged`` timeline event.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4447,7 +4447,7 @@ def request_approval(request, task_id: str, payload: ApprovalRequestIn):
     A timeline entry is logged automatically.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4668,7 +4668,7 @@ def list_task_templates(request):
 def create_task_template(request, payload: TaskTemplateIn):
     """Create a new task template for the active firm."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -4721,7 +4721,7 @@ def get_task_template(request, template_id: str):
 def update_task_template(request, template_id: str, payload: TaskTemplateUpdateIn):
     """Partially update an existing task template."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -4804,7 +4804,7 @@ def apply_task_template(request, template_id: str, payload: TaskTemplateApplyIn)
     checklist items are all copied into the newly created task.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -5822,7 +5822,7 @@ def upload_attachment(request, record_id: str, file: UploadedFile = File(...)):
     Creates a ``Document`` record and a ``FILE_UPLOAD`` Activity atomically.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -5998,7 +5998,7 @@ def upload_voice_memo(
     the composer after recording.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -6138,7 +6138,7 @@ def upload_file_blobs(
     success.
     """
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
         require_active_subscription(request.firm)
     except (PermissionDenied, SubscriptionRequired) as exc:
         return 403, {"detail": str(exc)}
@@ -7056,7 +7056,7 @@ def list_saved_views(request, entity: str = ""):
 def create_saved_view(request, payload: SavedViewIn):
     """Save a named filter+sort preset for the current user."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
@@ -7264,7 +7264,7 @@ def delete_custom_field(request, field_id: str):
 def upsert_task_custom_fields(request, task_id: str, payload: TaskCustomFieldValueBulkIn):
     """Bulk-upsert custom field values for a task."""
     try:
-        require_membership(request, min_role=MembershipRole.WORKER)
+        require_membership(request, min_role=MembershipRole.MEMBER)
     except Exception as exc:
         return 403, {"detail": str(exc)}
 

@@ -20,7 +20,7 @@ from ninja.security import django_auth
 
 from crm.events import broadcast_event
 from crm.models import Category, CategoryField, Stage, PipelineRecord
-from firms.auth import MembershipRole, PermissionDenied, require_membership
+from firms.auth import InvitationRole, MembershipRole, PermissionDenied, require_membership
 
 pipeline_config_router = Router(tags=["pipeline-config"])
 logger = logging.getLogger(__name__)

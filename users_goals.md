@@ -943,6 +943,55 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 **Co bude následovat:**
 - Merge do `main` a tag `v2.3` / `v2.0-permissions`
-- v2.4 (volitelně): odstranit `MembershipRole.WORKER` enum value (po release period kde byly všechny invites migrovány na MEMBER) – aktuálně blokováno tím, že stále tisíce řádků v testech a fixtures používá string `"worker"`
-- v2.5 (volitelně): přejmenovat `MembershipRole` na `InvitationRole` (sémantika po dropu `Membership.role`)
+- v2.4: odstranit `MembershipRole.WORKER` enum value
+- v2.5: přejmenovat `MembershipRole` na `InvitationRole` (sémantika po dropu `Membership.role`)
+
+
+### v2.4 – Odstranění deprecated `MembershipRole.WORKER` ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-20b922e3-fa06-4bd9-9323-172787023f80`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py::MembershipRole`** – odstraněna deprecated hodnota `WORKER = "worker", "Worker"`:
+  - Enum nyní obsahuje pouze `OWNER`, `ADMIN`, `MEMBER`
+  - Komentář o deprecated aliasu odstraněn
+- **`firms/migrations/0010_remove_worker_role.py`** – nová migrace:
+  - `RunPython`: převede všechny existující `Invitation.role='worker'` → `'member'`
+  - `AlterField`: aktualizuje choices na `Invitation.role` (odstraní 'worker' z povolených hodnot)
+- **`firms/permissions.py`** – aktualizovány konstanty:
+  - `LEGACY_ROLE_PERMISSIONS`: odstraněna `"worker": _WORKER_PERMISSIONS` deprecated entry
+  - `_MIN_ROLE_SENTINEL`: `"worker"` → `"member"` (klíč přejmenován, hodnota zachována)
+  - Docstring `has_min_role`: aktualizováno `WORKER < ADMIN < OWNER` → `MEMBER < ADMIN < OWNER`
+- **`firms/models.py::Membership.primary_role`** – priority mapa aktualizována:
+  - Odstraněn `"worker": 3` (dříve zbytečná položka po nahrazení 'worker' → 'member')
+  - Nová mapa: `{"owner": 0, "admin": 1, "member": 2, "guest": 3}`
+- **Bulk refaktoring** všech `.py` souborů (bez migrací):
+  - `MembershipRole.WORKER` → `MembershipRole.MEMBER` ve všech 95 výskytech (firms/auth.py, firms/tests.py, crm/tests.py, crm/proposals_api.py, crm/api.py, crm/automations_api.py, crm/pipeline_config_api.py)
+- **Test opravena** `firms/tests.py::AcceptInvitationAPITest::test_new_user_can_accept_and_gets_account`:
+  - Assertion `data["role"] == "worker"` → `"member"` (po v2.2 API vrací `invitation.role` = MEMBER)
+
+**Verifikace:**
+- `python manage.py test firms` – 203/203 OK
+- `python manage.py test crm.tests.FilterRecordsQsTest crm.tests.ResolveEffectivePermissionsTest crm.tests.StreamlineVisibilityTests` – 28/28 OK
+
+
+### v2.5 – Přejmenování `MembershipRole` → `InvitationRole` ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-20b922e3-fa06-4bd9-9323-172787023f80`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py`** – třída přejmenována:
+  - `class MembershipRole(models.TextChoices)` → `class InvitationRole(models.TextChoices)` s docstringem vysvětlujícím přejmenování
+  - Přidán backward-compatibility alias `MembershipRole = InvitationRole`
+  - `Invitation.role` field aktualizován: `choices=InvitationRole.choices`, `default=InvitationRole.MEMBER`
+- **`firms/auth.py`** – přidán import `InvitationRole` z `firms.models`; re-exportuje pro ostatní moduly
+- **`firms/api.py`** – přidán import `InvitationRole` (importuje z `firms.auth`)
+- **`crm/automations_api.py`** – import rozšířen o `InvitationRole`
+- Ostatní soubory stále používají `MembershipRole` přes backward-compat alias (testem ověřeno)
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.5`
+- Volitelně v budoucnu: odstranit alias `MembershipRole = InvitationRole` a aktualizovat všechny importy na `InvitationRole`
 

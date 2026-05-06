@@ -74,12 +74,20 @@ class Firm(models.Model):
         return self.name
 
 
-class MembershipRole(models.TextChoices):
+class InvitationRole(models.TextChoices):
+    """Choices for the ``Invitation.role`` field.
+
+    This enum was previously named ``MembershipRole`` when it was also used
+    to define the (now-dropped) ``Membership.role`` column.  The alias
+    ``MembershipRole = InvitationRole`` is kept for backward compatibility.
+    """
     OWNER = "owner", "Owner"
     ADMIN = "admin", "Admin"
     MEMBER = "member", "Member"
-    # Deprecated alias kept for backward compatibility; new code should use MEMBER.
-    WORKER = "worker", "Worker"
+
+
+# Backward-compatibility alias – remove in a future release.
+MembershipRole = InvitationRole
 
 
 # ---------------------------------------------------------------------------
@@ -352,11 +360,11 @@ class Membership(models.Model):
         """Return the highest-priority role *code* derived from the M2M ``roles``
         relation.
 
-        Priority order (highest wins): owner → admin → member → worker → guest → other.
+        Priority order (highest wins): owner → admin → member → guest → other.
         Returns ``'guest'`` as the most restrictive fallback when no roles are
         assigned (this should not happen in a correctly initialised workspace).
         """
-        _priority = {"owner": 0, "admin": 1, "member": 2, "worker": 3, "guest": 4}
+        _priority = {"owner": 0, "admin": 1, "member": 2, "guest": 3}
         try:
             codes = list(self.roles.values_list("code", flat=True))
         except Exception:
@@ -523,8 +531,8 @@ class Invitation(models.Model):
     )
     role = models.CharField(
         max_length=20,
-        choices=MembershipRole.choices,
-        default=MembershipRole.MEMBER,
+        choices=InvitationRole.choices,
+        default=InvitationRole.MEMBER,
     )
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -29,7 +29,7 @@ from crm.models import (
     AutomationTrigger,
 )
 from crm.soft_delete import perform_soft_delete
-from firms.auth import MembershipRole, PermissionDenied, require_membership
+from firms.auth import InvitationRole, MembershipRole, PermissionDenied, require_membership
 
 logger = logging.getLogger(__name__)
 

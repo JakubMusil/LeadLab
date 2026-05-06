@@ -15,7 +15,7 @@ class CRMFixtureMixin:
         self.worker = User.objects.create_user(email="worker@crm.com", password="pass")
         self.firm = Firm.objects.create(name="CRM Firm", subscription_tier="pro")
         Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
-        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.WORKER)
+        Membership.objects.create(user=self.worker, firm=self.firm, role=MembershipRole.MEMBER)
 
         self.customer = Customer.objects.create(
             firm=self.firm,
@@ -640,7 +640,7 @@ class CRMAPIFixtureMixin:
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER
         )
         self.worker_membership = Membership.objects.create(
-            user=self.worker, firm=self.firm, role=MembershipRole.WORKER
+            user=self.worker, firm=self.firm, role=MembershipRole.MEMBER
         )
         self.customer = Customer.objects.create(
             firm=self.firm,
@@ -3675,10 +3675,10 @@ class FilterRecordsQsTest(TestCase):
             user=self.owner, firm=self.firm, role=MembershipRole.OWNER, default_scope="all"
         )
         self.worker_a_m = Membership.objects.create(
-            user=self.worker_a, firm=self.firm, role=MembershipRole.WORKER, default_scope="own"
+            user=self.worker_a, firm=self.firm, role=MembershipRole.MEMBER, default_scope="own"
         )
         self.worker_b_m = Membership.objects.create(
-            user=self.worker_b, firm=self.firm, role=MembershipRole.WORKER, default_scope="own"
+            user=self.worker_b, firm=self.firm, role=MembershipRole.MEMBER, default_scope="own"
         )
         # Create records
         self.record_a = PipelineRecord.objects.create(
@@ -3779,7 +3779,7 @@ class ResolveEffectivePermissionsTest(TestCase):
         self.firm = Firm.objects.create(name="Eff Perm Firm")
         self.user = User.objects.create_user(email="effperm@example.com", password="pass")
         self.membership = Membership.objects.create(
-            user=self.user, firm=self.firm, role=MembershipRole.WORKER
+            user=self.user, firm=self.firm, role=MembershipRole.MEMBER
         )
 
     def test_fallback_to_legacy_when_no_db_roles(self):
@@ -3832,13 +3832,13 @@ class StreamlineVisibilityTests(TestCase):
 
         self.owner_m = Membership.objects.create(user=self.owner, firm=self.firm, role=MembershipRole.OWNER)
         self.worker_a_m = Membership.objects.create(
-            user=self.worker_a, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.OWN
+            user=self.worker_a, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.OWN
         )
         self.worker_b_m = Membership.objects.create(
-            user=self.worker_b, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.TEAM
+            user=self.worker_b, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.TEAM
         )
         self.worker_c_m = Membership.objects.create(
-            user=self.worker_c, firm=self.firm, role=MembershipRole.WORKER, default_scope=Scope.OWN
+            user=self.worker_c, firm=self.firm, role=MembershipRole.MEMBER, default_scope=Scope.OWN
         )
 
         self.record = PipelineRecord.objects.create(
