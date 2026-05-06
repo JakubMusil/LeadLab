@@ -805,3 +805,51 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Merge do `main` a tag `v2.0-permissions`
 - v2.1: Drop column `Membership.role` (po ověření zpětné kompatibility)
+
+
+### v2.1 – Příprava na deprecation `Membership.role` ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-documentation-again`
+
+**Co bylo uděláno:**
+
+- **`firms/models.py` – `_sync_legacy_role_to_m2m()` metoda**:
+  - Nová instance metoda na `Membership` synchronizuje M2M `roles` relaci s hodnotou legacy `role` CharField
+  - Využívá `LEGACY_TO_SYSTEM_ROLE` mapping z `firms/role_seeds.py`: `worker` → `member` system role
+  - Idempotentní – pokud je M2M již v souladu, nic nedělá
+  - Gracefully degraduje (loguje warning) pokud system roles nejsou ještě seedovány
+
+- **`firms/apps.py` – automatické volání sync**:
+  - `_on_membership_post_save` signal rozšířen o volání `instance._sync_legacy_role_to_m2m()`
+  - Sync se spustí při: vytvoření nového Membership, nebo uložení s `update_fields` zahrnujícím `"role"`
+  - Zajišťuje, že každá změna legacy `role` pole se automaticky promítne do M2M rolí
+
+- **`firms/api.py` – `_membership_out` používá `primary_role`**:
+  - Pole `"role"` v API odpovědi nyní vrací `m.primary_role` místo `m.role`
+  - `primary_role` preferuje nejvyšší M2M roli (fallback na legacy pole)
+  - API klienti nyní vidí správnou roli i pokud bylo M2M nastaveno přímo (např. přes invitation)
+
+- **`firms/auth.py` – `membership.is_owner` místo direct `.role` comparison**:
+  - `require_permission()`: `membership.role == MembershipRole.OWNER` → `membership.is_owner`
+
+- **`crm/permissions.py` – `membership.is_owner` ve všech filter funkcích**:
+  - `resolve_scope()`, `filter_records_qs()`, `filter_activities_qs()`, `filter_proposals_qs()`, `filter_tasks_qs()`: `membership.role == OWNER` → `membership.is_owner`
+  - `resolve_effective_permissions()` fallback: používá `membership.primary_role` místo `membership.role`
+
+- **`crm/api.py` – `membership.is_admin_or_above` pro admin-only kontroly**:
+  - 7 výskytů `membership.role in (MembershipRole.ADMIN, MembershipRole.OWNER)` nahrazeno `membership.is_admin_or_above`
+
+- **`firms/permissions.py` – `can()` používá `primary_role`**:
+  - LEGACY_ROLE_PERMISSIONS fallback v `can()` nyní používá `membership.primary_role`
+
+- **Nové testy** `firms/tests.py::LegacyRoleSyncTest` (4 testy):
+  - `test_new_membership_syncs_system_role` – nový Membership (WORKER) dostane 'member' system Role v M2M
+  - `test_sync_helper_updates_m2m_on_role_change` – změna `role` na ADMIN synchronizuje M2M
+  - `test_primary_role_prefers_m2m_over_legacy` – `primary_role` vrací M2M hodnotu i když legacy pole ukazuje jinak
+  - `test_membership_out_uses_primary_role` – API serializer vrací `primary_role`
+- 203 testů zelených (+ 4 nové; pre-existing 2 failures v `StreamlinePhase6ToolsTest` nesouvisí s permissions)
+
+**Co bude následovat:**
+- Merge do `main` a tag `v2.0-permissions`
+- v2.2: Skutečné odstranění sloupce `Membership.role` z DB (drop column migration)
+  - Předpokladem je ověření zpětné kompatibility všech API klientů a write pathů

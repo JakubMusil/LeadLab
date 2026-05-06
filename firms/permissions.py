@@ -129,7 +129,9 @@ _OWNER_PERMISSIONS: frozenset[Permission] = frozenset(
 LEGACY_ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "owner": _OWNER_PERMISSIONS,
     "admin": _ADMIN_PERMISSIONS,
-    "worker": _WORKER_PERMISSIONS,
+    "member": _WORKER_PERMISSIONS,  # Canonical name (WORKER was renamed to MEMBER in Phase 8)
+    "worker": _WORKER_PERMISSIONS,  # Deprecated alias kept for backward compatibility
+    "guest": frozenset({Permission.RECORD_VIEW}),
 }
 
 # Sentinel permission that is the *minimum* distinguishing capability for each
@@ -161,11 +163,11 @@ def can(
     # Unknown membership role → deny and log a warning so misconfigurations
     # surface quickly (returning an empty frozenset is the secure default but
     # could be hard to diagnose without a log message).
-    role_perms = LEGACY_ROLE_PERMISSIONS.get(membership.role)
+    role_perms = LEGACY_ROLE_PERMISSIONS.get(membership.primary_role)
     if role_perms is None:
         logger.warning(
             "can(): unrecognised membership role %r for membership %s – denying permission %r",
-            membership.role,
+            membership.primary_role,
             membership.pk,
             permission,
         )

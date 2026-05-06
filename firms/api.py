@@ -185,7 +185,7 @@ def _membership_out(m: Membership) -> dict:
         "user_id": str(m.user_id),
         "user_email": m.user.email,
         "user_full_name": m.user.full_name,
-        "role": m.role,
+        "role": m.primary_role,
         "firm_id": str(m.firm_id),
         "roles": role_codes,
         "permissions": permissions,

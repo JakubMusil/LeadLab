@@ -124,7 +124,7 @@ def require_permission(
         )
 
     # Owner short-circuit: owners always have all permissions
-    if membership.role == MembershipRole.OWNER:
+    if membership.is_owner:
         return membership
 
     from crm.permissions import resolve_effective_permissions  # local import to avoid circular
