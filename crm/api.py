@@ -67,6 +67,7 @@ from firms.auth import (
 )
 from firms.models import Membership
 
+from crm.apps import set_current_user, clear_current_user
 from crm.events import broadcast_event
 from crm.soft_delete import perform_soft_delete
 
@@ -107,6 +108,10 @@ class CustomerOut(Schema):
     website: str
     tags: List[str]
     metadata: Dict[str, Any]
+    created_by_id: Optional[str]
+    created_by_name: Optional[str]
+    assigned_to_id: Optional[str]
+    assigned_to_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -119,6 +124,7 @@ class CustomerIn(Schema):
     phone: str = ""
     company_name: str = ""
     company_id: Optional[str] = None
+    assigned_to_id: Optional[str] = None
     ico: str = ""
     dic: str = ""
     address_street: str = ""
@@ -131,6 +137,20 @@ class CustomerIn(Schema):
 
 
 def _customer_out(c: Customer) -> dict:
+    created_by_name: Optional[str] = None
+    if c.created_by_id:
+        try:
+            cb = c.created_by
+            created_by_name = f"{cb.first_name} {cb.last_name}".strip() or cb.email
+        except Exception:
+            pass
+    assigned_to_name: Optional[str] = None
+    if c.assigned_to_id:
+        try:
+            at = c.assigned_to
+            assigned_to_name = f"{at.first_name} {at.last_name}".strip() or at.email
+        except Exception:
+            pass
     return {
         "id": str(c.id),
         "firm_id": str(c.firm_id),
@@ -150,6 +170,10 @@ def _customer_out(c: Customer) -> dict:
         "website": c.website,
         "tags": c.tags,
         "metadata": c.metadata,
+        "created_by_id": str(c.created_by_id) if c.created_by_id else None,
+        "created_by_name": created_by_name,
+        "assigned_to_id": str(c.assigned_to_id) if c.assigned_to_id else None,
+        "assigned_to_name": assigned_to_name,
         "created_at": c.created_at,
         "updated_at": c.updated_at,
     }
@@ -162,7 +186,7 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
     except Exception as exc:
         return 403, {"detail": str(exc)}
 
-    qs = Customer.objects.filter(firm=request.firm)
+    qs = Customer.objects.filter(firm=request.firm).select_related('created_by', 'assigned_to')
     if type in (ContactType.PERSON, ContactType.COMPANY):
         qs = qs.filter(type=type)
     if search:
@@ -188,13 +212,25 @@ def create_customer(request, payload: CustomerIn):
 
     data = payload.dict()
     company_id = data.pop("company_id", None)
+    assigned_to_id = data.pop("assigned_to_id", None)
     company = None
     if company_id:
         try:
             company = Customer.objects.get(id=company_id, firm=request.firm, type=ContactType.COMPANY)
         except Customer.DoesNotExist:
             pass
-    customer = Customer.objects.create(firm=request.firm, company=company, **data)
+    assigned_to = None
+    if assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(assigned_to_id, request.firm)
+        if err:
+            return err
+    customer = Customer.objects.create(
+        firm=request.firm,
+        company=company,
+        created_by=request.user,
+        assigned_to=assigned_to,
+        **data,
+    )
 
     # Fire contact_created automation
     _auto_ctx = {
@@ -222,7 +258,7 @@ def get_customer(request, customer_id: str):
         return 403, {"detail": str(exc)}
 
     try:
-        customer = Customer.objects.get(id=customer_id, firm=request.firm)
+        customer = Customer.objects.select_related('created_by', 'assigned_to').get(id=customer_id, firm=request.firm)
     except Customer.DoesNotExist:
         return 404, {"detail": "Customer not found."}
     return 200, _customer_out(customer)
@@ -236,22 +272,33 @@ def update_customer(request, customer_id: str, payload: CustomerIn):
         return 403, {"detail": str(exc)}
 
     try:
-        customer = Customer.objects.get(id=customer_id, firm=request.firm)
+        customer = Customer.objects.select_related('created_by', 'assigned_to').get(id=customer_id, firm=request.firm)
     except Customer.DoesNotExist:
         return 404, {"detail": "Customer not found."}
 
     data = payload.dict()
     company_id = data.pop("company_id", None)
+    assigned_to_id = data.pop("assigned_to_id", None)
     company = None
     if company_id:
         try:
             company = Customer.objects.get(id=company_id, firm=request.firm, type=ContactType.COMPANY)
         except Customer.DoesNotExist:
             pass
+    assigned_to = None
+    if assigned_to_id:
+        assigned_to, err = _resolve_user_in_firm(assigned_to_id, request.firm)
+        if err:
+            return err
     customer.company = company
+    customer.assigned_to = assigned_to
     for field, value in data.items():
         setattr(customer, field, value)
-    customer.save()
+    set_current_user(request.user)
+    try:
+        customer.save()
+    finally:
+        clear_current_user()
     return 200, _customer_out(customer)
 
 
@@ -284,7 +331,7 @@ def list_company_employees(request, customer_id: str):
     except Customer.DoesNotExist:
         return 404, {"detail": "Company not found."}
 
-    employees = Customer.objects.filter(company_id=customer_id, firm=request.firm)
+    employees = Customer.objects.filter(company_id=customer_id, firm=request.firm).select_related('created_by', 'assigned_to')
     return 200, [_customer_out(e) for e in employees]
 
 
