@@ -20,7 +20,6 @@ Usage in a Django Ninja router
         # ...
 """
 
-from django.conf import settings
 from django.http import HttpRequest
 
 from firms.models import Firm, Membership, MembershipRole
@@ -92,29 +91,8 @@ def require_membership(
 
 
 # ---------------------------------------------------------------------------
-# Permission-based gate (Phase 4)
+# Permission-based gate (Phase 4+)
 # ---------------------------------------------------------------------------
-
-# Maps a Permission code to the legacy min_role that covers it.
-# Used as fallback when PERMISSIONS_V2_ENABLED is False.
-_PERMISSION_TO_MIN_ROLE: dict[str, str] = {
-    Permission.RECORD_VIEW: MembershipRole.WORKER,
-    Permission.RECORD_CREATE: MembershipRole.WORKER,
-    Permission.RECORD_EDIT: MembershipRole.WORKER,
-    Permission.RECORD_DELETE: MembershipRole.ADMIN,
-    Permission.CATEGORY_VIEW: MembershipRole.WORKER,
-    Permission.ACTIVITY_CREATE: MembershipRole.WORKER,
-    Permission.PROPOSAL_CREATE: MembershipRole.WORKER,
-    Permission.REPORT_VIEW: MembershipRole.WORKER,
-    Permission.CATEGORY_MANAGE: MembershipRole.ADMIN,
-    Permission.TEAM_MANAGE: MembershipRole.ADMIN,
-    Permission.ROLE_MANAGE: MembershipRole.ADMIN,
-    Permission.INTEGRATIONS_MANAGE: MembershipRole.ADMIN,
-    Permission.STREAMLINE_VIEW_ALL: MembershipRole.ADMIN,
-    Permission.BILLING_MANAGE: MembershipRole.OWNER,
-    Permission.FIRM_DELETE: MembershipRole.OWNER,
-    Permission.FIRM_TRANSFER: MembershipRole.OWNER,
-}
 
 
 def require_permission(
@@ -126,14 +104,9 @@ def require_permission(
     """
     Validate that the current request holds *perm*.
 
-    When ``settings.PERMISSIONS_V2_ENABLED`` is ``False`` (default):
-        Maps *perm* to the equivalent legacy ``min_role`` and delegates to
-        :func:`require_membership`, keeping existing behaviour unchanged.
-
-    When ``settings.PERMISSIONS_V2_ENABLED`` is ``True``:
-        Resolves the membership's effective permissions from the DB-backed
-        ``Role`` / ``RolePermission`` tables via
-        :func:`crm.permissions.resolve_effective_permissions`.
+    Resolves the membership's effective permissions from the DB-backed
+    ``Role`` / ``RolePermission`` tables via
+    :func:`crm.permissions.resolve_effective_permissions`.
 
     Returns the resolved :class:`~firms.models.Membership` on success.
     Raises one of the standard auth exceptions on failure.
@@ -150,24 +123,14 @@ def require_permission(
             f"User '{request.user.email}' is not a member of firm '{request.firm.name}'."
         )
 
-    if not getattr(settings, "PERMISSIONS_V2_ENABLED", False):
-        # Legacy path: map permission → min_role and delegate
-        min_role = _PERMISSION_TO_MIN_ROLE.get(perm, MembershipRole.ADMIN)
-        if not has_min_role(membership, min_role):
-            raise PermissionDenied(
-                f"Role '{membership.get_role_display()}' is insufficient for permission '{perm}'."
-            )
+    # Owner short-circuit: owners always have all permissions
+    if membership.role == MembershipRole.OWNER:
         return membership
 
-    # V2 path: resolve via DB roles
     from crm.permissions import resolve_effective_permissions  # local import to avoid circular
 
     effective = resolve_effective_permissions(membership)
     perm_code = perm.value if isinstance(perm, Permission) else str(perm)
-
-    # Owner short-circuit: owners always have all permissions
-    if membership.role == MembershipRole.OWNER:
-        return membership
 
     if perm_code not in effective:
         raise PermissionDenied(

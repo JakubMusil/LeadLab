@@ -63,7 +63,7 @@ SYSTEM_ROLES: list[tuple[str, str, str, set[str]]] = [
         "Member",
         "Standard workspace member (formerly Worker). Default scope is own records.",
         {
-            "record.view", "record.create", "record.edit", "record.delete",
+            "record.view", "record.create", "record.edit",
             "category.view",
             "activity.create",
             "proposal.create",

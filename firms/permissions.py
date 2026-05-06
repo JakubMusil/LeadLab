@@ -97,7 +97,6 @@ _WORKER_PERMISSIONS: frozenset[Permission] = frozenset(
         Permission.RECORD_VIEW,
         Permission.RECORD_CREATE,
         Permission.RECORD_EDIT,
-        Permission.RECORD_DELETE,
         Permission.CATEGORY_VIEW,
         Permission.ACTIVITY_CREATE,
         Permission.PROPOSAL_CREATE,
@@ -108,6 +107,7 @@ _WORKER_PERMISSIONS: frozenset[Permission] = frozenset(
 _ADMIN_PERMISSIONS: frozenset[Permission] = frozenset(
     {
         *_WORKER_PERMISSIONS,
+        Permission.RECORD_DELETE,
         Permission.CATEGORY_MANAGE,
         Permission.TEAM_MANAGE,
         Permission.ROLE_MANAGE,

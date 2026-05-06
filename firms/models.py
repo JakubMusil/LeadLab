@@ -74,6 +74,8 @@ class Firm(models.Model):
 class MembershipRole(models.TextChoices):
     OWNER = "owner", "Owner"
     ADMIN = "admin", "Admin"
+    MEMBER = "member", "Member"
+    # Deprecated alias kept for backward compatibility; new code should use MEMBER.
     WORKER = "worker", "Worker"
 
 
@@ -290,6 +292,24 @@ class Membership(models.Model):
     @property
     def is_admin_or_above(self):
         return self.role in (MembershipRole.OWNER, MembershipRole.ADMIN)
+
+    @property
+    def primary_role(self) -> str:
+        """Return the highest-priority role *code* derived from the M2M ``roles``
+        relation, falling back to the legacy ``role`` CharField.
+
+        Priority order (highest wins): owner → admin → member → worker → guest → other.
+        This property provides a single read-only view so serialisers can switch
+        from ``role`` to ``primary_role`` without a breaking change.
+        """
+        _priority = {"owner": 0, "admin": 1, "member": 2, "worker": 3, "guest": 4}
+        try:
+            codes = list(self.roles.values_list("code", flat=True))
+        except Exception:
+            codes = []
+        if codes:
+            return min(codes, key=lambda c: _priority.get(c, 99))
+        return self.role
 
 
 class TeamMembership(models.Model):

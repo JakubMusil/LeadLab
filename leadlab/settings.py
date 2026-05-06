@@ -168,11 +168,11 @@ SOFT_DELETE_PURGE_DAYS = int(os.environ.get("SOFT_DELETE_PURGE_DAYS", "30"))
 
 # ---------------------------------------------------------------------------
 # Permission system (Phase 1+)
-# When False (default), firms.auth enforces the legacy OWNER/ADMIN/WORKER
-# role hierarchy.  Set to True in Phase 4+ to enable the new DB-backed
-# Role/Grant resolution in crm/permissions.py.
+# The granular DB-backed Role/Grant resolution (crm/permissions.py) is always
+# active.  This constant is retained for backward compatibility with test
+# overrides; removing all references is tracked in the Phase 8 deprecation log.
 # ---------------------------------------------------------------------------
-PERMISSIONS_V2_ENABLED = os.environ.get("PERMISSIONS_V2_ENABLED", "True") == "True"
+PERMISSIONS_V2_ENABLED = True
 
 # Stripe
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')

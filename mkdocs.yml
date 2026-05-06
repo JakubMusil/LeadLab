@@ -18,6 +18,10 @@ nav:
   - Getting Started: getting-started.md
   - Self-Hosting: self-hosting.md
   - API Reference: api-reference.md
+  - Permissions:
+    - Overview: permissions/permissions.md
+    - Roles: permissions/roles.md
+    - Teams: permissions/teams.md
   - Plugins: plugins.md
   - Changelog: changelog.md
   - SLA: sla.md

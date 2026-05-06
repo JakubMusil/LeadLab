@@ -78,6 +78,8 @@ class MembershipOut(Schema):
     user_full_name: str
     role: str
     firm_id: str
+    roles: List[str] = []
+    permissions: List[str] = []
 
 
 class MemberInviteIn(Schema):
@@ -164,6 +166,29 @@ def _firm_out(firm: Firm) -> dict:
         "default_currency": firm.default_currency,
         "number_locale": firm.number_locale,
         "exchange_rate_mode": firm.exchange_rate_mode,
+    }
+
+
+def _membership_out(m: Membership) -> dict:
+    """Serialise a Membership to the MembershipOut schema dict."""
+    from crm.permissions import resolve_effective_permissions
+    try:
+        role_codes = list(m.roles.values_list("code", flat=True))
+    except Exception:
+        role_codes = []
+    try:
+        permissions = sorted(resolve_effective_permissions(m))
+    except Exception:
+        permissions = []
+    return {
+        "id": str(m.id),
+        "user_id": str(m.user_id),
+        "user_email": m.user.email,
+        "user_full_name": m.user.full_name,
+        "role": m.role,
+        "firm_id": str(m.firm_id),
+        "roles": role_codes,
+        "permissions": permissions,
     }
 
 
@@ -595,18 +620,8 @@ def list_members(request, firm_id: str):
     if not Membership.objects.filter(user=request.user, firm=firm).exists():
         return 403, {"detail": "You are not a member of this Firm."}
 
-    members = Membership.objects.filter(firm=firm).select_related("user")
-    return 200, [
-        {
-            "id": str(m.id),
-            "user_id": str(m.user.id),
-            "user_email": m.user.email,
-            "user_full_name": m.user.full_name,
-            "role": m.role,
-            "firm_id": str(m.firm_id),
-        }
-        for m in members
-    ]
+    members = Membership.objects.filter(firm=firm).select_related("user").prefetch_related("roles")
+    return 200, [_membership_out(m) for m in members]
 
 
 @router.post("/{firm_id}/members", auth=django_auth, response={201: MembershipOut, 400: ErrorOut, 402: ErrorOut, 403: ErrorOut})
@@ -648,14 +663,7 @@ def invite_member(request, firm_id: str, payload: MemberInviteIn):
     if not created:
         return 400, {"detail": "User is already a member of this Firm."}
 
-    return 201, {
-        "id": str(membership.id),
-        "user_id": str(invitee.id),
-        "user_email": invitee.email,
-        "user_full_name": invitee.full_name,
-        "role": membership.role,
-        "firm_id": str(firm.id),
-    }
+    return 201, _membership_out(membership)
 
 
 @router.delete("/{firm_id}/members/{membership_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
@@ -719,14 +727,8 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
 
     target.role = payload.role
     target.save(update_fields=["role"])
-    return 200, {
-        "id": str(target.id),
-        "user_id": str(target.user_id),
-        "user_email": target.user.email,
-        "user_full_name": target.user.full_name,
-        "role": target.role,
-        "firm_id": str(target.firm_id),
-    }
+    target.refresh_from_db()
+    return 200, _membership_out(target)
 
 
 # ---------------------------------------------------------------------------
