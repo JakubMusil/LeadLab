@@ -14,11 +14,15 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import { useMoney, SUPPORTED_CURRENCIES, CURRENCY_DEFAULT_LOCALE } from '@/composables/useMoney'
 import CurrencySelect from '@/components/CurrencySelect.vue'
 import PipelineSettingsView from '@/views/PipelineSettingsView.vue'
+import RolesSettingsView from '@/views/RolesSettingsView.vue'
+import TeamsSettingsView from '@/views/TeamsSettingsView.vue'
+import { usePermissionsStore } from '@/stores/permissions'
 
 const recordScoringStore = useRecordScoringStore()
 
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
+const permissionsStore = usePermissionsStore()
 const toast = useToast()
 const router = useRouter()
 const { isPro } = storeToRefs(firmStore)
@@ -98,8 +102,8 @@ const workspaceLoading = ref(false)
 const workspaceError = ref('')
 const workspaceSuccess = ref(false)
 
-// Settings tab: 'user' | 'workspace' | 'pipeline'
-const activeTab = ref<'user' | 'workspace' | 'pipeline'>('user')
+// Settings tab: 'user' | 'workspace' | 'pipeline' | 'roles' | 'teams'
+const activeTab = ref<'user' | 'workspace' | 'pipeline' | 'roles' | 'teams'>('user')
 
 // Danger zone
 const confirmDeleteWorkspace = ref(false)
@@ -499,6 +503,8 @@ onMounted(() => {
       recordScoringStore.fetchRules()
       loadCustomFields()
       if (firmStore.isPro) loadExchangeRates()
+      // Initialize permissions store
+      permissionsStore.init(firmStore.activeFirm.id)
     }
   })
   // Seed the workspace name from the cached store value immediately so the input is not blank
@@ -862,7 +868,7 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
   <div class="p-6 space-y-5">
 
     <!-- Tab switcher -->
-    <div class="flex gap-1 bg-gray-100 rounded-2xl p-1 w-fit">
+    <div class="flex gap-1 bg-gray-100 rounded-2xl p-1 w-fit flex-wrap">
       <button
         :class="activeTab === 'user' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
@@ -878,6 +884,18 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
         @click="activeTab = 'pipeline'"
       >{{ t('settings.tabPipeline') }}</button>
+      <button
+        v-if="permissionsStore.canManageRoles"
+        :class="activeTab === 'roles' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'roles'"
+      >{{ t('permissions.tabRoles') }}</button>
+      <button
+        v-if="permissionsStore.canManageTeams"
+        :class="activeTab === 'teams' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'teams'"
+      >{{ t('permissions.tabTeams') }}</button>
     </div>
 
     <!-- ==================== USER TAB ==================== -->
@@ -1774,6 +1792,18 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       <PipelineSettingsView />
     </div>
     <!-- ==================== END PIPELINE TAB ==================== -->
+
+    <!-- ==================== ROLES TAB ==================== -->
+    <div v-show="activeTab === 'roles'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <RolesSettingsView />
+    </div>
+    <!-- ==================== END ROLES TAB ==================== -->
+
+    <!-- ==================== TEAMS TAB ==================== -->
+    <div v-show="activeTab === 'teams'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <TeamsSettingsView />
+    </div>
+    <!-- ==================== END TEAMS TAB ==================== -->
 
   </div>
 

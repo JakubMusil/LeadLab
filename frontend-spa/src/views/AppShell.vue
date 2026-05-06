@@ -8,6 +8,7 @@ import { usePipelineStore } from '@/stores/pipeline'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useTasksStore } from '@/stores/tasks'
+import { usePermissionsStore } from '@/stores/permissions'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useTheme } from '@/composables/useTheme'
 import { useKeyboardShortcuts, shortcutHelpOpen, commandPaletteOpen, SHORTCUTS } from '@/composables/useKeyboardShortcuts'
@@ -55,6 +56,7 @@ const pipelineStore = usePipelineStore()
 const notifStore = useNotificationsStore()
 const savedViewsStore = useSavedViewsStore()
 const tasksStore = useTasksStore()
+const permissionsStore = usePermissionsStore()
 const { isDark, toggleDark } = useTheme()
 const { t } = useI18n()
 const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
@@ -158,6 +160,10 @@ onMounted(async () => {
   savedViewsStore.fetchViews()
   pipelineStore.fetchCategories()
   fetchCategoryCounts()
+  // Initialize permissions store with current firm
+  if (firmStore.activeFirm) {
+    permissionsStore.fetchMyPermissions(firmStore.activeFirm.id)
+  }
 
   on('record.created', onRecordCreated)
   on('record.updated', onRecordUpdated)

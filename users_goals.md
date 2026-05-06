@@ -577,6 +577,72 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Fáze 7: Frontend UI – Pinia store `permissions.ts`, `RolesSettingsView.vue`, `TeamsSettingsView.vue`, `RecordShareModal.vue`, `useCan` composable, i18n klíče
 
+
+### Fáze 7 – Frontend UI ✅ (2026-05-06)
+
+**Větev**: `copilot/update-users-goals-document-one-more-time`
+
+**Co bylo uděláno:**
+
+- **Backend – nový endpoint** `GET /firms/{id}/me/permissions` v `firms/roles_api.py`:
+  - Vrací `permissions[]` (set kódů), `scope`, `role` (legacy), `roles[]` (kódy rolí z M2M), `can_manage_roles`, `can_manage_teams`
+  - Využívá `resolve_effective_permissions()` a `resolve_scope()` z `crm/permissions.py`
+
+- **Pinia store** `frontend-spa/src/stores/permissions.ts`:
+  - State: `catalogue`, `roles`, `teams`, `myEffectivePermissions` (Set<string>), `myScope`, `myRole`, `myRoles`, `canManageRoles`, `canManageTeams`
+  - Akce: CRUD role (`createRole`, `updateRole`, `deleteRole`, `setRolePermissions`), CRUD tým (`createTeam`, `updateTeam`, `deleteTeam`, `addTeamMember`, `removeTeamMember`), `fetchMyPermissions`, `fetchCatalogue`, `fetchRoles`, `fetchTeams`, `init`
+  - Getter: `catalogueByGroup`, `can(action: string): boolean`
+
+- **Composable** `frontend-spa/src/composables/useCan.ts`:
+  - Exportuje `can(action)`, `canManageRoles`, `canManageTeams`, `myScope`, `isOwner`, `isAdmin`
+  - Umožňuje použití `v-if="can('record.create')"` v šablonách
+
+- **Nový pohled** `frontend-spa/src/views/RolesSettingsView.vue`:
+  - Přehled systémových rolí (read-only tabulka)
+  - CRUD vlastních rolí (tvorba s kódem/názvem/popisem, editace, smazání)
+  - Matice oprávnění – interaktivní přepínání pomocí checkboxů seskupených dle skupiny
+  - Guard: `canManageRoles` skrývá tlačítka pro nesprávce
+
+- **Nový pohled** `frontend-spa/src/views/TeamsSettingsView.vue`:
+  - CRUD týmů (tvorba s názvem + color picker, editace, smazání)
+  - Expandovatelný panel členů týmu (přidat/odebrat člena z týmu)
+  - Guard: `canManageTeams` skrývá tlačítka pro nesprávce
+
+- **Rozšíření** `frontend-spa/src/views/SettingsView.vue`:
+  - Nové záložky „Role" (`activeTab === 'roles'`) a „Týmy" (`activeTab === 'teams'`)
+  - Záložky viditelné pouze pro uživatele s `canManageRoles`/`canManageTeams`
+  - Inicializuje `permissionsStore.init()` v `onMounted`
+
+- **Nový komponent** `frontend-spa/src/components/RecordShareModal.vue`:
+  - Modal pro sdílení záznamu s konkrétním uživatelem
+  - Výběr uživatele, úrovně přístupu (`view`/`edit`/`manage`), volitelné `expires_at`
+  - Zobrazuje aktuální granty s možností odvolání
+  - Napojení na `GET/POST/DELETE /api/v1/crm/records/{id}/grants`
+
+- **Rozšíření** `frontend-spa/src/views/RecordDetailView.vue`:
+  - Nové tlačítko „Sdílet záznam" vedle tlačítek Edit a Delete
+  - Otevírá `RecordShareModal`
+
+- **AppShell** `frontend-spa/src/views/AppShell.vue`:
+  - Inicializuje `permissionsStore.fetchMyPermissions()` při mountování aplikace
+
+- **i18n** – přidána klíče pod namespace `permissions.*` ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - Záložky (`tabRoles`, `tabTeams`, `tabAuditLog`)
+  - Role (`roleCode`, `roleName`, ..., `permissionMatrix`, ...)
+  - Týmy (`teamName`, `teamColor`, `createTeam`, ...)
+  - Sdílení (`shareRecord`, `shareWith`, `accessView`, `accessEdit`, `accessManage`, ...)
+  - Audit log (`auditLog`, `auditActor`, ...)
+
+- Všechny frontend testy zelené: 100/100 OK
+- TypeScript: 0 chyb
+
+**Co bude následovat:**
+- Fáze 8: Migrace, dokumentace, deprecation legacy `Membership.role`
+  - Přepsat `Membership.role` jako computed property z M2M `roles`
+  - Aktualizovat `docs/permissions.md`, `docs/teams.md`, `docs/roles.md`
+  - Odstranit feature flag `PERMISSIONS_V2_ENABLED` (vždy on)
+  - Tag `v2.0-permissions`
+
 - [ ] 8 fází zmergováno do `main` a release `v2.0-permissions` vystaven.
 - [ ] Všechny stávající testy zelené v obou módech (`PERMISSIONS_V2_ENABLED ∈ {True, False}` během fází 4–7, pak pouze True).
 - [ ] Pokrytí: `firms/permissions.py` ≥ 95 %, `crm/permissions.py` ≥ 90 %.

@@ -27,8 +27,10 @@ import {
   XMarkIcon,
   FlagIcon,
   PlusIcon,
+  ShareIcon,
 } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
+import RecordShareModal from '@/components/RecordShareModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,6 +61,9 @@ const activeModalTool = ref('')
 // ─── Akce dropdown state ──────────────────────────────────────────────────
 const akceDropdownOpen = ref(false)
 const sidebarPickerRef = ref<InstanceType<typeof EntitySidebarActionPicker> | null>(null)
+
+// ─── Share modal state ────────────────────────────────────────────────────
+const shareModalOpen = ref(false)
 
 function openModalTool(type: string) {
   activeModalTool.value = type
@@ -1046,6 +1051,10 @@ async function saveFieldEdit(fieldKey: string) {
             </dl>
             <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <button class="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" @click="openEdit">{{ t('recordDetail.edit') }}</button>
+              <button class="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 flex items-center gap-1" @click="shareModalOpen = true">
+                <ShareIcon class="h-3.5 w-3.5" />
+                {{ t('permissions.shareRecord') }}
+              </button>
               <button class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" @click="deleteRecord">{{ t('recordDetail.delete') }}</button>
             </div>
           </div>
@@ -1396,5 +1405,13 @@ async function saveFieldEdit(fieldKey: string) {
     :open="!!confirmDeleteAttachmentId"
     @confirm="doDeleteFile(confirmDeleteAttachmentId!); confirmDeleteAttachmentId = null"
     @cancel="confirmDeleteAttachmentId = null"
+  />
+
+  <!-- Record share modal -->
+  <RecordShareModal
+    v-if="recordId"
+    :open="shareModalOpen"
+    :record-id="recordId"
+    @update:open="shareModalOpen = $event"
   />
 </template>
