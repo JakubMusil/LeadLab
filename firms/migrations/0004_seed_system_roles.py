@@ -56,9 +56,13 @@ def seed_forward(apps, schema_editor):
             existing_codes = set(
                 RolePermission.objects.filter(role=role).values_list("permission_id", flat=True)
             )
-            for pcode in perm_codes:
-                if pcode not in existing_codes and pcode in perm_map:
-                    RolePermission.objects.create(role=role, permission=perm_map[pcode])
+            new_rps = [
+                RolePermission(role=role, permission=perm_map[pcode])
+                for pcode in perm_codes
+                if pcode not in existing_codes and pcode in perm_map
+            ]
+            if new_rps:
+                RolePermission.objects.bulk_create(new_rps, ignore_conflicts=True)
 
     # 3. Link existing Memberships to their corresponding system role.
     for membership in Membership.objects.all():

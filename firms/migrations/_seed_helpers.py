@@ -49,9 +49,13 @@ def create_system_roles_for_firm(firm) -> None:
         existing_codes = set(
             RolePermission.objects.filter(role=role).values_list("permission_id", flat=True)
         )
-        for pcode in perm_codes:
-            if pcode not in existing_codes and pcode in perm_map:
-                RolePermission.objects.create(role=role, permission=perm_map[pcode])
+        new_rps = [
+            RolePermission(role=role, permission=perm_map[pcode])
+            for pcode in perm_codes
+            if pcode not in existing_codes and pcode in perm_map
+        ]
+        if new_rps:
+            RolePermission.objects.bulk_create(new_rps, ignore_conflicts=True)
 
 
 def link_membership_to_system_role(membership) -> None:
