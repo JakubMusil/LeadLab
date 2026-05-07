@@ -135,18 +135,6 @@ async function submit() {
   }
 }
 
-const scopeOptions: Array<{ value: 'own' | 'team' | 'all'; label: string }> = [
-  { value: 'own', label: '' },
-  { value: 'team', label: '' },
-  { value: 'all', label: '' },
-]
-
-const ROLE_COLORS: Record<string, string> = {
-  owner: 'bg-red-100 text-red-700',
-  admin: 'bg-blue-100 text-blue-700',
-  member: 'bg-gray-100 text-gray-700',
-  guest: 'bg-purple-100 text-purple-700',
-}
 </script>
 
 <template>
