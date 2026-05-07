@@ -2780,12 +2780,47 @@
     "noDescription": "Brak opisu",
     "grantAccess": "Przyznaj dostęp",
     "noMembers": "Brak członków w tym zespole",
-    "team": "Zespół"
+    "team": "Zespół",
+    "createFromTemplate": "Utwórz z szablonu",
+    "rolePresetsTitle": "Szablony ról",
+    "rolePresetsHint": "Wybierz gotowy punkt startowy. Uprawnienia można dostosować po utworzeniu roli.",
+    "loadingPresets": "Ładowanie szablonów…"
   },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",
     "search": "Szukaj po nazwisku lub e-mailu",
     "noResults": "Brak wyników",
     "addMember": "Dodaj członka..."
+  },
+  "wizard": {
+    "title": "Zaproś członka",
+    "stepOf": "Krok {step} z {total}",
+    "step1Title": "Kogo zapraszasz?",
+    "step1Hint": "Wpisz adres e-mail osoby, którą chcesz zaprosić do tego obszaru roboczego.",
+    "step2Title": "Rola i zakres dostępu",
+    "step2Hint": "Wybierz role nowego członka i ile obszaru roboczego będzie widział domyślnie.",
+    "step3Title": "Przypisanie do zespołu (opcjonalne)",
+    "step3Hint": "Opcjonalnie przypisz nowego członka do zespołu. Można to zmienić w dowolnym momencie.",
+    "emailLabel": "Adres e-mail",
+    "emailPlaceholder": "kolega{'@'}firma.pl",
+    "emailRequired": "Adres e-mail jest wymagany.",
+    "emailInvalid": "Podaj prawidłowy adres e-mail.",
+    "rolesLabel": "Role",
+    "roleRequired": "Wybierz co najmniej jedną rolę.",
+    "scopeLabel": "Domyślny zakres",
+    "scopeOwnDesc": "Widzi tylko własne rekordy",
+    "scopeTeamDesc": "Widzi rekordy zespołu",
+    "scopeAllDesc": "Widzi wszystkie rekordy",
+    "teamLabel": "Zespół",
+    "noTeam": "Bez zespołu",
+    "noTeams": "Nie utworzono jeszcze żadnych zespołów. Zespoły można tworzyć w Ustawienia → Zespoły.",
+    "summaryTitle": "Podsumowanie",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "cancel": "Anuluj",
+    "sendInvite": "Wyślij zaproszenie",
+    "sending": "Wysyłanie…",
+    "invitationSent": "Zaproszenie wysłane.",
+    "failedToInvite": "Nie udało się wysłać zaproszenia."
   }
 }

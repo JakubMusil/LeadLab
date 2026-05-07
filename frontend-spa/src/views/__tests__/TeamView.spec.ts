@@ -34,6 +34,29 @@ vi.mock('@/stores/auth', () => ({
   }),
 }))
 
+vi.mock('@/stores/permissions', () => ({
+  usePermissionsStore: () => ({
+    roles: [],
+    teams: [],
+    canManageRoles: false,
+    canManageTeams: false,
+    fetchTeams: vi.fn().mockResolvedValue(undefined),
+    fetchRoles: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
+
+vi.mock('@/stores/members', () => ({
+  useMembersStore: () => ({
+    members: [],
+    loading: false,
+    loadedFirmId: null,
+    fetchMembers: vi.fn().mockResolvedValue(undefined),
+    memberById: vi.fn().mockReturnValue(undefined),
+    displayNameById: vi.fn().mockReturnValue(''),
+    searchMembers: vi.fn().mockResolvedValue([]),
+  }),
+}))
+
 import { api } from '@/api'
 
 const mockMembers = [
@@ -89,8 +112,8 @@ describe('TeamView', () => {
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
+    // The invite button now opens the InviteMemberWizard modal instead of an inline form.
     expect(wrapper.text()).toContain('Invite member')
-    expect(wrapper.text()).toContain('Send Invite')
   })
 
   it('shows member count', async () => {

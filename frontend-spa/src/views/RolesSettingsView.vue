@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFirmStore } from '@/stores/firm'
-import { usePermissionsStore, type RoleOut } from '@/stores/permissions'
+import { usePermissionsStore, type RoleOut, type RolePreset } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
-import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 
 const firmStore = useFirmStore()
@@ -38,6 +38,12 @@ const editingPermissionsRoleId = ref<string | null>(null)
 const draftPermissions = ref<Set<string>>(new Set())
 const permSaving = ref(false)
 
+// Role presets (v3.3)
+const showPresetsModal = ref(false)
+const presets = ref<RolePreset[]>([])
+const presetsLoading = ref(false)
+const selectedPreset = ref<RolePreset | null>(null)
+
 const customRoles = computed(() => permissionsStore.roles.filter(r => !r.is_system))
 const systemRoles = computed(() => permissionsStore.roles.filter(r => r.is_system))
 const groupedCatalogue = computed(() => permissionsStore.catalogueByGroup)
@@ -53,6 +59,24 @@ async function loadData() {
   } finally {
     loading.value = false
   }
+}
+
+async function openPresetsModal() {
+  showPresetsModal.value = true
+  selectedPreset.value = null
+  if (presets.value.length === 0) {
+    presetsLoading.value = true
+    presets.value = await permissionsStore.fetchRolePresets(firmId.value)
+    presetsLoading.value = false
+  }
+}
+
+function applyPreset(preset: RolePreset) {
+  createCode.value = preset.code
+  createName.value = preset.name
+  createDescription.value = preset.description
+  showPresetsModal.value = false
+  showCreateForm.value = true
 }
 
 async function createRole() {
@@ -178,14 +202,22 @@ onMounted(loadData)
         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
           {{ t('permissions.customRole') }}
         </h3>
-        <button
-          v-if="permissionsStore.canManageRoles"
-          @click="showCreateForm = !showCreateForm"
-          class="inline-flex items-center gap-1 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-        >
-          <PlusIcon class="h-4 w-4" />
-          {{ t('permissions.createRole') }}
-        </button>
+        <div v-if="permissionsStore.canManageRoles" class="flex gap-2">
+          <button
+            @click="openPresetsModal"
+            class="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <SparklesIcon class="h-4 w-4 text-amber-500" />
+            {{ t('permissions.createFromTemplate') }}
+          </button>
+          <button
+            @click="showCreateForm = !showCreateForm"
+            class="inline-flex items-center gap-1 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          >
+            <PlusIcon class="h-4 w-4" />
+            {{ t('permissions.createRole') }}
+          </button>
+        </div>
       </div>
 
       <!-- Create form -->
@@ -319,5 +351,60 @@ onMounted(loadData)
       @confirm="deleteRole"
       @cancel="pendingDeleteRole = null"
     />
+
+    <!-- Role presets modal (v3.3) -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showPresetsModal"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          @click.self="showPresetsModal = false"
+        >
+          <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <SparklesIcon class="h-5 w-5 text-amber-500 shrink-0" />
+              <div class="flex-1">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('permissions.rolePresetsTitle') }}</h2>
+                <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('permissions.rolePresetsHint') }}</p>
+              </div>
+              <button @click="showPresetsModal = false" class="p-1 text-gray-400 hover:text-gray-600">
+                <XMarkIcon class="h-5 w-5" />
+              </button>
+            </div>
+
+            <!-- Presets grid -->
+            <div class="p-6">
+              <div v-if="presetsLoading" class="flex justify-center py-8 text-gray-400 text-sm">{{ t('permissions.loadingPresets') }}</div>
+              <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  v-for="preset in presets"
+                  :key="preset.code"
+                  type="button"
+                  @click="applyPreset(preset)"
+                  class="text-left rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-brand hover:bg-brand/5 dark:hover:bg-brand/10 transition-colors group"
+                >
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand">{{ preset.name }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2">{{ preset.description }}</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="perm in preset.permissions.slice(0, 4)"
+                      :key="perm"
+                      class="inline-block rounded bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-400"
+                    >{{ perm }}</span>
+                    <span v-if="preset.permissions.length > 4" class="inline-block rounded bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-500">+{{ preset.permissions.length - 4 }}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
