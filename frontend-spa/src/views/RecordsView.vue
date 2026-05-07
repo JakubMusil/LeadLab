@@ -251,8 +251,12 @@ function toggleRecordSelect(recordId: string) {
   selectedRecordIds.value = new Set(selectedRecordIds.value) // trigger reactivity
 }
 
-function clearRecordSelection() {
-  selectedRecordIds.value = new Set()
+function selectAllRecords() {
+  if (selectedRecordIds.value.size === sortedRecords.value.length) {
+    clearRecordSelection()
+  } else {
+    selectedRecordIds.value = new Set(sortedRecords.value.map((r) => r.id))
+  }
 }
 
 async function applyBulkShare() {
@@ -270,7 +274,7 @@ async function applyBulkShare() {
   }
   for (const recordId of ids) {
     const res = await api.post(`/api/v1/crm/records/${recordId}/grants`, payload)
-    if (res.ok || res.status === 201) successCount++
+    if (res.ok) successCount++
   }
   bulkShareLoading.value = false
   if (successCount > 0) {
@@ -1395,13 +1399,7 @@ function closeContactDetail() {
                   class="rounded border-gray-300 text-indigo-600"
                   :checked="selectedRecordIds.size > 0 && selectedRecordIds.size === sortedRecords.length"
                   :indeterminate="selectedRecordIds.size > 0 && selectedRecordIds.size < sortedRecords.length"
-                  @change="() => {
-                    if (selectedRecordIds.size === sortedRecords.length) {
-                      clearRecordSelection()
-                    } else {
-                      selectedRecordIds = new Set(sortedRecords.map(r => r.id))
-                    }
-                  }"
+                  @change="selectAllRecords"
                   :aria-label="t('leads.bulkSelected', { count: sortedRecords.length })"
                 />
               </th>
