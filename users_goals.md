@@ -1624,5 +1624,52 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Všechny testy zelené: 100/100 OK
 
 **Co bude následovat:**
-- v3.9: Settings → Permissions overview dashboard (heatmapa „kdo na co dosáhne", export CSV)
+- v3.9: Settings → Permissions overview dashboard (heatmapa „kdo na co dosáhne", export CSV) ✅ **Hotovo níže**
 - Nebo: a11y & i18n dokončení (aria-labelledby, focus trap v modalech, popisky permissions v katalogu)
+
+
+### v3.9 – Permissions Overview Dashboard ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-progress-again`
+
+**Co bylo uděláno:**
+
+- **Nový pohled** `frontend-spa/src/views/PermissionsOverviewView.vue`:
+  - **Heatmapa oprávnění**: tabulka s řádky = členové, sloupce = skupiny permission kódů z katalogu
+    - Zelená buňka (✓): člen má ALL permissions v dané skupině
+    - Žlutá buňka (~): člen má ČÁST permissions v dané skupině (partial)
+    - Šedá buňka (–): člen nemá žádnou permission v dané skupině
+    - Hover tooltip na každé buňce zobrazuje seznam povolených/odepřených permission kódů
+    - Sticky první sloupec (jméno + e-mail člena) pro scrollování velkých tabulek
+  - **Legenda**: barevná legenda pod tabulkou (Full / Partial / No coverage)
+  - **Export CSV**: tlačítko exportuje matici členů × skupin do `.csv` souboru (UTF-8 BOM)
+  - **Insights** – 3 karty s okamžitou analýzou:
+    - „Nejpoužívanější vlastní role" – custom role s největším počtem přiřazení a jejím počtem
+    - „Členové bez role" – seznam členů s prázdným `roles[]`
+    - „Skupiny bez pokrytí" – skupiny permission kódů, které nemá pokrytý žádný člen
+  - Loading skeleton (animované placeholder řádky)
+  - Empty state pokud nejsou data
+
+- **Aktualizace `SettingsView.vue`**:
+  - Import `PermissionsOverviewView`
+  - `activeTab` typ rozšířen o `'overview'`
+  - Nová záložka „Přehled oprávnění" (viditelná pouze pro `canManageRoles`)
+  - Nový panel `v-show="activeTab === 'overview'"` s `<PermissionsOverviewView />`
+
+- **i18n** – přidány klíče pod `permissions.*` ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `tabOverview` – záložka
+  - `overviewTitle`, `overviewHint` – nadpis + popis
+  - `overviewExportCsv` – tlačítko exportu
+  - `overviewEmpty` – empty state
+  - `overviewMember` – záhlaví sloupce
+  - `overviewLegendFull`, `overviewLegendPartial`, `overviewLegendNone` – legenda
+  - `overviewInsightTopRole`, `overviewInsightNoCustomRoles` – insight karta 1
+  - `overviewInsightNoRoles`, `overviewInsightAllHaveRoles` – insight karta 2
+  - `overviewInsightUncovered`, `overviewInsightAllCovered` – insight karta 3
+  - `overviewCsvName`, `overviewCsvEmail` – CSV záhlaví
+
+- Všechny frontend testy zelené: 100/100 OK; TypeScript: pre-existing 2 chyby v RecordShareModal.vue beze změny
+
+**Co bude následovat:**
+- a11y & i18n dokončení (aria-labelledby, focus trap v modalech)
+- Nebo: merge do main a tag `v3.9`
