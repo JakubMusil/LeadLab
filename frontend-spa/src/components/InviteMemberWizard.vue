@@ -486,7 +486,7 @@ async function submit() {
               <button
                 v-else
                 @click="submit"
-                :disabled="submitting || selectedRoleCodes.length === 0"
+                :disabled="submitting || selectedRoleCodes.length === 0 || (defaultScope === 'category' && selectedCategoryIds.length === 0)"
                 class="inline-flex items-center gap-1 px-4 py-2 bg-brand text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50"
               >
                 <CheckIcon class="h-4 w-4" />
