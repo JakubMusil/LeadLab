@@ -21,7 +21,40 @@
   --chart-legend-color: #d1d5db;
 }
 
-/* Sidebar custom scrollbar */
+/* High-contrast (forced-colors / Windows High Contrast) badge overrides.
+ * Tailwind utility classes use background-color tokens that are stripped in
+ * forced-colors mode. These rules restore visible borders and meaningful text
+ * for semantic status badges so keyboard/screen-reader users relying on
+ * Windows High Contrast Mode still get correct visual feedback. */
+@media (forced-colors: active) {
+  /* Member-expiry badges (TeamView.vue) */
+  .badge-expired,
+  .badge-expiring {
+    forced-color-adjust: none;
+    border: 2px solid ButtonText;
+    background-color: Canvas;
+    color: ButtonText;
+  }
+
+  /* Restricted-activity toggle (StreamlineCreateModal.vue) */
+  .badge-restricted {
+    forced-color-adjust: none;
+    border: 2px solid Highlight;
+    background-color: Canvas;
+    color: Highlight;
+  }
+
+  /* Expiry countdown badges in RecordShareModal.vue */
+  [class*="bg-red-"][class*="text-red-"],
+  [class*="bg-orange-"][class*="text-orange-"],
+  [class*="bg-yellow-"][class*="text-yellow-"] {
+    forced-color-adjust: none;
+    border: 1px solid ButtonText;
+    background-color: Canvas;
+    color: ButtonText;
+  }
+}
+
 .sidebar-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgb(209 213 219) transparent;

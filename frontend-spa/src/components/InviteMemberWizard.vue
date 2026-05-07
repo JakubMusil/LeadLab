@@ -8,7 +8,7 @@
  *
  * Emits `invited` when the invitation is successfully sent.
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { usePermissionsStore, type RolePreset } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
@@ -59,8 +59,13 @@ const selectedTeamId = ref<string>('')
 const submitting = ref(false)
 const submitError = ref('')
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+const dialogRef = ref<HTMLElement | null>(null)
+
 // Reset all state when modal opens/closes
-watch(() => props.open, (val) => {
+watch(() => props.open, async (val) => {
   if (val) {
     step.value = 1
     email.value = ''
@@ -77,8 +82,41 @@ watch(() => props.open, (val) => {
       permissionsStore.fetchRoles(firmId.value)
       loadPresets()
     }
+    await nextTick()
+    const firstFocusable = dialogRef.value?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+    firstFocusable?.focus()
   }
 })
+
+function onWizardKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    emit('close')
+    return
+  }
+  if (e.key === 'Tab') {
+    const focusable = Array.from(
+      dialogRef.value?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
+    )
+    if (!focusable.length) {
+      e.preventDefault()
+      return
+    }
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const active = document.activeElement
+    if (e.shiftKey) {
+      if (active === first || !dialogRef.value?.contains(active)) {
+        e.preventDefault()
+        last.focus()
+      }
+    } else {
+      if (active === last || !dialogRef.value?.contains(active)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }
+}
 
 async function loadPresets() {
   if (!firmId.value) return
@@ -166,18 +204,20 @@ async function submit() {
         v-if="open"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
         @click.self="emit('close')"
+        @keydown="onWizardKeydown"
       >
         <div
+          ref="dialogRef"
           class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden"
           role="dialog"
           aria-modal="true"
-          :aria-label="t('wizard.title')"
+          aria-labelledby="invite-wizard-title"
         >
           <!-- Header -->
           <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <UserPlusIcon class="h-5 w-5 text-brand shrink-0" />
+            <UserPlusIcon class="h-5 w-5 text-brand shrink-0" aria-hidden="true" />
             <div class="flex-1">
-              <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('wizard.title') }}</h2>
+              <h2 id="invite-wizard-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ t('wizard.title') }}</h2>
               <p class="text-xs text-gray-400 dark:text-gray-500">
                 {{ t('wizard.stepOf', { step, total: totalSteps }) }}
               </p>

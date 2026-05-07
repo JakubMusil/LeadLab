@@ -31,8 +31,37 @@ function onBackdropClick(e: MouseEvent) {
   if (e.target === e.currentTarget) emit('close')
 }
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape') {
+    emit('close')
+    return
+  }
+  if (e.key === 'Tab') {
+    const focusable = Array.from(
+      dialogRef.value?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
+    )
+    if (!focusable.length) {
+      e.preventDefault()
+      return
+    }
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const active = document.activeElement
+    if (e.shiftKey) {
+      if (active === first || !dialogRef.value?.contains(active)) {
+        e.preventDefault()
+        last.focus()
+      }
+    } else {
+      if (active === last || !dialogRef.value?.contains(active)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }
 }
 </script>
 

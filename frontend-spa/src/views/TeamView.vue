@@ -335,7 +335,9 @@ onMounted(loadTeam)
             <span
               v-if="m.expires_at"
               class="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium"
-              :class="isMemberExpired(m) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
+              :class="isMemberExpired(m)
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 badge-expired'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 badge-expiring'"
             >{{ memberExpiryLabel(m) }}</span>
           </div>
 
