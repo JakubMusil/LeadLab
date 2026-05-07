@@ -15,6 +15,7 @@ export interface RoleOut {
   is_system: boolean
   description: string
   permissions: string[]
+  member_count: number
 }
 
 export interface TeamMemberOut {

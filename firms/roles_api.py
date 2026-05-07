@@ -46,6 +46,7 @@ class RoleOut(Schema):
     is_system: bool
     description: str
     permissions: List[str]
+    member_count: int = 0
 
 
 class RoleCreateIn(Schema):
@@ -151,6 +152,7 @@ def _role_out(role: Role) -> dict:
         "is_system": role.is_system,
         "description": role.description,
         "permissions": list(role.permissions.values_list("code", flat=True).order_by("code")),
+        "member_count": role.membership_set.count(),
     }
 
 

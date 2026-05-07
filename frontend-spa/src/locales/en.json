@@ -2784,7 +2784,16 @@
     "createFromTemplate": "Create from template",
     "rolePresetsTitle": "Role templates",
     "rolePresetsHint": "Choose a pre-built starting point. You can customise permissions after creating the role.",
-    "loadingPresets": "Loading templates…"
+    "loadingPresets": "Loading templates…",
+    "roleMembers": "Members",
+    "compareRoles": "Compare roles",
+    "compareRolesTitle": "Compare roles",
+    "compareRolesHint": "Select two roles to compare their permissions side by side.",
+    "compareRoleA": "Role A",
+    "compareRoleB": "Role B",
+    "comparePermission": "Permission",
+    "compareSelectBoth": "Select two roles to start comparing.",
+    "compareNoDiff": "No permissions to compare."
   },
   "peoplePicker": {
     "placeholder": "Select a member...",
@@ -2821,6 +2830,7 @@
     "sendInvite": "Send invite",
     "sending": "Sending…",
     "invitationSent": "Invitation sent.",
-    "failedToInvite": "Failed to send invitation."
+    "failedToInvite": "Failed to send invitation.",
+    "quickPresets": "Quick setup"
   }
 }

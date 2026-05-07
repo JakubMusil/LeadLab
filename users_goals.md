@@ -1455,3 +1455,62 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - v3.4: Permission matrix UX (hovery s popisem permission kódu, „Members with this role" sloupec, compare roles modal)
 - v3.5: InviteMemberWizard Step 2 – preset šablony přímo ve wizardu pro quick role selection (Sales rep, Marketing…)
+
+
+### v3.4 – Permission matrix UX ✅ (2026-05-07)
+
+**Větev**: `copilot/work-on-users-goals`
+
+**Co bylo uděláno:**
+
+- **Backend – `RoleOut` schéma rozšířeno** o pole `member_count: int`:
+  - `firms/roles_api.py::RoleOut`: přidáno `member_count: int = 0`
+  - `_role_out()` helper: přidán `"member_count": role.membership_set.count()` – počítá přímé přiřazení Membership skrze M2M
+
+- **Frontend – `RoleOut` interface** (`stores/permissions.ts`):
+  - Přidáno `member_count: number` do interface
+
+- **Frontend – `RolesSettingsView.vue`** (kompletní přepis pro v3.4):
+  - **Sloupec „Členů/Members"**: přidán do obou tabulek (systémové i vlastní role) – zobrazuje `role.member_count`
+  - **Hover tooltip pro permissions**: permission checkboxy v matici oprávnění nyní obaleny `<Tooltip>` komponentou z `@/components/ui` – zobrazuje `item.description` z katalogu (plaintext popis kódu) na hover
+  - **Tlačítko „Porovnat role"**: nové tlačítko (ScaleIcon, indigo) v headeru sekce vlastních rolí – viditelné pokud jsou alespoň 2 role
+  - **Modal „Compare roles"**:
+    - Dva `<select>` dropdowny pro výběr Role A a Role B ze všech rolí firmy
+    - Tabulka srovnání: permission kód (s Tooltip popisem), ✓/– pro každou roli, zvýraznění řádků kde se role liší (amber pozadí)
+    - `compareRows` computed property: sjednocení permissions obou rolí, lookup description z katalogu
+  - **Pomocná funkce `permDescription(code)`**: vrátí popis permission kódu z katalogu
+  - Import `ScaleIcon` z `@heroicons/vue/24/outline`, import `Tooltip` z `@/components/ui`
+  - i18n klíče přidány do všech 4 lokalizací:
+    - `permissions.roleMembers` – záhlaví sloupce
+    - `permissions.compareRoles` – label tlačítka
+    - `permissions.compareRolesTitle`, `compareRolesHint`, `compareRoleA`, `compareRoleB`
+    - `permissions.comparePermission`, `compareSelectBoth`, `compareNoDiff`
+
+- Všechny testy zelené: 100/100 frontend OK, TypeScript: 0 nových chyb (pre-existing chyby beze změny)
+
+**Co bude následovat:**
+- v3.5: InviteMemberWizard Step 2 – preset šablony přímo ve wizardu ✅ Hotovo níže
+
+
+### v3.5 – InviteMemberWizard – preset šablony ve Step 2 ✅ (2026-05-07)
+
+**Větev**: `copilot/work-on-users-goals`
+
+**Co bylo uděláno:**
+
+- **`components/InviteMemberWizard.vue`** – Step 2 rozšířen o sekci „Quick setup":
+  - Import `RolePreset` z `stores/permissions`
+  - Import `SparklesIcon` z heroicons
+  - `presets: ref<RolePreset[]>([])` + `presetsLoading: ref(false)` – nový state
+  - `loadPresets()` funkce – volá `permissionsStore.fetchRolePresets()` při otevření wizardu (lazy, reset při každém open)
+  - `applyPreset(preset)` funkce – vybere matchující roli podle kódu (`allRoles.find(r => r.code === preset.code)`), pokud neexistuje fallback na 'member'
+  - **UI v Step 2**: sekce „Rychlý výběr" (SparklesIcon + nadpis) zobrazuje preset chips jako rounded-full tlačítka; zvýraznění pokud je preset kód v `selectedRoleCodes`; `title` atribut s popisem; oddělující `<hr>` před plným listem rolí
+  - Presets se zobrazí pouze pokud `presets.length > 0` (prázdný stav je skrytý)
+  - Plný list rolí zůstává pro manuální výběr pod presety
+  - i18n klíč `wizard.quickPresets` přidán do všech 4 lokalizací (cs/en/de/pl)
+
+- Všechny testy zelené: 100/100 OK
+
+**Co bude následovat:**
+- v3.6: Teams UX (color-coded chip, drag & drop, bulk akce)
+- Nebo: Merge dosavadní práce a otevření PR
