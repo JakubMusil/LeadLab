@@ -1375,6 +1375,11 @@ SCORING_RULES_DATA = [
 ]
 
 
+# Seed used for the demo random generator – kept fixed so re-running the
+# command produces a deterministic spread of assignees / dates / activity types.
+DEMO_DATA_SEED = 42
+
+
 
 
 
@@ -1664,7 +1669,7 @@ class Command(BaseCommand):
 
         # Extended records — distribute assignment across the whole team and
         # set realistic historical/future created_at.
-        rng = random.Random(42)
+        rng = random.Random(DEMO_DATA_SEED)
         now = timezone.now()
         for tup in MORE_RECORDS:
             (title, status, source, value, currency, company_idx,
@@ -2055,7 +2060,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"\nDemonstační data úspěšně načtena!"
             f"\n  Členové týmu:        {Membership.objects.filter(firm=firm).count()}"
-            f"\n  Firmy (kontakty):    {sum(1 for c in companies)}"
+            f"\n  Firmy (kontakty):    {len(companies)}"
             f"\n  Osoby (kontakty):    {len(persons)}"
             f"\n  Pipeline záznamy:    {len(records)}"
             f"\n  Aktivity:            {activities_total}"
