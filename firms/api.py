@@ -606,10 +606,19 @@ def export_exchange_rates_csv(request, firm_id: str, include_history: bool = Fal
 @router.post("/{firm_id}/branding/", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
 def update_branding(request, firm_id: str, payload: FirmBrandingIn = Form(...), logo: UploadedFile = File(None)):
     """Update firm logo and/or primary color. Owner only."""
-    membership = require_membership(request, firm_id)
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
     if not membership.is_owner:
-        raise PermissionDenied()
-    firm = membership.firm
+        return 403, {"detail": "Only the Owner can update branding."}
+
     if logo is not None:
         if firm.logo:
             firm.logo.delete(save=False)
