@@ -1222,4 +1222,83 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Co bude následovat:**
 - Volitelně: Zobrazit superadmin badge/indikátor v admin rozhraní pro lepší viditelnost
 - Volitelně: Audit log záznam pro přístupy superadmina do firmy (pro security auditing)
-- Volitelně: Frontend indikátor v Settings pro owners, že superadmini mají přístup k workspacu
+- ~~Volitelně: Frontend indikátor v Settings pro owners, že superadmini mají přístup k workspacu~~ ❌ **Zrušeno** (rozhodnutí uživatele 2026-05-07) – Ownerům nebudeme zobrazovat, že superadmini mají přístup do jejich workspace.
+
+
+### v3.1 – Plánovaná UX/UI vylepšení správy práv, týmů a pozvánek 📋 (next session)
+
+**Stav**: Plán pro další session – analýza současných pain pointů a návrh konkrétních kroků.
+
+**Motivace** (současné pain points zjištěné při review v3.0):
+- `RecordShareModal.vue` zobrazuje raw `principal_id` (UUID) místo jména/e-mailu uživatele nebo týmu (řádek 154: `{{ grant.principal_type === 'user' ? grant.principal_id : 'Team: ' + grant.principal_id }}`).
+- `PipelineSettingsView.vue` – sekce „Přístupy ke kategorii" vyžaduje ruční zadání UUID uživatele do textového inputu (`pipeline.categoryGrantUserIdPlaceholder`). Žádný picker, žádný autocomplete.
+- `TeamsSettingsView.vue` – přidání člena do týmu nemá vyhledávání ani avatar; expandovatelný panel členů ukazuje seznam, ale pro velké firmy to nestačí.
+- `RolesSettingsView.vue` – matice oprávnění je plochý seznam checkboxů ve skupinách. Není zobrazení „kdo má tuto roli", ani porovnání rolí proti sobě.
+- Pozvánka (`MemberInviteIn`) přijímá `role_codes[]`, `default_scope`, `team_id`, `category_scope[]` – ale UI ve `TeamView` posílá jen role. Owner musí member-a poté ručně dále konfigurovat ve dvou samostatných místech (Roles tab + Teams tab + edit member).
+- Žádný „onboarding wizard" pro vytvoření nového člena – Owner musí znát koncepty roles/scope/team předem.
+- Audit log (`AuditLogSettingsView.vue`) zobrazuje `target_id` jako zkrácený UUID; není možné prokliknout na cíl.
+- `useCan` composable vrací bool, ale v UI nejsou tooltips „proč to nemůžeš" – uživatel jen vidí skrytý/disabled prvek.
+- Skupiny permissions v matici nemají popisy (uživatel netuší rozdíl mezi `record.edit` a `record.delete` pokud nezná kód).
+- Žádné "presets" pro custom role (např. „Sales rep", „Marketing", „Read-only viewer") – Owner musí všechny permissions ručně zaškrtat.
+
+**Plánované kroky (kandidáti pro další session, v pořadí podle ROI):**
+
+1. **People Picker komponenta** (`frontend-spa/src/components/PeoplePicker.vue` – nová):
+   - Centrální reusable komponenta pro výběr Membership/User v rámci firmy.
+   - Autocomplete podle jména/e-mailu, avatar, role badge, zobrazení týmu.
+   - Použití: `RecordShareModal`, `PipelineSettingsView` (Category Access), `TeamsSettingsView` (přidání člena), `Transfer Ownership`.
+   - Endpoint: rozšířit `GET /firms/{id}/members` o full-text search (`?q=`) a serializovat jméno + e-mail.
+   - Eliminuje 4 různé místa, kde se dnes pracuje s raw UUID.
+
+2. **Resolver jmen v UI** (rychlá výhra):
+   - Pinia store `members.ts` (cache list členů firmy) + getter `memberById(id)` a `teamById(id)`.
+   - `RecordShareModal`, `CategoryGrantsSection`, `RecordAccessView` přepnout z UUID na `displayName`.
+   - Audit log: `target_type=membership/role/team/grant` → display name + clickable link na detail.
+
+3. **Member Onboarding Wizard** (`InviteMemberWizard.vue` – nový):
+   - 3-step wizard nahrazující dnešní jednodušší pozvánkový formulář v `TeamView`:
+     - Step 1: Identita – e-mail + jméno + jazyk pozvánky.
+     - Step 2: Role & scope – výběr role(í), default scope (own/team/category/all), volitelně preset („Sales rep", „Read-only").
+     - Step 3: Tým & kategorie – přiřazení týmu, výběr kategorií pro `category` scope.
+   - Po odeslání: jediný API call `POST /firms/{id}/invitations` s plným payloadem (vše už backend podporuje od fáze 6).
+   - Eliminuje rozháranou konfiguraci člena přes 3 různé taby.
+
+4. **Role presets** (`firms/role_seeds.py` rozšířit + UI):
+   - Přidat sadu pre-built šablon (Sales rep, Marketing, Customer success, External auditor, Read-only viewer) jako *templates*, nikoli `is_system` role – Owner je může naklonovat a upravit.
+   - V `RolesSettingsView`: tlačítko „Vytvořit z šablony" otevře modal s předvolenými permissions.
+
+5. **Permission matrix UX**:
+   - Sloupec „Members with this role" (počet + první 3 avatary) přímo v listu rolí.
+   - Hover tooltip nad permission kódem s human-readable popisem (z katalogu, který už backend vystavuje).
+   - Funkce „Compare roles" – side-by-side diff dvou rolí (přidat/odebrat permission).
+   - Ikona zámku u permissions, které aktér nemůže udělit (privilege escalation hint), s tooltipem proč.
+
+6. **Teams UX**:
+   - Drag & drop přiřazování členů (z listu „Bez týmu" do týmů) – `vuedraggable`.
+   - Color-coded chip člena s týmem zobrazený všude v UI (member list, RecordDetail assignee selector, audit log).
+   - Bulk akce: „Přesunout vybrané členy do týmu X".
+
+7. **Sdílení záznamu (RecordShareModal redesign)**:
+   - Tab „Lidé" / „Týmy" / „Odkaz" (link s tokenem read-only přístupu, max 30 dní – nový endpoint).
+   - V seznamu existujících grantů: avatar + jméno + úroveň jako pill + expirační countdown badge.
+   - Quick-actions: „Změnit na view/edit/manage" inline místo delete + re-add.
+   - Hromadné sdílení vybraných záznamů z listu (`PipelineRecordsView` → checkbox + „Share selected").
+
+8. **Tooltips „Proč to nemohu?"**:
+   - Rozšířit `useCan` o variantu `canWithReason(action) -> { allowed: boolean, reason?: string }`.
+   - Reason koreluje s důvodem zamítnutí (chybí permission X, scope Y nepokrývá Z, …).
+   - Disabled tlačítka ukáží tooltip s reason; dlouhé verze v `<TooltipFAQ>` modalu „Co znamenají moje oprávnění?".
+
+9. **Settings → Permissions overview dashboard** (`PermissionsOverviewView.vue`):
+   - Heatmapa „kdo na co dosáhne" – řádky = members, sloupce = permission groupy, barva = scope.
+   - Identifikace nejvyužívanější custom role, neaktivních členů, nikdy-neudělených permissions.
+   - Export do CSV pro audit reporting.
+
+10. **i18n & a11y**:
+    - Doplnit chybějící popisky permissions (cs/en/de/pl) s 1 větou per kód.
+    - Zajistit, že modaly (RecordShareModal, InviteMemberWizard) mají správné `aria-labelledby`, focus trap a keyboard navigation.
+    - High-contrast badge varianty (Member expired, Restricted activity).
+
+**Pořadí doporučená pro další session**: kroky **1 → 2 → 3** (největší okamžitý dopad: jednotný People Picker, skutečná jména místo UUID, kompletní onboarding flow). Kroky 4–10 lze rozložit do následujících iterací.
+
+**Návaznost**: Výsledné PR-ka navázat značkami `v3.2` (PeoplePicker + name resolver), `v3.3` (Onboarding Wizard), atd.
