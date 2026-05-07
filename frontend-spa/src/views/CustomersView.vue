@@ -22,6 +22,7 @@ const confirmDeleteId = ref<string | null>(null)
 const searchInput = ref('')
 const activeTagFilter = ref('')
 const allKnownTags = ref<string[]>([])
+const MAX_TAG_SUGGESTIONS = 20
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Form fields
@@ -308,7 +309,7 @@ function exportCsv() {
       <!-- Tag suggestion chips from available tags -->
       <template v-if="!activeTagFilter">
         <button
-          v-for="tag in availableTags.slice(0, 20)"
+          v-for="tag in availableTags.slice(0, MAX_TAG_SUGGESTIONS)"
           :key="tag"
           class="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors"
           @click="activeTagFilter = tag"
