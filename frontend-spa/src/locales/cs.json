@@ -2806,7 +2806,16 @@
     "compareNoDiff": "Žádná oprávnění k porovnání.",
     "unassignedMembers": "Bez týmu",
     "dragToTeamHint": "Přetáhněte člena do týmu pro přiřazení",
-    "allMembersAssigned": "Všichni členové jsou přiřazeni k týmu"
+    "allMembersAssigned": "Všichni členové jsou přiřazeni k týmu",
+    "tabPeople": "Lidé",
+    "selectTeam": "Vyberte tým",
+    "levelChanged": "Úroveň přístupu změněna.",
+    "expiryExpired": "Vypršelo",
+    "expiryTomorrow": "Vyprší zítra",
+    "expiryInDays": "Vyprší za {days} dní",
+    "reasonGuest": "Hostující účet nemá toto oprávnění.",
+    "reasonScopeOwn": "Vaše oprávnění je omezeno na vlastní záznamy.",
+    "reasonMissingPermission": "Nemáte oprávnění pro akci {action}."
   },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",

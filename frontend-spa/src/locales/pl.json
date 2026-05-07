@@ -2804,7 +2804,16 @@
     "compareNoDiff": "Brak uprawnień do porównania.",
     "unassignedMembers": "Bez zespołu",
     "dragToTeamHint": "Przeciągnij członka do zespołu, aby go przypisać",
-    "allMembersAssigned": "Wszyscy członkowie są przypisani do zespołu"
+    "allMembersAssigned": "Wszyscy członkowie są przypisani do zespołu",
+    "tabPeople": "Osoby",
+    "selectTeam": "Wybierz zespół",
+    "levelChanged": "Poziom dostępu zmieniony.",
+    "expiryExpired": "Wygasło",
+    "expiryTomorrow": "Wygasa jutro",
+    "expiryInDays": "Wygasa za {days} dni",
+    "reasonGuest": "Konta gości nie mają tego uprawnienia.",
+    "reasonScopeOwn": "Twoje uprawnienia ograniczone są do własnych rekordów.",
+    "reasonMissingPermission": "Nie masz uprawnień do akcji {action}."
   },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",

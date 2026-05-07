@@ -2804,7 +2804,16 @@
     "compareNoDiff": "No permissions to compare.",
     "unassignedMembers": "Without team",
     "dragToTeamHint": "Drag a member into a team to assign them",
-    "allMembersAssigned": "All members are assigned to a team"
+    "allMembersAssigned": "All members are assigned to a team",
+    "tabPeople": "People",
+    "selectTeam": "Select team",
+    "levelChanged": "Access level changed.",
+    "expiryExpired": "Expired",
+    "expiryTomorrow": "Expires tomorrow",
+    "expiryInDays": "Expires in {days} days",
+    "reasonGuest": "Guest accounts do not have this permission.",
+    "reasonScopeOwn": "Your permissions are limited to your own records.",
+    "reasonMissingPermission": "You do not have permission for action {action}."
   },
   "peoplePicker": {
     "placeholder": "Select a member...",
