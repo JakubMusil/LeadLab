@@ -2804,7 +2804,16 @@
     "compareNoDiff": "Keine Berechtigungen zum Vergleichen.",
     "unassignedMembers": "Ohne Team",
     "dragToTeamHint": "Mitglied in ein Team ziehen, um es zuzuweisen",
-    "allMembersAssigned": "Alle Mitglieder sind einem Team zugewiesen"
+    "allMembersAssigned": "Alle Mitglieder sind einem Team zugewiesen",
+    "tabPeople": "Personen",
+    "selectTeam": "Team auswählen",
+    "levelChanged": "Zugriffsebene geändert.",
+    "expiryExpired": "Abgelaufen",
+    "expiryTomorrow": "Läuft morgen ab",
+    "expiryInDays": "Läuft in {days} Tagen ab",
+    "reasonGuest": "Gastkonten haben diese Berechtigung nicht.",
+    "reasonScopeOwn": "Ihre Berechtigungen sind auf eigene Einträge beschränkt.",
+    "reasonMissingPermission": "Sie haben keine Berechtigung für die Aktion {action}."
   },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",

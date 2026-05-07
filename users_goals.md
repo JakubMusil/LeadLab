@@ -1558,5 +1558,71 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Všechny testy zelené: 100/100 OK; TypeScript: 0 nových chyb
 
 **Co bude následovat:**
-- v3.7: RecordShareModal redesign (tab Lidé/Týmy, quick-actions inline, expirační countdown)
-- v3.8: Tooltips „Proč to nemohu?" (`canWithReason` composable)
+- v3.7: RecordShareModal redesign (tab Lidé/Týmy, quick-actions inline, expirační countdown) ✅ **Hotovo níže**
+- v3.8: Tooltips „Proč to nemohu?" (`canWithReason` composable) ✅ **Hotovo níže**
+
+
+### v3.7 – RecordShareModal redesign ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-document-790c7470-1c21-47d9-aa60-161b605f06da`
+
+**Co bylo uděláno:**
+
+- **`components/RecordShareModal.vue`** – kompletní redesign:
+  - **Taby „Lidé" / „Týmy"**: modal nyní zobrazuje dvě záložky separující granty podle `principal_type`
+    - Tab „Lidé" (`userGrants`) – granty pro konkrétní uživatele přes `PeoplePicker`
+    - Tab „Týmy" (`teamGrants`) – granty pro celé týmy přes team select (načítá se `permissionsStore.teams`)
+    - Počítadlo grantů jako badge u každé záložky
+    - Přepnutí tabu resetuje formulářový stav (výběr, level, expirace)
+  - **Expirační countdown badge**: místo prostého data se zobrazuje barevný badge
+    - 🔴 červená: „Vypršelo" (days ≤ 0)
+    - 🟠 oranžová: „Vyprší zítra" (days = 1) nebo brzy (days ≤ 3)
+    - 🟡 žlutá: „Vyprší za N dní" (days ≤ 7)
+    - ⚪ šedá: vzdálené datum (days > 7)
+    - Pomocné funkce `expiryDaysLeft()`, `expiryBadgeClass()`, `expiryLabel()`
+  - **Quick-actions inline (level change)**: místo delete + re-add jsou vedle každého grantu 3 pill tlačítka `view / edit / manage`
+    - Aktivní level je zvýrazněn barevnou pill (modrá/fialová/zelená)
+    - Kliknutí na jinou pill zavolá POST grants endpoint (upsert) a aktualizuje lokální stav
+    - Loading guard `levelUpdating` zabraňuje souběžným změnám na stejném grantu
+    - Každý level pill je obalený `<Tooltip>` s human-readable popisem
+  - **Přidání grantu pro tým**: nový `<select>` pro výběr týmu (tab Týmy) vedle existujícího `PeoplePicker` (tab Lidé)
+    - Načítá `permissionsStore.fetchTeams()` paralelně s členy a granty
+    - Dropdown zobrazuje jméno týmu; resolver v `grantDisplayName()` vrací jméno týmu z `teams` listu
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `permissions.tabPeople` – záložka Lidé
+  - `permissions.selectTeam` – placeholder team selectu
+  - `permissions.levelChanged` – toast při změně levelu
+  - `permissions.expiryExpired`, `expiryTomorrow`, `expiryInDays` – countdown labely
+
+- Všechny testy zelené: 100/100 OK; TypeScript: 0 nových chyb
+
+
+### v3.8 – Tooltips „Proč to nemohu?" (`canWithReason`) ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-document-790c7470-1c21-47d9-aa60-161b605f06da`
+
+**Co bylo uděláno:**
+
+- **`composables/useCan.ts`** – rozšířen o `canWithReason`:
+  - Nový export `interface CanResult { allowed: boolean; reason?: string }`
+  - Nová funkce `canWithReason(action: string): CanResult`:
+    - Vrací `{ allowed: true }` pokud uživatel má oprávnění
+    - Při zamítnutí generuje srozumitelnou reason string dle kontextu:
+      - Guest role: „Hostující účet nemá toto oprávnění."
+      - Scope = own + resource perm: „Vaše oprávnění je omezeno na vlastní záznamy."
+      - Obecně: „Nemáte oprávnění pro akci {action}."
+    - Reason je i18n-lokalizovaná přes `useI18n()`
+  - Zpětně kompatibilní – `can()` funguje stejně jako dřív
+  - Použití v template: `v-tooltip="canWithReason('record.delete').reason"` nebo `disabled :title="canWithReason(...).reason"`
+
+- **i18n** – přidány klíče pod `permissions.*` ve všech 4 lokalizacích:
+  - `reasonGuest` – důvod zamítnutí pro guest roli
+  - `reasonScopeOwn` – důvod zamítnutí pro scope=own
+  - `reasonMissingPermission` – obecný důvod zamítnutí
+
+- Všechny testy zelené: 100/100 OK
+
+**Co bude následovat:**
+- v3.9: Settings → Permissions overview dashboard (heatmapa „kdo na co dosáhne", export CSV)
+- Nebo: a11y & i18n dokončení (aria-labelledby, focus trap v modalech, popisky permissions v katalogu)
