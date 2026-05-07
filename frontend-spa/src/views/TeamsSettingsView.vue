@@ -162,8 +162,11 @@ const unassignedMembers = computed(() =>
 const unassignedList = ref<MemberOut[]>([])
 watch(unassignedMembers, (val) => { unassignedList.value = [...val] }, { immediate: true })
 
+/** Drag event type matching Sortable.js / vue-draggable-plus SortableEvent */
+interface DragEvent { item: HTMLElement }
+
 /** Called when a member is dragged from the unassigned pool into a team */
-async function onDragToTeam(event: { item: HTMLElement }, teamId: string) {
+async function onDragToTeam(event: DragEvent, teamId: string) {
   const membershipId = event.item.dataset.membershipId
   if (!membershipId) return
   dragLoading.value = true
@@ -179,7 +182,7 @@ async function onDragToTeam(event: { item: HTMLElement }, teamId: string) {
 }
 
 /** Called when a member is dragged from a team into the unassigned pool */
-async function onDragToUnassigned(event: { item: HTMLElement }, fromTeamId: string) {
+async function onDragToUnassigned(event: DragEvent, fromTeamId: string) {
   const membershipId = event.item.dataset.membershipId
   if (!membershipId) return
   dragLoading.value = true
@@ -324,8 +327,8 @@ onMounted(loadData)
             group="team-members"
             class="space-y-1.5 mb-3 min-h-[36px]"
             :disabled="!permissionsStore.canManageTeams || dragLoading"
-            @add="(e: any) => onDragToTeam(e, team.id)"
-            @remove="(e: any) => onDragToUnassigned(e, team.id)"
+            @add="(e: DragEvent) => onDragToTeam(e, team.id)"
+            @remove="(e: DragEvent) => onDragToUnassigned(e, team.id)"
           >
             <template #item="{ element: member }">
               <div
