@@ -17,6 +17,7 @@ import PipelineSettingsView from '@/views/PipelineSettingsView.vue'
 import RolesSettingsView from '@/views/RolesSettingsView.vue'
 import TeamsSettingsView from '@/views/TeamsSettingsView.vue'
 import AuditLogSettingsView from '@/views/AuditLogSettingsView.vue'
+import PermissionsOverviewView from '@/views/PermissionsOverviewView.vue'
 import { usePermissionsStore } from '@/stores/permissions'
 import { useCan } from '@/composables/useCan'
 
@@ -105,8 +106,8 @@ const workspaceLoading = ref(false)
 const workspaceError = ref('')
 const workspaceSuccess = ref(false)
 
-// Settings tab: 'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit'
-const activeTab = ref<'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit'>('user')
+// Settings tab: 'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit' | 'overview'
+const activeTab = ref<'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit' | 'overview'>('user')
 
 // Danger zone
 const confirmDeleteWorkspace = ref(false)
@@ -984,6 +985,12 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
         @click="activeTab = 'audit'"
       >{{ t('permissions.tabAuditLog') }}</button>
+      <button
+        v-if="permissionsStore.canManageRoles"
+        :class="activeTab === 'overview' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+        @click="activeTab = 'overview'"
+      >{{ t('permissions.tabOverview') }}</button>
     </div>
 
     <!-- ==================== USER TAB ==================== -->
@@ -1951,6 +1958,12 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       <AuditLogSettingsView />
     </div>
     <!-- ==================== END AUDIT TAB ==================== -->
+
+    <!-- ==================== OVERVIEW TAB ==================== -->
+    <div v-show="activeTab === 'overview'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <PermissionsOverviewView />
+    </div>
+    <!-- ==================== END OVERVIEW TAB ==================== -->
 
   </div>
 
