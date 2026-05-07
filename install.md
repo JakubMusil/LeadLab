@@ -19,7 +19,7 @@ This guide walks you through setting up LeadLab for local development and for pr
 
 ## Option A — Docker Compose (recommended)
 
-The included `docker-compose.yml` starts PostgreSQL, Redis, the Django web server (Daphne), and the Celery worker in one command.
+The included `docker-compose.yml` starts PostgreSQL, Redis, the Django web server (Daphne), the Celery worker, and Celery Beat (periodic tasks) in one command.
 
 ```bash
 git clone https://github.com/JakubMusil/LeadLab.git
