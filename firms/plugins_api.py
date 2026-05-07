@@ -15,8 +15,7 @@ from typing import Any, Dict, List, Optional
 from ninja import Router, Schema
 from ninja.security import django_auth
 
-from firms.auth import require_membership, require_active_subscription
-from firms.models import PluginConfig
+from firms.models import Firm, Membership, PluginConfig
 from leadlab.plugin_registry import get_plugins, get_plugin
 
 router = Router(tags=["plugins"])
@@ -55,6 +54,10 @@ class PluginConfigOut(Schema):
 class PluginConfigIn(Schema):
     enabled: Optional[bool] = None
     config: Optional[Dict[str, Any]] = None
+
+
+class ErrorOut(Schema):
+    detail: str
 
 
 class MarketplacePluginOut(Schema):
@@ -124,7 +127,7 @@ def list_marketplace_plugins(request):
 # Per-firm plugin configs
 # ---------------------------------------------------------------------------
 
-@router.get("/{firm_id}/plugin-configs/", response=List[PluginConfigOut])
+@router.get("/{firm_id}/plugin-configs/", auth=django_auth, response={200: List[PluginConfigOut], 403: ErrorOut, 404: ErrorOut})
 def list_plugin_configs(request, firm_id: str):
     """
     Return all plugin configs for the given firm.
@@ -132,7 +135,12 @@ def list_plugin_configs(request, firm_id: str):
     For each registered plugin that does NOT yet have a PluginConfig row the
     response includes a default entry with ``enabled=True`` and ``config={}``.
     """
-    require_membership(request, firm_id)
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+    if not Membership.objects.filter(user=request.user, firm=firm).exists():
+        return 403, {"detail": "You are not a member of this Firm."}
 
     existing: dict[str, PluginConfig] = {
         pc.plugin_name: pc
@@ -163,20 +171,23 @@ def list_plugin_configs(request, firm_id: str):
     return result
 
 
-@router.patch("/{firm_id}/plugin-configs/{plugin_name}/", response=PluginConfigOut)
+@router.patch("/{firm_id}/plugin-configs/{plugin_name}/", auth=django_auth, response={200: PluginConfigOut, 403: ErrorOut, 404: ErrorOut})
 def update_plugin_config(request, firm_id: str, plugin_name: str, payload: PluginConfigIn):
     """
     Create or update the enabled flag and config values for a single plugin.
 
     Only firm members may call this endpoint.
     """
-    require_membership(request, firm_id)
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+    if not Membership.objects.filter(user=request.user, firm=firm).exists():
+        return 403, {"detail": "You are not a member of this Firm."}
 
     plugin = get_plugin(plugin_name)
     if plugin is None:
-        from ninja import errors as ninja_errors
-        from django.http import Http404
-        raise Http404(f"Plugin '{plugin_name}' is not registered.")
+        return 404, {"detail": f"Plugin '{plugin_name}' is not registered."}
 
     pc, _ = PluginConfig.objects.get_or_create(
         firm_id=firm_id,
