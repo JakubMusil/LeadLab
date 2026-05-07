@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { usePermissionsStore, type TeamOut } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
@@ -7,7 +7,8 @@ import { useI18n } from '@/composables/useI18n'
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import PeoplePicker from '@/components/PeoplePicker.vue'
-import { useMembersStore } from '@/stores/members'
+import { useMembersStore, type MemberOut } from '@/stores/members'
+import { VueDraggable } from 'vue-draggable-plus'
 
 const firmStore = useFirmStore()
 const permissionsStore = usePermissionsStore()
@@ -40,13 +41,16 @@ const expandedTeamId = ref<string | null>(null)
 const addMemberLoading = ref(false)
 const selectedMembershipId = ref('')
 
+// Drag state
+const dragLoading = ref(false)
+
 async function loadData() {
   if (!firmId.value) return
   loading.value = true
   try {
     await Promise.all([
       permissionsStore.fetchTeams(firmId.value),
-      membersStore.fetchMembers(firmId.value),
+      membersStore.fetchMembers(firmId.value, true),
     ])
   } finally {
     loading.value = false
@@ -103,6 +107,7 @@ async function deleteTeam() {
   if (ok) {
     toast.success(t('permissions.teamDeleted'))
     expandedTeamId.value = null
+    await loadData()
   } else {
     toast.error(t('permissions.failedToDeleteTeam'))
   }
@@ -121,7 +126,7 @@ async function addMember(teamId: string) {
   if (ok) {
     toast.success(t('permissions.memberAdded'))
     selectedMembershipId.value = ''
-    await permissionsStore.fetchTeams(firmId.value)
+    await loadData()
   } else {
     toast.error(t('permissions.failedToAddMember'))
   }
@@ -131,14 +136,65 @@ async function removeMember(teamId: string, membershipId: string) {
   const ok = await permissionsStore.removeTeamMember(firmId.value, teamId, membershipId)
   if (ok) {
     toast.success(t('permissions.memberRemoved'))
-    await permissionsStore.fetchTeams(firmId.value)
+    await loadData()
   } else {
     toast.error(t('permissions.failedToRemoveMember'))
   }
 }
 
-function getTeamById(teamId: string) {
-  return permissionsStore.teams.find(t => t.id === teamId)
+/** Set of membership IDs that are in any team (for the unassigned pool) */
+const assignedMembershipIds = computed(() => {
+  const ids = new Set<string>()
+  for (const team of permissionsStore.teams) {
+    for (const m of team.members) {
+      ids.add(m.membership_id)
+    }
+  }
+  return ids
+})
+
+/** Members not assigned to any team */
+const unassignedMembers = computed(() =>
+  membersStore.members.filter((m) => !assignedMembershipIds.value.has(m.id))
+)
+
+/** Local writable copy of unassigned members used as drag source – synced after each loadData() */
+const unassignedList = ref<MemberOut[]>([])
+watch(unassignedMembers, (val) => { unassignedList.value = [...val] }, { immediate: true })
+
+/** Drag event type matching Sortable.js / vue-draggable-plus SortableEvent */
+interface DragEvent { item: HTMLElement }
+
+/** Called when a member is dragged from the unassigned pool into a team */
+async function onDragToTeam(event: DragEvent, teamId: string) {
+  const membershipId = event.item.dataset.membershipId
+  if (!membershipId) return
+  dragLoading.value = true
+  const ok = await permissionsStore.addTeamMember(firmId.value, teamId, membershipId)
+  dragLoading.value = false
+  if (ok) {
+    toast.success(t('permissions.memberAdded'))
+    await loadData()
+  } else {
+    toast.error(t('permissions.failedToAddMember'))
+    await loadData() // Revert UI on failure
+  }
+}
+
+/** Called when a member is dragged from a team into the unassigned pool */
+async function onDragToUnassigned(event: DragEvent, fromTeamId: string) {
+  const membershipId = event.item.dataset.membershipId
+  if (!membershipId) return
+  dragLoading.value = true
+  const ok = await permissionsStore.removeTeamMember(firmId.value, fromTeamId, membershipId)
+  dragLoading.value = false
+  if (ok) {
+    toast.success(t('permissions.memberRemoved'))
+    await loadData()
+  } else {
+    toast.error(t('permissions.failedToRemoveMember'))
+    await loadData() // Revert UI on failure
+  }
 }
 
 onMounted(loadData)
@@ -180,6 +236,38 @@ onMounted(loadData)
         </button>
       </div>
       <p v-if="createError" class="mt-2 text-xs text-red-600">{{ createError }}</p>
+    </div>
+
+    <!-- Unassigned members pool (drag source) -->
+    <div v-if="membersStore.members.length > 0" class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+      <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700">
+        <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+          {{ t('permissions.unassignedMembers') }}
+          <span class="ml-1 text-gray-400">({{ unassignedList.length }})</span>
+        </h4>
+        <p class="text-xs text-gray-400 mt-0.5">{{ t('permissions.dragToTeamHint') }}</p>
+      </div>
+      <VueDraggable
+        v-model="unassignedList"
+        group="team-members"
+        class="min-h-[48px] flex flex-wrap gap-2 p-3"
+        :disabled="!permissionsStore.canManageTeams || dragLoading"
+      >
+        <template #item="{ element: member }">
+          <div
+            :data-membership-id="member.id"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 cursor-grab active:cursor-grabbing select-none"
+          >
+            <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-500 flex items-center justify-center text-xs font-semibold">
+              {{ (member.user_full_name || member.user_email)[0]?.toUpperCase() ?? '?' }}
+            </div>
+            {{ member.user_full_name || member.user_email }}
+          </div>
+        </template>
+      </VueDraggable>
+      <div v-if="unassignedList.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
+        {{ t('permissions.allMembersAssigned') }}
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -233,28 +321,40 @@ onMounted(loadData)
         <div v-if="expandedTeamId === team.id" class="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4">
           <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">{{ t('permissions.teamMembers') }}</h4>
 
-          <!-- Member list -->
-          <div class="space-y-1.5 mb-3">
-            <div v-for="member in team.members" :key="member.membership_id" class="flex items-center justify-between rounded px-2 py-1.5 bg-white dark:bg-gray-900">
-              <div>
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ member.user_full_name || member.user_email }}</p>
-                <p class="text-xs text-gray-500">{{ member.user_email }}</p>
-              </div>
-              <button
-                v-if="permissionsStore.canManageTeams"
-                @click="removeMember(team.id, member.membership_id)"
-                class="p-1 text-gray-400 hover:text-red-600"
-                :title="t('permissions.removeFromTeam')"
+          <!-- Droppable member list for this team -->
+          <VueDraggable
+            v-model="team.members"
+            group="team-members"
+            class="space-y-1.5 mb-3 min-h-[36px]"
+            :disabled="!permissionsStore.canManageTeams || dragLoading"
+            @add="(e: DragEvent) => onDragToTeam(e, team.id)"
+            @remove="(e: DragEvent) => onDragToUnassigned(e, team.id)"
+          >
+            <template #item="{ element: member }">
+              <div
+                :data-membership-id="member.membership_id"
+                class="flex items-center justify-between rounded px-2 py-1.5 bg-white dark:bg-gray-900 cursor-grab active:cursor-grabbing select-none"
               >
-                <UserMinusIcon class="h-4 w-4" />
-              </button>
-            </div>
-            <div v-if="team.members.length === 0" class="text-xs text-gray-400 py-1">
-              {{ t('permissions.noMembers') }}
-            </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ member.user_full_name || member.user_email }}</p>
+                  <p class="text-xs text-gray-500">{{ member.user_email }}</p>
+                </div>
+                <button
+                  v-if="permissionsStore.canManageTeams"
+                  @click.stop="removeMember(team.id, member.membership_id)"
+                  class="p-1 text-gray-400 hover:text-red-600"
+                  :title="t('permissions.removeFromTeam')"
+                >
+                  <UserMinusIcon class="h-4 w-4" />
+                </button>
+              </div>
+            </template>
+          </VueDraggable>
+          <div v-if="team.members.length === 0" class="text-xs text-gray-400 py-1">
+            {{ t('permissions.noMembers') }}
           </div>
 
-          <!-- Add member -->
+          <!-- Add member (picker fallback) -->
           <div v-if="permissionsStore.canManageTeams" class="flex items-center gap-2">
             <div class="flex-1">
               <PeoplePicker

@@ -777,7 +777,15 @@
     "memberExpiresAtLabel": "Ablaufdatum des Zugriffs (leer lassen für dauerhaften Zugriff)",
     "memberExpired": "Zugriff abgelaufen",
     "memberExpiresTomorrow": "Läuft morgen ab",
-    "memberExpiresInDays": "Läuft in {days} Tagen ab"
+    "memberExpiresInDays": "Läuft in {days} Tagen ab",
+    "bulkSelected": "{count} ausgewählt",
+    "bulkAssignToTeam": "Dem Team zuweisen",
+    "selectTeam": "Team auswählen",
+    "apply": "Anwenden",
+    "clearSelection": "Auswahl aufheben",
+    "bulkAssignedToTeam": "{count} Mitglieder dem Team zugewiesen",
+    "bulkAssignFailed": "Zuweisung zum Team fehlgeschlagen",
+    "selectAll": "Alle auswählen"
   },
   "calendar": {
     "title": "Kalender",
@@ -2793,7 +2801,10 @@
     "compareRoleB": "Rolle B",
     "comparePermission": "Berechtigung",
     "compareSelectBoth": "Wählen Sie zwei Rollen zum Vergleichen aus.",
-    "compareNoDiff": "Keine Berechtigungen zum Vergleichen."
+    "compareNoDiff": "Keine Berechtigungen zum Vergleichen.",
+    "unassignedMembers": "Ohne Team",
+    "dragToTeamHint": "Mitglied in ein Team ziehen, um es zuzuweisen",
+    "allMembersAssigned": "Alle Mitglieder sind einem Team zugewiesen"
   },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",

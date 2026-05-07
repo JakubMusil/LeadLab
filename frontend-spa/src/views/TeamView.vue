@@ -2,19 +2,31 @@
 import { ref, computed, onMounted } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
+import { usePermissionsStore } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
-import { XMarkIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, UserPlusIcon, UsersIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import InviteMemberWizard from '@/components/InviteMemberWizard.vue'
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
+const permissionsStore = usePermissionsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-interface Member { id: string; user_email: string; user_full_name: string; role: string; firm_id: string; expires_at?: string | null }
+interface Member {
+  id: string
+  user_email: string
+  user_full_name: string
+  role: string
+  firm_id: string
+  expires_at?: string | null
+  team_id?: string | null
+  team_name?: string | null
+  team_color?: string | null
+}
 interface Invitation { id: string; email: string; role: string; is_expired: boolean; is_accepted: boolean; expires_at: string }
 
 const members = ref<Member[]>([])
@@ -26,6 +38,12 @@ const confirmRemoveId = ref<string | null>(null)
 const editingRoleId = ref<string | null>(null)
 const editingRole = ref('')
 const editingExpiresAt = ref<string>('')
+
+// Bulk assignment
+const selectedMemberIds = ref<Set<string>>(new Set())
+const showBulkTeamPicker = ref(false)
+const bulkTeamId = ref<string>('')
+const bulkAssignLoading = ref(false)
 
 const ROLES = ['worker', 'admin', 'owner']
 
@@ -44,6 +62,9 @@ const canManage = computed(() =>
   currentUserMember.value?.role === 'admin' || currentUserMember.value?.role === 'owner'
 )
 
+const selectedCount = computed(() => selectedMemberIds.value.size)
+const hasSelection = computed(() => selectedCount.value > 0)
+
 async function loadTeam() {
   if (!firmId.value) return
   loading.value = true
@@ -51,6 +72,7 @@ async function loadTeam() {
     const [membersRes, invRes] = await Promise.all([
       api.get<Member[]>(`/api/v1/firms/${firmId.value}/members`),
       api.get<Invitation[]>(`/api/v1/firms/${firmId.value}/invitations/`),
+      permissionsStore.fetchTeams(firmId.value),
     ])
     if (membersRes.ok) members.value = membersRes.data
     if (invRes.ok) invitations.value = invRes.data
@@ -64,6 +86,7 @@ async function removeMember(membershipId: string) {
   const res = await api.delete(`/api/v1/firms/${firmId.value}/members/${membershipId}`)
   if (res.ok || res.status === 204) {
     members.value = members.value.filter((m) => m.id !== membershipId)
+    selectedMemberIds.value.delete(membershipId)
     toast.success(t('team.memberRemoved'))
   } else {
     toast.error(t('team.failedToRemove'))
@@ -131,6 +154,65 @@ function memberExpiryLabel(m: Member): string {
   return t('team.memberExpiresInDays', { days: daysLeft })
 }
 
+const manageableMembers = computed(() =>
+  members.value.filter(
+    (m) => m.role !== 'owner' && m.user_email !== authStore.user?.email
+  )
+)
+
+function toggleSelect(memberId: string) {
+  if (selectedMemberIds.value.has(memberId)) {
+    selectedMemberIds.value.delete(memberId)
+  } else {
+    selectedMemberIds.value.add(memberId)
+  }
+}
+
+function selectAll() {
+  if (selectedMemberIds.value.size === manageableMembers.value.length) {
+    selectedMemberIds.value = new Set()
+  } else {
+    selectedMemberIds.value = new Set(manageableMembers.value.map((m) => m.id))
+  }
+}
+
+async function applyBulkTeamAssign() {
+  if (!bulkTeamId.value || selectedMemberIds.value.size === 0) return
+  bulkAssignLoading.value = true
+  const ids = Array.from(selectedMemberIds.value)
+  let successCount = 0
+  for (const membershipId of ids) {
+    const res = await api.post(
+      `/api/v1/firms/${firmId.value}/teams/${bulkTeamId.value}/members/${membershipId}`,
+      {}
+    )
+    if (res.ok || res.status === 201) {
+      successCount++
+      // Update local member's team info
+      const idx = members.value.findIndex((m) => m.id === membershipId)
+      if (idx !== -1) {
+        const team = permissionsStore.teams.find((t) => t.id === bulkTeamId.value)
+        members.value[idx] = {
+          ...members.value[idx],
+          team_id: bulkTeamId.value,
+          team_name: team?.name ?? null,
+          team_color: team?.color ?? null,
+        }
+      }
+    }
+  }
+  bulkAssignLoading.value = false
+  showBulkTeamPicker.value = false
+  bulkTeamId.value = ''
+  selectedMemberIds.value = new Set()
+  if (successCount > 0) {
+    toast.success(t('team.bulkAssignedToTeam', { count: successCount }))
+    await permissionsStore.fetchTeams(firmId.value)
+  } else {
+    toast.error(t('team.bulkAssignFailed'))
+  }
+}
+
 const pendingInvitations = computed(() => invitations.value.filter((i) => !i.is_accepted))
 
 onMounted(loadTeam)
@@ -155,6 +237,44 @@ onMounted(loadTeam)
         </div>
       </div>
 
+      <!-- Bulk action toolbar -->
+      <div v-if="canManage && hasSelection" class="flex items-center gap-3 px-5 py-2 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
+        <span class="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+          {{ t('team.bulkSelected', { count: selectedCount }) }}
+        </span>
+        <div v-if="!showBulkTeamPicker" class="flex items-center gap-2">
+          <button
+            @click="showBulkTeamPicker = true"
+            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-indigo-300 dark:border-indigo-600 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800"
+          >
+            <UsersIcon class="h-3.5 w-3.5" />
+            {{ t('team.bulkAssignToTeam') }}
+          </button>
+        </div>
+        <div v-else class="flex items-center gap-2">
+          <select
+            v-model="bulkTeamId"
+            class="rounded border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-xs px-2 py-1 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">{{ t('team.selectTeam') }}</option>
+            <option v-for="team in permissionsStore.teams" :key="team.id" :value="team.id">
+              {{ team.name }}
+            </option>
+          </select>
+          <button
+            @click="applyBulkTeamAssign"
+            :disabled="!bulkTeamId || bulkAssignLoading"
+            class="px-2.5 py-1 rounded-md bg-indigo-600 text-white text-xs disabled:opacity-50 hover:bg-indigo-700"
+          >{{ bulkAssignLoading ? '…' : t('team.apply') }}</button>
+          <button @click="showBulkTeamPicker = false; bulkTeamId = ''" class="px-2.5 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+            {{ t('team.cancel') }}
+          </button>
+        </div>
+        <button @click="selectedMemberIds = new Set()" class="ml-auto text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          {{ t('team.clearSelection') }}
+        </button>
+      </div>
+
       <div v-if="loading" class="animate-pulse p-4 space-y-2">
         <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 dark:bg-gray-700 rounded-xl" />
       </div>
@@ -168,7 +288,29 @@ onMounted(loadTeam)
         <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('team.noMembersHint') }}</p>
       </div>
       <div v-else class="divide-y divide-gray-50 dark:divide-gray-700">
-        <div v-for="m in members" :key="m.id" class="flex items-center gap-3 px-5 py-3">
+        <!-- Select-all row (only visible for admins) -->
+        <div v-if="canManage" class="flex items-center gap-3 px-5 py-2 bg-gray-50 dark:bg-gray-800/50">
+          <input
+            type="checkbox"
+            :checked="selectedMemberIds.size > 0 && selectedMemberIds.size === manageableMembers.length"
+            :indeterminate="selectedMemberIds.size > 0 && selectedMemberIds.size < manageableMembers.length"
+            @change="selectAll"
+            class="rounded border-gray-300 text-indigo-600"
+          />
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('team.selectAll') }}</span>
+        </div>
+
+        <div v-for="m in members" :key="m.id" class="flex items-center gap-3 px-5 py-3" :class="selectedMemberIds.has(m.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''">
+          <!-- Checkbox (only for manageable members) -->
+          <input
+            v-if="canManage && m.role !== 'owner' && m.user_email !== authStore.user?.email"
+            type="checkbox"
+            :checked="selectedMemberIds.has(m.id)"
+            @change="toggleSelect(m.id)"
+            class="rounded border-gray-300 text-indigo-600 flex-shrink-0"
+          />
+          <div v-else class="w-4 flex-shrink-0" />
+
           <!-- Avatar -->
           <div class="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 text-sm font-semibold flex-shrink-0" aria-hidden="true">
             {{ (m.user_full_name || m.user_email)[0]?.toUpperCase() ?? '?' }}
@@ -176,7 +318,18 @@ onMounted(loadTeam)
 
           <!-- Info -->
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ m.user_full_name || m.user_email }}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ m.user_full_name || m.user_email }}</p>
+              <!-- Team chip -->
+              <span
+                v-if="m.team_name"
+                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium text-white"
+                :style="{ backgroundColor: m.team_color || '#6366f1' }"
+              >
+                <UsersIcon class="h-3 w-3" />
+                {{ m.team_name }}
+              </span>
+            </div>
             <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ m.user_email }}</p>
             <!-- Expiry badge -->
             <span

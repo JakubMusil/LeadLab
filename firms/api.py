@@ -82,6 +82,9 @@ class MembershipOut(Schema):
     roles: List[str] = []
     permissions: List[str] = []
     expires_at: Optional[str] = None  # ISO-8601 or null
+    team_id: Optional[str] = None
+    team_name: Optional[str] = None
+    team_color: Optional[str] = None
 
 
 class MemberInviteIn(Schema):
@@ -192,6 +195,9 @@ def _membership_out(m: Membership) -> dict:
         "roles": role_codes,
         "permissions": permissions,
         "expires_at": m.expires_at.isoformat() if m.expires_at else None,
+        "team_id": str(m.team_id) if m.team_id else None,
+        "team_name": m.team.name if m.team_id and m.team else None,
+        "team_color": m.team.color if m.team_id and m.team else None,
     }
 
 
@@ -623,7 +629,7 @@ def list_members(request, firm_id: str, q: Optional[str] = None):
     if not Membership.objects.filter(user=request.user, firm=firm).exists():
         return 403, {"detail": "You are not a member of this Firm."}
 
-    members = Membership.objects.filter(firm=firm).select_related("user").prefetch_related("roles")
+    members = Membership.objects.filter(firm=firm).select_related("user", "team").prefetch_related("roles")
     if q:
         from django.db import models as _dj_models  # noqa: PLC0415
         members = members.filter(
