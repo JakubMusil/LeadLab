@@ -53,6 +53,7 @@ export default {
       }),
       colors: {
         brand: {
+          DEFAULT: '#dc2626',
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',

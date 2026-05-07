@@ -131,7 +131,7 @@ onMounted(async () => {
           <button
             type="button"
             @click="advancedOpen = !advancedOpen"
-            class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide hover:text-gray-600 dark:hover:text-gray-200"
+            class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hover:text-gray-700 dark:hover:text-gray-200"
             :aria-expanded="advancedOpen"
           >
             <ChevronDownIcon v-if="advancedOpen" class="h-3.5 w-3.5" />

@@ -106,37 +106,6 @@ async function loadProposalAnalytics() {
   if (res.ok && res.data) proposalAnalytics.value = res.data
 }
 
-// -- Phase 4.5 Realization Metrics --
-interface RealizationStatusRow { status: string; count: number; avg_days: number }
-interface RealizationTrendRow { week_start: string; created: number; completed: number }
-interface RealizationMetrics {
-  by_status: RealizationStatusRow[]
-  trend: RealizationTrendRow[]
-  total: number
-  completed_total: number
-}
-const realizationMetrics = ref<RealizationMetrics | null>(null)
-
-async function loadRealizationMetrics() {
-  const res = await api.get<RealizationMetrics>('/api/v1/crm/reports/realization-metrics')
-  if (res.ok && res.data) realizationMetrics.value = res.data
-}
-
-// -- Phase 4.5 SLA Compliance --
-interface SlaCompliance {
-  total: number
-  green: number
-  yellow: number
-  red: number
-  no_expiry: number
-}
-const slaCompliance = ref<SlaCompliance | null>(null)
-
-async function loadSlaCompliance() {
-  const res = await api.get<SlaCompliance>('/api/v1/crm/reports/sla-compliance')
-  if (res.ok && res.data) slaCompliance.value = res.data
-}
-
 // -- Phase 4.5 Profitability --
 interface ProfitabilityRow {
   entity_id: string
@@ -168,7 +137,7 @@ async function loadAll() {
   try {
     await Promise.all([
       loadVelocity(), loadWonLost(), loadTeam(), loadTrends(), loadProposalAnalytics(),
-      loadRealizationMetrics(), loadSlaCompliance(), loadProfitability(),
+      loadProfitability(),
     ])
   } finally {
     loading.value = false
@@ -533,50 +502,6 @@ const trendsChartOptions = computed(() => ({
           <span class="px-2.5 py-1 rounded-lg text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">{{ t('analytics.viewed') }}: {{ proposalAnalytics.viewed }}</span>
           <span class="px-2.5 py-1 rounded-lg text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">{{ t('analytics.expired') }}: {{ proposalAnalytics.expired }}</span>
         </div>
-      </div>
-    </template>
-
-    <!-- Row 5: Realization Metrics (Phase 4.5) -->
-    <template v-if="!loading && realizationMetrics">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.realizationStatusOverview') }}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div v-for="row in realizationMetrics.by_status" :key="row.status" class="text-center">
-            <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ row.count }}</div>
-            <div class="text-xs font-medium text-gray-500 mt-0.5">{{ row.status }}</div>
-            <div class="text-xs text-gray-400">{{ t('analytics.avgDays', { days: row.avg_days }) }}</div>
-          </div>
-        </div>
-        <div class="mt-4 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
-          <span>{{ t('analytics.totalCount', { count: realizationMetrics.total }) }}</span>
-          <span>{{ t('analytics.completedCount', { count: realizationMetrics.completed_total }) }}</span>
-        </div>
-      </div>
-    </template>
-
-    <!-- Row 6: SLA Compliance (Phase 4.5) -->
-    <template v-if="!loading && slaCompliance">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('analytics.slaCompliance') }}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ slaCompliance.green }}</div>
-            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaOk') }}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ slaCompliance.yellow }}</div>
-            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaSoon') }}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ slaCompliance.red }}</div>
-            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaExpired') }}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-gray-400 dark:text-gray-500">{{ slaCompliance.no_expiry }}</div>
-            <div class="text-xs text-gray-500 mt-1">{{ t('analytics.slaNoExpiry') }}</div>
-          </div>
-        </div>
-        <div class="mt-3 text-xs text-gray-400 dark:text-gray-500">{{ t('analytics.slaOnlyOpen', { total: slaCompliance.total }) }}</div>
       </div>
     </template>
 

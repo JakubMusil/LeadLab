@@ -152,7 +152,7 @@ def _role_out(role: Role) -> dict:
         "is_system": role.is_system,
         "description": role.description,
         "permissions": list(role.permissions.values_list("code", flat=True).order_by("code")),
-        "member_count": role.membership_set.count(),
+        "member_count": role.memberships.count(),
     }
 
 

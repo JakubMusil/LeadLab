@@ -4,6 +4,7 @@ Django Ninja router — Plugin Marketplace & Ecosystem (v2.4)
 Endpoints
 ---------
 GET    /api/v1/plugins/                                  List all registered plugins (global)
+GET    /api/v1/plugins/marketplace/                      List plugins for the marketplace UI
 GET    /api/v1/firms/{firm_id}/plugin-configs/           List per-firm plugin configs
 PATCH  /api/v1/firms/{firm_id}/plugin-configs/{name}/   Update enabled flag + config values
 """
@@ -56,6 +57,16 @@ class PluginConfigIn(Schema):
     config: Optional[Dict[str, Any]] = None
 
 
+class MarketplacePluginOut(Schema):
+    name: str
+    version: str
+    description: str
+    author: str
+    icon_url: Optional[str] = None
+    tags: List[str] = []
+    install_url: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 # Global plugin list (no firm required — public within authenticated session)
 # ---------------------------------------------------------------------------
@@ -77,6 +88,36 @@ def list_plugins(request):
         )
         for p in plugins
     ]
+
+
+# ---------------------------------------------------------------------------
+# Marketplace listing — used by the "Marketplace" tab in PluginsView.
+# Mirrors the in-process plugin registry but in the lightweight
+# ``MarketplacePluginOut`` shape consumed by the SPA.
+# ---------------------------------------------------------------------------
+
+@router.get("/marketplace/", response=List[MarketplacePluginOut], auth=django_auth)
+def list_marketplace_plugins(request):
+    """Return all plugins available in the LeadLab marketplace."""
+    items: List[MarketplacePluginOut] = []
+    for p in get_plugins():
+        manifest = getattr(p, "manifest", {}) or {}
+        author = manifest.get("author") or getattr(p, "author", None) or "LeadLab"
+        tags = manifest.get("tags")
+        if not tags:
+            tags = list(p.permissions or [])
+        items.append(
+            MarketplacePluginOut(
+                name=p.name,
+                version=p.version,
+                description=p.description,
+                author=author,
+                icon_url=p.icon_url,
+                tags=list(tags),
+                install_url=manifest.get("install_url"),
+            )
+        )
+    return items
 
 
 # ---------------------------------------------------------------------------

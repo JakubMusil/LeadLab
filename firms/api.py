@@ -603,7 +603,7 @@ def export_exchange_rates_csv(request, firm_id: str, include_history: bool = Fal
     return response
 
 
-@router.post("/{firm_id}/branding", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
+@router.post("/{firm_id}/branding/", auth=django_auth, response={200: FirmOut, 403: ErrorOut, 404: ErrorOut})
 def update_branding(request, firm_id: str, payload: FirmBrandingIn = Form(...), logo: UploadedFile = File(None)):
     """Update firm logo and/or primary color. Owner only."""
     membership = require_membership(request, firm_id)

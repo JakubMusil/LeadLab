@@ -49,6 +49,11 @@ class SuperuserMembership:
     # Superusers are not assigned to any specific team; team-level scoping is
     # irrelevant because they already have global access to all records.
     team = None
+    # Per-membership preferences mirrored from ``firms.models.Membership`` so
+    # endpoints that read these attributes (e.g. ``/digest-preference``) work
+    # uniformly for both real members and superuser sentinels. Defaults match
+    # the model field defaults.
+    weekly_digest_enabled: bool = True
 
     def __init__(self, request: HttpRequest) -> None:
         self.firm = getattr(request, "firm", None)
