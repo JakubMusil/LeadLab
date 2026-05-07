@@ -339,7 +339,14 @@
     "quickCreate": "Hinzufügen",
     "quickCreatePlaceholder": "Schnell einen Eintrag hinzufügen…",
     "recordCreated": "Eintrag erstellt.",
-    "createFailed": "Eintrag konnte nicht erstellt werden."
+    "createFailed": "Eintrag konnte nicht erstellt werden.",
+    "bulkSelected": "{count} ausgewählt",
+    "clearSelection": "Auswahl aufheben",
+    "shareSelected": "Ausgewählte teilen",
+    "bulkShareTitle": "{count} Einträge teilen",
+    "bulkShareHint": "Alle ausgewählten Einträge mit demselben Zugriffsrecht teilen.",
+    "bulkShareSuccess": "{count} Einträge erfolgreich geteilt.",
+    "bulkShareFailed": "Einige Einträge konnten nicht geteilt werden."
   },
   "settings": {
     "title": "Einstellungen",
@@ -785,7 +792,18 @@
     "clearSelection": "Auswahl aufheben",
     "bulkAssignedToTeam": "{count} Mitglieder dem Team zugewiesen",
     "bulkAssignFailed": "Zuweisung zum Team fehlgeschlagen",
-    "selectAll": "Alle auswählen"
+    "selectAll": "Alle auswählen",
+    "viewAccesses": "Zugriffsberechtigungen anzeigen",
+    "hideAccesses": "Zugriffsberechtigungen ausblenden",
+    "memberAccesses": "Zugriffsberechtigungen",
+    "categoryGrants": "Kategorie-Zugriffsrechte",
+    "recordGrants": "Eintrags-Zugriffsrechte",
+    "noGrantsFound": "Keine expliziten Zugriffsrechte",
+    "grantLevel": "Ebene",
+    "grantCategory": "Kategorie",
+    "grantRecord": "Eintrag",
+    "grantExpires": "Läuft ab",
+    "grantPermanent": "Dauerhaft"
   },
   "calendar": {
     "title": "Kalender",
