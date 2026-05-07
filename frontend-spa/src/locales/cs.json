@@ -778,7 +778,15 @@
     "memberExpiresAtLabel": "Datum expirace přístupu (ponechte prázdné pro trvalý přístup)",
     "memberExpired": "Přístup vypršel",
     "memberExpiresTomorrow": "Expiruje zítra",
-    "memberExpiresInDays": "Expiruje za {days} dní"
+    "memberExpiresInDays": "Expiruje za {days} dní",
+    "bulkSelected": "{count} vybráno",
+    "bulkAssignToTeam": "Přiřadit k týmu",
+    "selectTeam": "Vyberte tým",
+    "apply": "Použít",
+    "clearSelection": "Zrušit výběr",
+    "bulkAssignedToTeam": "{count} členů přiřazeno do týmu",
+    "bulkAssignFailed": "Přiřazení k týmu selhalo",
+    "selectAll": "Vybrat vše"
   },
   "calendar": {
     "title": "Kalendář",
@@ -2795,7 +2803,10 @@
     "compareRoleB": "Role B",
     "comparePermission": "Oprávnění",
     "compareSelectBoth": "Vyberte dvě role pro porovnání.",
-    "compareNoDiff": "Žádná oprávnění k porovnání."
+    "compareNoDiff": "Žádná oprávnění k porovnání.",
+    "unassignedMembers": "Bez týmu",
+    "dragToTeamHint": "Přetáhněte člena do týmu pro přiřazení",
+    "allMembersAssigned": "Všichni členové jsou přiřazeni k týmu"
   },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",

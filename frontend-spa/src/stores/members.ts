@@ -11,6 +11,9 @@ export interface MemberOut {
   firm_id: string
   roles: string[]
   expires_at: string | null
+  team_id: string | null
+  team_name: string | null
+  team_color: string | null
 }
 
 export const useMembersStore = defineStore('members', () => {

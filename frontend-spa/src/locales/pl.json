@@ -777,7 +777,15 @@
     "memberExpiresAtLabel": "Data wygaśnięcia dostępu (zostaw puste dla stałego dostępu)",
     "memberExpired": "Dostęp wygasł",
     "memberExpiresTomorrow": "Wygasa jutro",
-    "memberExpiresInDays": "Wygasa za {days} dni"
+    "memberExpiresInDays": "Wygasa za {days} dni",
+    "bulkSelected": "{count} zaznaczonych",
+    "bulkAssignToTeam": "Przypisz do zespołu",
+    "selectTeam": "Wybierz zespół",
+    "apply": "Zastosuj",
+    "clearSelection": "Wyczyść zaznaczenie",
+    "bulkAssignedToTeam": "{count} członków przypisanych do zespołu",
+    "bulkAssignFailed": "Nie udało się przypisać do zespołu",
+    "selectAll": "Zaznacz wszystkich"
   },
   "calendar": {
     "title": "Kalendarz",
@@ -2793,7 +2801,10 @@
     "compareRoleB": "Rola B",
     "comparePermission": "Uprawnienie",
     "compareSelectBoth": "Wybierz dwie role do porównania.",
-    "compareNoDiff": "Brak uprawnień do porównania."
+    "compareNoDiff": "Brak uprawnień do porównania.",
+    "unassignedMembers": "Bez zespołu",
+    "dragToTeamHint": "Przeciągnij członka do zespołu, aby go przypisać",
+    "allMembersAssigned": "Wszyscy członkowie są przypisani do zespołu"
   },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",

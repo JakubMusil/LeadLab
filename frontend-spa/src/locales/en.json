@@ -777,7 +777,15 @@
     "memberExpiresAtLabel": "Access expiry date (leave empty for permanent access)",
     "memberExpired": "Access expired",
     "memberExpiresTomorrow": "Expires tomorrow",
-    "memberExpiresInDays": "Expires in {days} days"
+    "memberExpiresInDays": "Expires in {days} days",
+    "bulkSelected": "{count} selected",
+    "bulkAssignToTeam": "Assign to team",
+    "selectTeam": "Select team",
+    "apply": "Apply",
+    "clearSelection": "Clear selection",
+    "bulkAssignedToTeam": "{count} members assigned to team",
+    "bulkAssignFailed": "Failed to assign to team",
+    "selectAll": "Select all"
   },
   "calendar": {
     "title": "Calendar",
@@ -2793,7 +2801,10 @@
     "compareRoleB": "Role B",
     "comparePermission": "Permission",
     "compareSelectBoth": "Select two roles to start comparing.",
-    "compareNoDiff": "No permissions to compare."
+    "compareNoDiff": "No permissions to compare.",
+    "unassignedMembers": "Without team",
+    "dragToTeamHint": "Drag a member into a team to assign them",
+    "allMembersAssigned": "All members are assigned to a team"
   },
   "peoplePicker": {
     "placeholder": "Select a member...",

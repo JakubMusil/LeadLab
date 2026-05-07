@@ -1512,5 +1512,51 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Všechny testy zelené: 100/100 OK
 
 **Co bude následovat:**
-- v3.6: Teams UX (color-coded chip, drag & drop, bulk akce)
-- Nebo: Merge dosavadní práce a otevření PR
+- v3.6: Teams UX (color-coded chip, drag & drop, bulk akce) ✅ **Hotovo níže**
+
+
+### v3.6 – Teams UX: color-coded chip + drag & drop + bulk assign ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-document-e13a1c75-dd25-4f15-a496-de6a87f82eb8`
+
+**Co bylo uděláno:**
+
+- **Backend – `MembershipOut` rozšíření** (`firms/api.py`):
+  - Přidána pole `team_id: Optional[str]`, `team_name: Optional[str]`, `team_color: Optional[str]` do schema
+  - `_membership_out()` helper nyní serializuje `m.team.name` a `m.team.color` (přes FK vztah)
+  - `list_members()` rozšířen o `select_related("team")` pro efektivní dotaz bez N+1
+
+- **Frontend – `stores/members.ts`** (`MemberOut` interface):
+  - Přidána pole `team_id: string | null`, `team_name: string | null`, `team_color: string | null`
+
+- **Frontend – `views/TeamView.vue`** (kompletní aktualizace):
+  - Import `usePermissionsStore` pro načtení týmů (lazy load při `loadTeam()`)
+  - **Color-coded team chip**: každý člen zobrazuje barevný badge se jménem týmu (barva = `team_color` z backendu)
+  - **Bulk selection**: checkboxy na každém řádku (kromě owner a sebe sama) + „Select all" řádek
+  - **Bulk toolbar**: zobrazí se po zaškrtnutí alespoň 1 člena – obsahuje: počet vybraných, tlačítko „Přiřadit k týmu" → select týmu + „Použít", „Zrušit výběr"
+  - `toggleSelect(memberId)`, `selectAll()`, `applyBulkTeamAssign()` funkce
+  - Bulk assign volá `POST /firms/{id}/teams/{teamId}/members/{membershipId}` pro každý vybraný membership, aktualizuje lokální stav optimisticky
+
+- **Frontend – `views/TeamsSettingsView.vue`** (drag & drop integration):
+  - Import `VueDraggable` z `vue-draggable-plus` (již v package.json)
+  - **Nová sekce „Bez týmu"** – zobrazuje všechny members, kteří nejsou v žádném týmu
+    - Pill-style drag chips s avatarem a jménem
+    - Computed `unassignedMembers`: members jejichž ID není v žádném `team.members`
+    - Hint text „Přetáhněte do týmu pro přiřazení"
+  - **Team member panels přepsány na `<VueDraggable>`**:
+    - Droppable zóna pro každý tým (expanded panel)
+    - Callback `onDragToTeam(event, teamId)` → `addTeamMember` API call
+    - Callback `onDragToUnassigned(event, fromTeamId)` → `removeTeamMember` API call
+    - Při chybě API: revert UI přes `loadData()`
+  - Záložní „add member" picker zachován pro nepodporované prohlížeče/touch
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `team.bulkSelected`, `team.bulkAssignToTeam`, `team.selectTeam`, `team.apply`
+  - `team.clearSelection`, `team.bulkAssignedToTeam`, `team.bulkAssignFailed`, `team.selectAll`
+  - `permissions.unassignedMembers`, `permissions.dragToTeamHint`, `permissions.allMembersAssigned`
+
+- Všechny testy zelené: 100/100 OK; TypeScript: 0 nových chyb
+
+**Co bude následovat:**
+- v3.7: RecordShareModal redesign (tab Lidé/Týmy, quick-actions inline, expirační countdown)
+- v3.8: Tooltips „Proč to nemohu?" (`canWithReason` composable)
