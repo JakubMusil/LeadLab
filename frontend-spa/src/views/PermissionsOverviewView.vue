@@ -163,15 +163,19 @@ const uncoveredGroups = computed<string[]>(() =>
   )
 )
 
-// ─── CSV export ───────────────────────────────────────────────────────────────
+/** Pre-computed coverage matrix: heatmapData[memberIdx][groupIdx] = 'full'|'partial'|'none' */
+const heatmapData = computed<Array<Array<'full' | 'partial' | 'none'>>>(() => {
+  return memberRows.value.map(m =>
+    groups.value.map(g => cellCoverage(m, g))
+  )
+})
 
 function exportCsv() {
   const headers = [t('permissions.overviewCsvName'), t('permissions.overviewCsvEmail'), ...groups.value]
-  const rows = memberRows.value.map(m => {
-    const cells = groups.value.map(g => {
-      const cov = cellCoverage(m, g)
-      return cov === 'full' ? 'full' : cov === 'partial' ? 'partial' : '-'
-    })
+  const rows = memberRows.value.map((m, mIdx) => {
+    const cells = heatmapData.value[mIdx].map(cov =>
+      cov === 'full' ? 'full' : cov === 'partial' ? 'partial' : '-'
+    )
     return [m.name, m.email, ...cells]
   })
   const csv = [headers, ...rows]
@@ -238,27 +242,27 @@ function exportCsv() {
         </thead>
         <tbody>
           <tr
-            v-for="member in memberRows"
+            v-for="(member, mIdx) in memberRows"
             :key="member.id"
-            class="hover:bg-gray-50 border-b border-gray-50 last:border-0"
+            class="group hover:bg-gray-50 border-b border-gray-50 last:border-0"
           >
-            <!-- Member name cell -->
-            <td class="px-4 py-2 sticky left-0 bg-white hover:bg-gray-50 font-medium text-gray-900 max-w-[220px] truncate border-r border-gray-100">
+            <!-- Member name cell (sticky – stays white, follows row hover via group-hover) -->
+            <td class="px-4 py-2 sticky left-0 bg-white group-hover:bg-gray-50 font-medium text-gray-900 max-w-[220px] truncate border-r border-gray-100">
               <div class="truncate" :title="member.name">{{ member.name }}</div>
               <div class="text-xs text-gray-400 truncate">{{ member.email }}</div>
             </td>
-            <!-- Coverage cells -->
+            <!-- Coverage cells (use pre-computed matrix to avoid triple call per cell) -->
             <td
-              v-for="group in groups"
+              v-for="(group, gIdx) in groups"
               :key="group"
               class="px-3 py-2 text-center"
             >
               <Tooltip :content="cellTooltip(member, group)" placement="top">
                 <span
                   class="inline-block w-8 h-6 leading-6 rounded text-xs cursor-default"
-                  :class="cellClass(cellCoverage(member, group))"
+                  :class="cellClass(heatmapData[mIdx][gIdx])"
                 >
-                  {{ cellLabel(cellCoverage(member, group)) }}
+                  {{ cellLabel(heatmapData[mIdx][gIdx]) }}
                 </span>
               </Tooltip>
             </td>
