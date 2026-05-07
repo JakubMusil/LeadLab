@@ -109,6 +109,8 @@ function switchTab(tab: Tab) {
   selectedLevel.value = 'view'
   expiresAt.value = ''
 }
+
+async function grantAccess() {
   const principalId = activeTab.value === 'people' ? selectedMembershipId.value : selectedTeamId.value
   if (!principalId) return
   grantLoading.value = true
