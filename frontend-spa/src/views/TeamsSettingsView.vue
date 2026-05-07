@@ -7,9 +7,12 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
+import PeoplePicker from '@/components/PeoplePicker.vue'
+import { useMembersStore } from '@/stores/members'
 
 const firmStore = useFirmStore()
 const permissionsStore = usePermissionsStore()
+const membersStore = useMembersStore()
 const toast = useToast()
 const { t } = useI18n()
 
@@ -45,16 +48,15 @@ async function loadData() {
   if (!firmId.value) return
   loading.value = true
   try {
-    await permissionsStore.fetchTeams(firmId.value)
-    // Also load firm members for the member-add selector
-    const res = await api.get<Member[]>(`/api/v1/firms/${firmId.value}/members`)
-    if (res.ok && res.data) {
-      allMembers.value = res.data.map(m => ({
-        id: m.id,
-        user_email: m.user_email,
-        user_full_name: m.user_full_name,
-      }))
-    }
+    await Promise.all([
+      permissionsStore.fetchTeams(firmId.value),
+      membersStore.fetchMembers(firmId.value),
+    ])
+    allMembers.value = membersStore.members.map((m) => ({
+      id: m.id,
+      user_email: m.user_email,
+      user_full_name: m.user_full_name,
+    }))
   } finally {
     loading.value = false
   }
@@ -263,16 +265,13 @@ onMounted(loadData)
 
           <!-- Add member -->
           <div v-if="permissionsStore.canManageTeams" class="flex items-center gap-2">
-            <select v-model="selectedMembershipId" class="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100">
-              <option value="">{{ t('permissions.addToTeam') }}…</option>
-              <option
-                v-for="m in allMembers.filter(am => !team.members.find(tm => tm.membership_id === am.id))"
-                :key="m.id"
-                :value="m.id"
-              >
-                {{ m.user_full_name || m.user_email }}
-              </option>
-            </select>
+            <div class="flex-1">
+              <PeoplePicker
+                v-model="selectedMembershipId"
+                :firm-id="firmId"
+                :placeholder="t('peoplePicker.addMember')"
+              />
+            </div>
             <button
               @click="addMember(team.id)"
               :disabled="!selectedMembershipId || addMemberLoading"

@@ -2779,6 +2779,13 @@
     "auditTargetAll": "All targets",
     "noDescription": "No description",
     "grantAccess": "Grant access",
-    "noMembers": "No members in this team"
+    "noMembers": "No members in this team",
+    "team": "Team"
+  },
+  "peoplePicker": {
+    "placeholder": "Select a member...",
+    "search": "Search by name or email",
+    "noResults": "No results",
+    "addMember": "Add member..."
   }
 }

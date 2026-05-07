@@ -4,23 +4,20 @@ import { api } from '@/api'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { useFirmStore } from '@/stores/firm'
+import { useMembersStore } from '@/stores/members'
 import { Modal } from '@/components/ui'
+import PeoplePicker from '@/components/PeoplePicker.vue'
 import { UserPlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 interface RecordGrant {
   id: string
   principal_type: string
   principal_id: string
+  principal_name: string | null
   level: string
-  granted_by_name: string | null
+  granted_by_id: string | null
   granted_at: string
   expires_at: string | null
-}
-
-interface FirmMember {
-  id: string
-  user_email: string
-  user_full_name: string
 }
 
 const props = defineProps<{
@@ -35,11 +32,11 @@ const emit = defineEmits<{
 const toast = useToast()
 const { t } = useI18n()
 const firmStore = useFirmStore()
+const membersStore = useMembersStore()
 
 const firmId = computed(() => firmStore.activeFirm ? String(firmStore.activeFirm.id) : '')
 
 const grants = ref<RecordGrant[]>([])
-const members = ref<FirmMember[]>([])
 const loading = ref(false)
 const grantLoading = ref(false)
 
@@ -57,21 +54,22 @@ async function loadData() {
   if (!props.recordId || !firmId.value) return
   loading.value = true
   try {
-    const [grantsRes, membersRes] = await Promise.all([
-      api.get<RecordGrant[]>(`/api/v1/crm/records/${props.recordId}/grants`),
-      api.get<FirmMember[]>(`/api/v1/firms/${firmId.value}/members`),
+    await Promise.all([
+      api.get<RecordGrant[]>(`/api/v1/crm/records/${props.recordId}/grants`).then((res) => {
+        if (res.ok && res.data) grants.value = res.data
+      }),
+      membersStore.fetchMembers(firmId.value),
     ])
-    if (grantsRes.ok && grantsRes.data) grants.value = grantsRes.data
-    if (membersRes.ok && membersRes.data) {
-      members.value = (membersRes.data as any[]).map(m => ({
-        id: m.id,
-        user_email: m.user_email,
-        user_full_name: m.user_full_name,
-      }))
-    }
   } finally {
     loading.value = false
   }
+}
+
+function grantDisplayName(grant: RecordGrant): string {
+  if (grant.principal_name) return grant.principal_name
+  // fallback: try members store
+  if (grant.principal_type === 'user') return membersStore.displayNameById(grant.principal_id)
+  return grant.principal_id
 }
 
 async function addGrant() {
@@ -151,7 +149,8 @@ watch(() => props.open, (val) => {
           >
             <div>
               <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {{ grant.principal_type === 'user' ? grant.principal_id : `Team: ${grant.principal_id}` }}
+                {{ grantDisplayName(grant) }}
+                <span v-if="grant.principal_type === 'team'" class="ml-1 text-xs text-gray-400">({{ t('permissions.team') }})</span>
               </p>
               <p class="text-xs text-gray-500">
                 {{ levelLabel(grant.level) }}
@@ -173,12 +172,11 @@ watch(() => props.open, (val) => {
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('team.title') }}</label>
-            <select v-model="selectedMembershipId" class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100">
-              <option value="">{{ t('permissions.shareWith') }}</option>
-              <option v-for="m in members" :key="m.id" :value="m.id">
-                {{ m.user_full_name || m.user_email }}
-              </option>
-            </select>
+            <PeoplePicker
+              v-model="selectedMembershipId"
+              :firm-id="firmId"
+              :placeholder="t('peoplePicker.placeholder')"
+            />
           </div>
           <div class="flex gap-3">
             <div class="flex-1">

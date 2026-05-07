@@ -1243,14 +1243,14 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 **Plánované kroky (kandidáti pro další session, v pořadí podle ROI):**
 
-1. **People Picker komponenta** (`frontend-spa/src/components/PeoplePicker.vue` – nová):
+1. **People Picker komponenta** (`frontend-spa/src/components/PeoplePicker.vue` – nová): ✅ **Hotovo v3.1**
    - Centrální reusable komponenta pro výběr Membership/User v rámci firmy.
    - Autocomplete podle jména/e-mailu, avatar, role badge, zobrazení týmu.
    - Použití: `RecordShareModal`, `PipelineSettingsView` (Category Access), `TeamsSettingsView` (přidání člena), `Transfer Ownership`.
    - Endpoint: rozšířit `GET /firms/{id}/members` o full-text search (`?q=`) a serializovat jméno + e-mail.
    - Eliminuje 4 různé místa, kde se dnes pracuje s raw UUID.
 
-2. **Resolver jmen v UI** (rychlá výhra):
+2. **Resolver jmen v UI** (rychlá výhra): ✅ **Hotovo v3.1**
    - Pinia store `members.ts` (cache list členů firmy) + getter `memberById(id)` a `teamById(id)`.
    - `RecordShareModal`, `CategoryGrantsSection`, `RecordAccessView` přepnout z UUID na `displayName`.
    - Audit log: `target_type=membership/role/team/grant` → display name + clickable link na detail.
@@ -1302,3 +1302,70 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 **Pořadí doporučená pro další session**: kroky **1 → 2 → 3** (největší okamžitý dopad: jednotný People Picker, skutečná jména místo UUID, kompletní onboarding flow). Kroky 4–10 lze rozložit do následujících iterací.
 
 **Návaznost**: Výsledné PR-ka navázat značkami `v3.2` (PeoplePicker + name resolver), `v3.3` (Onboarding Wizard), atd.
+
+
+### v3.1 – People Picker, Members Store, Name Resolution ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-document-3df005b8-d638-41b7-b89b-c491afbcf08b`
+
+**Co bylo uděláno:**
+
+- **Backend – `GET /firms/{id}/members?q=`** (search support):
+  - Přidán volitelný query parametr `q` do `list_members()` v `firms/api.py`
+  - Filtruje členy podle `user__email`, `user__first_name`, `user__last_name` (case-insensitive `icontains`)
+  - Zpětně kompatibilní – bez `q` vrátí všechny členy jako dosud
+
+- **Backend – `principal_name` v odpovědích grantů**:
+  - `GrantOut` schema v `crm/api.py` rozšířeno o pole `principal_name: Optional[str]`
+  - Přidána helper funkce `_resolve_principal_name(principal_type, principal_id)` – pro `user` resolvuje Membership→User→full name/email; pro `team` resolvuje Team→name; best-effort (nikdy neshodí response)
+  - `_grant_out()` nově zahrnuje `principal_name` ve všech grant endpointech (category grants, record grants, access overview)
+
+- **Frontend – Pinia store `stores/members.ts`** (nový):
+  - State: `members: MemberOut[]`, `loading: bool`, `loadedFirmId: string|null`
+  - Funkce: `fetchMembers(firmId, force?)` – cached fetch, přeskočí pokud `loadedFirmId === firmId`
+  - Funkce: `memberById(id): MemberOut|undefined` – O(n) lookup z cache
+  - Funkce: `displayNameById(id): string` – vrátí `full_name || email || id` (fallback na UUID pro neznámé IDs)
+  - Funkce: `searchMembers(firmId, q)` – zavolá backend `?q=` a vrátí výsledky
+
+- **Frontend – `components/PeoplePicker.vue`** (nový):
+  - Reusable autocomplete komponenta pro výběr člena firmy
+  - Props: `modelValue` (membership UUID), `firmId`, `placeholder`, `disabled`
+  - Vyvolá `membersStore.fetchMembers()` při mount a při změně `firmId` (cached)
+  - Zobrazuje vybraného člena s jménem + e-mailem + clear button
+  - Dropdown s search inputem a filtrovaným listem členů
+  - Keyboard-friendly (closes on outside click via `mousedown` listener)
+  - Použití: `v-model="selectedMembershipId"` – odpovídá stávajícímu rozhraní všech formulářů
+
+- **Frontend – `components/RecordShareModal.vue`** (aktualizováno):
+  - Odstraněn lokální fetch a `members: FirmMember[]` state – nahrazen `membersStore`
+  - Grant list: místo `grant.principal_id` (raw UUID) zobrazí `grantDisplayName(grant)`:
+    - Primárně použije `grant.principal_name` (z backendu)
+    - Fallback: `membersStore.displayNameById(principal_id)` z cache
+    - Tým: přidán badge `(Tým)` za jménem
+  - Formulář pro přidání grantu: nahrazen `<select>` → `<PeoplePicker>`
+
+- **Frontend – `views/PipelineSettingsView.vue`** (aktualizováno):
+  - Import `PeoplePicker`, `useMembersStore`; inicializace `membersStore`, `firmId` computed
+  - `GrantOut` interface doplněn o `principal_name: string | null`
+  - Grant list: místo `grant.principal_id` (mono UUID) zobrazuje `grantDisplayName(grant)` (jméno/e-mail)
+  - Add-grant formulář: odstraněn UUID text input → `<PeoplePicker v-model="newGrantPrincipalId">`
+  - `loadMembers()` rozšířen o `membersStore.fetchMembers()` pro cache population
+
+- **Frontend – `views/TeamsSettingsView.vue`** (aktualizováno):
+  - Import `PeoplePicker`, `useMembersStore`
+  - `loadData()` nyní volá `membersStore.fetchMembers()` paralelně s `permissionsStore.fetchTeams()`
+  - Add-member sekce: nahrazen `<select>` → `<PeoplePicker v-model="selectedMembershipId">`
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `peoplePicker.placeholder` – výzva k výběru
+  - `peoplePicker.search` – placeholder search inputu
+  - `peoplePicker.noResults` – prázdný stav
+  - `peoplePicker.addMember` – placeholder pro přidání člena do týmu
+  - `permissions.team` – label pro typ grantu „team"
+
+- Všechny testy zelené: 100/100 frontend, 14/14 grant-related crm tests
+- TypeScript: 0 nových chyb v nových souborech
+
+**Co bude následovat:**
+- v3.2: Member Onboarding Wizard (`InviteMemberWizard.vue`) – 3-step formulář pro pozvání s konfigurací role/scope/tým v jednom průchodu
+- v3.3: Role presets (pre-built šablony v `RolesSettingsView` + backend seeder)
