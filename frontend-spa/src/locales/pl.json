@@ -339,7 +339,14 @@
     "quickCreate": "Dodaj",
     "quickCreatePlaceholder": "Szybkie dodanie rekordu…",
     "recordCreated": "Rekord utworzony.",
-    "createFailed": "Nie udało się utworzyć rekordu."
+    "createFailed": "Nie udało się utworzyć rekordu.",
+    "bulkSelected": "{count} zaznaczonych",
+    "clearSelection": "Wyczyść zaznaczenie",
+    "shareSelected": "Udostępnij zaznaczone",
+    "bulkShareTitle": "Udostępnij {count} rekordy",
+    "bulkShareHint": "Udostępnij wszystkie zaznaczone rekordy z tym samym poziomem dostępu.",
+    "bulkShareSuccess": "{count} rekordów udostępnionych pomyślnie.",
+    "bulkShareFailed": "Nie udało się udostępnić niektórych rekordów."
   },
   "settings": {
     "title": "Ustawienia",
@@ -785,7 +792,18 @@
     "clearSelection": "Wyczyść zaznaczenie",
     "bulkAssignedToTeam": "{count} członków przypisanych do zespołu",
     "bulkAssignFailed": "Nie udało się przypisać do zespołu",
-    "selectAll": "Zaznacz wszystkich"
+    "selectAll": "Zaznacz wszystkich",
+    "viewAccesses": "Wyświetl dostępy",
+    "hideAccesses": "Ukryj dostępy",
+    "memberAccesses": "Dostępy",
+    "categoryGrants": "Uprawnienia do kategorii",
+    "recordGrants": "Uprawnienia do rekordów",
+    "noGrantsFound": "Brak jawnych uprawnień",
+    "grantLevel": "Poziom",
+    "grantCategory": "Kategoria",
+    "grantRecord": "Rekord",
+    "grantExpires": "Wygasa",
+    "grantPermanent": "Trwały"
   },
   "calendar": {
     "title": "Kalendarz",

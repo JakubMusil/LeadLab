@@ -339,7 +339,14 @@
     "quickCreate": "Add",
     "quickCreatePlaceholder": "Quick add record…",
     "recordCreated": "Record created.",
-    "createFailed": "Failed to create record."
+    "createFailed": "Failed to create record.",
+    "bulkSelected": "{count} selected",
+    "clearSelection": "Clear selection",
+    "shareSelected": "Share selected",
+    "bulkShareTitle": "Share {count} records",
+    "bulkShareHint": "Share all selected records with the same access grant.",
+    "bulkShareSuccess": "{count} records shared successfully.",
+    "bulkShareFailed": "Failed to share some records."
   },
   "settings": {
     "title": "Settings",
@@ -785,7 +792,18 @@
     "clearSelection": "Clear selection",
     "bulkAssignedToTeam": "{count} members assigned to team",
     "bulkAssignFailed": "Failed to assign to team",
-    "selectAll": "Select all"
+    "selectAll": "Select all",
+    "viewAccesses": "View accesses",
+    "hideAccesses": "Hide accesses",
+    "memberAccesses": "Accesses",
+    "categoryGrants": "Category grants",
+    "recordGrants": "Record grants",
+    "noGrantsFound": "No explicit grants",
+    "grantLevel": "Level",
+    "grantCategory": "Category",
+    "grantRecord": "Record",
+    "grantExpires": "Expires",
+    "grantPermanent": "Permanent"
   },
   "calendar": {
     "title": "Calendar",

@@ -1722,5 +1722,76 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 
 **Co bude následovat:**
 - Merge do `main` a tag `v4.0`
-- Volitelně: Zobrazit záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
-- Volitelně: Bulk sdílení vybraných záznamů z PipelineRecordsView (checkbox + „Share selected")
+- Volitelně: Zobrazit záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů ✅ **Hotovo v4.1**
+- Volitelně: Bulk sdílení vybraných záznamů z PipelineRecordsView (checkbox + „Share selected") ✅ **Hotovo v4.2**
+
+
+### v4.1 – Member Access Panel v TeamView ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-documentation-8801e92d-fcf3-41ad-9771-d741351edb85`
+
+**Co bylo uděláno:**
+
+- **Backend – nový endpoint** `GET /firms/{firm_id}/members/{membership_id}/grants` (`firms/api.py`):
+  - Nová třída `MemberGrantOut` (Schema) – obsahuje `category_grants: List[dict]`, `record_grants: List[dict]`
+  - Endpoint vrací všechny CategoryGranty a RecordGranty přiřazené danému členovi (filtr: `principal_type='user'`, `principal_id=membership_id`)
+  - Přístupný pouze pro Admin/Owner (vrací 403 jinak)
+  - Každý category grant obsahuje: `id`, `level`, `category_id`, `category_name`, `expires_at`
+  - Každý record grant obsahuje: `id`, `level`, `record_id`, `record_title`, `expires_at`
+
+- **Frontend – `views/TeamView.vue`** (rozšíření):
+  - Import `ChevronDownIcon`, `ChevronUpIcon` z heroicons
+  - Nové interface typy: `CategoryGrantItem`, `RecordGrantItem`, `MemberGrants`
+  - State: `expandedGrantsMemberId`, `memberGrantsLoading`, `memberGrantsData` (cache)
+  - Funkce `toggleMemberGrants(memberId)`: toggle panelu, lazy-load grantů při prvním rozbalení
+  - Funkce `levelBadgeClass(level)`: barevný styling badge (manage=zelená, edit=modrá, view=šedá)
+  - Šablona přepsána na `<template v-for="m in members">` pro správné scopování proměnné `m` v sousedním panelu
+  - Tlačítko Chevron Down/Up vedle každého člena (viditelné jen pro admin/owner): toggle panel přístupů
+  - Expandovaný panel zobrazuje:
+    - Sekce „Granty kategorie": pill badge s jménem kategorie, úrovní a datem expirace
+    - Sekce „Granty záznamů": pill badge s názvem záznamu, úrovní a datem expirace
+    - Empty state „Žádné explicitní přístupy" pokud nejsou žádné granty
+    - Loading stav (animovaná tečka)
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích pod `team.*`:
+  - `viewAccesses`, `hideAccesses`, `memberAccesses`
+  - `categoryGrants`, `recordGrants`, `noGrantsFound`
+  - `grantLevel`, `grantCategory`, `grantRecord`, `grantExpires`, `grantPermanent`
+
+- Všechny testy zelené: 100/100 frontend OK
+
+
+### v4.2 – Bulk Share z RecordsView ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-documentation-8801e92d-fcf3-41ad-9771-d741351edb85`
+
+**Co bylo uděláno:**
+
+- **Frontend – `views/RecordsView.vue`** (přidán bulk share):
+  - Import `ShareIcon` z heroicons, `RecordShareModal`, `PeoplePicker`, `usePermissionsStore`
+  - State: `selectedRecordIds: Set<string>`, `showBulkShareModal`, `bulkSharePrincipalId`, `bulkShareLevel`, `bulkShareExpiresAt`, `bulkShareLoading`
+  - Computed: `firmIdStr`, `selectedRecordCount`, `hasBulkSelection`
+  - Funkce `toggleRecordSelect(recordId)`, `clearRecordSelection()`, `applyBulkShare()`
+  - **Checkbox sloupec** v table view (thead + tbody): každý řádek má zaškrtávací pole; záhlaví má „select all" checkbox (indeterminate stav při částečném výběru)
+  - **Bulk toolbar**: Zobrazí se nad tabulkou pokud je alespoň 1 záznam vybrán:
+    - Počet vybraných, tlačítko „Sdílet vybrané" (otevře modal), „Zrušit výběr"
+    - Indigo barevné schéma (konzistentní s TeamView)
+  - **Bulk share modal** (inline Teleport):
+    - Záhlaví: „Sdílet N záznamů" + nápověda
+    - `PeoplePicker` pro výběr příjemce (membership ID)
+    - Select pro výběr úrovně přístupu (view/edit/manage)
+    - Date input pro expirace (volitelné)
+    - Tlačítka „Zrušit" / „Sdílet vybrané"
+    - `applyBulkShare()`: volá `POST /crm/records/{id}/grants` pro každý vybraný záznam, toast výsledek
+  - Vybraný řádek má indigo pozadí (vizuální feedback)
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích pod `leads.*`:
+  - `bulkSelected`, `clearSelection`, `shareSelected`
+  - `bulkShareTitle`, `bulkShareHint`, `bulkShareSuccess`, `bulkShareFailed`
+
+- Všechny testy zelené: 100/100 frontend OK
+
+**Co bude následovat:**
+- Merge do `main` a tag `v4.2`
+- Volitelně: v4.3 – Exportovat granty do CSV ze správce přístupů (`PermissionsOverviewView`)
+- Volitelně: v4.4 – Zobrazit v RecordDetailView přehled kdo má přístup (z `GET /records/{id}/access`)

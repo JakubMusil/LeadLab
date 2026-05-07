@@ -20,8 +20,11 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useI18n } from '@/composables/useI18n'
 import { useListView, type ColumnDef } from '@/composables/useListView'
 import CurrencySelect from '@/components/CurrencySelect.vue'
-import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon, BuildingOfficeIcon, UserIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, XMarkIcon, ArrowTopRightOnSquareIcon, ArrowsRightLeftIcon, Bars3Icon, Squares2X2Icon, ListBulletIcon, BookmarkIcon, ChevronDownIcon, FunnelIcon, AdjustmentsHorizontalIcon, BuildingOfficeIcon, UserIcon, MagnifyingGlassIcon, ShareIcon } from '@heroicons/vue/24/outline'
 import Avatar from '@/components/ui/Avatar.vue'
+import RecordShareModal from '@/components/RecordShareModal.vue'
+import PeoplePicker from '@/components/PeoplePicker.vue'
+import { usePermissionsStore } from '@/stores/permissions'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +34,7 @@ const savedViewsStore = useSavedViewsStore()
 const customersStore = useCustomersStore()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
+const permissionsStore = usePermissionsStore()
 const toast = useToast()
 const { t } = useI18n()
 const { firmCurrency, formatAmount } = useMoney()
@@ -225,6 +229,61 @@ const showModal = ref(false)
 const editingRecord = ref<RecordOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const statusPopupId = ref<string | null>(null)
+
+// Bulk record selection & share
+const selectedRecordIds = ref<Set<string>>(new Set())
+const showBulkShareModal = ref(false)
+const bulkSharePrincipalId = ref<string>('')
+const bulkShareLevel = ref<string>('view')
+const bulkShareExpiresAt = ref<string>('')
+const bulkShareLoading = ref(false)
+
+const firmIdStr = computed(() => firmStore.activeFirm ? String(firmStore.activeFirm.id) : '')
+const selectedRecordCount = computed(() => selectedRecordIds.value.size)
+const hasBulkSelection = computed(() => selectedRecordIds.value.size > 0)
+
+function toggleRecordSelect(recordId: string) {
+  if (selectedRecordIds.value.has(recordId)) {
+    selectedRecordIds.value.delete(recordId)
+  } else {
+    selectedRecordIds.value.add(recordId)
+  }
+  selectedRecordIds.value = new Set(selectedRecordIds.value) // trigger reactivity
+}
+
+function clearRecordSelection() {
+  selectedRecordIds.value = new Set()
+}
+
+async function applyBulkShare() {
+  if (!bulkSharePrincipalId.value || selectedRecordIds.value.size === 0) return
+  bulkShareLoading.value = true
+  const ids = Array.from(selectedRecordIds.value)
+  let successCount = 0
+  const payload: Record<string, unknown> = {
+    principal_type: 'user',
+    principal_id: bulkSharePrincipalId.value,
+    level: bulkShareLevel.value,
+  }
+  if (bulkShareExpiresAt.value) {
+    payload.expires_at = new Date(bulkShareExpiresAt.value).toISOString()
+  }
+  for (const recordId of ids) {
+    const res = await api.post(`/api/v1/crm/records/${recordId}/grants`, payload)
+    if (res.ok || res.status === 201) successCount++
+  }
+  bulkShareLoading.value = false
+  if (successCount > 0) {
+    toast.success(t('leads.bulkShareSuccess', { count: successCount }))
+    showBulkShareModal.value = false
+    bulkSharePrincipalId.value = ''
+    bulkShareLevel.value = 'view'
+    bulkShareExpiresAt.value = ''
+    clearRecordSelection()
+  } else {
+    toast.error(t('leads.bulkShareFailed'))
+  }
+}
 
 // Quick-create (inline header form)
 const qcTitle = ref('')
@@ -1309,9 +1368,43 @@ function closeContactDetail() {
         >{{ t('leads.createFirst') }}</button>
       </div>
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <!-- Bulk action toolbar -->
+        <div v-if="hasBulkSelection" class="flex items-center gap-3 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800">
+          <span class="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+            {{ t('leads.bulkSelected', { count: selectedRecordCount }) }}
+          </span>
+          <button
+            @click="showBulkShareModal = true; permissionsStore.fetchTeams(firmIdStr)"
+            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-indigo-300 dark:border-indigo-600 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800"
+          >
+            <ShareIcon class="h-3.5 w-3.5" />
+            {{ t('leads.shareSelected') }}
+          </button>
+          <button
+            @click="clearRecordSelection"
+            class="ml-auto text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >{{ t('leads.clearSelection') }}</button>
+        </div>
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-gray-100 dark:border-gray-700 text-left">
+              <!-- Bulk select header checkbox -->
+              <th class="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  class="rounded border-gray-300 text-indigo-600"
+                  :checked="selectedRecordIds.size > 0 && selectedRecordIds.size === sortedRecords.length"
+                  :indeterminate="selectedRecordIds.size > 0 && selectedRecordIds.size < sortedRecords.length"
+                  @change="() => {
+                    if (selectedRecordIds.size === sortedRecords.length) {
+                      clearRecordSelection()
+                    } else {
+                      selectedRecordIds = new Set(sortedRecords.map(r => r.id))
+                    }
+                  }"
+                  :aria-label="t('leads.bulkSelected', { count: sortedRecords.length })"
+                />
+              </th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('title')">{{ t('leads.colTitle') }} <span class="opacity-60">{{ sortIcon('title') }}</span></th>
               <th v-if="isColVisible('status')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('status')">{{ t('leads.colStatus') }} <span class="opacity-60">{{ sortIcon('status') }}</span></th>
               <th v-if="isColVisible('source')" class="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none" @click="setSort('source')">{{ t('leads.colSource') }} <span class="opacity-60">{{ sortIcon('source') }}</span></th>
@@ -1367,9 +1460,20 @@ function closeContactDetail() {
               v-for="record in sortedRecords"
               :key="record.id"
               class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
+              :class="selectedRecordIds.has(record.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''"
               @click.self="goToDetail(record.id)"
               @contextmenu="onRowContextMenu($event, record)"
             >
+              <!-- Bulk select checkbox -->
+              <td class="px-4 py-3 w-8" @click.stop>
+                <input
+                  type="checkbox"
+                  class="rounded border-gray-300 text-indigo-600"
+                  :checked="selectedRecordIds.has(record.id)"
+                  @change="toggleRecordSelect(record.id)"
+                  :aria-label="`Select ${record.title}`"
+                />
+              </td>
               <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-xs" @click="goToDetail(record.id)">
                 <div class="flex items-center gap-1.5">
                   <span class="truncate">{{ record.title }}</span>
@@ -2115,6 +2219,74 @@ function closeContactDetail() {
             <span class="text-gray-500 dark:text-gray-400">IČO</span>
             <span class="font-medium text-gray-900 dark:text-gray-100 text-right">{{ contactDetailData.ico }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Bulk share modal -->
+  <Teleport to="body">
+    <div
+      v-if="showBulkShareModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      @click.self="showBulkShareModal = false"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('leads.bulkShareTitle', { count: selectedRecordCount })"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {{ t('leads.bulkShareTitle', { count: selectedRecordCount }) }}
+          </h3>
+          <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showBulkShareModal = false">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ t('leads.bulkShareHint') }}</p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('permissions.shareWith') }}</label>
+            <PeoplePicker
+              v-model="bulkSharePrincipalId"
+              :firm-id="firmIdStr"
+              :placeholder="t('peoplePicker.placeholder')"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('permissions.accessLevel') }}</label>
+            <select
+              v-model="bulkShareLevel"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-indigo-400"
+            >
+              <option value="view">{{ t('permissions.accessView') }}</option>
+              <option value="edit">{{ t('permissions.accessEdit') }}</option>
+              <option value="manage">{{ t('permissions.accessManage') }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ t('permissions.expiresAt') }}</label>
+            <input
+              v-model="bulkShareExpiresAt"
+              type="date"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-indigo-400"
+            />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-5">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            @click="showBulkShareModal = false"
+          >{{ t('leads.cancel') }}</button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            :disabled="!bulkSharePrincipalId || bulkShareLoading"
+            @click="applyBulkShare"
+          >{{ bulkShareLoading ? '…' : t('leads.shareSelected') }}</button>
         </div>
       </div>
     </div>

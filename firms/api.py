@@ -759,6 +759,85 @@ def update_member_role(request, firm_id: str, membership_id: str, payload: Membe
     return 200, _membership_out(target)
 
 
+class MemberGrantOut(Schema):
+    """Combined category + record grants for a single member."""
+    category_grants: List[dict]
+    record_grants: List[dict]
+
+
+@router.get(
+    "/{firm_id}/members/{membership_id}/grants",
+    auth=django_auth,
+    response={200: MemberGrantOut, 403: ErrorOut, 404: ErrorOut},
+)
+def list_member_grants(request, firm_id: str, membership_id: str):
+    """Return all CategoryGrants and RecordGrants assigned to a specific member.
+
+    Accessible to Admins and Owners only.
+    """
+    try:
+        firm = Firm.objects.get(id=firm_id, is_active=True)
+    except Firm.DoesNotExist:
+        return 404, {"detail": "Firm not found."}
+
+    try:
+        caller_membership = Membership.objects.get(user=request.user, firm=firm)
+    except Membership.DoesNotExist:
+        return 403, {"detail": "You are not a member of this Firm."}
+
+    if not caller_membership.is_admin_or_above:
+        return 403, {"detail": "Only Admins and Owners can view member grants."}
+
+    try:
+        target = Membership.objects.select_related("user").get(id=membership_id, firm=firm)
+    except Membership.DoesNotExist:
+        return 404, {"detail": "Membership not found."}
+
+    from crm.models import CategoryGrant, RecordGrant  # noqa: PLC0415
+
+    # Grants are stored with principal_id = membership UUID (for user grants)
+    user_id_str = str(target.id)
+    category_grants = CategoryGrant.objects.filter(
+        principal_type="user",
+        principal_id=user_id_str,
+        category__firm=firm,
+    ).select_related("category")
+    record_grants = RecordGrant.objects.filter(
+        principal_type="user",
+        principal_id=user_id_str,
+        record__firm=firm,
+    ).select_related("record")
+
+    def _cat_grant(g) -> dict:
+        return {
+            "id": str(g.id),
+            "principal_type": g.principal_type,
+            "principal_id": str(g.principal_id),
+            "level": g.level,
+            "granted_at": g.granted_at.isoformat(),
+            "expires_at": g.expires_at.isoformat() if g.expires_at else None,
+            "category_id": str(g.category_id),
+            "category_name": g.category.name if g.category else None,
+        }
+
+    def _rec_grant(g) -> dict:
+        return {
+            "id": str(g.id),
+            "principal_type": g.principal_type,
+            "principal_id": str(g.principal_id),
+            "level": g.level,
+            "granted_at": g.granted_at.isoformat(),
+            "expires_at": g.expires_at.isoformat() if g.expires_at else None,
+            "record_id": str(g.record_id),
+            "record_title": g.record.title if g.record else None,
+        }
+
+    return 200, {
+        "category_grants": [_cat_grant(g) for g in category_grants],
+        "record_grants": [_rec_grant(g) for g in record_grants],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Email-based invitations (Admin/Owner only)
 # ---------------------------------------------------------------------------

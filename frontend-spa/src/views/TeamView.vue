@@ -6,7 +6,7 @@ import { usePermissionsStore } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
-import { XMarkIcon, UserPlusIcon, UsersIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, UserPlusIcon, UsersIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import InviteMemberWizard from '@/components/InviteMemberWizard.vue'
 
@@ -29,6 +29,25 @@ interface Member {
 }
 interface Invitation { id: string; email: string; role: string; is_expired: boolean; is_accepted: boolean; expires_at: string }
 
+interface CategoryGrantItem {
+  id: string
+  level: string
+  category_id: string
+  category_name: string | null
+  expires_at: string | null
+}
+interface RecordGrantItem {
+  id: string
+  level: string
+  record_id: string
+  record_title: string | null
+  expires_at: string | null
+}
+interface MemberGrants {
+  category_grants: CategoryGrantItem[]
+  record_grants: RecordGrantItem[]
+}
+
 const members = ref<Member[]>([])
 const invitations = ref<Invitation[]>([])
 const loading = ref(false)
@@ -38,6 +57,11 @@ const confirmRemoveId = ref<string | null>(null)
 const editingRoleId = ref<string | null>(null)
 const editingRole = ref('')
 const editingExpiresAt = ref<string>('')
+
+// Member grants panel
+const expandedGrantsMemberId = ref<string | null>(null)
+const memberGrantsLoading = ref(false)
+const memberGrantsData = ref<Record<string, MemberGrants>>({})
 
 // Bulk assignment
 const selectedMemberIds = ref<Set<string>>(new Set())
@@ -79,6 +103,28 @@ async function loadTeam() {
   } finally {
     loading.value = false
   }
+}
+
+async function toggleMemberGrants(memberId: string) {
+  if (expandedGrantsMemberId.value === memberId) {
+    expandedGrantsMemberId.value = null
+    return
+  }
+  expandedGrantsMemberId.value = memberId
+  if (!memberGrantsData.value[memberId]) {
+    memberGrantsLoading.value = true
+    const res = await api.get<MemberGrants>(`/api/v1/firms/${firmId.value}/members/${memberId}/grants`)
+    memberGrantsLoading.value = false
+    if (res.ok) {
+      memberGrantsData.value = { ...memberGrantsData.value, [memberId]: res.data }
+    }
+  }
+}
+
+function levelBadgeClass(level: string): string {
+  if (level === 'manage') return 'bg-green-100 text-green-700'
+  if (level === 'edit') return 'bg-blue-100 text-blue-700'
+  return 'bg-gray-100 text-gray-700'
 }
 
 async function removeMember(membershipId: string) {
@@ -300,7 +346,8 @@ onMounted(loadTeam)
           <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('team.selectAll') }}</span>
         </div>
 
-        <div v-for="m in members" :key="m.id" class="flex items-center gap-3 px-5 py-3" :class="selectedMemberIds.has(m.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''">
+        <template v-for="m in members" :key="m.id">
+          <div class="flex items-center gap-3 px-5 py-3" :class="selectedMemberIds.has(m.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''">
           <!-- Checkbox (only for manageable members) -->
           <input
             v-if="canManage && m.role !== 'owner' && m.user_email !== authStore.user?.email"
@@ -366,6 +413,18 @@ onMounted(loadTeam)
             >{{ m.role }}</button>
           </template>
 
+          <!-- Access grants toggle (admin/owner only) -->
+          <button
+            v-if="canManage"
+            @click="toggleMemberGrants(m.id)"
+            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1"
+            :title="expandedGrantsMemberId === m.id ? t('team.hideAccesses') : t('team.viewAccesses')"
+            :aria-label="expandedGrantsMemberId === m.id ? t('team.hideAccesses') : t('team.viewAccesses')"
+          >
+            <ChevronUpIcon v-if="expandedGrantsMemberId === m.id" class="w-4 h-4" />
+            <ChevronDownIcon v-else class="w-4 h-4" />
+          </button>
+
           <!-- Remove -->
           <button
             v-if="canManage && m.role !== 'owner' && m.user_email !== authStore.user?.email"
@@ -373,6 +432,54 @@ onMounted(loadTeam)
             :aria-label="`Remove ${m.user_full_name || m.user_email}`"
             @click="confirmRemoveId = m.id"><XMarkIcon class="w-4 h-4" /></button>
         </div>
+        <!-- Grants expansion panel -->
+        <div
+          v-if="canManage && expandedGrantsMemberId === m.id"
+          class="border-t border-gray-50 dark:border-gray-700 px-14 py-3 bg-gray-50/50 dark:bg-gray-800/50"
+        >
+          <div v-if="memberGrantsLoading && !memberGrantsData[m.id]" class="text-xs text-gray-400 animate-pulse">…</div>
+          <div v-else-if="memberGrantsData[m.id]">
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{{ t('team.memberAccesses') }}</p>
+            <!-- Category grants -->
+            <div v-if="memberGrantsData[m.id].category_grants.length > 0" class="mb-2">
+              <p class="text-xs text-gray-400 dark:text-gray-500 mb-1">{{ t('team.categoryGrants') }}</p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="g in memberGrantsData[m.id].category_grants"
+                  :key="g.id"
+                  class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                  :class="levelBadgeClass(g.level)"
+                >
+                  {{ g.category_name || g.category_id }}
+                  <span class="opacity-70">({{ g.level }})</span>
+                  <span v-if="g.expires_at" class="opacity-50">· {{ new Date(g.expires_at).toLocaleDateString() }}</span>
+                </span>
+              </div>
+            </div>
+            <!-- Record grants -->
+            <div v-if="memberGrantsData[m.id].record_grants.length > 0" class="mb-2">
+              <p class="text-xs text-gray-400 dark:text-gray-500 mb-1">{{ t('team.recordGrants') }}</p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="g in memberGrantsData[m.id].record_grants"
+                  :key="g.id"
+                  class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                  :class="levelBadgeClass(g.level)"
+                >
+                  {{ g.record_title || g.record_id }}
+                  <span class="opacity-70">({{ g.level }})</span>
+                  <span v-if="g.expires_at" class="opacity-50">· {{ new Date(g.expires_at).toLocaleDateString() }}</span>
+                </span>
+              </div>
+            </div>
+            <!-- Empty state -->
+            <p
+              v-if="memberGrantsData[m.id].category_grants.length === 0 && memberGrantsData[m.id].record_grants.length === 0"
+              class="text-xs text-gray-400 dark:text-gray-500 italic"
+            >{{ t('team.noGrantsFound') }}</p>
+          </div>
+        </div>
+        </template>
       </div>
     </div>
 

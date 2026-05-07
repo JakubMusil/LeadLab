@@ -339,7 +339,14 @@
     "quickCreate": "Přidat",
     "quickCreatePlaceholder": "Rychlé přidání záznamu…",
     "recordCreated": "Záznam vytvořen.",
-    "createFailed": "Nepodařilo se vytvořit záznam."
+    "createFailed": "Nepodařilo se vytvořit záznam.",
+    "bulkSelected": "{count} vybráno",
+    "clearSelection": "Zrušit výběr",
+    "shareSelected": "Sdílet vybrané",
+    "bulkShareTitle": "Sdílet {count} záznamů",
+    "bulkShareHint": "Sdílet všechny vybrané záznamy se stejnou úrovní přístupu.",
+    "bulkShareSuccess": "{count} záznamů úspěšně sdíleno.",
+    "bulkShareFailed": "Sdílení některých záznamů selhalo."
   },
   "settings": {
     "title": "Nastavení",
@@ -786,7 +793,18 @@
     "clearSelection": "Zrušit výběr",
     "bulkAssignedToTeam": "{count} členů přiřazeno do týmu",
     "bulkAssignFailed": "Přiřazení k týmu selhalo",
-    "selectAll": "Vybrat vše"
+    "selectAll": "Vybrat vše",
+    "viewAccesses": "Zobrazit přístupy",
+    "hideAccesses": "Skrýt přístupy",
+    "memberAccesses": "Přístupy",
+    "categoryGrants": "Granty kategorie",
+    "recordGrants": "Granty záznamů",
+    "noGrantsFound": "Žádné explicitní přístupy",
+    "grantLevel": "Úroveň",
+    "grantCategory": "Kategorie",
+    "grantRecord": "Záznam",
+    "grantExpires": "Vyprší",
+    "grantPermanent": "Trvalý"
   },
   "calendar": {
     "title": "Kalendář",
