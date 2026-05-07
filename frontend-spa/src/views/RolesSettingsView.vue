@@ -54,6 +54,17 @@ const systemRoles = computed(() => permissionsStore.roles.filter(r => r.is_syste
 const groupedCatalogue = computed(() => permissionsStore.catalogueByGroup)
 const allRoles = computed(() => permissionsStore.roles)
 
+// Memoized code→description Map for O(1) lookup in matrix and compare rows (v3.4)
+const permDescriptionMap = computed<Map<string, string>>(() => {
+  const map = new Map<string, string>()
+  for (const items of Object.values(groupedCatalogue.value)) {
+    for (const item of items) {
+      map.set(item.code, item.description)
+    }
+  }
+  return map
+})
+
 // Compare roles computed helpers (v3.4)
 const compareRoleA = computed(() => allRoles.value.find(r => r.id === compareRoleAId.value) ?? null)
 const compareRoleB = computed(() => allRoles.value.find(r => r.id === compareRoleBId.value) ?? null)
@@ -71,7 +82,7 @@ const compareRows = computed<CompareRow[]>(() => {
   const setB = new Set(compareRoleB.value.permissions)
   const allCodes = new Set([...setA, ...setB])
   const rows: CompareRow[] = []
-  for (const [group, items] of Object.entries(groupedCatalogue.value)) {
+  for (const [, items] of Object.entries(groupedCatalogue.value)) {
     for (const item of items) {
       if (allCodes.has(item.code)) {
         rows.push({ code: item.code, description: item.description, inA: setA.has(item.code), inB: setB.has(item.code) })
@@ -81,13 +92,9 @@ const compareRows = computed<CompareRow[]>(() => {
   return rows
 })
 
-// Permission description lookup helper (v3.4)
+// Permission description lookup helper (v3.4) – O(1) via memoized Map
 function permDescription(code: string): string {
-  for (const items of Object.values(groupedCatalogue.value)) {
-    const found = items.find(i => i.code === code)
-    if (found) return found.description
-  }
-  return code
+  return permDescriptionMap.value.get(code) ?? code
 }
 
 async function loadData() {
