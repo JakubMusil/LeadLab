@@ -613,8 +613,8 @@ def update_branding(request, firm_id: str, payload: FirmBrandingIn = Form(...), 
 
 
 @router.get("/{firm_id}/members", auth=django_auth, response={200: List[MembershipOut], 403: ErrorOut})
-def list_members(request, firm_id: str):
-    """List all members of a Firm."""
+def list_members(request, firm_id: str, q: Optional[str] = None):
+    """List all members of a Firm. Supports optional full-text search via ?q=."""
     try:
         firm = Firm.objects.get(id=firm_id, is_active=True)
     except Firm.DoesNotExist:
@@ -624,6 +624,13 @@ def list_members(request, firm_id: str):
         return 403, {"detail": "You are not a member of this Firm."}
 
     members = Membership.objects.filter(firm=firm).select_related("user").prefetch_related("roles")
+    if q:
+        from django.db import models as _dj_models  # noqa: PLC0415
+        members = members.filter(
+            _dj_models.Q(user__email__icontains=q)
+            | _dj_models.Q(user__first_name__icontains=q)
+            | _dj_models.Q(user__last_name__icontains=q)
+        )
     return 200, [_membership_out(m) for m in members]
 
 

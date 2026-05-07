@@ -2781,6 +2781,13 @@
     "auditTargetAll": "Všechny cíle",
     "noDescription": "Bez popisu",
     "grantAccess": "Udělit přístup",
-    "noMembers": "Žádní členové v tomto týmu"
+    "noMembers": "Žádní členové v tomto týmu",
+    "team": "Tým"
+  },
+  "peoplePicker": {
+    "placeholder": "Vyberte člena...",
+    "search": "Hledat jméno nebo e-mail",
+    "noResults": "Žádné výsledky",
+    "addMember": "Přidat člena..."
   }
 }

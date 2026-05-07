@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut, type CategoryFieldOut } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
-import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -18,13 +17,15 @@ import {
   Bars3Icon,
   LockOpenIcon,
 } from '@heroicons/vue/24/outline'
+import PeoplePicker from '@/components/PeoplePicker.vue'
+import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
 const toast = useToast()
-const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const { t } = useI18n()
 const { can } = useCan()
+const membersStore = useMembersStore()
 
 // ---------------------------------------------------------------------------
 // State
@@ -95,6 +96,7 @@ interface GrantOut {
   id: string
   principal_type: string
   principal_id: string
+  principal_name: string | null
   level: string
   granted_by_id: string | null
   granted_at: string
@@ -107,6 +109,12 @@ const showGrantForm = ref(false)
 const newGrantPrincipalId = ref('')
 const newGrantLevel = ref('view')
 const savingGrant = ref(false)
+
+function grantDisplayName(grant: GrantOut): string {
+  if (grant.principal_name) return grant.principal_name
+  if (grant.principal_type === 'user') return membersStore.displayNameById(grant.principal_id)
+  return grant.principal_id
+}
 
 async function loadCategoryGrants() {
   if (!selectedCategoryId.value) return
@@ -186,29 +194,12 @@ const availableFieldKeys = computed(() =>
 // ---------------------------------------------------------------------------
 // Role/permissions
 // ---------------------------------------------------------------------------
-interface Member {
-  id: string
-  user_id: string
-  user_email: string
-  role: string
-}
-
-const members = ref<Member[]>([])
+const firmId = computed(() => firmStore.activeFirm ? String(firmStore.activeFirm.id) : '')
 
 async function loadMembers() {
-  const firmId = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
-  if (!firmId) return
-  const res = await api.get<Member[]>(`/api/v1/firms/${firmId}/members`)
-  if (res.ok) members.value = res.data
+  if (!firmId.value) return
+  await membersStore.fetchMembers(firmId.value)
 }
-
-const currentMember = computed(() =>
-  members.value.find((m) => m.user_email === authStore.user?.email),
-)
-
-const isAdminOrOwner = computed(() =>
-  currentMember.value?.role === 'admin' || currentMember.value?.role === 'owner',
-)
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -1209,7 +1200,7 @@ const newPattern = computed({
               >
                 <div class="flex items-center gap-2 min-w-0">
                   <span class="text-gray-500 text-xs uppercase tracking-wide flex-shrink-0">{{ grant.principal_type }}</span>
-                  <span class="font-mono text-xs text-gray-600 truncate">{{ grant.principal_id }}</span>
+                  <span class="text-sm text-gray-800 truncate">{{ grantDisplayName(grant) }}</span>
                   <span
                     class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
                     :class="{
@@ -1235,11 +1226,13 @@ const newPattern = computed({
               <!-- Add grant form -->
               <div v-if="showGrantForm" class="p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2 mt-2">
                 <div class="grid grid-cols-2 gap-2">
-                  <input
-                    v-model="newGrantPrincipalId"
-                    :placeholder="t('pipeline.categoryGrantUserIdPlaceholder')"
-                    class="col-span-2 text-sm border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300"
-                  />
+                  <div class="col-span-2">
+                    <PeoplePicker
+                      v-model="newGrantPrincipalId"
+                      :firm-id="firmId"
+                      :placeholder="t('peoplePicker.placeholder')"
+                    />
+                  </div>
                   <select
                     v-model="newGrantLevel"
                     class="col-span-2 text-sm border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 bg-white"

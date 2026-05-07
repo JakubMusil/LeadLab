@@ -7319,6 +7319,7 @@ class GrantOut(Schema):
     id: str
     principal_type: str
     principal_id: str
+    principal_name: Optional[str]  # resolved display name (email or team name)
     level: str
     granted_by_id: Optional[str]
     granted_at: str
@@ -7330,11 +7331,29 @@ class GrantAccessOut(Schema):
     record_grants: List[GrantOut]
 
 
+def _resolve_principal_name(principal_type: str, principal_id) -> Optional[str]:
+    """Return a human-readable display name for a grant principal."""
+    try:
+        if principal_type == "user":
+            m = Membership.objects.select_related("user").filter(id=str(principal_id)).first()
+            if m:
+                return m.user.get_full_name() or m.user.email
+        elif principal_type == "team":
+            from firms.models import Team  # noqa: PLC0415
+            t = Team.objects.filter(id=str(principal_id)).first()
+            if t:
+                return t.name
+    except Exception:  # noqa: BLE001 - best-effort; never crash the response
+        pass
+    return None
+
+
 def _grant_out(grant) -> dict:
     return {
         "id": str(grant.id),
         "principal_type": grant.principal_type,
         "principal_id": str(grant.principal_id),
+        "principal_name": _resolve_principal_name(grant.principal_type, grant.principal_id),
         "level": grant.level,
         "granted_by_id": str(grant.granted_by_id) if grant.granted_by_id else None,
         "granted_at": grant.granted_at.isoformat(),
