@@ -102,7 +102,13 @@ function expiryLabel(expires_at: string | null): string {
   return t('permissions.expiryInDays', { days })
 }
 
-async function addGrant() {
+function switchTab(tab: Tab) {
+  activeTab.value = tab
+  selectedMembershipId.value = ''
+  selectedTeamId.value = ''
+  selectedLevel.value = 'view'
+  expiresAt.value = ''
+}
   const principalId = activeTab.value === 'people' ? selectedMembershipId.value : selectedTeamId.value
   if (!principalId) return
   grantLoading.value = true
@@ -140,6 +146,9 @@ async function changeLevel(grant: RecordGrant, newLevel: string) {
   const res = await api.post<RecordGrant>(`/api/v1/crm/records/${props.recordId}/grants`, payload)
   levelUpdating.value = null
   if (res.ok && res.data) {
+    // The backend upserts by (record, principal_type, principal_id), so the returned ID may
+    // differ from the local grant.id if the record was replaced. Match by original ID first,
+    // then fall back to the new ID returned by the server.
     const idx = grants.value.findIndex(g => g.id === grant.id || g.id === res.data!.id)
     if (idx >= 0) grants.value[idx] = res.data
     toast.success(t('permissions.levelChanged'))
@@ -195,7 +204,7 @@ watch(() => props.open, (val) => {
         <button
           v-for="tab in (['people', 'teams'] as const)"
           :key="tab"
-          @click="activeTab = tab; selectedMembershipId = ''; selectedTeamId = ''; selectedLevel = 'view'; expiresAt = ''"
+          @click="switchTab(tab)"
           class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors"
           :class="activeTab === tab
             ? 'border-brand text-brand'
