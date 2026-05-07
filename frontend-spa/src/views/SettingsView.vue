@@ -14,10 +14,6 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import { useMoney, SUPPORTED_CURRENCIES, CURRENCY_DEFAULT_LOCALE } from '@/composables/useMoney'
 import CurrencySelect from '@/components/CurrencySelect.vue'
 import PipelineSettingsView from '@/views/PipelineSettingsView.vue'
-import RolesSettingsView from '@/views/RolesSettingsView.vue'
-import TeamsSettingsView from '@/views/TeamsSettingsView.vue'
-import AuditLogSettingsView from '@/views/AuditLogSettingsView.vue'
-import PermissionsOverviewView from '@/views/PermissionsOverviewView.vue'
 import { usePermissionsStore } from '@/stores/permissions'
 import { useCan } from '@/composables/useCan'
 
@@ -106,8 +102,12 @@ const workspaceLoading = ref(false)
 const workspaceError = ref('')
 const workspaceSuccess = ref(false)
 
-// Settings tab: 'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit' | 'overview'
-const activeTab = ref<'user' | 'workspace' | 'pipeline' | 'roles' | 'teams' | 'audit' | 'overview'>('user')
+// Settings tab: 'user' | 'workspace' | 'pipeline'
+//
+// Roles, Teams, Audit and Permissions Overview have moved to the dedicated
+// "People & permissions" page (`/app/people` and `/app/team`). Settings
+// keeps only profile, workspace, and pipeline configuration.
+const activeTab = ref<'user' | 'workspace' | 'pipeline'>('user')
 
 // Danger zone
 const confirmDeleteWorkspace = ref(false)
@@ -967,30 +967,6 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
         class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
         @click="activeTab = 'pipeline'"
       >{{ t('settings.tabPipeline') }}</button>
-      <button
-        v-if="permissionsStore.canManageRoles"
-        :class="activeTab === 'roles' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-        @click="activeTab = 'roles'"
-      >{{ t('permissions.tabRoles') }}</button>
-      <button
-        v-if="permissionsStore.canManageTeams"
-        :class="activeTab === 'teams' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-        @click="activeTab = 'teams'"
-      >{{ t('permissions.tabTeams') }}</button>
-      <button
-        v-if="permissionsStore.canManageRoles"
-        :class="activeTab === 'audit' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-        @click="activeTab = 'audit'"
-      >{{ t('permissions.tabAuditLog') }}</button>
-      <button
-        v-if="permissionsStore.canManageRoles"
-        :class="activeTab === 'overview' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-        @click="activeTab = 'overview'"
-      >{{ t('permissions.tabOverview') }}</button>
     </div>
 
     <!-- ==================== USER TAB ==================== -->
@@ -1940,30 +1916,6 @@ const CF_TYPE_LABELS = computed<Record<string, string>>(() => ({
       <PipelineSettingsView />
     </div>
     <!-- ==================== END PIPELINE TAB ==================== -->
-
-    <!-- ==================== ROLES TAB ==================== -->
-    <div v-show="activeTab === 'roles'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-      <RolesSettingsView />
-    </div>
-    <!-- ==================== END ROLES TAB ==================== -->
-
-    <!-- ==================== TEAMS TAB ==================== -->
-    <div v-show="activeTab === 'teams'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-      <TeamsSettingsView />
-    </div>
-    <!-- ==================== END TEAMS TAB ==================== -->
-
-    <!-- ==================== AUDIT TAB ==================== -->
-    <div v-show="activeTab === 'audit'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-      <AuditLogSettingsView />
-    </div>
-    <!-- ==================== END AUDIT TAB ==================== -->
-
-    <!-- ==================== OVERVIEW TAB ==================== -->
-    <div v-show="activeTab === 'overview'" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-      <PermissionsOverviewView />
-    </div>
-    <!-- ==================== END OVERVIEW TAB ==================== -->
 
   </div>
 

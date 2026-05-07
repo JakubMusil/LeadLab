@@ -106,8 +106,13 @@ const router = createRouter({
         },
         {
           path: 'team',
-          component: () => import('@/views/TeamView.vue'),
-          meta: { title: 'Team' },
+          component: () => import('@/views/PeoplePermissionsView.vue'),
+          meta: { title: 'People & permissions' },
+        },
+        {
+          path: 'people',
+          component: () => import('@/views/PeoplePermissionsView.vue'),
+          meta: { title: 'People & permissions' },
         },
         {
           path: 'plugins',
