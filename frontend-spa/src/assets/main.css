@@ -24,8 +24,8 @@
 /* High-contrast (forced-colors / Windows High Contrast) badge overrides.
  * Tailwind utility classes use background-color tokens that are stripped in
  * forced-colors mode. These rules restore visible borders and meaningful text
- * for semantic status badges so keyboard/screen-reader users relying on
- * Windows High Contrast Mode still get correct visual feedback. */
+ * for semantic status badges for users relying on Windows High Contrast Mode
+ * for improved visual contrast. */
 @media (forced-colors: active) {
   /* Member-expiry badges (TeamView.vue) */
   .badge-expired,
