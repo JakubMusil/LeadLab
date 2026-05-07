@@ -2784,7 +2784,16 @@
     "createFromTemplate": "Aus Vorlage erstellen",
     "rolePresetsTitle": "Rollenvorlagen",
     "rolePresetsHint": "Wählen Sie einen vorgefertigten Ausgangspunkt. Berechtigungen können nach der Erstellung angepasst werden.",
-    "loadingPresets": "Vorlagen werden geladen…"
+    "loadingPresets": "Vorlagen werden geladen…",
+    "roleMembers": "Mitglieder",
+    "compareRoles": "Rollen vergleichen",
+    "compareRolesTitle": "Rollen vergleichen",
+    "compareRolesHint": "Wählen Sie zwei Rollen aus, um deren Berechtigungen zu vergleichen.",
+    "compareRoleA": "Rolle A",
+    "compareRoleB": "Rolle B",
+    "comparePermission": "Berechtigung",
+    "compareSelectBoth": "Wählen Sie zwei Rollen zum Vergleichen aus.",
+    "compareNoDiff": "Keine Berechtigungen zum Vergleichen."
   },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",
@@ -2821,6 +2830,7 @@
     "sendInvite": "Einladung senden",
     "sending": "Wird gesendet…",
     "invitationSent": "Einladung gesendet.",
-    "failedToInvite": "Einladung konnte nicht gesendet werden."
+    "failedToInvite": "Einladung konnte nicht gesendet werden.",
+    "quickPresets": "Schnellauswahl"
   }
 }

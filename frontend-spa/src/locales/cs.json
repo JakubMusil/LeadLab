@@ -2786,7 +2786,16 @@
     "createFromTemplate": "Vytvořit ze šablony",
     "rolePresetsTitle": "Šablony rolí",
     "rolePresetsHint": "Vyberte předpřipravený výchozí bod. Oprávnění lze po vytvoření role kdykoli upravit.",
-    "loadingPresets": "Načítání šablon…"
+    "loadingPresets": "Načítání šablon…",
+    "roleMembers": "Členů",
+    "compareRoles": "Porovnat role",
+    "compareRolesTitle": "Porovnat role",
+    "compareRolesHint": "Vyberte dvě role a porovnejte jejich oprávnění.",
+    "compareRoleA": "Role A",
+    "compareRoleB": "Role B",
+    "comparePermission": "Oprávnění",
+    "compareSelectBoth": "Vyberte dvě role pro porovnání.",
+    "compareNoDiff": "Žádná oprávnění k porovnání."
   },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",
@@ -2823,6 +2832,7 @@
     "sendInvite": "Odeslat pozvánku",
     "sending": "Odesílám…",
     "invitationSent": "Pozvánka odeslána.",
-    "failedToInvite": "Nepodařilo se odeslat pozvánku."
+    "failedToInvite": "Nepodařilo se odeslat pozvánku.",
+    "quickPresets": "Rychlý výběr"
   }
 }

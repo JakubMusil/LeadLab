@@ -2784,7 +2784,16 @@
     "createFromTemplate": "Utwórz z szablonu",
     "rolePresetsTitle": "Szablony ról",
     "rolePresetsHint": "Wybierz gotowy punkt startowy. Uprawnienia można dostosować po utworzeniu roli.",
-    "loadingPresets": "Ładowanie szablonów…"
+    "loadingPresets": "Ładowanie szablonów…",
+    "roleMembers": "Członków",
+    "compareRoles": "Porównaj role",
+    "compareRolesTitle": "Porównaj role",
+    "compareRolesHint": "Wybierz dwie role, aby porównać ich uprawnienia.",
+    "compareRoleA": "Rola A",
+    "compareRoleB": "Rola B",
+    "comparePermission": "Uprawnienie",
+    "compareSelectBoth": "Wybierz dwie role do porównania.",
+    "compareNoDiff": "Brak uprawnień do porównania."
   },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",
@@ -2821,6 +2830,7 @@
     "sendInvite": "Wyślij zaproszenie",
     "sending": "Wysyłanie…",
     "invitationSent": "Zaproszenie wysłane.",
-    "failedToInvite": "Nie udało się wysłać zaproszenia."
+    "failedToInvite": "Nie udało się wysłać zaproszenia.",
+    "quickPresets": "Szybki wybór"
   }
 }

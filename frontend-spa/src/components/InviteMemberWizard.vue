@@ -3,14 +3,14 @@
  * InviteMemberWizard – 3-step modal for inviting a new workspace member.
  *
  * Step 1: Email address.
- * Step 2: Role(s) + default scope.
+ * Step 2: Role(s) + default scope (with quick preset shortcuts).
  * Step 3: Team assignment (optional).
  *
  * Emits `invited` when the invitation is successfully sent.
  */
 import { ref, computed, watch } from 'vue'
 import { useFirmStore } from '@/stores/firm'
-import { usePermissionsStore } from '@/stores/permissions'
+import { usePermissionsStore, type RolePreset } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -20,6 +20,7 @@ import {
   ChevronLeftIcon,
   CheckIcon,
   UserPlusIcon,
+  SparklesIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{ open: boolean }>()
@@ -47,6 +48,10 @@ const emailError = ref('')
 const selectedRoleCodes = ref<string[]>(['member'])
 const defaultScope = ref<'own' | 'team' | 'all'>('own')
 
+// Step 2 – presets (v3.5)
+const presets = ref<RolePreset[]>([])
+const presetsLoading = ref(false)
+
 // Step 3 fields
 const selectedTeamId = ref<string>('')
 
@@ -65,17 +70,23 @@ watch(() => props.open, (val) => {
     selectedTeamId.value = ''
     submitError.value = ''
     submitting.value = false
+    presets.value = []
     // Ensure teams & roles are loaded
     if (firmId.value) {
       permissionsStore.fetchTeams(firmId.value)
       permissionsStore.fetchRoles(firmId.value)
+      loadPresets()
     }
   }
 })
 
-const nonSystemRoles = computed(() =>
-  permissionsStore.roles.filter(r => !r.is_system || r.code === 'member' || r.code === 'guest')
-)
+async function loadPresets() {
+  if (!firmId.value) return
+  presetsLoading.value = true
+  presets.value = await permissionsStore.fetchRolePresets(firmId.value)
+  presetsLoading.value = false
+}
+
 const allRoles = computed(() => permissionsStore.roles)
 
 function toggleRole(code: string) {
@@ -84,6 +95,17 @@ function toggleRole(code: string) {
     selectedRoleCodes.value = selectedRoleCodes.value.filter(c => c !== code)
   } else {
     selectedRoleCodes.value = [...selectedRoleCodes.value, code]
+  }
+}
+
+/** Apply a preset: select its matching custom role (by code) if it exists, otherwise select 'member'. */
+function applyPreset(preset: RolePreset) {
+  const matchingRole = allRoles.value.find(r => r.code === preset.code)
+  if (matchingRole) {
+    selectedRoleCodes.value = [matchingRole.code]
+  } else {
+    // Preset role doesn't exist as custom role yet – fall back to 'member' with a note
+    selectedRoleCodes.value = ['member']
   }
 }
 
@@ -203,6 +225,28 @@ async function submit() {
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('wizard.step2Title') }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wizard.step2Hint') }}</p>
+              </div>
+
+              <!-- Quick presets (v3.5) -->
+              <div v-if="presets.length > 0">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
+                  <SparklesIcon class="h-3 w-3 text-amber-500" />
+                  {{ t('wizard.quickPresets') }}
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="preset in presets"
+                    :key="preset.code"
+                    type="button"
+                    @click="applyPreset(preset)"
+                    :title="preset.description"
+                    class="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
+                    :class="selectedRoleCodes.includes(preset.code)
+                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+                  >{{ preset.name }}</button>
+                </div>
+                <hr class="my-2 border-gray-100 dark:border-gray-800" />
               </div>
 
               <!-- Role selector -->
