@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut, type CategoryFieldOut } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
-import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -23,7 +22,6 @@ import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
 const toast = useToast()
-const authStore = useAuthStore()
 const firmStore = useFirmStore()
 const { t } = useI18n()
 const { can } = useCan()
@@ -196,30 +194,12 @@ const availableFieldKeys = computed(() =>
 // ---------------------------------------------------------------------------
 // Role/permissions
 // ---------------------------------------------------------------------------
-interface Member {
-  id: string
-  user_id: string
-  user_email: string
-  role: string
-}
-
-const members = ref<Member[]>([])
 const firmId = computed(() => firmStore.activeFirm ? String(firmStore.activeFirm.id) : '')
 
 async function loadMembers() {
   if (!firmId.value) return
   await membersStore.fetchMembers(firmId.value)
-  const res = await api.get<Member[]>(`/api/v1/firms/${firmId.value}/members`)
-  if (res.ok) members.value = res.data
 }
-
-const currentMember = computed(() =>
-  members.value.find((m) => m.user_email === authStore.user?.email),
-)
-
-const isAdminOrOwner = computed(() =>
-  currentMember.value?.role === 'admin' || currentMember.value?.role === 'owner',
-)
 
 // ---------------------------------------------------------------------------
 // Lifecycle

@@ -7343,7 +7343,7 @@ def _resolve_principal_name(principal_type: str, principal_id) -> Optional[str]:
             t = Team.objects.filter(id=str(principal_id)).first()
             if t:
                 return t.name
-    except Exception:  # noqa: BLE001 – best-effort; never crash the response
+    except Exception:  # noqa: BLE001 - best-effort; never crash the response
         pass
     return None
 

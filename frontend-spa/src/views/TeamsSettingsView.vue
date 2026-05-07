@@ -4,7 +4,6 @@ import { useFirmStore } from '@/stores/firm'
 import { usePermissionsStore, type TeamOut } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
-import { api } from '@/api'
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import PeoplePicker from '@/components/PeoplePicker.vue'
@@ -38,11 +37,8 @@ const pendingDeleteTeam = ref<TeamOut | null>(null)
 
 // Members management
 const expandedTeamId = ref<string | null>(null)
-const allMembers = ref<{ id: string; user_email: string; user_full_name: string }[]>([])
 const addMemberLoading = ref(false)
 const selectedMembershipId = ref('')
-
-interface Member { id: string; user_email: string; user_full_name: string; role: string; firm_id: string }
 
 async function loadData() {
   if (!firmId.value) return
@@ -52,11 +48,6 @@ async function loadData() {
       permissionsStore.fetchTeams(firmId.value),
       membersStore.fetchMembers(firmId.value),
     ])
-    allMembers.value = membersStore.members.map((m) => ({
-      id: m.id,
-      user_email: m.user_email,
-      user_full_name: m.user_full_name,
-    }))
   } finally {
     loading.value = false
   }
