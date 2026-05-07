@@ -94,6 +94,8 @@ class MemberInviteIn(Schema):
     role_codes: List[str] = []
     default_scope: str = "own"
     team_id: Optional[str] = None
+    # v4.4 – category IDs pre-selected when default_scope='category'
+    category_ids: List[str] = []
 
 
 class InvitationOut(Schema):
@@ -928,9 +930,11 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
         existing_invitation.invited_role_codes = payload.role_codes
         existing_invitation.invited_default_scope = payload.default_scope
         existing_invitation.invited_team_id = payload.team_id or None
+        existing_invitation.invited_category_ids = payload.category_ids
         existing_invitation.save(update_fields=[
             "expires_at", "role", "invited_by",
             "invited_role_codes", "invited_default_scope", "invited_team_id",
+            "invited_category_ids",
         ])
         invitation = existing_invitation
     else:
@@ -942,6 +946,7 @@ def create_invitation(request, firm_id: str, payload: MemberInviteIn):
             invited_role_codes=payload.role_codes,
             invited_default_scope=payload.default_scope,
             invited_team_id=payload.team_id or None,
+            invited_category_ids=payload.category_ids,
         )
 
     # Dispatch the email asynchronously (gracefully degrades if Celery is not running).

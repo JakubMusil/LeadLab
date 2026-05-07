@@ -7335,7 +7335,8 @@ def _resolve_principal_name(principal_type: str, principal_id) -> Optional[str]:
     """Return a human-readable display name for a grant principal."""
     try:
         if principal_type == "user":
-            m = Membership.objects.select_related("user").filter(id=str(principal_id)).first()
+            # principal_id is the User's UUID (User.pk), not Membership.pk
+            m = Membership.objects.select_related("user").filter(user_id=str(principal_id)).first()
             if m:
                 return m.user.get_full_name() or m.user.email
         elif principal_type == "team":
@@ -7368,6 +7369,62 @@ def _parse_expires_at(expires_at_str: Optional[str]):
     if parsed is None:
         raise ValueError(f"Invalid expires_at datetime: {expires_at_str!r}")
     return parsed
+
+
+def _notify_grant_recipient(
+    principal_type: str,
+    principal_id,
+    firm,
+    resource_name: str,
+    resource_type: str,
+    level: str,
+    granted_by_user,
+) -> None:
+    """Send an email to the grantee informing them of a new access grant.
+
+    Only sends for ``principal_type='user'``.  Team grants do not have a
+    single email recipient, so they are silently skipped.  All errors are
+    caught so that a notification failure never blocks the API response.
+    """
+    if principal_type != "user":
+        return
+    try:
+        from django.core.mail import send_mail  # noqa: PLC0415
+        from django.conf import settings as django_settings  # noqa: PLC0415
+
+        grantee_membership = (
+            Membership.objects.select_related("user")
+            .filter(user_id=str(principal_id), firm=firm)
+            .first()
+        )
+        if grantee_membership is None:
+            return
+
+        grantee_email = grantee_membership.user.email
+        granted_by_name = (
+            granted_by_user.get_full_name() or granted_by_user.email
+            if granted_by_user
+            else "an administrator"
+        )
+        level_labels = {"view": "view-only", "edit": "edit", "manage": "manage"}
+        level_label = level_labels.get(level, level)
+
+        subject = f"[LeadLab] You have been granted {level_label} access to a {resource_type}"
+        body = (
+            f"Hi,\n\n"
+            f"{granted_by_name} has granted you {level_label} access to the "
+            f"{resource_type} \"{resource_name}\" in the workspace \"{firm.name}\".\n\n"
+            f"You can now access it by logging in to LeadLab.\n\n"
+            f"Best regards,\nThe LeadLab team"
+        )
+        from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@leadlab.app")
+        send_mail(subject, body, from_email, [grantee_email], fail_silently=False)
+    except Exception:  # noqa: BLE001 – notifications must never crash the API
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "_notify_grant_recipient: failed to send grant notification",
+            exc_info=True,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -7438,6 +7495,16 @@ def create_category_grant(request, category_id: str, payload: GrantIn):
         },
     )
     status = 201 if created else 200
+    if created:
+        _notify_grant_recipient(
+            principal_type=payload.principal_type,
+            principal_id=principal_uuid,
+            firm=request.firm,
+            resource_name=category.name,
+            resource_type="category",
+            level=payload.level,
+            granted_by_user=membership.user,
+        )
     return status, _grant_out(grant)
 
 
@@ -7566,6 +7633,16 @@ def create_record_grant(request, record_id: str, payload: GrantIn):
         },
     )
     status = 201 if created else 200
+    if created:
+        _notify_grant_recipient(
+            principal_type=payload.principal_type,
+            principal_id=principal_uuid,
+            firm=request.firm,
+            resource_name=record.title,
+            resource_type="record",
+            level=payload.level,
+            granted_by_user=membership.user,
+        )
     return status, _grant_out(grant)
 
 

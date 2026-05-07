@@ -11,6 +11,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { usePermissionsStore, type RolePreset } from '@/stores/permissions'
+import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 
 const firmStore = useFirmStore()
 const permissionsStore = usePermissionsStore()
+const pipelineStore = usePipelineStore()
 const toast = useToast()
 const { t } = useI18n()
 
@@ -46,7 +48,7 @@ const emailError = ref('')
 
 // Step 2 fields
 const selectedRoleCodes = ref<string[]>(['member'])
-const defaultScope = ref<'own' | 'team' | 'all'>('own')
+const defaultScope = ref<'own' | 'team' | 'category' | 'all'>('own')
 
 // Step 2 – presets (v3.5)
 const presets = ref<RolePreset[]>([])
@@ -54,6 +56,7 @@ const presetsLoading = ref(false)
 
 // Step 3 fields
 const selectedTeamId = ref<string>('')
+const selectedCategoryIds = ref<string[]>([])
 
 // Submission state
 const submitting = ref(false)
@@ -73,14 +76,18 @@ watch(() => props.open, async (val) => {
     selectedRoleCodes.value = ['member']
     defaultScope.value = 'own'
     selectedTeamId.value = ''
+    selectedCategoryIds.value = []
     submitError.value = ''
     submitting.value = false
     presets.value = []
-    // Ensure teams & roles are loaded
+    // Ensure teams, roles and categories are loaded
     if (firmId.value) {
       permissionsStore.fetchTeams(firmId.value)
       permissionsStore.fetchRoles(firmId.value)
       loadPresets()
+      if (pipelineStore.categories.length === 0) {
+        pipelineStore.fetchCategories()
+      }
     }
     await nextTick()
     const firstFocusable = dialogRef.value?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
@@ -126,6 +133,16 @@ async function loadPresets() {
 }
 
 const allRoles = computed(() => permissionsStore.roles)
+const allCategories = computed(() => pipelineStore.categories)
+
+function toggleCategory(id: string) {
+  const idx = selectedCategoryIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedCategoryIds.value = selectedCategoryIds.value.filter(c => c !== id)
+  } else {
+    selectedCategoryIds.value = [...selectedCategoryIds.value, id]
+  }
+}
 
 function toggleRole(code: string) {
   const idx = selectedRoleCodes.value.indexOf(code)
@@ -180,6 +197,9 @@ async function submit() {
     }
     if (selectedTeamId.value) {
       payload.team_id = selectedTeamId.value
+    }
+    if (defaultScope.value === 'category' && selectedCategoryIds.value.length > 0) {
+      payload.category_ids = selectedCategoryIds.value
     }
     const res = await api.post(`/api/v1/firms/${firmId.value}/invitations/`, payload)
     if (res.ok || res.status === 202) {
@@ -316,16 +336,17 @@ async function submit() {
               <!-- Default scope -->
               <div>
                 <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('wizard.scopeLabel') }}</p>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                   <button
                     v-for="opt in [
                       { value: 'own', label: t('permissions.scopeOwn'), desc: t('wizard.scopeOwnDesc') },
                       { value: 'team', label: t('permissions.scopeTeam'), desc: t('wizard.scopeTeamDesc') },
+                      { value: 'category', label: t('permissions.scopeCategory'), desc: t('wizard.scopeCategoryDesc') },
                       { value: 'all', label: t('permissions.scopeAll'), desc: t('wizard.scopeAllDesc') },
                     ]"
                     :key="opt.value"
                     type="button"
-                    @click="defaultScope = opt.value as 'own' | 'team' | 'all'"
+                    @click="defaultScope = opt.value as 'own' | 'team' | 'category' | 'all'"
                     class="flex flex-col items-start p-2 rounded-lg border text-left transition-colors"
                     :class="defaultScope === opt.value
                       ? 'border-brand bg-brand/5 dark:bg-brand/10'
@@ -340,15 +361,44 @@ async function submit() {
               </div>
             </div>
 
-            <!-- Step 3: Team (optional) -->
+            <!-- Step 3: Team / Categories (optional) -->
             <div v-else-if="step === 3" class="space-y-4">
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t('wizard.step3Title') }}</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wizard.step3Hint') }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ defaultScope === 'category' ? t('wizard.step3HintCategory') : t('wizard.step3Hint') }}</p>
               </div>
 
-              <!-- Team picker -->
-              <div>
+              <!-- Category picker – shown when scope=category -->
+              <div v-if="defaultScope === 'category'">
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('wizard.categoriesLabel') }}</p>
+                <div v-if="allCategories.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic">
+                  {{ t('wizard.noCategories') }}
+                </div>
+                <div v-else class="flex flex-wrap gap-2">
+                  <button
+                    v-for="cat in allCategories"
+                    :key="cat.id"
+                    type="button"
+                    @click="toggleCategory(cat.id)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors"
+                    :class="selectedCategoryIds.includes(cat.id)
+                      ? 'border-brand bg-brand/10 text-brand'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                  >
+                    <span
+                      v-if="cat.color"
+                      class="inline-block w-2 h-2 rounded-full shrink-0"
+                      :style="{ background: cat.color }"
+                    />
+                    {{ cat.name }}
+                    <CheckIcon v-if="selectedCategoryIds.includes(cat.id)" class="h-3 w-3" />
+                  </button>
+                </div>
+                <p v-if="selectedCategoryIds.length === 0" class="mt-1 text-xs text-amber-600">{{ t('wizard.categoryRequired') }}</p>
+              </div>
+
+              <!-- Team picker – shown when scope != category -->
+              <div v-else>
                 <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('wizard.teamLabel') }}</p>
                 <div v-if="permissionsStore.teams.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic">
                   {{ t('wizard.noTeams') }}
@@ -392,7 +442,11 @@ async function submit() {
                   {{ selectedRoleCodes.join(', ') || '–' }}
                 </p>
                 <p class="text-gray-700 dark:text-gray-300"><span class="font-medium">{{ t('wizard.scopeLabel') }}:</span> {{ defaultScope }}</p>
-                <p v-if="selectedTeamId" class="text-gray-700 dark:text-gray-300">
+                <p v-if="defaultScope === 'category' && selectedCategoryIds.length > 0" class="text-gray-700 dark:text-gray-300">
+                  <span class="font-medium">{{ t('wizard.categoriesLabel') }}:</span>
+                  {{ selectedCategoryIds.map(id => allCategories.find(c => c.id === id)?.name ?? id).join(', ') }}
+                </p>
+                <p v-if="selectedTeamId && defaultScope !== 'category'" class="text-gray-700 dark:text-gray-300">
                   <span class="font-medium">{{ t('wizard.teamLabel') }}:</span>
                   {{ permissionsStore.teams.find(t => t.id === selectedTeamId)?.name ?? selectedTeamId }}
                 </p>
@@ -432,7 +486,7 @@ async function submit() {
               <button
                 v-else
                 @click="submit"
-                :disabled="submitting || selectedRoleCodes.length === 0"
+                :disabled="submitting || selectedRoleCodes.length === 0 || (defaultScope === 'category' && selectedCategoryIds.length === 0)"
                 class="inline-flex items-center gap-1 px-4 py-2 bg-brand text-white text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-50"
               >
                 <CheckIcon class="h-4 w-4" />

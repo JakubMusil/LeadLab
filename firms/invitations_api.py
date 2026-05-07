@@ -157,6 +157,20 @@ def accept_invitation(request, token: str, payload: AcceptInvitationIn):
                 firm=firm, code__in=invitation.invited_role_codes
             )
             membership.roles.set(roles)
+        # v4.4 – create CategoryGrants when invited with scope='category'.
+        if invitation.invited_default_scope == "category" and invitation.invited_category_ids:
+            from crm.models import Category, CategoryGrant
+            for cat_id in invitation.invited_category_ids:
+                try:
+                    category = Category.objects.get(id=cat_id, firm=firm)
+                    CategoryGrant.objects.get_or_create(
+                        category=category,
+                        principal_type="user",
+                        principal_id=user.pk,
+                        defaults={"level": "view", "granted_by": membership},
+                    )
+                except Category.DoesNotExist:
+                    pass  # category may have been deleted; skip silently
         invitation.accepted_at = django_timezone.now()
         invitation.save(update_fields=["accepted_at"])
 

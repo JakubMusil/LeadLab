@@ -591,6 +591,13 @@ class Invitation(models.Model):
         related_name="pending_invitations",
         help_text="Team to assign the invitee to on accept.",
     )
+    # v4.4 – category IDs for `category` scope invitations.  On accept, a
+    # ``CategoryGrant`` (level=view) is created for each listed category UUID.
+    invited_category_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of Category UUID strings to grant view access on accept (used when invited_default_scope='category').",
+    )
 
     class Meta:
         verbose_name = "invitation"

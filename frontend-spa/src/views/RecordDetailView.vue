@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
+import { useMembersStore } from '@/stores/members'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import RichTextEditor, { type MentionUser } from '@/components/RichTextEditor.vue'
@@ -28,6 +29,7 @@ import {
   FlagIcon,
   PlusIcon,
   ShareIcon,
+  LockOpenIcon,
 } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import RecordShareModal from '@/components/RecordShareModal.vue'
@@ -39,6 +41,7 @@ const pipelineStore = usePipelineStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
+const membersStore = useMembersStore()
 const { on, off } = useWebSocket()
 const { t } = useI18n()
 
@@ -64,6 +67,60 @@ const sidebarPickerRef = ref<InstanceType<typeof EntitySidebarActionPicker> | nu
 
 // ─── Share modal state ────────────────────────────────────────────────────
 const shareModalOpen = ref(false)
+
+// ─── Access panel state (v4.3) ───────────────────────────────────────────
+interface GrantItem {
+  id: string
+  principal_type: string
+  principal_id: string
+  principal_name: string | null
+  level: string
+  expires_at: string | null
+  category_name?: string
+}
+interface AccessData {
+  category_grants: GrantItem[]
+  record_grants: GrantItem[]
+}
+const accessData = ref<AccessData | null>(null)
+const accessLoading = ref(false)
+const accessExpanded = ref(false)
+
+async function loadAccessData() {
+  if (!recordId.value) return
+  accessLoading.value = true
+  try {
+    const res = await api.get<AccessData>(`/api/v1/crm/records/${recordId.value}/access`)
+    if (res.ok) {
+      accessData.value = res.data
+    }
+  } finally {
+    accessLoading.value = false
+  }
+}
+
+function toggleAccessPanel() {
+  accessExpanded.value = !accessExpanded.value
+  if (accessExpanded.value && accessData.value === null) {
+    loadAccessData()
+  }
+}
+
+function grantLevelClass(level: string): string {
+  switch (level) {
+    case 'manage': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    case 'edit': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    default: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+  }
+}
+
+function grantDisplayName(grant: GrantItem): string {
+  if (grant.principal_name) return grant.principal_name
+  if (grant.principal_type === 'user') {
+    return membersStore.displayNameById(grant.principal_id) || grant.principal_id.slice(0, 8) + '…'
+  }
+  return grant.principal_id.slice(0, 8) + '…'
+}
 
 function openModalTool(type: string) {
   activeModalTool.value = type
@@ -670,6 +727,9 @@ onMounted(async () => {
   }
   // Load checkpoints
   loadCheckpoints()
+  // Pre-load members for access panel display names
+  const fid = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
+  if (fid) membersStore.fetchMembers(fid)
 
   on('record.updated', onWsLeadUpdated)
 })
@@ -1105,6 +1165,84 @@ async function saveFieldEdit(fieldKey: string) {
                 :disabled="addingCheckpoint || !newCheckpointName.trim()"
                 @click="addCheckpoint"
               >+</button>
+            </div>
+          </div>
+
+          <!-- Access panel (v4.3) -->
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-teal-100 dark:border-teal-900/30 p-4">
+            <button
+              class="w-full flex items-center justify-between gap-1.5"
+              @click="toggleAccessPanel"
+              :aria-expanded="accessExpanded"
+            >
+              <div class="flex items-center gap-1.5">
+                <LockOpenIcon class="w-4 h-4 text-teal-500 flex-shrink-0" />
+                <span class="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wide">{{ t('recordDetail.accessPanelTitle') }}</span>
+              </div>
+              <svg
+                class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                :class="accessExpanded ? 'rotate-180' : ''"
+                fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
+              </svg>
+            </button>
+
+            <div v-if="accessExpanded" class="mt-3 space-y-3">
+              <div v-if="accessLoading" class="flex items-center gap-2 text-xs text-gray-400">
+                <span class="inline-block w-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                {{ t('recordDetail.accessLoading') }}
+              </div>
+
+              <template v-else-if="accessData">
+                <!-- Category grants -->
+                <div v-if="accessData.category_grants.length > 0">
+                  <p class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('recordDetail.accessCategoryGrants') }}</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="g in accessData.category_grants"
+                      :key="g.id"
+                      class="flex items-center gap-2 text-xs"
+                    >
+                      <span class="flex-1 text-gray-700 dark:text-gray-300 truncate">
+                        {{ grantDisplayName(g) }}
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" :class="grantLevelClass(g.level)">{{ g.level }}</span>
+                      <span v-if="g.expires_at" class="text-[10px] text-gray-400 shrink-0">{{ g.expires_at.slice(0, 10) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Record grants -->
+                <div v-if="accessData.record_grants.length > 0">
+                  <p class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">{{ t('recordDetail.accessRecordGrants') }}</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="g in accessData.record_grants"
+                      :key="g.id"
+                      class="flex items-center gap-2 text-xs"
+                    >
+                      <span class="flex-1 text-gray-700 dark:text-gray-300 truncate">
+                        {{ grantDisplayName(g) }}
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" :class="grantLevelClass(g.level)">{{ g.level }}</span>
+                      <span v-if="g.expires_at" class="text-[10px] text-gray-400 shrink-0">{{ g.expires_at.slice(0, 10) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty state -->
+                <p
+                  v-if="accessData.category_grants.length === 0 && accessData.record_grants.length === 0"
+                  class="text-xs text-gray-400 dark:text-gray-500 italic"
+                >{{ t('recordDetail.accessNoGrants') }}</p>
+
+                <!-- Reload link -->
+                <button
+                  class="text-[10px] text-teal-500 hover:text-teal-700 underline"
+                  @click="loadAccessData"
+                >{{ t('recordDetail.accessRefresh') }}</button>
+              </template>
             </div>
           </div>
 
