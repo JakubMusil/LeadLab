@@ -63,6 +63,7 @@ from firms.auth import (
     SubscriptionRequired,
     AuthenticationRequired,
     FirmNotFound,
+    SuperuserMembership,
     check_tier_limits,
     require_active_subscription,
     require_membership,
@@ -6854,6 +6855,11 @@ def update_digest_preference(request, payload: DigestPreferenceIn):
         m = require_membership(request)
     except Exception as exc:
         return 403, {"detail": str(exc)}
+
+    # Superuser sentinel is not a real DB row — accept the request as a no-op
+    # but echo the requested value so the UI stays in sync.
+    if isinstance(m, SuperuserMembership):
+        return 200, {"weekly_digest_enabled": payload.enabled}
 
     m.weekly_digest_enabled = payload.enabled
     m.save(update_fields=["weekly_digest_enabled"])
