@@ -2782,12 +2782,47 @@
     "noDescription": "Bez popisu",
     "grantAccess": "Udělit přístup",
     "noMembers": "Žádní členové v tomto týmu",
-    "team": "Tým"
+    "team": "Tým",
+    "createFromTemplate": "Vytvořit ze šablony",
+    "rolePresetsTitle": "Šablony rolí",
+    "rolePresetsHint": "Vyberte předpřipravený výchozí bod. Oprávnění lze po vytvoření role kdykoli upravit.",
+    "loadingPresets": "Načítání šablon…"
   },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",
     "search": "Hledat jméno nebo e-mail",
     "noResults": "Žádné výsledky",
     "addMember": "Přidat člena..."
+  },
+  "wizard": {
+    "title": "Pozvat člena",
+    "stepOf": "Krok {step} z {total}",
+    "step1Title": "Koho zvete?",
+    "step1Hint": "Zadejte e-mailovou adresu osoby, kterou chcete pozvat do tohoto workspace.",
+    "step2Title": "Role a rozsah přístupu",
+    "step2Hint": "Vyberte role, které bude mít nový člen, a kolik workspacu uvidí ve výchozím stavu.",
+    "step3Title": "Přiřazení do týmu (volitelné)",
+    "step3Hint": "Volitelně přiřaďte nového člena do týmu. Přiřazení lze kdykoli změnit.",
+    "emailLabel": "E-mailová adresa",
+    "emailPlaceholder": "kolega{'@'}firma.cz",
+    "emailRequired": "E-mailová adresa je povinná.",
+    "emailInvalid": "Zadejte platnou e-mailovou adresu.",
+    "rolesLabel": "Role",
+    "roleRequired": "Vyberte alespoň jednu roli.",
+    "scopeLabel": "Výchozí rozsah",
+    "scopeOwnDesc": "Vidí jen vlastní záznamy",
+    "scopeTeamDesc": "Vidí záznamy týmu",
+    "scopeAllDesc": "Vidí všechny záznamy",
+    "teamLabel": "Tým",
+    "noTeam": "Bez týmu",
+    "noTeams": "Zatím nebyly vytvořeny žádné týmy. Týmy lze vytvořit v Nastavení → Týmy.",
+    "summaryTitle": "Přehled",
+    "back": "Zpět",
+    "next": "Dále",
+    "cancel": "Zrušit",
+    "sendInvite": "Odeslat pozvánku",
+    "sending": "Odesílám…",
+    "invitationSent": "Pozvánka odeslána.",
+    "failedToInvite": "Nepodařilo se odeslat pozvánku."
   }
 }

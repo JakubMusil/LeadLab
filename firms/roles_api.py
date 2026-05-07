@@ -3,6 +3,7 @@ Django Ninja API router – Role & Permission management (Phase 6)
 
 Endpoints:
     GET    /firms/{firm_id}/permission-catalogue        — static list of all permission codes
+    GET    /firms/{firm_id}/role-presets                — static pre-built role templates (v3.3)
     GET    /firms/{firm_id}/me/permissions              — current user's effective permissions + scope + roles
     GET    /firms/{firm_id}/roles                       — list roles for the firm
     POST   /firms/{firm_id}/roles                       — create a custom role
@@ -65,6 +66,77 @@ class RolePermissionsIn(Schema):
 
 class ErrorOut(Schema):
     detail: str
+
+
+class RolePresetOut(Schema):
+    code: str
+    name: str
+    description: str
+    permissions: List[str]
+
+
+# ---------------------------------------------------------------------------
+# Static role preset templates (v3.3)
+# ---------------------------------------------------------------------------
+
+#: Pre-built role templates that owners can clone into custom roles.
+#: Intentionally omits billing/firm.*  (restricted to Owner system role).
+ROLE_PRESETS: List[dict] = [
+    {
+        "code": "sales_rep",
+        "name": "Sales Rep",
+        "description": "Standard field sales – can create and edit own records, create activities and proposals.",
+        "permissions": [
+            "record.view", "record.create", "record.edit",
+            "category.view",
+            "activity.create",
+            "proposal.create",
+        ],
+    },
+    {
+        "code": "marketing",
+        "name": "Marketing",
+        "description": "Marketing team member – can view all records and reports, create activities.",
+        "permissions": [
+            "record.view", "record.create", "record.edit",
+            "category.view",
+            "report.view",
+            "activity.create",
+        ],
+    },
+    {
+        "code": "customer_success",
+        "name": "Customer Success",
+        "description": "Customer success manager – view and edit records, see all streamline activities.",
+        "permissions": [
+            "record.view", "record.create", "record.edit",
+            "category.view",
+            "activity.create",
+            "streamline.view_all",
+            "proposal.create",
+        ],
+    },
+    {
+        "code": "external_auditor",
+        "name": "External Auditor",
+        "description": "Read-only auditor with access to records and reports but cannot create or edit anything.",
+        "permissions": [
+            "record.view",
+            "category.view",
+            "report.view",
+            "streamline.view_all",
+        ],
+    },
+    {
+        "code": "read_only_viewer",
+        "name": "Read-Only Viewer",
+        "description": "Can only view records and categories – no create, edit or delete actions.",
+        "permissions": [
+            "record.view",
+            "category.view",
+        ],
+    },
+]
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +204,33 @@ def list_permission_catalogue(request, firm_id: str):
         {"code": p.code, "group": p.group, "description": p.description}
         for p in perms
     ]
+
+
+# ---------------------------------------------------------------------------
+# Role presets (v3.3)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{firm_id}/role-presets",
+    auth=django_auth,
+    response={200: List[RolePresetOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_role_presets(request, firm_id: str):
+    """Return static pre-built role template definitions.
+
+    These are read-only suggestions that owners can use as a starting point
+    when creating custom roles.  They are *not* persisted in the database –
+    the client should call POST /roles with the desired payload to create a
+    concrete role from a preset.
+    """
+    try:
+        _get_firm_and_membership(request, firm_id)
+    except FirmNotFound:
+        return 404, {"detail": "Firm not found."}
+    except PermissionDenied:
+        return 403, {"detail": "Access denied."}
+
+    return 200, ROLE_PRESETS
 
 
 # ---------------------------------------------------------------------------

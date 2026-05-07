@@ -2780,12 +2780,47 @@
     "noDescription": "No description",
     "grantAccess": "Grant access",
     "noMembers": "No members in this team",
-    "team": "Team"
+    "team": "Team",
+    "createFromTemplate": "Create from template",
+    "rolePresetsTitle": "Role templates",
+    "rolePresetsHint": "Choose a pre-built starting point. You can customise permissions after creating the role.",
+    "loadingPresets": "Loading templates…"
   },
   "peoplePicker": {
     "placeholder": "Select a member...",
     "search": "Search by name or email",
     "noResults": "No results",
     "addMember": "Add member..."
+  },
+  "wizard": {
+    "title": "Invite member",
+    "stepOf": "Step {step} of {total}",
+    "step1Title": "Who are you inviting?",
+    "step1Hint": "Enter the email address of the person you want to invite to this workspace.",
+    "step2Title": "Role & access scope",
+    "step2Hint": "Select the roles the new member will have and how much of the workspace they can see by default.",
+    "step3Title": "Team assignment (optional)",
+    "step3Hint": "Optionally assign the new member to a team. They can always be reassigned later.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "colleague{'@'}company.com",
+    "emailRequired": "Email address is required.",
+    "emailInvalid": "Please enter a valid email address.",
+    "rolesLabel": "Roles",
+    "roleRequired": "Please select at least one role.",
+    "scopeLabel": "Default scope",
+    "scopeOwnDesc": "Sees only own records",
+    "scopeTeamDesc": "Sees team's records",
+    "scopeAllDesc": "Sees all records",
+    "teamLabel": "Team",
+    "noTeam": "No team",
+    "noTeams": "No teams have been created yet. You can create teams in Settings → Teams.",
+    "summaryTitle": "Summary",
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "sendInvite": "Send invite",
+    "sending": "Sending…",
+    "invitationSent": "Invitation sent.",
+    "failedToInvite": "Failed to send invitation."
   }
 }

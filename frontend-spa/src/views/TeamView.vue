@@ -5,8 +5,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
-import { XMarkIcon, UserIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
+import InviteMemberWizard from '@/components/InviteMemberWizard.vue'
 
 const firmStore = useFirmStore()
 const authStore = useAuthStore()
@@ -19,10 +20,8 @@ interface Invitation { id: string; email: string; role: string; is_expired: bool
 const members = ref<Member[]>([])
 const invitations = ref<Invitation[]>([])
 const loading = ref(false)
-const inviteEmail = ref('')
-const inviteRole = ref('worker')
+const showWizard = ref(false)
 const inviteLoading = ref(false)
-const inviteError = ref('')
 const confirmRemoveId = ref<string | null>(null)
 const editingRoleId = ref<string | null>(null)
 const editingRole = ref('')
@@ -57,25 +56,6 @@ async function loadTeam() {
     if (invRes.ok) invitations.value = invRes.data
   } finally {
     loading.value = false
-  }
-}
-
-async function sendInvitation() {
-  if (!inviteEmail.value.trim()) { inviteError.value = t('team.emailRequired'); return }
-  inviteLoading.value = true
-  inviteError.value = ''
-  const res = await api.post(`/api/v1/firms/${firmId.value}/invitations/`, {
-    email: inviteEmail.value.trim(),
-    role: inviteRole.value,
-  })
-  inviteLoading.value = false
-  if (res.ok || res.status === 202) {
-    toast.success(t('team.invitationSent'))
-    inviteEmail.value = ''
-    await loadTeam()
-  } else {
-    const data = res.data as Record<string, string> | null
-    inviteError.value = data?.detail ?? t('team.failedToInvite')
   }
 }
 
@@ -162,7 +142,17 @@ onMounted(loadTeam)
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('team.title') }}</h2>
-        <span class="text-xs text-gray-400 dark:text-gray-500">{{ members.length }} {{ members.length !== 1 ? t('team.membersPlural') : t('team.memberSingular') }}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 dark:text-gray-500">{{ members.length }} {{ members.length !== 1 ? t('team.membersPlural') : t('team.memberSingular') }}</span>
+          <button
+            v-if="canManage"
+            @click="showWizard = true"
+            class="inline-flex items-center gap-1 px-3 py-1.5 bg-brand text-white text-xs font-medium rounded-lg hover:opacity-90"
+          >
+            <UserPlusIcon class="h-4 w-4" />
+            {{ t('team.inviteMember') }}
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="animate-pulse p-4 space-y-2">
@@ -231,29 +221,6 @@ onMounted(loadTeam)
       </div>
     </div>
 
-    <!-- Invite member -->
-    <div v-if="canManage" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ t('team.inviteMember') }}</h3>
-      <div v-if="inviteError" class="mb-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-4 py-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ inviteError }}</div>
-      <div class="flex gap-2 flex-wrap">
-        <input
-          v-model="inviteEmail"
-          type="email"
-          :placeholder="t('team.emailPlaceholder')"
-          class="flex-1 min-w-48 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
-        />
-        <select v-model="inviteRole" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400">
-          <option value="worker">{{ t('team.roleWorker') }}</option>
-          <option value="admin">{{ t('team.roleAdmin') }}</option>
-        </select>
-        <button
-          :disabled="inviteLoading"
-          class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-          @click="sendInvitation"
-        >{{ inviteLoading ? t('team.sending') : t('team.sendInvite') }}</button>
-      </div>
-    </div>
-
     <!-- Pending invitations -->
     <div v-if="canManage && pendingInvitations.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
       <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -289,4 +256,11 @@ onMounted(loadTeam)
       @cancel="confirmRemoveId = null"
     />
   </Teleport>
+
+  <!-- Invite member wizard -->
+  <InviteMemberWizard
+    :open="showWizard"
+    @close="showWizard = false"
+    @invited="loadTeam"
+  />
 </template>

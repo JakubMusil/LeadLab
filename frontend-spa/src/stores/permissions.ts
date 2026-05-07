@@ -42,6 +42,13 @@ export interface MyPermissionsOut {
   can_manage_teams: boolean
 }
 
+export interface RolePreset {
+  code: string
+  name: string
+  description: string
+  permissions: string[]
+}
+
 export const usePermissionsStore = defineStore('permissions', () => {
   const catalogue = ref<PermissionCatalogueItem[]>([])
   const roles = ref<RoleOut[]>([])
@@ -84,6 +91,12 @@ export const usePermissionsStore = defineStore('permissions', () => {
     if (res.ok && res.data) {
       catalogue.value = res.data
     }
+  }
+
+  async function fetchRolePresets(firmId: string | number): Promise<RolePreset[]> {
+    const res = await api.get<RolePreset[]>(`/api/v1/firms/${firmId}/role-presets`)
+    if (res.ok && res.data) return res.data
+    return []
   }
 
   async function fetchRoles(firmId: string | number) {
@@ -204,6 +217,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
     can,
     fetchMyPermissions,
     fetchCatalogue,
+    fetchRolePresets,
     fetchRoles,
     fetchTeams,
     createRole,

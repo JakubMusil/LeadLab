@@ -2780,12 +2780,47 @@
     "noDescription": "Keine Beschreibung",
     "grantAccess": "Zugriff gewähren",
     "noMembers": "Keine Mitglieder in diesem Team",
-    "team": "Team"
+    "team": "Team",
+    "createFromTemplate": "Aus Vorlage erstellen",
+    "rolePresetsTitle": "Rollenvorlagen",
+    "rolePresetsHint": "Wählen Sie einen vorgefertigten Ausgangspunkt. Berechtigungen können nach der Erstellung angepasst werden.",
+    "loadingPresets": "Vorlagen werden geladen…"
   },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",
     "search": "Nach Name oder E-Mail suchen",
     "noResults": "Keine Ergebnisse",
     "addMember": "Mitglied hinzufügen..."
+  },
+  "wizard": {
+    "title": "Mitglied einladen",
+    "stepOf": "Schritt {step} von {total}",
+    "step1Title": "Wen laden Sie ein?",
+    "step1Hint": "Geben Sie die E-Mail-Adresse der Person ein, die Sie in diesen Workspace einladen möchten.",
+    "step2Title": "Rolle & Zugriffsbereich",
+    "step2Hint": "Wählen Sie die Rollen des neuen Mitglieds und wie viel vom Workspace es standardmäßig sehen kann.",
+    "step3Title": "Teamzuweisung (optional)",
+    "step3Hint": "Weisen Sie das neue Mitglied optional einem Team zu. Die Zuweisung kann jederzeit geändert werden.",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "kollege{'@'}firma.de",
+    "emailRequired": "E-Mail-Adresse ist erforderlich.",
+    "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+    "rolesLabel": "Rollen",
+    "roleRequired": "Bitte wählen Sie mindestens eine Rolle aus.",
+    "scopeLabel": "Standardbereich",
+    "scopeOwnDesc": "Sieht nur eigene Einträge",
+    "scopeTeamDesc": "Sieht Teameinträge",
+    "scopeAllDesc": "Sieht alle Einträge",
+    "teamLabel": "Team",
+    "noTeam": "Kein Team",
+    "noTeams": "Es wurden noch keine Teams erstellt. Teams können unter Einstellungen → Teams angelegt werden.",
+    "summaryTitle": "Zusammenfassung",
+    "back": "Zurück",
+    "next": "Weiter",
+    "cancel": "Abbrechen",
+    "sendInvite": "Einladung senden",
+    "sending": "Wird gesendet…",
+    "invitationSent": "Einladung gesendet.",
+    "failedToInvite": "Einladung konnte nicht gesendet werden."
   }
 }

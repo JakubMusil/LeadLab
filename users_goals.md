@@ -1367,5 +1367,91 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - TypeScript: 0 nových chyb v nových souborech
 
 **Co bude následovat:**
-- v3.2: Member Onboarding Wizard (`InviteMemberWizard.vue`) – 3-step formulář pro pozvání s konfigurací role/scope/tým v jednom průchodu
-- v3.3: Role presets (pre-built šablony v `RolesSettingsView` + backend seeder)
+- v3.2: Member Onboarding Wizard (`InviteMemberWizard.vue`) – 3-step formulář pro pozvání s konfigurací role/scope/tým v jednom průchodu ✅ **Hotovo v3.2**
+- v3.3: Role presets (pre-built šablony v `RolesSettingsView` + backend seeder) ✅ **Hotovo v3.3**
+
+
+### v3.2 – Member Onboarding Wizard ✅ (2026-05-07)
+
+**Větev**: `copilot/users-goals-v32-v33`
+
+**Co bylo uděláno:**
+
+- **Nový komponent** `frontend-spa/src/components/InviteMemberWizard.vue`:
+  - 3-step modální průvodce pro pozvání nového člena workspace
+  - **Step 1**: Identita – e-mailová adresa + validace (required, @ formát)
+  - **Step 2**: Role & scope – multi-select rolí ze `permissionsStore.roles` (chip buttony s checkmarkem), výběr `default_scope` (own/team/all) s popisky, 3-column layout
+  - **Step 3**: Přiřazení týmu (volitelné) + přehledové shrnutí pozvánek před odesláním
+  - Progress bar + krok/celkem indikátor v headeru
+  - `watch(open)` – reset stavu, lazy load teamů a rolí při otevření
+  - Jediný API call `POST /firms/{id}/invitations/` s `{ email, role_codes[], default_scope, team_id }` při odeslání
+  - Emituje `invited` event pro reload listu členů, `close` pro zavření
+  - Keyboard-friendly (Enter na step 1 přejde na step 2)
+
+- **Aktualizace `TeamView.vue`**:
+  - Odstraněn inline invite formulář (e-mail input + role select + "Send Invite" button)
+  - Přidáno tlačítko „Invite member" (s `UserPlusIcon`) v header sekci členů (viditelné pouze pro admin/owner)
+  - `showWizard: ref(false)` – state pro otevírání/zavírání wizardu
+  - Import `InviteMemberWizard` a použití v template; `@invited="loadTeam"` pro refresh listu
+  - Odstraněna funkce `sendInvitation()`, `inviteEmail`, `inviteRole`, `inviteError` (nahrazeno wizardem)
+
+- **i18n** – přidány klíče pod namespace `wizard.*` ve všech 4 lokalizacích (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - `title`, `stepOf`, `step1Title`, `step1Hint`, `step2Title`, `step2Hint`, `step3Title`, `step3Hint`
+  - `emailLabel`, `emailPlaceholder`, `emailRequired`, `emailInvalid`
+  - `rolesLabel`, `roleRequired`, `scopeLabel`, `scopeOwnDesc`, `scopeTeamDesc`, `scopeAllDesc`
+  - `teamLabel`, `noTeam`, `noTeams`, `summaryTitle`
+  - `back`, `next`, `cancel`, `sendInvite`, `sending`, `invitationSent`, `failedToInvite`
+
+- **Test aktualizován** `TeamView.spec.ts`:
+  - `test_shows_invite_form_for_admin_owner` – upraven assertion: hledá „Invite member" tlačítko (ne „Send Invite" inline formulář)
+  - Přidán mock `usePermissionsStore` a `useMembersStore` (InviteMemberWizard deps)
+
+- Všechny testy zelené: 100/100 OK
+
+**Co bude následovat:**
+- v3.3: Role presets ✅ **Hotovo níže**
+
+
+### v3.3 – Role presets (backend endpoint + UI) ✅ (2026-05-07)
+
+**Větev**: `copilot/users-goals-v32-v33`
+
+**Co bylo uděláno:**
+
+- **Backend – nový endpoint** `GET /firms/{id}/role-presets` v `firms/roles_api.py`:
+  - Vrací statický seznam 5 předdefinovaných šablon rolí:
+    - **Sales Rep** – record.view/create/edit, category.view, activity.create, proposal.create
+    - **Marketing** – record.view/create/edit, category.view, report.view, activity.create
+    - **Customer Success** – record.view/create/edit, category.view, activity.create, streamline.view_all, proposal.create
+    - **External Auditor** – record.view, category.view, report.view, streamline.view_all (read-only)
+    - **Read-Only Viewer** – record.view, category.view (nejmenší sada)
+  - Nový `RolePresetOut` schema (code, name, description, permissions[])
+  - Nová konstanta `ROLE_PRESETS` (statická data, neperzistují v DB)
+  - Guard: člen musí být ve firmě (any member může číst)
+
+- **Frontend – `stores/permissions.ts`**:
+  - Přidán interface `RolePreset` (exportovaný)
+  - Přidána akce `fetchRolePresets(firmId)` – zavolá `GET /role-presets`, vrátí výsledky (no caching, volá se jen při otevření modalu)
+
+- **Frontend – `views/RolesSettingsView.vue`**:
+  - Import `SparklesIcon` z heroicons
+  - Import `RolePreset` z `permissions.ts`
+  - Nový state: `showPresetsModal`, `presets`, `presetsLoading`, `selectedPreset`
+  - Nová funkce `openPresetsModal()` – otevře modal, lazy-fetchuje šablony
+  - Nová funkce `applyPreset(preset)` – předvyplní create form (code, name, description) a otevře ho
+  - „Create from template" tlačítko (SparklesIcon amber, vedle „Create role" buttonu) – viditelné pro `canManageRoles`
+  - Nový modal Presets: grid karet 2×3, každá karta zobrazí name + description + permission chips (max 4 + počet dalších); hover efekt + kliknutím aplikuje preset
+  - Fade transition na modalu
+  - Přidána CSS `<style scoped>` sekce pro fade animace
+
+- **i18n** – přidány klíče pod `permissions.*` ve všech 4 lokalizacích:
+  - `createFromTemplate` – tlačítko
+  - `rolePresetsTitle` – modal titulek
+  - `rolePresetsHint` – podtitulek
+  - `loadingPresets` – loading stav
+
+- Všechny testy zelené: 100/100 OK (no tests changed – presets are read-only static data)
+
+**Co bude následovat:**
+- v3.4: Permission matrix UX (hovery s popisem permission kódu, „Members with this role" sloupec, compare roles modal)
+- v3.5: InviteMemberWizard Step 2 – preset šablony přímo ve wizardu pro quick role selection (Sales rep, Marketing…)
