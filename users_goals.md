@@ -1671,5 +1671,56 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Všechny frontend testy zelené: 100/100 OK; TypeScript: pre-existing 2 chyby v RecordShareModal.vue beze změny
 
 **Co bude následovat:**
-- a11y & i18n dokončení (aria-labelledby, focus trap v modalech)
+- a11y & i18n dokončení (aria-labelledby, focus trap v modalech) ✅ **Hotovo v4.0**
 - Nebo: merge do main a tag `v3.9`
+
+
+### v4.0 – a11y & i18n dokončení ✅ (2026-05-07)
+
+**Větev**: `copilot/update-users-goals-document-74cbcefc-1df0-4e63-8958-3759881a56fb`
+
+**Co bylo uděláno:**
+
+- **`frontend-spa/src/components/ui/Modal.vue` – Focus trap**:
+  - Přidána konstanta `FOCUSABLE_SELECTOR` pro výběr všech interaktivních prvků uvnitř dialogu
+  - Rozšířena funkce `onKeydown`: kromě Escape nyní zpracovává Tab a Shift+Tab
+  - Focus trap logika: při Tab z posledního prvku skočí na první; při Shift+Tab z prvního prvku skočí na poslední; pokud focus unikne ven, vrátí se na první/poslední focusable element
+  - Zpětně kompatibilní – chování při Escape a backdrop click beze změny
+
+- **`frontend-spa/src/components/InviteMemberWizard.vue` – a11y opravy**:
+  - Import `nextTick` přidán pro focus management
+  - Přidán `ref="dialogRef"` na dialog element pro focus trap
+  - Přidána konstanta `FOCUSABLE_SELECTOR` (stejný vzor jako Modal.vue)
+  - `watch(props.open)` rozšířen o: `await nextTick()` + auto-focus prvního focusable elementu při otevření
+  - Nová funkce `onWizardKeydown(e)`: zpracovává Escape (zavře wizard) + Tab/Shift+Tab (focus trap)
+  - `@keydown="onWizardKeydown"` přidán na backdrop div
+  - Změna `aria-label` → `aria-labelledby="invite-wizard-title"` na dialog elementu
+  - Přidán `id="invite-wizard-title"` na `<h2>` v headeru wizardu
+  - Přidán `aria-hidden="true"` na dekorativní `UserPlusIcon`
+
+- **i18n – permission code descriptions ve všech 4 lokalizacích** (`cs.json`, `en.json`, `de.json`, `pl.json`):
+  - Přidán sub-objekt `permissions.codeDesc` s lokalizovanými popisky (1 věta) pro všech 16 permission kódů:
+    - `record_view`, `record_create`, `record_edit`, `record_delete`
+    - `category_view`, `category_manage`
+    - `team_manage`, `role_manage`
+    - `billing_manage`, `firm_delete`, `firm_transfer`
+    - `integrations_manage`, `report_view`
+    - `activity_create`, `streamline_view_all`, `proposal_create`
+  - Klíče používají podtržítko místo tečky pro kompatibilitu s vue-i18n (`t('permissions.codeDesc.record_view')`)
+
+- **`frontend-spa/src/assets/main.css` – forced-colors / high-contrast CSS**:
+  - Přidána sekce `@media (forced-colors: active)` pro Windows High Contrast Mode
+  - `.badge-expired`, `.badge-expiring` – expirační badge v TeamView zachovají viditelné ohraničení a text
+  - `.badge-restricted` – restricted activity toggle v StreamlineCreateModal
+  - Obecné pravidlo pro červená/oranžová/žlutá pozadí v RecordShareModal (expiry countdown)
+
+- **`frontend-spa/src/views/TeamView.vue`** – Přidány CSS třídy `badge-expired` a `badge-expiring` na expirační badge
+
+- **`frontend-spa/src/components/StreamlineCreateModal.vue`** – Přidána CSS třída `badge-restricted` na restricted visibility toggle
+
+- Všechny testy zelené: 100/100 frontend OK; TypeScript: 0 chyb
+
+**Co bude následovat:**
+- Merge do `main` a tag `v4.0`
+- Volitelně: Zobrazit záložku „Přístupy" ke členovi v TeamView s přehledem všech grantů
+- Volitelně: Bulk sdílení vybraných záznamů z PipelineRecordsView (checkbox + „Share selected")

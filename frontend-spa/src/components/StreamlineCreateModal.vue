@@ -1212,7 +1212,7 @@ watch(
                 :class="[
                   'flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg transition-colors',
                   visibilityRestricted
-                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 badge-restricted'
                     : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700',
                 ]"
                 @click="visibilityRestricted = !visibilityRestricted"

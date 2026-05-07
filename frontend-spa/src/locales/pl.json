@@ -2830,7 +2830,25 @@
     "overviewInsightUncovered": "Grupy bez pokrycia",
     "overviewInsightAllCovered": "Wszystkie grupy są pokryte.",
     "overviewCsvName": "Nazwa",
-    "overviewCsvEmail": "E-mail"
+    "overviewCsvEmail": "E-mail",
+    "codeDesc": {
+      "record_view": "Wyświetlaj rekordy w pipeline wraz ze szczegółami.",
+      "record_create": "Twórz nowe rekordy w dostępnych kategoriach pipeline.",
+      "record_edit": "Edytuj pola i dane istniejących rekordów pipeline.",
+      "record_delete": "Trwale usuwaj rekordy z pipeline.",
+      "category_view": "Wyświetlaj kategorie pipeline i ich rekordy.",
+      "category_manage": "Twórz, edytuj i usuwaj kategorie pipeline oraz ich ustawienia.",
+      "team_manage": "Twórz i zarządzaj zespołami oraz przypisuj członków do zespołów.",
+      "role_manage": "Twórz, edytuj i usuwaj niestandardowe role oraz ich zestawy uprawnień.",
+      "billing_manage": "Zarządzaj subskrypcją, danymi rozliczeniowymi i metodami płatności.",
+      "firm_delete": "Trwale usuń cały obszar roboczy (operacja nieodwracalna).",
+      "firm_transfer": "Przenieś własność obszaru roboczego na innego członka.",
+      "integrations_manage": "Instaluj, konfiguruj i usuwaj integracje firm trzecich i wtyczki.",
+      "report_view": "Uzyskaj dostęp do pulpitów raportów i widoków analitycznych.",
+      "activity_create": "Twórz aktywności i notatki w strumieniu rekordów.",
+      "streamline_view_all": "Wyświetlaj wszystkie aktywności w strumieniu rekordów, w tym ograniczone.",
+      "proposal_create": "Twórz i wysyłaj oferty powiązane z rekordami pipeline."
+    }
   },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",

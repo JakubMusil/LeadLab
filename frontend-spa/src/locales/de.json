@@ -2830,7 +2830,25 @@
     "overviewInsightUncovered": "Nicht abgedeckte Gruppen",
     "overviewInsightAllCovered": "Alle Gruppen sind abgedeckt.",
     "overviewCsvName": "Name",
-    "overviewCsvEmail": "E-Mail"
+    "overviewCsvEmail": "E-Mail",
+    "codeDesc": {
+      "record_view": "Pipeline-Einträge und deren Details anzeigen.",
+      "record_create": "Neue Pipeline-Einträge in zugänglichen Kategorien erstellen.",
+      "record_edit": "Felder und Daten bestehender Pipeline-Einträge bearbeiten.",
+      "record_delete": "Pipeline-Einträge dauerhaft löschen.",
+      "category_view": "Pipeline-Kategorien und deren Einträge anzeigen.",
+      "category_manage": "Pipeline-Kategorien und deren Einstellungen erstellen, bearbeiten und löschen.",
+      "team_manage": "Teams erstellen und verwalten sowie Mitglieder Teams zuweisen.",
+      "role_manage": "Benutzerdefinierte Rollen und deren Berechtigungssets erstellen, bearbeiten und löschen.",
+      "billing_manage": "Abonnement, Abrechnungsdetails und Zahlungsmethoden verwalten.",
+      "firm_delete": "Den gesamten Arbeitsbereich dauerhaft löschen (nicht rückgängig zu machen).",
+      "firm_transfer": "Eigentumsübertragung des Arbeitsbereichs an ein anderes Mitglied.",
+      "integrations_manage": "Drittanbieter-Integrationen und Plugins installieren, konfigurieren und entfernen.",
+      "report_view": "Auf Berichts-Dashboards und analytische Ansichten zugreifen.",
+      "activity_create": "Aktivitäten und Notizen im Datensatz-Streamline erstellen.",
+      "streamline_view_all": "Alle Aktivitäten im Datensatz-Streamline anzeigen, einschließlich eingeschränkter.",
+      "proposal_create": "Angebote erstellen und senden, die mit Pipeline-Einträgen verknüpft sind."
+    }
   },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",

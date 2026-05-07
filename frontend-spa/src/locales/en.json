@@ -2830,7 +2830,25 @@
     "overviewInsightUncovered": "Uncovered groups",
     "overviewInsightAllCovered": "All groups are covered.",
     "overviewCsvName": "Name",
-    "overviewCsvEmail": "Email"
+    "overviewCsvEmail": "Email",
+    "codeDesc": {
+      "record_view": "View pipeline records and their associated details.",
+      "record_create": "Create new pipeline records in any accessible category.",
+      "record_edit": "Edit the fields and data of existing pipeline records.",
+      "record_delete": "Permanently delete pipeline records.",
+      "category_view": "View pipeline categories and their records.",
+      "category_manage": "Create, edit, and delete pipeline categories and their settings.",
+      "team_manage": "Create and manage teams, and assign members to teams.",
+      "role_manage": "Create, edit, and delete custom roles and their permission sets.",
+      "billing_manage": "Manage subscription, billing details, and payment methods.",
+      "firm_delete": "Permanently delete the entire workspace (irreversible).",
+      "firm_transfer": "Transfer workspace ownership to another member.",
+      "integrations_manage": "Install, configure, and remove third-party integrations and plugins.",
+      "report_view": "Access reporting dashboards and analytical views.",
+      "activity_create": "Create activities and notes in the record streamline.",
+      "streamline_view_all": "View all activities in the record streamline, including restricted ones.",
+      "proposal_create": "Create and send proposals linked to pipeline records."
+    }
   },
   "peoplePicker": {
     "placeholder": "Select a member...",

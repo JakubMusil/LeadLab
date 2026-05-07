@@ -2832,7 +2832,25 @@
     "overviewInsightUncovered": "Skupiny bez pokrytí",
     "overviewInsightAllCovered": "Všechny skupiny jsou pokryty.",
     "overviewCsvName": "Jméno",
-    "overviewCsvEmail": "E-mail"
+    "overviewCsvEmail": "E-mail",
+    "codeDesc": {
+      "record_view": "Zobrazit záznamy v pipeline včetně jejich detailů.",
+      "record_create": "Vytvářet nové záznamy v přístupných kategoriích pipeline.",
+      "record_edit": "Upravovat pole a data existujících záznamů v pipeline.",
+      "record_delete": "Trvale smazat záznamy z pipeline.",
+      "category_view": "Zobrazit kategorie pipeline a jejich záznamy.",
+      "category_manage": "Vytvářet, upravovat a mazat kategorie pipeline a jejich nastavení.",
+      "team_manage": "Vytvářet a spravovat týmy a přiřazovat členy do týmů.",
+      "role_manage": "Vytvářet, upravovat a mazat vlastní role a jejich sady oprávnění.",
+      "billing_manage": "Spravovat předplatné, fakturační údaje a platební metody.",
+      "firm_delete": "Trvale smazat celý workspace (nevratná operace).",
+      "firm_transfer": "Přenést vlastnictví workspace na jiného člena.",
+      "integrations_manage": "Instalovat, konfigurovat a odstraňovat integraci třetích stran a pluginy.",
+      "report_view": "Přistupovat k přehledovým dashboardům a analytickým pohledům.",
+      "activity_create": "Vytvářet aktivity a poznámky v záznamu streamline.",
+      "streamline_view_all": "Zobrazit všechny aktivity ve streamline záznamu včetně omezených.",
+      "proposal_create": "Vytvářet a odesílat nabídky propojené se záznamy pipeline."
+    }
   },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",
