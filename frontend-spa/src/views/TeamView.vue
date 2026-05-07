@@ -154,24 +154,25 @@ function memberExpiryLabel(m: Member): string {
   return t('team.memberExpiresInDays', { days: daysLeft })
 }
 
+const manageableMembers = computed(() =>
+  members.value.filter(
+    (m) => m.role !== 'owner' && m.user_email !== authStore.user?.email
+  )
+)
+
 function toggleSelect(memberId: string) {
   if (selectedMemberIds.value.has(memberId)) {
     selectedMemberIds.value.delete(memberId)
   } else {
     selectedMemberIds.value.add(memberId)
   }
-  // Trigger reactivity
-  selectedMemberIds.value = new Set(selectedMemberIds.value)
 }
 
 function selectAll() {
-  const manageable = members.value.filter(
-    (m) => m.role !== 'owner' && m.user_email !== authStore.user?.email
-  )
-  if (selectedMemberIds.value.size === manageable.length) {
+  if (selectedMemberIds.value.size === manageableMembers.value.length) {
     selectedMemberIds.value = new Set()
   } else {
-    selectedMemberIds.value = new Set(manageable.map((m) => m.id))
+    selectedMemberIds.value = new Set(manageableMembers.value.map((m) => m.id))
   }
 }
 
@@ -291,8 +292,8 @@ onMounted(loadTeam)
         <div v-if="canManage" class="flex items-center gap-3 px-5 py-2 bg-gray-50 dark:bg-gray-800/50">
           <input
             type="checkbox"
-            :checked="selectedMemberIds.size > 0 && selectedMemberIds.size === members.filter(m => m.role !== 'owner' && m.user_email !== authStore.user?.email).length"
-            :indeterminate="selectedMemberIds.size > 0 && selectedMemberIds.size < members.filter(m => m.role !== 'owner' && m.user_email !== authStore.user?.email).length"
+            :checked="selectedMemberIds.size > 0 && selectedMemberIds.size === manageableMembers.length"
+            :indeterminate="selectedMemberIds.size > 0 && selectedMemberIds.size < manageableMembers.length"
             @change="selectAll"
             class="rounded border-gray-300 text-indigo-600"
           />

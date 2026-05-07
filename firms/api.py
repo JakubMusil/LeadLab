@@ -196,8 +196,8 @@ def _membership_out(m: Membership) -> dict:
         "permissions": permissions,
         "expires_at": m.expires_at.isoformat() if m.expires_at else None,
         "team_id": str(m.team_id) if m.team_id else None,
-        "team_name": m.team.name if m.team_id and hasattr(m, "team") and m.team else None,
-        "team_color": m.team.color if m.team_id and hasattr(m, "team") and m.team else None,
+        "team_name": m.team.name if m.team_id and m.team else None,
+        "team_color": m.team.color if m.team_id and m.team else None,
     }
 
 

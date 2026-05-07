@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useFirmStore } from '@/stores/firm'
 import { usePermissionsStore, type TeamOut } from '@/stores/permissions'
 import { useToast } from '@/composables/useToast'
@@ -7,7 +7,7 @@ import { useI18n } from '@/composables/useI18n'
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/vue/24/outline'
 import { ConfirmDeleteModal } from '@/components/ui'
 import PeoplePicker from '@/components/PeoplePicker.vue'
-import { useMembersStore } from '@/stores/members'
+import { useMembersStore, type MemberOut } from '@/stores/members'
 import { VueDraggable } from 'vue-draggable-plus'
 
 const firmStore = useFirmStore()
@@ -158,6 +158,10 @@ const unassignedMembers = computed(() =>
   membersStore.members.filter((m) => !assignedMembershipIds.value.has(m.id))
 )
 
+/** Local writable copy of unassigned members used as drag source – synced after each loadData() */
+const unassignedList = ref<MemberOut[]>([])
+watch(unassignedMembers, (val) => { unassignedList.value = [...val] }, { immediate: true })
+
 /** Called when a member is dragged from the unassigned pool into a team */
 async function onDragToTeam(event: { item: HTMLElement }, teamId: string) {
   const membershipId = event.item.dataset.membershipId
@@ -236,22 +240,18 @@ onMounted(loadData)
       <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-t-lg border-b border-gray-200 dark:border-gray-700">
         <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
           {{ t('permissions.unassignedMembers') }}
-          <span class="ml-1 text-gray-400">({{ unassignedMembers.length }})</span>
+          <span class="ml-1 text-gray-400">({{ unassignedList.length }})</span>
         </h4>
         <p class="text-xs text-gray-400 mt-0.5">{{ t('permissions.dragToTeamHint') }}</p>
       </div>
       <VueDraggable
-        v-model="membersStore.members"
+        v-model="unassignedList"
         group="team-members"
         class="min-h-[48px] flex flex-wrap gap-2 p-3"
-        :item-key="'id'"
         :disabled="!permissionsStore.canManageTeams || dragLoading"
-        :filter="(el: HTMLElement) => assignedMembershipIds.has(el.dataset.membershipId ?? '')"
-        @add="(e: any) => { /* handled by team zone's @remove */ }"
       >
         <template #item="{ element: member }">
           <div
-            v-if="!assignedMembershipIds.has(member.id)"
             :data-membership-id="member.id"
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 cursor-grab active:cursor-grabbing select-none"
           >
@@ -262,7 +262,7 @@ onMounted(loadData)
           </div>
         </template>
       </VueDraggable>
-      <div v-if="unassignedMembers.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
+      <div v-if="unassignedList.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
         {{ t('permissions.allMembersAssigned') }}
       </div>
     </div>
