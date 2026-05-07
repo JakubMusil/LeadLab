@@ -1659,7 +1659,13 @@
     "actionsBtn": "Aktionen",
     "newViewLabel": "Neue Ansicht:",
     "shortcutNamePlaceholder": "Kürzel-Name…",
-    "saveAsShortcut": "Als Kürzel speichern"
+    "saveAsShortcut": "Als Kürzel speichern",
+    "accessPanelTitle": "Wer hat Zugriff",
+    "accessLoading": "Zugriffsdaten werden geladen…",
+    "accessCategoryGrants": "Kategoriezugriff",
+    "accessRecordGrants": "Datensatzzugriff",
+    "accessNoGrants": "Keine expliziten Berechtigungen gefunden.",
+    "accessRefresh": "Aktualisieren"
   },
   "sequences": {
     "title": "E-Mail-Sequenzen",
@@ -2904,6 +2910,11 @@
     "sending": "Wird gesendet…",
     "invitationSent": "Einladung gesendet.",
     "failedToInvite": "Einladung konnte nicht gesendet werden.",
-    "quickPresets": "Schnellauswahl"
+    "quickPresets": "Schnellauswahl",
+    "scopeCategoryDesc": "Kann nur Datensätze aus zugewiesenen Kategorien sehen.",
+    "categoriesLabel": "Kategorien",
+    "noCategories": "Keine Kategorien gefunden.",
+    "categoryRequired": "Wählen Sie mindestens eine Kategorie aus.",
+    "step3HintCategory": "Wählen Sie die Kategorien aus, auf die dieses Mitglied zugreifen kann."
   }
 }

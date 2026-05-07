@@ -1659,7 +1659,13 @@
     "actionsBtn": "Actions",
     "newViewLabel": "New view:",
     "shortcutNamePlaceholder": "Shortcut name…",
-    "saveAsShortcut": "Save as shortcut"
+    "saveAsShortcut": "Save as shortcut",
+    "accessPanelTitle": "Who has access",
+    "accessLoading": "Loading access data…",
+    "accessCategoryGrants": "Category access",
+    "accessRecordGrants": "Record access",
+    "accessNoGrants": "No explicit grants found.",
+    "accessRefresh": "Refresh"
   },
   "sequences": {
     "title": "Email Sequences",
@@ -2904,6 +2910,11 @@
     "sending": "Sending…",
     "invitationSent": "Invitation sent.",
     "failedToInvite": "Failed to send invitation.",
-    "quickPresets": "Quick setup"
+    "quickPresets": "Quick setup",
+    "scopeCategoryDesc": "Can only see records from assigned categories.",
+    "categoriesLabel": "Categories",
+    "noCategories": "No categories found.",
+    "categoryRequired": "Select at least one category.",
+    "step3HintCategory": "Select the categories this member can access."
   }
 }

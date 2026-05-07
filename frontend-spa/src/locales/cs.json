@@ -1660,7 +1660,13 @@
     "actionsBtn": "Akce",
     "newViewLabel": "Nové zobrazení:",
     "shortcutNamePlaceholder": "Název zkratky…",
-    "saveAsShortcut": "Uložit jako zkratku"
+    "saveAsShortcut": "Uložit jako zkratku",
+    "accessPanelTitle": "Kdo má přístup",
+    "accessLoading": "Načítám přístupy…",
+    "accessCategoryGrants": "Přístupy ke kategorii",
+    "accessRecordGrants": "Přístupy k záznamu",
+    "accessNoGrants": "Žádné explicitní přístupy nebyly nalezeny.",
+    "accessRefresh": "Obnovit"
   },
   "sequences": {
     "title": "E-mailové sekvence",
@@ -2906,6 +2912,11 @@
     "sending": "Odesílám…",
     "invitationSent": "Pozvánka odeslána.",
     "failedToInvite": "Nepodařilo se odeslat pozvánku.",
-    "quickPresets": "Rychlý výběr"
+    "quickPresets": "Rychlý výběr",
+    "scopeCategoryDesc": "Vidí pouze záznamy z přidělených kategorií.",
+    "categoriesLabel": "Kategorie",
+    "noCategories": "Žádné kategorie nenalezeny.",
+    "categoryRequired": "Vyberte alespoň jednu kategorii.",
+    "step3HintCategory": "Vyberte kategorie, ke kterým bude mít člen přístup."
   }
 }

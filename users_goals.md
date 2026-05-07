@@ -1795,3 +1795,73 @@ Plán je rozdělen na **8 fází**. Každou fázi lze nasadit samostatně bez br
 - Merge do `main` a tag `v4.2`
 - Volitelně: v4.3 – Exportovat granty do CSV ze správce přístupů (`PermissionsOverviewView`)
 - Volitelně: v4.4 – Zobrazit v RecordDetailView přehled kdo má přístup (z `GET /records/{id}/access`)
+
+
+---
+
+### v4.3 – Přehled přístupů v RecordDetailView ✅ (2026-05-07)
+
+**Co bylo uděláno:**
+
+- **`crm/api.py`** – Opravena chyba v `_resolve_principal_name`: pro `principal_type='user'` se nyní filtruje přes `user_id` (User UUID), nikoliv přes `id` (Membership UUID). Odpovídá způsobu, jakým `filter_records_qs` ukládá `principal_id`.
+
+- **`frontend-spa/src/views/RecordDetailView.vue`** (nový panel „Kdo má přístup"):
+  - Importy: přidán `useMembersStore`, `LockOpenIcon`
+  - State: `accessData`, `accessLoading`, `accessExpanded`
+  - Funkce: `loadAccessData()` volá `GET /api/v1/crm/records/{id}/access`, `toggleAccessPanel()` lazy-load, `grantLevelClass()`, `grantDisplayName()`
+  - V `onMounted`: `membersStore.fetchMembers(firmId)` pro připravení jmen
+  - Nový collapsible panel v pravém sidebaru (po Checkpoints panelu):
+    - Teal barevné schéma (odlišení od ostatních panelů)
+    - Sekce „Granty kategorie" a „Granty záznamu" s badgemi úrovně (view/edit/manage)
+    - Zobrazuje expirace grantu (datum), principalName z API nebo fallback z members store
+    - Empty state + loading skeleton + tlačítko Refresh
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích pod `recordDetail.*`:
+  - `accessPanelTitle`, `accessLoading`, `accessCategoryGrants`, `accessRecordGrants`
+  - `accessNoGrants`, `accessRefresh`
+
+- Všechny testy zelené: 100/100 frontend OK
+
+
+### v4.4 – Category scope v InviteMemberWizard ✅ (2026-05-07)
+
+**Co bylo uděláno:**
+
+- **`firms/models.py`** – Přidáno pole `invited_category_ids = JSONField(default=list)` do modelu `Invitation`
+
+- **`firms/migrations/0014_invitation_category_ids.py`** – Migration pro nové pole
+
+- **`firms/api.py`** – `MemberInviteIn` schema rozšířena o `category_ids: List[str] = []`; `create_invitation` ukládá `invited_category_ids` při upsert i create
+
+- **`firms/invitations_api.py`** – `accept_invitation`: po vytvoření Membership, pokud `invited_default_scope == 'category'` a `invited_category_ids` není prázdné, vytvoří `CategoryGrant(level='view')` pro každou kategorii
+
+- **`frontend-spa/src/components/InviteMemberWizard.vue`**:
+  - Import `usePipelineStore`
+  - Přidán `selectedCategoryIds: ref<string[]>([])`
+  - Scope selector v Step 2: 4 volby (`own`, `team`, `category`, `all`) v 2×2 gridu
+  - `toggleCategory(id)` helper funkce
+  - V `watch` resetuje `selectedCategoryIds` a lazy-load kategorií
+  - Step 3: podmíněné zobrazení – pokud `scope='category'`, zobrazí se category picker (multi-select pilulky s barvami); jinak klasický team picker
+  - Submit přidává `category_ids` do payloadu
+  - Summary zobrazuje vybrané kategorie
+
+- **i18n** – přidány klíče ve všech 4 lokalizacích:
+  - `wizard.scopeCategoryDesc`, `wizard.categoriesLabel`, `wizard.noCategories`
+  - `wizard.categoryRequired`, `wizard.step3HintCategory`
+  - `permissions.scopeCategory`
+
+- Všechny testy zelené: 100/100 frontend OK
+
+
+### v4.5 – Email notifikace při udělení přístupu ✅ (2026-05-07)
+
+**Co bylo uděláno:**
+
+- **`crm/api.py`** – Přidána helper funkce `_notify_grant_recipient(principal_type, principal_id, firm, resource_name, resource_type, level, granted_by_user)`:
+  - Rozesílá pouze pro `principal_type='user'` (týmy nemají jeden email)
+  - Vyhledá grantee přes `Membership.objects.filter(user_id=principal_id, firm=firm)`
+  - Odesílá email pomocí `send_mail` (Django mail backend)
+  - Všechny výjimky jsou zachyceny a zalogována – notifikace nikdy nespadí API request
+- Volána z `create_category_grant` (pouze pro nové granty, ne update)
+- Volána z `create_record_grant` (pouze pro nové granty, ne update)
+

@@ -1659,7 +1659,13 @@
     "actionsBtn": "Akcje",
     "newViewLabel": "Nowy widok:",
     "shortcutNamePlaceholder": "Nazwa skrótu…",
-    "saveAsShortcut": "Zapisz jako skrót"
+    "saveAsShortcut": "Zapisz jako skrót",
+    "accessPanelTitle": "Kto ma dostęp",
+    "accessLoading": "Ładowanie danych dostępu…",
+    "accessCategoryGrants": "Dostęp do kategorii",
+    "accessRecordGrants": "Dostęp do rekordu",
+    "accessNoGrants": "Nie znaleziono jawnych uprawnień.",
+    "accessRefresh": "Odśwież"
   },
   "sequences": {
     "title": "Sekwencje e-mail",
@@ -2904,6 +2910,11 @@
     "sending": "Wysyłanie…",
     "invitationSent": "Zaproszenie wysłane.",
     "failedToInvite": "Nie udało się wysłać zaproszenia.",
-    "quickPresets": "Szybki wybór"
+    "quickPresets": "Szybki wybór",
+    "scopeCategoryDesc": "Może widzieć tylko rekordy z przypisanych kategorii.",
+    "categoriesLabel": "Kategorie",
+    "noCategories": "Nie znaleziono kategorii.",
+    "categoryRequired": "Wybierz co najmniej jedną kategorię.",
+    "step3HintCategory": "Wybierz kategorie, do których ten członek ma mieć dostęp."
   }
 }
