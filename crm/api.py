@@ -186,7 +186,7 @@ def _customer_out(c: Customer) -> dict:
 
 
 @router.get("/directory", auth=django_auth, response={200: List[CustomerOut], 403: ErrorOut})
-def list_customers(request, search: str = "", page: int = 1, page_size: int = 20, type: str = ""):
+def list_customers(request, search: str = "", page: int = 1, page_size: int = 20, type: str = "", tag: str = ""):
     try:
         require_membership(request)
     except Exception as exc:
@@ -195,6 +195,8 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
     qs = Customer.objects.filter(firm=request.firm).select_related('created_by', 'assigned_to')
     if type in (ContactType.PERSON, ContactType.COMPANY):
         qs = qs.filter(type=type)
+    if tag:
+        qs = qs.filter(tags__contains=[tag])
     if search:
         qs = qs.filter(
             Q(first_name__icontains=search)
@@ -206,6 +208,21 @@ def list_customers(request, search: str = "", page: int = 1, page_size: int = 20
         )
     offset = (page - 1) * page_size
     return 200, [_customer_out(c) for c in qs[offset:offset + page_size]]
+
+
+@router.get("/directory/tags", auth=django_auth, response={200: List[str], 403: ErrorOut})
+def list_directory_tags(request):
+    """Return all unique tags used across a firm's customer records."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    tags: set[str] = set()
+    for tag_list in Customer.objects.filter(firm=request.firm).values_list("tags", flat=True):
+        if tag_list:
+            tags.update(tag_list)
+    return 200, sorted(tags)
 
 
 @router.post("/directory", auth=django_auth, response={201: CustomerOut, 403: ErrorOut})

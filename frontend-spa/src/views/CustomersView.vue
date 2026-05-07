@@ -8,7 +8,7 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import { ConfirmDeleteModal } from '@/components/ui'
-import { TrashIcon, PencilSquareIcon, ArrowTopRightOnSquareIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, ArrowTopRightOnSquareIcon, UserIcon, BuildingOfficeIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const store = useCustomersStore()
@@ -20,7 +20,8 @@ const showModal = ref(false)
 const editingCustomer = ref<CustomerOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const searchInput = ref('')
-const activeTab = ref<'all' | 'company' | 'person'>('all')
+const activeTagFilter = ref('')
+const allKnownTags = ref<string[]>([])
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Form fields
@@ -45,21 +46,35 @@ const formLoading = ref(false)
 // Available companies for person→company link
 const availableCompanies = computed(() => store.customers.filter((c) => c.type === 'company'))
 
+// All unique tags from loaded customers merged with fetched tags list
+const availableTags = computed(() => {
+  const fromStore = new Set<string>()
+  store.customers.forEach((c) => c.tags.forEach((tg) => fromStore.add(tg)))
+  allKnownTags.value.forEach((tg) => fromStore.add(tg))
+  return [...fromStore].sort()
+})
+
+async function loadTags() {
+  const res = await api.get<string[]>('/api/v1/crm/directory/tags')
+  if (res.ok) allKnownTags.value = res.data
+}
+
 onMounted(() => {
   store.fetchCustomers()
   savedViewsStore.fetchViews()
+  loadTags()
 })
 
 watch(searchInput, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     store.search = val
-    store.fetchCustomers({ search: val, page: 1, type: activeTab.value === 'all' ? '' : activeTab.value })
+    store.fetchCustomers({ search: val, page: 1, tag: activeTagFilter.value || undefined })
   }, 300)
 })
 
-watch(activeTab, (val) => {
-  store.fetchCustomers({ search: searchInput.value, page: 1, type: val === 'all' ? '' : val })
+watch(activeTagFilter, (val) => {
+  store.fetchCustomers({ search: searchInput.value, page: 1, tag: val || undefined })
 })
 
 function openCreate() {
@@ -280,17 +295,25 @@ function exportCsv() {
       >⬇ {{ t('customers.exportCsv') }}</button>
     </div>
 
-    <!-- Type tabs -->
-    <div class="flex gap-1 mb-4">
-      <button
-        v-for="tab in [{ key: 'all', label: t('customers.tabAll') }, { key: 'company', label: t('customers.tabCompanies') }, { key: 'person', label: t('customers.tabPeople') }]"
-        :key="tab.key"
-        class="px-4 py-1.5 rounded-xl text-sm font-medium transition-colors"
-        :class="activeTab === tab.key
-          ? 'bg-red-600 text-white'
-          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-        @click="activeTab = tab.key as 'all' | 'company' | 'person'"
-      >{{ tab.label }}</button>
+    <!-- Tag filter bar -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <!-- Active tag filter chip -->
+      <span v-if="activeTagFilter" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-medium">
+        {{ activeTagFilter }}
+        <button :aria-label="t('customers.clearTagFilter')" @click="activeTagFilter = ''">
+          <XMarkIcon class="w-3.5 h-3.5" />
+        </button>
+      </span>
+
+      <!-- Tag suggestion chips from available tags -->
+      <template v-if="!activeTagFilter">
+        <button
+          v-for="tag in availableTags.slice(0, 20)"
+          :key="tag"
+          class="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors"
+          @click="activeTagFilter = tag"
+        >{{ tag }}</button>
+      </template>
     </div>
 
     <!-- Skeleton -->
@@ -306,15 +329,15 @@ function exportCsv() {
         </svg>
       </div>
       <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
-        <template v-if="searchInput">{{ t('customers.noSearchResults') }}</template>
+        <template v-if="searchInput || activeTagFilter">{{ t('customers.noSearchResults') }}</template>
         <template v-else>{{ t('customers.noCustomers') }}</template>
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
-        <template v-if="searchInput">{{ t('customers.tryDifferentSearch') }}</template>
+        <template v-if="searchInput || activeTagFilter">{{ t('customers.tryDifferentSearch') }}</template>
         <template v-else>{{ t('customers.addFirstHint') }}</template>
       </p>
       <button
-        v-if="!searchInput"
+        v-if="!searchInput && !activeTagFilter"
         class="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors"
         @click="openCreate"
       >{{ t('customers.addFirst') }}</button>
@@ -356,7 +379,12 @@ function exportCsv() {
               <span v-else class="text-gray-400 dark:text-gray-500">—</span>
             </td>
             <td class="px-4 py-3 hidden lg:table-cell" @click="goToDetail(c.id)">
-              <span v-for="tag in c.tags.slice(0, 3)" :key="tag" class="inline-block px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs mr-1">{{ tag }}</span>
+              <button
+                v-for="tag in c.tags.slice(0, 3)"
+                :key="tag"
+                class="inline-block px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs mr-1 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors"
+                @click.stop="activeTagFilter = tag"
+              >{{ tag }}</button>
               <span v-if="c.tags.length > 3" class="text-xs text-gray-400 dark:text-gray-500">+{{ c.tags.length - 3 }}</span>
             </td>
             <td class="px-4 py-3">
@@ -376,12 +404,12 @@ function exportCsv() {
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page - 1, type: activeTab === 'all' ? '' : activeTab })"
+            @click="store.fetchCustomers({ page: store.page - 1, tag: activeTagFilter || undefined })"
           >{{ t('customers.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page + 1, type: activeTab === 'all' ? '' : activeTab })"
+            @click="store.fetchCustomers({ page: store.page + 1, tag: activeTagFilter || undefined })"
           >{{ t('customers.next') }}</button>
         </div>
       </div>
@@ -496,7 +524,16 @@ function exportCsv() {
           <!-- Tags -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('customers.tags') }}</label>
-            <input v-model="formTagsInput" type="text" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400" :placeholder="t('customers.tagsPlaceholder')" />
+            <input
+              v-model="formTagsInput"
+              type="text"
+              list="directory-tags-datalist"
+              class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-red-400"
+              :placeholder="t('customers.tagsPlaceholder')"
+            />
+            <datalist id="directory-tags-datalist">
+              <option v-for="tag in availableTags" :key="tag" :value="tag" />
+            </datalist>
           </div>
 
           <div class="flex gap-3 pt-2">

@@ -182,6 +182,12 @@ const editError = ref('')
 // Tags
 const newTag = ref('')
 const tagsLoading = ref(false)
+const allFirmTags = ref<string[]>([])
+
+async function loadFirmTags() {
+  const res = await api.get<string[]>('/api/v1/crm/directory/tags')
+  if (res.ok) allFirmTags.value = res.data
+}
 
 // Metadata
 const newMetaKey = ref('')
@@ -476,6 +482,7 @@ onMounted(async () => {
   await loadLinkedRecords()
   await loadLinkedProposals()
   await loadEmployees()
+  loadFirmTags()
 })
 </script>
 <template>
@@ -703,10 +710,14 @@ onMounted(async () => {
               <input
                 v-model="newTag"
                 type="text"
+                list="customer-detail-tags-datalist"
                 :placeholder="t('customers.addTag')"
                 class="flex-1 max-w-48 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
                 @keydown.enter.prevent="addTag"
               />
+              <datalist id="customer-detail-tags-datalist">
+                <option v-for="tag in allFirmTags" :key="tag" :value="tag" />
+              </datalist>
               <button :disabled="tagsLoading || !newTag.trim()" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50" @click="addTag">{{ t('customers.add') }}</button>
             </div>
           </div>

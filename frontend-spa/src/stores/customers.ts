@@ -55,13 +55,14 @@ export const useCustomersStore = defineStore('customers', () => {
   const pageSize = ref(20)
   const hasMore = ref(true)
 
-  async function fetchCustomers(opts: { search?: string; page?: number; append?: boolean; type?: string } = {}) {
+  async function fetchCustomers(opts: { search?: string; page?: number; append?: boolean; type?: string; tag?: string } = {}) {
     loading.value = true
     try {
       const params = new URLSearchParams()
       if (opts.search !== undefined) params.set('search', opts.search)
       else if (search.value) params.set('search', search.value)
       if (opts.type) params.set('type', opts.type)
+      if (opts.tag) params.set('tag', opts.tag)
       const p = opts.page ?? 1
       params.set('page', String(p))
       params.set('page_size', String(pageSize.value))
