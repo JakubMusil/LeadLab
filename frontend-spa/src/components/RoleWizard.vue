@@ -207,7 +207,7 @@ function pickPreset(preset: RolePreset) {
   // Pre-fill subsequent steps from the preset
   name.value = preset.name
   description.value = preset.description
-  identifier.value = slugify(preset.code || preset.name)
+  identifier.value = slugify(preset.code || preset.name) || `role_${Date.now().toString(36)}`
   identifierManuallyEdited.value = false
   selectedPermissions.value = new Set(preset.permissions)
   step.value = 2
@@ -227,7 +227,9 @@ function pickStartFromScratch() {
 function onIdentifierInput(e: Event) {
   const v = (e.target as HTMLInputElement).value
   identifier.value = slugify(v)
-  identifierManuallyEdited.value = identifier.value.length > 0
+  // Once the user touches the field, stop auto-syncing from the name
+  // even if they later clear it.
+  identifierManuallyEdited.value = true
 }
 
 function validateStep2(): boolean {
