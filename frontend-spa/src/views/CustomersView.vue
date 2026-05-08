@@ -2,17 +2,15 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
-import { useSavedViewsStore } from '@/stores/savedViews'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import ContextMenu, { type ContextMenuItem } from '@/components/ContextMenu.vue'
 import { ConfirmDeleteModal } from '@/components/ui'
-import { TrashIcon, PencilSquareIcon, ArrowTopRightOnSquareIcon, UserIcon, BuildingOfficeIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, PencilSquareIcon, ArrowTopRightOnSquareIcon, UserIcon, BuildingOfficeIcon, XMarkIcon, TagIcon, ChevronDownIcon, PlusIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const store = useCustomersStore()
-const savedViewsStore = useSavedViewsStore()
 const toast = useToast()
 const { t } = useI18n()
 
@@ -21,8 +19,10 @@ const editingCustomer = ref<CustomerOut | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const searchInput = ref('')
 const activeTagFilter = ref('')
+const typeFilter = ref('')
+const tagDropdownOpen = ref(false)
+const tagSearchInput = ref('')
 const allKnownTags = ref<string[]>([])
-const MAX_TAG_SUGGESTIONS = 20
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Form fields
@@ -55,6 +55,11 @@ const availableTags = computed(() => {
   return [...fromStore].sort()
 })
 
+const filteredTagSuggestions = computed(() => {
+  const q = tagSearchInput.value.toLowerCase()
+  return q ? availableTags.value.filter((t) => t.toLowerCase().includes(q)) : availableTags.value
+})
+
 async function loadTags() {
   const res = await api.get<string[]>('/api/v1/crm/directory/tags')
   if (res.ok) allKnownTags.value = res.data
@@ -62,7 +67,6 @@ async function loadTags() {
 
 onMounted(() => {
   store.fetchCustomers()
-  savedViewsStore.fetchViews()
   loadTags()
 })
 
@@ -70,12 +74,18 @@ watch(searchInput, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     store.search = val
-    store.fetchCustomers({ search: val, page: 1, tag: activeTagFilter.value || undefined })
+    store.fetchCustomers({ search: val, page: 1, tag: activeTagFilter.value || undefined, type: typeFilter.value || undefined })
   }, 300)
 })
 
 watch(activeTagFilter, (val) => {
-  store.fetchCustomers({ search: searchInput.value, page: 1, tag: val || undefined })
+  store.fetchCustomers({ search: searchInput.value, page: 1, tag: val || undefined, type: typeFilter.value || undefined })
+  tagDropdownOpen.value = false
+  tagSearchInput.value = ''
+})
+
+watch(typeFilter, (val) => {
+  store.fetchCustomers({ search: searchInput.value, page: 1, tag: activeTagFilter.value || undefined, type: val || undefined })
 })
 
 function openCreate() {
@@ -188,6 +198,18 @@ function contactTypeLabel(type: string) {
   return type === 'company' ? t('customers.typeCompany') : t('customers.typePerson')
 }
 
+function closeTagDropdown() {
+  tagDropdownOpen.value = false
+  tagSearchInput.value = ''
+}
+
+function clearAllFilters() {
+  searchInput.value = ''
+  activeTagFilter.value = ''
+  typeFilter.value = ''
+  store.fetchCustomers({ page: 1 })
+}
+
 // Context menu
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextCustomer = ref<CustomerOut | null>(null)
@@ -244,29 +266,16 @@ async function onImportFile(e: Event) {
 function exportCsv() {
   const params = new URLSearchParams()
   if (searchInput.value) params.set('search', searchInput.value)
+  if (typeFilter.value) params.set('type', typeFilter.value)
+  if (activeTagFilter.value) params.set('tag', activeTagFilter.value)
   window.location.href = `/api/v1/integrations/export/customers.csv?${params.toString()}`
 }
 </script>
 
 <template>
   <div class="p-6">
-    <!-- Header -->
-    <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t('customers.title') }}</h2>
-
-      <!-- Saved views -->
-      <div v-if="savedViewsStore.viewsForEntity('directory').length > 0" class="flex items-center gap-1 flex-wrap">
-        <button
-          v-for="view in savedViewsStore.viewsForEntity('directory')"
-          :key="view.id"
-          class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          :title="view.name"
-          @click="router.push(`/app/customers?view=${view.id}`)"
-        >
-          🔖 {{ view.name }}
-        </button>
-      </div>
-
+    <!-- Toolbar -->
+    <div class="flex flex-wrap items-center gap-3 mb-4">
       <!-- Search -->
       <div class="flex items-center flex-1 min-w-48 max-w-sm bg-gray-100 dark:bg-gray-700 rounded-xl px-3 py-2 gap-2" role="search">
         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -274,47 +283,112 @@ function exportCsv() {
         </svg>
         <label for="customer-search" class="sr-only">{{ t('customers.searchPlaceholder') }}</label>
         <input id="customer-search" v-model="searchInput" type="search" :placeholder="t('customers.searchPlaceholder')" class="bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 outline-none flex-1" />
+        <button v-if="searchInput" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0" :aria-label="t('customers.clearTagFilter')" @click="searchInput = ''">
+          <XMarkIcon class="w-4 h-4" />
+        </button>
       </div>
-      <button
-        class="bg-red-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium hover:bg-red-700 transition-colors"
-        @click="openCreate"
-      >{{ t('customers.newCustomer') }}</button>
 
-      <!-- Import / Export -->
+      <!-- Type filter pills -->
+      <div class="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+        <button
+          v-for="opt in [{ value: '', label: t('customers.tabAll') }, { value: 'person', label: t('customers.tabPeople') }, { value: 'company', label: t('customers.tabCompanies') }]"
+          :key="opt.value"
+          class="px-3 py-1 rounded-lg text-sm font-medium transition-all"
+          :class="typeFilter === opt.value ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+          @click="typeFilter = opt.value"
+        >{{ opt.label }}</button>
+      </div>
+
+      <!-- Tag filter dropdown -->
+      <div class="relative">
+        <div v-if="tagDropdownOpen" class="fixed inset-0 z-10" aria-hidden="true" @click="closeTagDropdown" />
+        <button
+          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-colors relative z-20"
+          :class="activeTagFilter
+            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+          :aria-expanded="tagDropdownOpen"
+          @click="tagDropdownOpen = !tagDropdownOpen"
+        >
+          <TagIcon class="w-4 h-4 flex-shrink-0" />
+          <span class="max-w-[8rem] truncate">{{ activeTagFilter || t('customers.filterByTag') }}</span>
+          <button
+            v-if="activeTagFilter"
+            class="ml-1 flex-shrink-0"
+            :aria-label="t('customers.clearTagFilter')"
+            @click.stop="activeTagFilter = ''"
+          ><XMarkIcon class="w-3.5 h-3.5" /></button>
+          <ChevronDownIcon v-else class="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+        </button>
+
+        <!-- Tag dropdown panel -->
+        <div
+          v-if="tagDropdownOpen"
+          class="absolute top-full mt-1 left-0 z-20 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden"
+          role="listbox"
+          :aria-label="t('customers.filterByTag')"
+        >
+          <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+            <input
+              v-model="tagSearchInput"
+              type="search"
+              :placeholder="t('customers.searchTagsPlaceholder')"
+              class="w-full text-sm bg-gray-50 dark:bg-gray-700 rounded-lg px-2.5 py-1.5 outline-none text-gray-700 dark:text-gray-300 placeholder-gray-400"
+            />
+          </div>
+          <div class="max-h-52 overflow-y-auto py-1">
+            <button
+              v-for="tag in filteredTagSuggestions.slice(0, 50)"
+              :key="tag"
+              class="w-full text-left px-3 py-1.5 text-sm transition-colors flex items-center gap-2"
+              :class="activeTagFilter === tag
+                ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+              role="option"
+              :aria-selected="activeTagFilter === tag"
+              @click="activeTagFilter = activeTagFilter === tag ? '' : tag"
+            >{{ tag }}</button>
+            <p v-if="filteredTagSuggestions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 text-center py-3 px-3">
+              {{ t('customers.noSearchResults') }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clear all filters -->
+      <button
+        v-if="searchInput || typeFilter || activeTagFilter"
+        class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 underline transition-colors flex-shrink-0"
+        @click="clearAllFilters"
+      >{{ t('customers.clearFilters') }}</button>
+
+      <div class="flex-1" />
+
+      <!-- New customer -->
+      <button
+        class="flex items-center gap-1.5 bg-red-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors flex-shrink-0"
+        @click="openCreate"
+      >
+        <PlusIcon class="w-4 h-4" aria-hidden="true" />
+        {{ t('customers.newCustomer') }}
+      </button>
+
+      <!-- Import -->
       <label
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer flex-shrink-0"
         :class="importLoading ? 'opacity-60 pointer-events-none' : ''"
         :title="t('customers.importTitle')"
       >
-        ⬆ {{ t('customers.importCsv') }}
+        {{ t('customers.importCsv') }}
         <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
       </label>
+
+      <!-- Export -->
       <button
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
         :title="t('customers.exportTitle')"
         @click="exportCsv"
-      >⬇ {{ t('customers.exportCsv') }}</button>
-    </div>
-
-    <!-- Tag filter bar -->
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-      <!-- Active tag filter chip -->
-      <span v-if="activeTagFilter" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-medium">
-        {{ activeTagFilter }}
-        <button :aria-label="t('customers.clearTagFilter')" @click="activeTagFilter = ''">
-          <XMarkIcon class="w-3.5 h-3.5" />
-        </button>
-      </span>
-
-      <!-- Tag suggestion chips from available tags -->
-      <template v-if="!activeTagFilter">
-        <button
-          v-for="tag in availableTags.slice(0, MAX_TAG_SUGGESTIONS)"
-          :key="tag"
-          class="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors"
-          @click="activeTagFilter = tag"
-        >{{ tag }}</button>
-      </template>
+      >{{ t('customers.exportCsv') }}</button>
     </div>
 
     <!-- Skeleton -->
@@ -405,12 +479,12 @@ function exportCsv() {
           <button
             v-if="store.page > 1"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page - 1, tag: activeTagFilter || undefined })"
+            @click="store.fetchCustomers({ page: store.page - 1, tag: activeTagFilter || undefined, type: typeFilter || undefined })"
           >{{ t('customers.prev') }}</button>
           <button
             v-if="store.hasMore"
             class="px-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            @click="store.fetchCustomers({ page: store.page + 1, tag: activeTagFilter || undefined })"
+            @click="store.fetchCustomers({ page: store.page + 1, tag: activeTagFilter || undefined, type: typeFilter || undefined })"
           >{{ t('customers.next') }}</button>
         </div>
       </div>

@@ -997,7 +997,10 @@
     "valuePlaceholder": "Wartość",
     "viewCompany": "Zobacz firmę",
     "viewDetail": "Pokaż szczegóły",
-    "website": "Strona www"
+    "website": "Strona www",
+    "filterByTag": "Filtruj po etykiecie",
+    "searchTagsPlaceholder": "Szukaj etykiet…",
+    "clearFilters": "Wyczyść filtry"
   },
   "analytics": {
     "title": "Analityka i raporty",

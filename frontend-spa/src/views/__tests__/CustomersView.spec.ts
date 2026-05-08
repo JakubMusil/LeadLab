@@ -49,9 +49,10 @@ describe('CustomersView', () => {
     await router.isReady()
   })
 
-  it('renders the Directory heading', () => {
+  it('renders the search input and new customer button', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.text()).toContain('Directory')
+    expect(wrapper.find('input[id="customer-search"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('New Contact')
   })
 
   it('shows the search input', () => {

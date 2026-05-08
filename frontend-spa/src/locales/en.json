@@ -997,7 +997,10 @@
     "valuePlaceholder": "Value",
     "viewCompany": "View company",
     "viewDetail": "View detail",
-    "website": "Website"
+    "website": "Website",
+    "filterByTag": "Filter by tag",
+    "searchTagsPlaceholder": "Search tags…",
+    "clearFilters": "Clear filters"
   },
   "analytics": {
     "title": "Analytics & Reporting",
