@@ -49,14 +49,17 @@ describe('CustomersView', () => {
     await router.isReady()
   })
 
-  it('renders the Directory heading', () => {
+  it('renders the search input and new customer button', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.text()).toContain('Directory')
+    expect(wrapper.find('input[id="customer-search"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('New Contact')
   })
 
-  it('shows the search input', () => {
+  it('shows type filter pills (All / People / Companies)', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.find('input[placeholder*="Search"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('All')
+    expect(wrapper.text()).toContain('People')
+    expect(wrapper.text()).toContain('Companies')
   })
 
   it('shows "New Contact" button', () => {

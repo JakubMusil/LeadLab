@@ -450,19 +450,6 @@ function formatNotifTime(ts: string): string {
                 </RouterLink>
               </template>
 
-              <!-- Saved views for Customers -->
-              <template v-if="sidebarOpen && item.path === '/app/directory' && savedViewsStore.viewsForEntity('directory').length > 0">
-                <RouterLink
-                  v-for="view in savedViewsStore.viewsForEntity('directory')"
-                  :key="view.id"
-                  :to="`/app/directory?view=${view.id}`"
-                  class="flex items-center gap-2 pl-10 pr-3 py-1.5 rounded-xl text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300"
-                  @click="mobileMenuOpen = false"
-                >
-                  <span aria-hidden="true">🔖</span>
-                  <span class="truncate">{{ view.name }}</span>
-                </RouterLink>
-              </template>
             </template>
           </div>
         </template>

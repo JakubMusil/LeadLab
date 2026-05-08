@@ -998,7 +998,10 @@
     "valuePlaceholder": "Hodnota",
     "viewCompany": "Zobrazit firmu",
     "viewDetail": "Zobrazit detail",
-    "website": "Web"
+    "website": "Web",
+    "filterByTag": "Filtrovat dle štítku",
+    "searchTagsPlaceholder": "Hledat štítky…",
+    "clearFilters": "Zrušit filtry"
   },
   "analytics": {
     "title": "Analytika a přehledy",

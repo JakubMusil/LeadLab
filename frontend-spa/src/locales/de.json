@@ -997,7 +997,10 @@
     "valuePlaceholder": "Wert",
     "viewCompany": "Firma anzeigen",
     "viewDetail": "Detail anzeigen",
-    "website": "Website"
+    "website": "Website",
+    "filterByTag": "Nach Tag filtern",
+    "searchTagsPlaceholder": "Tags suchen…",
+    "clearFilters": "Filter zurücksetzen"
   },
   "analytics": {
     "title": "Analytik & Berichte",
