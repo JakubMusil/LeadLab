@@ -6442,7 +6442,7 @@ def list_notifications(request, unread_only: bool = False, page: int = 1, page_s
     auth=django_auth,
     response={200: Dict[str, int], 403: ErrorOut},
 )
-def mark_notifications_read(request, payload: MarkNotificationsReadIn = MarkNotificationsReadIn()):
+def mark_notifications_read(request, payload: MarkNotificationsReadIn):
     """
     Mark notifications as read.
 

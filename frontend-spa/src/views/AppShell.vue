@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useRecordsStore, type RecordOut } from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
-import { useNotificationsStore } from '@/stores/notifications'
+import { useNotificationsStore, type NotificationOut } from '@/stores/notifications'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useTasksStore } from '@/stores/tasks'
 import { usePermissionsStore } from '@/stores/permissions'
@@ -329,7 +329,13 @@ function notifLink(n: { event: string; payload: Record<string, unknown> }): stri
   return null
 }
 
-function handleNotificationClick(n: { id: string; event: string; payload: Record<string, unknown>; is_read: boolean }) {
+type NotificationRow = NotificationOut & { link: string | null }
+
+const notificationsWithLinks = computed<NotificationRow[]>(() =>
+  notifStore.notifications.map((n) => ({ ...n, link: notifLink(n) })),
+)
+
+function handleNotificationClick(n: { id: string; is_read: boolean }) {
   notifOpen.value = false
   if (!n.is_read) {
     void notifStore.markRead([n.id])
@@ -645,14 +651,14 @@ function formatNotifTime(ts: string): string {
                   </div>
                   <ul v-else class="divide-y divide-gray-50 dark:divide-gray-700" role="list">
                     <li
-                      v-for="n in notifStore.notifications"
+                      v-for="n in notificationsWithLinks"
                       :key="n.id"
                       class="px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       :class="n.is_read ? '' : 'bg-red-50/40 dark:bg-red-900/10'"
                     >
                       <RouterLink
-                        v-if="notifLink(n)"
-                        :to="notifLink(n)!"
+                        v-if="n.link"
+                        :to="n.link"
                         class="group flex items-start gap-3 w-full"
                         @click="handleNotificationClick(n)"
                       >
@@ -660,11 +666,10 @@ function formatNotifTime(ts: string): string {
                         <div class="min-w-0 flex-1">
                           <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{{ eventLabel(n.event) }}</p>
                           <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate group-hover:text-red-600 dark:group-hover:text-red-400">{{ notifTitle(n) }}</p>
-                          <p class="text-xs text-red-600/80 dark:text-red-400/90 mt-0.5">{{ t('appShell.openNotificationDetail') }}</p>
                           <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ formatNotifTime(n.created_at) }}</p>
                         </div>
                         <LinkIcon class="w-4 h-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400 flex-shrink-0 mt-1" aria-hidden="true" />
-                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" :aria-label="t('appShell.unread')" />
+                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" aria-hidden="true" />
                       </RouterLink>
                       <div v-else class="flex items-start gap-3 w-full">
                         <component :is="eventIcon(n.event)" class="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
@@ -673,7 +678,7 @@ function formatNotifTime(ts: string): string {
                           <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate">{{ notifTitle(n) }}</p>
                           <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ formatNotifTime(n.created_at) }}</p>
                         </div>
-                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" :aria-label="t('appShell.unread')" />
+                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" aria-hidden="true" />
                       </div>
                     </li>
                   </ul>

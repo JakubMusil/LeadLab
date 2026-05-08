@@ -24,3 +24,6 @@
   - ✅ `python3 manage.py test crm.tests.NotificationsMarkReadAPITest --keepdb` (2/2)
   - ✅ `npm run build-only`
   - ℹ️ `npm run type-check` stále padá na pre-existujících TypeScript chybách mimo scope této úpravy.
+- Zapracováno i následné review:
+  - odstraněn default objekt v signatuře endpointu `mark-read`
+  - odstraněno opakované vyhodnocování `notifLink()` v template (předpočítané `notificationsWithLinks`)
