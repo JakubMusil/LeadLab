@@ -2004,6 +2004,7 @@
     "notifications": "Benachrichtigungen",
     "markAllRead": "Alle als gelesen markieren",
     "noNotifications": "Noch keine Benachrichtigungen.",
+    "unreadNotificationsAria": "{count} ungelesene Benachrichtigungen",
     "keyboardShortcuts": "Tastaturkürzel",
     "eventLeadCreated": "Neuer Eintrag erstellt",
     "eventLeadUpdated": "Eintrag aktualisiert",

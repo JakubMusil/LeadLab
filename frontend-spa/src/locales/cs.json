@@ -2005,6 +2005,7 @@
     "notifications": "Oznámení",
     "markAllRead": "Označit vše jako přečtené",
     "noNotifications": "Zatím žádná oznámení.",
+    "unreadNotificationsAria": "{count} nepřečtených oznámení",
     "keyboardShortcuts": "Klávesové zkratky",
     "eventLeadCreated": "Nový záznam vytvořen",
     "eventLeadUpdated": "Záznam aktualizován",

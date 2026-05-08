@@ -2004,6 +2004,7 @@
     "notifications": "Powiadomienia",
     "markAllRead": "Oznacz wszystkie jako przeczytane",
     "noNotifications": "Brak powiadomień.",
+    "unreadNotificationsAria": "{count} nieprzeczytanych powiadomień",
     "keyboardShortcuts": "Skróty klawiszowe",
     "eventLeadCreated": "Nowy rekord utworzony",
     "eventLeadUpdated": "Rekord zaktualizowany",
