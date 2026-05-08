@@ -1,8 +1,9 @@
+from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
 
-from crm.models import Activity, ActivityType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
+from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
 from firms.models import Firm, Membership, InvitationRole
 from users.models import User
 
@@ -2044,7 +2045,6 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         self.assertIn("Jane", content)
 
     def test_export_customers_csv_type_filter(self):
-        from crm.models import ContactType
         company = Customer.objects.create(
             firm=self.firm,
             type=ContactType.COMPANY,
@@ -2060,7 +2060,6 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         self.assertNotIn("Jane", content)
 
     def test_export_customers_csv_tag_filter(self):
-        from django.db import connection
         if connection.vendor == "sqlite":
             self.skipTest("JSONField contains lookup not supported on SQLite")
         self.customer.tags = ["vip"]
