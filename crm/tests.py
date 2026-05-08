@@ -689,6 +689,46 @@ class CRMAPIFixtureMixin:
         return self.client.delete(url, content_type="application/json", **self.firm_headers())
 
 
+class NotificationsMarkReadAPITest(CRMAPIFixtureMixin, TestCase):
+    URL = "/api/v1/crm/notifications/mark-read"
+
+    def _make_notification(self):
+        from crm.models import Notification
+        return Notification.objects.create(
+            firm=self.firm,
+            user=self.owner,
+            event="task.completed",
+            payload={"title": "Demo"},
+            is_read=False,
+        )
+
+    def test_mark_read_accepts_ids_object_payload(self):
+        n1 = self._make_notification()
+        n2 = self._make_notification()
+
+        resp = self._post(self.URL, {"ids": [str(n1.id)]})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["updated"], 1)
+
+        n1.refresh_from_db()
+        n2.refresh_from_db()
+        self.assertTrue(n1.is_read)
+        self.assertFalse(n2.is_read)
+
+    def test_mark_read_with_empty_body_marks_all(self):
+        n1 = self._make_notification()
+        n2 = self._make_notification()
+
+        resp = self._post(self.URL, {})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["updated"], 2)
+
+        n1.refresh_from_db()
+        n2.refresh_from_db()
+        self.assertTrue(n1.is_read)
+        self.assertTrue(n2.is_read)
+
+
 # -- Customers ---------------------------------------------------------------
 
 class CustomerListAPITest(CRMAPIFixtureMixin, TestCase):

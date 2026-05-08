@@ -302,21 +302,55 @@ function eventIcon(event: string): Component {
   return map[event] ?? BellIcon
 }
 
-function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
+function payloadString(payload: Record<string, unknown>, key: string): string | null {
+  const value = payload[key]
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function notifLink(n: { event: string; payload: Record<string, unknown> }): string | null {
   if (n.event === 'record.created' || n.event === 'record.updated') {
-    return (n.payload.title as string) || eventLabel(n.event)
+    const recordId = payloadString(n.payload, 'id')
+    return recordId ? `/app/records/${recordId}` : null
   }
   if (n.event === 'activity.created') {
-    return (n.payload.content_text as string) || (n.payload.type as string) || t('appShell.notifActivity')
+    const entityType = payloadString(n.payload, 'entity_type')
+    const entityId = payloadString(n.payload, 'entity_id')
+    if (!entityType || !entityId) return null
+    if (entityType === 'record') return `/app/records/${entityId}`
+    if (entityType === 'customer') return `/app/directory/${entityId}`
+    if (entityType === 'proposal') return `/app/proposals/${entityId}`
+    if (entityType === 'task') return `/app/tasks/${entityId}`
+    return null
+  }
+  if (n.event === 'task.completed' || n.event === 'task.expired' || n.event === 'task.outcome_prompt') {
+    const taskId = payloadString(n.payload, 'id') ?? payloadString(n.payload, 'task_id')
+    return taskId ? `/app/tasks/${taskId}` : null
+  }
+  return null
+}
+
+function handleNotificationClick(n: { id: string; event: string; payload: Record<string, unknown>; is_read: boolean }) {
+  notifOpen.value = false
+  if (!n.is_read) {
+    void notifStore.markRead([n.id])
+  }
+}
+
+function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
+  if (n.event === 'record.created' || n.event === 'record.updated') {
+    return payloadString(n.payload, 'title') || eventLabel(n.event)
+  }
+  if (n.event === 'activity.created') {
+    return payloadString(n.payload, 'content_text') || payloadString(n.payload, 'type') || t('appShell.notifActivity')
   }
   if (n.event === 'task.completed') {
-    return (n.payload.title as string) || t('appShell.notifTaskCompleted')
+    return payloadString(n.payload, 'title') || payloadString(n.payload, 'task_title') || t('appShell.notifTaskCompleted')
   }
   if (n.event === 'task.outcome_prompt') {
-    return (n.payload.task_title as string) || t('appShell.notifTaskOutcomePrompt')
+    return payloadString(n.payload, 'task_title') || t('appShell.notifTaskOutcomePrompt')
   }
   if (n.event === 'task.expired') {
-    return (n.payload.task_title as string) || t('appShell.notifTaskExpired')
+    return payloadString(n.payload, 'task_title') || t('appShell.notifTaskExpired')
   }
   if (n.event === 'record.deleted') {
     return t('appShell.notifLeadDeleted', { id: n.payload.id as string })
@@ -572,7 +606,7 @@ function formatNotifTime(ts: string): string {
             <span
               v-if="notifStore.unreadCount > 0"
               class="absolute -top-0.5 -right-0.5 min-w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1"
-              aria-label="`${notifStore.unreadCount} unread notifications`"
+              :aria-label="t('appShell.unreadNotificationsAria', { count: notifStore.unreadCount })"
             >{{ notifStore.unreadCount > 99 ? '99+' : notifStore.unreadCount }}</span>
           </button>
 
@@ -613,16 +647,34 @@ function formatNotifTime(ts: string): string {
                     <li
                       v-for="n in notifStore.notifications"
                       :key="n.id"
-                      class="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      class="px-5 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       :class="n.is_read ? '' : 'bg-red-50/40 dark:bg-red-900/10'"
                     >
-                      <component :is="eventIcon(n.event)" class="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                      <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{{ eventLabel(n.event) }}</p>
-                        <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate">{{ notifTitle(n) }}</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ formatNotifTime(n.created_at) }}</p>
+                      <RouterLink
+                        v-if="notifLink(n)"
+                        :to="notifLink(n)!"
+                        class="group flex items-start gap-3 w-full"
+                        @click="handleNotificationClick(n)"
+                      >
+                        <component :is="eventIcon(n.event)" class="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                        <div class="min-w-0 flex-1">
+                          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{{ eventLabel(n.event) }}</p>
+                          <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate group-hover:text-red-600 dark:group-hover:text-red-400">{{ notifTitle(n) }}</p>
+                          <p class="text-xs text-red-600/80 dark:text-red-400/90 mt-0.5">{{ t('appShell.openNotificationDetail') }}</p>
+                          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ formatNotifTime(n.created_at) }}</p>
+                        </div>
+                        <LinkIcon class="w-4 h-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400 flex-shrink-0 mt-1" aria-hidden="true" />
+                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" :aria-label="t('appShell.unread')" />
+                      </RouterLink>
+                      <div v-else class="flex items-start gap-3 w-full">
+                        <component :is="eventIcon(n.event)" class="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                        <div class="min-w-0 flex-1">
+                          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{{ eventLabel(n.event) }}</p>
+                          <p class="text-sm text-gray-900 dark:text-gray-100 leading-snug truncate">{{ notifTitle(n) }}</p>
+                          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ formatNotifTime(n.created_at) }}</p>
+                        </div>
+                        <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" :aria-label="t('appShell.unread')" />
                       </div>
-                      <span v-if="!n.is_read" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" aria-label="Unread" />
                     </li>
                   </ul>
                 </div>

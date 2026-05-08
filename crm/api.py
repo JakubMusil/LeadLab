@@ -6404,6 +6404,10 @@ class NotificationOut(Schema):
     created_at: datetime
 
 
+class MarkNotificationsReadIn(Schema):
+    ids: Optional[List[str]] = None
+
+
 def _notification_out(n: Notification) -> dict:
     return {
         "id": str(n.id),
@@ -6438,7 +6442,7 @@ def list_notifications(request, unread_only: bool = False, page: int = 1, page_s
     auth=django_auth,
     response={200: Dict[str, int], 403: ErrorOut},
 )
-def mark_notifications_read(request, ids: Optional[List[str]] = None):
+def mark_notifications_read(request, payload: MarkNotificationsReadIn = MarkNotificationsReadIn()):
     """
     Mark notifications as read.
 
@@ -6451,8 +6455,8 @@ def mark_notifications_read(request, ids: Optional[List[str]] = None):
         return 403, {"detail": str(exc)}
 
     qs = Notification.objects.filter(firm=request.firm, user=request.user, is_read=False)
-    if ids:
-        qs = qs.filter(id__in=ids)
+    if payload.ids:
+        qs = qs.filter(id__in=payload.ids)
     updated = qs.update(is_read=True)
     return 200, {"updated": updated}
 
