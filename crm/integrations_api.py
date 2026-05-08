@@ -22,7 +22,7 @@ from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 from ninja.security import django_auth
 
-from crm.models import Customer, ImportJob, ImportJobStatus, ImportJobType, PipelineRecord, RecordStatus, Task
+from crm.models import ContactType, Customer, ImportJob, ImportJobStatus, ImportJobType, PipelineRecord, RecordStatus, Task
 from firms.auth import require_membership
 from firms.token_auth import BearerTokenAuth
 
@@ -369,9 +369,13 @@ def export_records_csv(
 
 
 @router.get("/export/customers.csv", auth=_auth)
-def export_customers_csv(request, search: str = ""):
+def export_customers_csv(request, search: str = "", type: str = "", tag: str = ""):
     """
     Download the current filtered customer list as a CSV file.
+
+    Supports the same ``search``, ``type`` and ``tag`` filters as the
+    directory listing endpoint so the exported file always matches what
+    the user sees on screen.
     """
     try:
         require_membership(request)
@@ -381,6 +385,10 @@ def export_customers_csv(request, search: str = ""):
     from django.db.models import Q
 
     qs = Customer.objects.filter(firm=request.firm)
+    if type in (ContactType.PERSON, ContactType.COMPANY):
+        qs = qs.filter(type=type)
+    if tag:
+        qs = qs.filter(tags__contains=[tag])
     if search:
         qs = qs.filter(
             Q(first_name__icontains=search)

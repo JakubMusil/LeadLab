@@ -1,8 +1,9 @@
+from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
 
-from crm.models import Activity, ActivityType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
+from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
 from firms.models import Firm, Membership, InvitationRole
 from users.models import User
 
@@ -2042,6 +2043,43 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         content = b"".join(resp.streaming_content).decode()
         self.assertIn("first_name", content)
         self.assertIn("Jane", content)
+
+    def test_export_customers_csv_type_filter(self):
+        company = Customer.objects.create(
+            firm=self.firm,
+            type=ContactType.COMPANY,
+            first_name="Acme Corp",
+        )
+        resp = self.client.get(
+            "/api/v1/integrations/export/customers.csv",
+            data={"type": ContactType.COMPANY},
+        )
+        self.assertEqual(resp.status_code, 200)
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("Acme Corp", content)
+        self.assertNotIn("Jane", content)
+
+    def test_export_customers_csv_tag_filter(self):
+        if connection.vendor == "sqlite":
+            self.skipTest("JSONField contains lookup not supported on SQLite")
+        self.customer.tags = ["vip"]
+        self.customer.save()
+        Customer.objects.create(
+            firm=self.firm,
+            first_name="Bob",
+            last_name="Smith",
+            email="bob@example.com",
+            tags=["regular"],
+        )
+        resp = self.client.get(
+            "/api/v1/integrations/export/customers.csv",
+            data={"tag": "vip"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("Jane", content)
+        self.assertNotIn("Bob", content)
+
 
 
 # ---------------------------------------------------------------------------
