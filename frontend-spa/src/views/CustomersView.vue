@@ -23,6 +23,7 @@ const typeFilter = ref('')
 const tagDropdownOpen = ref(false)
 const tagSearchInput = ref('')
 const allKnownTags = ref<string[]>([])
+const MAX_TAG_DROPDOWN = 50
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Form fields
@@ -338,7 +339,7 @@ function exportCsv() {
           </div>
           <div class="max-h-52 overflow-y-auto py-1">
             <button
-              v-for="tag in filteredTagSuggestions.slice(0, 50)"
+              v-for="tag in filteredTagSuggestions.slice(0, MAX_TAG_DROPDOWN)"
               :key="tag"
               class="w-full text-left px-3 py-1.5 text-sm transition-colors flex items-center gap-2"
               :class="activeTagFilter === tag

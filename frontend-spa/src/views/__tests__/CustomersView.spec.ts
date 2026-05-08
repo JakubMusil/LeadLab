@@ -55,9 +55,11 @@ describe('CustomersView', () => {
     expect(wrapper.text()).toContain('New Contact')
   })
 
-  it('shows the search input', () => {
+  it('shows type filter pills (All / People / Companies)', () => {
     const wrapper = mount(CustomersView, { global: { plugins: [router] } })
-    expect(wrapper.find('input[placeholder*="Search"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('All')
+    expect(wrapper.text()).toContain('People')
+    expect(wrapper.text()).toContain('Companies')
   })
 
   it('shows "New Contact" button', () => {
