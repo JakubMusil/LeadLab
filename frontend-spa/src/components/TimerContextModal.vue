@@ -53,11 +53,7 @@ watch(searchQuery, async (q) => {
           ?? []
       searchResults.value = (items as Record<string, string>[]).map((item) => ({
         id: item.id as string,
-        label: item.title
-          ? item.title
-          : (item.first_name
-              ? `${item.first_name} ${item.last_name ?? ''}`.trim()
-              : (item.email ?? item.id)),
+        label: getEntityLabel(item),
       }))
     }
   } finally {
@@ -81,6 +77,12 @@ function selectEntity(item: SearchResult) {
   selectedEntity.value = item
   searchResults.value = []
   searchQuery.value = item.label
+}
+
+function getEntityLabel(item: Record<string, string>): string {
+  if (item.title) return item.title
+  if (item.first_name) return `${item.first_name} ${item.last_name ?? ''}`.trim()
+  return item.email ?? item.id
 }
 
 function confirm() {
