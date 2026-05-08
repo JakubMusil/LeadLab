@@ -58,6 +58,7 @@ interface PersistedTimer {
   context: TimerContext
   description: string
   isBillable: boolean
+  hourlyRate: number | null
 }
 
 function loadPersisted(): PersistedTimer | null {
@@ -87,6 +88,7 @@ export const useTimerStore = defineStore('timer', () => {
   )
   const description = ref<string>(persisted?.description ?? '')
   const isBillable = ref<boolean>(persisted?.isBillable ?? true)
+  const hourlyRate = ref<number | null>(persisted?.hourlyRate ?? null)
 
   // Elapsed seconds computed live
   const elapsedSeconds = ref<number>(
@@ -116,15 +118,16 @@ export const useTimerStore = defineStore('timer', () => {
     _startTick()
   }
 
-  function start(ctx: TimerContext, desc = '', billable = true) {
+  function start(ctx: TimerContext, desc = '', billable = true, rate: number | null = null) {
     const now = Date.now()
     running.value = true
     startedAt.value = now
     context.value = ctx
     description.value = desc
     isBillable.value = billable
+    hourlyRate.value = rate
     elapsedSeconds.value = 0
-    savePersisted({ startedAt: now, context: ctx, description: desc, isBillable: billable })
+    savePersisted({ startedAt: now, context: ctx, description: desc, isBillable: billable, hourlyRate: rate })
     _startTick()
   }
 
@@ -136,6 +139,7 @@ export const useTimerStore = defineStore('timer', () => {
     context.value = { entityType: null, entityId: null, entityLabel: null }
     description.value = ''
     isBillable.value = true
+    hourlyRate.value = null
     savePersisted(null)
   }
 
@@ -155,6 +159,7 @@ export const useTimerStore = defineStore('timer', () => {
       duration_minutes: durationMinutes,
       description: description.value,
       is_billable: isBillable.value,
+      hourly_rate: hourlyRate.value,
       started_at: new Date(startedAt.value).toISOString(),
       ended_at: endedAt.toISOString(),
       record_id: context.value.entityType === 'record' ? context.value.entityId : null,
@@ -186,6 +191,7 @@ export const useTimerStore = defineStore('timer', () => {
     context,
     description,
     isBillable,
+    hourlyRate,
     elapsedSeconds,
     displayTime,
     start,

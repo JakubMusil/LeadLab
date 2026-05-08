@@ -1777,6 +1777,8 @@
     "description": "Opis (opcjonalnie)",
     "descriptionPlaceholder": "Nad czym pracujesz?",
     "billable": "Rozliczalny",
+    "hourlyRate": "Stawka godzinowa (opcjonalnie)",
+    "hourlyRatePlaceholder": "0,00",
     "cancel": "Anuluj",
     "start": "Uruchom timer"
   },

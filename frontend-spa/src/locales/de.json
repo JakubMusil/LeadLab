@@ -1777,6 +1777,8 @@
     "description": "Beschreibung (optional)",
     "descriptionPlaceholder": "Woran arbeiten Sie?",
     "billable": "Abrechenbar",
+    "hourlyRate": "Stundensatz (optional)",
+    "hourlyRatePlaceholder": "0,00",
     "cancel": "Abbrechen",
     "start": "Timer starten"
   },
