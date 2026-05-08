@@ -2043,6 +2043,45 @@ class CSVExportTest(CRMFixtureMixin, TestCase):
         self.assertIn("first_name", content)
         self.assertIn("Jane", content)
 
+    def test_export_customers_csv_type_filter(self):
+        from crm.models import ContactType
+        company = Customer.objects.create(
+            firm=self.firm,
+            type=ContactType.COMPANY,
+            first_name="Acme Corp",
+        )
+        resp = self.client.get(
+            "/api/v1/integrations/export/customers.csv",
+            data={"type": ContactType.COMPANY},
+        )
+        self.assertEqual(resp.status_code, 200)
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("Acme Corp", content)
+        self.assertNotIn("Jane", content)
+
+    def test_export_customers_csv_tag_filter(self):
+        from django.db import connection
+        if connection.vendor == "sqlite":
+            self.skipTest("JSONField contains lookup not supported on SQLite")
+        self.customer.tags = ["vip"]
+        self.customer.save()
+        Customer.objects.create(
+            firm=self.firm,
+            first_name="Bob",
+            last_name="Smith",
+            email="bob@example.com",
+            tags=["regular"],
+        )
+        resp = self.client.get(
+            "/api/v1/integrations/export/customers.csv",
+            data={"tag": "vip"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        content = b"".join(resp.streaming_content).decode()
+        self.assertIn("Jane", content)
+        self.assertNotIn("Bob", content)
+
+
 
 # ---------------------------------------------------------------------------
 # Phase 4.0 — ERP API tests
