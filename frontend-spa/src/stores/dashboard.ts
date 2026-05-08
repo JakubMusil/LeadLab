@@ -147,7 +147,7 @@ export const useDashboardLayoutStore = defineStore('dashboardLayout', () => {
   function updateWidgetConfigOptions(id: string, updates: Partial<WidgetConfigOptions>) {
     const entry = getWidgetEntry(id)
     if (entry) {
-      entry.config = { ...(entry.config ?? {}), ...updates }
+      entry.config = { ...entry.config, ...updates }
     }
   }
 
