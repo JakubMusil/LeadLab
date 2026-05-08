@@ -1777,6 +1777,8 @@
     "description": "Description (optional)",
     "descriptionPlaceholder": "What are you working on?",
     "billable": "Billable",
+    "hourlyRate": "Hourly rate (optional)",
+    "hourlyRatePlaceholder": "0.00",
     "cancel": "Cancel",
     "start": "Start timer"
   },

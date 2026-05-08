@@ -1778,6 +1778,8 @@
     "description": "Popis (volitelné)",
     "descriptionPlaceholder": "Na čem pracujete?",
     "billable": "Fakturovatelné",
+    "hourlyRate": "Hodinová sazba (volitelné)",
+    "hourlyRatePlaceholder": "0,00",
     "cancel": "Zrušit",
     "start": "Spustit časovač"
   },

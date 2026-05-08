@@ -8,7 +8,7 @@ const { t } = useI18n()
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{
-  (e: 'confirm', ctx: TimerContext, description: string, billable: boolean): void
+  (e: 'confirm', ctx: TimerContext, description: string, billable: boolean, hourlyRate: number | null): void
   (e: 'close'): void
 }>()
 
@@ -25,6 +25,7 @@ const searchResults = ref<SearchResult[]>([])
 const selectedEntity = ref<SearchResult | null>(null)
 const description = ref('')
 const isBillable = ref(true)
+const hourlyRate = ref<string>('')
 const searching = ref(false)
 
 watch(searchQuery, async (q) => {
@@ -52,9 +53,11 @@ watch(searchQuery, async (q) => {
           ?? []
       searchResults.value = (items as Record<string, string>[]).map((item) => ({
         id: item.id as string,
-        label: (item.title ?? item.first_name
-          ? `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim()
-          : item.email ?? item.id) as string,
+        label: item.title
+          ? item.title
+          : (item.first_name
+              ? `${item.first_name} ${item.last_name ?? ''}`.trim()
+              : (item.email ?? item.id)),
       }))
     }
   } finally {
@@ -71,6 +74,7 @@ watch(() => props.open, (v) => {
   selectedEntity.value = null
   description.value = ''
   isBillable.value = true
+  hourlyRate.value = ''
 })
 
 function selectEntity(item: SearchResult) {
@@ -85,7 +89,8 @@ function confirm() {
     entityId: selectedEntity.value?.id ?? null,
     entityLabel: selectedEntity.value?.label ?? null,
   }
-  emit('confirm', ctx, description.value, isBillable.value)
+  const rate = hourlyRate.value ? parseFloat(hourlyRate.value) : null
+  emit('confirm', ctx, description.value, isBillable.value, rate)
 }
 
 function close() {
@@ -163,6 +168,19 @@ function close() {
             type="text"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             :placeholder="t('timerModal.descriptionPlaceholder')"
+          />
+        </div>
+
+        <!-- Hourly rate -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('timerModal.hourlyRate') }}</label>
+          <input
+            v-model="hourlyRate"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            :placeholder="t('timerModal.hourlyRatePlaceholder')"
           />
         </div>
 

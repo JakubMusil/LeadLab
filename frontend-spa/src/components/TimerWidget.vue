@@ -25,9 +25,9 @@ function onStartClick() {
   modalOpen.value = true
 }
 
-function onConfirm(ctx: TimerContext, desc: string, billable: boolean) {
+function onConfirm(ctx: TimerContext, desc: string, billable: boolean, hourlyRate: number | null) {
   modalOpen.value = false
-  timerStore.start(ctx, desc, billable)
+  timerStore.start(ctx, desc, billable, hourlyRate)
 }
 
 async function onStop() {
