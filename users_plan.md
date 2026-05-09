@@ -130,6 +130,15 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - Následuje:
     - spustit `parallel_validation`,
     - vytvořit řádný PR s aktuální rekapitulací.
+- 2026-05-09 (pokračování na branch `copilot/update-users-plan`):
+  - Proveden baseline check před další úpravou:
+    - Frontend: `check-locales` ✅, `type-check`/`lint`/`test:unit`/`build-only` ❌ kvůli chybějícím frontend závislostem (`vue-tsc`, `run-s`, `vitest`, `vite`).
+    - Backend: `flake8`/`manage.py test`/`coverage report` ❌ kvůli chybějícím backend nástrojům (`flake8`, `coverage`).
+  - Tento průchod slouží k navázání podle `users_plan.md`, aktualizaci pracovního logu a uzavření průchodu řádným PR.
+  - Následuje:
+    - spustit `parallel_validation`,
+    - vytvořit řádný PR,
+    - po merge navázat dalším úklidem technického dluhu dle sekce „Co bude příště“.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
