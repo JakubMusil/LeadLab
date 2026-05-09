@@ -274,6 +274,10 @@ function normalizeEventKey(event: string): string {
   return event.trim().toLowerCase()
 }
 
+function normalizeI18nEventKey(event: string): string {
+  return normalizeEventKey(event).replace(/[.\s-]+/g, '_')
+}
+
 function eventLabel(event: string): string {
   const normalized = normalizeEventKey(event)
   const map: Record<string, string> = {
@@ -301,7 +305,7 @@ function eventLabel(event: string): string {
   if (map[normalized]) return map[normalized]
   // Fallback to optional `appShell.eventDynamic.<normalized_event_key>` i18n keys
   // so new backend events can be translated without touching this file.
-  const dynamicKey = `appShell.eventDynamic.${normalized.replace(/[.\s-]+/g, '_')}`
+  const dynamicKey = `appShell.eventDynamic.${normalizeI18nEventKey(normalized)}`
   if (te(dynamicKey)) return t(dynamicKey)
   return normalized
     .replace(/[.\s-]+/g, ' ')
@@ -381,7 +385,7 @@ function translateRecordStatus(status: string): string {
 }
 
 function activityTypeLabel(type: string): string {
-  const normalized = normalizeEventKey(type).replace(/[.\s-]+/g, '_')
+  const normalized = normalizeI18nEventKey(type)
   const key = `appShell.activityType.${normalized}`
   if (te(key)) return t(key)
   return type.replace(/_/g, ' ')
