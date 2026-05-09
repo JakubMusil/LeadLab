@@ -5,7 +5,7 @@ import { useFirmStore } from '@/stores/firm'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: () => import('@/views/MarketingView.vue') },
+    { path: '/', component: () => import('@/views/MarketingView.vue'), meta: { public: true } },
     { path: '/login', redirect: '/app/login' },
     { path: '/register', redirect: '/app/register' },
     { path: '/forgot-password', redirect: '/app/forgot-password' },
@@ -31,10 +31,12 @@ const router = createRouter({
     {
       path: '/app/reset-password/:uidb64/:token',
       component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { public: true },
     },
     {
       path: '/app/invite/:token',
       component: () => import('@/views/AcceptInviteView.vue'),
+      meta: { public: true },
     },
     {
       path: '/app/accept-invite/:token',
@@ -43,6 +45,7 @@ const router = createRouter({
     {
       path: '/app/ownership-transfer/:firmId/:token/confirm',
       component: () => import('@/views/OwnershipTransferConfirmView.vue'),
+      meta: { public: true },
     },
     {
       path: '/app/onboarding',
@@ -196,19 +199,29 @@ const router = createRouter({
         },
       ],
     },
-    { path: '/:pathMatch(.*)*', component: () => import('@/views/NotFoundView.vue') },
+    { path: '/:pathMatch(.*)*', component: () => import('@/views/NotFoundView.vue'), meta: { public: true } },
     {
       path: '/proposals/public/:token',
       component: () => import('@/views/PublicProposalView.vue'),
+      meta: { public: true },
     },
     {
       path: '/app/tasks/public/:token',
       component: () => import('@/views/PublicTaskView.vue'),
+      meta: { public: true },
     },
   ],
 })
 
 router.beforeEach(async (to) => {
+  // Purely public routes (e.g. marketing landing, public proposal/task share
+  // links, password-reset / invite acceptance flows) should never trigger
+  // auth bootstrap. Calling /api/v1/users/me as an anonymous visitor produces
+  // a noisy 401 in browser devtools and isn't required to render these views.
+  if (to.meta.public) {
+    return
+  }
+
   const authStore = useAuthStore()
   const firmStore = useFirmStore()
 
