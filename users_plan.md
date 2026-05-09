@@ -49,6 +49,18 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - Zapracovány drobné stabilizační úpravy v detailu (bezpečnější převod expirace na ISO, čistší podmínky při ukládání týmu).
   - Přidána kontrola výsledku při odebírání člena z původního týmu, aby nedošlo k nekonzistentnímu stavu při přesunu mezi týmy.
   - UI detailu sjednoceno do češtiny a odstraněna interní technická poznámka z uživatelsky viditelné části.
+  - Pokračování:
+    - Spuštěny kontroly před dalšími úpravami:
+      - Frontend: `check-locales` ✅, `type-check` ❌ (pre-existing TS chyby mimo scope), `lint` ❌ (pre-existing lint chyby), `test:unit` ❌ (100 testů pass, ale pre-existing unhandled errors), `build-only` ✅.
+      - Backend: `flake8` ❌ (pre-existing style/import chyby), `manage.py test` ❌ (pre-existing test failures v jiných částech systému).
+    - Doplněn i18n namespace `usersView` ve všech locale souborech (`cs/en/de/pl`).
+    - `UsersListView.vue` převeden na `t(...)` texty (headery, filtry, tabulka, stavy, chyby).
+    - `UsersDetailView.vue` převeden na `t(...)` texty (hlavička, timeline, profil, akce, grants/permissions snapshot, success/error hlášky).
+    - Ověření po změnách:
+      - `node scripts/check-locales.mjs` ✅
+      - `npx eslint src/views/UsersListView.vue src/views/UsersDetailView.vue` ✅
+      - `npm run build-only` ✅
+      - `npm run type-check` ❌ (pre-existing chyby mimo scope)
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
@@ -67,8 +79,12 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - akce dle oprávnění (`role.manage`/`team.manage`) pro úpravu role, expirace a týmu,
   - timeline aktivit s filtry (typ entity / typ aktivity) načítaná z existujícího report endpointu.
 - Přidána route `/app/users/:membershipId` do `frontend-spa/src/router/index.ts`.
+- Doladěny i18n texty pro Users list/detail:
+  - nový namespace `usersView` v `frontend-spa/src/locales/{cs,en,de,pl}.json`,
+  - odstraněny hardcoded texty z `UsersListView.vue` a `UsersDetailView.vue`,
+  - sjednocena textace a fallbacky (`usersView.common.notSet`) napříč oběma view.
 
 ## Co bude příště
 - Doplnit backend endpoint pro plnohodnotnou user timeline napříč všemi entitami (record/customer/proposal/task) bez workaroundu přes report feed.
 - Rozšířit timeline o stránkování/počty podle uživatele přímo na backendu (efektivnější načítání).
-- Doladit i18n texty pro Users detail a sjednotit textaci s ostatními view.
+- Navázat na nový backend endpoint i na frontendu (výměna workaroundu přes report feed za cílené API).

@@ -2945,6 +2945,113 @@
       "proposal_create": "Twórz i wysyłaj oferty powiązane z rekordami."
     }
   },
+  "usersView": {
+    "common": {
+      "notSet": "—"
+    },
+    "list": {
+      "title": "Użytkownicy",
+      "subtitle": "Członkowie aktywnej firmy",
+      "noAccess": "Nie masz uprawnień do podglądu użytkowników.",
+      "noExpiry": "Bez wygaśnięcia",
+      "loadError": "Nie udało się załadować użytkowników.",
+      "loading": "Ładowanie użytkowników…",
+      "empty": "Brak użytkowników dla wybranych filtrów.",
+      "filters": {
+        "searchPlaceholder": "Szukaj po nazwie lub e-mailu",
+        "allRoles": "Wszystkie role",
+        "allTeams": "Wszystkie zespoły",
+        "statusAll": "Wszystkie statusy",
+        "statusActive": "Aktywne",
+        "statusExpired": "Wygasłe"
+      },
+      "columns": {
+        "name": "Nazwa",
+        "email": "E-mail",
+        "role": "Rola",
+        "team": "Zespół",
+        "expiry": "Wygasa",
+        "actions": "Akcje"
+      },
+      "actions": {
+        "detail": "Szczegóły"
+      }
+    },
+    "detail": {
+      "title": "Szczegóły użytkownika",
+      "subtitle": "Profil członka i jego aktywności",
+      "backToList": "← Wróć do listy użytkowników",
+      "noAccess": "Nie masz uprawnień do podglądu szczegółów użytkownika.",
+      "loadingDetail": "Ładowanie szczegółów użytkownika…",
+      "memberStatus": {
+        "active": "Aktywny członek",
+        "expired": "Wygasły członek"
+      },
+      "timeline": {
+        "title": "Oś czasu aktywności",
+        "filters": {
+          "allActivityTypes": "Wszystkie typy aktywności",
+          "allEntities": "Wszystkie encje"
+        },
+        "entities": {
+          "record": "Rekord",
+          "customer": "Klient",
+          "proposal": "Oferta",
+          "task": "Zadanie",
+          "other": "Inne"
+        },
+        "openRecord": "Otwórz rekord: {record}",
+        "empty": "Nie znaleziono aktywności dla tego użytkownika.",
+        "loading": "Ładowanie aktywności…",
+        "loadingMore": "Ładowanie…",
+        "loadMore": "Załaduj więcej aktywności"
+      },
+      "profile": {
+        "title": "Profil członka",
+        "name": "Nazwa",
+        "email": "E-mail",
+        "role": "Rola",
+        "team": "Zespół",
+        "expiry": "Wygasa"
+      },
+      "actions": {
+        "title": "Akcje wg uprawnień",
+        "role": "Rola",
+        "expiry": "Wygasa",
+        "team": "Zespół",
+        "noTeam": "Bez zespołu",
+        "saving": "Zapisywanie…",
+        "saveRoleExpiry": "Zapisz rolę i wygaśnięcie",
+        "saveTeam": "Zapisz zespół"
+      },
+      "permissionsSnapshot": {
+        "title": "Podgląd uprawnień",
+        "empty": "Brak jawnych uprawnień."
+      },
+      "grantsSnapshot": {
+        "title": "Podgląd zakresu / grantów",
+        "noAccess": "Do podglądu grantów wymagana jest rola owner/admin.",
+        "loading": "Ładowanie grantów…",
+        "categoryGrants": "Granty kategorii ({count})",
+        "recordGrants": "Granty rekordów ({count})"
+      },
+      "errors": {
+        "loadGrants": "Nie udało się załadować grantów.",
+        "loadTimeline": "Nie udało się załadować osi czasu aktywności.",
+        "saveRoleExpiry": "Nie udało się zapisać roli/wygaśnięcia.",
+        "memberNotFound": "Nie znaleziono członka.",
+        "removeFromTeam": "Nie udało się usunąć z poprzedniego zespołu.",
+        "assignTeam": "Nie udało się przypisać do nowego zespołu.",
+        "saveTeam": "Nie udało się zapisać zespołu.",
+        "userNotFound": "Nie znaleziono użytkownika.",
+        "loadDetail": "Nie udało się załadować szczegółów użytkownika."
+      },
+      "success": {
+        "roleExpirySaved": "Zapisano rolę i wygaśnięcie.",
+        "teamSaved": "Zespół został zapisany."
+      }
+    }
+  },
   "peoplePicker": {
     "placeholder": "Wybierz członka...",
     "search": "Szukaj po nazwisku lub e-mailu",

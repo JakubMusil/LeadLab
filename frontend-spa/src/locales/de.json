@@ -2945,6 +2945,113 @@
       "proposal_create": "An Einträge gekoppelte Angebote erstellen und versenden."
     }
   },
+  "usersView": {
+    "common": {
+      "notSet": "—"
+    },
+    "list": {
+      "title": "Benutzer",
+      "subtitle": "Mitglieder der aktiven Firma",
+      "noAccess": "Sie haben keine Berechtigung, Benutzer anzuzeigen.",
+      "noExpiry": "Kein Ablaufdatum",
+      "loadError": "Benutzer konnten nicht geladen werden.",
+      "loading": "Benutzer werden geladen…",
+      "empty": "Keine Benutzer entsprechen den gewählten Filtern.",
+      "filters": {
+        "searchPlaceholder": "Nach Name oder E-Mail suchen",
+        "allRoles": "Alle Rollen",
+        "allTeams": "Alle Teams",
+        "statusAll": "Alle Status",
+        "statusActive": "Aktiv",
+        "statusExpired": "Abgelaufen"
+      },
+      "columns": {
+        "name": "Name",
+        "email": "E-Mail",
+        "role": "Rolle",
+        "team": "Team",
+        "expiry": "Ablauf",
+        "actions": "Aktionen"
+      },
+      "actions": {
+        "detail": "Detail"
+      }
+    },
+    "detail": {
+      "title": "Benutzerdetail",
+      "subtitle": "Profil und Aktivitäten des Mitglieds",
+      "backToList": "← Zurück zur Benutzerliste",
+      "noAccess": "Sie haben keine Berechtigung, das Benutzerdetail anzuzeigen.",
+      "loadingDetail": "Benutzerdetail wird geladen…",
+      "memberStatus": {
+        "active": "Aktives Mitglied",
+        "expired": "Abgelaufenes Mitglied"
+      },
+      "timeline": {
+        "title": "Aktivitäts-Timeline",
+        "filters": {
+          "allActivityTypes": "Alle Aktivitätstypen",
+          "allEntities": "Alle Entitäten"
+        },
+        "entities": {
+          "record": "Eintrag",
+          "customer": "Kunde",
+          "proposal": "Angebot",
+          "task": "Aufgabe",
+          "other": "Sonstiges"
+        },
+        "openRecord": "Eintrag öffnen: {record}",
+        "empty": "Für diesen Benutzer wurden keine Aktivitäten gefunden.",
+        "loading": "Aktivitäten werden geladen…",
+        "loadingMore": "Lade…",
+        "loadMore": "Weitere Aktivitäten laden"
+      },
+      "profile": {
+        "title": "Mitgliedsprofil",
+        "name": "Name",
+        "email": "E-Mail",
+        "role": "Rolle",
+        "team": "Team",
+        "expiry": "Ablauf"
+      },
+      "actions": {
+        "title": "Aktionen nach Berechtigung",
+        "role": "Rolle",
+        "expiry": "Ablauf",
+        "team": "Team",
+        "noTeam": "Kein Team",
+        "saving": "Speichern…",
+        "saveRoleExpiry": "Rolle und Ablauf speichern",
+        "saveTeam": "Team speichern"
+      },
+      "permissionsSnapshot": {
+        "title": "Berechtigungs-Snapshot",
+        "empty": "Keine explizite Berechtigung."
+      },
+      "grantsSnapshot": {
+        "title": "Scope-/Grant-Snapshot",
+        "noAccess": "Für Grant-Details ist die Rolle Owner/Admin erforderlich.",
+        "loading": "Grants werden geladen…",
+        "categoryGrants": "Kategorie-Grants ({count})",
+        "recordGrants": "Eintrags-Grants ({count})"
+      },
+      "errors": {
+        "loadGrants": "Grants konnten nicht geladen werden.",
+        "loadTimeline": "Aktivitäts-Timeline konnte nicht geladen werden.",
+        "saveRoleExpiry": "Speichern von Rolle/Ablauf fehlgeschlagen.",
+        "memberNotFound": "Mitglied wurde nicht gefunden.",
+        "removeFromTeam": "Entfernen aus dem vorherigen Team fehlgeschlagen.",
+        "assignTeam": "Zuweisung zum neuen Team fehlgeschlagen.",
+        "saveTeam": "Speichern des Teams fehlgeschlagen.",
+        "userNotFound": "Benutzer wurde nicht gefunden.",
+        "loadDetail": "Benutzerdetail konnte nicht geladen werden."
+      },
+      "success": {
+        "roleExpirySaved": "Rolle und Ablauf wurden gespeichert.",
+        "teamSaved": "Team wurde gespeichert."
+      }
+    }
+  },
   "peoplePicker": {
     "placeholder": "Mitglied auswählen...",
     "search": "Nach Name oder E-Mail suchen",
