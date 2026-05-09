@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
 
-from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, RecordSource, RecordStatus, Task
+from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, Proposal, RecordSource, RecordStatus, Task
 from firms.models import Firm, Membership, InvitationRole
 from users.models import User
 
@@ -1909,6 +1909,104 @@ class ActivityFeedAPITest(CRMAPIFixtureMixin, TestCase):
         self.client.logout()
         resp = self._get(self.URL)
         self.assertIn(resp.status_code, [401, 403])
+
+
+class UserTimelineReportAPITest(CRMAPIFixtureMixin, TestCase):
+    URL_TEMPLATE = "/api/v1/crm/reports/users/{membership_id}/timeline"
+
+    def setUp(self):
+        super().setUp()
+        self.proposal = Proposal.objects.create(
+            firm=self.firm,
+            record=self.record,
+            title="Demo Proposal",
+            status="draft",
+        )
+        self.task = Task.objects.create(
+            firm=self.firm,
+            record=self.record,
+            title="Follow up task",
+            created_by=self.owner,
+        )
+
+        self.owner_record_activity = Activity.objects.create(
+            record=self.record,
+            user=self.owner,
+            type=ActivityType.COMMENT,
+            content_text="Owner record",
+        )
+        self.owner_customer_activity = Activity.objects.create(
+            customer=self.customer,
+            user=self.owner,
+            type=ActivityType.MEETING,
+            content_text="Owner customer",
+        )
+        self.owner_proposal_activity = Activity.objects.create(
+            proposal=self.proposal,
+            user=self.owner,
+            type=ActivityType.EMAIL_OUT,
+            content_text="Owner proposal",
+        )
+        self.owner_task_activity = Activity.objects.create(
+            task=self.task,
+            user=self.owner,
+            type=ActivityType.TASK_COMPLETED,
+            content_text="Owner task",
+        )
+        Activity.objects.create(
+            record=self.record,
+            user=self.worker,
+            type=ActivityType.CALL,
+            content_text="Worker activity",
+        )
+
+    def _url(self, membership_id):
+        return self.URL_TEMPLATE.format(membership_id=membership_id)
+
+    def test_returns_200(self):
+        resp = self._get(self._url(self.owner_membership.id))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_returns_only_target_member_activities_across_entities(self):
+        resp = self._get(self._url(self.owner_membership.id))
+        data = resp.json()
+        self.assertTrue(len(data) >= 4)
+        types = {item["entity_type"] for item in data}
+        self.assertTrue({"record", "customer", "proposal", "task"}.issubset(types))
+
+    def test_filters_by_entity_type(self):
+        resp = self._get(self._url(self.owner_membership.id), {"entity_type": "task"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["entity_type"], "task")
+        self.assertEqual(data[0]["task_title"], "Follow up task")
+
+    def test_filters_by_activity_type(self):
+        resp = self._get(self._url(self.owner_membership.id), {"type": ActivityType.EMAIL_OUT})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["type"], ActivityType.EMAIL_OUT)
+
+    def test_tenant_isolation(self):
+        other_firm = Firm.objects.create(name="Other Firm Timeline")
+        other_record = PipelineRecord.objects.create(firm=other_firm, title="Other Record")
+        Activity.objects.create(
+            record=other_record,
+            user=self.owner,
+            type=ActivityType.COMMENT,
+            content_text="Cross-tenant",
+        )
+
+        resp = self._get(self._url(self.owner_membership.id))
+        self.assertEqual(resp.status_code, 200)
+        record_ids = {item["record_id"] for item in resp.json()}
+        self.assertNotIn(str(other_record.id), record_ids)
+
+    def test_returns_404_for_unknown_membership(self):
+        resp = self._get(self._url("11111111-1111-1111-1111-111111111111"))
+        self.assertEqual(resp.status_code, 404)
 
 
 class OverdueTasksAPITest(CRMAPIFixtureMixin, TestCase):

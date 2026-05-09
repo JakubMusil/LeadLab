@@ -56,11 +56,33 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - Doplněn i18n namespace `usersView` ve všech locale souborech (`cs/en/de/pl`).
     - `UsersListView.vue` převeden na `t(...)` texty (headery, filtry, tabulka, stavy, chyby).
     - `UsersDetailView.vue` převeden na `t(...)` texty (hlavička, timeline, profil, akce, grants/permissions snapshot, success/error hlášky).
-    - Ověření po změnách:
+  - Ověření po změnách:
       - `node scripts/check-locales.mjs` ✅
       - `npx eslint src/views/UsersListView.vue src/views/UsersDetailView.vue` ✅
       - `npm run build-only` ✅
       - `npm run type-check` ❌ (pre-existing chyby mimo scope)
+- 2026-05-09 (pokračování):
+  - Proveden další baseline check před úpravami:
+    - Frontend: `check-locales` ✅, `build-only` ✅, `type-check` ❌ (pre-existing), `lint` ❌ (pre-existing), `test:unit` ❌ (pre-existing).
+    - Backend: `flake8` ❌ (pre-existing), `manage.py test` ❌ (pre-existing).
+  - Přidán nový backend endpoint `GET /api/v1/crm/reports/users/{membership_id}/timeline`:
+    - vrací timeline pro konkrétního člena firmy napříč entitami (record/customer/proposal/task),
+    - podporuje stránkování (`page`, `page_size`) a filtry (`type`, `entity_type`),
+    - respektuje tenant izolaci a existující activity scope filtr (`filter_activities_qs`).
+  - Přidány integrační backend testy pro nový endpoint:
+    - základní dostupnost, filtr entity, filtr typu aktivity, tenant izolace, 404 pro neexistující membership.
+  - `UsersDetailView.vue` přepojen z workaroundu přes `/crm/reports/activities` na nový cílený endpoint timeline.
+  - Následuje:
+    - spustit cílené validace změněných souborů a případně doladit nalezené problémy,
+    - dokončit checklist, spustit `parallel_validation`,
+    - připravit řádný PR s rekapitulací.
+  - Cílené ověření po implementaci:
+    - `python manage.py test crm.tests.ActivityFeedAPITest crm.tests.UserTimelineReportAPITest` ✅
+    - `npx eslint src/views/UsersDetailView.vue` ✅
+    - `npm run build-only` ✅
+    - `flake8 crm/api.py crm/tests.py` ❌ (soubor `crm/api.py` má rozsáhlé pre-existing style nálezy mimo scope této změny).
+  - Po code review z `parallel_validation` doplněna pojmenovaná konstanta `USER_TIMELINE_PAGE_SIZE` v `UsersDetailView.vue`.
+  - Připraveno k vytvoření řádného PR.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
@@ -83,8 +105,14 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - nový namespace `usersView` v `frontend-spa/src/locales/{cs,en,de,pl}.json`,
   - odstraněny hardcoded texty z `UsersListView.vue` a `UsersDetailView.vue`,
   - sjednocena textace a fallbacky (`usersView.common.notSet`) napříč oběma view.
+- Přidán cílený backend endpoint pro user timeline:
+  - `GET /api/v1/crm/reports/users/{membership_id}/timeline`,
+  - vrací aktivity uživatele napříč entitami + názvy navázaných entit,
+  - podporuje `page`, `page_size`, `type`, `entity_type`,
+  - `UsersDetailView.vue` je na endpoint napojen.
+- Přidány integrační testy pro nový endpoint v `crm/tests.py`.
 
 ## Co bude příště
-- Doplnit backend endpoint pro plnohodnotnou user timeline napříč všemi entitami (record/customer/proposal/task) bez workaroundu přes report feed.
-- Rozšířit timeline o stránkování/počty podle uživatele přímo na backendu (efektivnější načítání).
-- Navázat na nový backend endpoint i na frontendu (výměna workaroundu přes report feed za cílené API).
+- Zvážit doplnění odpovědi endpointu o celkový počet položek (pro přesnější UX pagination indikaci).
+- Zvážit doplnění přímých odkazů z timeline i pro customer/proposal/task položky (nejen record).
+- Po stabilizaci odstranit/starat se o případné technické dluhy v `reports/activities`, pokud už nebude potřeba pro tento use-case.

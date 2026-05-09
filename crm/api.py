@@ -6330,6 +6330,117 @@ def activity_feed(
     return 200, [_activity_feed_item_out(a) for a in qs[offset:offset + page_size]]
 
 
+class UserActivityTimelineItemOut(Schema):
+    id: str
+    entity_type: str
+    entity_id: str
+    record_id: Optional[str]
+    record_title: Optional[str]
+    customer_id: Optional[str]
+    customer_name: Optional[str]
+    proposal_id: Optional[str]
+    proposal_title: Optional[str]
+    task_id: Optional[str]
+    task_title: Optional[str]
+    user_id: Optional[str]
+    type: str
+    content_text: str
+    metadata: Dict[str, Any]
+    created_at: datetime
+
+
+def _user_activity_timeline_item_out(a: Activity) -> dict:
+    customer_name = None
+    if a.customer_id:
+        customer = a.customer
+        customer_name = f"{customer.first_name} {customer.last_name}".strip() or customer.company_name or customer.email
+
+    return {
+        "id": str(a.id),
+        "entity_type": a.entity_type,
+        "entity_id": a.entity_id,
+        "record_id": str(a.record_id) if a.record_id else None,
+        "record_title": a.record.title if a.record_id else None,
+        "customer_id": str(a.customer_id) if a.customer_id else None,
+        "customer_name": customer_name,
+        "proposal_id": str(a.proposal_id) if a.proposal_id else None,
+        "proposal_title": a.proposal.title if a.proposal_id else None,
+        "task_id": str(a.task_id) if a.task_id else None,
+        "task_title": a.task.title if a.task_id else None,
+        "user_id": str(a.user_id) if a.user_id else None,
+        "type": a.type,
+        "content_text": a.content_text,
+        "metadata": a.metadata,
+        "created_at": a.created_at,
+    }
+
+
+@router.get(
+    "/reports/users/{membership_id}/timeline",
+    auth=django_auth,
+    response={200: List[UserActivityTimelineItemOut], 403: ErrorOut, 404: ErrorOut},
+)
+def user_timeline_report(
+    request,
+    membership_id: str,
+    page: int = 1,
+    page_size: int = 20,
+    type: str = "",
+    entity_type: str = "",
+):
+    """
+    Paginated activity timeline for one firm member across all entity types.
+    """
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    target_membership = (
+        Membership.objects.filter(id=membership_id, firm=request.firm)
+        .select_related("user")
+        .first()
+    )
+    if target_membership is None:
+        return 404, {"detail": "Member not found."}
+
+    qs = (
+        Activity.objects.filter(user_id=target_membership.user_id)
+        .filter(
+            Q(record__firm=request.firm)
+            | Q(customer__firm=request.firm)
+            | Q(proposal__firm=request.firm)
+            | Q(task__firm=request.firm)
+        )
+        .select_related("record", "customer", "proposal", "task")
+        .order_by("-created_at")
+    )
+    qs = filter_activities_qs(qs, request)
+
+    if type:
+        qs = qs.filter(type=type)
+
+    if entity_type:
+        if entity_type == "record":
+            qs = qs.filter(record_id__isnull=False)
+        elif entity_type == "customer":
+            qs = qs.filter(customer_id__isnull=False)
+        elif entity_type == "proposal":
+            qs = qs.filter(proposal_id__isnull=False)
+        elif entity_type == "task":
+            qs = qs.filter(task_id__isnull=False)
+        elif entity_type == "other":
+            qs = qs.filter(
+                record_id__isnull=True,
+                customer_id__isnull=True,
+                proposal_id__isnull=True,
+                task_id__isnull=True,
+            )
+
+    offset = (page - 1) * page_size
+    return 200, [_user_activity_timeline_item_out(a) for a in qs[offset:offset + page_size]]
+
+
 # ---------------------------------------------------------------------------
 # Overdue task report
 # ---------------------------------------------------------------------------
