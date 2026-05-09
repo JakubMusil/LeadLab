@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFirmStore } from '@/stores/firm'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionsStore } from '@/stores/permissions'
@@ -15,6 +16,7 @@ const authStore = useAuthStore()
 const permissionsStore = usePermissionsStore()
 const toast = useToast()
 const { t } = useI18n()
+const router = useRouter()
 
 interface Member {
   id: string
@@ -212,6 +214,10 @@ function toggleSelect(memberId: string) {
   } else {
     selectedMemberIds.value.add(memberId)
   }
+}
+
+function openUserDetail(membershipId: string) {
+  router.push(`/app/users/${membershipId}`)
 }
 
 function selectAll() {
@@ -412,6 +418,13 @@ onMounted(loadTeam)
               :aria-label="`Role: ${m.role}${canManage && m.role !== 'owner' ? '. Click to change.' : ''}`"
             >{{ m.role }}</button>
           </template>
+
+          <button
+            class="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            @click="openUserDetail(m.id)"
+          >
+            {{ t('usersView.list.actions.detail') }}
+          </button>
 
           <!-- Access grants toggle (admin/owner only) -->
           <button
