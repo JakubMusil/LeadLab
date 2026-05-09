@@ -30,8 +30,9 @@ class StreamlineTool(ABC):
         Icon key (maps to a Heroicons component name on the frontend).
     category : str
         Group used by the SPA filter dropdown to organise activity types.
-        One of: ``"communication"``, ``"task"``, ``"commerce"``, ``"system"``,
-        ``"ai"``, ``"meta"``.  Defaults to ``"system"``.
+        One of: ``"communication"``, ``"task"``, ``"planning"``,
+        ``"commerce"``, ``"system"``, ``"ai"``, ``"meta"``.  Defaults to
+        ``"system"``.
     default_visibility : str
         Whether this activity type is shown by default in the streamline.
         ``"important"`` types are visible to a fresh user; ``"secondary"``
