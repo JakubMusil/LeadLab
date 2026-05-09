@@ -5764,6 +5764,242 @@ def get_dashboard_team_leaderboard(
     }
 
 
+# ---------------------------------------------------------------------------
+# /dashboard/focus-next
+# ---------------------------------------------------------------------------
+
+class FocusNextRecordOut(Schema):
+    id: str
+    title: str
+    company_name: Optional[str] = None
+    contact_person_name: Optional[str] = None
+    value_canonical: Optional[float] = None
+    status: str
+    stage_name: Optional[str] = None
+    category_name: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    days_since_activity: int
+    score: Optional[int] = None
+
+
+class FocusNextOut(Schema):
+    record: Optional[FocusNextRecordOut] = None
+
+
+@router.get(
+    "/dashboard/focus-next",
+    auth=django_auth,
+    response={200: FocusNextOut, 403: ErrorOut},
+)
+def get_dashboard_focus_next(request):
+    """Return the single highest-priority active record the user should focus on next."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    active_records = (
+        PipelineRecord.objects.filter(
+            firm=request.firm,
+            assigned_to=request.user,
+        )
+        .exclude(status__in=[RecordStatus.WON, RecordStatus.LOST, RecordStatus.CANCELED])
+        .select_related("category", "current_stage", "assigned_to", "contact_person")
+    )
+
+    today_start = tz.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = tz.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    records_with_open_task_today = Task.objects.filter(
+        firm=request.firm,
+        record__in=active_records,
+        is_completed=False,
+        due_date__gte=today_start,
+        due_date__lte=today_end,
+    ).values_list("record_id", flat=True)
+
+    candidates = list(
+        active_records.exclude(id__in=records_with_open_task_today)
+    )
+
+    if not candidates:
+        return 200, {"record": None}
+
+    now = tz.now()
+
+    def _days_since(record):
+        ref = getattr(record, "last_activity_at", None) or record.updated_at
+        if ref is None:
+            return 0
+        return (now - ref).days
+
+    def _sort_key(record):
+        score = getattr(record, "score", None) or 0
+        return (-score, -_days_since(record))
+
+    candidates.sort(key=_sort_key)
+    best = candidates[0]
+
+    company = getattr(best, "company", None) or getattr(best, "customer", None)
+    company_name = getattr(company, "name", None) if company else None
+    contact = best.contact_person
+    contact_name = _user_display_name(contact) if contact else None
+
+    return 200, {
+        "record": {
+            "id": str(best.id),
+            "title": best.title,
+            "company_name": company_name,
+            "contact_person_name": contact_name,
+            "value_canonical": float(best.canonical_amount) if best.canonical_amount is not None else None,
+            "status": best.status,
+            "stage_name": best.current_stage.name if best.current_stage else None,
+            "category_name": best.category.name if best.category else None,
+            "assigned_to_name": _user_display_name(best.assigned_to),
+            "days_since_activity": _days_since(best),
+            "score": getattr(best, "score", None),
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# /dashboard/recent-wins
+# ---------------------------------------------------------------------------
+
+class RecentWinItem(Schema):
+    id: str
+    title: str
+    value_canonical: Optional[float] = None
+    won_at: datetime
+    assigned_to_name: Optional[str] = None
+
+
+class RecentWinsOut(Schema):
+    items: List[RecentWinItem]
+    canonical_currency: str
+
+
+@router.get(
+    "/dashboard/recent-wins",
+    auth=django_auth,
+    response={200: RecentWinsOut, 403: ErrorOut},
+)
+def get_dashboard_recent_wins(request, days: int = 30):
+    """Return recently won records within the given number of days."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    since = tz.now() - dt.timedelta(days=days)
+    won_records = (
+        PipelineRecord.objects.filter(
+            firm=request.firm,
+            status=RecordStatus.WON,
+            updated_at__gte=since,
+        )
+        .select_related("assigned_to")
+        .order_by("-updated_at")[:10]
+    )
+
+    items = [
+        {
+            "id": str(r.id),
+            "title": r.title,
+            "value_canonical": float(r.canonical_amount) if r.canonical_amount is not None else None,
+            "won_at": r.updated_at,
+            "assigned_to_name": _user_display_name(r.assigned_to),
+        }
+        for r in won_records
+    ]
+
+    return 200, {
+        "items": items,
+        "canonical_currency": request.firm.default_currency or "",
+    }
+
+
+# ---------------------------------------------------------------------------
+# /dashboard/my-goals
+# ---------------------------------------------------------------------------
+
+class MyGoalsOut(Schema):
+    activities_today: int
+    target_activities: int
+    streak_days: int
+    best_day_count: int
+    best_day_date: Optional[str] = None  # ISO date string
+
+
+@router.get(
+    "/dashboard/my-goals",
+    auth=django_auth,
+    response={200: MyGoalsOut, 403: ErrorOut},
+)
+def get_dashboard_my_goals(request):
+    """Return the current user's daily activity goal progress and streak."""
+    try:
+        require_membership(request)
+    except Exception as exc:
+        return 403, {"detail": str(exc)}
+
+    today = tz.now().date()
+    target_activities = 10
+
+    activities_today = Activity.objects.filter(
+        record__firm=request.firm,
+        user=request.user,
+        created_at__date=today,
+    ).count()
+
+    # Streak: count consecutive days (back from today inclusive) with >= 1 activity.
+    # Query up to 365 days back so long streaks are not incorrectly capped.
+    since_streak = tz.now() - dt.timedelta(days=365)
+    daily_counts = (
+        Activity.objects.filter(
+            record__firm=request.firm,
+            user=request.user,
+            created_at__date__gte=since_streak.date(),
+        )
+        .values("created_at__date")
+        .annotate(cnt=Count("id"))
+    )
+    day_map = {entry["created_at__date"]: entry["cnt"] for entry in daily_counts}
+
+    streak_days = 0
+    check_day = today
+    while True:
+        if day_map.get(check_day, 0) >= 1:
+            streak_days += 1
+            check_day -= dt.timedelta(days=1)
+        else:
+            break
+
+    # Best day: over last 90 days
+    since_best = tz.now() - dt.timedelta(days=90)
+    best_daily = (
+        Activity.objects.filter(
+            record__firm=request.firm,
+            user=request.user,
+            created_at__date__gte=since_best.date(),
+        )
+        .values("created_at__date")
+        .annotate(cnt=Count("id"))
+        .order_by("-cnt")
+        .first()
+    )
+
+    best_day_count = best_daily["cnt"] if best_daily else 0
+    best_day_date = best_daily["created_at__date"].isoformat() if best_daily else None
+
+    return 200, {
+        "activities_today": activities_today,
+        "target_activities": target_activities,
+        "streak_days": streak_days,
+        "best_day_count": best_day_count,
+        "best_day_date": best_day_date,
+    }
+
 
 
 

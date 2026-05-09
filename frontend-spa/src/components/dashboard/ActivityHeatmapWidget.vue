@@ -169,6 +169,9 @@ onMounted(load)
           <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.activeDays }}</span> {{ t('dashboard.heatmapActiveDays') }}</span>
           <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.avg.toFixed(1) }}</span> {{ t('dashboard.heatmapAvgPerDay') }}</span>
           <span><span class="font-semibold text-gray-900 dark:text-gray-100">{{ totals.peak }}</span> {{ t('dashboard.heatmapPeak') }}</span>
+          <span v-if="totals.peak > 0" class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full px-2 py-0.5">
+            🏆 {{ t('dashboard.heatmapPersonalBest', { n: totals.peak }) }}
+          </span>
         </div>
         <div v-else class="text-[11px] text-gray-400">&nbsp;</div>
         <div class="flex items-center gap-1 text-[10px] text-gray-400">

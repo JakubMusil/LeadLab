@@ -764,7 +764,22 @@
     "heatmapTotalActivities": "{n} aktywności",
     "heatmapActiveDays": "aktywnych dni",
     "heatmapAvgPerDay": "śr. na aktywny dzień",
-    "heatmapPeak": "max dziennie"
+    "heatmapPeak": "max dziennie",
+    "focusNextTitle": "Zadzwoń teraz",
+    "focusNextEmpty": "Świetna robota! Żaden rekord nie czeka na kontakt.",
+    "focusNextOpen": "Otwórz",
+    "focusNextSkip": "Pomiń",
+    "focusNextDaysStale": "{n} dni bez aktywności",
+    "recentWinsTitle": "Ostatnie sukcesy",
+    "recentWinsEmpty": "Brak sukcesów w ciągu ostatnich 30 dni.",
+    "recentWinsToday": "Dziś",
+    "recentWinsYesterday": "Wczoraj",
+    "recentWinsDaysAgo": "{n}d",
+    "dailyGoalsTitle": "Dzienny cel",
+    "dailyGoalsStreak": "dni z rzędu",
+    "dailyGoalsBest": "najlepszy dzień",
+    "dailyGoalsAchieved": "✅ Cel osiągnięty!",
+    "heatmapPersonalBest": "Rekord: {n} aktywności"
   },
   "leads": {
     "title": "Rekordy",

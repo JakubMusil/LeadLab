@@ -27,6 +27,9 @@ import PipelineTrendWidget from '@/components/dashboard/PipelineTrendWidget.vue'
 import WinLossWidget from '@/components/dashboard/WinLossWidget.vue'
 import ActivityHeatmapWidget from '@/components/dashboard/ActivityHeatmapWidget.vue'
 import TeamLeaderboardWidget from '@/components/dashboard/TeamLeaderboardWidget.vue'
+import FocusNextWidget from '@/components/dashboard/FocusNextWidget.vue'
+import RecentWinsWidget from '@/components/dashboard/RecentWinsWidget.vue'
+import DailyGoalsWidget from '@/components/dashboard/DailyGoalsWidget.vue'
 import DashboardTour from '@/components/dashboard/DashboardTour.vue'
 import WidgetConfigDialog from '@/components/dashboard/WidgetConfigDialog.vue'
 import SetupProgressWidget from '@/components/dashboard/SetupProgressWidget.vue'
@@ -83,7 +86,7 @@ let rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 // Widget label map for layout editor
 // ---------------------------------------------------------------------------
 
-type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints' | 'pipeline_trend' | 'win_loss' | 'activity_heatmap' | 'team_leaderboard' | 'setup_progress'
+type WidgetId = 'stat_cards' | 'pipeline_chart' | 'recent_activity' | 'status_breakdown' | 'my_top_records' | 'quick_create_record' | 'category_overview' | 'stage_funnel' | 'record_status_chart' | 'my_day' | 'stale_records' | 'upcoming_checkpoints' | 'pipeline_trend' | 'win_loss' | 'activity_heatmap' | 'team_leaderboard' | 'setup_progress' | 'focus_next' | 'recent_wins' | 'daily_goals'
 
 const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   stat_cards: t('dashboard.statCards'),
@@ -103,6 +106,9 @@ const WIDGET_LABELS = computed<Record<WidgetId, string>>(() => ({
   activity_heatmap: t('dashboard.activityHeatmap'),
   team_leaderboard: t('dashboard.teamLeaderboard'),
   setup_progress: t('dashboard.setupProgress'),
+  focus_next: t('dashboard.focusNextTitle'),
+  recent_wins: t('dashboard.recentWinsTitle'),
+  daily_goals: t('dashboard.dailyGoalsTitle'),
 }))
 
 // ---------------------------------------------------------------------------
@@ -375,6 +381,10 @@ onUnmounted(() => {
           <SetupProgressWidget
             v-else-if="widget.id === 'setup_progress'"
           />
+
+          <FocusNextWidget v-else-if="widget.id === 'focus_next'" />
+          <RecentWinsWidget v-else-if="widget.id === 'recent_wins'" />
+          <DailyGoalsWidget v-else-if="widget.id === 'daily_goals'" />
         </div>
       </div>
     </template>
