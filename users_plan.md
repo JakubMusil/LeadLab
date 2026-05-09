@@ -139,6 +139,18 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - spustit `parallel_validation`,
     - vytvořit řádný PR,
     - po merge navázat dalším úklidem technického dluhu dle sekce „Co bude příště“.
+- 2026-05-09 (pokračování na branch `copilot/add-links-to-new-views`):
+  - Navázáno dle `users_plan.md` a ověřen dotaz k UX: doplnění odkazu na nové Users view do levého menu v sekci Nastavení.
+  - Proveden baseline check před úpravou:
+    - Frontend: `check-locales` ✅, `type-check`/`lint`/`test:unit`/`build-only` ❌ kvůli chybějícím frontend závislostem (`vue-tsc`, `run-s`, `vitest`, `vite`).
+    - Backend: `flake8`/`manage.py test` ❌ kvůli chybějícím backend závislostem (`flake8`, `django`).
+  - Do `frontend-spa/src/views/AppShell.vue` přidána nová položka v levé navigaci (sekce Settings):
+    - label `usersView.list.title`,
+    - path `/app/users`.
+  - Následuje:
+    - spustit cílené frontend validace po změně,
+    - spustit `parallel_validation`,
+    - vytvořit řádný PR.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.

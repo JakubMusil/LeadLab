@@ -238,6 +238,7 @@ const navSections = computed(() => [
     label: t('appShell.sectionSettings'),
     items: [
       { label: t('nav.team'), icon: UserGroupIcon, path: '/app/team' },
+      { label: t('usersView.list.title'), icon: UsersIcon, path: '/app/users' },
       // Plugins/Integrations – only visible to users with integrations.manage permission
       ...(can('integrations.manage') ? [{ label: t('appShell.sectionPlugins'), icon: PuzzlePieceIcon, path: '/app/plugins' }] : []),
       { label: t('nav.settings'), icon: Cog6ToothIcon, path: '/app/settings' },
