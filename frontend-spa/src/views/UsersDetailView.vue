@@ -106,7 +106,8 @@ function formatDateOnly(value: string | null | undefined): string {
 
 function initialiseDrafts(member: MemberOut | undefined) {
   roleDraft.value = member?.role ?? ''
-  expiryDraft.value = member?.expires_at?.trim() ? member.expires_at.slice(0, 10) : ''
+  const expiresAt = member?.expires_at
+  expiryDraft.value = expiresAt && expiresAt.trim() ? expiresAt.slice(0, 10) : ''
   teamDraft.value = member?.team_id ?? ''
 }
 
@@ -279,7 +280,11 @@ async function saveTeam() {
     }
 
     if (member.team_id) {
-      await api.delete(`/api/v1/firms/${firmId.value}/teams/${member.team_id}/members/${membershipId.value}`)
+      const deleteRes = await api.delete(`/api/v1/firms/${firmId.value}/teams/${member.team_id}/members/${membershipId.value}`)
+      if (!deleteRes.ok && deleteRes.status !== 404) {
+        actionError.value = 'Uložení týmu selhalo.'
+        return
+      }
     }
 
     if (teamDraft.value) {
