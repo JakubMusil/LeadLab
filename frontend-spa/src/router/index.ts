@@ -120,6 +120,11 @@ const router = createRouter({
           meta: { title: 'Users' },
         },
         {
+          path: 'users/:membershipId',
+          component: () => import('@/views/UsersDetailView.vue'),
+          meta: { title: 'User Detail' },
+        },
+        {
           path: 'plugins',
           component: () => import('@/views/PluginsView.vue'),
           meta: { title: 'Plugins' },
