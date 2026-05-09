@@ -169,8 +169,10 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - Integrace do „Lidé a oprávnění“:
     - z levého menu (`AppShell`) odstraněna samostatná položka `/app/users`, aby nebyly dvě vstupní cesty pro správu uživatelů,
     - v `TeamView` (v rámci `PeoplePermissionsView` sekce Members) přidána akce „Detail“, která otevírá `/app/users/:membershipId`.
+  - Cílené ověření po změně:
+    - Frontend: `node scripts/check-locales.mjs` ✅, `eslint src/views/AppShell.vue src/views/TeamView.vue` ✅, `npm run build-only` ✅.
+    - Frontend: `npm run type-check` ❌ (pre-existing TS chyby mimo scope; týkají se více souborů včetně dlouhodobých nálezů v `TeamView`).
   - Následuje:
-    - spustit cílené frontend validace po změně,
     - spustit `parallel_validation`,
     - vytvořit řádný PR.
 

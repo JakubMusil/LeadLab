@@ -22,6 +22,7 @@ import TimerWidget from '@/components/TimerWidget.vue'
 import {
   Squares2X2Icon,
   FunnelIcon,
+  UsersIcon,
   ClipboardDocumentListIcon,
   CalendarDaysIcon,
   ChartBarIcon,
