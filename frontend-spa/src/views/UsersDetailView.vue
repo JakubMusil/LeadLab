@@ -180,33 +180,40 @@ async function loadActivityChunk() {
   activityError.value = ''
 
   const pageSize = 100
-  let page = activitiesNextPage.value
-  let matched = 0
-  const chunk: ActivityFeedItem[] = []
+  const maxPagesPerChunk = 3
+  const startPage = activitiesNextPage.value
+  const requests: Array<Promise<Awaited<ReturnType<typeof api.get<ActivityFeedItem[]>>>>> = []
 
   try {
-    while (page <= 10_000 && matched < 20) {
-      const res = await api.get<ActivityFeedItem[]>(`/api/v1/crm/reports/activities?page=${page}&page_size=${pageSize}`)
+    for (let page = startPage; page < startPage + maxPagesPerChunk; page += 1) {
+      requests.push(api.get<ActivityFeedItem[]>(`/api/v1/crm/reports/activities?page=${page}&page_size=${pageSize}`))
+    }
+
+    const responses = await Promise.all(requests)
+    const targetUserId = currentMember.value.user_id
+    const chunk: ActivityFeedItem[] = []
+    let reachedEnd = false
+
+    for (const res of responses) {
       if (!res.ok || !Array.isArray(res.data)) {
         activityError.value = 'Nepodařilo se načíst timeline aktivit.'
         break
       }
 
       const pageItems = res.data
-      const targetUserId = currentMember.value.user_id
       const matchedItems = pageItems.filter((item) => item.user_id === targetUserId)
       chunk.push(...matchedItems)
-      matched += matchedItems.length
-
-      page += 1
       if (pageItems.length < pageSize) {
-        activitiesHasMore.value = false
+        reachedEnd = true
         break
       }
     }
 
-    activities.value = [...activities.value, ...chunk]
-    activitiesNextPage.value = page
+    if (!activityError.value) {
+      activities.value = [...activities.value, ...chunk]
+      activitiesNextPage.value = startPage + responses.length
+      activitiesHasMore.value = !reachedEnd
+    }
   } catch {
     activityError.value = 'Nepodařilo se načíst timeline aktivit.'
   } finally {
@@ -355,7 +362,7 @@ watch(currentMember, (next) => {
               </div>
 
               <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Timeline je aktuálně čtená z endpointu report aktivit, proto může obsahovat hlavně záznamy navázané na records.
+                Timeline je aktuálně čtena z endpointu report aktivit, proto může obsahovat hlavně záznamy navázané na records.
               </p>
 
               <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">

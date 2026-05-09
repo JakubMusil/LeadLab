@@ -45,6 +45,7 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - `npx eslint src/views/UsersDetailView.vue src/router/index.ts` ✅
     - `npm run build-only` ✅
     - `npm run type-check` ❌ (pre-existing chyby mimo tuto změnu; bez nových chyb v `UsersDetailView.vue`)
+  - Na základě review upraveno načítání timeline tak, aby se nespouštěly extrémní sekvenční requesty (chunkované načítání po malých dávkách paralelních stránek).
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
