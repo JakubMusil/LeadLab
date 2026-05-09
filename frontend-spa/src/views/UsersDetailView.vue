@@ -113,6 +113,20 @@ function roleLabel(member: MemberOut): string {
   return member.role
 }
 
+function localizedActivityType(type: string | null | undefined): string {
+  if (!type) return t('usersView.common.notSet')
+  const key = `appShell.activityType.${type}`
+  const translated = t(key)
+  return translated === key ? type : translated
+}
+
+function localizedPermissionCode(code: string | null | undefined): string {
+  if (!code) return t('usersView.common.notSet')
+  const key = `permissions.codeDesc.${code}`
+  const translated = t(key)
+  return translated === key ? code : translated
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return t('usersView.common.notSet')
   return new Date(value).toLocaleString(locale.value)
@@ -382,6 +396,7 @@ watch(currentMember, (next) => {
                   {{ targetStatus === 'expired' ? t('usersView.detail.memberStatus.expired') : t('usersView.detail.memberStatus.active') }}
                 </span>
               </div>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.timeline.description') }}</p>
 
               <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
@@ -389,7 +404,7 @@ watch(currentMember, (next) => {
                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
                   <option value="all">{{ t('usersView.detail.timeline.filters.allActivityTypes') }}</option>
-                  <option v-for="type in activityTypeOptions" :key="type" :value="type">{{ type }}</option>
+                  <option v-for="type in activityTypeOptions" :key="type" :value="type">{{ localizedActivityType(type) }}</option>
                 </select>
 
                 <select
@@ -416,7 +431,7 @@ watch(currentMember, (next) => {
                   class="py-3"
                 >
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.type }}</p>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ localizedActivityType(item.type) }}</p>
                     <span class="text-xs text-gray-400 dark:text-gray-500">{{ formatDate(item.created_at) }}</span>
                   </div>
                   <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ item.content_text || t('usersView.common.notSet') }}</p>
@@ -505,6 +520,7 @@ watch(currentMember, (next) => {
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.actions.title') }}</h2>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.actions.description') }}</p>
 
               <div class="mt-3 space-y-2">
                 <label class="block text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.actions.role') }}</label>
@@ -558,13 +574,15 @@ watch(currentMember, (next) => {
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.permissionsSnapshot.title') }}</h2>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.permissionsSnapshot.description') }}</p>
               <div class="mt-2 flex flex-wrap gap-1">
                 <span
                   v-for="perm in memberPermissions"
                   :key="perm"
                   class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                  :title="perm"
                 >
-                  {{ perm }}
+                  {{ localizedPermissionCode(perm) }}
                 </span>
                 <span
                   v-if="memberPermissions.length === 0"

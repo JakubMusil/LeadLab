@@ -2989,6 +2989,7 @@
       },
       "timeline": {
         "title": "Activity timeline",
+        "description": "Overview of this member's recent activities. Use filters to quickly narrow down activity type and area.",
         "filters": {
           "allActivityTypes": "All activity types",
           "allEntities": "All entities"
@@ -3020,6 +3021,7 @@
       },
       "actions": {
         "title": "Actions by permission",
+        "description": "Update this member's role, expiry date and team assignment.",
         "role": "Role",
         "expiry": "Expiry",
         "team": "Team",
@@ -3030,6 +3032,7 @@
       },
       "permissionsSnapshot": {
         "title": "Permissions snapshot",
+        "description": "Summary of explicit permissions currently available to this member.",
         "empty": "No explicit permission."
       },
       "grantsSnapshot": {

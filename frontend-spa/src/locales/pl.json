@@ -3008,7 +3008,8 @@
         "loading": "Ładowanie aktywności…",
         "loadingMore": "Ładowanie…",
         "loadMore": "Załaduj więcej aktywności",
-        "loadedCount": "Załadowano {loaded} z {total} aktywności"
+        "loadedCount": "Załadowano {loaded} z {total} aktywności",
+        "description": "Przegląd ostatnich aktywności tego członka. Użyj filtrów, aby szybko zawęzić typ aktywności lub obszar."
       },
       "profile": {
         "title": "Profil członka",
@@ -3026,11 +3027,13 @@
         "noTeam": "Bez zespołu",
         "saving": "Zapisywanie…",
         "saveRoleExpiry": "Zapisz rolę i wygaśnięcie",
-        "saveTeam": "Zapisz zespół"
+        "saveTeam": "Zapisz zespół",
+        "description": "Tutaj możesz zaktualizować rolę członka, datę wygaśnięcia i przypisanie do zespołu."
       },
       "permissionsSnapshot": {
         "title": "Podgląd uprawnień",
-        "empty": "Brak jawnych uprawnień."
+        "empty": "Brak jawnych uprawnień.",
+        "description": "Podsumowanie jawnych uprawnień, które ten członek ma obecnie do dyspozycji."
       },
       "grantsSnapshot": {
         "title": "Podgląd zakresu / grantów",
