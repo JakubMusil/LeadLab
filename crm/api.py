@@ -6349,6 +6349,13 @@ class UserActivityTimelineItemOut(Schema):
     created_at: datetime
 
 
+class UserActivityTimelineOut(Schema):
+    items: List[UserActivityTimelineItemOut]
+    total_count: int
+    page: int
+    page_size: int
+
+
 def _user_activity_timeline_item_out(a: Activity) -> dict:
     customer_name = None
     if a.customer_id:
@@ -6378,7 +6385,7 @@ def _user_activity_timeline_item_out(a: Activity) -> dict:
 @router.get(
     "/reports/users/{membership_id}/timeline",
     auth=django_auth,
-    response={200: List[UserActivityTimelineItemOut], 403: ErrorOut, 404: ErrorOut},
+    response={200: UserActivityTimelineOut, 403: ErrorOut, 404: ErrorOut},
 )
 def user_timeline_report(
     request,
@@ -6437,8 +6444,15 @@ def user_timeline_report(
                 task_id__isnull=True,
             )
 
+    total_count = qs.count()
     offset = (page - 1) * page_size
-    return 200, [_user_activity_timeline_item_out(a) for a in qs[offset:offset + page_size]]
+    page_items = [_user_activity_timeline_item_out(a) for a in qs[offset:offset + page_size]]
+    return 200, {
+        "items": page_items,
+        "total_count": total_count,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 # ---------------------------------------------------------------------------

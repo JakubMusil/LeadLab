@@ -50,6 +50,13 @@ interface ActivityFeedItem {
   created_at: string
 }
 
+interface UserTimelineResponse {
+  items: ActivityFeedItem[]
+  total_count: number
+  page: number
+  page_size: number
+}
+
 const route = useRoute()
 const firmStore = useFirmStore()
 const membersStore = useMembersStore()
@@ -72,6 +79,7 @@ const grants = ref<MemberGrants | null>(null)
 const activityLoading = ref(false)
 const activityError = ref('')
 const activities = ref<ActivityFeedItem[]>([])
+const activitiesTotalCount = ref<number | null>(null)
 const activitiesNextPage = ref(1)
 const activitiesHasMore = ref(true)
 const activityTypeFilter = ref('all')
@@ -185,18 +193,22 @@ async function loadActivityChunk() {
   activityError.value = ''
 
   try {
-    const res = await api.get<ActivityFeedItem[]>(
+    const res = await api.get<UserTimelineResponse>(
       `/api/v1/crm/reports/users/${membershipId.value}/timeline?page=${activitiesNextPage.value}&page_size=${USER_TIMELINE_PAGE_SIZE}`,
     )
-    if (!res.ok || !Array.isArray(res.data)) {
+    const payload = res.data
+    if (!res.ok || !payload || !Array.isArray(payload.items)) {
       activityError.value = t('usersView.detail.errors.loadTimeline')
       return
     }
 
-    const pageItems = res.data
+    activitiesTotalCount.value = typeof payload.total_count === 'number' ? payload.total_count : null
+    const pageItems = payload.items
     activities.value = [...activities.value, ...pageItems]
     activitiesNextPage.value += 1
-    activitiesHasMore.value = pageItems.length === USER_TIMELINE_PAGE_SIZE
+    const hasMoreByPage = pageItems.length === USER_TIMELINE_PAGE_SIZE
+    const hasMoreByTotal = activitiesTotalCount.value == null || activities.value.length < activitiesTotalCount.value
+    activitiesHasMore.value = hasMoreByPage && hasMoreByTotal
   } catch {
     activityError.value = t('usersView.detail.errors.loadTimeline')
   } finally {
@@ -206,6 +218,7 @@ async function loadActivityChunk() {
 
 async function reloadActivities() {
   activities.value = []
+  activitiesTotalCount.value = null
   activitiesNextPage.value = 1
   activitiesHasMore.value = true
   await loadActivityChunk()
@@ -414,6 +427,27 @@ watch(currentMember, (next) => {
                   >
                     {{ t('usersView.detail.timeline.openRecord', { record: item.record_title || item.record_id }) }}
                   </RouterLink>
+                  <RouterLink
+                    v-else-if="item.customer_id"
+                    :to="`/app/directory/${item.customer_id}`"
+                    class="mt-1 inline-block text-xs text-brand hover:underline"
+                  >
+                    {{ t('usersView.detail.timeline.openCustomer', { customer: item.customer_name || item.customer_id }) }}
+                  </RouterLink>
+                  <RouterLink
+                    v-else-if="item.proposal_id"
+                    :to="`/app/proposals/${item.proposal_id}`"
+                    class="mt-1 inline-block text-xs text-brand hover:underline"
+                  >
+                    {{ t('usersView.detail.timeline.openProposal', { proposal: item.proposal_title || item.proposal_id }) }}
+                  </RouterLink>
+                  <RouterLink
+                    v-else-if="item.task_id"
+                    :to="`/app/tasks/${item.task_id}`"
+                    class="mt-1 inline-block text-xs text-brand hover:underline"
+                  >
+                    {{ t('usersView.detail.timeline.openTask', { task: item.task_title || item.task_id }) }}
+                  </RouterLink>
                 </div>
 
                 <div v-if="!activityLoading && filteredActivities.length === 0" class="py-6 text-sm text-gray-500 dark:text-gray-400">
@@ -432,6 +466,12 @@ watch(currentMember, (next) => {
                 >
                   {{ activityLoading ? t('usersView.detail.timeline.loadingMore') : t('usersView.detail.timeline.loadMore') }}
                 </button>
+                <p
+                  v-if="activitiesTotalCount !== null && activities.length > 0"
+                  class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ t('usersView.detail.timeline.loadedCount', { loaded: activities.length, total: activitiesTotalCount }) }}
+                </p>
               </div>
             </div>
           </section>

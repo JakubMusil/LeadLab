@@ -3003,10 +3003,14 @@
           "other": "Jiné"
         },
         "openRecord": "Otevřít záznam: {record}",
+        "openCustomer": "Otevřít zákazníka: {customer}",
+        "openProposal": "Otevřít nabídku: {proposal}",
+        "openTask": "Otevřít úkol: {task}",
         "empty": "Pro tohoto uživatele nebyly nalezeny žádné aktivity.",
         "loading": "Načítám aktivity…",
         "loadingMore": "Načítám…",
-        "loadMore": "Načíst další aktivity"
+        "loadMore": "Načíst další aktivity",
+        "loadedCount": "Načteno {loaded} z {total} aktivit"
       },
       "profile": {
         "title": "Profil člena",

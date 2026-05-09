@@ -1966,28 +1966,37 @@ class UserTimelineReportAPITest(CRMAPIFixtureMixin, TestCase):
     def test_returns_200(self):
         resp = self._get(self._url(self.owner_membership.id))
         self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertIn("items", payload)
+        self.assertIn("total_count", payload)
 
     def test_returns_only_target_member_activities_across_entities(self):
         resp = self._get(self._url(self.owner_membership.id))
-        data = resp.json()
+        payload = resp.json()
+        data = payload["items"]
         self.assertTrue(len(data) >= 4)
         types = {item["entity_type"] for item in data}
         self.assertTrue({"record", "customer", "proposal", "task"}.issubset(types))
+        self.assertGreaterEqual(payload["total_count"], len(data))
 
     def test_filters_by_entity_type(self):
         resp = self._get(self._url(self.owner_membership.id), {"entity_type": "task"})
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        payload = resp.json()
+        data = payload["items"]
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["entity_type"], "task")
         self.assertEqual(data[0]["task_title"], "Follow up task")
+        self.assertEqual(payload["total_count"], 1)
 
     def test_filters_by_activity_type(self):
         resp = self._get(self._url(self.owner_membership.id), {"type": ActivityType.EMAIL_OUT})
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        payload = resp.json()
+        data = payload["items"]
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["type"], ActivityType.EMAIL_OUT)
+        self.assertEqual(payload["total_count"], 1)
 
     def test_tenant_isolation(self):
         other_firm = Firm.objects.create(name="Other Firm Timeline")
@@ -2001,7 +2010,7 @@ class UserTimelineReportAPITest(CRMAPIFixtureMixin, TestCase):
 
         resp = self._get(self._url(self.owner_membership.id))
         self.assertEqual(resp.status_code, 200)
-        record_ids = {item["record_id"] for item in resp.json()}
+        record_ids = {item["record_id"] for item in resp.json()["items"]}
         self.assertNotIn(str(other_record.id), record_ids)
 
     def test_returns_404_for_unknown_membership(self):
