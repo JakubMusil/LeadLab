@@ -28,62 +28,110 @@
       "pricing": "Cennik",
       "faq": "FAQ",
       "login": "Zaloguj się",
-      "getStarted": "Zacznij"
+      "getStarted": "Zacznij za darmo"
+    },
+    "languageSwitcher": {
+      "label": "Zmień język",
+      "languages": {
+        "en": "EN",
+        "cs": "CS",
+        "de": "DE",
+        "pl": "PL"
+      }
     },
     "hero": {
-      "eyebrow": "CRM dla małych zespołów",
-      "title": "Klienci, zadania i oferty w jednym miejscu.",
-      "subtitle": "LeadLab daje właścicielom i menedżerom jasny obraz pracy — rekordy, oferty, zadania i agenda w jednym spokojnym miejscu.",
-      "primaryCta": "Zacznij",
+      "eyebrow": "CRM i workspace dla leadów",
+      "title": "Zdobywaj więcej klientów i trzymaj wszystkie deale w jednym miejscu.",
+      "subtitle": "LeadLab łączy rekordy, pipeline, zadania i oferty w spokojnym workspace, w którym każdy lead ma jasny kolejny krok.",
+      "primaryCta": "Zacznij za darmo",
       "secondaryCta": "Zaloguj się",
-      "note": "Bez karty kredytowej."
+      "note": "Bez karty kredytowej • Gotowe w 2 minuty",
+      "emailLabel": "E-mail służbowy",
+      "emailPlaceholder": "ty{'@'}firma.pl",
+      "emailCta": "Zacznij za darmo",
+      "tour": "Zobacz, jak to działa",
+      "socialProof": "Stworzony dla rosnących zespołów usługowych w Europie i poza nią.",
+      "preview": {
+        "badge": "Rekord klienta",
+        "name": "Novak Consulting Sp. z o.o.",
+        "stage": "Oferta wysłana",
+        "owner": "Właściciel",
+        "ownerName": "Petra K.",
+        "value": "Wartość",
+        "valueAmount": "14 500 zł",
+        "nextStep": "Kolejny krok",
+        "nextStepText": "Jutro: telefon follow-up",
+        "pipelineTitle": "Pipeline",
+        "stages": {
+          "new": "Nowy",
+          "qualified": "Zakwalifikowany",
+          "proposal": "Oferta",
+          "won": "Wygrane"
+        }
+      }
+    },
+    "trustStrip": {
+      "trustedBy": "Zbudowany dla zespołów usługowych i rosnących firm.",
+      "logos": [
+        "Agencja usługowa",
+        "Zespół konsultingowy",
+        "Studio marketingowe",
+        "Biuro księgowe",
+        "Agencja B2B",
+        "Zespół developerski"
+      ]
     },
     "benefits": {
-      "title": "Wiesz, co jest w ruchu",
-      "subtitle": "Widzisz, co wymaga uwagi dziś i co może iść dalej.",
-      "metrics": [
+      "title": "Co z tego masz",
+      "subtitle": "Kilka konkretnych efektów, które poczujesz już w pierwszym tygodniu.",
+      "cards": [
         {
-          "value": "Klienci",
-          "label": "wspólna baza z historią i notatkami"
+          "title": "Mniej zapomnianych leadów",
+          "description": "Każde zapytanie ma właściciela, kontekst i jasny kolejny krok.",
+          "icon": "bolt"
         },
         {
-          "value": "Zadania",
-          "label": "jasni właściciele i terminy"
+          "title": "Szybsze oferty",
+          "description": "Przygotuj propozycję w kilka minut i zobacz, kiedy klient ją otworzy.",
+          "icon": "sparkles"
         },
         {
-          "value": "Oferty",
-          "label": "status od szkicu do akceptacji"
+          "title": "Spokojniejszy tydzień",
+          "description": "Agenda i pipeline w jednym miejscu, bez chaosu w arkuszach.",
+          "icon": "rectangleGroup"
         },
         {
-          "value": "Agenda",
-          "label": "nadchodzące punkty kontrolne i kolejne kroki"
+          "title": "Pod kontrolą",
+          "description": "Role, uprawnienia i ślad audytowy zgodne z RODO.",
+          "icon": "shield"
         }
       ]
     },
     "workflow": {
-      "title": "Prosty przepływ pracy",
+      "title": "Jak działa LeadLab",
+      "subtitle": "Cztery kroki od zapytania do podpisanej oferty.",
       "steps": [
         {
-          "title": "Zbierz",
-          "description": "Zapisuj zapytania i rekordy ze źródłem i kontekstem."
+          "title": "Zapisz lead w kilka sekund",
+          "description": "Zapisz zapytanie ze źródłem, kontaktem i kontekstem — bez kopiowania między narzędziami."
         },
         {
-          "title": "Ustal",
-          "description": "Dodaj kolejne kroki, wartość i prawdopodobieństwo w pipeline."
+          "title": "Kwalifikuj z kontekstem",
+          "description": "Dodaj wartość, prawdopodobieństwo i kolejne kroki tam, gdzie jest cała reszta."
         },
         {
-          "title": "Złóż ofertę",
-          "description": "Twórz oferty, wysyłaj je i śledź odpowiedzi."
+          "title": "Wysyłaj oferty, które nie zginą",
+          "description": "Przygotuj propozycję, wyślij ją i śledź status aż do podpisu."
         },
         {
-          "title": "Realizuj",
-          "description": "Zadania i punkty kontrolne trzymają realizację w terminie."
+          "title": "Dostarcz na czas",
+          "description": "Zadania i checkpointy pilnują, by obietnice zostały dotrzymane."
         }
       ]
     },
     "features": {
-      "title": "Narzędzia do codziennej pracy z klientami",
-      "subtitle": "Proste widoki dla menedżerów i zespołów.",
+      "title": "Wszystko do codziennej pracy z leadami",
+      "subtitle": "Funkcje, których zespół naprawdę używa — bez zbędnego balastu.",
       "cards": [
         {
           "title": "Rekordy klientów",
@@ -92,121 +140,241 @@
         },
         {
           "title": "Zadania i przypomnienia",
-          "description": "Przydzielaj pracę, ustawiaj terminy i dopilnuj follow-upów.",
+          "description": "Przydzielaj pracę, ustawiaj terminy i nie przegap follow-upu.",
           "icon": "tasks"
         },
         {
           "title": "Oferty i propozycje",
-          "description": "Przygotuj oferty i śledź akceptacje.",
+          "description": "Przygotuj propozycje i śledź je aż do podpisu.",
           "icon": "proposals"
         },
         {
           "title": "Uprawnienia",
-          "description": "Kontroluj dostęp według roli, zespołu lub kategorii.",
+          "description": "Steruj dostępem według roli, zespołu lub kategorii.",
           "icon": "permissions"
         },
         {
           "title": "Agenda",
-          "description": "Widok kalendarza z zadaniami, punktami kontrolnymi i terminami.",
+          "description": "Kalendarz zadań, checkpointów i terminów na jeden rzut oka.",
           "icon": "agenda"
         },
         {
-          "title": "Przegląd pipeline",
-          "description": "Etapy, sumy i kolejne kroki na pierwszy rzut oka.",
+          "title": "Widok pipeline",
+          "description": "Etapy, sumy i kolejne kroki bez przełączania narzędzi.",
           "icon": "pipeline"
+        }
+      ],
+      "split": {
+        "eyebrow": "Pipeline na pierwszy rzut oka",
+        "title": "Zobacz dokładnie, gdzie utknął każdy deal",
+        "description": "Etapy drag-and-drop, sumy wartości i kolejne kroki dla całego zespołu — bez arkuszy i bez zgadywania.",
+        "stages": [
+          {
+            "name": "Nowy",
+            "count": "12"
+          },
+          {
+            "name": "Zakwalifikowany",
+            "count": "7"
+          },
+          {
+            "name": "Oferta",
+            "count": "4"
+          },
+          {
+            "name": "Wygrane",
+            "count": "3"
+          }
+        ],
+        "totalLabel": "Wartość pipeline",
+        "totalValue": "245 000 zł"
+      }
+    },
+    "integrations": {
+      "title": "Działa z narzędziami, których już używasz",
+      "subtitle": "Połącz LeadLab z popularnymi narzędziami bez kodowania.",
+      "items": [
+        {
+          "label": "Fakturoid",
+          "icon": "document"
+        },
+        {
+          "label": "E-mail",
+          "icon": "envelope"
+        },
+        {
+          "label": "Kalendarz",
+          "icon": "calendar"
+        },
+        {
+          "label": "Import CSV",
+          "icon": "download"
+        },
+        {
+          "label": "Webhooks",
+          "icon": "arrows"
+        },
+        {
+          "label": "API",
+          "icon": "chat"
+        }
+      ]
+    },
+    "why": {
+      "title": "Dlaczego LeadLab zamiast arkuszy i e-maili",
+      "subtitle": "Trzy powody, dla których managerowie zmieniają narzędzia.",
+      "bullets": [
+        {
+          "title": "Jedno źródło prawdy",
+          "description": "Koniec z przeterminowanymi Excelami i ośmioma wersjami oferty w skrzynce."
+        },
+        {
+          "title": "Widzisz kolejny krok, nie tylko historię",
+          "description": "Zamiast notatek o tym, co było, masz przygotowany kolejny krok."
+        },
+        {
+          "title": "Zespół wie, kto co robi",
+          "description": "Role, właściciele i uprawnienia bez ręcznego pilnowania."
+        }
+      ]
+    },
+    "testimonials": {
+      "title": "Co mówią klienci",
+      "subtitle": "Przykładowe opinie zespołów, które używają LeadLab każdego dnia.",
+      "items": [
+        {
+          "quote": "Wreszcie widzimy, kto opiekuje się danym leadem i jaki jest kolejny krok. Spotkania skróciły się o połowę.",
+          "name": "Petra K.",
+          "role": "Manager operacyjny",
+          "company": "Agencja usługowa"
+        },
+        {
+          "quote": "Oferta, która wcześniej zajmowała godzinę, jest gotowa w kilka minut. A pipeline w końcu ma sens.",
+          "name": "Tomas H.",
+          "role": "Właściciel",
+          "company": "Zespół konsultingowy"
+        },
+        {
+          "quote": "Przejście z arkuszy było szybkie. Zespół przyzwyczaił się w tydzień, a my mamy spokój.",
+          "name": "Marketa D.",
+          "role": "Lider zespołu",
+          "company": "Studio marketingowe"
         }
       ]
     },
     "trust": {
-      "title": "Dla właścicieli, menedżerów i zespołów",
-      "subtitle": "Dla firm usługowych, które potrzebują przejrzystości bez komplikacji.",
+      "title": "Dla właścicieli, managerów i zespołów",
+      "subtitle": "Dla firm usługowych, które chcą jasności bez komplikacji.",
       "segments": [
         {
           "title": "Właściciele",
-          "description": "Bądź na bieżąco bez ciągłego dopytywania."
+          "description": "Miej obraz sytuacji bez ciągłego dopytywania."
         },
         {
           "title": "Liderzy zespołów",
-          "description": "Przydzielaj pracę i utrzymuj jasne priorytety."
+          "description": "Przydzielaj pracę i trzymaj priorytety w ryzach."
         },
         {
           "title": "Zespoły",
-          "description": "Łącz zadania, oferty i notatki o klientach."
+          "description": "Dziel się zadaniami, ofertami i notatkami o klientach."
         }
       ],
-      "assurancesTitle": "Masz kontrolę",
+      "assurancesTitle": "Kontrolę masz Ty",
       "assurances": [
         "Jasne role i uprawnienia",
-        "Obsługa danych zgodna z RODO",
-        "Opcja self-hostingu"
+        "Przetwarzanie danych zgodne z RODO",
+        "Możliwość self-hostingu"
       ]
     },
     "pricing": {
       "title": "Prosty cennik",
-      "subtitle": "Zacznij za darmo, przejdź wyżej gdy potrzebujesz więcej.",
+      "subtitle": "Zacznij za darmo i przejdź wyżej, gdy będziesz potrzebować więcej.",
+      "toggle": {
+        "monthly": "Miesięcznie",
+        "annual": "Rocznie",
+        "save": "Oszczędzasz 2 miesiące"
+      },
+      "perMonth": "/ miesiąc",
+      "billedAnnually": "rozliczane rocznie",
       "plans": [
         {
           "name": "Darmowy",
           "price": "€0",
+          "priceAnnual": "€0",
           "period": "za workspace / miesiąc",
+          "periodAnnual": "rozliczane rocznie",
           "tag": "Na start",
           "highlight": "",
           "features": [
-            "Nielimitowane rekordy",
+            "Nieograniczona liczba rekordów",
             "Do 2 członków zespołu",
             "Podstawowy pipeline i zadania",
             "Import CSV",
-            "Wsparcie e-mail"
+            "Wsparcie e-mailowe"
           ],
           "cta": "Zacznij za darmo"
         },
         {
           "name": "Pro",
           "price": "€29",
+          "priceAnnual": "€24",
           "period": "za workspace / miesiąc",
+          "periodAnnual": "rozliczane rocznie",
           "tag": "Dla rosnących zespołów",
-          "highlight": "Popularny",
+          "highlight": "Najpopularniejszy",
           "features": [
-            "Wszystko z planu Darmowego",
-            "Nielimitowana liczba członków",
+            "Wszystko z planu Darmowy",
+            "Nieograniczona liczba członków",
             "Zaawansowana analityka",
             "Własny branding",
-            "Dostęp do API i webhooki",
+            "Dostęp do API i webhooków",
             "Priorytetowe wsparcie"
           ],
-          "cta": "Zacznij Pro"
+          "cta": "Wybierz Pro"
         }
       ],
-      "note": "Możesz zmienić lub anulować w każdej chwili."
+      "note": "Zmień lub anuluj w dowolnym momencie."
     },
     "cta": {
       "title": "Chcesz uporządkować pracę z klientami?",
-      "subtitle": "Utwórz workspace i zaproś zespół w kilka minut.",
+      "subtitle": "Skonfiguruj workspace i zaproś zespół w kilka minut.",
       "primaryCta": "Utwórz workspace",
-      "secondaryCta": "Skontaktuj się z nami"
+      "secondaryCta": "Przeczytaj FAQ"
+    },
+    "stickyCta": {
+      "cta": "Zacznij za darmo",
+      "note": "Bez karty kredytowej"
     },
     "faq": {
       "title": "Najczęstsze pytania",
       "items": [
         {
-          "q": "Czy jest plan darmowy?",
-          "a": "Tak. Plan Darmowy zawiera podstawowe funkcje CRM dla małych zespołów."
+          "q": "Czy jest darmowy plan?",
+          "a": "Tak. Plan Darmowy zawiera podstawowe funkcje CRM dla małych zespołów i pozostaje bezpłatny."
         },
         {
-          "q": "Czy możemy importować istniejące kontakty?",
-          "a": "Tak. Kontakty i rekordy można importować z CSV w dowolnym momencie."
+          "q": "Czy możemy zaimportować istniejące kontakty?",
+          "a": "Tak. Kontakty i rekordy możesz importować z CSV w dowolnym momencie."
         },
         {
           "q": "Jak działają uprawnienia?",
-          "a": "Przydzielaj role i kontroluj dostęp według zespołu i kategorii."
-        },
-        {
-          "q": "Czy jest widok kalendarza?",
-          "a": "Tak. Agenda pokazuje zadania, punkty kontrolne i terminy."
+          "a": "Przydziel role i ustaw dostęp według zespołu, kategorii lub konkretnego rekordu."
         },
         {
           "q": "Czy oferujecie self-hosting?",
-          "a": "Tak. LeadLab jest open-source i działa z Docker Compose."
+          "a": "Tak. LeadLab jest open-source i działa w Docker Compose w Twojej infrastrukturze."
+        },
+        {
+          "q": "Czy możemy w każdej chwili wyeksportować dane?",
+          "a": "Tak. Rekordy, kontakty i oferty można wyeksportować do CSV. Twoje dane pozostają Twoje."
+        },
+        {
+          "q": "Czy możemy zrezygnować w każdej chwili?",
+          "a": "Tak. Plan zmieniasz lub anulujesz w ustawieniach workspace, bez zobowiązań."
+        },
+        {
+          "q": "Jakie języki są obsługiwane?",
+          "a": "Interfejs jest dostępny po czesku, angielsku, niemiecku i polsku."
         }
       ]
     },
@@ -217,6 +385,76 @@
         "login": "Zaloguj się",
         "signup": "Zarejestruj się",
         "github": "GitHub"
+      },
+      "columns": {
+        "product": {
+          "title": "Produkt",
+          "links": [
+            {
+              "label": "Funkcje",
+              "href": "#features"
+            },
+            {
+              "label": "Proces",
+              "href": "#workflow"
+            },
+            {
+              "label": "Cennik",
+              "href": "#pricing"
+            },
+            {
+              "label": "Integracje",
+              "href": "#integrations"
+            }
+          ]
+        },
+        "resources": {
+          "title": "Materiały",
+          "links": [
+            {
+              "label": "FAQ",
+              "href": "#faq"
+            },
+            {
+              "label": "Opinie",
+              "href": "#testimonials"
+            },
+            {
+              "label": "GitHub",
+              "href": "https://github.com/JakubMusil/LeadLab"
+            }
+          ]
+        },
+        "company": {
+          "title": "Firma",
+          "links": [
+            {
+              "label": "O nas",
+              "href": "#product"
+            },
+            {
+              "label": "Kontakt",
+              "href": "mailto:hello{'@'}leadlab.app"
+            }
+          ]
+        },
+        "legal": {
+          "title": "Prawne",
+          "links": [
+            {
+              "label": "Prywatność",
+              "href": "#"
+            },
+            {
+              "label": "Regulamin",
+              "href": "#"
+            },
+            {
+              "label": "RODO",
+              "href": "#"
+            }
+          ]
+        }
       },
       "copyright": "© {year} LeadLab. Wszelkie prawa zastrzeżone."
     }
