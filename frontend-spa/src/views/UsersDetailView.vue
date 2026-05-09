@@ -12,6 +12,7 @@ import { api } from '@/api'
 
 type MembershipStatus = 'active' | 'expired'
 type EntityFilter = 'all' | 'record' | 'customer' | 'proposal' | 'task' | 'other'
+const USER_TIMELINE_PAGE_SIZE = 40
 
 interface MemberGrants {
   category_grants: Array<{
@@ -122,14 +123,6 @@ function initialiseDrafts(member: MemberOut | undefined) {
   teamDraft.value = member?.team_id ?? ''
 }
 
-function detectEntityType(item: ActivityFeedItem): EntityFilter {
-  if (item.entity_type === 'record') return 'record'
-  if (item.entity_type === 'customer') return 'customer'
-  if (item.entity_type === 'proposal') return 'proposal'
-  if (item.entity_type === 'task') return 'task'
-  return 'other'
-}
-
 const activityTypeOptions = computed(() => {
   const set = new Set<string>()
   for (const item of activities.value) {
@@ -141,7 +134,7 @@ const activityTypeOptions = computed(() => {
 const filteredActivities = computed(() => {
   return activities.value.filter((item) => {
     const typeOk = activityTypeFilter.value === 'all' || item.type === activityTypeFilter.value
-    const entityType = detectEntityType(item)
+    const entityType = item.entity_type || 'other'
     const entityOk = activityEntityFilter.value === 'all' || entityType === activityEntityFilter.value
     return typeOk && entityOk
   })
@@ -190,11 +183,10 @@ async function loadActivityChunk() {
   if (!firmId.value || !membershipId.value || !activitiesHasMore.value) return
   activityLoading.value = true
   activityError.value = ''
-  const pageSize = 40
 
   try {
     const res = await api.get<ActivityFeedItem[]>(
-      `/api/v1/crm/reports/users/${membershipId.value}/timeline?page=${activitiesNextPage.value}&page_size=${pageSize}`,
+      `/api/v1/crm/reports/users/${membershipId.value}/timeline?page=${activitiesNextPage.value}&page_size=${USER_TIMELINE_PAGE_SIZE}`,
     )
     if (!res.ok || !Array.isArray(res.data)) {
       activityError.value = t('usersView.detail.errors.loadTimeline')
@@ -204,7 +196,7 @@ async function loadActivityChunk() {
     const pageItems = res.data
     activities.value = [...activities.value, ...pageItems]
     activitiesNextPage.value += 1
-    activitiesHasMore.value = pageItems.length === pageSize
+    activitiesHasMore.value = pageItems.length === USER_TIMELINE_PAGE_SIZE
   } catch {
     activityError.value = t('usersView.detail.errors.loadTimeline')
   } finally {

@@ -76,6 +76,13 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - spustit cílené validace změněných souborů a případně doladit nalezené problémy,
     - dokončit checklist, spustit `parallel_validation`,
     - připravit řádný PR s rekapitulací.
+  - Cílené ověření po implementaci:
+    - `python manage.py test crm.tests.ActivityFeedAPITest crm.tests.UserTimelineReportAPITest` ✅
+    - `npx eslint src/views/UsersDetailView.vue` ✅
+    - `npm run build-only` ✅
+    - `flake8 crm/api.py crm/tests.py` ❌ (soubor `crm/api.py` má rozsáhlé pre-existing style nálezy mimo scope této změny).
+  - Po code review z `parallel_validation` doplněna pojmenovaná konstanta `USER_TIMELINE_PAGE_SIZE` v `UsersDetailView.vue`.
+  - Připraveno k vytvoření řádného PR.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
