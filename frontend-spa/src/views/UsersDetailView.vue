@@ -235,7 +235,8 @@ async function saveRoleAndExpiry() {
   actionSuccess.value = ''
   try {
     const payload: { role: string; expires_at?: string | null } = { role: roleDraft.value }
-    payload.expires_at = expiryDraft.value ? new Date(expiryDraft.value).toISOString() : null
+    const expiryValue = expiryDraft.value.trim()
+    payload.expires_at = expiryValue ? new Date(`${expiryValue}T00:00:00`).toISOString() : null
     const res = await api.patch<MemberOut>(`/api/v1/firms/${firmId.value}/members/${membershipId.value}`, payload)
     if (!res.ok || !res.data) {
       actionError.value = 'Uložení role/expirace selhalo.'
