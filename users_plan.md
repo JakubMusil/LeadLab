@@ -83,6 +83,40 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - `flake8 crm/api.py crm/tests.py` ❌ (soubor `crm/api.py` má rozsáhlé pre-existing style nálezy mimo scope této změny).
   - Po code review z `parallel_validation` doplněna pojmenovaná konstanta `USER_TIMELINE_PAGE_SIZE` v `UsersDetailView.vue`.
   - Připraveno k vytvoření řádného PR.
+- 2026-05-09 (další pokračování):
+  - Proveden baseline check před změnami:
+    - Frontend: `check-locales` ✅, `type-check`/`lint`/`test:unit`/`build-only` ❌ kvůli chybějícím frontend závislostem v prostředí (`vue-tsc`, `run-s`, `vitest`, `vite` nenalezeny).
+    - Backend: `flake8`/`manage.py test` ❌ kvůli chybějícím backend závislostem v prostředí (`flake8`, `django` nenalezeny).
+  - Rozšířen endpoint `GET /api/v1/crm/reports/users/{membership_id}/timeline`:
+    - response nově vrací objekt s `items`, `total_count`, `page`, `page_size`,
+    - endpoint zachovává stávající filtry i tenant/scope omezení.
+  - Aktualizovány backend testy `UserTimelineReportAPITest` na novou response strukturu včetně kontroly `total_count`.
+  - `UsersDetailView.vue` upraven pro novou response timeline:
+    - načítá `items` + `total_count`,
+    - přesněji řídí stav `Load more` podle celkového počtu.
+  - Doplněny přímé odkazy z timeline i pro `customer`/`proposal`/`task` položky (mimo stávající `record` odkaz).
+  - Doplněny nové i18n klíče pro odkazy a text průběhu načtení (`loadedCount`) ve všech locale (`cs/en/de/pl`).
+  - Následuje:
+    - doinstalovat závislosti pro běh validací v tomto prostředí,
+    - spustit cílené testy/lint/build,
+    - spustit `parallel_validation`, zapracovat případné nálezy a vytvořit řádný PR.
+  - Doinstalovány závislosti:
+    - Frontend: `npm install` ve `frontend-spa` ✅
+    - Backend: `pip install -r requirements-dev.txt` + `pip install -r requirements.txt` ✅
+  - Cílené ověření po změnách:
+    - Frontend: `node scripts/check-locales.mjs` ✅, `npx eslint src/views/UsersDetailView.vue` ✅, `npm run build-only` ✅, `npm run type-check` ❌ (pre-existing TS chyby mimo scope změny).
+    - Backend: `python manage.py test crm.tests.UserTimelineReportAPITest` ✅, `python -m flake8 crm/api.py crm/tests.py` ❌ (rozsáhlé pre-existing nálezy v těchto dlouhodobě problémových souborech mimo scope změny).
+  - Následuje:
+    - spustit `parallel_validation`,
+    - případně zapracovat relevantní připomínky,
+    - vytvořit řádný PR.
+  - Spuštěn `parallel_validation`:
+    - CodeQL ✅ (bez security nálezů),
+    - Code Review: 1 drobné doporučení zapracováno (`== null` -> `=== null` v `UsersDetailView.vue`), 1 performance poznámka k `qs.count()` ponechána jako vědomý trade-off kvůli požadovanému `total_count`.
+  - Ověření po zapracování review připomínky:
+    - Frontend: `check-locales` ✅, `eslint UsersDetailView.vue` ✅, `build-only` ✅.
+  - Následuje:
+    - vytvořit řádný PR a předat rekapitulaci.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
@@ -109,10 +143,12 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
   - `GET /api/v1/crm/reports/users/{membership_id}/timeline`,
   - vrací aktivity uživatele napříč entitami + názvy navázaných entit,
   - podporuje `page`, `page_size`, `type`, `entity_type`,
+  - vrací i `total_count` + metadata stránkování (`page`, `page_size`) pro přesnější UX pagination,
   - `UsersDetailView.vue` je na endpoint napojen.
 - Přidány integrační testy pro nový endpoint v `crm/tests.py`.
+- V `UsersDetailView.vue` doplněny přímé odkazy z timeline i pro customer/proposal/task položky.
+- Doplněny i18n klíče pro nové odkazy a text „načteno X z Y“ ve všech podporovaných locale.
 
 ## Co bude příště
-- Zvážit doplnění odpovědi endpointu o celkový počet položek (pro přesnější UX pagination indikaci).
-- Zvážit doplnění přímých odkazů z timeline i pro customer/proposal/task položky (nejen record).
+- Doinstalovat frontend/backend závislosti v prostředí a zopakovat plné/cílené validace.
 - Po stabilizaci odstranit/starat se o případné technické dluhy v `reports/activities`, pokud už nebude potřeba pro tento use-case.

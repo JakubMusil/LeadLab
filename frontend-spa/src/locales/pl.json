@@ -3001,10 +3001,14 @@
           "other": "Inne"
         },
         "openRecord": "Otwórz rekord: {record}",
+        "openCustomer": "Otwórz klienta: {customer}",
+        "openProposal": "Otwórz ofertę: {proposal}",
+        "openTask": "Otwórz zadanie: {task}",
         "empty": "Nie znaleziono aktywności dla tego użytkownika.",
         "loading": "Ładowanie aktywności…",
         "loadingMore": "Ładowanie…",
-        "loadMore": "Załaduj więcej aktywności"
+        "loadMore": "Załaduj więcej aktywności",
+        "loadedCount": "Załadowano {loaded} z {total} aktywności"
       },
       "profile": {
         "title": "Profil członka",
