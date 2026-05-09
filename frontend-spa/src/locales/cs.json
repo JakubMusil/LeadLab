@@ -28,62 +28,110 @@
       "pricing": "Ceník",
       "faq": "FAQ",
       "login": "Přihlásit se",
-      "getStarted": "Začít"
+      "getStarted": "Začít zdarma"
+    },
+    "languageSwitcher": {
+      "label": "Změnit jazyk",
+      "languages": {
+        "en": "EN",
+        "cs": "CS",
+        "de": "DE",
+        "pl": "PL"
+      }
     },
     "hero": {
-      "eyebrow": "CRM pro malé týmy",
-      "title": "Mějte zákazníky, úkoly i nabídky na jednom místě.",
-      "subtitle": "LeadLab dává majitelům a manažerům jasný přehled — záznamy, nabídky, úkoly i agenda v jednom klidném workspace.",
-      "primaryCta": "Začít",
+      "eyebrow": "CRM a lead workspace",
+      "title": "Získávejte zákazníky a držte všechny obchody na jednom místě.",
+      "subtitle": "LeadLab spojí záznamy, pipeline, úkoly i nabídky do klidného workspace, kde má každý lead jasný další krok.",
+      "primaryCta": "Začít zdarma",
       "secondaryCta": "Přihlásit se",
-      "note": "Bez kreditní karty."
+      "note": "Bez kreditní karty • Hotovo za 2 minuty",
+      "emailLabel": "Pracovní e-mail",
+      "emailPlaceholder": "vy{'@'}firma.cz",
+      "emailCta": "Začít zdarma",
+      "tour": "Prohlédnout postup",
+      "socialProof": "Pro rostoucí servisní týmy v Česku i v zahraničí.",
+      "preview": {
+        "badge": "Záznam zákazníka",
+        "name": "Novák Consulting s.r.o.",
+        "stage": "Nabídka odeslána",
+        "owner": "Vlastník",
+        "ownerName": "Petra K.",
+        "value": "Hodnota",
+        "valueAmount": "84 000 Kč",
+        "nextStep": "Další krok",
+        "nextStepText": "Zítra: follow-up call",
+        "pipelineTitle": "Pipeline",
+        "stages": {
+          "new": "Nový",
+          "qualified": "Kvalifikovaný",
+          "proposal": "Nabídka",
+          "won": "Vyhráno"
+        }
+      }
+    },
+    "trustStrip": {
+      "trustedBy": "Vyvíjeno pro servisní týmy a rostoucí firmy.",
+      "logos": [
+        "Servisní agentura",
+        "Konzultantský tým",
+        "Marketingové studio",
+        "Účetní kancelář",
+        "B2B agentura",
+        "Vývojářský tým"
+      ]
     },
     "benefits": {
-      "title": "Víte, co se hýbe",
-      "subtitle": "Vidíte, co je potřeba dnes řešit a co může pokračovat dál.",
-      "metrics": [
+      "title": "Co tím získáte",
+      "subtitle": "Pár konkrétních výsledků, které poznáte už první týden.",
+      "cards": [
         {
-          "value": "Zákazníci",
-          "label": "sdílený adresář s historií a poznámkami"
+          "title": "Méně zapomenutých leadů",
+          "description": "Každá poptávka má vlastníka, kontext a jasný další krok.",
+          "icon": "bolt"
         },
         {
-          "value": "Úkoly",
-          "label": "jasní vlastníci a termíny"
+          "title": "Rychlejší nabídky",
+          "description": "Připravte návrh za pár minut a sledujte, jestli ho klient otevřel.",
+          "icon": "sparkles"
         },
         {
-          "value": "Nabídky",
-          "label": "stav od návrhu po přijetí"
+          "title": "Klidnější týden",
+          "description": "Agenda i pipeline na jednom místě, bez tabulkového chaosu.",
+          "icon": "rectangleGroup"
         },
         {
-          "value": "Agenda",
-          "label": "nadcházející checkpointy a další kroky"
+          "title": "Pod kontrolou",
+          "description": "Role, oprávnění a auditní stopa odpovídající GDPR.",
+          "icon": "shield"
         }
       ]
     },
     "workflow": {
-      "title": "Přehledný postup",
+      "title": "Jak to v LeadLabu funguje",
+      "subtitle": "Čtyři kroky od poptávky k podepsané nabídce.",
       "steps": [
         {
-          "title": "Zachytit",
-          "description": "Uložte poptávky a záznamy se zdrojem a kontextem."
+          "title": "Zachyťte lead během vteřin",
+          "description": "Uložte poptávku se zdrojem, kontaktem a kontextem — bez kopírování mezi nástroji."
         },
         {
-          "title": "Upřesnit",
-          "description": "Doplňte další kroky, hodnotu a pravděpodobnost v pipeline."
+          "title": "Kvalifikujte s přehledem",
+          "description": "Doplňte hodnotu, pravděpodobnost a další kroky tam, kde je všechno ostatní."
         },
         {
-          "title": "Nabídnout",
-          "description": "Připravte nabídky, odešlete je a sledujte reakce."
+          "title": "Pošlete nabídku, která se neztratí",
+          "description": "Připravte návrh, odešlete ho a sledujte stav až po podpis."
         },
         {
-          "title": "Doručit",
-          "description": "Úkoly a checkpointy drží realizaci v termínu."
+          "title": "Doručte v termínu",
+          "description": "Úkoly a checkpointy hlídají, aby slíbené opravdu doběhlo."
         }
       ]
     },
     "features": {
-      "title": "Nástroje pro každodenní práci se zákazníky",
-      "subtitle": "Jednoduché pohledy pro manažery i týmy.",
+      "title": "Vše pro každodenní práci s leady",
+      "subtitle": "Funkce, které tým skutečně používá — bez zbytečné složitosti.",
       "cards": [
         {
           "title": "Záznamy zákazníků",
@@ -97,7 +145,7 @@
         },
         {
           "title": "Nabídky a návrhy",
-          "description": "Připravte nabídky a sledujte schválení.",
+          "description": "Připravte nabídky a sledujte schválení až po podpis.",
           "icon": "proposals"
         },
         {
@@ -107,13 +155,110 @@
         },
         {
           "title": "Agenda",
-          "description": "Kalendář úkolů, checkpointů a termínů.",
+          "description": "Kalendář úkolů, checkpointů a termínů na jeden pohled.",
           "icon": "agenda"
         },
         {
           "title": "Přehled pipeline",
-          "description": "Fáze, souhrny i další kroky na první pohled.",
+          "description": "Fáze, souhrny i další kroky bez přepínání nástrojů.",
           "icon": "pipeline"
+        }
+      ],
+      "split": {
+        "eyebrow": "Pipeline na první pohled",
+        "title": "Vidíte přesně, kde se každý obchod zasekl",
+        "description": "Drag-and-drop fáze, souhrny hodnot a další kroky pro celý tým — bez tabulek a bez hádání.",
+        "stages": [
+          {
+            "name": "Nový",
+            "count": "12"
+          },
+          {
+            "name": "Kvalifikovaný",
+            "count": "7"
+          },
+          {
+            "name": "Nabídka",
+            "count": "4"
+          },
+          {
+            "name": "Vyhráno",
+            "count": "3"
+          }
+        ],
+        "totalLabel": "Celkem v pipeline",
+        "totalValue": "1,42 mil. Kč"
+      }
+    },
+    "integrations": {
+      "title": "Funguje s tím, co už používáte",
+      "subtitle": "Propojte LeadLab s běžnými nástroji bez programování.",
+      "items": [
+        {
+          "label": "Fakturoid",
+          "icon": "document"
+        },
+        {
+          "label": "E-mail",
+          "icon": "envelope"
+        },
+        {
+          "label": "Kalendář",
+          "icon": "calendar"
+        },
+        {
+          "label": "CSV import",
+          "icon": "download"
+        },
+        {
+          "label": "Webhooky",
+          "icon": "arrows"
+        },
+        {
+          "label": "API",
+          "icon": "chat"
+        }
+      ]
+    },
+    "why": {
+      "title": "Proč LeadLab místo tabulek nebo e-mailu",
+      "subtitle": "Tři důvody, proč to manažeři přepínají.",
+      "bullets": [
+        {
+          "title": "Jeden zdroj pravdy",
+          "description": "Žádné zastaralé Excely a osm verzí nabídky v poště."
+        },
+        {
+          "title": "Vidíte další krok, ne jen historii",
+          "description": "Místo poznámek o tom, co bylo, máte připravený další krok."
+        },
+        {
+          "title": "Tým ví, kdo co dělá",
+          "description": "Role, vlastníci a oprávnění bez ručního hlídání."
+        }
+      ]
+    },
+    "testimonials": {
+      "title": "Říkají to za nás zákazníci",
+      "subtitle": "Ukázkové ohlasy od týmů, které LeadLab používají denně.",
+      "items": [
+        {
+          "quote": "Konečně vidíme, kdo má lead na starosti a co je dalším krokem. Schůzky se zkrátily o polovinu.",
+          "name": "Petra K.",
+          "role": "Provozní manažerka",
+          "company": "Servisní agentura"
+        },
+        {
+          "quote": "Nabídka, která dřív trvala hodinu, je hotová za pár minut. A pipeline mi konečně dává smysl.",
+          "name": "Tomáš H.",
+          "role": "Majitel",
+          "company": "Konzultantský tým"
+        },
+        {
+          "quote": "Přechod z tabulek byl rychlý. Tým si zvykl během týdne a my máme klid.",
+          "name": "Markéta D.",
+          "role": "Vedoucí týmu",
+          "company": "Marketingové studio"
         }
       ]
     },
@@ -144,11 +289,20 @@
     "pricing": {
       "title": "Jednoduchý ceník",
       "subtitle": "Začněte zdarma a přejděte výš, když budete potřebovat víc.",
+      "toggle": {
+        "monthly": "Měsíčně",
+        "annual": "Ročně",
+        "save": "Ušetříte 2 měsíce"
+      },
+      "perMonth": "/ měsíc",
+      "billedAnnually": "fakturováno ročně",
       "plans": [
         {
           "name": "Zdarma",
           "price": "€0",
+          "priceAnnual": "€0",
           "period": "za workspace / měsíc",
+          "periodAnnual": "fakturováno ročně",
           "tag": "Na start",
           "highlight": "",
           "features": [
@@ -163,7 +317,9 @@
         {
           "name": "Pro",
           "price": "€29",
+          "priceAnnual": "€24",
           "period": "za workspace / měsíc",
+          "periodAnnual": "fakturováno ročně",
           "tag": "Pro rostoucí týmy",
           "highlight": "Nejoblíbenější",
           "features": [
@@ -183,14 +339,18 @@
       "title": "Chcete mít práci se zákazníky pod kontrolou?",
       "subtitle": "Workspace nastavíte a tým pozvete během pár minut.",
       "primaryCta": "Vytvořit workspace",
-      "secondaryCta": "Kontaktujte nás"
+      "secondaryCta": "Přečíst si FAQ"
+    },
+    "stickyCta": {
+      "cta": "Začít zdarma",
+      "note": "Bez kreditní karty"
     },
     "faq": {
       "title": "Časté dotazy",
       "items": [
         {
           "q": "Je k dispozici plán zdarma?",
-          "a": "Ano. Plán Zdarma obsahuje základní CRM funkce pro malé týmy."
+          "a": "Ano. Plán Zdarma obsahuje základní CRM funkce pro malé týmy a zůstává zdarma."
         },
         {
           "q": "Můžeme importovat stávající kontakty?",
@@ -198,15 +358,23 @@
         },
         {
           "q": "Jak fungují oprávnění?",
-          "a": "Přiřaďte role a nastavte přístupy podle týmu a kategorie."
-        },
-        {
-          "q": "Je k dispozici kalendář?",
-          "a": "Ano. Agenda zobrazuje úkoly, checkpointy a termíny."
+          "a": "Přiřaďte role a nastavte přístupy podle týmu, kategorie nebo konkrétního záznamu."
         },
         {
           "q": "Nabízíte self-hosting?",
-          "a": "Ano. LeadLab je open-source a lze ho provozovat přes Docker Compose."
+          "a": "Ano. LeadLab je open-source a lze ho provozovat přes Docker Compose ve vaší infrastruktuře."
+        },
+        {
+          "q": "Můžeme svá data kdykoli vyexportovat?",
+          "a": "Ano. Záznamy, kontakty i nabídky vyexportujete do CSV. Vaše data zůstávají vaše."
+        },
+        {
+          "q": "Můžeme zrušit kdykoli?",
+          "a": "Ano. Plán měníte i rušíte v nastavení workspace, bez závazků."
+        },
+        {
+          "q": "Jaké jazyky podporujete?",
+          "a": "Rozhraní je dostupné v češtině, angličtině, němčině a polštině."
         }
       ]
     },
@@ -217,6 +385,76 @@
         "login": "Přihlásit se",
         "signup": "Zaregistrovat se",
         "github": "GitHub"
+      },
+      "columns": {
+        "product": {
+          "title": "Produkt",
+          "links": [
+            {
+              "label": "Funkce",
+              "href": "#features"
+            },
+            {
+              "label": "Postup",
+              "href": "#workflow"
+            },
+            {
+              "label": "Ceník",
+              "href": "#pricing"
+            },
+            {
+              "label": "Integrace",
+              "href": "#integrations"
+            }
+          ]
+        },
+        "resources": {
+          "title": "Zdroje",
+          "links": [
+            {
+              "label": "FAQ",
+              "href": "#faq"
+            },
+            {
+              "label": "Reference",
+              "href": "#testimonials"
+            },
+            {
+              "label": "GitHub",
+              "href": "https://github.com/JakubMusil/LeadLab"
+            }
+          ]
+        },
+        "company": {
+          "title": "Firma",
+          "links": [
+            {
+              "label": "O nás",
+              "href": "#product"
+            },
+            {
+              "label": "Kontakt",
+              "href": "mailto:hello{'@'}leadlab.app"
+            }
+          ]
+        },
+        "legal": {
+          "title": "Právní",
+          "links": [
+            {
+              "label": "Ochrana soukromí",
+              "href": "#"
+            },
+            {
+              "label": "Podmínky",
+              "href": "#"
+            },
+            {
+              "label": "GDPR",
+              "href": "#"
+            }
+          ]
+        }
       },
       "copyright": "© {year} LeadLab. Všechna práva vyhrazena."
     }
