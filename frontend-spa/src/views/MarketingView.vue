@@ -83,9 +83,21 @@ type PlanItem = {
 }
 type FaqItem = { q: string; a: string }
 
+function isMessageAst(value: unknown): boolean {
+  // Compiled message AST resource node from @intlify/unplugin-vue-i18n looks like
+  // `{ t: 0, b: { ... } }` (or `{ type: 0, body: { ... } }`). Detect it so we can
+  // resolve it via rt() instead of recursing into the AST as if it were data.
+  if (value === null || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  const t = v.t ?? v.type
+  if (t !== 0) return false
+  return 'b' in v || 'body' in v
+}
+
 function resolveMessage<T>(value: unknown): T {
-  if (typeof value === 'function') {
-    // Compiled message function from @intlify/unplugin-vue-i18n; resolve to string.
+  if (typeof value === 'function' || isMessageAst(value)) {
+    // Compiled message function or AST node from @intlify/unplugin-vue-i18n;
+    // resolve to a plain string.
     return rt(value as Parameters<typeof rt>[0]) as T
   }
   if (Array.isArray(value)) {
@@ -133,8 +145,7 @@ const integrationItems = computed<IntegrationItem[]>(() =>
   arr<{ label: string; icon: string }>('marketing.integrations.items').map((it) => ({
     label: it.label,
     icon:
-      (it.icon && integrationIconMap[it.icon as keyof typeof integrationIconMap]) ||
-      Squares2X2Icon,
+      (it.icon && integrationIconMap[it.icon as keyof typeof integrationIconMap]) || Squares2X2Icon,
   })),
 )
 
@@ -270,7 +281,9 @@ const footerColumns = computed<FooterColumn[]>(() => {
               </button>
             </form>
 
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 justify-center md:justify-start">
+            <div
+              class="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 justify-center md:justify-start"
+            >
               <a
                 href="#workflow"
                 class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
@@ -343,9 +356,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   >
                     <div
                       class="h-1.5 rounded-full mb-1"
-                      :class="
-                        idx <= 2 ? 'bg-red-500' : 'bg-gray-200'
-                      "
+                      :class="idx <= 2 ? 'bg-red-500' : 'bg-gray-200'"
                     ></div>
                     {{ stage.name }}
                   </div>
@@ -369,10 +380,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         class="px-6 py-12 border-y border-gray-100 bg-gray-50 scroll-mt-24"
       >
         <div class="max-w-6xl mx-auto">
-          <p
-            id="trust-strip-heading"
-            class="text-center text-sm text-gray-500 font-medium mb-6"
-          >
+          <p id="trust-strip-heading" class="text-center text-sm text-gray-500 font-medium mb-6">
             {{ t('marketing.trustStrip.trustedBy') }}
           </p>
           <ul
@@ -391,16 +399,9 @@ const footerColumns = computed<FooterColumn[]>(() => {
       </section>
 
       <!-- ── Benefits (outcome cards) ── -->
-      <section
-        id="benefits"
-        aria-labelledby="benefits-heading"
-        class="px-6 py-20 scroll-mt-24"
-      >
+      <section id="benefits" aria-labelledby="benefits-heading" class="px-6 py-20 scroll-mt-24">
         <div class="max-w-6xl mx-auto">
-          <h2
-            id="benefits-heading"
-            class="text-3xl font-bold text-gray-900 mb-3 text-center"
-          >
+          <h2 id="benefits-heading" class="text-3xl font-bold text-gray-900 mb-3 text-center">
             {{ t('marketing.benefits.title') }}
           </h2>
           <p class="text-gray-500 mb-12 max-w-2xl mx-auto text-center">
@@ -415,11 +416,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component
-                :is="card.icon"
-                class="w-9 h-9 mb-4 text-red-500"
-                aria-hidden="true"
-              />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -434,10 +431,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
         <div class="max-w-6xl mx-auto">
-          <h2
-            id="workflow-heading"
-            class="text-3xl font-bold text-gray-900 text-center mb-3"
-          >
+          <h2 id="workflow-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.workflow.title') }}
           </h2>
           <p class="text-gray-500 text-center mb-14 max-w-2xl mx-auto">
@@ -468,16 +462,9 @@ const footerColumns = computed<FooterColumn[]>(() => {
       </section>
 
       <!-- ── Features ── -->
-      <section
-        id="features"
-        aria-labelledby="features-heading"
-        class="px-6 py-20 scroll-mt-24"
-      >
+      <section id="features" aria-labelledby="features-heading" class="px-6 py-20 scroll-mt-24">
         <div class="max-w-6xl mx-auto">
-          <h2
-            id="features-heading"
-            class="text-3xl font-bold text-gray-900 text-center mb-3"
-          >
+          <h2 id="features-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.features.title') }}
           </h2>
           <p class="text-gray-500 text-center mb-12 max-w-2xl mx-auto">
@@ -493,11 +480,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component
-                :is="card.icon"
-                class="w-9 h-9 mb-4 text-red-500"
-                aria-hidden="true"
-              />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -537,9 +520,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   <div class="text-lg font-bold text-gray-900">{{ stage.count }}</div>
                 </div>
               </div>
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-3 text-sm"
-              >
+              <div class="flex items-center justify-between border-t border-gray-100 pt-3 text-sm">
                 <span class="text-gray-500">{{ t('marketing.features.split.totalLabel') }}</span>
                 <span class="font-bold text-gray-900">
                   {{ t('marketing.features.split.totalValue') }}
@@ -557,11 +538,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component
-                :is="card.icon"
-                class="w-9 h-9 mb-4 text-red-500"
-                aria-hidden="true"
-              />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -576,29 +553,19 @@ const footerColumns = computed<FooterColumn[]>(() => {
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
         <div class="max-w-5xl mx-auto text-center">
-          <h2
-            id="integrations-heading"
-            class="text-3xl font-bold text-gray-900 mb-3"
-          >
+          <h2 id="integrations-heading" class="text-3xl font-bold text-gray-900 mb-3">
             {{ t('marketing.integrations.title') }}
           </h2>
           <p class="text-gray-500 mb-10 max-w-2xl mx-auto">
             {{ t('marketing.integrations.subtitle') }}
           </p>
-          <ul
-            class="flex flex-wrap justify-center gap-3 list-none m-0 p-0"
-            role="list"
-          >
+          <ul class="flex flex-wrap justify-center gap-3 list-none m-0 p-0" role="list">
             <li
               v-for="item in integrationItems"
               :key="item.label"
               class="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm"
             >
-              <component
-                :is="item.icon"
-                class="w-4 h-4 text-red-500"
-                aria-hidden="true"
-              />
+              <component :is="item.icon" class="w-4 h-4 text-red-500" aria-hidden="true" />
               {{ item.label }}
             </li>
           </ul>
@@ -614,10 +581,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
           <p class="text-gray-500 text-center mb-12 max-w-2xl mx-auto">
             {{ t('marketing.why.subtitle') }}
           </p>
-          <ul
-            class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none m-0 p-0"
-            role="list"
-          >
+          <ul class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none m-0 p-0" role="list">
             <li
               v-for="bullet in whyBullets"
               :key="bullet.title"
@@ -640,27 +604,19 @@ const footerColumns = computed<FooterColumn[]>(() => {
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
         <div class="max-w-6xl mx-auto">
-          <h2
-            id="testimonials-heading"
-            class="text-3xl font-bold text-gray-900 text-center mb-3"
-          >
+          <h2 id="testimonials-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.testimonials.title') }}
           </h2>
           <p class="text-gray-500 text-center mb-12 max-w-2xl mx-auto">
             {{ t('marketing.testimonials.subtitle') }}
           </p>
-          <ul
-            class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none m-0 p-0"
-            role="list"
-          >
+          <ul class="grid grid-cols-1 md:grid-cols-3 gap-6 list-none m-0 p-0" role="list">
             <li
               v-for="item in testimonials"
               :key="item.name"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col"
             >
-              <blockquote
-                class="text-sm text-gray-700 leading-relaxed mb-5 flex-1"
-              >
+              <blockquote class="text-sm text-gray-700 leading-relaxed mb-5 flex-1">
                 “{{ item.quote }}”
               </blockquote>
               <div class="flex items-center gap-3 border-t border-gray-100 pt-4">
@@ -672,9 +628,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 </div>
                 <div>
                   <div class="text-sm font-semibold text-gray-900">{{ item.name }}</div>
-                  <div class="text-xs text-gray-500">
-                    {{ item.role }} · {{ item.company }}
-                  </div>
+                  <div class="text-xs text-gray-500">{{ item.role }} · {{ item.company }}</div>
                 </div>
               </div>
             </li>
@@ -683,11 +637,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
       </section>
 
       <!-- ── Trust segments ── -->
-      <section
-        id="trust"
-        aria-labelledby="trust-heading"
-        class="px-6 py-20 scroll-mt-24"
-      >
+      <section id="trust" aria-labelledby="trust-heading" class="px-6 py-20 scroll-mt-24">
         <div class="max-w-5xl mx-auto">
           <h2 id="trust-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.trust.title') }}
@@ -696,10 +646,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             {{ t('marketing.trust.subtitle') }}
           </p>
 
-          <ul
-            class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12 list-none m-0 p-0"
-            role="list"
-          >
+          <ul class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12 list-none m-0 p-0" role="list">
             <li
               v-for="seg in trustSegments"
               :key="seg.title"
@@ -735,10 +682,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
         <div class="max-w-4xl mx-auto">
-          <h2
-            id="pricing-heading"
-            class="text-3xl font-bold text-gray-900 text-center mb-3"
-          >
+          <h2 id="pricing-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.pricing.title') }}
           </h2>
           <p class="text-gray-500 text-center mb-8">
@@ -755,9 +699,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 type="button"
                 :aria-pressed="!annual"
                 class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors"
-                :class="
-                  !annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'
-                "
+                :class="!annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'"
                 @click="annual = false"
               >
                 {{ t('marketing.pricing.toggle.monthly') }}
@@ -766,19 +708,13 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 type="button"
                 :aria-pressed="annual"
                 class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
-                :class="
-                  annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'
-                "
+                :class="annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'"
                 @click="annual = true"
               >
                 {{ t('marketing.pricing.toggle.annual') }}
                 <span
                   class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
-                  :class="
-                    annual
-                      ? 'bg-white/20 text-white'
-                      : 'bg-green-100 text-green-700'
-                  "
+                  :class="annual ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'"
                 >
                   {{ t('marketing.pricing.toggle.save') }}
                 </span>
@@ -864,11 +800,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
       </section>
 
       <!-- ── FAQ ── -->
-      <section
-        id="faq"
-        aria-labelledby="faq-heading"
-        class="bg-gray-50 px-6 py-20 scroll-mt-24"
-      >
+      <section id="faq" aria-labelledby="faq-heading" class="bg-gray-50 px-6 py-20 scroll-mt-24">
         <div class="max-w-3xl mx-auto">
           <h2 id="faq-heading" class="text-3xl font-bold text-gray-900 text-center mb-12">
             {{ t('marketing.faq.title') }}
