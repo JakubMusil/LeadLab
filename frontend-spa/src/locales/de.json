@@ -764,7 +764,22 @@
     "heatmapTotalActivities": "{n} Aktivitäten",
     "heatmapActiveDays": "aktive Tage",
     "heatmapAvgPerDay": "ø pro aktiven Tag",
-    "heatmapPeak": "max. pro Tag"
+    "heatmapPeak": "max. pro Tag",
+    "focusNextTitle": "Jetzt anrufen",
+    "focusNextEmpty": "Gute Arbeit! Kein Datensatz wartet auf Kontakt.",
+    "focusNextOpen": "Öffnen",
+    "focusNextSkip": "Überspringen",
+    "focusNextDaysStale": "{n} Tage ohne Aktivität",
+    "recentWinsTitle": "Letzte Erfolge",
+    "recentWinsEmpty": "Noch keine Erfolge in den letzten 30 Tagen.",
+    "recentWinsToday": "Heute",
+    "recentWinsYesterday": "Gestern",
+    "recentWinsDaysAgo": "{n}T",
+    "dailyGoalsTitle": "Tagesziel",
+    "dailyGoalsStreak": "Tage in Folge",
+    "dailyGoalsBest": "bester Tag",
+    "dailyGoalsAchieved": "✅ Ziel erreicht!",
+    "heatmapPersonalBest": "Rekord: {n} Aktivitäten"
   },
   "leads": {
     "title": "Einträge",

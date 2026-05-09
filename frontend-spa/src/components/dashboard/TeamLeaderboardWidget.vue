@@ -96,10 +96,9 @@ onMounted(load)
               class="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
             >
               <td class="py-2 px-1 font-medium text-gray-500 dark:text-gray-400">
-                <span
-                  v-if="idx === 0"
-                  class="inline-block w-5 h-5 rounded-full bg-amber-400 text-white text-center leading-5 font-bold text-[10px]"
-                >1</span>
+                <span v-if="idx === 0" class="text-lg" title="1">🥇</span>
+                <span v-else-if="idx === 1" class="text-lg" title="2">🥈</span>
+                <span v-else-if="idx === 2" class="text-lg" title="3">🥉</span>
                 <span v-else class="text-gray-400">{{ idx + 1 }}</span>
               </td>
               <td class="py-2 px-1 font-medium text-gray-800 dark:text-gray-100 truncate max-w-[120px]">

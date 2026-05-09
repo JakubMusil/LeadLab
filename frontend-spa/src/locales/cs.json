@@ -764,7 +764,22 @@
     "heatmapTotalActivities": "{n} aktivit",
     "heatmapActiveDays": "aktivních dní",
     "heatmapAvgPerDay": "ø na aktivní den",
-    "heatmapPeak": "max za den"
+    "heatmapPeak": "max za den",
+    "focusNextTitle": "Zavolej teď",
+    "focusNextEmpty": "Skvělá práce! Žádný záznam nečeká na kontakt.",
+    "focusNextOpen": "Otevřít",
+    "focusNextSkip": "Přeskočit",
+    "focusNextDaysStale": "{n} dní bez aktivity",
+    "recentWinsTitle": "Poslední výhry",
+    "recentWinsEmpty": "Zatím žádné výhry za posledních 30 dní.",
+    "recentWinsToday": "Dnes",
+    "recentWinsYesterday": "Včera",
+    "recentWinsDaysAgo": "{n}d",
+    "dailyGoalsTitle": "Dnešní cíl",
+    "dailyGoalsStreak": "dní v řadě",
+    "dailyGoalsBest": "nejlepší den",
+    "dailyGoalsAchieved": "✅ Cíl splněn!",
+    "heatmapPersonalBest": "Rekord: {n} aktivit"
   },
   "leads": {
     "title": "Záznamy",

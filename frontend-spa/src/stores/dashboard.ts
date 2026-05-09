@@ -95,30 +95,34 @@ export interface WidgetConfig {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: 'stat_cards', colSpan: 12, visible: true, order: 0, audience: 'all' },
-  // Row: Today trio (cold-call quick create + my day + upcoming checkpoints)
-  { id: 'quick_create_record', colSpan: 4, visible: true, order: 1, audience: 'all' },
-  { id: 'my_day', colSpan: 4, visible: true, order: 2, audience: 'all' },
-  { id: 'upcoming_checkpoints', colSpan: 4, visible: true, order: 3, audience: 'all' },
-  // Row: Category overview full width
-  { id: 'category_overview', colSpan: 12, visible: true, order: 4, audience: 'all' },
-  // Row: Stage funnel + recent activity
-  { id: 'stage_funnel', colSpan: 8, visible: true, order: 5, audience: 'all' },
-  { id: 'recent_activity', colSpan: 4, visible: true, order: 6, audience: 'all' },
-  // Row: my top records + stale records
-  { id: 'my_top_records', colSpan: 6, visible: true, order: 7, audience: 'all' },
-  { id: 'stale_records', colSpan: 6, visible: true, order: 8, audience: 'all' },
-  // Row: Pipeline chart + win-loss
-  { id: 'pipeline_chart', colSpan: 8, visible: true, order: 9, audience: 'all' },
-  { id: 'win_loss', colSpan: 4, visible: true, order: 10, audience: 'all' },
-  // Row: trend + heatmap
-  { id: 'pipeline_trend', colSpan: 6, visible: true, order: 11, audience: 'all' },
-  { id: 'activity_heatmap', colSpan: 6, visible: true, order: 12, audience: 'all' },
-  // Row: status breakdown full width
-  { id: 'status_breakdown', colSpan: 12, visible: true, order: 13, audience: 'all' },
-  { id: 'record_status_chart', colSpan: 12, visible: false, order: 14, audience: 'all' },
-  { id: 'team_leaderboard', colSpan: 12, visible: false, order: 15, audience: 'admin' },
-  { id: 'setup_progress', colSpan: 12, visible: true, order: 16, audience: 'admin' },
+  // Row 1: My day (full width — most important)
+  { id: 'my_day', colSpan: 12, visible: true, order: 0, audience: 'all' },
+  // Row 2: Focus next + daily goals
+  { id: 'focus_next', colSpan: 6, visible: true, order: 1, audience: 'all' },
+  { id: 'daily_goals', colSpan: 6, visible: true, order: 2, audience: 'all' },
+  // Row 3: Quick create + upcoming checkpoints
+  { id: 'quick_create_record', colSpan: 6, visible: true, order: 3, audience: 'all' },
+  { id: 'upcoming_checkpoints', colSpan: 6, visible: true, order: 4, audience: 'all' },
+  // Row 4: My top records (full width)
+  { id: 'my_top_records', colSpan: 12, visible: true, order: 5, audience: 'all' },
+  // Row 5: Stale records + recent wins
+  { id: 'stale_records', colSpan: 6, visible: true, order: 6, audience: 'all' },
+  { id: 'recent_wins', colSpan: 6, visible: true, order: 7, audience: 'all' },
+  // Row 6: Activity heatmap + team leaderboard
+  { id: 'activity_heatmap', colSpan: 6, visible: true, order: 8, audience: 'all' },
+  { id: 'team_leaderboard', colSpan: 6, visible: true, order: 9, audience: 'admin' },
+  // Row 7: Setup progress (full width, admin)
+  { id: 'setup_progress', colSpan: 12, visible: true, order: 10, audience: 'admin' },
+  // --- Hidden by default: analytics / stat widgets ---
+  { id: 'stat_cards', colSpan: 12, visible: false, order: 11, audience: 'all' },
+  { id: 'pipeline_chart', colSpan: 8, visible: false, order: 12, audience: 'all' },
+  { id: 'recent_activity', colSpan: 4, visible: false, order: 13, audience: 'all' },
+  { id: 'status_breakdown', colSpan: 12, visible: false, order: 14, audience: 'all' },
+  { id: 'category_overview', colSpan: 12, visible: false, order: 15, audience: 'all' },
+  { id: 'stage_funnel', colSpan: 8, visible: false, order: 16, audience: 'all' },
+  { id: 'record_status_chart', colSpan: 12, visible: false, order: 17, audience: 'all' },
+  { id: 'pipeline_trend', colSpan: 6, visible: false, order: 18, audience: 'all' },
+  { id: 'win_loss', colSpan: 4, visible: false, order: 19, audience: 'all' },
 ]
 
 // ---------------------------------------------------------------------------

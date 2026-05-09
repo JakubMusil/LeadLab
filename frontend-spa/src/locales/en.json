@@ -764,7 +764,22 @@
     "heatmapTotalActivities": "{n} activities",
     "heatmapActiveDays": "active days",
     "heatmapAvgPerDay": "avg per active day",
-    "heatmapPeak": "peak / day"
+    "heatmapPeak": "peak / day",
+    "focusNextTitle": "Call Now",
+    "focusNextEmpty": "Great job! No records waiting for contact.",
+    "focusNextOpen": "Open",
+    "focusNextSkip": "Skip",
+    "focusNextDaysStale": "{n} days without activity",
+    "recentWinsTitle": "Recent Wins",
+    "recentWinsEmpty": "No wins in the last 30 days yet.",
+    "recentWinsToday": "Today",
+    "recentWinsYesterday": "Yesterday",
+    "recentWinsDaysAgo": "{n}d",
+    "dailyGoalsTitle": "Daily Goal",
+    "dailyGoalsStreak": "day streak",
+    "dailyGoalsBest": "best day",
+    "dailyGoalsAchieved": "✅ Goal achieved!",
+    "heatmapPersonalBest": "Record: {n} activities"
   },
   "leads": {
     "title": "Records",

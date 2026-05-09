@@ -110,52 +110,52 @@ describe('DashboardView', () => {
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('renders stat cards after data loads', async () => {
+  it('renders action widgets after data loads', async () => {
     mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('42') // total records
-    expect(wrapper.text()).toContain('20') // total customers
+    // My Day widget should be visible (first in default layout)
+    expect(wrapper.text()).toContain('My Day')
+    // Focus Next widget should be visible
+    expect(wrapper.text()).toContain('Call Now')
   })
 
-  it('shows pipeline value', async () => {
+  it('shows daily goal widget', async () => {
     mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('Pipeline')
+    expect(wrapper.text()).toContain('Daily Goal')
   })
 
-  it('shows overdue tasks in red when overdue > 0', async () => {
+  it('shows stale records widget', async () => {
     mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    // The overdue text should be present
-    expect(wrapper.text()).toContain('overdue')
+    expect(wrapper.text()).toContain('Stale Records')
   })
 
-  it('shows conversion rate', async () => {
+  it('shows recent wins widget', async () => {
     mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('conversion')
+    expect(wrapper.text()).toContain('Recent Wins')
   })
 
-  it('shows status breakdown section', async () => {
+  it('shows upcoming checkpoints widget', async () => {
     mockApiCalls({ ok: true, status: 200, data: mockStats })
     const wrapper = mount(DashboardView, { global: { plugins: [router] } })
     await new Promise((r) => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('Status Breakdown')
-    expect(wrapper.text()).toContain('New')
+    expect(wrapper.text()).toContain('Upcoming Checkpoints')
   })
 
   it('shows error state when API fails', async () => {
