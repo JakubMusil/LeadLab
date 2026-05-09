@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useFirmStore } from '@/stores/firm'
 import { useRecordsStore, type RecordOut } from '@/stores/records'
@@ -48,7 +48,6 @@ import {
   LinkIcon,
 } from '@heroicons/vue/24/outline'
 
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const firmStore = useFirmStore()
@@ -246,9 +245,6 @@ const navSections = computed(() => [
     ],
   },
 ])
-
-// Keep for mobile menu and other consumers
-const navItems = computed(() => navSections.value.flatMap((s) => s.items))
 
 function isActive(path: string) {
   return route.path === path || route.path.startsWith(path + '/')
