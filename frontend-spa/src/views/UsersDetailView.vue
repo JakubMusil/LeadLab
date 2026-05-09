@@ -107,7 +107,8 @@ function formatDateOnly(value: string | null | undefined): string {
 function initialiseDrafts(member: MemberOut | undefined) {
   roleDraft.value = member?.role ?? ''
   const expiresAt = member?.expires_at
-  expiryDraft.value = expiresAt && expiresAt.trim() ? expiresAt.slice(0, 10) : ''
+  const isoDatePrefix = expiresAt && /^\\d{4}-\\d{2}-\\d{2}/.test(expiresAt) ? expiresAt.slice(0, 10) : ''
+  expiryDraft.value = isoDatePrefix
   teamDraft.value = member?.team_id ?? ''
 }
 
@@ -242,9 +243,18 @@ async function saveRoleAndExpiry() {
       const year = Number(yearStr)
       const month = Number(monthStr)
       const day = Number(dayStr)
-      payload.expires_at = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
-        ? new Date(Date.UTC(year, month - 1, day)).toISOString()
-        : null
+      const hasValidParts = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+        && month >= 1 && month <= 12 && day >= 1 && day <= 31
+      if (hasValidParts) {
+        const date = new Date(Date.UTC(year, month - 1, day))
+        const sameDate =
+          date.getUTCFullYear() === year
+          && date.getUTCMonth() === month - 1
+          && date.getUTCDate() === day
+        payload.expires_at = sameDate ? date.toISOString() : null
+      } else {
+        payload.expires_at = null
+      }
     } else {
       payload.expires_at = null
     }
@@ -282,7 +292,7 @@ async function saveTeam() {
     if (member.team_id) {
       const deleteRes = await api.delete(`/api/v1/firms/${firmId.value}/teams/${member.team_id}/members/${membershipId.value}`)
       if (!deleteRes.ok && deleteRes.status !== 404) {
-        actionError.value = 'Uložení týmu selhalo.'
+        actionError.value = 'Odebrání z původního týmu selhalo.'
         return
       }
     }
@@ -290,7 +300,7 @@ async function saveTeam() {
     if (teamDraft.value) {
       const addRes = await api.post(`/api/v1/firms/${firmId.value}/teams/${teamDraft.value}/members/${membershipId.value}`, {})
       if (!addRes.ok) {
-        actionError.value = 'Uložení týmu selhalo.'
+        actionError.value = 'Přiřazení do nového týmu selhalo.'
         return
       }
     }
@@ -342,7 +352,7 @@ watch(currentMember, (next) => {
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-1">
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">User detail</h1>
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Detail uživatele</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400">Detail člena firmy a jeho aktivit</p>
       </div>
       <RouterLink to="/app/users" class="text-sm text-brand hover:underline">← Zpět na users list</RouterLink>
@@ -376,10 +386,6 @@ watch(currentMember, (next) => {
                   {{ targetStatus === 'expired' ? 'Expirovaný člen' : 'Aktivní člen' }}
                 </span>
               </div>
-
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Timeline je aktuálně čtena z endpointu report aktivit, proto může obsahovat hlavně záznamy navázané na records.
-              </p>
 
               <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
