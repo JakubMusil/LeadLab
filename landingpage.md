@@ -23,6 +23,6 @@
 - [x] Preserve the clean red/white/gray visual style while making the page more spacious and conversion-oriented.
 - [x] Check keyboard/accessibility details for links, FAQ controls, and semantic sections.
 - [x] Run locale validation and relevant frontend checks after implementation.
-- [ ] Final review and pull request.
+- [x] Final review and pull request.
 
 Notes: Added the marketing locale namespace with hero, nav, benefits, workflow, features, trust, pricing/CTA, FAQ, and footer copy in all locales. MarketingView refactored to use `useI18n` (`t`/`tm`) for all copy — no hardcoded English remains. Page structure updated: sticky nav with anchors, hero with eyebrow + note, benefits metrics grid, numbered workflow steps, 6 feature cards with heroicons, trust/for-whom + assurances, pricing plans from locale, CTA banner, accessible FAQ (dl/dt/dd with aria-expanded/aria-controls), semantic header/main/footer. Clean red/white/gray design preserved. Validation after changes: `npm run check-locales` passed, `npm run build-only` passed, and `npm run type-check` still fails on the same pre-existing unrelated TypeScript errors. Pre-existing TypeScript errors in unrelated files remain unchanged.

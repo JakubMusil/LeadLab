@@ -63,7 +63,7 @@ const featureCards = computed<FeatureCardItem[]>(() => {
   if (!Array.isArray(raw)) return []
   return (raw as CardItem[]).map((card, index) => ({
     ...card,
-    icon: featureIcons[index % featureIcons.length] ?? Squares2X2Icon,
+    icon: featureIcons[index % featureIcons.length] as Component,
   }))
 })
 
