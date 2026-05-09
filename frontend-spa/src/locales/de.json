@@ -3008,7 +3008,8 @@
         "loading": "Aktivitäten werden geladen…",
         "loadingMore": "Lade…",
         "loadMore": "Weitere Aktivitäten laden",
-        "loadedCount": "{loaded} von {total} Aktivitäten geladen"
+        "loadedCount": "{loaded} von {total} Aktivitäten geladen",
+        "description": "Übersicht der letzten Aktivitäten dieses Mitglieds. Mit Filtern finden Sie schnell den gewünschten Aktivitätstyp oder Bereich."
       },
       "profile": {
         "title": "Mitgliedsprofil",
@@ -3026,11 +3027,13 @@
         "noTeam": "Kein Team",
         "saving": "Speichern…",
         "saveRoleExpiry": "Rolle und Ablauf speichern",
-        "saveTeam": "Team speichern"
+        "saveTeam": "Team speichern",
+        "description": "Hier können Sie Rolle, Ablaufdatum und Teamzuordnung des Mitglieds anpassen."
       },
       "permissionsSnapshot": {
         "title": "Berechtigungs-Snapshot",
-        "empty": "Keine explizite Berechtigung."
+        "empty": "Keine explizite Berechtigung.",
+        "description": "Zusammenfassung der expliziten Berechtigungen, die diesem Mitglied aktuell zur Verfügung stehen."
       },
       "grantsSnapshot": {
         "title": "Scope-/Grant-Snapshot",

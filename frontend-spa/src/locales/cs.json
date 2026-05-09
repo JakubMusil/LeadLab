@@ -2981,7 +2981,7 @@
     },
     "detail": {
       "title": "Detail uživatele",
-      "subtitle": "Detail člena firmy a jeho aktivit",
+      "subtitle": "Profil člena firmy, jeho aktivity a oprávnění",
       "backToList": "← Zpět na seznam uživatelů",
       "noAccess": "Pro zobrazení detailu uživatele nemáte oprávnění.",
       "loadingDetail": "Načítám detail uživatele…",
@@ -2990,10 +2990,11 @@
         "expired": "Expirovaný člen"
       },
       "timeline": {
-        "title": "Timeline aktivit",
+        "title": "Aktivity uživatele",
+        "description": "Přehled posledních aktivit člena. Pomocí filtrů můžete rychle najít konkrétní typ aktivity nebo oblast.",
         "filters": {
           "allActivityTypes": "Všechny typy aktivit",
-          "allEntities": "Všechny entity"
+          "allEntities": "Všechny oblasti"
         },
         "entities": {
           "record": "Záznam",
@@ -3021,7 +3022,8 @@
         "expiry": "Expirace"
       },
       "actions": {
-        "title": "Akce podle oprávnění",
+        "title": "Správa role a týmu",
+        "description": "Zde můžete upravit roli, datum expirace členství a přiřazení do týmu.",
         "role": "Role",
         "expiry": "Expirace",
         "team": "Tým",
@@ -3031,19 +3033,20 @@
         "saveTeam": "Uložit tým"
       },
       "permissionsSnapshot": {
-        "title": "Snímek oprávnění",
-        "empty": "Žádné explicitní oprávnění."
+        "title": "Přehled oprávnění",
+        "description": "Souhrn jednotlivých oprávnění, která má tento člen aktuálně k dispozici.",
+        "empty": "Tomuto členu nejsou přiřazena žádná jednotlivá oprávnění."
       },
       "grantsSnapshot": {
-        "title": "Snímek rozsahu / grantů",
-        "noAccess": "Pro detail grants je potřeba role owner/admin.",
-        "loading": "Načítám grants…",
-        "categoryGrants": "Granty kategorií ({count})",
-        "recordGrants": "Granty záznamů ({count})"
+        "title": "Přehled rozsahu přístupů",
+        "noAccess": "Pro zobrazení detailu přístupů je potřeba role owner/admin.",
+        "loading": "Načítám přístupy…",
+        "categoryGrants": "Přístupy ke kategoriím ({count})",
+        "recordGrants": "Přístupy k záznamům ({count})"
       },
       "errors": {
-        "loadGrants": "Nepodařilo se načíst grants.",
-        "loadTimeline": "Nepodařilo se načíst timeline aktivit.",
+        "loadGrants": "Nepodařilo se načíst přístupy.",
+        "loadTimeline": "Nepodařilo se načíst aktivity.",
         "saveRoleExpiry": "Uložení role/expirace selhalo.",
         "memberNotFound": "Člen nebyl nalezen.",
         "removeFromTeam": "Odebrání z původního týmu selhalo.",
