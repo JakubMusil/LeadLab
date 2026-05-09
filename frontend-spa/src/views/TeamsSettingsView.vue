@@ -296,7 +296,7 @@ onMounted(loadData)
 
     <!-- Teams list -->
     <div class="space-y-3">
-      <div v-for="team in permissionsStore.teams" :key="team.id" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div v-for="team in permissionsStore.teams" :key="team.id" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-visible">
         <!-- Team header -->
         <div class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900">
           <!-- Color dot -->
