@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import type { Component } from 'vue'
 import {
   CheckIcon,
@@ -33,6 +33,8 @@ const { t, tm, rt } = useI18n()
 
 const faqOpen = ref<number | null>(null)
 const annual = ref(false)
+const menuOpen = ref(false)
+const navAnchors = ['product', 'workflow', 'features', 'pricing', 'faq'] as const
 
 // Interactive lead-magnet quiz state. The quiz is a self-contained,
 // single-choice flow driven entirely by `marketing.quiz.questions`. We
@@ -67,6 +69,24 @@ function quizRestart() {
 function toggleFaq(i: number) {
   faqOpen.value = faqOpen.value === i ? null : i
 }
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function closeMenu() {
+  menuOpen.value = false
+}
+
+watch(menuOpen, (open) => {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
+onBeforeUnmount(() => {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = ''
+})
 
 const featureIconMap = {
   customers: UsersIcon,
@@ -263,19 +283,19 @@ const footerColumns = computed<FooterColumn[]>(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-white text-gray-700">
     <!-- ── Top announcement bar ── -->
     <div
       v-if="t('marketing.announcement.text')"
-      class="bg-brand-800 text-white text-xs sm:text-sm"
+      class="bg-brand-700 text-white text-xs sm:text-sm"
       role="region"
       :aria-label="t('marketing.announcement.label')"
     >
       <div
-        class="max-w-6xl mx-auto px-6 py-2 flex flex-wrap items-center justify-center gap-2 text-center"
+          class="max-w-[1360px] mx-auto px-8 py-2.5 flex flex-wrap items-center justify-center gap-2 text-center"
       >
         <span
-          class="inline-flex items-center gap-1.5 bg-white/15 text-white font-semibold uppercase tracking-wide text-[10px] px-2 py-0.5 rounded-full"
+          class="inline-flex items-center gap-1.5 bg-accent-500 text-white font-bold uppercase tracking-[0.08em] text-[11px] px-2 py-0.5 rounded"
         >
           <SparklesIcon class="w-3 h-3" aria-hidden="true" />
           {{ t('marketing.announcement.badge') }}
@@ -293,8 +313,8 @@ const footerColumns = computed<FooterColumn[]>(() => {
 
     <!-- ── Sticky navigation ── -->
     <header role="banner">
-      <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+      <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
+        <div class="max-w-[1360px] mx-auto px-8 py-3 flex items-center justify-between gap-4">
           <a href="/" class="flex items-center gap-2 shrink-0">
             <div
               class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center"
@@ -306,13 +326,10 @@ const footerColumns = computed<FooterColumn[]>(() => {
           </a>
 
           <ul class="hidden md:flex items-center gap-1 list-none m-0 p-0" role="list">
-            <li
-              v-for="anchor in ['product', 'workflow', 'features', 'pricing', 'faq']"
-              :key="anchor"
-            >
+            <li v-for="anchor in navAnchors" :key="anchor">
               <a
                 :href="`#${anchor}`"
-                class="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                class="text-[14.5px] text-gray-700 hover:text-brand-600 font-medium px-3 py-2 rounded-md hover:bg-brand-50 transition-colors"
                 >{{ t(`marketing.nav.${anchor}`) }}</a
               >
             </li>
@@ -322,18 +339,77 @@ const footerColumns = computed<FooterColumn[]>(() => {
             <LanguageSwitcher variant="nav" class="hidden sm:inline-flex" />
             <a
               href="/app/login"
-              class="hidden sm:inline-block text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              class="hidden md:inline-block text-sm text-gray-600 hover:text-brand-700 font-medium px-3 py-2 rounded-md hover:bg-brand-50 transition-colors"
               >{{ t('marketing.nav.login') }}</a
             >
             <a
               href="/app/register"
-              class="text-sm bg-brand-600 text-white font-semibold px-4 py-2 rounded-xl hover:bg-brand-700 transition-colors"
+              class="hidden md:inline-block text-[13px] bg-accent-500 text-white font-bold px-5 py-2.5 rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-lg transition-all"
               >{{ t('marketing.nav.getStarted') }}</a
             >
+            <button
+              type="button"
+              class="md:hidden inline-flex flex-col items-center justify-center gap-1 w-10 h-10 rounded-md text-brand-700 hover:bg-brand-50 transition-colors"
+              :aria-expanded="menuOpen"
+              aria-label="Open menu"
+              @click="toggleMenu"
+            >
+              <span class="sr-only">Menu</span>
+              <span class="w-5 h-0.5 bg-current rounded-full"></span>
+              <span class="w-5 h-0.5 bg-current rounded-full"></span>
+              <span class="w-5 h-0.5 bg-current rounded-full"></span>
+            </button>
           </div>
         </div>
       </nav>
     </header>
+
+    <div
+      class="fixed inset-0 z-[998] bg-black/40 transition-opacity duration-300"
+      :class="menuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'"
+      @click="closeMenu"
+    ></div>
+    <aside
+      class="fixed top-0 right-0 z-[999] h-screen w-[320px] max-w-[85vw] bg-white shadow-offcanvas transition-transform duration-300 ease-out flex flex-col"
+      :class="menuOpen ? 'translate-x-0' : 'translate-x-full'"
+      aria-label="Menu"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <span class="text-lg font-bold text-brand-700">Menu</span>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center w-9 h-9 rounded-md text-gray-500 hover:bg-gray-100"
+          aria-label="Close menu"
+          @click="closeMenu"
+        >
+          ✕
+        </button>
+      </div>
+      <nav class="px-4 py-3 space-y-1 overflow-y-auto">
+        <a
+          v-for="anchor in navAnchors"
+          :key="anchor"
+          :href="`#${anchor}`"
+          class="block px-3 py-2.5 rounded-lg text-[15px] font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-600"
+          @click="closeMenu"
+          >{{ t(`marketing.nav.${anchor}`) }}</a
+        >
+      </nav>
+      <div class="mt-auto border-t border-gray-200 p-4 space-y-2">
+        <a
+          href="/app/login"
+          class="block text-center px-4 py-2.5 rounded-lg border-2 border-brand-600 text-brand-600 font-semibold"
+          @click="closeMenu"
+          >{{ t('marketing.nav.login') }}</a
+        >
+        <a
+          href="/app/register"
+          class="block text-center px-4 py-3 rounded-lg bg-accent-500 text-white font-bold"
+          @click="closeMenu"
+          >{{ t('marketing.nav.getStarted') }}</a
+        >
+      </div>
+    </aside>
 
     <main>
       <!-- ── Hero ── -->
@@ -344,7 +420,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
       >
         <div class="hero-glow" aria-hidden="true"></div>
         <div
-          class="relative px-6 pt-20 pb-24 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center"
+          class="relative px-8 pt-[90px] pb-[70px] max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-[60px] items-center"
         >
           <div class="text-center md:text-left">
             <p class="text-sm font-semibold text-brand-600 uppercase tracking-widest mb-4">
@@ -352,11 +428,11 @@ const footerColumns = computed<FooterColumn[]>(() => {
             </p>
             <h1
               id="hero-heading"
-              class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-6 leading-tight tracking-tight"
+               class="text-[32px] lg:text-[52px] font-extrabold text-brand-700 mb-6 leading-[1.1] tracking-[-0.5px]"
             >
               {{ t('marketing.hero.title') }}
             </h1>
-            <p class="text-lg text-gray-500 mb-8 leading-relaxed max-w-xl md:mx-0 mx-auto">
+             <p class="text-[19px] text-[#4a5568] mb-8 leading-[1.65] max-w-xl md:mx-0 mx-auto">
               {{ t('marketing.hero.subtitle') }}
             </p>
 
@@ -379,8 +455,8 @@ const footerColumns = computed<FooterColumn[]>(() => {
               />
               <button
                 type="submit"
-                class="px-6 py-3 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors"
-              >
+                 class="px-8 py-3.5 bg-accent-500 text-white font-bold rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 transition-all"
+               >
                 {{ t('marketing.hero.emailCta') }}
               </button>
             </form>
@@ -499,20 +575,20 @@ const footerColumns = computed<FooterColumn[]>(() => {
       <section
         id="trust-strip"
         aria-labelledby="trust-strip-heading"
-        class="px-6 py-12 border-y border-gray-100 bg-gray-50 scroll-mt-24"
+        class="px-6 py-12 border-y border-gray-100 bg-white scroll-mt-24"
       >
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <p id="trust-strip-heading" class="text-center text-sm text-gray-500 font-medium mb-6">
             {{ t('marketing.trustStrip.trustedBy') }}
           </p>
           <ul
-            class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 list-none m-0 p-0"
+            class="flex flex-wrap items-center justify-center gap-y-10 gap-x-14 list-none m-0 p-0"
             role="list"
           >
             <li
               v-for="logo in trustLogos"
               :key="logo"
-              class="flex items-center justify-center bg-white border border-gray-200 rounded-xl px-3 py-3 text-xs font-semibold text-gray-400 tracking-wide uppercase text-center"
+              class="flex items-center justify-center text-[19px] font-extrabold text-slate-400 tracking-[1.5px] uppercase text-center opacity-50 hover:opacity-90 transition-opacity"
             >
               {{ logo }}
             </li>
@@ -522,7 +598,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
 
       <!-- ── Benefits (outcome cards) ── -->
       <section id="benefits" aria-labelledby="benefits-heading" class="px-6 py-20 scroll-mt-24">
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <h2 id="benefits-heading" class="text-3xl font-bold text-gray-900 mb-3 text-center">
             {{ t('marketing.benefits.title') }}
           </h2>
@@ -552,7 +628,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         aria-labelledby="workflow-heading"
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <h2 id="workflow-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.workflow.title') }}
           </h2>
@@ -585,7 +661,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
 
       <!-- ── Features ── -->
       <section id="features" aria-labelledby="features-heading" class="px-6 py-20 scroll-mt-24">
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <h2 id="features-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.features.title') }}
           </h2>
@@ -815,7 +891,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 </button>
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-40 disabled:hover:bg-brand-600"
+                  class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-accent-500 text-white hover:bg-accent-600 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:hover:bg-accent-500"
                   :disabled="!quizCanAdvance"
                   @click="quizNext"
                 >
@@ -847,14 +923,14 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 <div class="flex flex-col sm:flex-row gap-2 justify-center">
                   <a
                     :href="t('marketing.quiz.finishedHref')"
-                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors"
+                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 hover:-translate-y-0.5 transition-all"
                   >
                     {{ t('marketing.quiz.finishedCta') }}
                     <ArrowRightIcon class="w-4 h-4" aria-hidden="true" />
                   </a>
                   <button
                     type="button"
-                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg border-2 border-brand-600 text-brand-600 text-sm font-semibold hover:bg-brand-50 transition-colors"
                     @click="quizRestart"
                   >
                     {{ t('marketing.quiz.restartLabel') }}
@@ -872,7 +948,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         aria-labelledby="testimonials-heading"
         class="bg-gray-50 px-6 py-20 scroll-mt-24"
       >
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <h2 id="testimonials-heading" class="text-3xl font-bold text-gray-900 text-center mb-3">
             {{ t('marketing.testimonials.title') }}
           </h2>
@@ -912,7 +988,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         aria-labelledby="webinars-heading"
         class="px-6 py-20 scroll-mt-24"
       >
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-[1360px] mx-auto">
           <div class="flex items-end justify-between gap-4 mb-10 flex-wrap">
             <div>
               <p class="text-sm font-semibold text-brand-700 uppercase tracking-widest mb-3">
@@ -980,7 +1056,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
         aria-labelledby="demo-heading"
         class="bg-brand-50 px-6 py-20 scroll-mt-24"
       >
-        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div class="max-w-[1360px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <div>
             <p class="text-sm font-semibold text-brand-700 uppercase tracking-widest mb-3">
               {{ t('marketing.demo.eyebrow') }}
@@ -1084,7 +1160,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               </div>
               <button
                 type="submit"
-                class="w-full px-6 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors"
+                class="w-full px-6 py-3 bg-accent-500 text-white font-semibold rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 transition-all"
               >
                 {{ t('marketing.demo.formSubmit') }}
               </button>
@@ -1277,12 +1353,12 @@ const footerColumns = computed<FooterColumn[]>(() => {
           <div class="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="/app/register"
-              class="inline-block px-8 py-3.5 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors text-lg"
+              class="inline-block px-8 py-3.5 bg-accent-500 text-white font-semibold rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 transition-all text-lg"
               >{{ t('marketing.cta.primaryCta') }}</a
             >
             <a
               href="#faq"
-              class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
+              class="inline-block px-8 py-3.5 border-2 border-brand-600 text-brand-600 font-semibold rounded-lg hover:bg-brand-50 transition-colors text-lg"
               >{{ t('marketing.cta.secondaryCta') }}</a
             >
           </div>
@@ -1333,7 +1409,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
 
     <!-- ── Footer ── -->
     <footer class="border-t border-gray-100 px-6 py-12 pb-28 md:pb-12" role="contentinfo">
-      <div class="max-w-6xl mx-auto">
+      <div class="max-w-[1360px] mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-5 gap-8 mb-10">
           <div class="md:col-span-1">
             <div class="flex items-center gap-2 mb-2">
@@ -1390,7 +1466,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
     >
       <a
         href="/app/register"
-        class="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors"
+        class="flex items-center justify-center gap-2 w-full px-6 py-3 bg-accent-500 text-white font-semibold rounded-lg shadow-md hover:bg-accent-600 transition-colors"
       >
         {{ t('marketing.stickyCta.cta') }}
         <span class="text-xs font-medium opacity-80">· {{ t('marketing.stickyCta.note') }}</span>
@@ -1402,16 +1478,10 @@ const footerColumns = computed<FooterColumn[]>(() => {
 <style scoped>
 .hero-glow {
   position: absolute;
-  inset: -10% -20% auto -20%;
-  height: 70%;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(37, 72, 150, 0.12) 0%,
-    rgba(37, 72, 150, 0.04) 35%,
-    rgba(255, 255, 255, 0) 70%
-  );
+  inset: 0;
+  background: linear-gradient(180deg, #edf1fa 0%, #ffffff 70%);
   pointer-events: none;
-  filter: blur(30px);
+  filter: none;
   z-index: 0;
 }
 
@@ -1426,8 +1496,8 @@ const footerColumns = computed<FooterColumn[]>(() => {
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
 .sticky-cta {

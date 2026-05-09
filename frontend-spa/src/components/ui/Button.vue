@@ -24,13 +24,14 @@ defineEmits<{ click: [e: MouseEvent] }>()
     v-bind="$attrs"
     :type="type"
     :disabled="disabled || loading"
-    class="inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+    class="inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
     :class="[
-      variant === 'primary' && 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+      variant === 'primary' &&
+        'bg-accent-500 text-white shadow-md hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:shadow-sm focus:ring-accent-500',
       variant === 'secondary' &&
-        'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 focus:ring-gray-400',
+        'bg-transparent border-2 border-brand-600 text-brand-600 hover:bg-brand-50 hover:-translate-y-0.5 active:translate-y-0 focus:ring-brand-500 dark:bg-transparent dark:border-brand-500 dark:text-brand-300 dark:hover:bg-brand-900/30',
       variant === 'ghost' &&
-        'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 focus:ring-gray-400',
+        'text-gray-600 hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-gray-700 focus:ring-brand-500',
       variant === 'danger' &&
         'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 focus:ring-red-500',
       size === 'sm' && 'px-3 py-1.5 text-xs',

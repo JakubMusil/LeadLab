@@ -43,7 +43,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
       :class="
         error
           ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-          : 'border-gray-300 dark:border-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+          : 'border-gray-300 dark:border-gray-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500'
       "
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
