@@ -21,6 +21,13 @@
     "records": "Záznamy"
   },
   "marketing": {
+    "announcement": {
+      "label": "Oznámení",
+      "badge": "Novinka",
+      "text": "AI asistent ve LeadLabu — chytřejší správa leadů a obchodů.",
+      "cta": "Zjistit více",
+      "href": "#features"
+    },
     "nav": {
       "product": "Produkt",
       "workflow": "Postup",
@@ -68,6 +75,11 @@
           "proposal": "Nabídka",
           "won": "Vyhráno"
         }
+      },
+      "rating": {
+        "label": "Hodnocení uživatelů",
+        "score": "4,9 / 5",
+        "text": "500+ servisních týmů důvěřuje LeadLabu"
       }
     },
     "trustStrip": {
@@ -259,6 +271,124 @@
           "name": "Markéta D.",
           "role": "Vedoucí týmu",
           "company": "Marketingové studio"
+        }
+      ]
+    },
+    "quiz": {
+      "eyebrow": "2 minuty",
+      "title": "Vyzkoušejte si rychlý kvíz",
+      "subtitle": "Tři otázky ke klíčovým oblastem. Zjistíte, kolik času s LeadLabem ušetříte a kde děláte nejvíc chyb.",
+      "bullets": [
+        "3 otázky ke klíčovým oblastem",
+        "Okamžité vyhodnocení s konkrétními tipy",
+        "Srovnání s ostatními firmami"
+      ],
+      "progressLabel": "Otázka {current} z {total}",
+      "prevLabel": "Zpět",
+      "nextLabel": "Další",
+      "finishLabel": "Vyhodnotit",
+      "restartLabel": "Začít znovu",
+      "finishedTitle": "Hotovo! Máme pro vás doporučení.",
+      "finishedText": "Vytvořte si účet a uvidíte, jak LeadLab vyřeší vaše konkrétní úzká místa.",
+      "finishedCta": "Začít zdarma",
+      "finishedHref": "/app/register",
+      "questions": [
+        {
+          "q": "Kde s týmem evidujete obchodní příležitosti?",
+          "options": [
+            "V tabulce (Excel, Google Sheets)",
+            "Kombinujeme nástroje (e-mail, papír, poznámky)",
+            "Nemáme jednotný systém"
+          ]
+        },
+        {
+          "q": "Jak často vám lead vyhasne, protože na něj zapomenete?",
+          "options": [
+            "Občas se to stane",
+            "Pravidelně každý měsíc",
+            "Bohužel velmi často"
+          ]
+        },
+        {
+          "q": "Kolik lidí v týmu pracuje s leady?",
+          "options": [
+            "Jen já",
+            "Malý tým (2–10 lidí)",
+            "Větší tým (10+)"
+          ]
+        }
+      ]
+    },
+    "webinars": {
+      "eyebrow": "Vzdělávání",
+      "title": "Přijďte na bezplatný webinář",
+      "subtitle": "Ukážeme vám doporučené nastavení LeadLabu, zavedení v týmu a odpovíme na vaše dotazy.",
+      "viewAll": "Všechny webináře",
+      "viewAllHref": "#faq",
+      "items": [
+        {
+          "badge": "Začátečníci",
+          "title": "Základy LeadLabu pro začátečníky",
+          "month": "Kvě",
+          "day": "13",
+          "date": "středa, 13. 5. od 14:00",
+          "ctaLabel": "Rezervovat",
+          "href": "/app/register"
+        },
+        {
+          "badge": "Pokročilí",
+          "title": "Efektivní práce s pipeline a nabídkami",
+          "month": "Kvě",
+          "day": "20",
+          "date": "středa, 20. 5. od 14:00",
+          "ctaLabel": "Rezervovat",
+          "href": "/app/register"
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Online ukázka",
+      "title": "Online ukázka LeadLabu zdarma",
+      "subtitle": "Domluvte si nezávazné online setkání. Projdeme vaše procesy a ukážeme, jak v nich LeadLab pomůže.",
+      "bullets": [
+        "Odpovědi na všechny otázky, i ty základní",
+        "Analýza aktuálního stavu a návrh konkrétních řešení",
+        "Rychlá praktická ukázka klíčových funkcí",
+        "Příjemné online setkání bez závazků"
+      ],
+      "formName": "Vaše jméno",
+      "formEmail": "Pracovní e-mail",
+      "formCompany": "Firma (volitelné)",
+      "formSubmit": "Rezervovat termín ukázky",
+      "contactPrefix": "Nebo nám napište:",
+      "contactEmail": "info{'@'}leadlab.app",
+      "contactPhone": "+420 777 302 220",
+      "contactPhoneHref": "tel:+420777302220",
+      "note": "Žádné spamy. Údaje slouží jen pro domluvení termínu."
+    },
+    "platforms": {
+      "title": "LeadLab dostupný odkudkoliv",
+      "subtitle": "Mac, Windows, iPhone, iPad, Android i web. LeadLab máte připravený, ať jste kdekoliv.",
+      "items": [
+        {
+          "name": "iOS",
+          "sub": "iPhone & iPad",
+          "icon": "mobile"
+        },
+        {
+          "name": "Android",
+          "sub": "Google Play",
+          "icon": "mobile"
+        },
+        {
+          "name": "Desktop",
+          "sub": "Mac & Windows",
+          "icon": "desktop"
+        },
+        {
+          "name": "Webová aplikace",
+          "sub": "V prohlížeči",
+          "icon": "web"
         }
       ]
     },

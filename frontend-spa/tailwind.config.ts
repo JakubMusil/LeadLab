@@ -52,18 +52,39 @@ export default {
         },
       }),
       colors: {
+        // Primary brand color — LeadLab navy (#254896).
+        // The 600 shade matches the requested primary; lighter/darker shades
+        // are derived to keep utilities like bg-brand-50, text-brand-700 etc.
+        // working consistently across the UI.
         brand: {
-          DEFAULT: '#dc2626',
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
+          DEFAULT: '#254896',
+          50: '#eef2fb',
+          100: '#dbe2f5',
+          200: '#b7c5ec',
+          300: '#8ea3de',
+          400: '#5f7ccb',
+          500: '#3a5cb5',
+          600: '#254896',
+          700: '#1d3a7a',
+          800: '#172e60',
+          900: '#11244a',
+        },
+        // Secondary accent — LeadLab green (#52b774). Used for positive
+        // states, check icons, "save" badges and supporting CTAs. The 500
+        // shade matches the requested secondary; 700/800 are darker variants
+        // suitable for body text on light backgrounds (WCAG AA).
+        accent: {
+          DEFAULT: '#52b774',
+          50: '#ecf8f0',
+          100: '#d4eeda',
+          200: '#abdcb9',
+          300: '#7ec896',
+          400: '#52b774',
+          500: '#3ea862',
+          600: '#2f8a4f',
+          700: '#266e40',
+          800: '#1f5734',
+          900: '#17402a',
         },
       },
       fontSize: {

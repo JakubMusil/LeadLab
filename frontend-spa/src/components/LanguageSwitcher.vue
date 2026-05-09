@@ -43,12 +43,12 @@ function onSelect(code: string) {
       type="button"
       :aria-pressed="isActive(code)"
       :aria-label="t(`marketing.languageSwitcher.languages.${code}`)"
-      class="text-xs font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+      class="text-xs font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       :class="[
         variant === 'nav' ? 'px-2.5 py-1' : 'px-2 py-0.5',
         isActive(code)
           ? variant === 'nav'
-            ? 'bg-red-600 text-white'
+            ? 'bg-brand-600 text-white'
             : 'bg-white text-gray-900 shadow-sm'
           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
       ]"
