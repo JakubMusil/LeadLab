@@ -87,27 +87,33 @@
       "cards": [
         {
           "title": "Customer records",
-          "description": "Contacts, companies, and activity history in one place."
+          "description": "Contacts, companies, and activity history in one place.",
+          "icon": "customers"
         },
         {
           "title": "Tasks and reminders",
-          "description": "Assign work, set deadlines, and follow up."
+          "description": "Assign work, set deadlines, and follow up.",
+          "icon": "tasks"
         },
         {
           "title": "Offers and proposals",
-          "description": "Prepare proposals and track approvals."
+          "description": "Prepare proposals and track approvals.",
+          "icon": "proposals"
         },
         {
           "title": "Permissions",
-          "description": "Control access by role, team, or category."
+          "description": "Control access by role, team, or category.",
+          "icon": "permissions"
         },
         {
           "title": "Agenda",
-          "description": "Calendar view of tasks, checkpoints, and deadlines."
+          "description": "Calendar view of tasks, checkpoints, and deadlines.",
+          "icon": "agenda"
         },
         {
           "title": "Pipeline overview",
-          "description": "See stages, totals, and next actions at a glance."
+          "description": "See stages, totals, and next actions at a glance.",
+          "icon": "pipeline"
         }
       ]
     },

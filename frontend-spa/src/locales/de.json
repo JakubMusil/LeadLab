@@ -87,27 +87,33 @@
       "cards": [
         {
           "title": "Kundeneinträge",
-          "description": "Kontakte, Firmen und Aktivitäten an einem Ort."
+          "description": "Kontakte, Firmen und Aktivitäten an einem Ort.",
+          "icon": "customers"
         },
         {
           "title": "Aufgaben und Erinnerungen",
-          "description": "Arbeit zuweisen, Fristen setzen und nachfassen."
+          "description": "Arbeit zuweisen, Fristen setzen und nachfassen.",
+          "icon": "tasks"
         },
         {
           "title": "Angebote und Vorschläge",
-          "description": "Angebote vorbereiten und Freigaben verfolgen."
+          "description": "Angebote vorbereiten und Freigaben verfolgen.",
+          "icon": "proposals"
         },
         {
           "title": "Berechtigungen",
-          "description": "Zugriff nach Rolle, Team oder Kategorie steuern."
+          "description": "Zugriff nach Rolle, Team oder Kategorie steuern.",
+          "icon": "permissions"
         },
         {
           "title": "Agenda",
-          "description": "Kalenderansicht für Aufgaben, Checkpoints und Fristen."
+          "description": "Kalenderansicht für Aufgaben, Checkpoints und Fristen.",
+          "icon": "agenda"
         },
         {
           "title": "Pipeline-Überblick",
-          "description": "Phasen, Summen und nächste Schritte auf einen Blick."
+          "description": "Phasen, Summen und nächste Schritte auf einen Blick.",
+          "icon": "pipeline"
         }
       ]
     },

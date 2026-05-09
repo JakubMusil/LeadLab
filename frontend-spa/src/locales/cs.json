@@ -87,27 +87,33 @@
       "cards": [
         {
           "title": "Záznamy zákazníků",
-          "description": "Kontakty, firmy a historie aktivit na jednom místě."
+          "description": "Kontakty, firmy a historie aktivit na jednom místě.",
+          "icon": "customers"
         },
         {
           "title": "Úkoly a připomínky",
-          "description": "Přiřaďte práci, nastavte termíny a hlídejte follow-upy."
+          "description": "Přiřaďte práci, nastavte termíny a hlídejte follow-upy.",
+          "icon": "tasks"
         },
         {
           "title": "Nabídky a návrhy",
-          "description": "Připravte nabídky a sledujte schválení."
+          "description": "Připravte nabídky a sledujte schválení.",
+          "icon": "proposals"
         },
         {
           "title": "Oprávnění",
-          "description": "Řiďte přístup podle role, týmu nebo kategorie."
+          "description": "Řiďte přístup podle role, týmu nebo kategorie.",
+          "icon": "permissions"
         },
         {
           "title": "Agenda",
-          "description": "Kalendář úkolů, checkpointů a termínů."
+          "description": "Kalendář úkolů, checkpointů a termínů.",
+          "icon": "agenda"
         },
         {
           "title": "Přehled pipeline",
-          "description": "Fáze, souhrny i další kroky na první pohled."
+          "description": "Fáze, souhrny i další kroky na první pohled.",
+          "icon": "pipeline"
         }
       ]
     },

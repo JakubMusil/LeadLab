@@ -16,25 +16,28 @@ import { useI18n } from '@/composables/useI18n'
 const { t, tm } = useI18n()
 
 const faqOpen = ref<number | null>(null)
-const contactHref = 'https://github.com/JakubMusil/LeadLab/issues'
+const contactUrl = new URL('https://github.com/JakubMusil/LeadLab/issues')
+const contactHref =
+  contactUrl.hostname === 'github.com'
+    ? contactUrl.href
+    : 'https://github.com/JakubMusil/LeadLab/issues'
 
 function toggleFaq(i: number) {
   faqOpen.value = faqOpen.value === i ? null : i
 }
 
-// Feature card icons are assigned in order and repeat if localized cards are extended
-const featureIcons: Component[] = [
-  UsersIcon,
-  ClipboardDocumentListIcon,
-  DocumentTextIcon,
-  ShieldCheckIcon,
-  CalendarDaysIcon,
-  Squares2X2Icon,
-]
+const featureIconMap = {
+  customers: UsersIcon,
+  tasks: ClipboardDocumentListIcon,
+  proposals: DocumentTextIcon,
+  permissions: ShieldCheckIcon,
+  agenda: CalendarDaysIcon,
+  pipeline: Squares2X2Icon,
+} satisfies Record<string, Component>
 
 type MetricItem = { value: string; label: string }
 type StepItem = { title: string; description: string }
-type CardItem = { title: string; description: string }
+type CardItem = { title: string; description: string; icon?: keyof typeof featureIconMap }
 type FeatureCardItem = CardItem & { icon: Component }
 type SegmentItem = { title: string; description: string }
 type PlanItem = {
@@ -61,9 +64,9 @@ const workflowSteps = computed<StepItem[]>(() => {
 const featureCards = computed<FeatureCardItem[]>(() => {
   const raw = tm('marketing.features.cards')
   if (!Array.isArray(raw)) return []
-  return (raw as CardItem[]).map((card, index) => ({
+  return (raw as CardItem[]).map((card) => ({
     ...card,
-    icon: featureIcons[index % featureIcons.length] as Component,
+    icon: card.icon ? (featureIconMap[card.icon] ?? Squares2X2Icon) : Squares2X2Icon,
   }))
 })
 
@@ -96,15 +99,10 @@ const faqItems = computed<FaqItem[]>(() => {
   <div class="min-h-screen bg-white">
     <!-- ── Sticky navigation ── -->
     <header role="banner">
-      <nav
-        class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100"
-      >
+      <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
         <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <!-- Brand -->
-          <a
-            href="/"
-            class="flex items-center gap-2 shrink-0"
-          >
+          <a href="/" class="flex items-center gap-2 shrink-0">
             <div
               class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"
               aria-hidden="true"

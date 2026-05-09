@@ -87,27 +87,33 @@
       "cards": [
         {
           "title": "Rekordy klientów",
-          "description": "Kontakty, firmy i historia aktywności w jednym miejscu."
+          "description": "Kontakty, firmy i historia aktywności w jednym miejscu.",
+          "icon": "customers"
         },
         {
           "title": "Zadania i przypomnienia",
-          "description": "Przydzielaj pracę, ustawiaj terminy i dopilnuj follow-upów."
+          "description": "Przydzielaj pracę, ustawiaj terminy i dopilnuj follow-upów.",
+          "icon": "tasks"
         },
         {
           "title": "Oferty i propozycje",
-          "description": "Przygotuj oferty i śledź akceptacje."
+          "description": "Przygotuj oferty i śledź akceptacje.",
+          "icon": "proposals"
         },
         {
           "title": "Uprawnienia",
-          "description": "Kontroluj dostęp według roli, zespołu lub kategorii."
+          "description": "Kontroluj dostęp według roli, zespołu lub kategorii.",
+          "icon": "permissions"
         },
         {
           "title": "Agenda",
-          "description": "Widok kalendarza z zadaniami, punktami kontrolnymi i terminami."
+          "description": "Widok kalendarza z zadaniami, punktami kontrolnymi i terminami.",
+          "icon": "agenda"
         },
         {
           "title": "Przegląd pipeline",
-          "description": "Etapy, sumy i kolejne kroki na pierwszy rzut oka."
+          "description": "Etapy, sumy i kolejne kroki na pierwszy rzut oka.",
+          "icon": "pipeline"
         }
       ]
     },
