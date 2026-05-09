@@ -60,7 +60,7 @@ const tasksStore = useTasksStore()
 const permissionsStore = usePermissionsStore()
 const { can } = useCan()
 const { isDark, toggleDark } = useTheme()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const { copiedId: navPermalinkCopiedId, copyToClipboard: copyNavPermalink } = useClipboard()
 const currentPageUrl = computed(() => window.location.href)
 const isRecordDetailPage = computed(() => !!route.meta?.isRecordDetail)
@@ -275,16 +275,37 @@ function toggleNotifPanel() {
 }
 
 function eventLabel(event: string): string {
+  const normalized = event.trim().toLowerCase()
   const map: Record<string, string> = {
     'record.created': t('appShell.eventLeadCreated'),
     'record.updated': t('appShell.eventLeadUpdated'),
     'record.deleted': t('appShell.eventLeadDeleted'),
+    'record.status_changed': t('appShell.eventRecordStatusChanged'),
     'activity.created': t('appShell.eventActivityCreated'),
+    'activity.assigned': t('appShell.eventActivityAssigned'),
+    'activity.mention': t('appShell.eventActivityMention'),
+    'activity.deleted': t('appShell.eventActivityDeleted'),
+    'task.assigned': t('appShell.eventTaskAssigned'),
+    'task.created': t('appShell.eventTaskCreated'),
+    'task.updated': t('appShell.eventTaskUpdated'),
     'task.completed': t('appShell.eventTaskCompleted'),
+    'task.approval_requested': t('appShell.eventTaskApprovalRequested'),
+    'task.approval_resolved': t('appShell.eventTaskApprovalResolved'),
+    'task.time_logged': t('appShell.eventTaskTimeLogged'),
     'task.outcome_prompt': t('appShell.eventTaskOutcomePrompt'),
     'task.expired': t('appShell.eventTaskExpired'),
+    'proposal.viewed': t('appShell.eventProposalViewed'),
+    'payment.received': t('appShell.eventPaymentReceived'),
+    'invitation.sent': t('appShell.eventInvitationSent'),
   }
-  return map[event] ?? event
+  if (map[normalized]) return map[normalized]
+  const dynamicKey = `appShell.eventDynamic.${normalized.replace(/[.\s-]+/g, '_')}`
+  if (te(dynamicKey)) return t(dynamicKey)
+  return normalized
+    .replace(/[.\s-]+/g, ' ')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 import type { Component } from 'vue'
@@ -294,38 +315,109 @@ function eventIcon(event: string): Component {
     'record.created': PlusCircleIcon,
     'record.updated': PencilSquareIcon,
     'record.deleted': TrashIcon,
+    'record.status_changed': PencilSquareIcon,
     'activity.created': ChatBubbleLeftIcon,
+    'activity.assigned': PencilSquareIcon,
+    'activity.mention': ChatBubbleLeftIcon,
+    'activity.deleted': TrashIcon,
+    'task.assigned': ClipboardDocumentListIcon,
+    'task.created': PlusCircleIcon,
+    'task.updated': PencilSquareIcon,
     'task.completed': CheckCircleIcon,
+    'task.approval_requested': ClockIcon,
+    'task.approval_resolved': CheckCircleIcon,
+    'task.time_logged': ClockIcon,
     'task.outcome_prompt': ClockIcon,
     'task.expired': ClockIcon,
+    'proposal.viewed': DocumentDuplicateIcon,
+    'payment.received': CheckCircleIcon,
+    'invitation.sent': UserGroupIcon,
   }
   return map[event] ?? BellIcon
 }
 
 function payloadString(payload: Record<string, unknown>, key: string): string | null {
   const value = payload[key]
-  return typeof value === 'string' && value.trim() ? value : null
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return null
+}
+
+function payloadTitle(payload: Record<string, unknown>): string | null {
+  return (
+    payloadString(payload, 'title')
+    ?? payloadString(payload, 'task_title')
+    ?? payloadString(payload, 'record_title')
+    ?? payloadString(payload, 'entity_title')
+    ?? payloadString(payload, 'proposal')
+    ?? payloadString(payload, 'record')
+    ?? payloadString(payload, 'content_preview')
+    ?? payloadString(payload, 'preview')
+    ?? payloadString(payload, 'email')
+  )
+}
+
+function translateRecordStatus(status: string): string {
+  const map: Record<string, string> = {
+    new: t('leads.statusNew'),
+    contacted: t('leads.statusContacted'),
+    proposal: t('leads.statusProposal'),
+    negotiation: t('leads.statusNegotiation'),
+    won: t('leads.statusWon'),
+    lost: t('leads.statusLost'),
+    canceled: t('leads.statusCanceled'),
+  }
+  return map[status] ?? status
+}
+
+function activityTypeLabel(type: string): string {
+  const normalized = type.trim().toLowerCase().replace(/[.\s-]+/g, '_')
+  const key = `appShell.activityType.${normalized}`
+  if (te(key)) return t(key)
+  return type.replace(/_/g, ' ')
+}
+
+function entityLink(entityType: string, entityId: string): string | null {
+  if (entityType === 'record') return `/app/records/${entityId}`
+  if (entityType === 'customer') return `/app/directory/${entityId}`
+  if (entityType === 'proposal') return `/app/proposals/${entityId}`
+  if (entityType === 'task') return `/app/tasks/${entityId}`
+  return null
 }
 
 function notifLink(n: { event: string; payload: Record<string, unknown> }): string | null {
-  if (n.event === 'record.created' || n.event === 'record.updated') {
-    const recordId = payloadString(n.payload, 'id')
-    return recordId ? `/app/records/${recordId}` : null
+  const explicitPath = payloadString(n.payload, 'path') ?? payloadString(n.payload, 'url') ?? payloadString(n.payload, 'link')
+  if (explicitPath) {
+    if (explicitPath.startsWith('/')) return explicitPath
+    if (explicitPath.startsWith(window.location.origin)) return explicitPath.slice(window.location.origin.length)
   }
-  if (n.event === 'activity.created') {
-    const entityType = payloadString(n.payload, 'entity_type')
-    const entityId = payloadString(n.payload, 'entity_id')
-    if (!entityType || !entityId) return null
-    if (entityType === 'record') return `/app/records/${entityId}`
-    if (entityType === 'customer') return `/app/directory/${entityId}`
-    if (entityType === 'proposal') return `/app/proposals/${entityId}`
-    if (entityType === 'task') return `/app/tasks/${entityId}`
-    return null
+
+  const activityId = payloadString(n.payload, 'activity_id')
+  const entityType = payloadString(n.payload, 'entity_type')
+  const entityId = payloadString(n.payload, 'entity_id')
+  if (entityType && entityId) {
+    const base = entityLink(entityType, entityId)
+    if (base) return activityId ? `${base}#${activityId}` : base
   }
-  if (n.event === 'task.completed' || n.event === 'task.expired' || n.event === 'task.outcome_prompt') {
-    const taskId = payloadString(n.payload, 'id') ?? payloadString(n.payload, 'task_id')
-    return taskId ? `/app/tasks/${taskId}` : null
+
+  const recordId = payloadString(n.payload, 'record_id') ?? (n.event.startsWith('record.') ? payloadString(n.payload, 'id') : null)
+  if (recordId) {
+    const base = `/app/records/${recordId}`
+    return activityId ? `${base}#${activityId}` : base
   }
+
+  const proposalId = payloadString(n.payload, 'proposal_id')
+  if (proposalId) return `/app/proposals/${proposalId}`
+
+  const customerId = payloadString(n.payload, 'customer_id')
+  if (customerId) return `/app/directory/${customerId}`
+
+  const taskId = payloadString(n.payload, 'task_id') ?? (n.event.startsWith('task.') ? payloadString(n.payload, 'id') : null)
+  if (taskId) {
+    const base = `/app/tasks/${taskId}`
+    return activityId ? `${base}#${activityId}` : base
+  }
+
   return null
 }
 
@@ -343,25 +435,79 @@ function handleNotificationClick(n: { id: string; is_read: boolean }) {
 }
 
 function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
-  if (n.event === 'record.created' || n.event === 'record.updated') {
+  const event = n.event.trim().toLowerCase()
+  if (event === 'record.created' || event === 'record.updated') {
     return payloadString(n.payload, 'title') || eventLabel(n.event)
   }
-  if (n.event === 'activity.created') {
-    return payloadString(n.payload, 'content_text') || payloadString(n.payload, 'type') || t('appShell.notifActivity')
+  if (event === 'record.status_changed') {
+    const title = payloadTitle(n.payload)
+    const fromStatus = payloadString(n.payload, 'from')
+    const toStatus = payloadString(n.payload, 'to')
+    if (title && fromStatus && toStatus) {
+      return t('appShell.notifRecordStatusChanged', {
+        title,
+        from: translateRecordStatus(fromStatus),
+        to: translateRecordStatus(toStatus),
+      })
+    }
+    return title || eventLabel(n.event)
   }
-  if (n.event === 'task.completed') {
+  if (event === 'activity.created') {
+    return (
+      payloadString(n.payload, 'content_text')
+      ?? payloadString(n.payload, 'content_preview')
+      ?? payloadString(n.payload, 'preview')
+      ?? (payloadString(n.payload, 'type') ? activityTypeLabel(payloadString(n.payload, 'type') ?? '') : null)
+      ?? t('appShell.notifActivity')
+    )
+  }
+  if (event === 'activity.assigned') {
+    const entity = payloadTitle(n.payload)
+    return entity ? t('appShell.notifActivityAssigned', { entity }) : t('appShell.notifActivity')
+  }
+  if (event === 'activity.mention') {
+    const entity = payloadTitle(n.payload) ?? t('appShell.notifActivity')
+    const byUser = payloadString(n.payload, 'by_user')
+    return byUser
+      ? t('appShell.notifActivityMentionBy', { byUser, entity })
+      : t('appShell.notifActivityMention', { entity })
+  }
+  if (event === 'task.completed') {
     return payloadString(n.payload, 'title') || payloadString(n.payload, 'task_title') || t('appShell.notifTaskCompleted')
   }
-  if (n.event === 'task.outcome_prompt') {
+  if (event === 'task.assigned') {
+    return payloadTitle(n.payload) || t('appShell.notifTaskAssigned')
+  }
+  if (event === 'task.created' || event === 'task.updated') {
+    return payloadTitle(n.payload) || t(`appShell.${event === 'task.created' ? 'notifTaskCreated' : 'notifTaskUpdated'}`)
+  }
+  if (event === 'task.outcome_prompt') {
     return payloadString(n.payload, 'task_title') || t('appShell.notifTaskOutcomePrompt')
   }
-  if (n.event === 'task.expired') {
+  if (event === 'task.expired') {
     return payloadString(n.payload, 'task_title') || t('appShell.notifTaskExpired')
   }
-  if (n.event === 'record.deleted') {
+  if (event === 'proposal.viewed') {
+    const proposal = payloadString(n.payload, 'proposal') ?? payloadString(n.payload, 'proposal_title')
+    const viewer = payloadString(n.payload, 'viewer')
+    if (proposal && viewer) return t('appShell.notifProposalViewedBy', { proposal, viewer })
+    return proposal ? t('appShell.notifProposalViewed', { proposal }) : eventLabel(n.event)
+  }
+  if (event === 'payment.received') {
+    const amount = payloadString(n.payload, 'amount')
+    const currency = payloadString(n.payload, 'currency')
+    const record = payloadString(n.payload, 'record') ?? payloadString(n.payload, 'record_title')
+    if (amount && currency && record) return t('appShell.notifPaymentReceived', { amount, currency, record })
+    return record || eventLabel(n.event)
+  }
+  if (event === 'invitation.sent') {
+    const email = payloadString(n.payload, 'email')
+    return email ? t('appShell.notifInvitationSent', { email }) : eventLabel(n.event)
+  }
+  if (event === 'record.deleted') {
     return t('appShell.notifLeadDeleted', { id: n.payload.id as string })
   }
-  return eventLabel(n.event)
+  return payloadTitle(n.payload) || eventLabel(n.event)
 }
 
 function formatNotifTime(ts: string): string {
