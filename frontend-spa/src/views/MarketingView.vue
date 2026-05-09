@@ -19,6 +19,12 @@ import {
   ArrowDownTrayIcon,
   ArrowsRightLeftIcon,
   ChatBubbleLeftRightIcon,
+  StarIcon,
+  DevicePhoneMobileIcon,
+  ComputerDesktopIcon,
+  GlobeAltIcon,
+  ArrowRightIcon,
+  PhoneIcon,
 } from '@heroicons/vue/24/outline'
 import { useI18n } from '@/composables/useI18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
@@ -27,6 +33,36 @@ const { t, tm, rt } = useI18n()
 
 const faqOpen = ref<number | null>(null)
 const annual = ref(false)
+
+// Interactive lead-magnet quiz state. The quiz is a self-contained,
+// single-choice flow driven entirely by `marketing.quiz.questions`. We
+// remember each step's selection so users can navigate back and forth and
+// only show the "finished" CTA card after answering the last question.
+const quizStep = ref(0)
+const quizAnswers = ref<Record<number, number>>({})
+
+function selectQuizOption(i: number) {
+  quizAnswers.value = { ...quizAnswers.value, [quizStep.value]: i }
+}
+
+function quizNext() {
+  if (quizStep.value < quizQuestions.value.length - 1) {
+    quizStep.value += 1
+  } else {
+    quizStep.value = quizQuestions.value.length // sentinel: finished
+  }
+}
+
+function quizPrev() {
+  if (quizStep.value > 0) {
+    quizStep.value -= 1
+  }
+}
+
+function quizRestart() {
+  quizStep.value = 0
+  quizAnswers.value = {}
+}
 
 function toggleFaq(i: number) {
   faqOpen.value = faqOpen.value === i ? null : i
@@ -57,6 +93,12 @@ const integrationIconMap = {
   chat: ChatBubbleLeftRightIcon,
 } satisfies Record<string, Component>
 
+const platformIconMap = {
+  mobile: DevicePhoneMobileIcon,
+  desktop: ComputerDesktopIcon,
+  web: GlobeAltIcon,
+} satisfies Record<string, Component>
+
 type StepItem = { title: string; description: string }
 type CardItem = { title: string; description: string; icon?: string }
 type FeatureCardItem = { title: string; description: string; icon: Component }
@@ -82,6 +124,17 @@ type PlanItem = {
   cta: string
 }
 type FaqItem = { q: string; a: string }
+type QuizQuestion = { q: string; options: string[] }
+type WebinarItem = {
+  badge: string
+  title: string
+  day: string
+  month: string
+  date: string
+  ctaLabel: string
+  href: string
+}
+type PlatformItem = { name: string; sub: string; icon: Component }
 
 function isMessageAst(value: unknown): boolean {
   // Compiled message AST resource node from @intlify/unplugin-vue-i18n looks like
@@ -166,6 +219,30 @@ const pricingPlans = computed<PlanItem[]>(() =>
 
 const faqItems = computed<FaqItem[]>(() => arr<FaqItem>('marketing.faq.items'))
 
+const quizQuestions = computed<QuizQuestion[]>(() => arr<QuizQuestion>('marketing.quiz.questions'))
+const quizFinished = computed(
+  () => quizQuestions.value.length > 0 && quizStep.value >= quizQuestions.value.length,
+)
+const quizCurrentQuestion = computed<QuizQuestion | null>(
+  () => quizQuestions.value[quizStep.value] ?? null,
+)
+const quizCurrentAnswer = computed<number | undefined>(() => quizAnswers.value[quizStep.value])
+const quizCanAdvance = computed(() => quizCurrentAnswer.value !== undefined)
+
+const webinarItems = computed<WebinarItem[]>(() => arr<WebinarItem>('marketing.webinars.items'))
+
+const platformItems = computed<PlatformItem[]>(() =>
+  arr<{ name: string; sub: string; icon: string }>('marketing.platforms.items').map((it) => ({
+    name: it.name,
+    sub: it.sub,
+    icon:
+      (it.icon && platformIconMap[it.icon as keyof typeof platformIconMap]) || DevicePhoneMobileIcon,
+  })),
+)
+
+const demoBullets = computed<string[]>(() => arr<string>('marketing.demo.bullets'))
+const quizBullets = computed<string[]>(() => arr<string>('marketing.quiz.bullets'))
+
 const previewStages = computed<PreviewStage[]>(() => [
   { key: 'new', name: t('marketing.hero.preview.stages.new') },
   { key: 'qualified', name: t('marketing.hero.preview.stages.qualified') },
@@ -187,13 +264,40 @@ const footerColumns = computed<FooterColumn[]>(() => {
 
 <template>
   <div class="min-h-screen bg-white">
+    <!-- ── Top announcement bar ── -->
+    <div
+      v-if="t('marketing.announcement.text')"
+      class="bg-brand-800 text-white text-xs sm:text-sm"
+      role="region"
+      :aria-label="t('marketing.announcement.label')"
+    >
+      <div
+        class="max-w-6xl mx-auto px-6 py-2 flex flex-wrap items-center justify-center gap-2 text-center"
+      >
+        <span
+          class="inline-flex items-center gap-1.5 bg-white/15 text-white font-semibold uppercase tracking-wide text-[10px] px-2 py-0.5 rounded-full"
+        >
+          <SparklesIcon class="w-3 h-3" aria-hidden="true" />
+          {{ t('marketing.announcement.badge') }}
+        </span>
+        <span class="text-white/90">{{ t('marketing.announcement.text') }}</span>
+        <a
+          :href="t('marketing.announcement.href')"
+          class="inline-flex items-center gap-1 font-semibold text-white underline-offset-2 hover:underline"
+        >
+          {{ t('marketing.announcement.cta') }}
+          <ArrowRightIcon class="w-3.5 h-3.5" aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+
     <!-- ── Sticky navigation ── -->
     <header role="banner">
       <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
         <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <a href="/" class="flex items-center gap-2 shrink-0">
             <div
-              class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"
+              class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center"
               aria-hidden="true"
             >
               <span class="text-white text-sm font-bold">L</span>
@@ -223,7 +327,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             >
             <a
               href="/app/register"
-              class="text-sm bg-red-600 text-white font-semibold px-4 py-2 rounded-xl hover:bg-red-700 transition-colors"
+              class="text-sm bg-brand-600 text-white font-semibold px-4 py-2 rounded-xl hover:bg-brand-700 transition-colors"
               >{{ t('marketing.nav.getStarted') }}</a
             >
           </div>
@@ -243,7 +347,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
           class="relative px-6 pt-20 pb-24 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center"
         >
           <div class="text-center md:text-left">
-            <p class="text-sm font-semibold text-red-600 uppercase tracking-widest mb-4">
+            <p class="text-sm font-semibold text-brand-600 uppercase tracking-widest mb-4">
               {{ t('marketing.hero.eyebrow') }}
             </p>
             <h1
@@ -271,11 +375,11 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 autocomplete="email"
                 :placeholder="t('marketing.hero.emailPlaceholder')"
                 :aria-label="t('marketing.hero.emailLabel')"
-                class="flex-1 px-4 py-3 rounded-2xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                class="flex-1 px-4 py-3 rounded-2xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               />
               <button
                 type="submit"
-                class="px-6 py-3 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors"
+                class="px-6 py-3 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors"
               >
                 {{ t('marketing.hero.emailCta') }}
               </button>
@@ -288,7 +392,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 href="#workflow"
                 class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
               >
-                <PlayCircleIcon class="w-5 h-5 text-red-500" aria-hidden="true" />
+                <PlayCircleIcon class="w-5 h-5 text-brand-500" aria-hidden="true" />
                 {{ t('marketing.hero.tour') }}
               </a>
               <span class="text-xs text-gray-400">{{ t('marketing.hero.note') }}</span>
@@ -297,6 +401,24 @@ const footerColumns = computed<FooterColumn[]>(() => {
             <p class="text-sm text-gray-500 max-w-xl md:mx-0 mx-auto">
               {{ t('marketing.hero.socialProof') }}
             </p>
+
+            <div
+              class="mt-4 flex items-center gap-2 justify-center md:justify-start"
+              :aria-label="t('marketing.hero.rating.label')"
+            >
+              <span class="inline-flex" aria-hidden="true">
+                <StarIcon
+                  v-for="n in 5"
+                  :key="n"
+                  class="w-4 h-4 text-accent-500 fill-current"
+                />
+              </span>
+              <span class="text-sm font-semibold text-gray-700">
+                {{ t('marketing.hero.rating.score') }}
+              </span>
+              <span class="text-sm text-gray-500">·</span>
+              <span class="text-sm text-gray-500">{{ t('marketing.hero.rating.text') }}</span>
+            </div>
           </div>
 
           <!-- Tailwind-only product preview mock -->
@@ -306,9 +428,9 @@ const footerColumns = computed<FooterColumn[]>(() => {
             >
               <div class="flex items-center justify-between mb-4">
                 <span
-                  class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-full"
+                  class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 bg-brand-50 border border-brand-100 px-2 py-1 rounded-full"
                 >
-                  <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
                   {{ t('marketing.hero.preview.badge') }}
                 </span>
                 <span class="text-xs text-gray-400 font-medium">
@@ -356,7 +478,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   >
                     <div
                       class="h-1.5 rounded-full mb-1"
-                      :class="idx <= 2 ? 'bg-red-500' : 'bg-gray-200'"
+                      :class="idx <= 2 ? 'bg-brand-500' : 'bg-gray-200'"
                     ></div>
                     {{ stage.name }}
                   </div>
@@ -366,7 +488,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             <div
               class="hero-floating absolute -bottom-4 -left-4 hidden sm:flex items-center gap-2 bg-white border border-gray-200 rounded-xl shadow-sm px-3 py-2 text-xs font-semibold text-gray-700"
             >
-              <BoltIcon class="w-4 h-4 text-red-500" aria-hidden="true" />
+              <BoltIcon class="w-4 h-4 text-brand-500" aria-hidden="true" />
               <span>+12%</span>
             </div>
           </div>
@@ -416,7 +538,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-brand-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -447,10 +569,10 @@ const footerColumns = computed<FooterColumn[]>(() => {
               class="flex flex-col items-start gap-3"
             >
               <div
-                class="w-10 h-10 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center shrink-0"
+                class="w-10 h-10 rounded-full bg-brand-50 border-2 border-brand-200 flex items-center justify-center shrink-0"
                 aria-hidden="true"
               >
-                <span class="text-red-600 font-bold text-sm">{{ i + 1 }}</span>
+                <span class="text-brand-600 font-bold text-sm">{{ i + 1 }}</span>
               </div>
               <div>
                 <h3 class="text-base font-semibold text-gray-900 mb-1">{{ step.title }}</h3>
@@ -480,7 +602,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-brand-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -491,7 +613,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-gray-50 border border-gray-100 rounded-2xl p-8 mb-12"
           >
             <div>
-              <p class="text-sm font-semibold text-red-600 uppercase tracking-widest mb-3">
+              <p class="text-sm font-semibold text-brand-600 uppercase tracking-widest mb-3">
                 {{ t('marketing.features.split.eyebrow') }}
               </p>
               <h3 class="text-2xl font-bold text-gray-900 mb-3">
@@ -513,7 +635,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 >
                   <div
                     class="text-[10px] font-semibold uppercase tracking-wide mb-1"
-                    :class="idx === 2 ? 'text-red-600' : 'text-gray-500'"
+                    :class="idx === 2 ? 'text-brand-600' : 'text-gray-500'"
                   >
                     {{ stage.name }}
                   </div>
@@ -538,7 +660,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover-lift"
             >
-              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-brand-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -565,7 +687,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               :key="item.label"
               class="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm"
             >
-              <component :is="item.icon" class="w-4 h-4 text-red-500" aria-hidden="true" />
+              <component :is="item.icon" class="w-4 h-4 text-brand-500" aria-hidden="true" />
               {{ item.label }}
             </li>
           </ul>
@@ -588,12 +710,159 @@ const footerColumns = computed<FooterColumn[]>(() => {
               class="rounded-2xl p-6 border border-gray-100 bg-white shadow-sm"
             >
               <div class="flex items-center gap-2 mb-3">
-                <CheckIcon class="w-5 h-5 text-green-500 shrink-0" aria-hidden="true" />
+                <CheckIcon class="w-5 h-5 text-accent-500 shrink-0" aria-hidden="true" />
                 <h3 class="text-base font-semibold text-gray-900">{{ bullet.title }}</h3>
               </div>
               <p class="text-sm text-gray-500 leading-relaxed">{{ bullet.description }}</p>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <!-- ── Quiz / lead magnet ── -->
+      <section
+        id="quiz"
+        aria-labelledby="quiz-heading"
+        class="bg-brand-50 px-6 py-20 scroll-mt-24"
+      >
+        <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          <div>
+            <p class="text-sm font-semibold text-brand-700 uppercase tracking-widest mb-3">
+              {{ t('marketing.quiz.eyebrow') }}
+            </p>
+            <h2 id="quiz-heading" class="text-3xl font-bold text-gray-900 mb-3">
+              {{ t('marketing.quiz.title') }}
+            </h2>
+            <p class="text-gray-600 leading-relaxed mb-6">
+              {{ t('marketing.quiz.subtitle') }}
+            </p>
+            <ul class="space-y-2.5 list-none m-0 p-0" role="list">
+              <li
+                v-for="bullet in quizBullets"
+                :key="bullet"
+                class="flex items-start gap-2 text-sm text-gray-700"
+              >
+                <CheckIcon class="w-4 h-4 text-accent-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{{ bullet }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div
+            class="bg-white rounded-2xl p-6 md:p-7 border border-gray-100 shadow-sm"
+            aria-live="polite"
+          >
+            <!-- Active question -->
+            <template v-if="!quizFinished && quizCurrentQuestion">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  {{
+                    t('marketing.quiz.progressLabel', {
+                      current: quizStep + 1,
+                      total: quizQuestions.length,
+                    })
+                  }}
+                </span>
+                <div
+                  class="flex gap-1"
+                  :aria-label="
+                    t('marketing.quiz.progressLabel', {
+                      current: quizStep + 1,
+                      total: quizQuestions.length,
+                    })
+                  "
+                >
+                  <span
+                    v-for="(_, i) in quizQuestions"
+                    :key="i"
+                    class="h-1.5 w-6 rounded-full"
+                    :class="i <= quizStep ? 'bg-brand-600' : 'bg-gray-200'"
+                    aria-hidden="true"
+                  ></span>
+                </div>
+              </div>
+              <p class="text-base font-semibold text-gray-900 mb-4">
+                {{ quizCurrentQuestion.q }}
+              </p>
+              <ul class="space-y-2 list-none m-0 p-0 mb-5" role="list">
+                <li
+                  v-for="(opt, i) in quizCurrentQuestion.options"
+                  :key="i"
+                >
+                  <button
+                    type="button"
+                    class="w-full text-left text-sm font-medium px-4 py-3 rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    :class="
+                      quizCurrentAnswer === i
+                        ? 'border-brand-600 bg-brand-50 text-brand-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-brand-300 hover:bg-brand-50'
+                    "
+                    :aria-pressed="quizCurrentAnswer === i"
+                    @click="selectQuizOption(i)"
+                  >
+                    {{ opt }}
+                  </button>
+                </li>
+              </ul>
+              <div class="flex items-center justify-between">
+                <button
+                  type="button"
+                  class="text-sm font-semibold text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-500"
+                  :disabled="quizStep === 0"
+                  @click="quizPrev"
+                >
+                  ← {{ t('marketing.quiz.prevLabel') }}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-40 disabled:hover:bg-brand-600"
+                  :disabled="!quizCanAdvance"
+                  @click="quizNext"
+                >
+                  {{
+                    quizStep === quizQuestions.length - 1
+                      ? t('marketing.quiz.finishLabel')
+                      : t('marketing.quiz.nextLabel')
+                  }}
+                  <ArrowRightIcon class="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+            </template>
+
+            <!-- Finished state -->
+            <template v-else>
+              <div class="text-center py-2">
+                <div
+                  class="w-12 h-12 mx-auto rounded-full bg-accent-100 flex items-center justify-center mb-4"
+                  aria-hidden="true"
+                >
+                  <CheckIcon class="w-6 h-6 text-accent-700" />
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">
+                  {{ t('marketing.quiz.finishedTitle') }}
+                </h3>
+                <p class="text-sm text-gray-600 mb-6 max-w-xs mx-auto">
+                  {{ t('marketing.quiz.finishedText') }}
+                </p>
+                <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                  <a
+                    :href="t('marketing.quiz.finishedHref')"
+                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition-colors"
+                  >
+                    {{ t('marketing.quiz.finishedCta') }}
+                    <ArrowRightIcon class="w-4 h-4" aria-hidden="true" />
+                  </a>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                    @click="quizRestart"
+                  >
+                    {{ t('marketing.quiz.restartLabel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
       </section>
 
@@ -621,7 +890,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
               </blockquote>
               <div class="flex items-center gap-3 border-t border-gray-100 pt-4">
                 <div
-                  class="w-9 h-9 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-xs font-bold text-red-600 shrink-0"
+                  class="w-9 h-9 rounded-full bg-brand-50 border border-brand-100 flex items-center justify-center text-xs font-bold text-brand-600 shrink-0"
                   aria-hidden="true"
                 >
                   {{ item.name.charAt(0) }}
@@ -631,6 +900,227 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   <div class="text-xs text-gray-500">{{ item.role }} · {{ item.company }}</div>
                 </div>
               </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ── Webinars / events ── -->
+      <section
+        v-if="webinarItems.length > 0"
+        id="webinars"
+        aria-labelledby="webinars-heading"
+        class="px-6 py-20 scroll-mt-24"
+      >
+        <div class="max-w-6xl mx-auto">
+          <div class="flex items-end justify-between gap-4 mb-10 flex-wrap">
+            <div>
+              <p class="text-sm font-semibold text-brand-700 uppercase tracking-widest mb-3">
+                {{ t('marketing.webinars.eyebrow') }}
+              </p>
+              <h2 id="webinars-heading" class="text-3xl font-bold text-gray-900 mb-2">
+                {{ t('marketing.webinars.title') }}
+              </h2>
+              <p class="text-gray-500 max-w-xl">
+                {{ t('marketing.webinars.subtitle') }}
+              </p>
+            </div>
+            <a
+              :href="t('marketing.webinars.viewAllHref')"
+              class="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
+            >
+              {{ t('marketing.webinars.viewAll') }}
+              <ArrowRightIcon class="w-4 h-4" aria-hidden="true" />
+            </a>
+          </div>
+
+          <ul class="grid grid-cols-1 md:grid-cols-2 gap-6 list-none m-0 p-0" role="list">
+            <li
+              v-for="item in webinarItems"
+              :key="item.title"
+              class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 hover-lift"
+            >
+              <div
+                class="shrink-0 w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 flex flex-col items-center justify-center"
+                aria-hidden="true"
+              >
+                <span class="text-[10px] font-bold uppercase text-brand-700 tracking-wide">
+                  {{ item.month }}
+                </span>
+                <span class="text-2xl font-extrabold text-brand-700 leading-none">
+                  {{ item.day }}
+                </span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span
+                  class="inline-block text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-accent-100 text-accent-700 mb-1.5"
+                >
+                  {{ item.badge }}
+                </span>
+                <h3 class="text-base font-semibold text-gray-900 mb-1 truncate">
+                  {{ item.title }}
+                </h3>
+                <p class="text-xs text-gray-500">{{ item.date }}</p>
+              </div>
+              <a
+                :href="item.href"
+                class="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
+              >
+                {{ item.ctaLabel }}
+                <ArrowRightIcon class="w-4 h-4" aria-hidden="true" />
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ── Online demo / book a call ── -->
+      <section
+        id="demo"
+        aria-labelledby="demo-heading"
+        class="bg-brand-50 px-6 py-20 scroll-mt-24"
+      >
+        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          <div>
+            <p class="text-sm font-semibold text-brand-700 uppercase tracking-widest mb-3">
+              {{ t('marketing.demo.eyebrow') }}
+            </p>
+            <h2 id="demo-heading" class="text-3xl font-bold text-gray-900 mb-3">
+              {{ t('marketing.demo.title') }}
+            </h2>
+            <p class="text-gray-600 leading-relaxed mb-6">
+              {{ t('marketing.demo.subtitle') }}
+            </p>
+            <ul class="space-y-2.5 mb-6 list-none m-0 p-0" role="list">
+              <li
+                v-for="bullet in demoBullets"
+                :key="bullet"
+                class="flex items-start gap-2 text-sm text-gray-700"
+              >
+                <CheckIcon class="w-4 h-4 text-accent-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{{ bullet }}</span>
+              </li>
+            </ul>
+            <p class="text-sm text-gray-500">
+              {{ t('marketing.demo.contactPrefix') }}
+              <a
+                :href="`mailto:${t('marketing.demo.contactEmail')}`"
+                class="font-semibold text-brand-700 hover:underline"
+                >{{ t('marketing.demo.contactEmail') }}</a
+              >
+              <span> · </span>
+              <a
+                :href="t('marketing.demo.contactPhoneHref')"
+                class="inline-flex items-center gap-1 font-semibold text-brand-700 hover:underline"
+              >
+                <PhoneIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                {{ t('marketing.demo.contactPhone') }}
+              </a>
+            </p>
+          </div>
+
+          <div class="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm">
+            <!-- Team placeholder banner — pure CSS gradient, no photos -->
+            <div
+              class="rounded-2xl mb-6 h-28 relative overflow-hidden border border-brand-100"
+              aria-hidden="true"
+            >
+              <div
+                class="absolute inset-0 bg-gradient-to-br from-brand-500 via-brand-600 to-accent-500"
+              ></div>
+              <div class="absolute inset-0 flex items-center justify-center gap-3">
+                <div
+                  v-for="initial in ['A', 'M', 'J', 'K']"
+                  :key="initial"
+                  class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center text-brand-700 font-bold border-2 border-white shadow"
+                >
+                  {{ initial }}
+                </div>
+              </div>
+            </div>
+            <form
+              method="get"
+              action="/app/register"
+              class="space-y-3"
+              :aria-label="t('marketing.demo.title')"
+            >
+              <div>
+                <label for="demo-name" class="sr-only">{{ t('marketing.demo.formName') }}</label>
+                <input
+                  id="demo-name"
+                  type="text"
+                  name="name"
+                  autocomplete="name"
+                  required
+                  :placeholder="t('marketing.demo.formName')"
+                  class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label for="demo-email" class="sr-only">{{ t('marketing.demo.formEmail') }}</label>
+                <input
+                  id="demo-email"
+                  type="email"
+                  name="email"
+                  autocomplete="email"
+                  required
+                  inputmode="email"
+                  :placeholder="t('marketing.demo.formEmail')"
+                  class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label for="demo-company" class="sr-only">
+                  {{ t('marketing.demo.formCompany') }}
+                </label>
+                <input
+                  id="demo-company"
+                  type="text"
+                  name="company"
+                  autocomplete="organization"
+                  :placeholder="t('marketing.demo.formCompany')"
+                  class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                />
+              </div>
+              <button
+                type="submit"
+                class="w-full px-6 py-3 bg-brand-600 text-white font-semibold rounded-xl hover:bg-brand-700 transition-colors"
+              >
+                {{ t('marketing.demo.formSubmit') }}
+              </button>
+              <p class="text-xs text-gray-400 text-center">
+                {{ t('marketing.demo.note') }}
+              </p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Platform availability ── -->
+      <section
+        id="platforms"
+        aria-labelledby="platforms-heading"
+        class="px-6 py-20 scroll-mt-24"
+      >
+        <div class="max-w-5xl mx-auto text-center">
+          <h2 id="platforms-heading" class="text-3xl font-bold text-gray-900 mb-3">
+            {{ t('marketing.platforms.title') }}
+          </h2>
+          <p class="text-gray-500 mb-12 max-w-2xl mx-auto">
+            {{ t('marketing.platforms.subtitle') }}
+          </p>
+          <ul
+            class="grid grid-cols-2 sm:grid-cols-4 gap-4 list-none m-0 p-0"
+            role="list"
+          >
+            <li
+              v-for="item in platformItems"
+              :key="item.name"
+              class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-6 flex flex-col items-center gap-2 hover-lift"
+            >
+              <component :is="item.icon" class="w-8 h-8 text-brand-600" aria-hidden="true" />
+              <span class="text-sm font-semibold text-gray-900">{{ item.name }}</span>
+              <span class="text-xs text-gray-500">{{ item.sub }}</span>
             </li>
           </ul>
         </div>
@@ -657,7 +1147,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             </li>
           </ul>
 
-          <div class="bg-red-50 rounded-2xl border border-red-100 p-6 max-w-2xl mx-auto">
+          <div class="bg-brand-50 rounded-2xl border border-brand-100 p-6 max-w-2xl mx-auto">
             <p class="text-sm font-semibold text-gray-900 mb-3">
               {{ t('marketing.trust.assurancesTitle') }}
             </p>
@@ -667,7 +1157,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 :key="assurance"
                 class="flex items-center gap-2 text-sm text-gray-700"
               >
-                <CheckIcon class="w-4 h-4 text-green-500 shrink-0" aria-hidden="true" />
+                <CheckIcon class="w-4 h-4 text-accent-500 shrink-0" aria-hidden="true" />
                 {{ assurance }}
               </li>
             </ul>
@@ -699,7 +1189,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 type="button"
                 :aria-pressed="!annual"
                 class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors"
-                :class="!annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'"
+                :class="!annual ? 'bg-brand-600 text-white' : 'text-gray-600 hover:text-gray-900'"
                 @click="annual = false"
               >
                 {{ t('marketing.pricing.toggle.monthly') }}
@@ -708,13 +1198,13 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 type="button"
                 :aria-pressed="annual"
                 class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
-                :class="annual ? 'bg-red-600 text-white' : 'text-gray-600 hover:text-gray-900'"
+                :class="annual ? 'bg-brand-600 text-white' : 'text-gray-600 hover:text-gray-900'"
                 @click="annual = true"
               >
                 {{ t('marketing.pricing.toggle.annual') }}
                 <span
                   class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
-                  :class="annual ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'"
+                  :class="annual ? 'bg-white/20 text-white' : 'bg-accent-100 text-accent-700'"
                 >
                   {{ t('marketing.pricing.toggle.save') }}
                 </span>
@@ -727,17 +1217,17 @@ const footerColumns = computed<FooterColumn[]>(() => {
               v-for="plan in pricingPlans"
               :key="plan.name"
               class="rounded-2xl p-8 relative bg-white hover-lift"
-              :class="plan.highlight ? 'border-2 border-red-600' : 'border border-gray-200'"
+              :class="plan.highlight ? 'border-2 border-brand-600' : 'border border-gray-200'"
             >
               <div
                 v-if="plan.highlight"
-                class="absolute -top-3 left-6 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full"
+                class="absolute -top-3 left-6 bg-brand-600 text-white text-xs font-bold px-3 py-1 rounded-full"
               >
                 {{ plan.highlight }}
               </div>
               <div
                 class="text-sm font-semibold uppercase tracking-wide mb-2"
-                :class="plan.highlight ? 'text-red-600' : 'text-gray-500'"
+                :class="plan.highlight ? 'text-brand-600' : 'text-gray-500'"
               >
                 {{ plan.name }}
               </div>
@@ -754,7 +1244,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   :key="feat"
                   class="flex items-center gap-2 text-sm text-gray-700"
                 >
-                  <CheckIcon class="w-4 h-4 text-green-500 shrink-0" aria-hidden="true" />
+                  <CheckIcon class="w-4 h-4 text-accent-500 shrink-0" aria-hidden="true" />
                   {{ feat }}
                 </li>
               </ul>
@@ -763,7 +1253,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                 class="block text-center px-6 py-3 rounded-xl font-medium transition-colors"
                 :class="
                   plan.highlight
-                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    ? 'bg-brand-600 text-white hover:bg-brand-700'
                     : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
                 "
                 >{{ plan.cta }}</a
@@ -787,7 +1277,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
           <div class="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="/app/register"
-              class="inline-block px-8 py-3.5 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors text-lg"
+              class="inline-block px-8 py-3.5 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors text-lg"
               >{{ t('marketing.cta.primaryCta') }}</a
             >
             <a
@@ -816,7 +1306,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
                   :id="`faq-btn-${i}`"
                   :aria-expanded="faqOpen === i"
                   :aria-controls="`faq-panel-${i}`"
-                  class="w-full flex items-center justify-between px-6 py-4 text-left text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
+                  class="w-full flex items-center justify-between px-6 py-4 text-left text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                   @click="toggleFaq(i)"
                 >
                   <span>{{ item.q }}</span>
@@ -848,7 +1338,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
           <div class="md:col-span-1">
             <div class="flex items-center gap-2 mb-2">
               <div
-                class="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center"
+                class="w-6 h-6 rounded-lg bg-brand-600 flex items-center justify-center"
                 aria-hidden="true"
               >
                 <span class="text-white text-xs font-bold">L</span>
@@ -900,7 +1390,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
     >
       <a
         href="/app/register"
-        class="flex items-center justify-center gap-2 w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors"
+        class="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand-600 text-white font-semibold rounded-2xl hover:bg-brand-700 transition-colors"
       >
         {{ t('marketing.stickyCta.cta') }}
         <span class="text-xs font-medium opacity-80">· {{ t('marketing.stickyCta.note') }}</span>
@@ -916,8 +1406,8 @@ const footerColumns = computed<FooterColumn[]>(() => {
   height: 70%;
   background: radial-gradient(
     ellipse at center,
-    rgba(239, 68, 68, 0.12) 0%,
-    rgba(239, 68, 68, 0.04) 35%,
+    rgba(37, 72, 150, 0.12) 0%,
+    rgba(37, 72, 150, 0.04) 35%,
     rgba(255, 255, 255, 0) 70%
   );
   pointer-events: none;

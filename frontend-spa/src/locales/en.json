@@ -21,6 +21,13 @@
     "records": "Records"
   },
   "marketing": {
+    "announcement": {
+      "label": "Announcement",
+      "badge": "New",
+      "text": "AI assistant in LeadLab — smarter lead and deal management.",
+      "cta": "Learn more",
+      "href": "#features"
+    },
     "nav": {
       "product": "Product",
       "workflow": "Workflow",
@@ -68,6 +75,11 @@
           "proposal": "Proposal",
           "won": "Won"
         }
+      },
+      "rating": {
+        "label": "User rating",
+        "score": "4.9 / 5",
+        "text": "Trusted by 500+ service teams"
       }
     },
     "trustStrip": {
@@ -259,6 +271,124 @@
           "name": "Marketa D.",
           "role": "Team lead",
           "company": "Marketing studio"
+        }
+      ]
+    },
+    "quiz": {
+      "eyebrow": "2 minutes",
+      "title": "Take the quick quiz",
+      "subtitle": "Three questions on the key areas. See how much time LeadLab saves you and where your biggest gaps are.",
+      "bullets": [
+        "3 questions on the key areas",
+        "Instant feedback with concrete tips",
+        "Comparison with similar teams"
+      ],
+      "progressLabel": "Question {current} of {total}",
+      "prevLabel": "Back",
+      "nextLabel": "Next",
+      "finishLabel": "See result",
+      "restartLabel": "Start over",
+      "finishedTitle": "Done! Here's our recommendation.",
+      "finishedText": "Create an account and see how LeadLab solves your specific bottlenecks.",
+      "finishedCta": "Start free",
+      "finishedHref": "/app/register",
+      "questions": [
+        {
+          "q": "Where does your team track sales opportunities?",
+          "options": [
+            "In a spreadsheet (Excel, Google Sheets)",
+            "We mix tools (email, paper, notes)",
+            "We don't have a single system"
+          ]
+        },
+        {
+          "q": "How often does a lead go cold because it slipped your mind?",
+          "options": [
+            "Occasionally",
+            "Regularly each month",
+            "Unfortunately very often"
+          ]
+        },
+        {
+          "q": "How many people on your team work with leads?",
+          "options": [
+            "Just me",
+            "Small team (2–10 people)",
+            "Larger team (10+)"
+          ]
+        }
+      ]
+    },
+    "webinars": {
+      "eyebrow": "Learning",
+      "title": "Join a free webinar",
+      "subtitle": "We'll walk you through the recommended LeadLab setup, team rollout, and answer your questions.",
+      "viewAll": "All webinars",
+      "viewAllHref": "#faq",
+      "items": [
+        {
+          "badge": "Beginners",
+          "title": "LeadLab basics for beginners",
+          "month": "May",
+          "day": "13",
+          "date": "Wednesday, May 13 at 2:00 PM",
+          "ctaLabel": "Reserve",
+          "href": "/app/register"
+        },
+        {
+          "badge": "Advanced",
+          "title": "Working efficiently with pipeline and proposals",
+          "month": "May",
+          "day": "20",
+          "date": "Wednesday, May 20 at 2:00 PM",
+          "ctaLabel": "Reserve",
+          "href": "/app/register"
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Online demo",
+      "title": "Free online LeadLab demo",
+      "subtitle": "Book a no-strings-attached online session. We'll walk through your processes and show how LeadLab fits in.",
+      "bullets": [
+        "Answers to all your questions, even the basics",
+        "Review of your current setup and concrete suggestions",
+        "Quick hands-on tour of the key features",
+        "Friendly online session, no commitment"
+      ],
+      "formName": "Your name",
+      "formEmail": "Work email",
+      "formCompany": "Company (optional)",
+      "formSubmit": "Book a demo slot",
+      "contactPrefix": "Or write to us:",
+      "contactEmail": "info{'@'}leadlab.app",
+      "contactPhone": "+420 777 302 220",
+      "contactPhoneHref": "tel:+420777302220",
+      "note": "No spam. Data is only used to schedule the demo."
+    },
+    "platforms": {
+      "title": "LeadLab available anywhere",
+      "subtitle": "Mac, Windows, iPhone, iPad, Android and the web. LeadLab is ready wherever you are.",
+      "items": [
+        {
+          "name": "iOS",
+          "sub": "iPhone & iPad",
+          "icon": "mobile"
+        },
+        {
+          "name": "Android",
+          "sub": "Google Play",
+          "icon": "mobile"
+        },
+        {
+          "name": "Desktop",
+          "sub": "Mac & Windows",
+          "icon": "desktop"
+        },
+        {
+          "name": "Web app",
+          "sub": "In the browser",
+          "icon": "web"
         }
       ]
     },

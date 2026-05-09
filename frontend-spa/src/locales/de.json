@@ -21,6 +21,13 @@
     "records": "Einträge"
   },
   "marketing": {
+    "announcement": {
+      "label": "Ankündigung",
+      "badge": "Neu",
+      "text": "KI-Assistent in LeadLab — klügere Lead- und Deal-Verwaltung.",
+      "cta": "Mehr erfahren",
+      "href": "#features"
+    },
     "nav": {
       "product": "Produkt",
       "workflow": "Ablauf",
@@ -68,6 +75,11 @@
           "proposal": "Angebot",
           "won": "Gewonnen"
         }
+      },
+      "rating": {
+        "label": "Nutzerbewertung",
+        "score": "4,9 / 5",
+        "text": "500+ Service-Teams vertrauen LeadLab"
       }
     },
     "trustStrip": {
@@ -259,6 +271,124 @@
           "name": "Marketa D.",
           "role": "Team-Lead",
           "company": "Marketing-Studio"
+        }
+      ]
+    },
+    "quiz": {
+      "eyebrow": "2 Minuten",
+      "title": "Probieren Sie das schnelle Quiz",
+      "subtitle": "Drei Fragen zu den wichtigsten Bereichen. Sehen Sie, wie viel Zeit LeadLab spart und wo Ihre größten Lücken sind.",
+      "bullets": [
+        "3 Fragen zu den wichtigsten Bereichen",
+        "Sofortige Auswertung mit konkreten Tipps",
+        "Vergleich mit ähnlichen Teams"
+      ],
+      "progressLabel": "Frage {current} von {total}",
+      "prevLabel": "Zurück",
+      "nextLabel": "Weiter",
+      "finishLabel": "Auswerten",
+      "restartLabel": "Neu starten",
+      "finishedTitle": "Fertig! Hier ist unsere Empfehlung.",
+      "finishedText": "Legen Sie ein Konto an und sehen Sie, wie LeadLab Ihre Engpässe löst.",
+      "finishedCta": "Kostenlos starten",
+      "finishedHref": "/app/register",
+      "questions": [
+        {
+          "q": "Wo erfasst Ihr Team Verkaufschancen?",
+          "options": [
+            "In einer Tabelle (Excel, Google Sheets)",
+            "Wir mischen Tools (E-Mail, Papier, Notizen)",
+            "Wir haben kein einheitliches System"
+          ]
+        },
+        {
+          "q": "Wie oft geht ein Lead verloren, weil er übersehen wurde?",
+          "options": [
+            "Gelegentlich",
+            "Regelmäßig jeden Monat",
+            "Leider sehr oft"
+          ]
+        },
+        {
+          "q": "Wie viele Personen in Ihrem Team arbeiten mit Leads?",
+          "options": [
+            "Nur ich",
+            "Kleines Team (2–10 Personen)",
+            "Größeres Team (10+)"
+          ]
+        }
+      ]
+    },
+    "webinars": {
+      "eyebrow": "Schulung",
+      "title": "Kommen Sie zum kostenlosen Webinar",
+      "subtitle": "Wir zeigen Ihnen die empfohlene LeadLab-Einrichtung, den Team-Rollout und beantworten Ihre Fragen.",
+      "viewAll": "Alle Webinare",
+      "viewAllHref": "#faq",
+      "items": [
+        {
+          "badge": "Einsteiger",
+          "title": "LeadLab-Grundlagen für Einsteiger",
+          "month": "Mai",
+          "day": "13",
+          "date": "Mittwoch, 13. 5. um 14:00",
+          "ctaLabel": "Reservieren",
+          "href": "/app/register"
+        },
+        {
+          "badge": "Fortgeschritten",
+          "title": "Effizient mit Pipeline und Angeboten arbeiten",
+          "month": "Mai",
+          "day": "20",
+          "date": "Mittwoch, 20. 5. um 14:00",
+          "ctaLabel": "Reservieren",
+          "href": "/app/register"
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Online-Demo",
+      "title": "Kostenlose Online-Demo von LeadLab",
+      "subtitle": "Vereinbaren Sie ein unverbindliches Online-Treffen. Wir gehen Ihre Prozesse durch und zeigen, wie LeadLab passt.",
+      "bullets": [
+        "Antworten auf alle Fragen, auch die grundlegenden",
+        "Analyse des Status quo und konkrete Vorschläge",
+        "Kurze praktische Tour durch die Hauptfunktionen",
+        "Angenehmes Online-Treffen, unverbindlich"
+      ],
+      "formName": "Ihr Name",
+      "formEmail": "Geschäftliche E-Mail",
+      "formCompany": "Firma (optional)",
+      "formSubmit": "Demo-Termin buchen",
+      "contactPrefix": "Oder schreiben Sie uns:",
+      "contactEmail": "info{'@'}leadlab.app",
+      "contactPhone": "+420 777 302 220",
+      "contactPhoneHref": "tel:+420777302220",
+      "note": "Kein Spam. Die Daten dienen nur zur Terminvereinbarung."
+    },
+    "platforms": {
+      "title": "LeadLab überall verfügbar",
+      "subtitle": "Mac, Windows, iPhone, iPad, Android und Web. LeadLab ist bereit, wo immer Sie sind.",
+      "items": [
+        {
+          "name": "iOS",
+          "sub": "iPhone & iPad",
+          "icon": "mobile"
+        },
+        {
+          "name": "Android",
+          "sub": "Google Play",
+          "icon": "mobile"
+        },
+        {
+          "name": "Desktop",
+          "sub": "Mac & Windows",
+          "icon": "desktop"
+        },
+        {
+          "name": "Web-App",
+          "sub": "Im Browser",
+          "icon": "web"
         }
       ]
     },
