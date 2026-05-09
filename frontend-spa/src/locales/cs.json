@@ -2947,6 +2947,113 @@
       "proposal_create": "Vytvářet a odesílat nabídky navázané na záznamy."
     }
   },
+  "usersView": {
+    "common": {
+      "notSet": "—"
+    },
+    "list": {
+      "title": "Uživatelé",
+      "subtitle": "Seznam členů aktivní firmy",
+      "noAccess": "Pro zobrazení uživatelů nemáte oprávnění.",
+      "noExpiry": "Bez expirace",
+      "loadError": "Nepodařilo se načíst uživatele.",
+      "loading": "Načítám uživatele…",
+      "empty": "Žádní uživatelé pro zvolený filtr.",
+      "filters": {
+        "searchPlaceholder": "Hledat jméno nebo e-mail",
+        "allRoles": "Všechny role",
+        "allTeams": "Všechny týmy",
+        "statusAll": "Všechny stavy",
+        "statusActive": "Aktivní",
+        "statusExpired": "Expirované"
+      },
+      "columns": {
+        "name": "Jméno",
+        "email": "E-mail",
+        "role": "Role",
+        "team": "Tým",
+        "expiry": "Expirace",
+        "actions": "Akce"
+      },
+      "actions": {
+        "detail": "Detail"
+      }
+    },
+    "detail": {
+      "title": "Detail uživatele",
+      "subtitle": "Detail člena firmy a jeho aktivit",
+      "backToList": "← Zpět na users list",
+      "noAccess": "Pro zobrazení detailu uživatele nemáte oprávnění.",
+      "loadingDetail": "Načítám detail uživatele…",
+      "memberStatus": {
+        "active": "Aktivní člen",
+        "expired": "Expirovaný člen"
+      },
+      "timeline": {
+        "title": "Timeline aktivit",
+        "filters": {
+          "allActivityTypes": "Všechny typy aktivit",
+          "allEntities": "Všechny entity"
+        },
+        "entities": {
+          "record": "Record",
+          "customer": "Customer",
+          "proposal": "Proposal",
+          "task": "Task",
+          "other": "Other"
+        },
+        "openRecord": "Otevřít record: {record}",
+        "empty": "Pro tohoto uživatele nebyly nalezeny žádné aktivity.",
+        "loading": "Načítám aktivity…",
+        "loadingMore": "Načítám…",
+        "loadMore": "Načíst další aktivity"
+      },
+      "profile": {
+        "title": "Profil člena",
+        "name": "Jméno",
+        "email": "E-mail",
+        "role": "Role",
+        "team": "Tým",
+        "expiry": "Expirace"
+      },
+      "actions": {
+        "title": "Akce podle oprávnění",
+        "role": "Role",
+        "expiry": "Expirace",
+        "team": "Tým",
+        "noTeam": "Bez týmu",
+        "saving": "Ukládám…",
+        "saveRoleExpiry": "Uložit roli a expiraci",
+        "saveTeam": "Uložit tým"
+      },
+      "permissionsSnapshot": {
+        "title": "Permissions snapshot",
+        "empty": "Žádná explicitní permission."
+      },
+      "grantsSnapshot": {
+        "title": "Scope / grants snapshot",
+        "noAccess": "Pro detail grants je potřeba role owner/admin.",
+        "loading": "Načítám grants…",
+        "categoryGrants": "Category grants ({count})",
+        "recordGrants": "Record grants ({count})"
+      },
+      "errors": {
+        "loadGrants": "Nepodařilo se načíst grants.",
+        "loadTimeline": "Nepodařilo se načíst timeline aktivit.",
+        "saveRoleExpiry": "Uložení role/expirace selhalo.",
+        "memberNotFound": "Člen nebyl nalezen.",
+        "removeFromTeam": "Odebrání z původního týmu selhalo.",
+        "assignTeam": "Přiřazení do nového týmu selhalo.",
+        "saveTeam": "Uložení týmu selhalo.",
+        "userNotFound": "Uživatel nebyl nalezen.",
+        "loadDetail": "Nepodařilo se načíst detail uživatele."
+      },
+      "success": {
+        "roleExpirySaved": "Role a expirace byly uloženy.",
+        "teamSaved": "Tým byl uložen."
+      }
+    }
+  },
   "peoplePicker": {
     "placeholder": "Vyberte člena...",
     "search": "Hledat jméno nebo e-mail",

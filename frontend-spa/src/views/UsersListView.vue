@@ -7,6 +7,7 @@ import { useMembersStore, type MemberOut } from '@/stores/members'
 import { usePermissionsStore } from '@/stores/permissions'
 import { useAuthStore } from '@/stores/auth'
 import { useCan } from '@/composables/useCan'
+import { useI18n } from '@/composables/useI18n'
 
 type MembershipStatusFilter = 'all' | 'active' | 'expired'
 
@@ -15,6 +16,7 @@ const membersStore = useMembersStore()
 const permissionsStore = usePermissionsStore()
 const authStore = useAuthStore()
 const { can } = useCan()
+const { t, locale } = useI18n()
 const { myRole, myRoles } = storeToRefs(permissionsStore)
 
 const search = ref('')
@@ -41,8 +43,8 @@ function isExpired(member: MemberOut): boolean {
 }
 
 function formatExpiry(member: MemberOut): string {
-  if (!member.expires_at) return 'Bez expirace'
-  return new Date(member.expires_at).toLocaleDateString('cs-CZ')
+  if (!member.expires_at) return t('usersView.list.noExpiry')
+  return new Date(member.expires_at).toLocaleDateString(locale.value)
 }
 
 function roleLabel(member: MemberOut): string {
@@ -99,7 +101,7 @@ async function loadMembers() {
     ])
   } catch (error) {
     console.error('UsersListView: failed to load members', error)
-    loadError.value = 'Nepodařilo se načíst uživatele.'
+    loadError.value = t('usersView.list.loadError')
   }
 }
 
@@ -112,15 +114,15 @@ watch(firmId, () => {
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
     <header class="space-y-1">
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Users</h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Seznam členů aktivní firmy</p>
+      <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.list.title') }}</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('usersView.list.subtitle') }}</p>
     </header>
 
     <div
       v-if="!canAccessUsersView"
       class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
     >
-      Pro zobrazení uživatelů nemáte oprávnění.
+      {{ t('usersView.list.noAccess') }}
     </div>
 
     <template v-else>
@@ -128,30 +130,30 @@ watch(firmId, () => {
         <input
           v-model="search"
           type="search"
-          placeholder="Hledat jméno nebo email"
+          :placeholder="t('usersView.list.filters.searchPlaceholder')"
           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
         <select
           v-model="roleFilter"
           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
-          <option value="">Všechny role</option>
+          <option value="">{{ t('usersView.list.filters.allRoles') }}</option>
           <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
         </select>
         <select
           v-model="teamFilter"
           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
-          <option value="">Všechny týmy</option>
+          <option value="">{{ t('usersView.list.filters.allTeams') }}</option>
           <option v-for="team in teamOptions" :key="team.id" :value="team.id">{{ team.name }}</option>
         </select>
         <select
           v-model="membershipStatus"
           class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
-          <option value="all">Všechny stavy</option>
-          <option value="active">Aktivní</option>
-          <option value="expired">Expirované</option>
+          <option value="all">{{ t('usersView.list.filters.statusAll') }}</option>
+          <option value="active">{{ t('usersView.list.filters.statusActive') }}</option>
+          <option value="expired">{{ t('usersView.list.filters.statusExpired') }}</option>
         </select>
       </section>
 
@@ -166,30 +168,30 @@ watch(firmId, () => {
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              <th class="px-4 py-3">Jméno</th>
-              <th class="px-4 py-3">Email</th>
-              <th class="px-4 py-3">Role</th>
-              <th class="px-4 py-3">Tým</th>
-              <th class="px-4 py-3">Expirace</th>
-              <th class="px-4 py-3">Akce</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.name') }}</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.email') }}</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.role') }}</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.team') }}</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.expiry') }}</th>
+              <th class="px-4 py-3">{{ t('usersView.list.columns.actions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-gray-950">
             <tr v-if="membersStore.loading">
-              <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Načítám uživatele…</td>
+              <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('usersView.list.loading') }}</td>
             </tr>
             <tr v-else-if="filteredMembers.length === 0">
-              <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Žádní uživatelé pro zvolený filtr.</td>
+              <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('usersView.list.empty') }}</td>
             </tr>
             <tr v-for="member in filteredMembers" :key="member.id" class="text-sm text-gray-800 dark:text-gray-200">
-              <td class="px-4 py-3">{{ member.user_full_name || '—' }}</td>
+              <td class="px-4 py-3">{{ member.user_full_name || t('usersView.common.notSet') }}</td>
               <td class="px-4 py-3">{{ member.user_email }}</td>
               <td class="px-4 py-3">{{ roleLabel(member) }}</td>
-              <td class="px-4 py-3">{{ member.team_name || '—' }}</td>
+              <td class="px-4 py-3">{{ member.team_name || t('usersView.common.notSet') }}</td>
               <td class="px-4 py-3">{{ formatExpiry(member) }}</td>
               <td class="px-4 py-3">
                 <RouterLink class="text-brand hover:underline" :to="`/app/users/${member.id}`">
-                  Detail
+                  {{ t('usersView.list.actions.detail') }}
                 </RouterLink>
               </td>
             </tr>

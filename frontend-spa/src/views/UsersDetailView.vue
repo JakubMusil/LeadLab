@@ -7,6 +7,7 @@ import { useMembersStore, type MemberOut } from '@/stores/members'
 import { usePermissionsStore } from '@/stores/permissions'
 import { useAuthStore } from '@/stores/auth'
 import { useCan } from '@/composables/useCan'
+import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 
 type MembershipStatus = 'active' | 'expired'
@@ -46,6 +47,7 @@ const membersStore = useMembersStore()
 const permissionsStore = usePermissionsStore()
 const authStore = useAuthStore()
 const { can } = useCan()
+const { t, locale } = useI18n()
 const { myRole, myRoles } = storeToRefs(permissionsStore)
 
 const loadError = ref('')
@@ -95,13 +97,13 @@ function roleLabel(member: MemberOut): string {
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('cs-CZ')
+  if (!value) return t('usersView.common.notSet')
+  return new Date(value).toLocaleString(locale.value)
 }
 
 function formatDateOnly(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('cs-CZ')
+  if (!value) return t('usersView.common.notSet')
+  return new Date(value).toLocaleDateString(locale.value)
 }
 
 function initialiseDrafts(member: MemberOut | undefined) {
@@ -167,10 +169,10 @@ async function loadGrants() {
       return
     }
     grants.value = null
-    grantsError.value = 'Nepodařilo se načíst grants.'
+    grantsError.value = t('usersView.detail.errors.loadGrants')
   } catch {
     grants.value = null
-    grantsError.value = 'Nepodařilo se načíst grants.'
+    grantsError.value = t('usersView.detail.errors.loadGrants')
   } finally {
     grantsLoading.value = false
   }
@@ -198,7 +200,7 @@ async function loadActivityChunk() {
 
     for (const res of responses) {
       if (!res.ok || !Array.isArray(res.data)) {
-        activityError.value = 'Nepodařilo se načíst timeline aktivit.'
+        activityError.value = t('usersView.detail.errors.loadTimeline')
         break
       }
 
@@ -217,7 +219,7 @@ async function loadActivityChunk() {
       activitiesHasMore.value = !reachedEnd
     }
   } catch {
-    activityError.value = 'Nepodařilo se načíst timeline aktivit.'
+    activityError.value = t('usersView.detail.errors.loadTimeline')
   } finally {
     activityLoading.value = false
   }
@@ -260,7 +262,7 @@ async function saveRoleAndExpiry() {
     }
     const res = await api.patch<MemberOut>(`/api/v1/firms/${firmId.value}/members/${membershipId.value}`, payload)
     if (!res.ok || !res.data) {
-      actionError.value = 'Uložení role/expirace selhalo.'
+      actionError.value = t('usersView.detail.errors.saveRoleExpiry')
       return
     }
     const idx = membersStore.members.findIndex((m) => m.id === membershipId.value)
@@ -268,9 +270,9 @@ async function saveRoleAndExpiry() {
       membersStore.members[idx] = res.data
     }
     initialiseDrafts(res.data)
-    actionSuccess.value = 'Role a expirace byly uloženy.'
+    actionSuccess.value = t('usersView.detail.success.roleExpirySaved')
   } catch {
-    actionError.value = 'Uložení role/expirace selhalo.'
+    actionError.value = t('usersView.detail.errors.saveRoleExpiry')
   } finally {
     savingRole.value = false
   }
@@ -285,14 +287,14 @@ async function saveTeam() {
   try {
     const member = currentMember.value
     if (!member) {
-      actionError.value = 'Člen nebyl nalezen.'
+      actionError.value = t('usersView.detail.errors.memberNotFound')
       return
     }
 
     if (member.team_id) {
       const deleteRes = await api.delete(`/api/v1/firms/${firmId.value}/teams/${member.team_id}/members/${membershipId.value}`)
       if (!deleteRes.ok && deleteRes.status !== 404) {
-        actionError.value = 'Odebrání z původního týmu selhalo.'
+        actionError.value = t('usersView.detail.errors.removeFromTeam')
         return
       }
     }
@@ -300,16 +302,16 @@ async function saveTeam() {
     if (teamDraft.value) {
       const addRes = await api.post(`/api/v1/firms/${firmId.value}/teams/${teamDraft.value}/members/${membershipId.value}`, {})
       if (!addRes.ok) {
-        actionError.value = 'Přiřazení do nového týmu selhalo.'
+        actionError.value = t('usersView.detail.errors.assignTeam')
         return
       }
     }
 
     await membersStore.fetchMembers(firmId.value, true)
     initialiseDrafts(currentMember.value)
-    actionSuccess.value = 'Tým byl uložen.'
+    actionSuccess.value = t('usersView.detail.success.teamSaved')
   } catch {
-    actionError.value = 'Uložení týmu selhalo.'
+    actionError.value = t('usersView.detail.errors.saveTeam')
   } finally {
     savingTeam.value = false
   }
@@ -325,14 +327,14 @@ async function loadAll() {
     await loadMembersAndPermissions()
     if (!canAccessUsersView.value) return
     if (!currentMember.value) {
-      loadError.value = 'Uživatel nebyl nalezen.'
+      loadError.value = t('usersView.detail.errors.userNotFound')
       return
     }
 
     initialiseDrafts(currentMember.value)
     await Promise.all([loadGrants(), reloadActivities()])
   } catch {
-    loadError.value = 'Nepodařilo se načíst detail uživatele.'
+    loadError.value = t('usersView.detail.errors.loadDetail')
   } finally {
     loading.value = false
   }
@@ -352,17 +354,19 @@ watch(currentMember, (next) => {
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-1">
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Detail uživatele</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Detail člena firmy a jeho aktivit</p>
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.title') }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('usersView.detail.subtitle') }}</p>
       </div>
-      <RouterLink to="/app/users" class="text-sm text-brand hover:underline">← Zpět na users list</RouterLink>
+      <RouterLink to="/app/users" class="text-sm text-brand hover:underline">
+        {{ t('usersView.detail.backToList') }}
+      </RouterLink>
     </header>
 
     <div
       v-if="!canAccessUsersView"
       class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
     >
-      Pro zobrazení detailu uživatele nemáte oprávnění.
+      {{ t('usersView.detail.noAccess') }}
     </div>
 
     <template v-else>
@@ -371,7 +375,7 @@ watch(currentMember, (next) => {
       </div>
 
       <div v-if="loading" class="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-        Načítám detail uživatele…
+        {{ t('usersView.detail.loadingDetail') }}
       </div>
 
       <template v-else-if="currentMember">
@@ -379,11 +383,11 @@ watch(currentMember, (next) => {
           <section class="lg:col-span-2 space-y-4">
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
               <div class="flex flex-wrap items-center gap-2">
-                <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Timeline aktivit</h2>
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.timeline.title') }}</h2>
                 <span class="text-xs px-2 py-0.5 rounded-full"
                   :class="targetStatus === 'expired' ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'"
                 >
-                  {{ targetStatus === 'expired' ? 'Expirovaný člen' : 'Aktivní člen' }}
+                  {{ targetStatus === 'expired' ? t('usersView.detail.memberStatus.expired') : t('usersView.detail.memberStatus.active') }}
                 </span>
               </div>
 
@@ -392,7 +396,7 @@ watch(currentMember, (next) => {
                   v-model="activityTypeFilter"
                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
-                  <option value="all">Všechny typy aktivit</option>
+                  <option value="all">{{ t('usersView.detail.timeline.filters.allActivityTypes') }}</option>
                   <option v-for="type in activityTypeOptions" :key="type" :value="type">{{ type }}</option>
                 </select>
 
@@ -400,12 +404,12 @@ watch(currentMember, (next) => {
                   v-model="activityEntityFilter"
                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
-                  <option value="all">Všechny entity</option>
-                  <option value="record">Record</option>
-                  <option value="customer">Customer</option>
-                  <option value="proposal">Proposal</option>
-                  <option value="task">Task</option>
-                  <option value="other">Other</option>
+                  <option value="all">{{ t('usersView.detail.timeline.filters.allEntities') }}</option>
+                  <option value="record">{{ t('usersView.detail.timeline.entities.record') }}</option>
+                  <option value="customer">{{ t('usersView.detail.timeline.entities.customer') }}</option>
+                  <option value="proposal">{{ t('usersView.detail.timeline.entities.proposal') }}</option>
+                  <option value="task">{{ t('usersView.detail.timeline.entities.task') }}</option>
+                  <option value="other">{{ t('usersView.detail.timeline.entities.other') }}</option>
                 </select>
               </div>
 
@@ -423,21 +427,21 @@ watch(currentMember, (next) => {
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.type }}</p>
                     <span class="text-xs text-gray-400 dark:text-gray-500">{{ formatDate(item.created_at) }}</span>
                   </div>
-                  <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ item.content_text || '—' }}</p>
+                  <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ item.content_text || t('usersView.common.notSet') }}</p>
                   <RouterLink
                     v-if="item.record_id"
                     :to="`/app/records/${item.record_id}`"
                     class="mt-1 inline-block text-xs text-brand hover:underline"
                   >
-                    Otevřít record: {{ item.record_title || item.record_id }}
+                    {{ t('usersView.detail.timeline.openRecord', { record: item.record_title || item.record_id }) }}
                   </RouterLink>
                 </div>
 
                 <div v-if="!activityLoading && filteredActivities.length === 0" class="py-6 text-sm text-gray-500 dark:text-gray-400">
-                  Pro tohoto uživatele nebyly nalezeny žádné aktivity.
+                  {{ t('usersView.detail.timeline.empty') }}
                 </div>
 
-                <div v-if="activityLoading" class="py-4 text-sm text-gray-500 dark:text-gray-400">Načítám aktivity…</div>
+                <div v-if="activityLoading" class="py-4 text-sm text-gray-500 dark:text-gray-400">{{ t('usersView.detail.timeline.loading') }}</div>
               </div>
 
               <div class="mt-4">
@@ -447,7 +451,7 @@ watch(currentMember, (next) => {
                   :disabled="activityLoading"
                   @click="loadActivityChunk"
                 >
-                  {{ activityLoading ? 'Načítám…' : 'Načíst další aktivity' }}
+                  {{ activityLoading ? t('usersView.detail.timeline.loadingMore') : t('usersView.detail.timeline.loadMore') }}
                 </button>
               </div>
             </div>
@@ -455,36 +459,36 @@ watch(currentMember, (next) => {
 
           <aside class="space-y-4">
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Profil člena</h2>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.profile.title') }}</h2>
               <dl class="mt-3 space-y-2 text-sm">
                 <div class="flex justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">Jméno</dt>
-                  <dd class="text-right text-gray-900 dark:text-gray-100">{{ currentMember.user_full_name || '—' }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ t('usersView.detail.profile.name') }}</dt>
+                  <dd class="text-right text-gray-900 dark:text-gray-100">{{ currentMember.user_full_name || t('usersView.common.notSet') }}</dd>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">Email</dt>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ t('usersView.detail.profile.email') }}</dt>
                   <dd class="text-right text-gray-900 dark:text-gray-100">{{ currentMember.user_email }}</dd>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">Role</dt>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ t('usersView.detail.profile.role') }}</dt>
                   <dd class="text-right text-gray-900 dark:text-gray-100">{{ roleLabel(currentMember) }}</dd>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">Tým</dt>
-                  <dd class="text-right text-gray-900 dark:text-gray-100">{{ currentMember.team_name || '—' }}</dd>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ t('usersView.detail.profile.team') }}</dt>
+                  <dd class="text-right text-gray-900 dark:text-gray-100">{{ currentMember.team_name || t('usersView.common.notSet') }}</dd>
                 </div>
                 <div class="flex justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">Expirace</dt>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ t('usersView.detail.profile.expiry') }}</dt>
                   <dd class="text-right text-gray-900 dark:text-gray-100">{{ formatDateOnly(currentMember.expires_at) }}</dd>
                 </div>
               </dl>
             </div>
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Akce podle oprávnění</h2>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.actions.title') }}</h2>
 
               <div class="mt-3 space-y-2">
-                <label class="block text-xs text-gray-500 dark:text-gray-400">Role</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.actions.role') }}</label>
                 <input
                   v-model="roleDraft"
                   type="text"
@@ -492,7 +496,7 @@ watch(currentMember, (next) => {
                   :disabled="!canManageRole || currentMember.role === 'owner'"
                 />
 
-                <label class="block text-xs text-gray-500 dark:text-gray-400">Expirace</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.actions.expiry') }}</label>
                 <input
                   v-model="expiryDraft"
                   type="date"
@@ -505,18 +509,18 @@ watch(currentMember, (next) => {
                   :disabled="!canManageRole || currentMember.role === 'owner' || savingRole"
                   @click="saveRoleAndExpiry"
                 >
-                  {{ savingRole ? 'Ukládám…' : 'Uložit roli a expiraci' }}
+                  {{ savingRole ? t('usersView.detail.actions.saving') : t('usersView.detail.actions.saveRoleExpiry') }}
                 </button>
               </div>
 
               <div class="mt-4 space-y-2">
-                <label class="block text-xs text-gray-500 dark:text-gray-400">Tým</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.actions.team') }}</label>
                 <select
                   v-model="teamDraft"
                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   :disabled="!canManageTeam || savingTeam"
                 >
-                  <option value="">Bez týmu</option>
+                  <option value="">{{ t('usersView.detail.actions.noTeam') }}</option>
                   <option v-for="team in teamOptions" :key="team.id" :value="team.id">{{ team.name }}</option>
                 </select>
 
@@ -525,7 +529,7 @@ watch(currentMember, (next) => {
                   :disabled="!canManageTeam || savingTeam"
                   @click="saveTeam"
                 >
-                  {{ savingTeam ? 'Ukládám…' : 'Uložit tým' }}
+                  {{ savingTeam ? t('usersView.detail.actions.saving') : t('usersView.detail.actions.saveTeam') }}
                 </button>
               </div>
 
@@ -534,7 +538,7 @@ watch(currentMember, (next) => {
             </div>
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Permissions snapshot</h2>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.permissionsSnapshot.title') }}</h2>
               <div class="mt-2 flex flex-wrap gap-1">
                 <span
                   v-for="perm in memberPermissions"
@@ -547,22 +551,24 @@ watch(currentMember, (next) => {
                   v-if="memberPermissions.length === 0"
                   class="text-xs text-gray-400 dark:text-gray-500"
                 >
-                  Žádná explicitní permission.
+                  {{ t('usersView.detail.permissionsSnapshot.empty') }}
                 </span>
               </div>
             </div>
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Scope / grants snapshot</h2>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('usersView.detail.grantsSnapshot.title') }}</h2>
 
               <p v-if="!canViewGrants" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Pro detail grants je potřeba role owner/admin.
+                {{ t('usersView.detail.grantsSnapshot.noAccess') }}
               </p>
-              <p v-else-if="grantsLoading" class="mt-2 text-xs text-gray-500 dark:text-gray-400">Načítám grants…</p>
+              <p v-else-if="grantsLoading" class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ t('usersView.detail.grantsSnapshot.loading') }}</p>
               <p v-else-if="grantsError" class="mt-2 text-xs text-red-700 dark:text-red-400">{{ grantsError }}</p>
               <div v-else-if="grants" class="mt-2 space-y-2 text-xs">
                 <div>
-                  <p class="font-medium text-gray-700 dark:text-gray-200">Category grants ({{ grants.category_grants.length }})</p>
+                  <p class="font-medium text-gray-700 dark:text-gray-200">
+                    {{ t('usersView.detail.grantsSnapshot.categoryGrants', { count: grants.category_grants.length }) }}
+                  </p>
                   <ul class="mt-1 space-y-1 text-gray-500 dark:text-gray-400">
                     <li v-for="g in grants.category_grants" :key="g.id">
                       {{ g.category_name || g.category_id }} · {{ g.level }}
@@ -570,7 +576,9 @@ watch(currentMember, (next) => {
                   </ul>
                 </div>
                 <div>
-                  <p class="font-medium text-gray-700 dark:text-gray-200">Record grants ({{ grants.record_grants.length }})</p>
+                  <p class="font-medium text-gray-700 dark:text-gray-200">
+                    {{ t('usersView.detail.grantsSnapshot.recordGrants', { count: grants.record_grants.length }) }}
+                  </p>
                   <ul class="mt-1 space-y-1 text-gray-500 dark:text-gray-400">
                     <li v-for="g in grants.record_grants" :key="g.id">
                       {{ g.record_title || g.record_id }} · {{ g.level }}

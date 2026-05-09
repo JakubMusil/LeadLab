@@ -2945,6 +2945,113 @@
       "proposal_create": "Create and send proposals linked to records."
     }
   },
+  "usersView": {
+    "common": {
+      "notSet": "—"
+    },
+    "list": {
+      "title": "Users",
+      "subtitle": "Members of the active firm",
+      "noAccess": "You do not have permission to view users.",
+      "noExpiry": "No expiry",
+      "loadError": "Failed to load users.",
+      "loading": "Loading users…",
+      "empty": "No users match the selected filters.",
+      "filters": {
+        "searchPlaceholder": "Search by name or email",
+        "allRoles": "All roles",
+        "allTeams": "All teams",
+        "statusAll": "All statuses",
+        "statusActive": "Active",
+        "statusExpired": "Expired"
+      },
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "team": "Team",
+        "expiry": "Expiry",
+        "actions": "Actions"
+      },
+      "actions": {
+        "detail": "Detail"
+      }
+    },
+    "detail": {
+      "title": "User detail",
+      "subtitle": "Firm member profile and activity",
+      "backToList": "← Back to users list",
+      "noAccess": "You do not have permission to view user detail.",
+      "loadingDetail": "Loading user detail…",
+      "memberStatus": {
+        "active": "Active member",
+        "expired": "Expired member"
+      },
+      "timeline": {
+        "title": "Activity timeline",
+        "filters": {
+          "allActivityTypes": "All activity types",
+          "allEntities": "All entities"
+        },
+        "entities": {
+          "record": "Record",
+          "customer": "Customer",
+          "proposal": "Proposal",
+          "task": "Task",
+          "other": "Other"
+        },
+        "openRecord": "Open record: {record}",
+        "empty": "No activities found for this user.",
+        "loading": "Loading activities…",
+        "loadingMore": "Loading…",
+        "loadMore": "Load more activities"
+      },
+      "profile": {
+        "title": "Member profile",
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "team": "Team",
+        "expiry": "Expiry"
+      },
+      "actions": {
+        "title": "Actions by permission",
+        "role": "Role",
+        "expiry": "Expiry",
+        "team": "Team",
+        "noTeam": "No team",
+        "saving": "Saving…",
+        "saveRoleExpiry": "Save role and expiry",
+        "saveTeam": "Save team"
+      },
+      "permissionsSnapshot": {
+        "title": "Permissions snapshot",
+        "empty": "No explicit permission."
+      },
+      "grantsSnapshot": {
+        "title": "Scope / grants snapshot",
+        "noAccess": "Owner/admin role is required to view grants detail.",
+        "loading": "Loading grants…",
+        "categoryGrants": "Category grants ({count})",
+        "recordGrants": "Record grants ({count})"
+      },
+      "errors": {
+        "loadGrants": "Failed to load grants.",
+        "loadTimeline": "Failed to load activity timeline.",
+        "saveRoleExpiry": "Saving role/expiry failed.",
+        "memberNotFound": "Member was not found.",
+        "removeFromTeam": "Removing from previous team failed.",
+        "assignTeam": "Assigning to new team failed.",
+        "saveTeam": "Saving team failed.",
+        "userNotFound": "User was not found.",
+        "loadDetail": "Failed to load user detail."
+      },
+      "success": {
+        "roleExpirySaved": "Role and expiry were saved.",
+        "teamSaved": "Team was saved."
+      }
+    }
+  },
   "peoplePicker": {
     "placeholder": "Select a member...",
     "search": "Search by name or email",
