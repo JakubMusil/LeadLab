@@ -21,7 +21,7 @@ function toggleFaq(i: number) {
   faqOpen.value = faqOpen.value === i ? null : i
 }
 
-// Feature card icons mapped by index (matches marketing.features.cards order)
+// Feature card icons — one per card; length must match marketing.features.cards
 const featureIcons: Component[] = [
   UsersIcon,
   ClipboardDocumentListIcon,
@@ -208,8 +208,7 @@ const faqItems = computed<FaqItem[]>(() => {
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
             >
               <component
-                :is="featureIcons[i] ?? Squares2X2Icon"
-                class="w-9 h-9 mb-4 text-red-500"
+                :is="featureIcons[i] ?? Squares2X2Icon"                class="w-9 h-9 mb-4 text-red-500"
                 aria-hidden="true"
               />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
@@ -322,7 +321,7 @@ const faqItems = computed<FaqItem[]>(() => {
               class="inline-block px-8 py-3.5 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors text-lg"
             >{{ t('marketing.cta.primaryCta') }}</a>
             <a
-              href="mailto:hello@leadlab.app"
+              :href="t('marketing.cta.contactHref')"
               class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
             >{{ t('marketing.cta.secondaryCta') }}</a>
           </div>

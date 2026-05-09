@@ -177,7 +177,8 @@
       "title": "Bereit, Kundenarbeit zu ordnen?",
       "subtitle": "Workspace einrichten und Team in wenigen Minuten einladen.",
       "primaryCta": "Workspace erstellen",
-      "secondaryCta": "Kontakt aufnehmen"
+      "secondaryCta": "Kontakt aufnehmen",
+      "contactHref": "https://github.com/JakubMusil/LeadLab/issues"
     },
     "faq": {
       "title": "Häufige Fragen",

@@ -177,7 +177,8 @@
       "title": "Chcete mít práci se zákazníky pod kontrolou?",
       "subtitle": "Workspace nastavíte a tým pozvete během pár minut.",
       "primaryCta": "Vytvořit workspace",
-      "secondaryCta": "Kontaktujte nás"
+      "secondaryCta": "Kontaktujte nás",
+      "contactHref": "https://github.com/JakubMusil/LeadLab/issues"
     },
     "faq": {
       "title": "Časté dotazy",
