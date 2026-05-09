@@ -151,6 +151,13 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - spustit cílené frontend validace po změně,
     - spustit `parallel_validation`,
     - vytvořit řádný PR.
+  - Cílené ověření po změně:
+    - Frontend: `node scripts/check-locales.mjs` ✅, `eslint src/views/AppShell.vue` ✅, `build-only` ✅, `type-check` ❌ (pre-existing TS chyby mimo scope).
+  - Spuštěn `parallel_validation`:
+    - CodeQL ✅ (triviální změna, scan přeskočen),
+    - Code Review ✅ (1 poznámka na import `UsersIcon`; ověřeno, import je přítomen, bez nutnosti další úpravy).
+  - Následuje:
+    - vytvořit řádný PR.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
