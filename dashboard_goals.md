@@ -70,6 +70,16 @@ Přidány klíče do všech 4 lokalit (cs, en, de, sk) pro:
 
 ---
 
+## Stav PR
+
+Branch: `copilot/revize-widgetu-na-dashboardu`
+
+Všechny fáze 1–5 jsou implementovány a otestovány:
+- 100/100 frontend unit testů prochází
+- `npm run check-locales` — ✅ vše OK
+- `python manage.py check` — ✅ žádné chyby
+- Code review: ✅ žádné komentáře
+
 ## Co bylo uděláno (v tomto PR)
 
 - [x] Vytvořen tento soubor `dashboard_goals.md`
