@@ -115,6 +115,11 @@ const router = createRouter({
           meta: { title: 'People & permissions' },
         },
         {
+          path: 'users',
+          component: () => import('@/views/UsersListView.vue'),
+          meta: { title: 'Users' },
+        },
+        {
           path: 'plugins',
           component: () => import('@/views/PluginsView.vue'),
           meta: { title: 'Plugins' },
