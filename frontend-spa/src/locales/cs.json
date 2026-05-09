@@ -2960,7 +2960,7 @@
       "loading": "Načítám uživatele…",
       "empty": "Žádní uživatelé pro zvolený filtr.",
       "filters": {
-        "searchPlaceholder": "Hledat jméno nebo e-mail",
+        "searchPlaceholder": "Hledat jméno nebo email",
         "allRoles": "Všechny role",
         "allTeams": "Všechny týmy",
         "statusAll": "Všechny stavy",
@@ -2982,7 +2982,7 @@
     "detail": {
       "title": "Detail uživatele",
       "subtitle": "Detail člena firmy a jeho aktivit",
-      "backToList": "← Zpět na users list",
+      "backToList": "← Zpět na seznam uživatelů",
       "noAccess": "Pro zobrazení detailu uživatele nemáte oprávnění.",
       "loadingDetail": "Načítám detail uživatele…",
       "memberStatus": {
@@ -2996,13 +2996,13 @@
           "allEntities": "Všechny entity"
         },
         "entities": {
-          "record": "Record",
-          "customer": "Customer",
-          "proposal": "Proposal",
-          "task": "Task",
-          "other": "Other"
+          "record": "Záznam",
+          "customer": "Zákazník",
+          "proposal": "Nabídka",
+          "task": "Úkol",
+          "other": "Jiné"
         },
-        "openRecord": "Otevřít record: {record}",
+        "openRecord": "Otevřít záznam: {record}",
         "empty": "Pro tohoto uživatele nebyly nalezeny žádné aktivity.",
         "loading": "Načítám aktivity…",
         "loadingMore": "Načítám…",
@@ -3027,15 +3027,15 @@
         "saveTeam": "Uložit tým"
       },
       "permissionsSnapshot": {
-        "title": "Permissions snapshot",
-        "empty": "Žádná explicitní permission."
+        "title": "Snímek oprávnění",
+        "empty": "Žádné explicitní oprávnění."
       },
       "grantsSnapshot": {
-        "title": "Scope / grants snapshot",
+        "title": "Snímek rozsahu / grantů",
         "noAccess": "Pro detail grants je potřeba role owner/admin.",
         "loading": "Načítám grants…",
-        "categoryGrants": "Category grants ({count})",
-        "recordGrants": "Record grants ({count})"
+        "categoryGrants": "Granty kategorií ({count})",
+        "recordGrants": "Granty záznamů ({count})"
       },
       "errors": {
         "loadGrants": "Nepodařilo se načíst grants.",
