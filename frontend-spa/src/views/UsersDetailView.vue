@@ -207,7 +207,7 @@ async function loadActivityChunk() {
     activities.value = [...activities.value, ...pageItems]
     activitiesNextPage.value += 1
     const hasMoreByPage = pageItems.length === USER_TIMELINE_PAGE_SIZE
-    const hasMoreByTotal = activitiesTotalCount.value == null || activities.value.length < activitiesTotalCount.value
+    const hasMoreByTotal = activitiesTotalCount.value === null || activities.value.length < activitiesTotalCount.value
     activitiesHasMore.value = hasMoreByPage && hasMoreByTotal
   } catch {
     activityError.value = t('usersView.detail.errors.loadTimeline')

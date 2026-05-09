@@ -110,6 +110,13 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - spustit `parallel_validation`,
     - případně zapracovat relevantní připomínky,
     - vytvořit řádný PR.
+  - Spuštěn `parallel_validation`:
+    - CodeQL ✅ (bez security nálezů),
+    - Code Review: 1 drobné doporučení zapracováno (`== null` -> `=== null` v `UsersDetailView.vue`), 1 performance poznámka k `qs.count()` ponechána jako vědomý trade-off kvůli požadovanému `total_count`.
+  - Ověření po zapracování review připomínky:
+    - Frontend: `check-locales` ✅, `eslint UsersDetailView.vue` ✅, `build-only` ✅.
+  - Následuje:
+    - vytvořit řádný PR a předat rekapitulaci.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
