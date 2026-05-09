@@ -92,14 +92,12 @@ const faqItems = computed<FaqItem[]>(() => {
     <header role="banner">
       <nav
         class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100"
-        :aria-label="t('marketing.nav.mainNavigation')"
       >
         <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <!-- Brand -->
           <a
             href="/"
             class="flex items-center gap-2 shrink-0"
-            :aria-label="t('marketing.nav.homeLabel')"
           >
             <div
               class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"
