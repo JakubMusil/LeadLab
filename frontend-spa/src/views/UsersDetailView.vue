@@ -32,8 +32,16 @@ interface MemberGrants {
 
 interface ActivityFeedItem {
   id: string
+  entity_type: EntityFilter
+  entity_id: string
   record_id: string | null
   record_title: string | null
+  customer_id: string | null
+  customer_name: string | null
+  proposal_id: string | null
+  proposal_title: string | null
+  task_id: string | null
+  task_title: string | null
   user_id: string | null
   type: string
   content_text: string
@@ -115,10 +123,10 @@ function initialiseDrafts(member: MemberOut | undefined) {
 }
 
 function detectEntityType(item: ActivityFeedItem): EntityFilter {
-  if (item.record_id) return 'record'
-  if (item.metadata?.customer_id) return 'customer'
-  if (item.metadata?.proposal_id) return 'proposal'
-  if (item.metadata?.task_id) return 'task'
+  if (item.entity_type === 'record') return 'record'
+  if (item.entity_type === 'customer') return 'customer'
+  if (item.entity_type === 'proposal') return 'proposal'
+  if (item.entity_type === 'task') return 'task'
   return 'other'
 }
 
@@ -179,45 +187,24 @@ async function loadGrants() {
 }
 
 async function loadActivityChunk() {
-  if (!firmId.value || !currentMember.value?.user_id || !activitiesHasMore.value) return
+  if (!firmId.value || !membershipId.value || !activitiesHasMore.value) return
   activityLoading.value = true
   activityError.value = ''
-
-  const pageSize = 100
-  const maxPagesPerChunk = 3
-  const startPage = activitiesNextPage.value
-  const requests: Array<Promise<Awaited<ReturnType<typeof api.get<ActivityFeedItem[]>>>>> = []
+  const pageSize = 40
 
   try {
-    for (let page = startPage; page < startPage + maxPagesPerChunk; page += 1) {
-      requests.push(api.get<ActivityFeedItem[]>(`/api/v1/crm/reports/activities?page=${page}&page_size=${pageSize}`))
+    const res = await api.get<ActivityFeedItem[]>(
+      `/api/v1/crm/reports/users/${membershipId.value}/timeline?page=${activitiesNextPage.value}&page_size=${pageSize}`,
+    )
+    if (!res.ok || !Array.isArray(res.data)) {
+      activityError.value = t('usersView.detail.errors.loadTimeline')
+      return
     }
 
-    const responses = await Promise.all(requests)
-    const targetUserId = currentMember.value.user_id
-    const chunk: ActivityFeedItem[] = []
-    let reachedEnd = false
-
-    for (const res of responses) {
-      if (!res.ok || !Array.isArray(res.data)) {
-        activityError.value = t('usersView.detail.errors.loadTimeline')
-        break
-      }
-
-      const pageItems = res.data
-      const matchedItems = pageItems.filter((item) => item.user_id === targetUserId)
-      chunk.push(...matchedItems)
-      if (pageItems.length < pageSize) {
-        reachedEnd = true
-        break
-      }
-    }
-
-    if (!activityError.value) {
-      activities.value = [...activities.value, ...chunk]
-      activitiesNextPage.value = startPage + responses.length
-      activitiesHasMore.value = !reachedEnd
-    }
+    const pageItems = res.data
+    activities.value = [...activities.value, ...pageItems]
+    activitiesNextPage.value += 1
+    activitiesHasMore.value = pageItems.length === pageSize
   } catch {
     activityError.value = t('usersView.detail.errors.loadTimeline')
   } finally {
