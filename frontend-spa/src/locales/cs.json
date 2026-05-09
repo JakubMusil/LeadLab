@@ -28,7 +28,10 @@
       "pricing": "Ceník",
       "faq": "FAQ",
       "login": "Přihlásit se",
-      "getStarted": "Začít"
+      "getStarted": "Začít",
+      "mainNavigation": "Hlavní navigace",
+      "homeLabel": "Domů na LeadLab",
+      "popularPlanLabel": "Oblíbený tarif"
     },
     "hero": {
       "eyebrow": "CRM pro malé týmy",

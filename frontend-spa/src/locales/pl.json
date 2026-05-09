@@ -28,7 +28,10 @@
       "pricing": "Cennik",
       "faq": "FAQ",
       "login": "Zaloguj się",
-      "getStarted": "Zacznij"
+      "getStarted": "Zacznij",
+      "mainNavigation": "Główna nawigacja",
+      "homeLabel": "Strona główna LeadLab",
+      "popularPlanLabel": "Popularny plan"
     },
     "hero": {
       "eyebrow": "CRM dla małych zespołów",

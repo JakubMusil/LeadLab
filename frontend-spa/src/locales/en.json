@@ -28,7 +28,10 @@
       "pricing": "Pricing",
       "faq": "FAQ",
       "login": "Sign in",
-      "getStarted": "Get started"
+      "getStarted": "Get started",
+      "mainNavigation": "Main navigation",
+      "homeLabel": "LeadLab home",
+      "popularPlanLabel": "Popular plan"
     },
     "hero": {
       "eyebrow": "CRM for small teams",

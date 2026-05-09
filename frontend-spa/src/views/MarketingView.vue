@@ -35,7 +35,15 @@ type MetricItem = { value: string; label: string }
 type StepItem = { title: string; description: string }
 type CardItem = { title: string; description: string }
 type SegmentItem = { title: string; description: string }
-type PlanItem = { name: string; price: string; period: string; tag: string; highlight: string; features: string[]; cta: string }
+type PlanItem = {
+  name: string
+  price: string
+  period: string
+  tag: string
+  highlight: string
+  features: string[]
+  cta: string
+}
 type FaqItem = { q: string; a: string }
 
 const metrics = computed<MetricItem[]>(() => {
@@ -80,17 +88,23 @@ const faqItems = computed<FaqItem[]>(() => {
 
 <template>
   <div class="min-h-screen bg-white">
-
     <!-- ── Sticky navigation ── -->
     <header role="banner">
       <nav
         class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100"
-        aria-label="Main navigation"
+        :aria-label="t('marketing.nav.mainNavigation')"
       >
         <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <!-- Brand -->
-          <a href="/" class="flex items-center gap-2 shrink-0" aria-label="LeadLab home">
-            <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center" aria-hidden="true">
+          <a
+            href="/"
+            class="flex items-center gap-2 shrink-0"
+            :aria-label="t('marketing.nav.homeLabel')"
+          >
+            <div
+              class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"
+              aria-hidden="true"
+            >
               <span class="text-white text-sm font-bold">L</span>
             </div>
             <span class="text-lg font-bold text-gray-900">LeadLab</span>
@@ -98,11 +112,15 @@ const faqItems = computed<FaqItem[]>(() => {
 
           <!-- Section anchors (hidden on very small screens) -->
           <ul class="hidden md:flex items-center gap-1 list-none m-0 p-0" role="list">
-            <li v-for="anchor in ['product', 'workflow', 'features', 'pricing', 'faq']" :key="anchor">
+            <li
+              v-for="anchor in ['product', 'workflow', 'features', 'pricing', 'faq']"
+              :key="anchor"
+            >
               <a
                 :href="`#${anchor}`"
                 class="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >{{ t(`marketing.nav.${anchor}`) }}</a>
+                >{{ t(`marketing.nav.${anchor}`) }}</a
+              >
             </li>
           </ul>
 
@@ -111,24 +129,32 @@ const faqItems = computed<FaqItem[]>(() => {
             <a
               href="/app/login"
               class="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >{{ t('marketing.nav.login') }}</a>
+              >{{ t('marketing.nav.login') }}</a
+            >
             <a
               href="/app/register"
               class="text-sm bg-red-600 text-white font-semibold px-4 py-2 rounded-xl hover:bg-red-700 transition-colors"
-            >{{ t('marketing.nav.getStarted') }}</a>
+              >{{ t('marketing.nav.getStarted') }}</a
+            >
           </div>
         </div>
       </nav>
     </header>
 
     <main>
-
       <!-- ── Hero ── -->
-      <section id="product" aria-labelledby="hero-heading" class="px-6 pt-20 pb-24 max-w-5xl mx-auto text-center">
+      <section
+        id="product"
+        aria-labelledby="hero-heading"
+        class="px-6 pt-20 pb-24 max-w-5xl mx-auto text-center"
+      >
         <p class="text-sm font-semibold text-red-600 uppercase tracking-widest mb-4">
           {{ t('marketing.hero.eyebrow') }}
         </p>
-        <h1 id="hero-heading" class="text-5xl font-extrabold text-gray-900 mb-6 leading-tight tracking-tight">
+        <h1
+          id="hero-heading"
+          class="text-5xl font-extrabold text-gray-900 mb-6 leading-tight tracking-tight"
+        >
           {{ t('marketing.hero.title') }}
         </h1>
         <p class="text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
@@ -138,11 +164,13 @@ const faqItems = computed<FaqItem[]>(() => {
           <a
             href="/app/register"
             class="inline-block px-8 py-3.5 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors text-lg"
-          >{{ t('marketing.hero.primaryCta') }}</a>
+            >{{ t('marketing.hero.primaryCta') }}</a
+          >
           <a
             href="/app/login"
             class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
-          >{{ t('marketing.hero.secondaryCta') }}</a>
+            >{{ t('marketing.hero.secondaryCta') }}</a
+          >
         </div>
         <p class="text-sm text-gray-400">{{ t('marketing.hero.note') }}</p>
       </section>
@@ -153,7 +181,9 @@ const faqItems = computed<FaqItem[]>(() => {
           <h2 id="benefits-heading" class="text-3xl font-bold text-gray-900 mb-3">
             {{ t('marketing.benefits.title') }}
           </h2>
-          <p class="text-gray-500 mb-12 max-w-2xl mx-auto">{{ t('marketing.benefits.subtitle') }}</p>
+          <p class="text-gray-500 mb-12 max-w-2xl mx-auto">
+            {{ t('marketing.benefits.subtitle') }}
+          </p>
           <ul class="grid grid-cols-2 md:grid-cols-4 gap-6 list-none m-0 p-0" role="list">
             <li
               v-for="metric in metrics"
@@ -173,7 +203,10 @@ const faqItems = computed<FaqItem[]>(() => {
           <h2 id="workflow-heading" class="text-3xl font-bold text-gray-900 text-center mb-14">
             {{ t('marketing.workflow.title') }}
           </h2>
-          <ol class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 list-none m-0 p-0" role="list">
+          <ol
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 list-none m-0 p-0"
+            role="list"
+          >
             <li
               v-for="(step, i) in workflowSteps"
               :key="step.title"
@@ -201,14 +234,18 @@ const faqItems = computed<FaqItem[]>(() => {
             {{ t('marketing.features.title') }}
           </h2>
           <p class="text-gray-500 text-center mb-12">{{ t('marketing.features.subtitle') }}</p>
-          <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none m-0 p-0" role="list">
+          <ul
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none m-0 p-0"
+            role="list"
+          >
             <li
               v-for="(card, i) in featureCards"
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
             >
               <component
-                :is="featureIcons[i] ?? Squares2X2Icon"                class="w-9 h-9 mb-4 text-red-500"
+                :is="featureIcons[i] ?? Squares2X2Icon"
+                class="w-9 h-9 mb-4 text-red-500"
                 aria-hidden="true"
               />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
@@ -240,7 +277,9 @@ const faqItems = computed<FaqItem[]>(() => {
 
           <!-- Assurances -->
           <div class="bg-red-50 rounded-2xl border border-red-100 p-6 max-w-2xl mx-auto">
-            <p class="text-sm font-semibold text-gray-900 mb-3">{{ t('marketing.trust.assurancesTitle') }}</p>
+            <p class="text-sm font-semibold text-gray-900 mb-3">
+              {{ t('marketing.trust.assurancesTitle') }}
+            </p>
             <ul class="space-y-2 list-none m-0 p-0" role="list">
               <li
                 v-for="assurance in trustAssurances"
@@ -273,14 +312,16 @@ const faqItems = computed<FaqItem[]>(() => {
               <div
                 v-if="plan.highlight"
                 class="absolute -top-3 left-6 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full"
-                aria-label="Popular plan"
+                :aria-label="t('marketing.nav.popularPlanLabel')"
               >
                 {{ plan.highlight }}
               </div>
               <div
                 class="text-sm font-semibold uppercase tracking-wide mb-2"
                 :class="plan.highlight ? 'text-red-600' : 'text-gray-500'"
-              >{{ plan.name }}</div>
+              >
+                {{ plan.name }}
+              </div>
               <div class="text-4xl font-extrabold text-gray-900 mb-1">{{ plan.price }}</div>
               <div class="text-gray-400 text-sm mb-1">{{ plan.period }}</div>
               <div class="text-xs text-gray-400 mb-6">{{ plan.tag }}</div>
@@ -297,10 +338,13 @@ const faqItems = computed<FaqItem[]>(() => {
               <a
                 href="/app/register"
                 class="block text-center px-6 py-3 rounded-xl font-medium transition-colors"
-                :class="plan.highlight
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'border border-gray-200 text-gray-700 hover:bg-gray-50'"
-              >{{ plan.cta }}</a>
+                :class="
+                  plan.highlight
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
+                "
+                >{{ plan.cta }}</a
+              >
             </li>
           </ul>
 
@@ -319,11 +363,13 @@ const faqItems = computed<FaqItem[]>(() => {
             <a
               href="/app/register"
               class="inline-block px-8 py-3.5 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 transition-colors text-lg"
-            >{{ t('marketing.cta.primaryCta') }}</a>
+              >{{ t('marketing.cta.primaryCta') }}</a
+            >
             <a
               :href="t('marketing.cta.contactHref')"
               class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
-            >{{ t('marketing.cta.secondaryCta') }}</a>
+              >{{ t('marketing.cta.secondaryCta') }}</a
+            >
           </div>
         </div>
       </section>
@@ -356,11 +402,7 @@ const faqItems = computed<FaqItem[]>(() => {
                   />
                 </button>
               </dt>
-              <dd
-                :id="`faq-panel-${i}`"
-                :aria-labelledby="`faq-btn-${i}`"
-                role="region"
-              >
+              <dd :id="`faq-panel-${i}`" :aria-labelledby="`faq-btn-${i}`" role="region">
                 <div
                   v-show="faqOpen === i"
                   class="px-6 pb-5 pt-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100"
@@ -372,7 +414,6 @@ const faqItems = computed<FaqItem[]>(() => {
           </dl>
         </div>
       </section>
-
     </main>
 
     <!-- ── Footer ── -->
@@ -381,10 +422,15 @@ const faqItems = computed<FaqItem[]>(() => {
         <!-- Brand + tagline -->
         <div class="flex flex-col items-center sm:items-start gap-1">
           <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center" aria-hidden="true">
+            <div
+              class="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center"
+              aria-hidden="true"
+            >
               <span class="text-white text-xs font-bold">L</span>
             </div>
-            <span class="text-sm font-semibold text-gray-900">{{ t('marketing.footer.productName') }}</span>
+            <span class="text-sm font-semibold text-gray-900">{{
+              t('marketing.footer.productName')
+            }}</span>
           </div>
           <span class="text-xs text-gray-400">{{ t('marketing.footer.tagline') }}</span>
         </div>
@@ -393,12 +439,18 @@ const faqItems = computed<FaqItem[]>(() => {
         <nav aria-label="Footer navigation">
           <ul class="flex flex-wrap justify-center gap-x-6 gap-y-2 list-none m-0 p-0" role="list">
             <li>
-              <a href="/app/login" class="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+              <a
+                href="/app/login"
+                class="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+              >
                 {{ t('marketing.footer.links.login') }}
               </a>
             </li>
             <li>
-              <a href="/app/register" class="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+              <a
+                href="/app/register"
+                class="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+              >
                 {{ t('marketing.footer.links.signup') }}
               </a>
             </li>
@@ -408,7 +460,8 @@ const faqItems = computed<FaqItem[]>(() => {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-sm text-gray-400 hover:text-gray-700 transition-colors"
-              >{{ t('marketing.footer.links.github') }}</a>
+                >{{ t('marketing.footer.links.github') }}</a
+              >
             </li>
           </ul>
         </nav>
@@ -419,6 +472,5 @@ const faqItems = computed<FaqItem[]>(() => {
         </p>
       </div>
     </footer>
-
   </div>
 </template>
