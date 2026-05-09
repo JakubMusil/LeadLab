@@ -20,6 +20,203 @@
     "documents": "Documents",
     "records": "Records"
   },
+  "marketing": {
+    "nav": {
+      "product": "Product",
+      "workflow": "Workflow",
+      "features": "Features",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "login": "Sign in",
+      "getStarted": "Get started"
+    },
+    "hero": {
+      "eyebrow": "CRM for small teams",
+      "title": "Keep customers, tasks, and offers in one place.",
+      "subtitle": "LeadLab gives owners and managers a clear view of work—records, proposals, tasks, and agenda in one calm workspace.",
+      "primaryCta": "Get started",
+      "secondaryCta": "Sign in",
+      "note": "No credit card required."
+    },
+    "benefits": {
+      "title": "Know what is moving",
+      "subtitle": "See what needs attention today and what is ready to move forward.",
+      "metrics": [
+        {
+          "value": "Customers",
+          "label": "shared directory with history and notes"
+        },
+        {
+          "value": "Tasks",
+          "label": "clear owners and due dates"
+        },
+        {
+          "value": "Offers",
+          "label": "status from draft to accepted"
+        },
+        {
+          "value": "Agenda",
+          "label": "upcoming checkpoints and follow-ups"
+        }
+      ]
+    },
+    "workflow": {
+      "title": "A straightforward workflow",
+      "steps": [
+        {
+          "title": "Capture",
+          "description": "Save inquiries and records with source and context."
+        },
+        {
+          "title": "Qualify",
+          "description": "Add next steps, value, and probability in the pipeline."
+        },
+        {
+          "title": "Offer",
+          "description": "Build proposals, send them, and track responses."
+        },
+        {
+          "title": "Deliver",
+          "description": "Use tasks and checkpoints to keep delivery on time."
+        }
+      ]
+    },
+    "features": {
+      "title": "Tools for everyday customer work",
+      "subtitle": "Simple views for managers and teams.",
+      "cards": [
+        {
+          "title": "Customer records",
+          "description": "Contacts, companies, and activity history in one place."
+        },
+        {
+          "title": "Tasks and reminders",
+          "description": "Assign work, set deadlines, and follow up."
+        },
+        {
+          "title": "Offers and proposals",
+          "description": "Prepare proposals and track approvals."
+        },
+        {
+          "title": "Permissions",
+          "description": "Control access by role, team, or category."
+        },
+        {
+          "title": "Agenda",
+          "description": "Calendar view of tasks, checkpoints, and deadlines."
+        },
+        {
+          "title": "Pipeline overview",
+          "description": "See stages, totals, and next actions at a glance."
+        }
+      ]
+    },
+    "trust": {
+      "title": "For owners, managers, and teams",
+      "subtitle": "Built for service businesses that need clarity, not complexity.",
+      "segments": [
+        {
+          "title": "Owners",
+          "description": "Stay informed without chasing updates."
+        },
+        {
+          "title": "Team leads",
+          "description": "Assign work and keep priorities clear."
+        },
+        {
+          "title": "Teams",
+          "description": "Track tasks, offers, and customer notes together."
+        }
+      ],
+      "assurancesTitle": "You stay in control",
+      "assurances": [
+        "Clear roles and permissions",
+        "GDPR-ready data handling",
+        "Self-hosting option"
+      ]
+    },
+    "pricing": {
+      "title": "Simple pricing",
+      "subtitle": "Start free and upgrade when you need more.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "€0",
+          "period": "per workspace / month",
+          "tag": "For getting started",
+          "highlight": "",
+          "features": [
+            "Unlimited records",
+            "Up to 2 team members",
+            "Basic pipeline and tasks",
+            "CSV import",
+            "Email support"
+          ],
+          "cta": "Start free"
+        },
+        {
+          "name": "Pro",
+          "price": "€29",
+          "period": "per workspace / month",
+          "tag": "For growing teams",
+          "highlight": "Popular",
+          "features": [
+            "Everything in Free",
+            "Unlimited team members",
+            "Advanced analytics",
+            "Custom branding",
+            "API access & webhooks",
+            "Priority support"
+          ],
+          "cta": "Start Pro"
+        }
+      ],
+      "note": "Change or cancel anytime."
+    },
+    "cta": {
+      "title": "Ready to organize customer work?",
+      "subtitle": "Set up your workspace and invite your team in minutes.",
+      "primaryCta": "Create workspace",
+      "secondaryCta": "Contact us"
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "items": [
+        {
+          "q": "Is there a free plan?",
+          "a": "Yes. The Free plan includes core CRM features for small teams."
+        },
+        {
+          "q": "Can we import existing contacts?",
+          "a": "Yes. Import contacts and records from CSV at any time."
+        },
+        {
+          "q": "How do permissions work?",
+          "a": "Assign roles and control access by team and category."
+        },
+        {
+          "q": "Is there a calendar view?",
+          "a": "Yes. The agenda shows tasks, checkpoints, and deadlines."
+        },
+        {
+          "q": "Do you offer self-hosting?",
+          "a": "Yes. LeadLab is open-source and can run with Docker Compose."
+        }
+      ]
+    },
+    "footer": {
+      "productName": "LeadLab",
+      "tagline": "Customer work without chaos.",
+      "links": {
+        "login": "Sign in",
+        "signup": "Sign up",
+        "github": "GitHub",
+        "privacy": "Privacy",
+        "contact": "Contact"
+      },
+      "copyright": "© {year} LeadLab. All rights reserved."
+    }
+  },
   "auth": {
     "welcomeBack": "Welcome back",
     "signInSubtitle": "Sign in to your account",

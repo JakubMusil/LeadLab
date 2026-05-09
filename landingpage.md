@@ -17,10 +17,12 @@
 - [x] Review PR #260 and note follow-up translation/UX context.
 - [x] Inspect the current landing page implementation and localization setup.
 - [x] Run baseline frontend validation and record pre-existing failures.
-- [ ] Add localized landing page copy under a dedicated locale namespace in `en`, `cs`, `de`, and `pl`.
+- [x] Add localized landing page copy under a dedicated locale namespace in `en`, `cs`, `de`, and `pl`.
 - [ ] Refactor `MarketingView.vue` to use localized content instead of hardcoded English strings.
 - [ ] Update the page structure and copy for a clearer owner/manager-focused story: hero, benefits, workflow, features, trust, pricing/CTA, FAQ, footer.
 - [ ] Preserve the clean red/white/gray visual style while making the page more spacious and conversion-oriented.
 - [ ] Check keyboard/accessibility details for links, FAQ controls, and semantic sections.
 - [ ] Run locale validation and relevant frontend checks after implementation.
 - [ ] Final review and pull request.
+
+Notes: Added the marketing locale namespace with hero, nav, benefits, workflow, features, trust, pricing/CTA, FAQ, and footer copy in all locales. MarketingView refactor is still pending.

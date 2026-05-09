@@ -20,6 +20,203 @@
     "documents": "Dokumenty",
     "records": "Rekordy"
   },
+  "marketing": {
+    "nav": {
+      "product": "Produkt",
+      "workflow": "Proces",
+      "features": "Funkcje",
+      "pricing": "Cennik",
+      "faq": "FAQ",
+      "login": "Zaloguj się",
+      "getStarted": "Zacznij"
+    },
+    "hero": {
+      "eyebrow": "CRM dla małych zespołów",
+      "title": "Klienci, zadania i oferty w jednym miejscu.",
+      "subtitle": "LeadLab daje właścicielom i menedżerom jasny obraz pracy — rekordy, oferty, zadania i agenda w jednym spokojnym miejscu.",
+      "primaryCta": "Zacznij",
+      "secondaryCta": "Zaloguj się",
+      "note": "Bez karty kredytowej."
+    },
+    "benefits": {
+      "title": "Wiesz, co jest w ruchu",
+      "subtitle": "Widzisz, co wymaga uwagi dziś i co może iść dalej.",
+      "metrics": [
+        {
+          "value": "Klienci",
+          "label": "wspólna baza z historią i notatkami"
+        },
+        {
+          "value": "Zadania",
+          "label": "jasni właściciele i terminy"
+        },
+        {
+          "value": "Oferty",
+          "label": "status od szkicu do akceptacji"
+        },
+        {
+          "value": "Agenda",
+          "label": "nadchodzące punkty kontrolne i kolejne kroki"
+        }
+      ]
+    },
+    "workflow": {
+      "title": "Prosty przepływ pracy",
+      "steps": [
+        {
+          "title": "Zbierz",
+          "description": "Zapisuj zapytania i rekordy ze źródłem i kontekstem."
+        },
+        {
+          "title": "Ustal",
+          "description": "Dodaj kolejne kroki, wartość i prawdopodobieństwo w pipeline."
+        },
+        {
+          "title": "Złóż ofertę",
+          "description": "Twórz oferty, wysyłaj je i śledź odpowiedzi."
+        },
+        {
+          "title": "Realizuj",
+          "description": "Zadania i punkty kontrolne trzymają realizację w terminie."
+        }
+      ]
+    },
+    "features": {
+      "title": "Narzędzia do codziennej pracy z klientami",
+      "subtitle": "Proste widoki dla menedżerów i zespołów.",
+      "cards": [
+        {
+          "title": "Rekordy klientów",
+          "description": "Kontakty, firmy i historia aktywności w jednym miejscu."
+        },
+        {
+          "title": "Zadania i przypomnienia",
+          "description": "Przydzielaj pracę, ustawiaj terminy i dopilnuj follow-upów."
+        },
+        {
+          "title": "Oferty i propozycje",
+          "description": "Przygotuj oferty i śledź akceptacje."
+        },
+        {
+          "title": "Uprawnienia",
+          "description": "Kontroluj dostęp według roli, zespołu lub kategorii."
+        },
+        {
+          "title": "Agenda",
+          "description": "Widok kalendarza z zadaniami, punktami kontrolnymi i terminami."
+        },
+        {
+          "title": "Przegląd pipeline",
+          "description": "Etapy, sumy i kolejne kroki na pierwszy rzut oka."
+        }
+      ]
+    },
+    "trust": {
+      "title": "Dla właścicieli, menedżerów i zespołów",
+      "subtitle": "Dla firm usługowych, które potrzebują przejrzystości bez komplikacji.",
+      "segments": [
+        {
+          "title": "Właściciele",
+          "description": "Bądź na bieżąco bez ciągłego dopytywania."
+        },
+        {
+          "title": "Liderzy zespołów",
+          "description": "Przydzielaj pracę i utrzymuj jasne priorytety."
+        },
+        {
+          "title": "Zespoły",
+          "description": "Łącz zadania, oferty i notatki o klientach."
+        }
+      ],
+      "assurancesTitle": "Masz kontrolę",
+      "assurances": [
+        "Jasne role i uprawnienia",
+        "Obsługa danych zgodna z RODO",
+        "Opcja self-hostingu"
+      ]
+    },
+    "pricing": {
+      "title": "Prosty cennik",
+      "subtitle": "Zacznij za darmo, przejdź wyżej gdy potrzebujesz więcej.",
+      "plans": [
+        {
+          "name": "Darmowy",
+          "price": "€0",
+          "period": "za workspace / miesiąc",
+          "tag": "Na start",
+          "highlight": "",
+          "features": [
+            "Nielimitowane rekordy",
+            "Do 2 członków zespołu",
+            "Podstawowy pipeline i zadania",
+            "Import CSV",
+            "Wsparcie e-mail"
+          ],
+          "cta": "Zacznij za darmo"
+        },
+        {
+          "name": "Pro",
+          "price": "€29",
+          "period": "za workspace / miesiąc",
+          "tag": "Dla rosnących zespołów",
+          "highlight": "Popularny",
+          "features": [
+            "Wszystko z planu Darmowego",
+            "Nielimitowana liczba członków",
+            "Zaawansowana analityka",
+            "Własny branding",
+            "Dostęp do API i webhooki",
+            "Priorytetowe wsparcie"
+          ],
+          "cta": "Zacznij Pro"
+        }
+      ],
+      "note": "Możesz zmienić lub anulować w każdej chwili."
+    },
+    "cta": {
+      "title": "Chcesz uporządkować pracę z klientami?",
+      "subtitle": "Utwórz workspace i zaproś zespół w kilka minut.",
+      "primaryCta": "Utwórz workspace",
+      "secondaryCta": "Skontaktuj się z nami"
+    },
+    "faq": {
+      "title": "Najczęstsze pytania",
+      "items": [
+        {
+          "q": "Czy jest plan darmowy?",
+          "a": "Tak. Plan Darmowy zawiera podstawowe funkcje CRM dla małych zespołów."
+        },
+        {
+          "q": "Czy możemy importować istniejące kontakty?",
+          "a": "Tak. Kontakty i rekordy można importować z CSV w dowolnym momencie."
+        },
+        {
+          "q": "Jak działają uprawnienia?",
+          "a": "Przydzielaj role i kontroluj dostęp według zespołu i kategorii."
+        },
+        {
+          "q": "Czy jest widok kalendarza?",
+          "a": "Tak. Agenda pokazuje zadania, punkty kontrolne i terminy."
+        },
+        {
+          "q": "Czy oferujecie self-hosting?",
+          "a": "Tak. LeadLab jest open-source i działa z Docker Compose."
+        }
+      ]
+    },
+    "footer": {
+      "productName": "LeadLab",
+      "tagline": "Praca z klientami bez chaosu.",
+      "links": {
+        "login": "Zaloguj się",
+        "signup": "Zarejestruj się",
+        "github": "GitHub",
+        "privacy": "Prywatność",
+        "contact": "Kontakt"
+      },
+      "copyright": "© {year} LeadLab. Wszelkie prawa zastrzeżone."
+    }
+  },
   "auth": {
     "welcomeBack": "Witaj ponownie",
     "signInSubtitle": "Zaloguj się na swoje konto",
