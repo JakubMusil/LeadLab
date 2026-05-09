@@ -139,7 +139,35 @@ site. Compared to freelo.io and similar SaaS landings, the following gaps hold b
 - [x] Inspect current `MarketingView.vue`, locale files, and `useI18n` / `setLocale` plumbing.
 - [x] Compare with freelo.io to identify lead‑generation gaps.
 - [x] Capture the v2 plan in this file.
-- [ ] Delegate implementation of sections A–H to a subagent.
-- [ ] Run `check-locales`, `lint`, `test:unit`, and `build-only` after implementation.
+- [x] Delegate implementation of sections A–H to a subagent.
+- [x] Run `check-locales`, `lint`, `test:unit`, and `build-only` after implementation.
 - [ ] Final review and pull request.
+
+## Implementation notes (delegated subagent)
+- **New** `frontend-spa/src/components/LanguageSwitcher.vue` — compact EN/CS/DE/PL button group
+  with `nav` and `footer` variants, `aria-pressed`, `aria-label`, reusing `setLocale()` /
+  `useI18n().locale`.
+- **Rewrote** `frontend-spa/src/views/MarketingView.vue` per sections A–H: sticky nav with public
+  language switcher → two‑column hero with a Tailwind‑only product preview mock, inline email
+  capture (`<form method="get" action="/app/register">`, `name="email"`, HTML5 validation) and a
+  ▶ "Watch product tour" anchor → soft radial glow behind hero (motion guarded) → trust strip
+  (neutral text cards) → outcome benefit cards (replacing the old metric tiles) → outcome‑style
+  workflow steps → features as 3 cards / split block / 3 cards rhythm → integrations chips →
+  "Why LeadLab" mini block → testimonials with a `<!-- TODO: replace with real customer quotes -->`
+  comment → trust segments + assurances → pricing with monthly/annual toggle + "save 2 months"
+  badge → CTA banner (secondary CTA now anchors `#faq` instead of GitHub issues) → FAQ switched
+  to `v-if` and expanded to 7 entries → 4‑column footer + footer language switcher → sticky
+  mobile CTA bar with safe‑area padding. `scroll-mt-24` on every anchored section.
+  `prefers-reduced-motion` disables hover‑lift/transform.
+- **Locales**: `marketing.*` extended in all four files (CS source of truth, EN/DE/PL translated)
+  with new sub‑trees `languageSwitcher`, `trustStrip`, `benefits.cards`, `features.split`,
+  `integrations`, `why`, `testimonials`, `pricing.toggle`, `priceAnnual`/`periodAnnual`,
+  `stickyCta`, and `footer.columns`. `check-locales` reports parity across all four locales.
+- **Validation results from the subagent**: `check-locales` ✅, `test:unit` ✅ 100/100,
+  `build-only` ✅. `lint` shows the same pre‑existing 105 oxlint/eslint errors in unrelated
+  test/store files; no new errors introduced in the touched files. `type-check` skipped
+  (pre‑existing unrelated failures, out of scope per the plan).
+- **Decisions worth flagging for review**: email capture is HTML‑only (no JS/backend), the
+  bottom CTA's secondary action was retargeted from GitHub issues to `#faq`, and a
+  `mailto:hello@leadlab.app` lives in the footer "Company" column.
 
