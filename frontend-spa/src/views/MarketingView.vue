@@ -23,7 +23,7 @@ import {
 import { useI18n } from '@/composables/useI18n'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 
-const { t, tm } = useI18n()
+const { t, tm, rt } = useI18n()
 
 const faqOpen = ref<number | null>(null)
 const annual = ref(false)
@@ -83,9 +83,27 @@ type PlanItem = {
 }
 type FaqItem = { q: string; a: string }
 
+function resolveMessage<T>(value: unknown): T {
+  if (typeof value === 'function') {
+    // Compiled message function from @intlify/unplugin-vue-i18n; resolve to string.
+    return rt(value as Parameters<typeof rt>[0]) as T
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => resolveMessage(v)) as T
+  }
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = resolveMessage(v)
+    }
+    return out as T
+  }
+  return value as T
+}
+
 function arr<T>(key: string): T[] {
   const raw = tm(key)
-  return Array.isArray(raw) ? (raw as T[]) : []
+  return Array.isArray(raw) ? raw.map((v) => resolveMessage<T>(v)) : []
 }
 
 const benefitCards = computed<BenefitCardItem[]>(() =>
