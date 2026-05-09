@@ -6,6 +6,12 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: () => import('@/views/MarketingView.vue') },
+    { path: '/login', redirect: '/app/login' },
+    { path: '/register', redirect: '/app/register' },
+    { path: '/forgot-password', redirect: '/app/forgot-password' },
+    { path: '/reset-password/:uidb64/:token', redirect: to => `/app/reset-password/${to.params.uidb64}/${to.params.token}` },
+    { path: '/accept-invite/:token', redirect: to => `/app/invite/${to.params.token}` },
+    { path: '/onboarding', redirect: '/app/onboarding' },
     { path: '/app/', redirect: '/app/dashboard' },
     {
       path: '/app/login',
