@@ -5808,7 +5808,7 @@ def get_dashboard_focus_next(request):
     )
 
     today_start = tz.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = tz.now().replace(hour=23, minute=59, second=59, microsecond=0)
+    today_end = tz.now().replace(hour=23, minute=59, second=59, microsecond=999999)
 
     records_with_open_task_today = Task.objects.filter(
         firm=request.firm,
@@ -5818,7 +5818,9 @@ def get_dashboard_focus_next(request):
         due_date__lte=today_end,
     ).values_list("record_id", flat=True)
 
-    candidates = [r for r in active_records if r.id not in records_with_open_task_today]
+    candidates = list(
+        active_records.exclude(id__in=records_with_open_task_today)
+    )
 
     if not candidates:
         return 200, {"record": None}
@@ -5950,8 +5952,9 @@ def get_dashboard_my_goals(request):
         created_at__date=today,
     ).count()
 
-    # Streak: count consecutive days (back from today inclusive) with >= 1 activity
-    since_streak = tz.now() - dt.timedelta(days=30)
+    # Streak: count consecutive days (back from today inclusive) with >= 1 activity.
+    # Query up to 365 days back so long streaks are not incorrectly capped.
+    since_streak = tz.now() - dt.timedelta(days=365)
     daily_counts = (
         Activity.objects.filter(
             record__firm=request.firm,
