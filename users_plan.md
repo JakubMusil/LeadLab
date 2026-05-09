@@ -117,6 +117,19 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - Frontend: `check-locales` ✅, `eslint UsersDetailView.vue` ✅, `build-only` ✅.
   - Následuje:
     - vytvořit řádný PR a předat rekapitulaci.
+- 2026-05-09 (pokračování po navázání na branch `copilot/update-users-plan-progress`):
+  - Proveden nový baseline check před další úpravou:
+    - Frontend: `check-locales` ✅, `type-check`/`lint`/`test:unit`/`build-only` ❌ kvůli chybějícím frontend závislostem (`vue-tsc`, `run-s`, `vitest`, `vite`).
+    - Backend: `flake8`/`manage.py test` ❌ kvůli chybějícím backend závislostem (`flake8`, `django`).
+  - Doinstalovány závislosti podle plánu:
+    - `npm install` ve `frontend-spa` ✅
+    - `pip install -r requirements-dev.txt && pip install -r requirements.txt` ✅
+  - Spuštěny cílené validace po doinstalaci:
+    - Frontend: `node scripts/check-locales.mjs` ✅, `eslint UsersListView.vue UsersDetailView.vue router/index.ts` ✅, `build-only` ✅, `type-check` ❌ (pre-existing TS chyby mimo scope).
+    - Backend: `python manage.py test crm.tests.UserTimelineReportAPITest` ✅, `python -m flake8 crm/api.py crm/tests.py` ❌ (pre-existing nálezy v dlouhodobě problematických souborech mimo scope).
+  - Následuje:
+    - spustit `parallel_validation`,
+    - vytvořit řádný PR s aktuální rekapitulací.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
@@ -150,5 +163,5 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
 - Doplněny i18n klíče pro nové odkazy a text „načteno X z Y“ ve všech podporovaných locale.
 
 ## Co bude příště
-- Doinstalovat frontend/backend závislosti v prostředí a zopakovat plné/cílené validace.
-- Po stabilizaci odstranit/starat se o případné technické dluhy v `reports/activities`, pokud už nebude potřeba pro tento use-case.
+- Spustit `parallel_validation`, zapracovat případné relevantní připomínky a uzavřít tento průchod řádným PR.
+- Po merge navázat případným úklidem technického dluhu v `reports/activities`, pokud už nebude potřeba pro tento use-case.
