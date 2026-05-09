@@ -253,17 +253,17 @@ onMounted(loadData)
         class="min-h-[48px] flex flex-wrap gap-2 p-3"
         :disabled="!permissionsStore.canManageTeams || dragLoading"
       >
-        <template #item="{ element: member }">
-          <div
-            :data-membership-id="member.id"
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 cursor-grab active:cursor-grabbing select-none"
-          >
-            <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-500 flex items-center justify-center text-xs font-semibold">
-              {{ (member.user_full_name || member.user_email)[0]?.toUpperCase() ?? '?' }}
-            </div>
-            {{ member.user_full_name || member.user_email }}
+        <div
+          v-for="member in unassignedList"
+          :key="member.id"
+          :data-membership-id="member.id"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 cursor-grab active:cursor-grabbing select-none"
+        >
+          <div class="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-500 flex items-center justify-center text-xs font-semibold">
+            {{ (member.user_full_name || member.user_email)[0]?.toUpperCase() ?? '?' }}
           </div>
-        </template>
+          {{ member.user_full_name || member.user_email }}
+        </div>
       </VueDraggable>
       <div v-if="unassignedList.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
         {{ t('permissions.allMembersAssigned') }}
@@ -349,25 +349,25 @@ onMounted(loadData)
             @add="(e: DragEvent) => onDragToTeam(e, team.id)"
             @remove="(e: DragEvent) => onDragToUnassigned(e, team.id)"
           >
-            <template #item="{ element: member }">
-              <div
-                :data-membership-id="member.membership_id"
-                class="flex items-center justify-between rounded px-2 py-1.5 bg-white dark:bg-gray-900 cursor-grab active:cursor-grabbing select-none"
-              >
-                <div>
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ member.user_full_name || member.user_email }}</p>
-                  <p class="text-xs text-gray-500">{{ member.user_email }}</p>
-                </div>
-                <button
-                  v-if="permissionsStore.canManageTeams"
-                  @click.stop="removeMember(team.id, member.membership_id)"
-                  class="p-1 text-gray-400 hover:text-red-600"
-                  :title="t('permissions.removeFromTeam')"
-                >
-                  <UserMinusIcon class="h-4 w-4" />
-                </button>
+            <div
+              v-for="member in team.members"
+              :key="member.membership_id"
+              :data-membership-id="member.membership_id"
+              class="flex items-center justify-between rounded px-2 py-1.5 bg-white dark:bg-gray-900 cursor-grab active:cursor-grabbing select-none"
+            >
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ member.user_full_name || member.user_email }}</p>
+                <p class="text-xs text-gray-500">{{ member.user_email }}</p>
               </div>
-            </template>
+              <button
+                v-if="permissionsStore.canManageTeams"
+                @click.stop="removeMember(team.id, member.membership_id)"
+                class="p-1 text-gray-400 hover:text-red-600"
+                :title="t('permissions.removeFromTeam')"
+              >
+                <UserMinusIcon class="h-4 w-4" />
+              </button>
+            </div>
           </VueDraggable>
           <div v-if="team.members.length === 0" class="text-xs text-gray-400 py-1">
             {{ t('permissions.noMembers') }}
