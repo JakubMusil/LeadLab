@@ -106,7 +106,7 @@ function formatDateOnly(value: string | null | undefined): string {
 
 function initialiseDrafts(member: MemberOut | undefined) {
   roleDraft.value = member?.role ?? ''
-  expiryDraft.value = member?.expires_at ? member.expires_at.slice(0, 10) : ''
+  expiryDraft.value = member?.expires_at?.trim() ? member.expires_at.slice(0, 10) : ''
   teamDraft.value = member?.team_id ?? ''
 }
 
@@ -236,7 +236,17 @@ async function saveRoleAndExpiry() {
   try {
     const payload: { role: string; expires_at?: string | null } = { role: roleDraft.value }
     const expiryValue = expiryDraft.value.trim()
-    payload.expires_at = expiryValue ? new Date(`${expiryValue}T00:00:00`).toISOString() : null
+    if (expiryValue) {
+      const [yearStr, monthStr, dayStr] = expiryValue.split('-')
+      const year = Number(yearStr)
+      const month = Number(monthStr)
+      const day = Number(dayStr)
+      payload.expires_at = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+        ? new Date(Date.UTC(year, month - 1, day)).toISOString()
+        : null
+    } else {
+      payload.expires_at = null
+    }
     const res = await api.patch<MemberOut>(`/api/v1/firms/${firmId.value}/members/${membershipId.value}`, payload)
     if (!res.ok || !res.data) {
       actionError.value = 'Uložení role/expirace selhalo.'
@@ -274,7 +284,7 @@ async function saveTeam() {
 
     if (teamDraft.value) {
       const addRes = await api.post(`/api/v1/firms/${firmId.value}/teams/${teamDraft.value}/members/${membershipId.value}`, {})
-      if (!addRes.ok && addRes.status !== 201) {
+      if (!addRes.ok) {
         actionError.value = 'Uložení týmu selhalo.'
         return
       }

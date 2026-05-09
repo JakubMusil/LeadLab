@@ -46,6 +46,7 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - `npm run build-only` ✅
     - `npm run type-check` ❌ (pre-existing chyby mimo tuto změnu; bez nových chyb v `UsersDetailView.vue`)
   - Na základě review upraveno načítání timeline tak, aby se nespouštěly extrémní sekvenční requesty (chunkované načítání po malých dávkách paralelních stránek).
+  - Zapracovány drobné stabilizační úpravy v detailu (bezpečnější převod expirace na ISO, čistší podmínky při ukládání týmu).
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
