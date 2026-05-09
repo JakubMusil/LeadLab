@@ -158,6 +158,23 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
     - Code Review ✅ (1 poznámka na import `UsersIcon`; ověřeno, import je přítomen, bez nutnosti další úpravy).
   - Následuje:
     - vytvořit řádný PR.
+- 2026-05-09 (pokračování na branch `copilot/update-user-settings-view`):
+  - Navázáno dle zadání: pokud je Users práce hotová, nezařazovat další samostatné místo v menu, ale začlenit detail do existujícího view „Lidé a oprávnění“.
+  - Proveden baseline check před úpravou:
+    - Frontend: `check-locales` ✅, `type-check` ❌ (pre-existing TS chyby mimo scope).
+    - Backend: `flake8` ❌ (pre-existing style chyby mimo scope).
+  - Doinstalovány chybějící závislosti v prostředí:
+    - Frontend: `npm install` ✅
+    - Backend: `pip install -r requirements-dev.txt && pip install -r requirements.txt` ✅
+  - Integrace do „Lidé a oprávnění“:
+    - z levého menu (`AppShell`) odstraněna samostatná položka `/app/users`, aby nebyly dvě vstupní cesty pro správu uživatelů,
+    - v `TeamView` (v rámci `PeoplePermissionsView` sekce Members) přidána akce „Detail“, která otevírá `/app/users/:membershipId`.
+  - Cílené ověření po změně:
+    - Frontend: `node scripts/check-locales.mjs` ✅, `eslint src/views/AppShell.vue src/views/TeamView.vue` ✅, `npm run build-only` ✅.
+    - Frontend: `npm run type-check` ❌ (pre-existing TS chyby mimo scope; týkají se více souborů včetně dlouhodobých nálezů v `TeamView`).
+  - Následuje:
+    - spustit `parallel_validation`,
+    - vytvořit řádný PR.
 
 ## Co je hotovo
 - Vytvořen plán pro oba view (Users list + Users detail) ve stylu Record views.
@@ -189,7 +206,11 @@ S důrazem na využití existujícího permission systému (`useCan`, role/scope
 - Přidány integrační testy pro nový endpoint v `crm/tests.py`.
 - V `UsersDetailView.vue` doplněny přímé odkazy z timeline i pro customer/proposal/task položky.
 - Doplněny i18n klíče pro nové odkazy a text „načteno X z Y“ ve všech podporovaných locale.
+- Navigace byla zjednodušena tak, aby uživatelé nebyli duplicitně v menu:
+  - odstraněna samostatná položka `/app/users` z levého menu,
+  - detail uživatele je nyní dostupný přímo z „Lidé a oprávnění“ (sekce členů) přes akci „Detail“.
 
 ## Co bude příště
-- Spustit `parallel_validation`, zapracovat případné relevantní připomínky a uzavřít tento průchod řádným PR.
-- Po merge navázat případným úklidem technického dluhu v `reports/activities`, pokud už nebude potřeba pro tento use-case.
+- Spustit cílené ověření frontend změn (`eslint`, `build-only`, `check-locales`) a následně `parallel_validation`.
+- Zapracovat případné relevantní připomínky z review a vytvořit řádný PR.
+- Po merge případně zvážit, zda list route `/app/users` zůstane interně jen pro deep-linking, nebo bude navázána přímo jako podsekce `PeoplePermissionsView`.
