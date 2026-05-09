@@ -30,8 +30,7 @@
       "login": "Sign in",
       "getStarted": "Get started",
       "mainNavigation": "Main navigation",
-      "homeLabel": "LeadLab home",
-      "popularPlanLabel": "Popular plan"
+      "homeLabel": "LeadLab home"
     },
     "hero": {
       "eyebrow": "CRM for small teams",

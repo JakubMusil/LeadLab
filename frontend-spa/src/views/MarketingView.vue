@@ -312,7 +312,6 @@ const faqItems = computed<FaqItem[]>(() => {
               <div
                 v-if="plan.highlight"
                 class="absolute -top-3 left-6 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full"
-                :aria-label="t('marketing.nav.popularPlanLabel')"
               >
                 {{ plan.highlight }}
               </div>
@@ -367,6 +366,8 @@ const faqItems = computed<FaqItem[]>(() => {
             >
             <a
               :href="t('marketing.cta.contactHref')"
+              target="_blank"
+              rel="noopener noreferrer"
               class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
               >{{ t('marketing.cta.secondaryCta') }}</a
             >
