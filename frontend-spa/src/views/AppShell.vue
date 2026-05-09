@@ -270,8 +270,12 @@ function toggleNotifPanel() {
   }
 }
 
+function normalizeEventKey(event: string): string {
+  return event.trim().toLowerCase()
+}
+
 function eventLabel(event: string): string {
-  const normalized = event.trim().toLowerCase()
+  const normalized = normalizeEventKey(event)
   const map: Record<string, string> = {
     'record.created': t('appShell.eventLeadCreated'),
     'record.updated': t('appShell.eventLeadUpdated'),
@@ -295,6 +299,8 @@ function eventLabel(event: string): string {
     'invitation.sent': t('appShell.eventInvitationSent'),
   }
   if (map[normalized]) return map[normalized]
+  // Fallback to optional `appShell.eventDynamic.<normalized_event_key>` i18n keys
+  // so new backend events can be translated without touching this file.
   const dynamicKey = `appShell.eventDynamic.${normalized.replace(/[.\s-]+/g, '_')}`
   if (te(dynamicKey)) return t(dynamicKey)
   return normalized
@@ -339,6 +345,14 @@ function payloadString(payload: Record<string, unknown>, key: string): string | 
   return null
 }
 
+function extractExplicitPath(payload: Record<string, unknown>): string | null {
+  const explicitPath = payloadString(payload, 'path') ?? payloadString(payload, 'url') ?? payloadString(payload, 'link')
+  if (!explicitPath) return null
+  if (explicitPath.startsWith('/')) return explicitPath
+  if (explicitPath.startsWith(window.location.origin)) return explicitPath.slice(window.location.origin.length)
+  return null
+}
+
 function payloadTitle(payload: Record<string, unknown>): string | null {
   return (
     payloadString(payload, 'title')
@@ -367,7 +381,7 @@ function translateRecordStatus(status: string): string {
 }
 
 function activityTypeLabel(type: string): string {
-  const normalized = type.trim().toLowerCase().replace(/[.\s-]+/g, '_')
+  const normalized = normalizeEventKey(type).replace(/[.\s-]+/g, '_')
   const key = `appShell.activityType.${normalized}`
   if (te(key)) return t(key)
   return type.replace(/_/g, ' ')
@@ -382,11 +396,8 @@ function entityLink(entityType: string, entityId: string): string | null {
 }
 
 function notifLink(n: { event: string; payload: Record<string, unknown> }): string | null {
-  const explicitPath = payloadString(n.payload, 'path') ?? payloadString(n.payload, 'url') ?? payloadString(n.payload, 'link')
-  if (explicitPath) {
-    if (explicitPath.startsWith('/')) return explicitPath
-    if (explicitPath.startsWith(window.location.origin)) return explicitPath.slice(window.location.origin.length)
-  }
+  const explicitPath = extractExplicitPath(n.payload)
+  if (explicitPath) return explicitPath
 
   const activityId = payloadString(n.payload, 'activity_id')
   const entityType = payloadString(n.payload, 'entity_type')
@@ -431,7 +442,7 @@ function handleNotificationClick(n: { id: string; is_read: boolean }) {
 }
 
 function notifTitle(n: { event: string; payload: Record<string, unknown> }): string {
-  const event = n.event.trim().toLowerCase()
+  const event = normalizeEventKey(n.event)
   if (event === 'record.created' || event === 'record.updated') {
     return payloadString(n.payload, 'title') || eventLabel(n.event)
   }
@@ -449,11 +460,12 @@ function notifTitle(n: { event: string; payload: Record<string, unknown> }): str
     return title || eventLabel(n.event)
   }
   if (event === 'activity.created') {
+    const activityType = payloadString(n.payload, 'type')
     return (
       payloadString(n.payload, 'content_text')
       ?? payloadString(n.payload, 'content_preview')
       ?? payloadString(n.payload, 'preview')
-      ?? (payloadString(n.payload, 'type') ? activityTypeLabel(payloadString(n.payload, 'type') ?? '') : null)
+      ?? (activityType ? activityTypeLabel(activityType) : null)
       ?? t('appShell.notifActivity')
     )
   }

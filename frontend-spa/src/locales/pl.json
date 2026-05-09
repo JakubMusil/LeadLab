@@ -2043,7 +2043,7 @@
     "notifProposalViewedBy": "{proposal} · wyświetlił(a): {viewer}",
     "notifPaymentReceived": "{amount} {currency} · {record}",
     "notifInvitationSent": "Zaproszenie wysłano na {email}",
-    "notifLeadDeleted": "Rekord {id} usunięta",
+    "notifLeadDeleted": "Rekord {id} usunięty",
     "activityType": {
       "comment": "Komentarz",
       "email_in": "E-mail przychodzący",
