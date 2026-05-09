@@ -95,7 +95,7 @@ export default {
         },
       },
       fontSize: {
-        display: ['3rem', { lineHeight: '1.2' }],
+        display: ['3.25rem', { lineHeight: '1.1' }],
         h1: ['2rem', { lineHeight: '1.2' }],
         h2: ['1.5rem', { lineHeight: '1.375' }],
         h3: ['1.25rem', { lineHeight: '1.375' }],

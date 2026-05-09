@@ -295,7 +295,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
           class="max-w-[1360px] mx-auto px-8 py-2.5 flex flex-wrap items-center justify-center gap-2 text-center"
       >
         <span
-          class="inline-flex items-center gap-1.5 bg-accent-500 text-white font-bold uppercase tracking-[0.08em] text-[11px] px-2 py-0.5 rounded"
+          class="inline-flex items-center gap-1.5 bg-accent-500 text-white font-bold uppercase tracking-wider text-xs px-2 py-0.5 rounded"
         >
           <SparklesIcon class="w-3 h-3" aria-hidden="true" />
           {{ t('marketing.announcement.badge') }}
@@ -329,7 +329,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             <li v-for="anchor in navAnchors" :key="anchor">
               <a
                 :href="`#${anchor}`"
-                class="text-[14.5px] text-gray-700 hover:text-brand-600 font-medium px-3 py-2 rounded-md hover:bg-brand-50 transition-colors"
+                class="text-sm text-gray-700 hover:text-brand-600 font-medium px-3 py-2 rounded-md hover:bg-brand-50 transition-colors"
                 >{{ t(`marketing.nav.${anchor}`) }}</a
               >
             </li>
@@ -428,11 +428,11 @@ const footerColumns = computed<FooterColumn[]>(() => {
             </p>
             <h1
               id="hero-heading"
-               class="text-[32px] lg:text-[52px] font-extrabold text-brand-700 mb-6 leading-[1.1] tracking-[-0.5px]"
+              class="text-h1 lg:text-display font-extrabold text-brand-700 mb-6 tracking-tight"
             >
               {{ t('marketing.hero.title') }}
             </h1>
-             <p class="text-[19px] text-[#4a5568] mb-8 leading-[1.65] max-w-xl md:mx-0 mx-auto">
+            <p class="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl md:mx-0 mx-auto">
               {{ t('marketing.hero.subtitle') }}
             </p>
 
@@ -455,8 +455,8 @@ const footerColumns = computed<FooterColumn[]>(() => {
               />
               <button
                 type="submit"
-                 class="px-8 py-3.5 bg-accent-500 text-white font-bold rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 transition-all"
-               >
+                class="px-8 py-3.5 bg-accent-500 text-white font-bold rounded-lg shadow-md hover:bg-accent-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 transition-all"
+              >
                 {{ t('marketing.hero.emailCta') }}
               </button>
             </form>
@@ -588,7 +588,7 @@ const footerColumns = computed<FooterColumn[]>(() => {
             <li
               v-for="logo in trustLogos"
               :key="logo"
-              class="flex items-center justify-center text-[19px] font-extrabold text-slate-400 tracking-[1.5px] uppercase text-center opacity-50 hover:opacity-90 transition-opacity"
+              class="flex items-center justify-center text-lg font-extrabold text-slate-400 tracking-widest uppercase text-center opacity-50 hover:opacity-90 transition-opacity"
             >
               {{ logo }}
             </li>
