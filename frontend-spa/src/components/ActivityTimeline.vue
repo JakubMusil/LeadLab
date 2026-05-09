@@ -373,18 +373,12 @@ const activityIconMap: Record<string, Component> = {
   proposal_accepted: DocumentCheckIcon,
   proposal_rejected: DocumentTextIcon,
   entity_change: PencilSquareIcon,
-  // Phase 1 task tools
-  priority_change: FlagIcon,
-  assignee_change: UserCircleIcon,
-  due_date_change: CalendarIcon,
-  sub_task_added: Squares2X2Icon,
   task_created: PlusCircleIcon,
   task_archived: ArchiveBoxIcon,
   task_reopened: ArrowUturnLeftIcon,
   approval_requested: ShieldExclamationIcon,
   approval_resolved: ShieldCheckIcon,
   time_logged: ClockIcon,
-  checklist_item_checked: CheckIcon,
   checklist: ClipboardDocumentCheckIcon,
   voice_memo: MicrophoneIcon,
   // Phase 6 bonus tools
