@@ -177,8 +177,7 @@
       "title": "Chcesz uporządkować pracę z klientami?",
       "subtitle": "Utwórz workspace i zaproś zespół w kilka minut.",
       "primaryCta": "Utwórz workspace",
-      "secondaryCta": "Skontaktuj się z nami",
-      "contactHref": "https://github.com/JakubMusil/LeadLab/issues"
+      "secondaryCta": "Skontaktuj się z nami"
     },
     "faq": {
       "title": "Najczęstsze pytania",

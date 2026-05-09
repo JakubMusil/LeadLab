@@ -177,8 +177,7 @@
       "title": "Ready to organize customer work?",
       "subtitle": "Set up your workspace and invite your team in minutes.",
       "primaryCta": "Create workspace",
-      "secondaryCta": "Contact us",
-      "contactHref": "https://github.com/JakubMusil/LeadLab/issues"
+      "secondaryCta": "Contact us"
     },
     "faq": {
       "title": "Frequently asked questions",

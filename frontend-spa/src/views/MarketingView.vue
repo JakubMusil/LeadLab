@@ -16,12 +16,13 @@ import { useI18n } from '@/composables/useI18n'
 const { t, tm } = useI18n()
 
 const faqOpen = ref<number | null>(null)
+const contactHref = 'https://github.com/JakubMusil/LeadLab/issues'
 
 function toggleFaq(i: number) {
   faqOpen.value = faqOpen.value === i ? null : i
 }
 
-// Feature card icons — one per card; length must match marketing.features.cards
+// Feature card icons are assigned in order and repeat if localized cards are extended
 const featureIcons: Component[] = [
   UsersIcon,
   ClipboardDocumentListIcon,
@@ -34,6 +35,7 @@ const featureIcons: Component[] = [
 type MetricItem = { value: string; label: string }
 type StepItem = { title: string; description: string }
 type CardItem = { title: string; description: string }
+type FeatureCardItem = CardItem & { icon: Component }
 type SegmentItem = { title: string; description: string }
 type PlanItem = {
   name: string
@@ -56,9 +58,13 @@ const workflowSteps = computed<StepItem[]>(() => {
   return Array.isArray(raw) ? (raw as StepItem[]) : []
 })
 
-const featureCards = computed<CardItem[]>(() => {
+const featureCards = computed<FeatureCardItem[]>(() => {
   const raw = tm('marketing.features.cards')
-  return Array.isArray(raw) ? (raw as CardItem[]) : []
+  if (!Array.isArray(raw)) return []
+  return (raw as CardItem[]).map((card, index) => ({
+    ...card,
+    icon: featureIcons[index % featureIcons.length] ?? Squares2X2Icon,
+  }))
 })
 
 const trustSegments = computed<SegmentItem[]>(() => {
@@ -237,15 +243,11 @@ const faqItems = computed<FaqItem[]>(() => {
             role="list"
           >
             <li
-              v-for="(card, i) in featureCards"
+              v-for="card in featureCards"
               :key="card.title"
               class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
             >
-              <component
-                :is="featureIcons[i] ?? Squares2X2Icon"
-                class="w-9 h-9 mb-4 text-red-500"
-                aria-hidden="true"
-              />
+              <component :is="card.icon" class="w-9 h-9 mb-4 text-red-500" aria-hidden="true" />
               <h3 class="text-base font-semibold text-gray-900 mb-2">{{ card.title }}</h3>
               <p class="text-sm text-gray-500 leading-relaxed">{{ card.description }}</p>
             </li>
@@ -363,7 +365,7 @@ const faqItems = computed<FaqItem[]>(() => {
               >{{ t('marketing.cta.primaryCta') }}</a
             >
             <a
-              :href="t('marketing.cta.contactHref')"
+              :href="contactHref"
               target="_blank"
               rel="noopener noreferrer"
               class="inline-block px-8 py-3.5 border border-gray-200 text-gray-700 font-semibold rounded-2xl hover:bg-gray-50 transition-colors text-lg"
