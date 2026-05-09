@@ -403,7 +403,7 @@ const faqItems = computed<FaqItem[]>(() => {
                   />
                 </button>
               </dt>
-              <dd :id="`faq-panel-${i}`" :aria-labelledby="`faq-btn-${i}`" role="region">
+              <dd :id="`faq-panel-${i}`" :aria-labelledby="`faq-btn-${i}`">
                 <div
                   v-show="faqOpen === i"
                   class="px-6 pb-5 pt-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100"

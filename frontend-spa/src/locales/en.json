@@ -213,9 +213,7 @@
       "links": {
         "login": "Sign in",
         "signup": "Sign up",
-        "github": "GitHub",
-        "privacy": "Privacy",
-        "contact": "Contact"
+        "github": "GitHub"
       },
       "copyright": "© {year} LeadLab. All rights reserved."
     }
