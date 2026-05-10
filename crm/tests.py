@@ -4349,3 +4349,36 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
             "value": "2026-01-01",
         }
         self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_field_change_changed_requires_actual_difference(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": "qualified",
+            "new_value": "qualified",
+        }
+        tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))
+
+    def test_field_change_treats_none_and_string_none_as_different(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": None,
+            "new_value": "qualified",
+        }
+        tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed_from",
+            "value": "None",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))

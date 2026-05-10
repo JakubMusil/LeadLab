@@ -1351,6 +1351,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Další analýza byla delegována podagentovi (návrh minimální implementace + testovací scénáře), následně proběhla ruční konceptuální validace proti aktuálním souborům (`crm/condition_rules.py`, `crm/tests.py`).
 - Funkční implementace: `ConditionTreeEvaluator` nově podporuje `source_type` `field_change` a `category_field_change` s operátory `changed`, `changed_from`, `changed_to`; `RecordConditionContextBuilder` nyní vrací i `change` kontext (`field_key`, `source_type`, `old_value`, `new_value`).
 - Doplněny backend testy `ConditionRulesTest` pro nové operátory i fail-closed scénář při neshodě změněného pole.
+- Následná nezávislá validační kontrola podagentem odhalila edge case porovnání `None` vs `"None"`; fix aplikován v `_values_equal` a doplněny regresní testy (beze změny hodnoty + `None` vs string).
 - Výsledek: bod 13.4 „Přidat podporu změny hodnoty z/do“ je dokončen a checkbox je aktualizovaný na splněný.
 - Následuje: pokračovat implementací 13.4 o podporu existence související entity a výstupů pravidla, poté navázat body 13.5 (napojení na stage-change flow).
 

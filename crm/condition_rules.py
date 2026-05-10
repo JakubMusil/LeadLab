@@ -427,6 +427,6 @@ class ConditionTreeEvaluator:
             return None
 
     def _values_equal(self, left: Any, right: Any) -> bool:
-        if left is None and right is None:
-            return True
+        if left is None or right is None:
+            return left is right
         return str(left) == str(right)
