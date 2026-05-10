@@ -4,7 +4,27 @@ from django.utils import timezone
 import datetime as dt
 from decimal import Decimal
 
-from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, Proposal, RecordSource, RecordStatus, Task
+from crm.models import (
+    Activity,
+    ActivityType,
+    Category,
+    ConditionEffectType,
+    ConditionRule,
+    ConditionScopeType,
+    ConditionSeverity,
+    ConditionTriggerType,
+    ContactType,
+    Customer,
+    PipelineRecord,
+    Proposal,
+    RecordSource,
+    RecordStatus,
+    RuleEvaluationLog,
+    RuleEvaluationResult,
+    Stage,
+    StageScenario,
+    Task,
+)
 from firms.models import Firm, Membership, InvitationRole
 from users.models import User
 
@@ -963,6 +983,16 @@ class RecordGetAPITest(CRMAPIFixtureMixin, TestCase):
 
 
 class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.category = Category.objects.create(firm=self.firm, name="Sales")
+        self.stage_new = Stage.objects.create(category=self.category, name="New", order=0)
+        self.stage_won = Stage.objects.create(category=self.category, name="Won", order=1)
+        self.record.category = self.category
+        self.record.current_stage = self.stage_new
+        self.record.status = RecordStatus.NEW
+        self.record.save(update_fields=["category", "current_stage", "status"])
+
     def test_patch_record_title(self):
         resp = self._patch(f"/api/v1/crm/records/{self.record.id}", {"title": "Updated"})
         self.assertEqual(resp.status_code, 200)
@@ -984,6 +1014,140 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         import uuid
         resp = self._patch(f"/api/v1/crm/records/{uuid.uuid4()}", {"title": "X"})
         self.assertEqual(resp.status_code, 404)
+
+    def test_stage_change_blocked_returns_400_and_logs(self):
+        rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Block move to won",
+            trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+            scope_type=ConditionScopeType.STAGE_TRANSITION,
+            source_stage=self.stage_new,
+            target_stage=self.stage_won,
+            condition_tree={"field": "status", "operator": "eq", "value": "new"},
+            effect=ConditionEffectType.BLOCK,
+            severity=ConditionSeverity.ERROR,
+            effect_config={"message": "Missing preconditions"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"current_stage_id": str(self.stage_won.id)},
+        )
+        self.assertEqual(resp.status_code, 400)
+        body = resp.json()
+        self.assertEqual(body.get("code"), "stage_change_blocked")
+        self.assertIn("stage_change_evaluation", body)
+        self.assertEqual(len(body["stage_change_evaluation"]["requested"]["blocking"]), 1)
+
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.current_stage_id, self.stage_new.id)
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+                rule=rule,
+                result=RuleEvaluationResult.BLOCKED,
+            ).exists()
+        )
+
+    def test_stage_change_warning_returns_200_with_evaluation(self):
+        ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn move to won",
+            trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+            scope_type=ConditionScopeType.STAGE_TRANSITION,
+            source_stage=self.stage_new,
+            target_stage=self.stage_won,
+            condition_tree={"field": "status", "operator": "eq", "value": "new"},
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Double-check checklist"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"current_stage_id": str(self.stage_won.id)},
+        )
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertIn("stage_change_evaluation", payload)
+        requested_eval = payload["stage_change_evaluation"]["requested"]
+        self.assertEqual(len(requested_eval["blocking"]), 0)
+        self.assertEqual(len(requested_eval["warnings"]), 1)
+
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.current_stage_id, self.stage_won.id)
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+                result=RuleEvaluationResult.WARNING,
+            ).exists()
+        )
+
+    def test_stage_changed_rules_run_after_successful_change(self):
+        changed_rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Post change warning",
+            trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+            scope_type=ConditionScopeType.STAGE,
+            stage=self.stage_won,
+            condition_tree={"field": "status", "operator": "eq", "value": "new"},
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Post change warning"},
+        )
+        StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_won,
+            name="Won scenario",
+            activation_condition={},
+            is_active=True,
+            priority=1,
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"current_stage_id": str(self.stage_won.id)},
+        )
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        changed_eval = payload["stage_change_evaluation"]["changed"]
+        self.assertEqual(len(changed_eval["warnings"]), 1)
+        self.assertEqual(changed_eval["warnings"][0]["rule_id"], str(changed_rule.id))
+
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.current_stage_id, self.stage_won.id)
+        self.assertIn("active_stage_scenario_id", self.record.extra_data)
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+                rule=changed_rule,
+                result=RuleEvaluationResult.WARNING,
+            ).exists()
+        )
+
+    def test_patch_without_stage_change_does_not_write_stage_logs(self):
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Only title update"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type__in=[
+                    ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+                    ConditionTriggerType.RECORD_STAGE_CHANGED,
+                ],
+            ).exists()
+        )
 
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):

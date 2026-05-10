@@ -28,6 +28,13 @@ from crm.models import (
     Category,
     CategoryField,
     Checkpoint,
+    ConditionEffectType,
+    ConditionRule,
+    ConditionScopeType,
+    ConditionTriggerType,
+    ConditionSeverity,
+    RuleEvaluationLog,
+    RuleEvaluationResult,
     ContactType,
     Customer,
     DashboardLayout,
@@ -56,6 +63,7 @@ from crm.models import (
     TaskTemplate,
     TaskTimeLog,
     TaskTimer,
+    StageScenario,
 )
 from firms.auth import (
     InvitationRole,
@@ -89,6 +97,8 @@ logger = logging.getLogger(__name__)
 
 class ErrorOut(Schema):
     detail: str
+    code: Optional[str] = None
+    stage_change_evaluation: Optional[Dict[str, Any]] = None
 
 
 # ===========================================================================
@@ -436,6 +446,10 @@ class RecordUpdateIn(Schema):
     extra_data: Optional[Dict[str, Any]] = None
 
 
+class RecordUpdateOut(RecordOut):
+    stage_change_evaluation: Optional[Dict[str, Any]] = None
+
+
 def _validate_record_field_rules(
     category_id: Optional[Any],
     value: Optional[Any] = None,
@@ -613,6 +627,322 @@ def _record_out(record: PipelineRecord, rules: Optional[list] = None) -> dict:
         "notes": record.notes or "",
         "extra_data": record.extra_data or {},
     }
+
+
+def _build_stage_change_condition_context(
+    record: PipelineRecord,
+    *,
+    from_stage_id: Any,
+    to_stage_id: Any,
+) -> dict:
+    from crm.condition_rules import RecordConditionContextBuilder
+
+    context = RecordConditionContextBuilder().build(
+        record,
+        changed_field="current_stage_id",
+        old_value=str(from_stage_id) if from_stage_id else None,
+        new_value=str(to_stage_id) if to_stage_id else None,
+        changed_field_source="field",
+    )
+    context["stage_change"] = {
+        "from_stage_id": str(from_stage_id) if from_stage_id else None,
+        "to_stage_id": str(to_stage_id) if to_stage_id else None,
+    }
+    return context
+
+
+def _get_applicable_stage_change_rules(
+    *,
+    firm,
+    record: PipelineRecord,
+    trigger_type: str,
+    from_stage_id: Any,
+    to_stage_id: Any,
+) -> list[ConditionRule]:
+    rules = (
+        ConditionRule.objects
+        .filter(
+            firm=firm,
+            is_active=True,
+            trigger_type=trigger_type,
+        )
+        .order_by("priority", "created_at", "id")
+    )
+
+    applicable: list[ConditionRule] = []
+    record_category_id = str(record.category_id) if record.category_id else None
+    from_stage = str(from_stage_id) if from_stage_id else None
+    to_stage = str(to_stage_id) if to_stage_id else None
+    for rule in rules:
+        scope_type = rule.scope_type
+        if scope_type == ConditionScopeType.FIRM:
+            applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.CATEGORY:
+            if rule.category_id and str(rule.category_id) == record_category_id:
+                applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.STAGE:
+            if rule.stage_id and str(rule.stage_id) == to_stage:
+                applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.STAGE_TRANSITION:
+            if (
+                rule.source_stage_id
+                and rule.target_stage_id
+                and str(rule.source_stage_id) == from_stage
+                and str(rule.target_stage_id) == to_stage
+            ):
+                applicable.append(rule)
+            continue
+    return applicable
+
+
+def _serialize_stage_rule_output(output: dict[str, Any]) -> dict[str, Any]:
+    effect_config = output.get("effect_config")
+    message = ""
+    if isinstance(effect_config, dict):
+        message = (
+            str(effect_config.get("message") or "")
+            or str(effect_config.get("title") or "")
+        )
+    return {
+        "rule_id": str(output.get("rule_id")) if output.get("rule_id") else "",
+        "name": str(output.get("name") or ""),
+        "priority": output.get("priority"),
+        "effect": output.get("effect"),
+        "severity": output.get("severity"),
+        "message": message,
+        "effect_config": effect_config if isinstance(effect_config, dict) else {},
+    }
+
+
+def _log_stage_rule_outputs(
+    *,
+    firm,
+    record: PipelineRecord,
+    trigger_type: str,
+    context: dict[str, Any],
+    outputs: list[dict[str, Any]],
+    evaluated_by,
+):
+    compact_context = {
+        "record_id": str(record.id),
+        "category_id": str(record.category_id) if record.category_id else None,
+        "current_stage_id": str(record.current_stage_id) if record.current_stage_id else None,
+        "stage_change": context.get("stage_change", {}),
+    }
+    if not outputs:
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            trigger_type=trigger_type,
+            input_context=compact_context,
+            result=RuleEvaluationResult.PASSED,
+            messages=[],
+            recommendations=[],
+            evaluated_by=evaluated_by,
+        )
+        return
+
+    for output in outputs:
+        effect = output.get("effect")
+        if effect == ConditionEffectType.BLOCK:
+            result = RuleEvaluationResult.BLOCKED
+        elif effect == ConditionEffectType.WARNING:
+            result = RuleEvaluationResult.WARNING
+        else:
+            result = RuleEvaluationResult.PASSED
+
+        effect_config = output.get("effect_config")
+        message = ""
+        if isinstance(effect_config, dict):
+            message = str(effect_config.get("message") or "")
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            rule_id=output.get("rule_id"),
+            trigger_type=trigger_type,
+            input_context=compact_context,
+            result=result,
+            messages=[message] if message else [],
+            recommendations=[effect_config] if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict) else [],
+            evaluated_by=evaluated_by,
+        )
+
+
+def _log_stage_rule_error(
+    *,
+    firm,
+    record: PipelineRecord,
+    trigger_type: str,
+    context: dict[str, Any],
+    evaluated_by,
+    error: Exception,
+):
+    RuleEvaluationLog.objects.create(
+        firm=firm,
+        record=record,
+        trigger_type=trigger_type,
+        input_context={
+            "record_id": str(record.id),
+            "stage_change": context.get("stage_change", {}),
+        },
+        result=RuleEvaluationResult.ERROR,
+        messages=[],
+        recommendations=[],
+        error_message=str(error),
+        evaluated_by=evaluated_by,
+    )
+
+
+def _evaluate_stage_change_trigger(
+    *,
+    firm,
+    record: PipelineRecord,
+    trigger_type: str,
+    from_stage_id: Any,
+    to_stage_id: Any,
+    evaluated_by,
+    fail_closed: bool,
+) -> dict[str, list[dict[str, Any]]]:
+    from crm.condition_rules import evaluate_condition_rule_outputs
+
+    context = _build_stage_change_condition_context(
+        record,
+        from_stage_id=from_stage_id,
+        to_stage_id=to_stage_id,
+    )
+    try:
+        rules = _get_applicable_stage_change_rules(
+            firm=firm,
+            record=record,
+            trigger_type=trigger_type,
+            from_stage_id=from_stage_id,
+            to_stage_id=to_stage_id,
+        )
+        outputs = evaluate_condition_rule_outputs(rules, context)
+        _log_stage_rule_outputs(
+            firm=firm,
+            record=record,
+            trigger_type=trigger_type,
+            context=context,
+            outputs=outputs,
+            evaluated_by=evaluated_by,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Stage change rule evaluation failed for record %s (trigger=%s)",
+            record.id,
+            trigger_type,
+        )
+        _log_stage_rule_error(
+            firm=firm,
+            record=record,
+            trigger_type=trigger_type,
+            context=context,
+            evaluated_by=evaluated_by,
+            error=exc,
+        )
+        if fail_closed:
+            return {
+                "blocking": [
+                    {
+                        "rule_id": "",
+                        "name": "Condition evaluation failed",
+                        "priority": None,
+                        "effect": ConditionEffectType.BLOCK,
+                        "severity": ConditionSeverity.ERROR,
+                        "message": "Condition evaluation failed.",
+                        "effect_config": {},
+                    },
+                ],
+                "warnings": [],
+            }
+        return {"blocking": [], "warnings": []}
+
+    blocking = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.BLOCK
+    ]
+    warnings = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.WARNING
+    ]
+    return {
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+def _refresh_active_stage_scenario(record: PipelineRecord):
+    from crm.condition_rules import ConditionTreeEvaluator
+
+    extra_data = dict(record.extra_data or {})
+    if not record.category_id or not record.current_stage_id:
+        if "active_stage_scenario_id" in extra_data:
+            extra_data.pop("active_stage_scenario_id")
+            record.extra_data = extra_data
+            record.save(update_fields=["extra_data"])
+        return
+
+    context = _build_stage_change_condition_context(
+        record,
+        from_stage_id=record.current_stage_id,
+        to_stage_id=record.current_stage_id,
+    )
+    evaluator = ConditionTreeEvaluator()
+    active_scenario_id: str | None = None
+    scenarios = (
+        StageScenario.objects
+        .filter(
+            firm=record.firm,
+            category_id=record.category_id,
+            stage_id=record.current_stage_id,
+            is_active=True,
+        )
+        .order_by("priority", "created_at", "id")
+    )
+    for scenario in scenarios:
+        tree = scenario.activation_condition
+        is_active = True if tree in (None, {}) else evaluator.evaluate(tree, context)
+        if is_active:
+            active_scenario_id = str(scenario.id)
+            break
+
+    if active_scenario_id:
+        if extra_data.get("active_stage_scenario_id") != active_scenario_id:
+            extra_data["active_stage_scenario_id"] = active_scenario_id
+            record.extra_data = extra_data
+            record.save(update_fields=["extra_data"])
+        return
+
+    if "active_stage_scenario_id" in extra_data:
+        extra_data.pop("active_stage_scenario_id")
+        record.extra_data = extra_data
+        record.save(update_fields=["extra_data"])
+
+
+def _run_post_stage_change_hooks(
+    *,
+    firm,
+    record: PipelineRecord,
+    old_stage_id: Any,
+    evaluated_by,
+) -> dict[str, list[dict[str, Any]]]:
+    changed_eval = _evaluate_stage_change_trigger(
+        firm=firm,
+        record=record,
+        trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+        from_stage_id=old_stage_id,
+        to_stage_id=record.current_stage_id,
+        evaluated_by=evaluated_by,
+        fail_closed=False,
+    )
+    _refresh_active_stage_scenario(record)
+    return changed_eval
 
 
 def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
@@ -985,7 +1315,7 @@ def get_record(request, record_id: str):
     return 200, _record_out(record)
 
 
-@router.patch("/records/{record_id}", auth=django_auth, response={200: RecordOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
+@router.patch("/records/{record_id}", auth=django_auth, response={200: RecordUpdateOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut})
 def update_record(request, record_id: str, payload: RecordUpdateIn):
     try:
         require_permission(request, Permission.RECORD_EDIT)
@@ -998,7 +1328,11 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         return 404, {"detail": "Record not found."}
 
     old_status = record.status
+    old_stage_id = record.current_stage_id
     update_data = payload.dict(exclude_none=True)
+    requested_stage_eval: dict[str, list[dict[str, Any]]] = {"blocking": [], "warnings": []}
+    changed_stage_eval: dict[str, list[dict[str, Any]]] = {"blocking": [], "warnings": []}
+    stage_change_performed = False
 
     # Handle status change — create an Activity in the same transaction
     new_status = update_data.pop("status", None)
@@ -1053,10 +1387,48 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 stage = Stage.objects.get(id=stage_id)
                 if record.category_id and stage.category_id != record.category_id:
                     return 400, {"detail": "Stage does not belong to the record's category."}
+                if old_stage_id != stage.id:
+                    stage_change_performed = True
+                    requested_stage_eval = _evaluate_stage_change_trigger(
+                        firm=request.firm,
+                        record=record,
+                        trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+                        from_stage_id=old_stage_id,
+                        to_stage_id=stage.id,
+                        evaluated_by=request.user,
+                        fail_closed=True,
+                    )
+                    if requested_stage_eval["blocking"]:
+                        return 400, {
+                            "detail": "Stage change blocked by condition rules.",
+                            "code": "stage_change_blocked",
+                            "stage_change_evaluation": {
+                                "requested": requested_stage_eval,
+                            },
+                        }
                 record.current_stage = stage
             except Stage.DoesNotExist:
                 return 400, {"detail": "Stage not found."}
         else:
+            if old_stage_id is not None:
+                stage_change_performed = True
+                requested_stage_eval = _evaluate_stage_change_trigger(
+                    firm=request.firm,
+                    record=record,
+                    trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+                    from_stage_id=old_stage_id,
+                    to_stage_id=None,
+                    evaluated_by=request.user,
+                    fail_closed=True,
+                )
+                if requested_stage_eval["blocking"]:
+                    return 400, {
+                        "detail": "Stage change blocked by condition rules.",
+                        "code": "stage_change_blocked",
+                        "stage_change_evaluation": {
+                            "requested": requested_stage_eval,
+                        },
+                    }
             record.current_stage = None
 
     if "parent_id" in update_data:
@@ -1109,6 +1481,13 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
             if new_status and new_status != old_status:
                 record.status = new_status
                 record.save()
+                if stage_change_performed:
+                    changed_stage_eval = _run_post_stage_change_hooks(
+                        firm=request.firm,
+                        record=record,
+                        old_stage_id=old_stage_id,
+                        evaluated_by=request.user,
+                    )
                 Activity.objects.create(
                     record=record,
                     user=request.user,
@@ -1133,11 +1512,24 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 )
             else:
                 record.save()
+                if stage_change_performed:
+                    changed_stage_eval = _run_post_stage_change_hooks(
+                        firm=request.firm,
+                        record=record,
+                        old_stage_id=old_stage_id,
+                        evaluated_by=request.user,
+                    )
         finally:
             clear_current_user()
 
     broadcast_event(firm=request.firm, event='record.updated', payload=_record_out(record))
-    return 200, _record_out(record)
+    response = _record_out(record)
+    if stage_change_performed:
+        response["stage_change_evaluation"] = {
+            "requested": requested_stage_eval,
+            "changed": changed_stage_eval,
+        }
+    return 200, response
 
 
 @router.delete("/records/{record_id}", auth=django_auth, response={204: None, 403: ErrorOut, 404: ErrorOut})
