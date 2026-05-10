@@ -878,18 +878,26 @@ def _evaluate_stage_change_trigger(
     }
 
 
-def _to_json_compatible_value(value: Any) -> Any:
+def _to_json_compatible_value(value: Any, seen: set[int] | None = None) -> Any:
+    if seen is None:
+        seen = set()
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, list):
-        return [_to_json_compatible_value(item) for item in value]
-    if isinstance(value, tuple):
-        return [_to_json_compatible_value(item) for item in value]
+
+    if isinstance(value, (dict, list, tuple, set)):
+        value_id = id(value)
+        if value_id in seen:
+            return "<circular_reference>"
+        seen.add(value_id)
+
     if isinstance(value, dict):
         return {
-            str(key): _to_json_compatible_value(item)
+            str(key): _to_json_compatible_value(item, seen)
             for key, item in value.items()
         }
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_compatible_value(item, seen) for item in value]
+
     if hasattr(value, "isoformat"):
         try:
             return value.isoformat()
@@ -1002,6 +1010,9 @@ def _log_field_change_rule_outputs(
         message = ""
         if isinstance(effect_config, dict):
             message = str(effect_config.get("message") or "")
+        recommendations: list[dict[str, Any]] = []
+        if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict):
+            recommendations = [effect_config]
         RuleEvaluationLog.objects.create(
             firm=firm,
             record=record,
@@ -1010,7 +1021,7 @@ def _log_field_change_rule_outputs(
             input_context=compact_context,
             result=result,
             messages=[message] if message else [],
-            recommendations=[effect_config] if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict) else [],
+            recommendations=recommendations,
             evaluated_by=evaluated_by,
         )
 
@@ -1556,7 +1567,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     old_status = record.status
     old_stage_id = record.current_stage_id
     update_data = payload.dict(exclude_none=True)
-    requested_field_keys = set(update_data.keys()) | ({"status"} if "status" in update_data else set())
+    requested_field_keys = set(update_data.keys())
     old_standard_field_values = {
         "title": record.title,
         "status": record.status,
