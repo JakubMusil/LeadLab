@@ -1020,13 +1020,13 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.7 Napojení na změny kategoriových polí
 
-- [ ] Detekovat změny kategoriových polí.
-- [ ] Ověřit, že pole patří ke kategorii záznamu.
-- [ ] Sestavit context s `category_field_key`.
-- [ ] Vyhodnotit pravidla typu `record.category_field_changed`.
-- [ ] Zohlednit povinnost pole podle fáze.
-- [ ] Aktualizovat požadavky scénáře.
-- [ ] Zapsat log vyhodnocení.
+- [x] Detekovat změny kategoriových polí.
+- [x] Ověřit, že pole patří ke kategorii záznamu.
+- [x] Sestavit context s `category_field_key`.
+- [x] Vyhodnotit pravidla typu `record.category_field_changed`.
+- [x] Zohlednit povinnost pole podle fáze.
+- [x] Aktualizovat požadavky scénáře.
+- [x] Zapsat log vyhodnocení.
 
 ### 13.8 Napojení na Streamline feed
 
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 17:12 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený bod 13.7 (napojení na změny kategoriových polí).
+- Další krok byl maximalizovaně delegován na dva podagenty (implementační návrh + nezávislá validační revize) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `crm/tests.py`).
+- Funkční implementace: `update_record` nyní detekuje změny kategoriových polí z `extra_data` (včetně legacy fallbacku), fail-closed validuje klíče proti `CategoryField` aktuální kategorie a vyhodnocuje trigger `record.category_field_changed`.
+- Doplněny nové helpery pro kategoriové změny (`_build_category_field_change_condition_context`, `_get_applicable_category_field_change_rules`, `_evaluate_category_field_change_trigger`, logování výstupů/chyb do `RuleEvaluationLog`), včetně contextu s `category_field_key`.
+- Doplněna robustní evaluace v `ConditionTreeEvaluator`: kontrola `source_type` i pro `field_changes` mapu a podpora `change.category_field_key`, aby nedocházelo k false-positive matchům.
+- Napojeno zohlednění povinností pole podle fáze: po změně kategoriových polí se nyní přepočítává aktivní scénář/požadavky (`active_stage_requirements`) přes `_refresh_active_stage_scenario`.
+- Rozšířeny integrační a regresní backend testy v `RecordUpdateAPITest` a `ConditionRulesTest` pro evaluaci/logování/no-op změny/invalid klíč i refresh stage requirementů.
+- Hotovo: bod 13.7 je nyní kompletně dokončený.
+- Následuje: navázat etapou 13.8 (napojení na Streamline feed) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 16:46 UTC
 
