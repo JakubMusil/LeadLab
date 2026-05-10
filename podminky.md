@@ -969,15 +969,15 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.3 Migrace
 
-- [ ] Přidat tabulku pravidel.
-- [ ] Přidat tabulku scénářů.
-- [ ] Přidat tabulku požadavků scénáře.
-- [ ] Přidat tabulku logu vyhodnocení.
-- [ ] Přidat indexy pro firmu, kategorii a fázi.
-- [ ] Přidat indexy pro record trigger vyhodnocení.
-- [ ] Přidat indexy pro Streamline activity vyhodnocení.
-- [ ] Přidat bezpečné defaulty.
-- [ ] Připravit rollback migrace.
+- [x] Přidat tabulku pravidel.
+- [x] Přidat tabulku scénářů.
+- [x] Přidat tabulku požadavků scénáře.
+- [x] Přidat tabulku logu vyhodnocení.
+- [x] Přidat indexy pro firmu, kategorii a fázi.
+- [x] Přidat indexy pro record trigger vyhodnocení.
+- [x] Přidat indexy pro Streamline activity vyhodnocení.
+- [x] Přidat bezpečné defaulty.
+- [x] Připravit rollback migrace.
 
 ### 13.4 Evaluátor pravidel
 
@@ -1362,3 +1362,12 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - frontend checks aktuálně padají na pre-existing TypeScript chybách mimo tento dokument,
   - backend checks aktuálně padají na `pip-audit` nálezu `twisted 25.5.0 / CVE-2026-42304` (fix verze `26.4.0rc2`).
 - Následuje: navázat návrhem datového modelu (13.2) a připravit první konkrétní návrh struktur pro pravidla, scénáře a log vyhodnocení.
+
+### 2026-05-10 10:31 UTC
+
+- Pro další krok byla zvolena realizace 13.3 (migrace) podle předchozího postupu uvedeného v dokumentu.
+- Návrh byl maximálně delegován: samostatný podagent připravil konkrétní návrh modelů/migrace a druhý podagent provedl nezávislou validační kontrolu návrhu.
+- Konceptuální validace: výstupy podagentů byly ručně porovnány s aktuálními modely (`crm/models.py`, `firms/models.py`) a upraveny na kompatibilní naming (`is_active`, `created_by` na `AUTH_USER_MODEL`, nullable vazby logu).
+- Funkční validace: implementovány modely `ConditionRule`, `StageScenario`, `StageRequirement`, `RuleEvaluationLog` a vytvořena reverzibilní migrace `crm/migrations/0010_conditionrule_stagescenario_stagerequirement_and_more.py` včetně indexů pro firm/category/stage/trigger/activity a log evaluací.
+- Výsledek: checklist 13.3 je dokončený a označený jako splněný.
+- Následuje: navázat etapou 13.4 (evaluátor pravidel) – začít službou pro sestavení kontextu pravidla a základním vyhodnocením `AND`/`OR` nad `condition_tree`.
