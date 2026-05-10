@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
 from decimal import Decimal
+from unittest.mock import patch
 
 from crm.models import (
     Activity,
@@ -1523,6 +1524,204 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(resp.status_code, 201)
         self.record.refresh_from_db()
         self.assertEqual(self.record.status, "contacted")
+
+    def test_create_activity_record_evaluates_streamline_rules_and_logs(self):
+        category = Category.objects.create(firm=self.firm, name="Sales")
+        stage = Stage.objects.create(category=category, name="New", order=0)
+        self.record.category = category
+        self.record.current_stage = stage
+        self.record.save(update_fields=["category", "current_stage"])
+        rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn on comment activity",
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+            scope_type=ConditionScopeType.STAGE,
+            stage=stage,
+            activity_type=ActivityType.COMMENT,
+            condition_tree={
+                "source_type": "streamline_activity",
+                "activity_type": ActivityType.COMMENT,
+                "operator": "exists",
+            },
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Comment activity detected"},
+        )
+
+        resp = self._post(self.URL, {
+            "record_id": str(self.record.id),
+            "type": ActivityType.COMMENT,
+            "content_text": "First contact",
+        })
+        self.assertEqual(resp.status_code, 201)
+        log = RuleEvaluationLog.objects.filter(
+            firm=self.firm,
+            record=self.record,
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+            rule=rule,
+            result=RuleEvaluationResult.WARNING,
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.input_context.get("streamline_event", {}).get("entity_type"), "record")
+        self.assertEqual(log.input_context.get("streamline_event", {}).get("type"), ActivityType.COMMENT)
+
+    def test_create_activity_customer_refreshes_linked_record_requirements(self):
+        category = Category.objects.create(firm=self.firm, name="Sales")
+        stage = Stage.objects.create(category=category, name="New", order=0)
+        self.record.category = category
+        self.record.current_stage = stage
+        self.record.save(update_fields=["category", "current_stage"])
+        scenario = StageScenario.objects.create(
+            firm=self.firm,
+            category=category,
+            stage=stage,
+            name="Customer activity scenario",
+            activation_condition={},
+            is_active=True,
+            priority=1,
+        )
+        requirement = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Customer comment exists",
+            requirement_type="activity",
+            condition={
+                "source_type": "activity",
+                "activity_type": ActivityType.COMMENT,
+                "entity_type": "customer",
+                "operator": "exists",
+            },
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
+
+        resp = self._post(self.URL, {
+            "customer_id": str(self.customer.id),
+            "type": ActivityType.COMMENT,
+            "content_text": "Customer note",
+        })
+        self.assertEqual(resp.status_code, 201)
+        self.record.refresh_from_db()
+        self.assertEqual(
+            self.record.extra_data.get("active_stage_requirements", [{}])[0].get("id"),
+            str(requirement.id),
+        )
+        self.assertTrue(
+            self.record.extra_data.get("active_stage_requirements", [{}])[0].get("is_met"),
+        )
+
+    def test_create_activity_proposal_and_task_refresh_linked_record_requirements(self):
+        category = Category.objects.create(firm=self.firm, name="Sales")
+        stage = Stage.objects.create(category=category, name="New", order=0)
+        self.record.category = category
+        self.record.current_stage = stage
+        self.record.save(update_fields=["category", "current_stage"])
+        proposal = Proposal.objects.create(
+            firm=self.firm,
+            title="Offer",
+            record=self.record,
+            customer=self.customer,
+        )
+        task = Task.objects.create(
+            firm=self.firm,
+            title="Follow-up",
+            record=self.record,
+            proposal=proposal,
+            customer=self.customer,
+        )
+        scenario = StageScenario.objects.create(
+            firm=self.firm,
+            category=category,
+            stage=stage,
+            name="Proposal/task activity scenario",
+            activation_condition={},
+            is_active=True,
+            priority=1,
+        )
+        StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Proposal comment exists",
+            requirement_type="activity",
+            condition={
+                "source_type": "activity",
+                "activity_type": ActivityType.COMMENT,
+                "entity_type": "proposal",
+                "operator": "exists",
+            },
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
+
+        proposal_resp = self._post(self.URL, {
+            "proposal_id": str(proposal.id),
+            "type": ActivityType.COMMENT,
+            "content_text": "Proposal note",
+        })
+        self.assertEqual(proposal_resp.status_code, 201)
+        self.record.refresh_from_db()
+        self.assertTrue(self.record.extra_data.get("active_stage_requirements", [{}])[0].get("is_met"))
+
+        StageRequirement.objects.all().delete()
+        StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Task comment exists",
+            requirement_type="activity",
+            condition={
+                "source_type": "activity",
+                "activity_type": ActivityType.COMMENT,
+                "entity_type": "task",
+                "operator": "exists",
+            },
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
+
+        task_resp = self._post(self.URL, {
+            "task_id": str(task.id),
+            "type": ActivityType.COMMENT,
+            "content_text": "Task note",
+        })
+        self.assertEqual(task_resp.status_code, 201)
+        self.record.refresh_from_db()
+        self.assertTrue(self.record.extra_data.get("active_stage_requirements", [{}])[0].get("is_met"))
+
+    def test_create_activity_condition_evaluation_failure_is_fail_open(self):
+        category = Category.objects.create(firm=self.firm, name="Sales")
+        stage = Stage.objects.create(category=category, name="New", order=0)
+        self.record.category = category
+        self.record.current_stage = stage
+        self.record.save(update_fields=["category", "current_stage"])
+        ConditionRule.objects.create(
+            firm=self.firm,
+            name="Any streamline rule",
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+            scope_type=ConditionScopeType.FIRM,
+            condition_tree={},
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+        )
+
+        with patch("crm.condition_rules.evaluate_condition_rule_outputs", side_effect=RuntimeError("boom")):
+            resp = self._post(self.URL, {
+                "record_id": str(self.record.id),
+                "type": ActivityType.COMMENT,
+                "content_text": "First contact",
+            })
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+                result=RuleEvaluationResult.ERROR,
+            ).exists()
+        )
 
     # ------------------------------------------------------------------
     # F-3 — payload validation against tool JSON Schema
