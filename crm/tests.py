@@ -4283,3 +4283,103 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
         self.assertTrue(evaluate_condition_tree(tree_recent, context))
         self.assertFalse(evaluate_condition_tree(tree_old, context))
         self.assertTrue(evaluate_condition_tree(tree_streamline_activity_days, context))
+
+    def test_field_change_source_supports_changed_operators(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": "new",
+            "new_value": "qualified",
+        }
+        changed_tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed",
+        }
+        changed_from_tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed_from",
+            "value": "new",
+        }
+        changed_to_tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed_to",
+            "value": "qualified",
+        }
+
+        self.assertTrue(evaluate_condition_tree(changed_tree, context))
+        self.assertTrue(evaluate_condition_tree(changed_from_tree, context))
+        self.assertTrue(evaluate_condition_tree(changed_to_tree, context))
+
+    def test_field_change_source_fails_for_non_matching_field(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": "new",
+            "new_value": "qualified",
+        }
+        tree = {
+            "source_type": "field_change",
+            "field": "value",
+            "operator": "changed",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))
+
+    def test_category_field_change_source_supports_changed_from(self):
+        from crm.tasks import evaluate_condition_tree
+
+        # The evaluator supports both flat change keys and nested `change` payloads.
+        context = {
+            "change": {
+                "field_key": "installation_date",
+                "source_type": "category_field",
+                "old_value": "2026-01-01",
+                "new_value": "2026-05-01",
+            }
+        }
+        tree = {
+            "source_type": "category_field_change",
+            "category_field_key": "installation_date",
+            "operator": "changed_from",
+            "value": "2026-01-01",
+        }
+        self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_field_change_changed_requires_actual_difference(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": "qualified",
+            "new_value": "qualified",
+        }
+        tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))
+
+    def test_field_change_treats_none_and_string_none_as_different(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "changed_field": "status",
+            "changed_field_source": "field",
+            "old_value": None,
+            "new_value": "qualified",
+        }
+        tree = {
+            "source_type": "field_change",
+            "field": "status",
+            "operator": "changed_from",
+            "value": "None",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))
