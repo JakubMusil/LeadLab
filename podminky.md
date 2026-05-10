@@ -988,10 +988,10 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Přidat podporu negace.
 - [x] Přidat podporu vnořených skupin.
 - [x] Přidat podporu standardních polí.
-- [ ] Přidat podporu kategoriových polí.
-- [ ] Přidat podporu Streamline aktivit.
-- [ ] Přidat podporu Streamline tool typů.
-- [ ] Přidat podporu časových oken.
+- [x] Přidat podporu kategoriových polí.
+- [x] Přidat podporu Streamline aktivit.
+- [x] Přidat podporu Streamline tool typů.
+- [x] Přidat podporu časových oken.
 - [ ] Přidat podporu změny hodnoty z/do.
 - [ ] Přidat podporu existence související entity.
 - [ ] Přidat podporu výstupů pravidla.
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 11:45 UTC
+
+- Znovu prostudován `podminky.md` a navázáno na předchozí krok 13.4; jako další implementační cíl byly vybrány zbývající body pro kategoriová pole, Streamline aktivity/tool typy a časová okna.
+- Další krok byl maximalizovaně delegován: samostatný podagent připravil implementační mapu (konkrétní soubory/funkce + testovací scénáře), následně proběhla ruční kontrola návrhu proti aktuálním souborům (`crm/condition_rules.py`, `crm/models.py`, `crm/tests.py`).
+- Funkční implementace: `RecordConditionContextBuilder` nyní doplňuje `category_fields` a snapshot `activities`; `ConditionTreeEvaluator` nově podporuje `source_type` pro `category_field`, `activity`, `streamline_activity`, `streamline_tool` včetně `time_window` (`last_hours`/`last_days`).
+- Doplněny a rozšířeny backend testy v `ConditionRulesTest` pro nové větve evaluátoru (kategoriové pole, aktivita + entity/tool filtr, časové okno, alias `streamline_activity`).
+- Proběhla nezávislá validační kontrola druhým podagentem (konceptuální + funkční), následně bylo doplněno ještě pokrytí `streamline_activity` aliasu a `last_days` do testů.
+- Ověření funkčnosti: cílená sada `python manage.py test crm.tests.ConditionRulesTest` prochází (`7/7`).
+- Výsledek: vybrané body 13.4 (kategoriová pole, Streamline aktivity, Streamline tool typy, časová okna) jsou dokončené a checkboxy jsou aktualizované na splněné.
+- Následuje: pokračovat v 13.4 implementací podpory změny hodnoty z/do, existence související entity a výstupů pravidla; poté navázat napojením na stage-change flow v 13.5.
 
 ### 2026-05-10 11:20 UTC
 

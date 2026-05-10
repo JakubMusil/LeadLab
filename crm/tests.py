@@ -4135,7 +4135,14 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
 
         self.record.value = Decimal("123.45")
         self.record.notes = "Important note"
-        self.record.save(update_fields=["value", "notes"])
+        self.record.extra_data = {"installation_date": "2026-05-01", "requires_photo": True}
+        self.record.save(update_fields=["value", "notes", "extra_data"])
+        Activity.objects.create(
+            record=self.record,
+            user=self.owner,
+            type=ActivityType.FILE_UPLOAD,
+            metadata={"tool_type": "file_upload"},
+        )
         ctx = RecordConditionContextBuilder().build(self.record)
 
         self.assertEqual(ctx["id"], str(self.record.id))
@@ -4146,6 +4153,15 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
         self.assertEqual(ctx["value"], Decimal("123.45"))
         self.assertEqual(ctx["notes"], "Important note")
         self.assertEqual(ctx["customer_id"], str(self.customer.id))
+        self.assertEqual(ctx["category_fields"]["installation_date"], "2026-05-01")
+        self.assertTrue(ctx["category_fields"]["requires_photo"])
+        self.assertGreaterEqual(len(ctx["activities"]), 1)
+        file_upload_activity = next(
+            (a for a in ctx["activities"] if a["type"] == ActivityType.FILE_UPLOAD),
+            None,
+        )
+        self.assertIsNotNone(file_upload_activity)
+        self.assertEqual(file_upload_activity["entity_type"], "record")
 
     def test_condition_tree_supports_and_or_not_and_nested_groups(self):
         from crm.tasks import evaluate_condition_tree
@@ -4195,3 +4211,75 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
                 context,
             )
         )
+
+    def test_category_field_source_type_is_supported(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {"category_fields": {"installation_date": "2026-05-01"}}
+        tree = {
+            "source_type": "category_field",
+            "category_field_key": "installation_date",
+            "operator": "eq",
+            "value": "2026-05-01",
+        }
+        self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_activity_source_supports_tool_type_and_entity_type(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "activities": [
+                {
+                    "type": "file_upload",
+                    "entity_type": "record",
+                    "created_at": timezone.now().isoformat(),
+                },
+                {
+                    "type": "comment",
+                    "entity_type": "task",
+                    "created_at": timezone.now().isoformat(),
+                },
+            ]
+        }
+        tree = {
+            "source_type": "activity",
+            "operator": "exists",
+            "activity_type": "file_upload",
+            "entity_type": "record",
+        }
+        self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_streamline_tool_source_supports_time_window(self):
+        from crm.tasks import evaluate_condition_tree
+
+        old_time = (timezone.now() - dt.timedelta(days=10)).isoformat()
+        fresh_time = (timezone.now() - dt.timedelta(hours=2)).isoformat()
+        context = {
+            "activities": [
+                {"type": "file_upload", "entity_type": "record", "created_at": old_time},
+                {"type": "file_upload", "entity_type": "record", "created_at": fresh_time},
+            ]
+        }
+
+        tree_recent = {
+            "source_type": "streamline_tool",
+            "operator": "exists",
+            "value": "file_upload",
+            "time_window": {"last_hours": 24},
+        }
+        tree_old = {
+            "source_type": "streamline_tool",
+            "operator": "exists",
+            "value": "file_upload",
+            "time_window": {"last_hours": 1},
+        }
+        tree_streamline_activity_days = {
+            "source_type": "streamline_activity",
+            "operator": "exists",
+            "activity_type": "file_upload",
+            "time_window": {"last_days": 1},
+        }
+
+        self.assertTrue(evaluate_condition_tree(tree_recent, context))
+        self.assertFalse(evaluate_condition_tree(tree_old, context))
+        self.assertTrue(evaluate_condition_tree(tree_streamline_activity_days, context))

@@ -1,14 +1,48 @@
+import logging
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
 
 _MISSING = object()
+logger = logging.getLogger(__name__)
 
 
 class RecordConditionContextBuilder:
     """Build a stable context for evaluating record condition trees."""
 
     def build(self, record) -> dict:
+        extra_data = record.extra_data if isinstance(record.extra_data, Mapping) else {}
+        category_fields = extra_data.get("category_fields")
+        if not isinstance(category_fields, Mapping):
+            # Backward-compatible fallback for existing records where category fields
+            # are persisted directly in extra_data root.
+            category_fields = extra_data
+
+        activities: list[dict[str, Any]] = []
+        try:
+            activity_qs = (
+                record.activities
+                .all()
+                .only("type", "record_id", "customer_id", "proposal_id", "task_id", "created_at", "metadata")
+            )
+            activities = [
+                {
+                    "type": activity.type,
+                    "entity_type": activity.entity_type,
+                    "created_at": self._normalize(activity.created_at),
+                    "tool_type": (
+                        activity.metadata.get("tool_type")
+                        if isinstance(activity.metadata, Mapping)
+                        else None
+                    ),
+                }
+                for activity in activity_qs
+            ]
+        except (AttributeError, TypeError, ValueError) as exc:
+            logger.warning("Unable to load record activities for condition context: %s", exc)
+            activities = []
+
         return {
             "id": str(record.id),
             "firm_id": str(record.firm_id),
@@ -31,7 +65,9 @@ class RecordConditionContextBuilder:
             "notes": record.notes or "",
             "created_at": self._normalize(record.created_at),
             "updated_at": self._normalize(record.updated_at),
-            "extra_data": record.extra_data or {},
+            "extra_data": extra_data,
+            "category_fields": dict(category_fields),
+            "activities": activities,
         }
 
     def _normalize(self, value: Any) -> Any:
@@ -95,6 +131,12 @@ class ConditionTreeEvaluator:
         return not result if negated else result
 
     def _evaluate_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        source_type = str(node.get("source_type") or "").lower()
+        if source_type in {"category_field", "category_fields"}:
+            return self._evaluate_category_field_leaf(node, context)
+        if source_type in {"activity", "streamline_activity", "streamline_tool"}:
+            return self._evaluate_activity_leaf(node, context, source_type)
+
         field = node.get("field") or node.get("path")
         if not field:
             return False
@@ -105,7 +147,142 @@ class ConditionTreeEvaluator:
 
         operator = str(node.get("operator", "eq")).lower()
         expected = node.get("value")
+        return self._evaluate_operator(actual, operator, expected)
 
+    def _evaluate_category_field_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        key = node.get("category_field_key") or node.get("field") or node.get("path")
+        if not key:
+            return False
+
+        key = str(key)
+        if key.startswith("category_fields."):
+            key = key[len("category_fields."):]
+
+        category_fields = context.get("category_fields")
+        if not isinstance(category_fields, Mapping):
+            return False
+        if key not in category_fields:
+            return False
+
+        actual = category_fields[key]
+        operator = str(node.get("operator", "eq")).lower()
+        expected = node.get("value")
+        return self._evaluate_operator(actual, operator, expected)
+
+    def _evaluate_activity_leaf(
+        self,
+        node: Mapping[str, Any],
+        context: Mapping[str, Any],
+        source_type: str,
+    ) -> bool:
+        activities = context.get("activities")
+        if not isinstance(activities, list):
+            return False
+
+        expected_type, expected_tool_type, expected_entity_type = self._resolve_activity_filters(node, source_type)
+
+        matched = 0
+        for activity in activities:
+            if not isinstance(activity, Mapping):
+                continue
+            if expected_type is not None and str(activity.get("type")) != str(expected_type):
+                continue
+            if expected_tool_type is not None:
+                tool_value = activity.get("tool_type")
+                if tool_value is None:
+                    tool_value = activity.get("type")
+                if str(tool_value) != str(expected_tool_type):
+                    continue
+            if expected_entity_type is not None and str(activity.get("entity_type")) != str(expected_entity_type):
+                continue
+            if not self._match_time_window(activity, node.get("time_window")):
+                continue
+            matched += 1
+
+        operator = str(node.get("operator", "exists")).lower()
+        expected = node.get("value")
+        if operator == "exists":
+            return matched > 0
+        if operator in {"not_exists", "missing"}:
+            return matched == 0
+        if operator == "eq":
+            if isinstance(expected, bool):
+                return (matched > 0) is expected
+            return matched > 0
+        if operator == "neq":
+            if isinstance(expected, bool):
+                return (matched > 0) is not expected
+            return matched == 0
+        if operator in self.NUMERIC_OPERATORS:
+            return self._evaluate_operator(matched, operator, expected)
+        return False
+
+    def _resolve_activity_filters(
+        self,
+        node: Mapping[str, Any],
+        source_type: str,
+    ) -> tuple[Any, Any, Any]:
+        expected_type = node.get("activity_type")
+        expected_tool_type = node.get("tool_type")
+        expected_entity_type = node.get("entity_type")
+        expected_value = node.get("value")
+
+        if source_type == "streamline_tool" and not expected_tool_type and expected_value is not None:
+            expected_tool_type = expected_value
+        if source_type in {"activity", "streamline_activity"} and not expected_type and expected_value is not None:
+            expected_type = expected_value
+
+        return expected_type, expected_tool_type, expected_entity_type
+
+    def _match_time_window(self, activity: Mapping[str, Any], time_window: Any) -> bool:
+        if not time_window:
+            return True
+        if not isinstance(time_window, Mapping):
+            return False
+
+        created_at = self._parse_datetime(activity.get("created_at"))
+        if created_at is None:
+            return False
+
+        hours = time_window.get("last_hours")
+        days = time_window.get("last_days")
+        delta: timedelta | None = None
+
+        if hours is not None:
+            hours_num = self._to_decimal(hours)
+            if hours_num is None or hours_num < 0:
+                return False
+            delta = timedelta(hours=float(hours_num))
+        elif days is not None:
+            days_num = self._to_decimal(days)
+            if days_num is None or days_num < 0:
+                return False
+            delta = timedelta(days=float(days_num))
+
+        if delta is None:
+            return False
+
+        return created_at >= datetime.now(timezone.utc) - delta
+
+    def _parse_datetime(self, value: Any) -> datetime | None:
+        if isinstance(value, datetime):
+            dt_value = value
+        elif isinstance(value, str):
+            raw = value.strip()
+            if raw.endswith("Z"):
+                raw = f"{raw[:-1]}+00:00"
+            try:
+                dt_value = datetime.fromisoformat(raw)
+            except ValueError:
+                return None
+        else:
+            return None
+
+        if dt_value.tzinfo is None:
+            return dt_value.replace(tzinfo=timezone.utc)
+        return dt_value.astimezone(timezone.utc)
+
+    def _evaluate_operator(self, actual: Any, operator: str, expected: Any) -> bool:
         if operator == "eq":
             return str(actual) == str(expected)
         if operator == "neq":
