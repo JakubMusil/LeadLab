@@ -1354,6 +1354,9 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Funkční implementace 14.3 v `RecordsView.vue`: drag-and-drop i terminal move flow nově zobrazují validační modal pro blokace/upozornění; při blokaci je záznam vrácen do původní fáze přes existující rollback v `patchStage`, při upozornění zůstává přesun zachován a uživatel může pokračovat.
 - Funkční implementace 14.3 v `RecordDetailView.vue`: změna fáze z detailu nově zpracovává `stage_change_evaluation`, zobrazuje modal s blokacemi/upozorněními a nabízí rychlé akce „doplnit pole“ / „vytvořit požadovanou aktivitu“ přes relevantní metadata v `effect_config`.
 - Doplněny nové i18n klíče validačního modalu ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena cílená validace po změnách: frontend `check-locales` a `build-only` procházejí; cílené backend testy `RecordUpdateAPITest.test_stage_change_blocked_returns_400_and_logs` a `RecordUpdateAPITest.test_stage_change_warning_returns_200_with_evaluation` procházejí.
+- Doplňková validační revize (`parallel_validation`) proběhla úspěšně bez CodeQL alertů; připomínky code review (duplicitní normalizace issue payloadu, typová přesnost `effect_config`, drobné čistění UI handlerů) byly zapracovány.
+- Frontend `type-check` a `test:unit` nadále padají na pre-existing chybách mimo scope (stejně jako před touto změnou), bez vazby na implementovaný rozsah 14.3.
 - Hotovo: etapa 14.3 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
 - Následuje: navázat etapou 14.4 (editor pravidel) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 

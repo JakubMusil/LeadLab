@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordOut, type StageChangeEvaluationOut, type StageChangeIssueOut } from '@/stores/records'
+import {
+  useRecordsStore,
+  RECORD_STATUSES,
+  getStatusMeta,
+  normalizeStageChangeIssues,
+  type RecordOut,
+  type StageChangeEvaluationOut,
+  type StageChangeIssueWithSource,
+} from '@/stores/records'
 import { usePipelineStore, type StageOut } from '@/stores/pipeline'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
@@ -870,34 +878,16 @@ const terminalCheckpointName = ref('')
 const terminalCheckpointDate = ref('')
 const terminalMoving = ref(false)
 
-interface StageValidationIssue extends StageChangeIssueOut {
-  source: 'requested' | 'changed'
-}
-
 const stageValidationModalOpen = ref(false)
 const stageValidationRecord = ref<RecordOut | null>(null)
 const stageValidationTargetStageName = ref<string | null>(null)
-const stageValidationBlocking = ref<StageValidationIssue[]>([])
-const stageValidationWarnings = ref<StageValidationIssue[]>([])
+const stageValidationBlocking = ref<StageChangeIssueWithSource[]>([])
+const stageValidationWarnings = ref<StageChangeIssueWithSource[]>([])
 
 const stageValidationHasBlocking = computed(() => stageValidationBlocking.value.length > 0)
 
-function normalizeStageValidationIssues(evaluation?: StageChangeEvaluationOut): {
-  blocking: StageValidationIssue[]
-  warnings: StageValidationIssue[]
-} {
-  if (!evaluation) return { blocking: [], warnings: [] }
-  const requestedBlocking = (evaluation.requested?.blocking ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
-  const requestedWarnings = (evaluation.requested?.warnings ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
-  const changedWarnings = (evaluation.changed?.warnings ?? []).map((issue) => ({ ...issue, source: 'changed' as const }))
-  return {
-    blocking: requestedBlocking,
-    warnings: [...requestedWarnings, ...changedWarnings],
-  }
-}
-
-function openStageValidationModal(record: RecordOut, stageName: string | null, evaluation?: StageChangeEvaluationOut) {
-  const normalized = normalizeStageValidationIssues(evaluation)
+function showStageValidationModalIfNeeded(record: RecordOut, stageName: string | null, evaluation?: StageChangeEvaluationOut) {
+  const normalized = normalizeStageChangeIssues(evaluation)
   stageValidationRecord.value = record
   stageValidationTargetStageName.value = stageName
   stageValidationBlocking.value = normalized.blocking
@@ -946,11 +936,11 @@ async function onStageDrop(stageId: string) {
 
   const result = await store.patchStage(record.id, stageId, stage?.name ?? null)
   if (result.ok) {
-    openStageValidationModal(record, stage?.name ?? null, result.stageChangeEvaluation)
+    showStageValidationModalIfNeeded(record, stage?.name ?? null, result.stageChangeEvaluation)
     return
   }
   if (result.code === 'stage_change_blocked') {
-    openStageValidationModal(record, stage?.name ?? null, result.stageChangeEvaluation)
+    showStageValidationModalIfNeeded(record, stage?.name ?? null, result.stageChangeEvaluation)
     return
   }
   toast.error(result.error ?? t('leads.failedToUpdateStatus'))
@@ -963,7 +953,7 @@ async function confirmTerminalMove() {
   const result = await store.patchStage(record.id, stage.id, stage.name)
   if (!result.ok) {
     if (result.code === 'stage_change_blocked') {
-      openStageValidationModal(record, stage.name, result.stageChangeEvaluation)
+      showStageValidationModalIfNeeded(record, stage.name, result.stageChangeEvaluation)
     } else {
       toast.error(result.error ?? t('pipeline.terminalMoveFailed'))
     }
@@ -981,7 +971,7 @@ async function confirmTerminalMove() {
   }
   terminalMoving.value = false
   terminalMovePayload.value = null
-  openStageValidationModal(record, stage.name, result.stageChangeEvaluation)
+  showStageValidationModalIfNeeded(record, stage.name, result.stageChangeEvaluation)
 }
 
 function cancelTerminalMove() {
@@ -2276,7 +2266,7 @@ function closeContactDetail() {
       <Button
         v-if="stageValidationRecord"
         variant="secondary"
-        @click="stageValidationRecord ? goToDetail(stageValidationRecord.id) : null"
+        @click="goToDetail(stageValidationRecord.id)"
       >
         {{ t('pipeline.stageValidationOpenRecord') }}
       </Button>

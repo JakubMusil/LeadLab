@@ -64,7 +64,7 @@ export interface StageChangeIssueOut {
   effect: string
   severity: string
   message: string
-  effect_config?: Record<string, unknown>
+  effect_config?: StageChangeIssueEffectConfig
 }
 
 export interface StageChangeEvaluationSummaryOut {
@@ -77,12 +77,38 @@ export interface StageChangeEvaluationOut {
   changed?: StageChangeEvaluationSummaryOut
 }
 
+export interface StageChangeIssueEffectConfig {
+  message?: string
+  relevant_field_key?: string
+  relevant_activity_type?: string
+  relevant_tool_type?: string
+  [key: string]: unknown
+}
+
+export interface StageChangeIssueWithSource extends StageChangeIssueOut {
+  source: 'requested' | 'changed'
+}
+
 interface StageChangeResponseEnvelope {
   stage_change_evaluation?: StageChangeEvaluationOut
 }
 
 interface StageChangeErrorEnvelope extends StageChangeResponseEnvelope {
   code?: string
+}
+
+export function normalizeStageChangeIssues(evaluation?: StageChangeEvaluationOut): {
+  blocking: StageChangeIssueWithSource[]
+  warnings: StageChangeIssueWithSource[]
+} {
+  if (!evaluation) return { blocking: [], warnings: [] }
+  const requestedBlocking = (evaluation.requested?.blocking ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
+  const requestedWarnings = (evaluation.requested?.warnings ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
+  const changedWarnings = (evaluation.changed?.warnings ?? []).map((issue) => ({ ...issue, source: 'changed' as const }))
+  return {
+    blocking: requestedBlocking,
+    warnings: [...requestedWarnings, ...changedWarnings],
+  }
 }
 
 export interface RecordFilters {
@@ -147,8 +173,10 @@ export const useRecordsStore = defineStore('records', () => {
   }
 
   function extractStageChangeEvaluation(data: unknown): StageChangeEvaluationOut | undefined {
-    const body = data as StageChangeResponseEnvelope | null | undefined
-    return body?.stage_change_evaluation
+    if (!data || typeof data !== 'object') return undefined
+    const body = data as StageChangeResponseEnvelope
+    if (!('stage_change_evaluation' in body)) return undefined
+    return body.stage_change_evaluation
   }
 
   function extractErrorCode(data: unknown): string | undefined {

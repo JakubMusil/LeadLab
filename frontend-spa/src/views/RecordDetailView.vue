@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, type RecordIn, type StageChangeEvaluationOut, type StageChangeIssueOut } from '@/stores/records'
+import {
+  useRecordsStore,
+  RECORD_STATUSES,
+  type RecordIn,
+  normalizeStageChangeIssues,
+  type StageChangeEvaluationOut,
+  type StageChangeIssueWithSource,
+  type StageChangeIssueEffectConfig,
+} from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
@@ -640,35 +648,15 @@ const stageProgress = computed(() => {
   return pipelineStore.getStageProgress(currentStages.value, record.current_stage_id)
 })
 
-interface StageValidationIssue extends StageChangeIssueOut {
-  source: 'requested' | 'changed'
-}
-
 const stageValidationModalOpen = ref(false)
 const stageValidationTargetStageName = ref<string | null>(null)
-const stageValidationBlocking = ref<StageValidationIssue[]>([])
-const stageValidationWarnings = ref<StageValidationIssue[]>([])
+const stageValidationBlocking = ref<StageChangeIssueWithSource[]>([])
+const stageValidationWarnings = ref<StageChangeIssueWithSource[]>([])
 
 const stageValidationHasBlocking = computed(() => stageValidationBlocking.value.length > 0)
 
-function normalizeStageValidationIssues(evaluation?: StageChangeEvaluationOut): {
-  blocking: StageValidationIssue[]
-  warnings: StageValidationIssue[]
-} {
-  if (!evaluation) return { blocking: [], warnings: [] }
-
-  const requestedBlocking = (evaluation.requested?.blocking ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
-  const requestedWarnings = (evaluation.requested?.warnings ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
-  const changedWarnings = (evaluation.changed?.warnings ?? []).map((issue) => ({ ...issue, source: 'changed' as const }))
-
-  return {
-    blocking: requestedBlocking,
-    warnings: [...requestedWarnings, ...changedWarnings],
-  }
-}
-
-function openStageValidationModal(stageName: string | null, evaluation?: StageChangeEvaluationOut) {
-  const normalized = normalizeStageValidationIssues(evaluation)
+function showStageValidationModalIfNeeded(stageName: string | null, evaluation?: StageChangeEvaluationOut) {
+  const normalized = normalizeStageChangeIssues(evaluation)
   stageValidationTargetStageName.value = stageName
   stageValidationBlocking.value = normalized.blocking
   stageValidationWarnings.value = normalized.warnings
@@ -679,16 +667,16 @@ function closeStageValidationModal() {
   stageValidationModalOpen.value = false
 }
 
-function getIssueConfig(issue: StageValidationIssue): Record<string, unknown> {
-  return (issue.effect_config as Record<string, unknown> | undefined) ?? {}
+function getIssueConfig(issue: StageChangeIssueWithSource): StageChangeIssueEffectConfig {
+  return issue.effect_config ?? {}
 }
 
-function getIssueRelevantFieldKey(issue: StageValidationIssue): string | null {
+function getIssueRelevantFieldKey(issue: StageChangeIssueWithSource): string | null {
   const fieldKey = getIssueConfig(issue).relevant_field_key
   return typeof fieldKey === 'string' && fieldKey ? fieldKey : null
 }
 
-function getIssueRelevantActivityFilter(issue: StageValidationIssue): string | null {
+function getIssueRelevantActivityFilter(issue: StageChangeIssueWithSource): string | null {
   const config = getIssueConfig(issue)
   const toolType = config.relevant_tool_type
   if (typeof toolType === 'string' && toolType) return toolType
@@ -696,14 +684,18 @@ function getIssueRelevantActivityFilter(issue: StageValidationIssue): string | n
   return typeof activityType === 'string' && activityType ? activityType : null
 }
 
-function jumpToIssueField(issue: StageValidationIssue) {
+function isBlockingIssue(issue: StageChangeIssueWithSource): boolean {
+  return issue.effect === 'BLOCK'
+}
+
+function jumpToIssueField(issue: StageChangeIssueWithSource) {
   const fieldKey = getIssueRelevantFieldKey(issue)
   if (!fieldKey) return
   jumpToRelevantField({
     id: issue.rule_id,
     name: issue.name,
     requirement_type: 'field',
-    blocking: issue.effect === 'BLOCK',
+    blocking: isBlockingIssue(issue),
     visible_to_user: true,
     is_met: false,
     relevant_field_key: fieldKey,
@@ -711,14 +703,14 @@ function jumpToIssueField(issue: StageValidationIssue) {
   closeStageValidationModal()
 }
 
-function jumpToIssueActivity(issue: StageValidationIssue) {
+function jumpToIssueActivity(issue: StageChangeIssueWithSource) {
   const activityFilter = getIssueRelevantActivityFilter(issue)
   if (!activityFilter) return
   jumpToRelevantActivity({
     id: issue.rule_id,
     name: issue.name,
     requirement_type: 'activity',
-    blocking: issue.effect === 'BLOCK',
+    blocking: isBlockingIssue(issue),
     visible_to_user: true,
     is_met: false,
     relevant_tool_type: activityFilter,
@@ -731,11 +723,11 @@ async function changeStage(stageId: string) {
   const stageName = currentStages.value.find((stage) => stage.id === stageId)?.name ?? null
   const result = await store.updateRecord(recordId.value, { current_stage_id: stageId })
   if (result.ok) {
-    openStageValidationModal(stageName, result.stageChangeEvaluation)
+    showStageValidationModalIfNeeded(stageName, result.stageChangeEvaluation)
     toast.success(t('pipeline.stageUpdated'))
   } else {
     if (result.code === 'stage_change_blocked') {
-      openStageValidationModal(stageName, result.stageChangeEvaluation)
+      showStageValidationModalIfNeeded(stageName, result.stageChangeEvaluation)
       return
     }
     toast.error(result.error ?? t('pipeline.stageUpdateFailed'))
