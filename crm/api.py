@@ -618,6 +618,7 @@ def _record_out(record: PipelineRecord, rules: Optional[list] = None) -> dict:
 def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
     """Build the evaluation context dict for automation rules fired from a Record event."""
     from firms.models import Membership
+    from crm.condition_rules import RecordConditionContextBuilder
 
     customer_name = ""
     customer_email = ""
@@ -660,6 +661,7 @@ def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
         "assignee_email": assignee_email,
         "assignee_name": assignee_name,
         "owner_email": owner_email,
+        "condition_context": RecordConditionContextBuilder().build(record),
     }
 
 

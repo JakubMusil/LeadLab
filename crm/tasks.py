@@ -8,6 +8,7 @@ import logging
 from decimal import Decimal
 
 from celery import shared_task
+from crm.condition_rules import ConditionTreeEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,11 @@ def _evaluate_conditions(conditions: list, context: dict, logic: str = "and") ->
     if logic == "or":
         return any(results)
     return all(results)
+
+
+def evaluate_condition_tree(condition_tree: dict, context: dict) -> bool:
+    """Evaluate a nested condition tree using a fail-closed evaluator."""
+    return ConditionTreeEvaluator().evaluate(condition_tree, context)
 
 
 def _action_send_email(action: dict, context: dict) -> None:
