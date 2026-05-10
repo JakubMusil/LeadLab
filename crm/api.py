@@ -9664,7 +9664,7 @@ def _condition_rule_audit_snapshot(rule: ConditionRule) -> dict:
         "trigger_type": rule.trigger_type,
         "effect": rule.effect,
         "severity": rule.severity,
-        "activity_type": rule.activity_type or "",
+        "activity_type": rule.activity_type or None,
         "priority": rule.priority,
     }
 
@@ -9925,13 +9925,12 @@ def update_condition_rule(request, rule_id: str, payload: ConditionRulePatchIn):
         for key, value in after_snapshot.items()
         if before_snapshot.get(key) != value
     }
-    if changed_fields:
-        _log_condition_rule_audit(
-            request=request,
-            rule=rule,
-            action="condition_rule.updated",
-            changed_fields=changed_fields,
-        )
+    _log_condition_rule_audit(
+        request=request,
+        rule=rule,
+        action="condition_rule.updated",
+        changed_fields=changed_fields,
+    )
     return 200, _condition_rule_out(rule)
 
 
