@@ -1353,6 +1353,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Integrace bez rozbití existující logiky: do `_build_record_automation_context` v `crm/api.py` byl doplněn klíč `condition_context`; v `crm/tasks.py` přibyl helper `evaluate_condition_tree`.
 - Doplněny backend testy v `crm/tests.py` pro context builder a evaluator (včetně vnořených skupin, negace, fail-closed chování při chybějícím poli a numerického porovnání).
 - Provedena následná nezávislá validační kontrola dalším podagentem (konceptuální + funkční revize) a zapracována korekce fail-closed logiky: prázdná `OR` skupina nyní vyhodnocuje na `False`.
+- Po paralelní validaci (review + CodeQL) byla doplněna ještě robustnější obsluha `group` uzlu bez explicitního operátoru (default `AND`) a komentář k fail-closed identitě prázdných skupin.
 - Výsledek: vybrané body 13.4 (context builder, evaluator, AND/OR/negace/vnořené skupiny/standardní pole) jsou dokončené a checkboxy aktualizované na splněné.
 - Následuje: pokračovat etapou 13.4 o podporu kategoriových polí, Streamline aktivit/tool typů a časových oken; poté navázat přímým napojením do stage-change flow v 13.5.
 

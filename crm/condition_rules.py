@@ -67,11 +67,16 @@ class ConditionTreeEvaluator:
         negated = bool(tree.get("negated"))
         result = False
 
+        if node_type == "group" and not op:
+            op = "and"
+
         if op in {"and", "or"}:
             children = tree.get("conditions") or tree.get("children") or []
             if not isinstance(children, list):
                 return False
             if not children:
+                # Fail-closed semantics:
+                # AND() is identity True, OR() is identity False.
                 result = op == "and"
             else:
                 results = [self.evaluate(child, context) for child in children]
@@ -84,8 +89,6 @@ class ConditionTreeEvaluator:
                     return False
                 child = children[0]
             result = not self.evaluate(child, context)
-        elif node_type == "group":
-            return False
         else:
             result = self._evaluate_leaf(tree, context)
 
