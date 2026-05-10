@@ -743,7 +743,7 @@ async function loadActiveStageRequirements() {
 
     const scenarioId = requirementsRes.data.active_stage_scenario_id || null
     activeStageRequirements.value = Array.isArray(requirementsRes.data.active_stage_requirements)
-      ? requirementsRes.data.active_stage_requirements.filter((item) => item.visible_to_user !== false)
+      ? requirementsRes.data.active_stage_requirements.filter((item) => item.visible_to_user === true)
       : []
     activeStageScenario.value = scenarioId
       ? {
