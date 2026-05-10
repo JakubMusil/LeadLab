@@ -448,6 +448,7 @@ class RecordUpdateIn(Schema):
 
 class RecordUpdateOut(RecordOut):
     stage_change_evaluation: Optional[Dict[str, Any]] = None
+    field_change_evaluation: Optional[Dict[str, Any]] = None
 
 
 def _validate_record_field_rules(
@@ -859,6 +860,242 @@ def _evaluate_stage_change_trigger(
                 ],
                 "warnings": [],
             }
+        return {"blocking": [], "warnings": []}
+
+    blocking = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.BLOCK
+    ]
+    warnings = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.WARNING
+    ]
+    return {
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+def _to_json_compatible_value(value: Any, seen: set[int] | None = None) -> Any:
+    if seen is None:
+        seen = set()
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, (dict, list, tuple, set)):
+        value_id = id(value)
+        if value_id in seen:
+            return "<circular_reference>"
+        seen.add(value_id)
+
+    if isinstance(value, dict):
+        return {
+            str(key): _to_json_compatible_value(item, seen)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_compatible_value(item, seen) for item in value]
+
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except (TypeError, ValueError):
+            return str(value)
+    return str(value)
+
+
+def _build_field_change_condition_context(
+    record: PipelineRecord,
+    *,
+    field_key: str,
+    old_value: Any,
+    new_value: Any,
+) -> dict:
+    from crm.condition_rules import RecordConditionContextBuilder
+
+    context = RecordConditionContextBuilder().build(
+        record,
+        changed_field=field_key,
+        old_value=_to_json_compatible_value(old_value),
+        new_value=_to_json_compatible_value(new_value),
+        changed_field_source="field",
+    )
+    context["field_changes"] = {
+        field_key: {
+            "source_type": "field",
+            "old_value": context.get("change", {}).get("old_value"),
+            "new_value": context.get("change", {}).get("new_value"),
+        },
+    }
+    return context
+
+
+def _get_applicable_field_change_rules(
+    *,
+    firm,
+    record: PipelineRecord,
+) -> list[ConditionRule]:
+    rules = (
+        ConditionRule.objects
+        .filter(
+            firm=firm,
+            is_active=True,
+            trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+        )
+        .order_by("priority", "created_at", "id")
+    )
+
+    applicable: list[ConditionRule] = []
+    record_category_id = str(record.category_id) if record.category_id else None
+    current_stage_id = str(record.current_stage_id) if record.current_stage_id else None
+    for rule in rules:
+        scope_type = rule.scope_type
+        if scope_type == ConditionScopeType.FIRM:
+            applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.CATEGORY:
+            if rule.category_id and str(rule.category_id) == record_category_id:
+                applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.STAGE:
+            if rule.stage_id and str(rule.stage_id) == current_stage_id:
+                applicable.append(rule)
+            continue
+    return applicable
+
+
+def _log_field_change_rule_outputs(
+    *,
+    firm,
+    record: PipelineRecord,
+    context: dict[str, Any],
+    outputs: list[dict[str, Any]],
+    evaluated_by,
+):
+    compact_context = {
+        "record_id": str(record.id),
+        "category_id": str(record.category_id) if record.category_id else None,
+        "current_stage_id": str(record.current_stage_id) if record.current_stage_id else None,
+        "change": _to_json_compatible_value(context.get("change", {})),
+    }
+    if not outputs:
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+            input_context=compact_context,
+            result=RuleEvaluationResult.PASSED,
+            messages=[],
+            recommendations=[],
+            evaluated_by=evaluated_by,
+        )
+        return
+
+    for output in outputs:
+        effect = output.get("effect")
+        if effect == ConditionEffectType.BLOCK:
+            result = RuleEvaluationResult.BLOCKED
+        elif effect == ConditionEffectType.WARNING:
+            result = RuleEvaluationResult.WARNING
+        elif effect == ConditionEffectType.ACTIVATE_SCENARIO:
+            result = RuleEvaluationResult.SCENARIO_ACTIVATED
+        elif effect == ConditionEffectType.COMPLETE_REQUIREMENT:
+            result = RuleEvaluationResult.REQUIREMENT_COMPLETED
+        else:
+            result = RuleEvaluationResult.PASSED
+
+        effect_config = output.get("effect_config")
+        message = ""
+        if isinstance(effect_config, dict):
+            message = str(effect_config.get("message") or "")
+        recommendations: list[dict[str, Any]] = []
+        if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict):
+            recommendations = [effect_config]
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            rule_id=output.get("rule_id"),
+            trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+            input_context=compact_context,
+            result=result,
+            messages=[message] if message else [],
+            recommendations=recommendations,
+            evaluated_by=evaluated_by,
+        )
+
+
+def _log_field_change_rule_error(
+    *,
+    firm,
+    record: PipelineRecord,
+    field_key: str,
+    context: dict[str, Any],
+    evaluated_by,
+    error: Exception,
+):
+    RuleEvaluationLog.objects.create(
+        firm=firm,
+        record=record,
+        trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+        input_context={
+            "record_id": str(record.id),
+            "field_key": field_key,
+            "change": _to_json_compatible_value(context.get("change", {})),
+        },
+        result=RuleEvaluationResult.ERROR,
+        messages=[],
+        recommendations=[],
+        error_message=str(error),
+        evaluated_by=evaluated_by,
+    )
+
+
+def _evaluate_field_change_trigger(
+    *,
+    firm,
+    record: PipelineRecord,
+    field_key: str,
+    old_value: Any,
+    new_value: Any,
+    evaluated_by,
+) -> dict[str, list[dict[str, Any]]]:
+    from crm.condition_rules import evaluate_condition_rule_outputs
+
+    context = _build_field_change_condition_context(
+        record,
+        field_key=field_key,
+        old_value=old_value,
+        new_value=new_value,
+    )
+    try:
+        rules = _get_applicable_field_change_rules(
+            firm=firm,
+            record=record,
+        )
+        outputs = evaluate_condition_rule_outputs(rules, context)
+        _log_field_change_rule_outputs(
+            firm=firm,
+            record=record,
+            context=context,
+            outputs=outputs,
+            evaluated_by=evaluated_by,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Field change rule evaluation failed for record %s (field=%s)",
+            record.id,
+            field_key,
+        )
+        _log_field_change_rule_error(
+            firm=firm,
+            record=record,
+            field_key=field_key,
+            context=context,
+            evaluated_by=evaluated_by,
+            error=exc,
+        )
         return {"blocking": [], "warnings": []}
 
     blocking = [
@@ -1330,8 +1567,28 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     old_status = record.status
     old_stage_id = record.current_stage_id
     update_data = payload.dict(exclude_none=True)
+    requested_field_keys = set(update_data.keys())
+    old_standard_field_values = {
+        "title": record.title,
+        "status": record.status,
+        "source": record.source,
+        "assigned_to_id": record.assigned_to_id,
+        "value": record.value,
+        "currency": record.currency,
+        "customer_id": record.customer_id,
+        "company_id": record.company_id,
+        "contact_person_id": record.contact_person_id,
+        "category_id": record.category_id,
+        "current_stage_id": record.current_stage_id,
+        "parent_id": record.parent_id,
+        "start_date": record.start_date,
+        "end_date": record.end_date,
+        "expires_at": record.expires_at,
+        "notes": record.notes,
+    }
     requested_stage_eval: dict[str, list[dict[str, Any]]] = {"blocking": [], "warnings": []}
     changed_stage_eval: dict[str, list[dict[str, Any]]] = {"blocking": [], "warnings": []}
+    field_change_eval: dict[str, dict[str, list[dict[str, Any]]]] = {}
     stage_change_performed = False
 
     # Handle status change — create an Activity in the same transaction
@@ -1474,6 +1731,24 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     for field, value in update_data.items():
         setattr(record, field, value)
 
+    changed_standard_fields: dict[str, dict[str, Any]] = {}
+    if new_status is not None and new_status != old_status:
+        changed_standard_fields["status"] = {
+            "old_value": old_status,
+            "new_value": new_status,
+        }
+
+    for field_key in sorted(requested_field_keys - {"status"}):
+        if field_key not in old_standard_field_values:
+            continue
+        old_value = old_standard_field_values[field_key]
+        new_value = getattr(record, field_key)
+        if old_value != new_value:
+            changed_standard_fields[field_key] = {
+                "old_value": old_value,
+                "new_value": new_value,
+            }
+
     with transaction.atomic():
         from crm.apps import set_current_user, clear_current_user
         set_current_user(request.user)
@@ -1519,6 +1794,18 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                         old_stage_id=old_stage_id,
                         evaluated_by=request.user,
                     )
+            if changed_standard_fields:
+                for field_key, values in changed_standard_fields.items():
+                    field_change_eval[field_key] = _evaluate_field_change_trigger(
+                        firm=request.firm,
+                        record=record,
+                        field_key=field_key,
+                        old_value=values.get("old_value"),
+                        new_value=values.get("new_value"),
+                        evaluated_by=request.user,
+                    )
+                if not stage_change_performed:
+                    _refresh_active_stage_scenario(record)
         finally:
             clear_current_user()
 
@@ -1529,6 +1816,8 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
             "requested": requested_stage_eval,
             "changed": changed_stage_eval,
         }
+    if field_change_eval:
+        response["field_change_evaluation"] = field_change_eval
     return 200, response
 
 

@@ -1149,6 +1149,100 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
             ).exists()
         )
 
+    def test_patch_standard_field_change_evaluates_rules_and_logs(self):
+        rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn title changed",
+            trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+            scope_type=ConditionScopeType.FIRM,
+            condition_tree={
+                "source_type": "field_change",
+                "field": "title",
+                "operator": "changed_to",
+                "value": "Updated by rule",
+            },
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Title updated"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Updated by rule"},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        payload = resp.json()
+        self.assertIn("field_change_evaluation", payload)
+        self.assertIn("title", payload["field_change_evaluation"])
+        warnings = payload["field_change_evaluation"]["title"]["warnings"]
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings[0]["rule_id"], str(rule.id))
+
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+                rule=rule,
+                result=RuleEvaluationResult.WARNING,
+            ).exists()
+        )
+
+    def test_patch_same_standard_field_value_does_not_evaluate_field_change(self):
+        ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn any title change",
+            trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+            scope_type=ConditionScopeType.FIRM,
+            condition_tree={
+                "source_type": "field_change",
+                "field": "title",
+                "operator": "changed",
+            },
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Title changed"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": self.record.title},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.json().get("field_change_evaluation"))
+        self.assertFalse(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+            ).exists()
+        )
+
+    def test_patch_standard_field_change_refreshes_active_stage_scenario(self):
+        StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_new,
+            name="Title scenario",
+            activation_condition={
+                "field": "title",
+                "operator": "eq",
+                "value": "Scenario activated",
+            },
+            is_active=True,
+            priority=1,
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Scenario activated"},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        self.record.refresh_from_db()
+        self.assertIn("active_stage_scenario_id", self.record.extra_data)
+
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_record_admin_succeeds(self):
