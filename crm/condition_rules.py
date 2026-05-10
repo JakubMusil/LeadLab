@@ -51,7 +51,7 @@ class RecordConditionContextBuilder:
             logger.warning("Unable to load record activities for condition context: %s", exc)
             activities = []
 
-        return {
+        context = {
             "id": str(record.id),
             "firm_id": str(record.firm_id),
             "title": record.title or "",
@@ -76,13 +76,15 @@ class RecordConditionContextBuilder:
             "extra_data": extra_data,
             "category_fields": dict(category_fields),
             "activities": activities,
-            "change": {
+        }
+        if changed_field is not None:
+            context["change"] = {
                 "field_key": changed_field,
                 "source_type": changed_field_source,
                 "old_value": self._normalize(old_value),
                 "new_value": self._normalize(new_value),
-            },
-        }
+            }
+        return context
 
     def _normalize(self, value: Any) -> Any:
         if value is None:
@@ -146,6 +148,7 @@ class ConditionTreeEvaluator:
 
     def _evaluate_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
         source_type = str(node.get("source_type") or "").lower()
+        # Keep legacy aliases for backward compatibility with older condition payloads.
         if source_type in {"field_change", "record_field_change"}:
             return self._evaluate_field_change_leaf(node, context)
         if source_type in {"category_field_change", "record_category_field_change"}:
@@ -227,7 +230,7 @@ class ConditionTreeEvaluator:
         change = context.get("change")
         if isinstance(change, Mapping):
             change_field_key = change.get("field_key")
-            if change_field_key is None or str(change_field_key) == field_key:
+            if change_field_key is not None and str(change_field_key) == field_key:
                 change_source_type = self._normalize_change_source(change.get("source_type"))
                 if change_source_type in {None, source_type}:
                     return change
@@ -256,6 +259,11 @@ class ConditionTreeEvaluator:
         return source_value
 
     def _evaluate_change_operator(self, node: Mapping[str, Any], change: Mapping[str, Any]) -> bool:
+        """Evaluate changed* operators.
+
+        `value` is the canonical payload key; `from_value`/`to_value` stay supported
+        for older clients that emitted explicit directional keys.
+        """
         old_value = change.get("old_value")
         new_value = change.get("new_value")
         has_changed = not self._values_equal(old_value, new_value)
@@ -427,6 +435,7 @@ class ConditionTreeEvaluator:
             return None
 
     def _values_equal(self, left: Any, right: Any) -> bool:
+        """Compare values with safe handling for None versus stringified values."""
         if left is None or right is None:
             return left is right
         return str(left) == str(right)

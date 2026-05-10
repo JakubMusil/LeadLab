@@ -4334,6 +4334,7 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
     def test_category_field_change_source_supports_changed_from(self):
         from crm.tasks import evaluate_condition_tree
 
+        # The evaluator supports both flat change keys and nested `change` payloads.
         context = {
             "change": {
                 "field_key": "installation_date",

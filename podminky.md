@@ -1353,7 +1353,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Doplněny backend testy `ConditionRulesTest` pro nové operátory i fail-closed scénář při neshodě změněného pole.
 - Následná nezávislá validační kontrola podagentem odhalila edge case porovnání `None` vs `"None"`; fix aplikován v `_values_equal` a doplněny regresní testy (beze změny hodnoty + `None` vs string).
 - Výsledek: bod 13.4 „Přidat podporu změny hodnoty z/do“ je dokončen a checkbox je aktualizovaný na splněný.
-- Následuje: pokračovat implementací 13.4 o podporu existence související entity a výstupů pravidla, poté navázat body 13.5 (napojení na stage-change flow).
+- Následuje: pokračovat implementací zbývajících bodů 13.4 (podpora existence související entity a výstupů pravidla), poté navázat body 13.5 (napojení na stage-change flow).
 
 ### 2026-05-10 11:45 UTC
 
