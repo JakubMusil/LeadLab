@@ -131,8 +131,6 @@ class ConditionTreeEvaluator:
                     active_node_ids.discard(tree_id)
 
         if not isinstance(tree, dict):
-            if tree_id is not None:
-                active_node_ids.discard(tree_id)
             return False
 
         op = str(tree.get("op") or tree.get("logic") or tree.get("operator") or "").lower()
