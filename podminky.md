@@ -1120,11 +1120,11 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.4 Editor pravidel
 
-- [ ] Přidat seznam pravidel v nastavení pipeline.
-- [ ] Přidat filtrování podle kategorie.
-- [ ] Přidat filtrování podle fáze.
-- [ ] Přidat filtrování podle triggeru.
-- [ ] Přidat stav zapnuto/vypnuto.
+- [x] Přidat seznam pravidel v nastavení pipeline.
+- [x] Přidat filtrování podle kategorie.
+- [x] Přidat filtrování podle fáze.
+- [x] Přidat filtrování podle triggeru.
+- [x] Přidat stav zapnuto/vypnuto.
 - [ ] Přidat vytvoření pravidla.
 - [ ] Přidat úpravu pravidla.
 - [ ] Přidat deaktivaci pravidla.
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 20:56 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřené body etapy 14.4 (editor pravidel: seznam + filtry + stav zapnuto/vypnuto).
+- Další krok byl maximalizovaně delegován na podagenta (mapování integračních bodů backend API/frontend UI pro `condition-rules`) a po implementaci proběhla ještě druhá nezávislá delegovaná validační revize změn; následně proběhla ruční konceptuální kontrola.
+- Před úpravami proběhla baseline validace: dostupné checky v prostředí hlásí pre-existing limity závislostí (`vue-tsc`, `run-s`, `vitest`, `vite`, `flake8`, `django`, `pip-audit` nejsou v sandboxu dostupné), takže plné lint/test/build běhy neběžely; `frontend check-locales` byl dostupný.
+- Funkční implementace 14.4 v `frontend-spa/src/stores/conditionRules.ts`: přidán nový store pro načítání seznamu pravidel přes `/api/v1/crm/condition-rules` s query filtry (`category_id`, `stage_id`, `trigger_type`, `is_active`) a PATCH update pravidla (toggle `is_active`).
+- Funkční implementace 14.4 v `frontend-spa/src/views/PipelineSettingsView.vue`: přidána sekce „Pravidla podmínek“ v nastavení pipeline se seznamem pravidel, filtry podle kategorie/fáze/triggeru/stavu, loading/error/empty stavy a přepínání zapnuto/vypnuto přímo v seznamu.
+- Doplněny nové i18n klíče pro pravidla a filtry ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena post-change validace: `frontend check-locales` prochází; ostatní frontend/backend checky nadále blokují stejné pre-existing limity prostředí (chybějící nástroje/závislosti), bez nové regresní informace vůči tomuto scope.
+- Hotovo: v etapě 14.4 jsou nyní dokončené body pro seznam pravidel, filtrování podle kategorie/fáze/triggeru a stav zapnuto/vypnuto.
+- Následuje: navázat zbývajícími body 14.4 (vytvoření, úprava, deaktivace, kopírování, testovací vyhodnocení pravidla) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 20:13 UTC
 
