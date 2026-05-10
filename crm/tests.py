@@ -28,7 +28,7 @@ from crm.models import (
     StageScenario,
     Task,
 )
-from firms.models import Firm, Membership, InvitationRole
+from firms.models import Firm, Membership, InvitationRole, PermissionAuditLog
 from users.models import User
 
 
@@ -5276,6 +5276,16 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         delete_resp = self._delete(f"/api/v1/crm/condition-rules/{rule_id}")
         self.assertEqual(delete_resp.status_code, 204)
         self.assertFalse(ConditionRule.objects.get(id=rule_id).is_active)
+        actions = list(
+            PermissionAuditLog.objects.filter(
+                firm=self.firm,
+                target_type="condition_rule",
+                target_id=rule_id,
+            ).values_list("action", flat=True)
+        )
+        self.assertIn("condition_rule.created", actions)
+        self.assertIn("condition_rule.updated", actions)
+        self.assertIn("condition_rule.deactivated", actions)
 
     def test_condition_rule_management_requires_category_manage_permission(self):
         self.client.logout()
@@ -5289,6 +5299,14 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             },
         )
         self.assertEqual(resp.status_code, 403)
+        self.assertEqual(self._get("/api/v1/crm/condition-rules").status_code, 403)
+        self.assertEqual(
+            self._get(
+                f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios"
+            ).status_code,
+            403,
+        )
+        self.assertEqual(self._get("/api/v1/crm/rule-evaluation-logs").status_code, 403)
 
     def test_stage_scenario_endpoints_and_active_requirements_endpoint(self):
         scenario_resp = self._post(
