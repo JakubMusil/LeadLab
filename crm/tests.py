@@ -5226,3 +5226,146 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
 
         outputs = evaluate_condition_rule_outputs(rules, {"status": "new"})
         self.assertEqual([item["rule_id"] for item in outputs], ["rule-a", "rule-b"])
+
+
+class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.category = Category.objects.create(firm=self.firm, name="Installations", slug="installations")
+        self.stage_a = Stage.objects.create(category=self.category, name="A", order=1)
+        self.stage_b = Stage.objects.create(category=self.category, name="B", order=2)
+        self.record.category = self.category
+        self.record.current_stage = self.stage_a
+        self.record.save(update_fields=["category", "current_stage"])
+
+    def test_condition_rule_crud_and_soft_deactivate(self):
+        create_payload = {
+            "name": "Block stage transition",
+            "description": "Must have value",
+            "scope_type": ConditionScopeType.STAGE_TRANSITION,
+            "category_id": str(self.category.id),
+            "source_stage_id": str(self.stage_a.id),
+            "target_stage_id": str(self.stage_b.id),
+            "trigger_type": ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+            "condition_tree": {"field": "value", "operator": "gt", "value": 0},
+            "effect": ConditionEffectType.BLOCK,
+            "severity": ConditionSeverity.ERROR,
+            "effect_config": {"message": "Missing value"},
+            "priority": 10,
+        }
+        resp = self._post("/api/v1/crm/condition-rules", create_payload)
+        self.assertEqual(resp.status_code, 201, resp.content)
+        rule_id = resp.json()["id"]
+
+        list_resp = self._get("/api/v1/crm/condition-rules")
+        self.assertEqual(list_resp.status_code, 200)
+        self.assertTrue(any(item["id"] == rule_id for item in list_resp.json()))
+
+        detail_resp = self._get(f"/api/v1/crm/condition-rules/{rule_id}")
+        self.assertEqual(detail_resp.status_code, 200)
+        self.assertEqual(detail_resp.json()["name"], "Block stage transition")
+
+        patch_resp = self._patch(
+            f"/api/v1/crm/condition-rules/{rule_id}",
+            {"name": "Updated name", "priority": 5},
+        )
+        self.assertEqual(patch_resp.status_code, 200, patch_resp.content)
+        self.assertEqual(patch_resp.json()["name"], "Updated name")
+        self.assertEqual(patch_resp.json()["priority"], 5)
+
+        delete_resp = self._delete(f"/api/v1/crm/condition-rules/{rule_id}")
+        self.assertEqual(delete_resp.status_code, 204)
+        self.assertFalse(ConditionRule.objects.get(id=rule_id).is_active)
+
+    def test_condition_rule_management_requires_category_manage_permission(self):
+        self.client.logout()
+        self.client.login(username="worker@crm-api.com", password="pass")
+        resp = self._post(
+            "/api/v1/crm/condition-rules",
+            {
+                "name": "Worker cannot create",
+                "trigger_type": ConditionTriggerType.RECORD_UPDATED,
+                "condition_tree": {"field": "status", "operator": "eq", "value": RecordStatus.NEW},
+            },
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_stage_scenario_endpoints_and_active_requirements_endpoint(self):
+        scenario_resp = self._post(
+            f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios",
+            {
+                "name": "Scenario A",
+                "activation_condition": {"field": "status", "operator": "eq", "value": RecordStatus.NEW},
+                "completion_condition": {},
+                "priority": 1,
+            },
+        )
+        self.assertEqual(scenario_resp.status_code, 201, scenario_resp.content)
+        scenario_id = scenario_resp.json()["id"]
+
+        scenario = StageScenario.objects.get(id=scenario_id)
+        requirement = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Need upload",
+            requirement_type="activity",
+            condition={},
+            blocking=True,
+            sort_order=0,
+        )
+
+        list_resp = self._get(
+            f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios"
+        )
+        self.assertEqual(list_resp.status_code, 200)
+        self.assertTrue(any(item["id"] == scenario_id for item in list_resp.json()))
+
+        req_resp = self._get(f"/api/v1/crm/scenarios/{scenario_id}/requirements")
+        self.assertEqual(req_resp.status_code, 200)
+        self.assertEqual(req_resp.json()[0]["id"], str(requirement.id))
+
+        active_req_resp = self._get(
+            f"/api/v1/crm/records/{self.record.id}/active-stage-requirements"
+        )
+        self.assertEqual(active_req_resp.status_code, 200, active_req_resp.content)
+        payload = active_req_resp.json()
+        self.assertEqual(payload["active_stage_scenario_id"], scenario_id)
+        self.assertEqual(payload["active_stage_requirements"][0]["id"], str(requirement.id))
+
+    def test_condition_rule_test_evaluation_and_log_listing(self):
+        rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn when new",
+            scope_type=ConditionScopeType.FIRM,
+            trigger_type=ConditionTriggerType.MANUAL_EVALUATION_REQUESTED,
+            condition_tree={"field": "status", "operator": "eq", "value": RecordStatus.NEW},
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "still new"},
+            created_by=self.owner,
+        )
+        eval_resp = self._post(
+            "/api/v1/crm/condition-rules/test-evaluation/run",
+            {"record_id": str(self.record.id), "rule_id": str(rule.id)},
+        )
+        self.assertEqual(eval_resp.status_code, 200, eval_resp.content)
+        self.assertTrue(eval_resp.json()["matched"])
+        self.assertEqual(eval_resp.json()["warnings"][0]["rule_id"], str(rule.id))
+
+        RuleEvaluationLog.objects.create(
+            firm=self.firm,
+            record=self.record,
+            rule=rule,
+            trigger_type=ConditionTriggerType.MANUAL_EVALUATION_REQUESTED,
+            input_context={"record_id": str(self.record.id)},
+            result=RuleEvaluationResult.WARNING,
+            messages=["still new"],
+            recommendations=[],
+            evaluated_by=self.owner,
+        )
+        logs_resp = self._get(
+            "/api/v1/crm/rule-evaluation-logs",
+            {"rule_id": str(rule.id), "result": RuleEvaluationResult.WARNING},
+        )
+        self.assertEqual(logs_resp.status_code, 200, logs_resp.content)
+        self.assertTrue(any(item["rule_id"] == str(rule.id) for item in logs_resp.json()))

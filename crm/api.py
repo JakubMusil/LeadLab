@@ -63,6 +63,7 @@ from crm.models import (
     TaskTemplate,
     TaskTimeLog,
     TaskTimer,
+    StageRequirement,
     StageScenario,
 )
 from firms.auth import (
@@ -9402,3 +9403,752 @@ def delete_record_grant(request, record_id: str, grant_id: str):
 
     grant.delete()
     return 204, None
+
+
+# ===========================================================================
+# Condition Rules API (podminky.md §13.9)
+# ===========================================================================
+
+class ConditionRuleOut(Schema):
+    id: str
+    firm_id: str
+    name: str
+    description: str
+    is_active: bool
+    scope_type: str
+    category_id: Optional[str]
+    stage_id: Optional[str]
+    source_stage_id: Optional[str]
+    target_stage_id: Optional[str]
+    trigger_type: str
+    condition_tree: Dict[str, Any]
+    effect: str
+    severity: str
+    effect_config: Dict[str, Any]
+    activity_type: str
+    priority: int
+    created_by_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConditionRuleIn(Schema):
+    name: str
+    description: str = ""
+    is_active: bool = True
+    scope_type: str = ConditionScopeType.FIRM
+    category_id: Optional[str] = None
+    stage_id: Optional[str] = None
+    source_stage_id: Optional[str] = None
+    target_stage_id: Optional[str] = None
+    trigger_type: str
+    condition_tree: Dict[str, Any] = {}
+    effect: str = ConditionEffectType.BLOCK
+    severity: str = ConditionSeverity.ERROR
+    effect_config: Dict[str, Any] = {}
+    activity_type: str = ""
+    priority: int = 100
+
+
+class ConditionRulePatchIn(Schema):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    scope_type: Optional[str] = None
+    category_id: Optional[str] = None
+    stage_id: Optional[str] = None
+    source_stage_id: Optional[str] = None
+    target_stage_id: Optional[str] = None
+    trigger_type: Optional[str] = None
+    condition_tree: Optional[Dict[str, Any]] = None
+    effect: Optional[str] = None
+    severity: Optional[str] = None
+    effect_config: Optional[Dict[str, Any]] = None
+    activity_type: Optional[str] = None
+    priority: Optional[int] = None
+
+
+class StageScenarioOut(Schema):
+    id: str
+    firm_id: str
+    category_id: str
+    stage_id: str
+    name: str
+    description: str
+    activation_condition: Dict[str, Any]
+    completion_condition: Dict[str, Any]
+    recommended_next_stage_id: Optional[str]
+    priority: int
+    is_active: bool
+    created_by_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class StageScenarioIn(Schema):
+    name: str
+    description: str = ""
+    activation_condition: Dict[str, Any] = {}
+    completion_condition: Dict[str, Any] = {}
+    recommended_next_stage_id: Optional[str] = None
+    priority: int = 100
+    is_active: bool = True
+
+
+class StageScenarioPatchIn(Schema):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    activation_condition: Optional[Dict[str, Any]] = None
+    completion_condition: Optional[Dict[str, Any]] = None
+    recommended_next_stage_id: Optional[str] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class StageRequirementOut(Schema):
+    id: str
+    firm_id: str
+    scenario_id: str
+    name: str
+    description: str
+    requirement_type: str
+    condition: Dict[str, Any]
+    blocking: bool
+    visible_to_user: bool
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConditionRuleTestEvaluationIn(Schema):
+    record_id: str
+    rule_id: Optional[str] = None
+    condition_tree: Optional[Dict[str, Any]] = None
+    effect: str = ConditionEffectType.BLOCK
+    severity: str = ConditionSeverity.ERROR
+    effect_config: Dict[str, Any] = {}
+    activity_type: str = ""
+
+
+class ConditionRuleTestEvaluationOut(Schema):
+    matched: bool
+    outputs: List[Dict[str, Any]]
+    blocking: List[Dict[str, Any]]
+    warnings: List[Dict[str, Any]]
+
+
+class ActiveStageRequirementsOut(Schema):
+    record_id: str
+    active_stage_scenario_id: Optional[str]
+    active_stage_requirements: List[Dict[str, Any]]
+
+
+class RuleEvaluationLogOut(Schema):
+    id: str
+    firm_id: str
+    record_id: Optional[str]
+    rule_id: Optional[str]
+    scenario_id: Optional[str]
+    requirement_id: Optional[str]
+    trigger_type: str
+    result: str
+    messages: List[Any]
+    recommendations: List[Any]
+    error_message: str
+    input_context: Dict[str, Any]
+    evaluated_by_id: Optional[str]
+    evaluated_at: datetime
+
+
+def _condition_rule_out(rule: ConditionRule) -> dict:
+    return {
+        "id": str(rule.id),
+        "firm_id": str(rule.firm_id),
+        "name": rule.name,
+        "description": rule.description or "",
+        "is_active": rule.is_active,
+        "scope_type": rule.scope_type,
+        "category_id": str(rule.category_id) if rule.category_id else None,
+        "stage_id": str(rule.stage_id) if rule.stage_id else None,
+        "source_stage_id": str(rule.source_stage_id) if rule.source_stage_id else None,
+        "target_stage_id": str(rule.target_stage_id) if rule.target_stage_id else None,
+        "trigger_type": rule.trigger_type,
+        "condition_tree": rule.condition_tree if isinstance(rule.condition_tree, dict) else {},
+        "effect": rule.effect,
+        "severity": rule.severity,
+        "effect_config": rule.effect_config if isinstance(rule.effect_config, dict) else {},
+        "activity_type": rule.activity_type or "",
+        "priority": rule.priority,
+        "created_by_id": str(rule.created_by_id) if rule.created_by_id else None,
+        "created_at": rule.created_at,
+        "updated_at": rule.updated_at,
+    }
+
+
+def _stage_scenario_out(scenario: StageScenario) -> dict:
+    return {
+        "id": str(scenario.id),
+        "firm_id": str(scenario.firm_id),
+        "category_id": str(scenario.category_id),
+        "stage_id": str(scenario.stage_id),
+        "name": scenario.name,
+        "description": scenario.description or "",
+        "activation_condition": (
+            scenario.activation_condition
+            if isinstance(scenario.activation_condition, dict)
+            else {}
+        ),
+        "completion_condition": (
+            scenario.completion_condition
+            if isinstance(scenario.completion_condition, dict)
+            else {}
+        ),
+        "recommended_next_stage_id": (
+            str(scenario.recommended_next_stage_id)
+            if scenario.recommended_next_stage_id
+            else None
+        ),
+        "priority": scenario.priority,
+        "is_active": scenario.is_active,
+        "created_by_id": str(scenario.created_by_id) if scenario.created_by_id else None,
+        "created_at": scenario.created_at,
+        "updated_at": scenario.updated_at,
+    }
+
+
+def _stage_requirement_out(requirement: StageRequirement) -> dict:
+    return {
+        "id": str(requirement.id),
+        "firm_id": str(requirement.firm_id),
+        "scenario_id": str(requirement.scenario_id),
+        "name": requirement.name,
+        "description": requirement.description or "",
+        "requirement_type": requirement.requirement_type,
+        "condition": requirement.condition if isinstance(requirement.condition, dict) else {},
+        "blocking": requirement.blocking,
+        "visible_to_user": requirement.visible_to_user,
+        "sort_order": requirement.sort_order,
+        "created_at": requirement.created_at,
+        "updated_at": requirement.updated_at,
+    }
+
+
+def _rule_evaluation_log_out(log: RuleEvaluationLog) -> dict:
+    return {
+        "id": str(log.id),
+        "firm_id": str(log.firm_id),
+        "record_id": str(log.record_id) if log.record_id else None,
+        "rule_id": str(log.rule_id) if log.rule_id else None,
+        "scenario_id": str(log.scenario_id) if log.scenario_id else None,
+        "requirement_id": str(log.requirement_id) if log.requirement_id else None,
+        "trigger_type": log.trigger_type,
+        "result": log.result,
+        "messages": list(log.messages or []),
+        "recommendations": list(log.recommendations or []),
+        "error_message": log.error_message or "",
+        "input_context": log.input_context if isinstance(log.input_context, dict) else {},
+        "evaluated_by_id": str(log.evaluated_by_id) if log.evaluated_by_id else None,
+        "evaluated_at": log.evaluated_at,
+    }
+
+
+def _resolve_stage_in_firm(stage_id: Optional[str], firm) -> tuple[Optional[Stage], Optional[tuple[int, dict]]]:
+    if not stage_id:
+        return None, None
+    try:
+        stage = Stage.objects.select_related("category").get(id=stage_id, category__firm=firm)
+    except Stage.DoesNotExist:
+        return None, (400, {"detail": f"Stage {stage_id} not found in current firm."})
+    return stage, None
+
+
+def _validate_condition_rule_scope_fields(
+    *,
+    scope_type: str,
+    category: Optional[Category],
+    stage: Optional[Stage],
+    source_stage: Optional[Stage],
+    target_stage: Optional[Stage],
+) -> Optional[tuple[int, dict]]:
+    if scope_type == ConditionScopeType.CATEGORY and category is None:
+        return 400, {"detail": "scope_type=category requires category_id."}
+    if scope_type == ConditionScopeType.STAGE and stage is None:
+        return 400, {"detail": "scope_type=stage requires stage_id."}
+    if scope_type == ConditionScopeType.STAGE_TRANSITION and (source_stage is None or target_stage is None):
+        return 400, {"detail": "scope_type=stage_transition requires source_stage_id and target_stage_id."}
+
+    if category and stage and str(stage.category_id) != str(category.id):
+        return 400, {"detail": "stage_id must belong to category_id."}
+    if category and source_stage and str(source_stage.category_id) != str(category.id):
+        return 400, {"detail": "source_stage_id must belong to category_id."}
+    if category and target_stage and str(target_stage.category_id) != str(category.id):
+        return 400, {"detail": "target_stage_id must belong to category_id."}
+    return None
+
+
+@router.get(
+    "/condition-rules",
+    auth=django_auth,
+    response={200: List[ConditionRuleOut], 403: ErrorOut},
+)
+def list_condition_rules(
+    request,
+    category_id: str = "",
+    stage_id: str = "",
+    trigger_type: str = "",
+    is_active: Optional[bool] = None,
+):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    qs = ConditionRule.objects.filter(firm=request.firm)
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+    if stage_id:
+        qs = qs.filter(stage_id=stage_id)
+    if trigger_type:
+        qs = qs.filter(trigger_type=trigger_type)
+    if is_active is not None:
+        qs = qs.filter(is_active=is_active)
+    qs = qs.order_by("priority", "created_at", "id")
+    return 200, [_condition_rule_out(rule) for rule in qs]
+
+
+@router.get(
+    "/condition-rules/{rule_id}",
+    auth=django_auth,
+    response={200: ConditionRuleOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_condition_rule(request, rule_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        rule = ConditionRule.objects.get(id=rule_id, firm=request.firm)
+    except ConditionRule.DoesNotExist:
+        return 404, {"detail": "Condition rule not found."}
+    return 200, _condition_rule_out(rule)
+
+
+@router.post(
+    "/condition-rules",
+    auth=django_auth,
+    response={201: ConditionRuleOut, 400: ErrorOut, 403: ErrorOut},
+)
+def create_condition_rule(request, payload: ConditionRuleIn):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    category = None
+    if payload.category_id:
+        try:
+            category = Category.objects.get(id=payload.category_id, firm=request.firm)
+        except Category.DoesNotExist:
+            return 400, {"detail": "category_id not found in current firm."}
+
+    stage, err = _resolve_stage_in_firm(payload.stage_id, request.firm)
+    if err:
+        return err
+    source_stage, err = _resolve_stage_in_firm(payload.source_stage_id, request.firm)
+    if err:
+        return err
+    target_stage, err = _resolve_stage_in_firm(payload.target_stage_id, request.firm)
+    if err:
+        return err
+
+    if category is None and stage is not None:
+        category = stage.category
+
+    scope_error = _validate_condition_rule_scope_fields(
+        scope_type=payload.scope_type,
+        category=category,
+        stage=stage,
+        source_stage=source_stage,
+        target_stage=target_stage,
+    )
+    if scope_error:
+        return scope_error
+
+    rule = ConditionRule.objects.create(
+        firm=request.firm,
+        name=payload.name,
+        description=payload.description,
+        is_active=payload.is_active,
+        scope_type=payload.scope_type,
+        category=category,
+        stage=stage,
+        source_stage=source_stage,
+        target_stage=target_stage,
+        trigger_type=payload.trigger_type,
+        condition_tree=payload.condition_tree,
+        effect=payload.effect,
+        severity=payload.severity,
+        effect_config=payload.effect_config,
+        activity_type=payload.activity_type or "",
+        priority=payload.priority,
+        created_by=request.user,
+    )
+    return 201, _condition_rule_out(rule)
+
+
+@router.patch(
+    "/condition-rules/{rule_id}",
+    auth=django_auth,
+    response={200: ConditionRuleOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_condition_rule(request, rule_id: str, payload: ConditionRulePatchIn):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        rule = ConditionRule.objects.get(id=rule_id, firm=request.firm)
+    except ConditionRule.DoesNotExist:
+        return 404, {"detail": "Condition rule not found."}
+
+    updates = payload.dict(exclude_unset=True)
+
+    category = rule.category
+    if "category_id" in updates:
+        category_id = updates.pop("category_id")
+        if category_id:
+            try:
+                category = Category.objects.get(id=category_id, firm=request.firm)
+            except Category.DoesNotExist:
+                return 400, {"detail": "category_id not found in current firm."}
+        else:
+            category = None
+
+    stage = rule.stage
+    if "stage_id" in updates:
+        stage, err = _resolve_stage_in_firm(updates.pop("stage_id"), request.firm)
+        if err:
+            return err
+
+    source_stage = rule.source_stage
+    if "source_stage_id" in updates:
+        source_stage, err = _resolve_stage_in_firm(updates.pop("source_stage_id"), request.firm)
+        if err:
+            return err
+
+    target_stage = rule.target_stage
+    if "target_stage_id" in updates:
+        target_stage, err = _resolve_stage_in_firm(updates.pop("target_stage_id"), request.firm)
+        if err:
+            return err
+
+    if category is None and stage is not None:
+        category = stage.category
+
+    scope_type = updates.get("scope_type", rule.scope_type)
+    scope_error = _validate_condition_rule_scope_fields(
+        scope_type=scope_type,
+        category=category,
+        stage=stage,
+        source_stage=source_stage,
+        target_stage=target_stage,
+    )
+    if scope_error:
+        return scope_error
+
+    rule.category = category
+    rule.stage = stage
+    rule.source_stage = source_stage
+    rule.target_stage = target_stage
+    for key, value in updates.items():
+        setattr(rule, key, value)
+    rule.save()
+    return 200, _condition_rule_out(rule)
+
+
+@router.delete(
+    "/condition-rules/{rule_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def deactivate_condition_rule(request, rule_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        rule = ConditionRule.objects.get(id=rule_id, firm=request.firm)
+    except ConditionRule.DoesNotExist:
+        return 404, {"detail": "Condition rule not found."}
+
+    rule.is_active = False
+    rule.save(update_fields=["is_active", "updated_at"])
+    return 204, None
+
+
+@router.get(
+    "/categories/{category_id}/stages/{stage_id}/scenarios",
+    auth=django_auth,
+    response={200: List[StageScenarioOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_stage_scenarios(request, category_id: str, stage_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        stage = Stage.objects.select_related("category").get(
+            id=stage_id,
+            category_id=category_id,
+            category__firm=request.firm,
+        )
+    except Stage.DoesNotExist:
+        return 404, {"detail": "Stage not found in category for current firm."}
+
+    scenarios = StageScenario.objects.filter(
+        firm=request.firm,
+        category=stage.category,
+        stage=stage,
+    ).order_by("priority", "created_at", "id")
+    return 200, [_stage_scenario_out(scenario) for scenario in scenarios]
+
+
+@router.post(
+    "/categories/{category_id}/stages/{stage_id}/scenarios",
+    auth=django_auth,
+    response={201: StageScenarioOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_stage_scenario(request, category_id: str, stage_id: str, payload: StageScenarioIn):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        stage = Stage.objects.select_related("category").get(
+            id=stage_id,
+            category_id=category_id,
+            category__firm=request.firm,
+        )
+    except Stage.DoesNotExist:
+        return 404, {"detail": "Stage not found in category for current firm."}
+
+    recommended_next_stage = None
+    if payload.recommended_next_stage_id:
+        recommended_next_stage, err = _resolve_stage_in_firm(payload.recommended_next_stage_id, request.firm)
+        if err:
+            return err
+
+    scenario = StageScenario.objects.create(
+        firm=request.firm,
+        category=stage.category,
+        stage=stage,
+        name=payload.name,
+        description=payload.description,
+        activation_condition=payload.activation_condition,
+        completion_condition=payload.completion_condition,
+        recommended_next_stage=recommended_next_stage,
+        priority=payload.priority,
+        is_active=payload.is_active,
+        created_by=request.user,
+    )
+    return 201, _stage_scenario_out(scenario)
+
+
+@router.patch(
+    "/categories/{category_id}/stages/{stage_id}/scenarios/{scenario_id}",
+    auth=django_auth,
+    response={200: StageScenarioOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_stage_scenario(
+    request,
+    category_id: str,
+    stage_id: str,
+    scenario_id: str,
+    payload: StageScenarioPatchIn,
+):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        scenario = StageScenario.objects.get(
+            id=scenario_id,
+            firm=request.firm,
+            category_id=category_id,
+            stage_id=stage_id,
+        )
+    except StageScenario.DoesNotExist:
+        return 404, {"detail": "Stage scenario not found."}
+
+    updates = payload.dict(exclude_unset=True)
+    if "recommended_next_stage_id" in updates:
+        recommended_next_stage_id = updates.pop("recommended_next_stage_id")
+        if recommended_next_stage_id:
+            recommended_next_stage, err = _resolve_stage_in_firm(recommended_next_stage_id, request.firm)
+            if err:
+                return err
+            scenario.recommended_next_stage = recommended_next_stage
+        else:
+            scenario.recommended_next_stage = None
+
+    for key, value in updates.items():
+        setattr(scenario, key, value)
+    scenario.save()
+    return 200, _stage_scenario_out(scenario)
+
+
+@router.get(
+    "/scenarios/{scenario_id}/requirements",
+    auth=django_auth,
+    response={200: List[StageRequirementOut], 403: ErrorOut, 404: ErrorOut},
+)
+def list_stage_scenario_requirements(request, scenario_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        scenario = StageScenario.objects.get(id=scenario_id, firm=request.firm)
+    except StageScenario.DoesNotExist:
+        return 404, {"detail": "Stage scenario not found."}
+
+    requirements = scenario.requirements.all().order_by("sort_order", "created_at", "id")
+    return 200, [_stage_requirement_out(requirement) for requirement in requirements]
+
+
+@router.post(
+    "/condition-rules/test-evaluation/run",
+    auth=django_auth,
+    response={200: ConditionRuleTestEvaluationOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def test_condition_rule_evaluation(request, payload: ConditionRuleTestEvaluationIn):
+    from crm.condition_rules import RecordConditionContextBuilder, evaluate_condition_rule_outputs
+
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        record = filter_records_qs(
+            PipelineRecord.objects.filter(firm=request.firm),
+            request,
+        ).select_related("category", "current_stage").get(id=payload.record_id)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    if not payload.rule_id and payload.condition_tree is None:
+        return 400, {"detail": "Provide either rule_id or condition_tree."}
+
+    if payload.rule_id:
+        try:
+            rule = ConditionRule.objects.get(id=payload.rule_id, firm=request.firm)
+        except ConditionRule.DoesNotExist:
+            return 404, {"detail": "Condition rule not found."}
+        rules: list[Any] = [rule]
+    else:
+        rules = [
+            {
+                "id": "adhoc",
+                "name": "Adhoc evaluation",
+                "is_active": True,
+                "priority": 100,
+                "condition_tree": payload.condition_tree or {},
+                "effect": payload.effect,
+                "severity": payload.severity,
+                "effect_config": payload.effect_config,
+            },
+        ]
+
+    context = RecordConditionContextBuilder().build(record)
+    outputs = evaluate_condition_rule_outputs(rules, context)
+    blocking = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.BLOCK
+    ]
+    warnings = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.WARNING
+    ]
+    return 200, {
+        "matched": bool(outputs),
+        "outputs": [_serialize_stage_rule_output(output) for output in outputs],
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+@router.get(
+    "/records/{record_id}/active-stage-requirements",
+    auth=django_auth,
+    response={200: ActiveStageRequirementsOut, 403: ErrorOut, 404: ErrorOut},
+)
+def get_record_active_stage_requirements(request, record_id: str):
+    try:
+        require_permission(request, Permission.RECORD_VIEW)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        record = filter_records_qs(
+            PipelineRecord.objects.filter(firm=request.firm),
+            request,
+        ).get(id=record_id)
+    except PipelineRecord.DoesNotExist:
+        return 404, {"detail": "Record not found."}
+
+    _refresh_active_stage_scenario(record)
+    extra_data = record.extra_data if isinstance(record.extra_data, dict) else {}
+    requirements = extra_data.get("active_stage_requirements")
+    if not isinstance(requirements, list):
+        requirements = []
+    return 200, {
+        "record_id": str(record.id),
+        "active_stage_scenario_id": extra_data.get("active_stage_scenario_id"),
+        "active_stage_requirements": requirements,
+    }
+
+
+@router.get(
+    "/rule-evaluation-logs",
+    auth=django_auth,
+    response={200: List[RuleEvaluationLogOut], 403: ErrorOut},
+)
+def list_rule_evaluation_logs(
+    request,
+    trigger_type: str = "",
+    result: str = "",
+    record_id: str = "",
+    rule_id: str = "",
+    page: int = 1,
+    page_size: int = 50,
+):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    page = max(1, int(page))
+    page_size = max(1, min(200, int(page_size)))
+    qs = RuleEvaluationLog.objects.filter(firm=request.firm).order_by("-evaluated_at", "-id")
+    if trigger_type:
+        qs = qs.filter(trigger_type=trigger_type)
+    if result:
+        qs = qs.filter(result=result)
+    if record_id:
+        qs = qs.filter(record_id=record_id)
+    if rule_id:
+        qs = qs.filter(rule_id=rule_id)
+
+    offset = (page - 1) * page_size
+    logs = qs[offset:offset + page_size]
+    return 200, [_rule_evaluation_log_out(log) for log in logs]
