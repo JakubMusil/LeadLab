@@ -1537,6 +1537,10 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertIn("active_stage_requirements", self.record.extra_data)
         self.assertEqual(self.record.extra_data["active_stage_requirements"][0]["id"], str(requirement.id))
         self.assertTrue(self.record.extra_data["active_stage_requirements"][0]["is_met"])
+        self.assertEqual(
+            self.record.extra_data["active_stage_requirements"][0]["relevant_field_key"],
+            "notes",
+        )
 
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
@@ -5452,7 +5456,11 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             scenario=scenario,
             name="Need upload",
             requirement_type="activity",
-            condition={},
+            condition={
+                "source_type": "activity",
+                "activity_type": "task",
+                "operator": "exists",
+            },
             blocking=True,
             sort_order=0,
         )
@@ -5477,6 +5485,9 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(payload["recommended_next_stage_id"], str(self.stage_b.id))
         self.assertEqual(payload["recommended_next_stage_name"], self.stage_b.name)
         self.assertEqual(payload["active_stage_requirements"][0]["id"], str(requirement.id))
+        self.assertIsNone(payload["active_stage_requirements"][0]["relevant_field_key"])
+        self.assertEqual(payload["active_stage_requirements"][0]["relevant_activity_type"], "task")
+        self.assertIsNone(payload["active_stage_requirements"][0]["relevant_tool_type"])
 
     def test_condition_rule_test_evaluation_and_log_listing(self):
         rule = ConditionRule.objects.create(

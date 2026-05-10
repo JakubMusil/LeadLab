@@ -1170,6 +1170,8 @@
     "metRequirementsLabel": "Erfüllte Anforderungen",
     "blockingRequirementLabel": "Blockierend",
     "warningRequirementLabel": "Warnung",
+    "relevantFieldLink": "Zum Feld springen",
+    "relevantActivityLink": "Zu Aktivitäten springen",
     "requirementsLoadFailed": "Phasenanforderungen konnten nicht geladen werden.",
     "stageUpdated": "Status aktualisiert.",
     "stageUpdateFailed": "Status konnte nicht aktualisiert werden.",
