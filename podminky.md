@@ -886,14 +886,14 @@ Editor scénářů by měl umožnit:
 
 ### 13.1 Analýza domény
 
-- [ ] Zmapovat existující modely kategorií, fází a polí.
-- [ ] Zmapovat existující ukládání standardních polí záznamu.
-- [ ] Zmapovat existující ukládání kategoriových polí.
-- [ ] Zmapovat existující Streamline activity model.
-- [ ] Zmapovat registry Streamline toolů.
-- [ ] Zmapovat existující události při změně fáze.
-- [ ] Zmapovat existující audit log a activity log.
-- [ ] Zmapovat oprávnění pro správu kategorií a záznamů.
+- [x] Zmapovat existující modely kategorií, fází a polí.
+- [x] Zmapovat existující ukládání standardních polí záznamu.
+- [x] Zmapovat existující ukládání kategoriových polí.
+- [x] Zmapovat existující Streamline activity model.
+- [x] Zmapovat registry Streamline toolů.
+- [x] Zmapovat existující události při změně fáze.
+- [x] Zmapovat existující audit log a activity log.
+- [x] Zmapovat oprávnění pro správu kategorií a záznamů.
 
 ### 13.2 Návrh datového modelu
 
@@ -1031,12 +1031,12 @@ Editor scénářů by měl umožnit:
 
 ### 14.1 Analýza UI
 
-- [ ] Zmapovat detail záznamu.
-- [ ] Zmapovat nastavení pipeline kategorií.
-- [ ] Zmapovat nastavení fází.
-- [ ] Zmapovat zobrazení kategoriových polí.
-- [ ] Zmapovat práci se Streamline feedem.
-- [ ] Zmapovat existující modaly a formulářové komponenty.
+- [x] Zmapovat detail záznamu.
+- [x] Zmapovat nastavení pipeline kategorií.
+- [x] Zmapovat nastavení fází.
+- [x] Zmapovat zobrazení kategoriových polí.
+- [x] Zmapovat práci se Streamline feedem.
+- [x] Zmapovat existující modaly a formulářové komponenty.
 
 ### 14.2 Panel požadavků fáze
 
@@ -1287,3 +1287,15 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 - pole záznamu a kategoriová pole jako zdroj obchodních rozhodnutí.
 
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
+
+## 19. Průběžný pracovní postup
+
+### 2026-05-10 05:49 UTC
+
+- Prostudován celý návrh a potvrzen další proveditelný krok: dokončit analytické mapování pro backend (13.1) a frontend (14.1).
+- Kroky byly delegované na podagenty (samostatně backend + frontend), následně ručně ověřené proti zdrojovým souborům.
+- Výsledek: sekce 13.1 a 14.1 jsou dokončené a checkboxy byly aktualizované na splněné.
+- Validace prostředí před úpravami:
+  - frontend checks aktuálně padají na pre-existing TypeScript chybách mimo tento dokument,
+  - backend checks aktuálně padají na `pip-audit` nálezu `twisted 25.5.0 / CVE-2026-42304` (fix verze `26.4.0rc2`).
+- Následuje: navázat návrhem datového modelu (13.2) a připravit první konkrétní návrh struktur pro pravidla, scénáře a log vyhodnocení.
