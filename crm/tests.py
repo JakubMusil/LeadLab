@@ -8,6 +8,7 @@ from crm.models import (
     Activity,
     ActivityType,
     Category,
+    CategoryField,
     ConditionEffectType,
     ConditionRule,
     ConditionScopeType,
@@ -1303,6 +1304,141 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
 
         self.record.refresh_from_db()
         self.assertNotIn("active_stage_requirements", self.record.extra_data)
+
+    def test_patch_category_field_change_evaluates_rules_and_logs(self):
+        CategoryField.objects.create(
+            category=self.category,
+            field_key="notes",
+            is_visible=True,
+            is_required=False,
+            order=1,
+        )
+        rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn category notes changed",
+            trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            scope_type=ConditionScopeType.CATEGORY,
+            category=self.category,
+            condition_tree={
+                "source_type": "category_field_change",
+                "category_field_key": "notes",
+                "operator": "changed_to",
+                "value": "Updated category note",
+            },
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Category field updated"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"extra_data": {"category_fields": {"notes": "Updated category note"}}},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+                rule=rule,
+                result=RuleEvaluationResult.WARNING,
+            ).exists()
+        )
+
+    def test_patch_same_category_field_value_does_not_evaluate_category_field_change(self):
+        CategoryField.objects.create(
+            category=self.category,
+            field_key="notes",
+            is_visible=True,
+            is_required=False,
+            order=1,
+        )
+        ConditionRule.objects.create(
+            firm=self.firm,
+            name="Warn any category notes change",
+            trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            scope_type=ConditionScopeType.CATEGORY,
+            category=self.category,
+            condition_tree={
+                "source_type": "category_field_change",
+                "category_field_key": "notes",
+                "operator": "changed",
+            },
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Category notes changed"},
+        )
+        self.record.extra_data = {"category_fields": {"notes": "Same value"}}
+        self.record.save(update_fields=["extra_data"])
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"extra_data": {"category_fields": {"notes": "Same value"}}},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            ).exists()
+        )
+
+    def test_patch_category_field_change_rejects_unknown_field_for_category(self):
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"extra_data": {"category_fields": {"unknown_field": "x"}}},
+        )
+        self.assertEqual(resp.status_code, 400)
+        payload = resp.json()
+        self.assertEqual(payload.get("code"), "invalid_category_field_key")
+        self.assertFalse(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            ).exists()
+        )
+
+    def test_patch_category_field_change_refreshes_active_stage_requirements(self):
+        CategoryField.objects.create(
+            category=self.category,
+            field_key="notes",
+            is_visible=True,
+            is_required=False,
+            order=1,
+        )
+        scenario = StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_new,
+            name="Category field scenario",
+            activation_condition={"source_type": "category_field", "category_field_key": "notes", "operator": "eq", "value": "done"},
+            is_active=True,
+            priority=1,
+        )
+        requirement = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Notes completed",
+            requirement_type="field",
+            condition={"source_type": "category_field", "category_field_key": "notes", "operator": "eq", "value": "done"},
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"extra_data": {"category_fields": {"notes": "done"}}},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        self.record.refresh_from_db()
+        self.assertIn("active_stage_scenario_id", self.record.extra_data)
+        self.assertIn("active_stage_requirements", self.record.extra_data)
+        self.assertEqual(self.record.extra_data["active_stage_requirements"][0]["id"], str(requirement.id))
+        self.assertTrue(self.record.extra_data["active_stage_requirements"][0]["is_met"])
 
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
@@ -4692,6 +4828,44 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
             "value": "2026-01-01",
         }
         self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_category_field_change_source_reads_category_field_key_from_change_context(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "change": {
+                "category_field_key": "installation_date",
+                "source_type": "category_field",
+                "old_value": "2026-01-01",
+                "new_value": "2026-05-01",
+            }
+        }
+        tree = {
+            "source_type": "category_field_change",
+            "category_field_key": "installation_date",
+            "operator": "changed_to",
+            "value": "2026-05-01",
+        }
+        self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_category_field_change_fails_when_source_type_mismatches(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "field_changes": {
+                "installation_date": {
+                    "source_type": "field",
+                    "old_value": "2026-01-01",
+                    "new_value": "2026-05-01",
+                }
+            }
+        }
+        tree = {
+            "source_type": "category_field_change",
+            "category_field_key": "installation_date",
+            "operator": "changed",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, context))
 
     def test_field_change_changed_requires_actual_difference(self):
         from crm.tasks import evaluate_condition_tree

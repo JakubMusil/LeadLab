@@ -252,11 +252,16 @@ class ConditionTreeEvaluator:
         if isinstance(field_changes, Mapping):
             field_change = field_changes.get(field_key)
             if isinstance(field_change, Mapping):
-                return field_change
+                field_change_source = self._normalize_change_source(field_change.get("source_type"))
+                if field_change_source in {None, source_type}:
+                    return field_change
+                return None
 
         change = context.get("change")
         if isinstance(change, Mapping):
             change_field_key = change.get("field_key")
+            if change_field_key is None and source_type == "category_field":
+                change_field_key = change.get("category_field_key")
             if change_field_key is not None and str(change_field_key) == field_key:
                 change_source_type = self._normalize_change_source(change.get("source_type"))
                 if change_source_type in {None, source_type}:

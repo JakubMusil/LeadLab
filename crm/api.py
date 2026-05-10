@@ -10,7 +10,7 @@ import datetime as dt
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional
 
 from django.core.cache import cache
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Max, Q, Sum
@@ -932,6 +932,51 @@ def _build_field_change_condition_context(
     return context
 
 
+def _extract_record_category_fields(extra_data: Any) -> dict[str, Any]:
+    if not isinstance(extra_data, Mapping):
+        return {}
+    category_fields = extra_data.get("category_fields")
+    if isinstance(category_fields, Mapping):
+        return dict(category_fields)
+    # Backward-compatible fallback for legacy records storing category fields at root.
+    return {
+        key: value
+        for key, value in extra_data.items()
+        if key not in {"active_stage_scenario_id", "active_stage_requirements"}
+    }
+
+
+def _build_category_field_change_condition_context(
+    record: PipelineRecord,
+    *,
+    category_field_key: str,
+    old_value: Any,
+    new_value: Any,
+) -> dict:
+    from crm.condition_rules import RecordConditionContextBuilder
+
+    context = RecordConditionContextBuilder().build(
+        record,
+        changed_field=category_field_key,
+        old_value=_to_json_compatible_value(old_value),
+        new_value=_to_json_compatible_value(new_value),
+        changed_field_source="category_field",
+    )
+    change = context.get("change")
+    if isinstance(change, dict):
+        change["category_field_key"] = category_field_key
+    context["field_changes"] = {
+        category_field_key: {
+            "source_type": "category_field",
+            "field_key": category_field_key,
+            "category_field_key": category_field_key,
+            "old_value": context.get("change", {}).get("old_value"),
+            "new_value": context.get("change", {}).get("new_value"),
+        },
+    }
+    return context
+
+
 def _get_applicable_field_change_rules(
     *,
     firm,
@@ -943,6 +988,40 @@ def _get_applicable_field_change_rules(
             firm=firm,
             is_active=True,
             trigger_type=ConditionTriggerType.RECORD_FIELD_CHANGED,
+        )
+        .order_by("priority", "created_at", "id")
+    )
+
+    applicable: list[ConditionRule] = []
+    record_category_id = str(record.category_id) if record.category_id else None
+    current_stage_id = str(record.current_stage_id) if record.current_stage_id else None
+    for rule in rules:
+        scope_type = rule.scope_type
+        if scope_type == ConditionScopeType.FIRM:
+            applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.CATEGORY:
+            if rule.category_id and str(rule.category_id) == record_category_id:
+                applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.STAGE:
+            if rule.stage_id and str(rule.stage_id) == current_stage_id:
+                applicable.append(rule)
+            continue
+    return applicable
+
+
+def _get_applicable_category_field_change_rules(
+    *,
+    firm,
+    record: PipelineRecord,
+) -> list[ConditionRule]:
+    rules = (
+        ConditionRule.objects
+        .filter(
+            firm=firm,
+            is_active=True,
+            trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
         )
         .order_by("priority", "created_at", "id")
     )
@@ -1026,6 +1105,66 @@ def _log_field_change_rule_outputs(
         )
 
 
+def _log_category_field_change_rule_outputs(
+    *,
+    firm,
+    record: PipelineRecord,
+    context: dict[str, Any],
+    outputs: list[dict[str, Any]],
+    evaluated_by,
+):
+    compact_context = {
+        "record_id": str(record.id),
+        "category_id": str(record.category_id) if record.category_id else None,
+        "current_stage_id": str(record.current_stage_id) if record.current_stage_id else None,
+        "change": _to_json_compatible_value(context.get("change", {})),
+    }
+    if not outputs:
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            input_context=compact_context,
+            result=RuleEvaluationResult.PASSED,
+            messages=[],
+            recommendations=[],
+            evaluated_by=evaluated_by,
+        )
+        return
+
+    for output in outputs:
+        effect = output.get("effect")
+        if effect == ConditionEffectType.BLOCK:
+            result = RuleEvaluationResult.BLOCKED
+        elif effect == ConditionEffectType.WARNING:
+            result = RuleEvaluationResult.WARNING
+        elif effect == ConditionEffectType.ACTIVATE_SCENARIO:
+            result = RuleEvaluationResult.SCENARIO_ACTIVATED
+        elif effect == ConditionEffectType.COMPLETE_REQUIREMENT:
+            result = RuleEvaluationResult.REQUIREMENT_COMPLETED
+        else:
+            result = RuleEvaluationResult.PASSED
+
+        effect_config = output.get("effect_config")
+        message = ""
+        if isinstance(effect_config, dict):
+            message = str(effect_config.get("message") or "")
+        recommendations: list[dict[str, Any]] = []
+        if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict):
+            recommendations = [effect_config]
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            rule_id=output.get("rule_id"),
+            trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+            input_context=compact_context,
+            result=result,
+            messages=[message] if message else [],
+            recommendations=recommendations,
+            evaluated_by=evaluated_by,
+        )
+
+
 def _log_field_change_rule_error(
     *,
     firm,
@@ -1042,6 +1181,32 @@ def _log_field_change_rule_error(
         input_context={
             "record_id": str(record.id),
             "field_key": field_key,
+            "change": _to_json_compatible_value(context.get("change", {})),
+        },
+        result=RuleEvaluationResult.ERROR,
+        messages=[],
+        recommendations=[],
+        error_message=str(error),
+        evaluated_by=evaluated_by,
+    )
+
+
+def _log_category_field_change_rule_error(
+    *,
+    firm,
+    record: PipelineRecord,
+    category_field_key: str,
+    context: dict[str, Any],
+    evaluated_by,
+    error: Exception,
+):
+    RuleEvaluationLog.objects.create(
+        firm=firm,
+        record=record,
+        trigger_type=ConditionTriggerType.RECORD_CATEGORY_FIELD_CHANGED,
+        input_context={
+            "record_id": str(record.id),
+            "category_field_key": category_field_key,
             "change": _to_json_compatible_value(context.get("change", {})),
         },
         result=RuleEvaluationResult.ERROR,
@@ -1092,6 +1257,68 @@ def _evaluate_field_change_trigger(
             firm=firm,
             record=record,
             field_key=field_key,
+            context=context,
+            evaluated_by=evaluated_by,
+            error=exc,
+        )
+        return {"blocking": [], "warnings": []}
+
+    blocking = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.BLOCK
+    ]
+    warnings = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.WARNING
+    ]
+    return {
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+def _evaluate_category_field_change_trigger(
+    *,
+    firm,
+    record: PipelineRecord,
+    category_field_key: str,
+    old_value: Any,
+    new_value: Any,
+    evaluated_by,
+) -> dict[str, list[dict[str, Any]]]:
+    from crm.condition_rules import evaluate_condition_rule_outputs
+
+    context = _build_category_field_change_condition_context(
+        record,
+        category_field_key=category_field_key,
+        old_value=old_value,
+        new_value=new_value,
+    )
+    try:
+        rules = _get_applicable_category_field_change_rules(
+            firm=firm,
+            record=record,
+        )
+        outputs = evaluate_condition_rule_outputs(rules, context)
+        _log_category_field_change_rule_outputs(
+            firm=firm,
+            record=record,
+            context=context,
+            outputs=outputs,
+            evaluated_by=evaluated_by,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Category field change rule evaluation failed for record %s (field=%s)",
+            record.id,
+            category_field_key,
+        )
+        _log_category_field_change_rule_error(
+            firm=firm,
+            record=record,
+            category_field_key=category_field_key,
             context=context,
             evaluated_by=evaluated_by,
             error=exc,
@@ -1590,6 +1817,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
     old_stage_id = record.current_stage_id
     update_data = payload.dict(exclude_none=True)
     requested_field_keys = set(update_data.keys())
+    old_category_fields = _extract_record_category_fields(record.extra_data)
     old_standard_field_values = {
         "title": record.title,
         "status": record.status,
@@ -1754,6 +1982,7 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
         setattr(record, field, value)
 
     changed_standard_fields: dict[str, dict[str, Any]] = {}
+    changed_category_fields: dict[str, dict[str, Any]] = {}
     if new_status is not None and new_status != old_status:
         changed_standard_fields["status"] = {
             "old_value": old_status,
@@ -1769,6 +1998,35 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
             changed_standard_fields[field_key] = {
                 "old_value": old_value,
                 "new_value": new_value,
+            }
+
+    if "extra_data" in requested_field_keys:
+        new_category_fields = _extract_record_category_fields(record.extra_data)
+        for category_field_key in sorted(set(old_category_fields.keys()) | set(new_category_fields.keys())):
+            old_value = old_category_fields.get(category_field_key)
+            new_value = new_category_fields.get(category_field_key)
+            if old_value != new_value:
+                changed_category_fields[category_field_key] = {
+                    "old_value": old_value,
+                    "new_value": new_value,
+                }
+
+    if changed_category_fields:
+        if not record.category_id:
+            return 400, {"detail": "Cannot update category fields when record has no category."}
+        allowed_category_field_keys = set(
+            CategoryField.objects
+            .filter(category_id=record.category_id)
+            .values_list("field_key", flat=True)
+        )
+        invalid_keys = sorted(key for key in changed_category_fields if key not in allowed_category_field_keys)
+        if invalid_keys:
+            return 400, {
+                "detail": (
+                    "Category field(s) not configured for the record category: "
+                    + ", ".join(invalid_keys)
+                ),
+                "code": "invalid_category_field_key",
             }
 
     with transaction.atomic():
@@ -1826,8 +2084,18 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                         new_value=values.get("new_value"),
                         evaluated_by=request.user,
                     )
-                if not stage_change_performed:
-                    _refresh_active_stage_scenario(record)
+            if changed_category_fields:
+                for category_field_key, values in changed_category_fields.items():
+                    _evaluate_category_field_change_trigger(
+                        firm=request.firm,
+                        record=record,
+                        category_field_key=category_field_key,
+                        old_value=values.get("old_value"),
+                        new_value=values.get("new_value"),
+                        evaluated_by=request.user,
+                    )
+            if (changed_standard_fields or changed_category_fields) and not stage_change_performed:
+                _refresh_active_stage_scenario(record)
         finally:
             clear_current_user()
 
