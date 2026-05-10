@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut, type CategoryFieldOut } from '@/stores/pipeline'
+import { useConditionRulesStore, type ConditionRuleOut } from '@/stores/conditionRules'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
@@ -21,6 +22,7 @@ import PeoplePicker from '@/components/PeoplePicker.vue'
 import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
+const conditionRulesStore = useConditionRulesStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const { t } = useI18n()
@@ -82,6 +84,13 @@ const newFieldValidationRules = ref<Record<string, unknown>>({})
 const newFieldLabelOverride = ref('')
 const newFieldHelpText = ref('')
 const savingField = ref(false)
+
+// Condition rules
+const ruleFilterCategoryId = ref('')
+const ruleFilterStageId = ref('')
+const ruleFilterTriggerType = ref('')
+const ruleFilterEnabled = ref<'all' | 'enabled' | 'disabled'>('all')
+const updatingRuleIds = ref<Record<string, boolean>>({})
 
 // Delete confirmations
 const pendingDeleteCategoryId = ref<string | null>(null)
@@ -175,6 +184,12 @@ const selectedStages = computed<StageOut[]>(() =>
 const selectedFields = computed<CategoryFieldOut[]>(() =>
   selectedCategoryId.value ? pipelineStore.getFieldsForCategory(selectedCategoryId.value) : [],
 )
+const conditionRules = computed<ConditionRuleOut[]>(() => conditionRulesStore.rules)
+const conditionRulesError = computed(() => conditionRulesStore.error)
+const conditionRulesLoading = computed(() => conditionRulesStore.loading)
+const ruleFilterStages = computed<StageOut[]>(() =>
+  ruleFilterCategoryId.value ? pipelineStore.getStagesForCategory(ruleFilterCategoryId.value) : pipelineStore.allStages,
+)
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
 const ALL_FIELD_KEYS = [
@@ -212,7 +227,6 @@ onMounted(async () => {
   }
   if (pipelineStore.categories.length > 0 && !selectedCategoryId.value) {
     selectedCategoryId.value = pipelineStore.categories[0]!.id
-    void loadCategoryGrants()
   }
 })
 
@@ -220,6 +234,9 @@ onMounted(async () => {
 watch(selectedCategoryId, () => {
   categoryGrants.value = []
   if (selectedCategoryId.value) void loadCategoryGrants()
+  ruleFilterCategoryId.value = selectedCategoryId.value ?? ''
+  ruleFilterStageId.value = ''
+  void loadConditionRules()
 })
 
 // ---------------------------------------------------------------------------
@@ -234,7 +251,6 @@ function selectCategory(id: string) {
   cancelEditField()
   showNewFieldForm.value = false
   showGrantForm.value = false
-  void loadCategoryGrants()
 }
 
 function startEditCategory(cat: CategoryOut) {
@@ -511,6 +527,45 @@ async function onFieldDragEnd() {
       pipelineStore.updateField(selectedCategoryId.value!, field.field_key, { order: idx }),
     ),
   )
+}
+
+// ---------------------------------------------------------------------------
+// Condition rules actions
+// ---------------------------------------------------------------------------
+
+async function loadConditionRules() {
+  const isActive =
+    ruleFilterEnabled.value === 'all' ? undefined : ruleFilterEnabled.value === 'enabled'
+  await conditionRulesStore.fetchRules({
+    categoryId: ruleFilterCategoryId.value || undefined,
+    stageId: ruleFilterStageId.value || undefined,
+    triggerType: ruleFilterTriggerType.value.trim() || undefined,
+    isActive,
+  })
+}
+
+function resetRuleFilters() {
+  ruleFilterCategoryId.value = selectedCategoryId.value ?? ''
+  ruleFilterStageId.value = ''
+  ruleFilterTriggerType.value = ''
+  ruleFilterEnabled.value = 'all'
+  void loadConditionRules()
+}
+
+function isRuleUpdating(ruleId: string): boolean {
+  return updatingRuleIds.value[ruleId] === true
+}
+
+async function toggleRuleActive(rule: ConditionRuleOut, enabled: boolean) {
+  if (isRuleUpdating(rule.id)) return
+  updatingRuleIds.value = { ...updatingRuleIds.value, [rule.id]: true }
+  const result = await conditionRulesStore.updateRule(rule.id, { is_active: enabled })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesToggleFailed'))
+  }
+  const next = { ...updatingRuleIds.value }
+  delete next[rule.id]
+  updatingRuleIds.value = next
 }
 
 // ---------------------------------------------------------------------------
@@ -1179,6 +1234,94 @@ const newPattern = computed({
               <PlusIcon class="w-4 h-4" />
               {{ t('pipeline.addField') }}
             </button>
+          </div>
+
+          <!-- Condition rules -->
+          <div>
+            <div class="text-sm font-semibold text-gray-700 mb-2">{{ t('pipeline.rulesTitle') }}</div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+              <select
+                v-model="ruleFilterCategoryId"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              >
+                <option value="">{{ t('pipeline.allCategories') }}</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+              </select>
+
+              <select
+                v-model="ruleFilterStageId"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              >
+                <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
+                <option v-for="stage in ruleFilterStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
+              </select>
+
+              <input
+                v-model="ruleFilterTriggerType"
+                type="text"
+                :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+
+              <select
+                v-model="ruleFilterEnabled"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              >
+                <option value="all">{{ t('pipeline.rulesFilterStateAll') }}</option>
+                <option value="enabled">{{ t('pipeline.rulesFilterStateEnabled') }}</option>
+                <option value="disabled">{{ t('pipeline.rulesFilterStateDisabled') }}</option>
+              </select>
+            </div>
+
+            <div class="flex gap-2 mb-3">
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                :disabled="conditionRulesLoading"
+                @click="loadConditionRules"
+              >{{ t('pipeline.rulesApplyFilters') }}</button>
+              <button
+                class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                @click="resetRuleFilters"
+              >{{ t('pipeline.rulesResetFilters') }}</button>
+            </div>
+
+            <div v-if="conditionRulesLoading" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.rulesLoading') }}
+            </div>
+            <div v-else-if="conditionRulesError" class="text-xs text-red-500 py-2">
+              {{ conditionRulesError }}
+            </div>
+            <div v-else-if="conditionRules.length === 0" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.rulesEmpty') }}
+            </div>
+            <div v-else class="space-y-2">
+              <div
+                v-for="rule in conditionRules"
+                :key="rule.id"
+                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white"
+              >
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-gray-800 truncate">{{ rule.name }}</div>
+                  <div class="text-xs text-gray-500 mt-0.5 break-words">
+                    {{ t('pipeline.rulesTrigger') }}: {{ rule.trigger_type }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ t('pipeline.rulesScope') }}: {{ rule.scope_type }}
+                  </div>
+                </div>
+                <label class="inline-flex items-center gap-2 text-xs text-gray-600 pt-0.5">
+                  <input
+                    :checked="rule.is_active"
+                    type="checkbox"
+                    class="rounded"
+                    :disabled="isRuleUpdating(rule.id)"
+                    @change="toggleRuleActive(rule, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <span>{{ rule.is_active ? t('pipeline.rulesStateEnabled') : t('pipeline.rulesStateDisabled') }}</span>
+                </label>
+              </div>
+            </div>
           </div>
 
           <!-- Category Access Grants -->
