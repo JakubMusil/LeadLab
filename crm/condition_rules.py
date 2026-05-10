@@ -1,9 +1,11 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
 
 _MISSING = object()
+logger = logging.getLogger(__name__)
 
 
 class RecordConditionContextBuilder:
@@ -13,6 +15,8 @@ class RecordConditionContextBuilder:
         extra_data = record.extra_data if isinstance(record.extra_data, Mapping) else {}
         category_fields = extra_data.get("category_fields")
         if not isinstance(category_fields, Mapping):
+            # Backward-compatible fallback for existing records where category fields
+            # are persisted directly in extra_data root.
             category_fields = extra_data
 
         activities: list[dict[str, Any]] = []
@@ -35,7 +39,8 @@ class RecordConditionContextBuilder:
                 }
                 for activity in activity_qs
             ]
-        except Exception:  # noqa: BLE001
+        except (AttributeError, TypeError, ValueError) as exc:
+            logger.warning("Unable to load record activities for condition context: %s", exc)
             activities = []
 
         return {
@@ -174,15 +179,7 @@ class ConditionTreeEvaluator:
         if not isinstance(activities, list):
             return False
 
-        expected_type = node.get("activity_type")
-        expected_tool_type = node.get("tool_type")
-        expected_entity_type = node.get("entity_type")
-        expected_value = node.get("value")
-
-        if source_type == "streamline_tool" and not expected_tool_type and expected_value is not None:
-            expected_tool_type = expected_value
-        if source_type in {"activity", "streamline_activity"} and not expected_type and expected_value is not None:
-            expected_type = expected_value
+        expected_type, expected_tool_type, expected_entity_type = self._resolve_activity_filters(node, source_type)
 
         matched = 0
         for activity in activities:
@@ -219,6 +216,23 @@ class ConditionTreeEvaluator:
         if operator in self.NUMERIC_OPERATORS:
             return self._evaluate_operator(matched, operator, expected)
         return False
+
+    def _resolve_activity_filters(
+        self,
+        node: Mapping[str, Any],
+        source_type: str,
+    ) -> tuple[Any, Any, Any]:
+        expected_type = node.get("activity_type")
+        expected_tool_type = node.get("tool_type")
+        expected_entity_type = node.get("entity_type")
+        expected_value = node.get("value")
+
+        if source_type == "streamline_tool" and not expected_tool_type and expected_value is not None:
+            expected_tool_type = expected_value
+        if source_type in {"activity", "streamline_activity"} and not expected_type and expected_value is not None:
+            expected_type = expected_value
+
+        return expected_type, expected_tool_type, expected_entity_type
 
     def _match_time_window(self, activity: Mapping[str, Any], time_window: Any) -> bool:
         if not time_window:
