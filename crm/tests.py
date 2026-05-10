@@ -4195,6 +4195,29 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
         tree = {"field": "missing.path", "operator": "eq", "value": "x"}
         self.assertFalse(evaluate_condition_tree(tree, {"status": "new"}))
 
+    def test_condition_tree_fails_closed_for_self_referencing_group(self):
+        from crm.tasks import evaluate_condition_tree
+
+        root = {"op": "and", "children": []}
+        root["children"].append(root)
+        self.assertFalse(evaluate_condition_tree(root, {"status": "new"}))
+
+    def test_condition_tree_fails_closed_for_indirect_cycle_between_groups(self):
+        from crm.tasks import evaluate_condition_tree
+
+        first = {"op": "and", "children": []}
+        second = {"op": "or", "children": []}
+        first["children"].append(second)
+        second["children"].append(first)
+        self.assertFalse(evaluate_condition_tree(first, {"status": "new"}))
+
+    def test_condition_tree_allows_reused_subtree_without_cycle(self):
+        from crm.tasks import evaluate_condition_tree
+
+        shared = {"field": "status", "operator": "eq", "value": "new"}
+        tree = {"op": "and", "children": [shared, shared]}
+        self.assertTrue(evaluate_condition_tree(tree, {"status": "new"}))
+
     def test_numeric_comparison_handles_decimal_like_values(self):
         from crm.tasks import evaluate_condition_tree
 
