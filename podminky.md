@@ -897,20 +897,75 @@ Editor scénářů by měl umožnit:
 
 ### 13.2 Návrh datového modelu
 
-- [ ] Navrhnout model pro pravidla.
-- [ ] Navrhnout model pro skupiny podmínek.
-- [ ] Navrhnout model pro scénáře fáze.
-- [ ] Navrhnout model pro požadavky scénáře.
-- [ ] Navrhnout model pro log vyhodnocení.
-- [ ] Navrhnout vazbu pravidel na firmu.
-- [ ] Navrhnout vazbu pravidel na kategorii.
-- [ ] Navrhnout vazbu pravidel na fázi.
-- [ ] Navrhnout vazbu pravidel na Streamline entity.
-- [ ] Navrhnout vazbu pravidel na Streamline tool typ.
-- [ ] Navrhnout vazbu pravidel na standardní pole.
-- [ ] Navrhnout vazbu pravidel na kategoriová pole.
-- [ ] Navrhnout prioritu pravidel.
-- [ ] Navrhnout zapnutí/vypnutí pravidel.
+- [x] Navrhnout model pro pravidla.
+- [x] Navrhnout model pro skupiny podmínek.
+- [x] Navrhnout model pro scénáře fáze.
+- [x] Navrhnout model pro požadavky scénáře.
+- [x] Navrhnout model pro log vyhodnocení.
+- [x] Navrhnout vazbu pravidel na firmu.
+- [x] Navrhnout vazbu pravidel na kategorii.
+- [x] Navrhnout vazbu pravidel na fázi.
+- [x] Navrhnout vazbu pravidel na Streamline entity.
+- [x] Navrhnout vazbu pravidel na Streamline tool typ.
+- [x] Navrhnout vazbu pravidel na standardní pole.
+- [x] Navrhnout vazbu pravidel na kategoriová pole.
+- [x] Navrhnout prioritu pravidel.
+- [x] Navrhnout zapnutí/vypnutí pravidel.
+
+Návrh navazuje na existující automatizační architekturu (`AutomationRule`, `AutomationRun`) a na současný model dat pro pipeline, aktivity a Streamline entity.
+
+**Model pro pravidla (`ConditionRule`)**
+
+- rozšířit pattern `AutomationRule` o scope (`firm`, `category`, volitelně `stage`, `source_stage`, `target_stage`),
+- zavést `priority` (deterministické řazení vyhodnocení) a `enabled` (rychlé zapnutí/vypnutí bez ztráty historie),
+- podmínky ukládat jako `condition_tree` v JSON (MVP bez samostatných DB tabulek pro uzly),
+- doplnit výstup pravidla (`effect`, `severity`, `effect_config`) pro blokace, upozornění a doporučení.
+
+**Model pro skupiny podmínek (`ConditionGroup` + `ConditionNode`)**
+
+- reprezentovat jako vnořenou JSON strukturu v `condition_tree` (`AND` / `OR` / `NOT`),
+- `ConditionNode` musí nést `source_type`, `operator`, `value`, volitelně `time_window`,
+- zdroje podmínek: standardní pole záznamu, kategoriové pole, aktivita, Streamline entita, související entita.
+
+**Model pro scénáře fáze (`StageScenario`)**
+
+- `firm` + `category` + `stage` jako povinný scope,
+- `activation_condition` + `completion_condition` jako JSON strom podmínek,
+- `recommended_next_stage` (volitelně), `priority`, `enabled`,
+- scénáře se vyhodnocují v pořadí priority a mohou běžet souběžně (pokud to konfigurace nezakáže).
+
+**Model pro požadavky scénáře (`StageRequirement`)**
+
+- FK na `StageScenario`,
+- `requirement_type`, `condition`, `blocking`, `visible_to_user`, `sort_order`,
+- nesplněné `blocking=true` požadavky blokují přechod fáze, ostatní pouze upozorňují.
+
+**Model pro log vyhodnocení (`RuleEvaluationLog`)**
+
+- auditní, append-only log navázaný na `firm` a volitelně na `record`, `rule`, `scenario`, `requirement`,
+- ukládat `trigger_type`, `input_context`, `result`, `messages`, `recommendations`, `error_message`, `evaluated_at`,
+- `evaluated_by` ponechat nullable (část vyhodnocení běží asynchronně bez interaktivního uživatele).
+
+**Vazby a mapování zdrojů**
+
+- **firma/kategorie/fáze**: scope přes FK (`firm`, `category`, `stage` + `source_stage`/`target_stage` pro stage transition),
+- **Streamline entity**: mapovat přes polymorfní vazbu aktivit (`Activity.record/customer/proposal/task`) a `entity_type`,
+- **Streamline tool typ**: mapovat na `Activity.type` (bez paralelního tool registru v DB),
+- **standardní pole**: `PipelineRecord` (`status`, `value`, `currency`, `current_stage`, `assigned_to`, `extra_data.*`),
+- **kategoriová pole**: `CategoryField.field_key` + `value_type` + `validation_rules` (validace operátorů podle typu).
+
+**Priorita, zapnutí/vypnutí, indexy**
+
+- primární pořadí vyhodnocení: `priority ASC`, sekundárně `created_at ASC`,
+- aktivní pravidla filtrovat přes `enabled=True`,
+- navržené indexy pro výkon: `(firm, enabled, trigger_type, priority)`, `(firm, category, enabled)`, `(firm, stage, trigger_type)`.
+
+**Kompatibilita s aktuálním backendem (ověřeno)**
+
+- základ pro pravidla/log existuje: `crm/models.py` (`AutomationRule`, `AutomationRun`),
+- stage změna dnes probíhá v `crm/api.py:update_record` a je vhodný integrační bod pro pre/post evaluaci,
+- evaluace triggerů už běží přes Celery task `crm/tasks.py:evaluate_automation_rules`,
+- aktivity mají polymorfní vazbu a canonical `entity_type`, což pokrývá požadované Streamline entity bez nového schématu.
 
 ### 13.3 Migrace
 
@@ -1289,6 +1344,14 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 09:32 UTC
+
+- Prostudován navazující rozsah v `podminky.md` a potvrzen další krok: dokončit sekci 13.2 (návrh datového modelu).
+- Návrh byl delegován na podagenta (backend model mapping) a následně znovu delegován na validačního podagenta pro konceptuální/implementační kontrolu.
+- Výstupy podagentů byly ručně ověřeny proti aktuálním souborům (`crm/models.py`, `crm/api.py`, `crm/tasks.py`) a sladěny s reálnými integračními body.
+- Výsledek: 13.2 je doplněna konkrétním návrhem modelů, vazeb, priority/indexů a všechny checkboxy 13.2 jsou označeny jako splněné.
+- Následuje: navázat etapou 13.3 (návrh migrací tabulek + indexů + rollback strategie) ve stejném režimu delegace + ruční validace.
 
 ### 2026-05-10 05:49 UTC
 
