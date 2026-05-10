@@ -2,7 +2,12 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePipelineStore, type CategoryOut, type StageOut, type CategoryFieldOut } from '@/stores/pipeline'
-import { useConditionRulesStore, type ConditionRuleOut } from '@/stores/conditionRules'
+import {
+  useConditionRulesStore,
+  type ConditionRuleOut,
+  type ConditionRuleIn,
+  type ConditionRuleTestEvaluationOut,
+} from '@/stores/conditionRules'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
@@ -91,6 +96,50 @@ const ruleFilterStageId = ref('')
 const ruleFilterTriggerType = ref('')
 const ruleFilterEnabled = ref<'all' | 'enabled' | 'disabled'>('all')
 const updatingRuleIds = ref<Record<string, boolean>>({})
+const DEFAULT_RULE_PRIORITY = 100
+const showRuleForm = ref(false)
+const editingRuleId = ref<string | null>(null)
+const savingRule = ref(false)
+const testingRule = ref(false)
+const testRuleId = ref<string | null>(null)
+const testRecordId = ref('')
+const testEvaluationResult = ref<ConditionRuleTestEvaluationOut | null>(null)
+const ruleConditionTreeText = ref('{}')
+const ruleEffectConfigText = ref('{}')
+const pendingDeactivateRuleId = ref<string | null>(null)
+const pendingDeactivateRuleName = ref('')
+
+interface RuleFormState {
+  name: string
+  description: string
+  is_active: boolean
+  scope_type: string
+  category_id: string
+  stage_id: string
+  source_stage_id: string
+  target_stage_id: string
+  trigger_type: string
+  effect: string
+  severity: string
+  activity_type: string
+  priority: string
+}
+
+const ruleForm = ref<RuleFormState>({
+  name: '',
+  description: '',
+  is_active: true,
+  scope_type: 'firm',
+  category_id: '',
+  stage_id: '',
+  source_stage_id: '',
+  target_stage_id: '',
+  trigger_type: 'record.stage_change_requested',
+  effect: 'block',
+  severity: 'error',
+  activity_type: '',
+  priority: String(DEFAULT_RULE_PRIORITY),
+})
 
 // Delete confirmations
 const pendingDeleteCategoryId = ref<string | null>(null)
@@ -189,6 +238,9 @@ const conditionRulesError = computed(() => conditionRulesStore.error)
 const conditionRulesLoading = computed(() => conditionRulesStore.loading)
 const ruleFilterStages = computed<StageOut[]>(() =>
   ruleFilterCategoryId.value ? pipelineStore.getStagesForCategory(ruleFilterCategoryId.value) : pipelineStore.allStages,
+)
+const ruleFormStages = computed<StageOut[]>(() =>
+  ruleForm.value.category_id ? pipelineStore.getStagesForCategory(ruleForm.value.category_id) : pipelineStore.allStages,
 )
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
@@ -566,6 +618,203 @@ async function toggleRuleActive(rule: ConditionRuleOut, enabled: boolean) {
   const next = { ...updatingRuleIds.value }
   delete next[rule.id]
   updatingRuleIds.value = next
+}
+
+function resetRuleForm() {
+  showRuleForm.value = false
+  editingRuleId.value = null
+  ruleForm.value = {
+    name: '',
+    description: '',
+    is_active: true,
+    scope_type: 'firm',
+    category_id: ruleFilterCategoryId.value || selectedCategoryId.value || '',
+    stage_id: '',
+    source_stage_id: '',
+    target_stage_id: '',
+    trigger_type: ruleFilterTriggerType.value.trim() || 'record.stage_change_requested',
+    effect: 'block',
+    severity: 'error',
+    activity_type: '',
+    priority: String(DEFAULT_RULE_PRIORITY),
+  }
+  ruleConditionTreeText.value = '{}'
+  ruleEffectConfigText.value = '{}'
+}
+
+function openCreateRuleForm() {
+  resetRuleForm()
+  showRuleForm.value = true
+}
+
+function openEditRuleForm(rule: ConditionRuleOut) {
+  editingRuleId.value = rule.id
+  showRuleForm.value = true
+  ruleForm.value = {
+    name: rule.name,
+    description: rule.description,
+    is_active: rule.is_active,
+    scope_type: rule.scope_type,
+    category_id: rule.category_id ?? '',
+    stage_id: rule.stage_id ?? '',
+    source_stage_id: rule.source_stage_id ?? '',
+    target_stage_id: rule.target_stage_id ?? '',
+    trigger_type: rule.trigger_type,
+    effect: rule.effect,
+    severity: rule.severity,
+    activity_type: rule.activity_type,
+    priority: String(rule.priority ?? DEFAULT_RULE_PRIORITY),
+  }
+  ruleConditionTreeText.value = JSON.stringify(rule.condition_tree ?? {}, null, 2)
+  ruleEffectConfigText.value = JSON.stringify(rule.effect_config ?? {}, null, 2)
+}
+
+function parseJsonText(raw: string, fallback: Record<string, unknown>): Record<string, unknown> {
+  const text = raw.trim()
+  if (!text) return fallback
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error('invalid_json')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('invalid_json')
+  }
+  return parsed as Record<string, unknown>
+}
+
+function parseRulePriority(value: string): number | null {
+  if (!value.trim()) return DEFAULT_RULE_PRIORITY
+  const priority = Number(value)
+  if (!Number.isInteger(priority) || priority < 0) return null
+  return priority
+}
+
+function buildRulePayload(priority: number): ConditionRuleIn {
+  return {
+    name: ruleForm.value.name.trim(),
+    description: ruleForm.value.description.trim(),
+    is_active: ruleForm.value.is_active,
+    scope_type: ruleForm.value.scope_type,
+    category_id: ruleForm.value.category_id || null,
+    stage_id: ruleForm.value.stage_id || null,
+    source_stage_id: ruleForm.value.source_stage_id || null,
+    target_stage_id: ruleForm.value.target_stage_id || null,
+    trigger_type: ruleForm.value.trigger_type.trim(),
+    condition_tree: parseJsonText(ruleConditionTreeText.value, {}),
+    effect: ruleForm.value.effect,
+    severity: ruleForm.value.severity,
+    effect_config: parseJsonText(ruleEffectConfigText.value, {}),
+    activity_type: ruleForm.value.activity_type.trim(),
+    priority,
+  }
+}
+
+async function submitRuleForm() {
+  if (savingRule.value) return
+  if (!ruleForm.value.name.trim()) {
+    toast.error(t('pipeline.rulesNameRequired'))
+    return
+  }
+  if (!ruleForm.value.trigger_type.trim()) {
+    toast.error(t('pipeline.rulesTriggerRequired'))
+    return
+  }
+
+  const parsedPriority = parseRulePriority(ruleForm.value.priority)
+  if (parsedPriority === null) {
+    toast.error(t('pipeline.rulesPriorityInvalid'))
+    return
+  }
+
+  let payload: ConditionRuleIn
+  try {
+    payload = buildRulePayload(parsedPriority)
+  } catch (error) {
+    const message = error instanceof Error && error.message
+      ? `${t('pipeline.rulesInvalidJson')} (${error.message})`
+      : t('pipeline.rulesInvalidJson')
+    toast.error(message)
+    return
+  }
+
+  savingRule.value = true
+  const isEdit = Boolean(editingRuleId.value)
+  const result = isEdit && editingRuleId.value
+    ? await conditionRulesStore.updateRule(editingRuleId.value, payload)
+    : await conditionRulesStore.createRule(payload)
+  savingRule.value = false
+
+  if (!result.ok) {
+    toast.error(result.error ?? t(isEdit ? 'pipeline.rulesUpdateFailed' : 'pipeline.rulesCreateFailed'))
+    return
+  }
+
+  toast.success(t(isEdit ? 'pipeline.rulesUpdated' : 'pipeline.rulesCreated'))
+  resetRuleForm()
+  await loadConditionRules()
+}
+
+function requestDeactivateRule(rule: ConditionRuleOut) {
+  pendingDeactivateRuleId.value = rule.id
+  pendingDeactivateRuleName.value = rule.name
+}
+
+async function confirmDeactivateRule() {
+  if (!pendingDeactivateRuleId.value) return
+  const result = await conditionRulesStore.deactivateRule(pendingDeactivateRuleId.value)
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesDeactivateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesDeactivated'))
+  pendingDeactivateRuleId.value = null
+  pendingDeactivateRuleName.value = ''
+  await loadConditionRules()
+}
+
+async function copyRule(rule: ConditionRuleOut) {
+  const result = await conditionRulesStore.createRuleFromExisting(rule, {
+    name: `${rule.name} (${t('pipeline.rulesCopySuffix')})`,
+  })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesCopyFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesCopied'))
+  await loadConditionRules()
+}
+
+function openRuleTest(rule: ConditionRuleOut) {
+  testRuleId.value = rule.id
+  testRecordId.value = ''
+  testEvaluationResult.value = null
+}
+
+function closeRuleTest() {
+  testRuleId.value = null
+  testRecordId.value = ''
+  testEvaluationResult.value = null
+}
+
+async function runRuleTestEvaluation() {
+  if (!testRuleId.value) return
+  if (!testRecordId.value.trim()) {
+    toast.error(t('pipeline.rulesTestRecordRequired'))
+    return
+  }
+  testingRule.value = true
+  const result = await conditionRulesStore.testEvaluation({
+    rule_id: testRuleId.value,
+    record_id: testRecordId.value.trim(),
+  })
+  testingRule.value = false
+  if (!result.ok || !result.data) {
+    toast.error(result.error ?? t('pipeline.rulesTestFailed'))
+    return
+  }
+  testEvaluationResult.value = result.data
 }
 
 // ---------------------------------------------------------------------------
@@ -1238,7 +1487,133 @@ const newPattern = computed({
 
           <!-- Condition rules -->
           <div>
-            <div class="text-sm font-semibold text-gray-700 mb-2">{{ t('pipeline.rulesTitle') }}</div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.rulesTitle') }}</div>
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                @click="openCreateRuleForm"
+              >{{ t('pipeline.rulesCreate') }}</button>
+            </div>
+
+            <div v-if="showRuleForm" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
+              <div class="text-xs font-semibold text-indigo-700">
+                {{ editingRuleId ? t('pipeline.rulesEditTitle') : t('pipeline.rulesCreateTitle') }}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <input
+                  v-model="ruleForm.name"
+                  type="text"
+                  :placeholder="t('pipeline.rulesNamePlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <input
+                  v-model="ruleForm.trigger_type"
+                  type="text"
+                  :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <input
+                  v-model="ruleForm.description"
+                  type="text"
+                  :placeholder="t('pipeline.rulesDescriptionPlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 md:col-span-2"
+                />
+                <select
+                  v-model="ruleForm.scope_type"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="firm">{{ t('pipeline.rulesScopeFirm') }}</option>
+                  <option value="category">{{ t('pipeline.rulesScopeCategory') }}</option>
+                  <option value="stage">{{ t('pipeline.rulesScopeStage') }}</option>
+                  <option value="stage_transition">{{ t('pipeline.rulesScopeTransition') }}</option>
+                </select>
+                <input
+                  v-model="ruleForm.priority"
+                  type="number"
+                  min="0"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <select
+                  v-model="ruleForm.category_id"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="">{{ t('pipeline.allCategories') }}</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+                <select
+                  v-model="ruleForm.stage_id"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
+                  <option v-for="stage in ruleFormStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
+                </select>
+                <select
+                  v-model="ruleForm.source_stage_id"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="">{{ t('pipeline.rulesSourceStage') }}</option>
+                  <option v-for="stage in ruleFormStages" :key="`source-${stage.id}`" :value="stage.id">{{ stage.name }}</option>
+                </select>
+                <select
+                  v-model="ruleForm.target_stage_id"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="">{{ t('pipeline.rulesTargetStage') }}</option>
+                  <option v-for="stage in ruleFormStages" :key="`target-${stage.id}`" :value="stage.id">{{ stage.name }}</option>
+                </select>
+                <select
+                  v-model="ruleForm.effect"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="block">{{ t('pipeline.rulesEffectBlock') }}</option>
+                  <option value="warning">{{ t('pipeline.rulesEffectWarning') }}</option>
+                  <option value="info">{{ t('pipeline.rulesEffectInfo') }}</option>
+                  <option value="recommend">{{ t('pipeline.rulesEffectRecommend') }}</option>
+                </select>
+                <select
+                  v-model="ruleForm.severity"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="error">{{ t('pipeline.rulesSeverityError') }}</option>
+                  <option value="warning">{{ t('pipeline.rulesSeverityWarning') }}</option>
+                  <option value="info">{{ t('pipeline.rulesSeverityInfo') }}</option>
+                </select>
+                <input
+                  v-model="ruleForm.activity_type"
+                  type="text"
+                  :placeholder="t('pipeline.rulesActivityTypePlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 md:col-span-2"
+                />
+                <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                  <input v-model="ruleForm.is_active" type="checkbox" class="rounded" />
+                  {{ t('pipeline.rulesStartEnabled') }}
+                </label>
+                <div class="text-[11px] text-gray-500 self-center">{{ t('pipeline.rulesJsonHint') }}</div>
+                <textarea
+                  v-model="ruleConditionTreeText"
+                  rows="4"
+                  class="md:col-span-2 text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  :placeholder="t('pipeline.rulesConditionTreePlaceholder')"
+                ></textarea>
+                <textarea
+                  v-model="ruleEffectConfigText"
+                  rows="3"
+                  class="md:col-span-2 text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  :placeholder="t('pipeline.rulesEffectConfigPlaceholder')"
+                ></textarea>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                  :disabled="savingRule"
+                  @click="submitRuleForm"
+                >{{ editingRuleId ? t('pipeline.rulesUpdate') : t('pipeline.rulesCreate') }}</button>
+                <button
+                  class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  @click="resetRuleForm"
+                >{{ t('pipeline.cancel') }}</button>
+              </div>
+            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
               <select
@@ -1303,6 +1678,9 @@ const newPattern = computed({
               >
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-gray-800 truncate">{{ rule.name }}</div>
+                  <div v-if="rule.description" class="text-xs text-gray-500 mt-0.5 break-words">
+                    {{ rule.description }}
+                  </div>
                   <div class="text-xs text-gray-500 mt-0.5 break-words">
                     {{ t('pipeline.rulesTrigger') }}: {{ rule.trigger_type }}
                   </div>
@@ -1310,16 +1688,66 @@ const newPattern = computed({
                     {{ t('pipeline.rulesScope') }}: {{ rule.scope_type }}
                   </div>
                 </div>
-                <label class="inline-flex items-center gap-2 text-xs text-gray-600 pt-0.5">
-                  <input
-                    :checked="rule.is_active"
-                    type="checkbox"
-                    class="rounded"
-                    :disabled="isRuleUpdating(rule.id)"
-                    @change="toggleRuleActive(rule, ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span>{{ rule.is_active ? t('pipeline.rulesStateEnabled') : t('pipeline.rulesStateDisabled') }}</span>
-                </label>
+                <div class="flex flex-col items-end gap-1.5">
+                  <label class="inline-flex items-center gap-2 text-xs text-gray-600 pt-0.5">
+                    <input
+                      :checked="rule.is_active"
+                      type="checkbox"
+                      class="rounded"
+                      :disabled="isRuleUpdating(rule.id)"
+                      @change="toggleRuleActive(rule, ($event.target as HTMLInputElement).checked)"
+                    />
+                    <span>{{ rule.is_active ? t('pipeline.rulesStateEnabled') : t('pipeline.rulesStateDisabled') }}</span>
+                  </label>
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openEditRuleForm(rule)">
+                      {{ t('pipeline.rulesEdit') }}
+                    </button>
+                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="copyRule(rule)">
+                      {{ t('pipeline.rulesCopy') }}
+                    </button>
+                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openRuleTest(rule)">
+                      {{ t('pipeline.rulesTest') }}
+                    </button>
+                    <button
+                      v-if="rule.is_active"
+                      class="text-xs text-red-600 hover:text-red-700"
+                      @click="requestDeactivateRule(rule)"
+                    >
+                      {{ t('pipeline.rulesDeactivate') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="testRuleId" class="mt-3 p-3 border border-gray-100 rounded-lg bg-gray-50 space-y-2">
+              <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesTestTitle') }}</div>
+              <div class="flex flex-col md:flex-row gap-2">
+                <input
+                  v-model="testRecordId"
+                  type="text"
+                  :placeholder="t('pipeline.rulesTestRecordPlaceholder')"
+                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <button
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                  :disabled="testingRule"
+                  @click="runRuleTestEvaluation"
+                >{{ t('pipeline.rulesTestRun') }}</button>
+                <button
+                  class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  @click="closeRuleTest"
+                >{{ t('pipeline.cancel') }}</button>
+              </div>
+              <div v-if="testEvaluationResult" class="text-xs text-gray-600">
+                <div>
+                  {{ t('pipeline.rulesTestMatched') }}:
+                  <span class="font-semibold">{{ testEvaluationResult.matched ? t('pipeline.rulesTestMatchedYes') : t('pipeline.rulesTestMatchedNo') }}</span>
+                </div>
+                <div>{{ t('pipeline.rulesTestOutputs') }}: {{ testEvaluationResult.outputs.length }}</div>
+                <div>{{ t('pipeline.rulesTestBlocking') }}: {{ testEvaluationResult.blocking.length }}</div>
+                <div>{{ t('pipeline.rulesTestWarnings') }}: {{ testEvaluationResult.warnings.length }}</div>
               </div>
             </div>
           </div>
@@ -1439,5 +1867,13 @@ const newPattern = computed({
     :message="t('pipeline.confirmDeleteField')"
     @confirm="confirmDeleteField"
     @cancel="pendingDeleteFieldKey = null"
+  />
+
+  <!-- Deactivate rule confirm -->
+  <ConfirmDeleteModal
+    :open="!!pendingDeactivateRuleId"
+    :message="t('pipeline.rulesDeactivateConfirm', { name: pendingDeactivateRuleName })"
+    @confirm="confirmDeactivateRule"
+    @cancel="pendingDeactivateRuleId = null; pendingDeactivateRuleName = ''"
   />
 </template>
