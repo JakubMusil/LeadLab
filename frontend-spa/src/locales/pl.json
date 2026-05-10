@@ -1170,6 +1170,8 @@
     "metRequirementsLabel": "Spełnione wymagania",
     "blockingRequirementLabel": "Blokujące",
     "warningRequirementLabel": "Ostrzeżenie",
+    "relevantFieldLink": "Przejdź do pola",
+    "relevantActivityLink": "Przejdź do aktywności",
     "requirementsLoadFailed": "Nie udało się załadować wymagań etapu.",
     "stageUpdated": "Etap zaktualizowany.",
     "stageUpdateFailed": "Nie udało się zaktualizować etapu.",

@@ -668,6 +668,9 @@ interface ActiveStageRequirementItem {
   blocking: boolean
   visible_to_user: boolean
   is_met: boolean
+  relevant_field_key?: string | null
+  relevant_activity_type?: string | null
+  relevant_tool_type?: string | null
 }
 
 interface ActiveStageRequirementsOut {
@@ -719,6 +722,39 @@ function requirementRowClass(item: ActiveStageRequirementItem): string {
     return 'border-red-100 bg-red-50/60 dark:border-red-900/30 dark:bg-red-900/10'
   }
   return 'border-amber-100 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-900/10'
+}
+
+const highlightedFieldKey = ref<string | null>(null)
+const activityFeedSectionRef = ref<HTMLElement | null>(null)
+const pipelineFieldsPanelRef = ref<HTMLElement | null>(null)
+
+function getRelevantActivityType(item: ActiveStageRequirementItem): string | null {
+  return item.relevant_tool_type || item.relevant_activity_type || null
+}
+
+function jumpToRelevantField(item: ActiveStageRequirementItem) {
+  const fieldKey = item.relevant_field_key
+  if (!fieldKey) return
+
+  highlightedFieldKey.value = fieldKey
+  window.setTimeout(() => {
+    if (highlightedFieldKey.value === fieldKey) highlightedFieldKey.value = null
+  }, 2600)
+
+  const fieldEl = document.querySelector(`[data-pipeline-field-key="${fieldKey}"]`) as HTMLElement | null
+  if (fieldEl) {
+    fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+  pipelineFieldsPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function jumpToRelevantActivity(item: ActiveStageRequirementItem) {
+  const activityType = getRelevantActivityType(item)
+  if (!activityType) return
+  customFilters.value = new Set([activityType])
+  selectedShortcutId.value = 'custom'
+  activityFeedSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function loadActiveStageRequirements() {
@@ -1044,7 +1080,7 @@ async function saveFieldEdit(fieldKey: string) {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Left Column: Activity Feed & Presets Switcher -->
-        <div class="lg:col-span-2">
+        <div ref="activityFeedSectionRef" class="lg:col-span-2">
           <!-- Switchers: Přehled + user presets + Filtry + Akce -->
           <div class="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
             <button
@@ -1251,6 +1287,27 @@ async function saveFieldEdit(fieldKey: string) {
                             {{ t('pipeline.warningRequirementLabel') }}
                           </span>
                         </div>
+                        <div
+                          v-if="item.relevant_field_key || getRelevantActivityType(item)"
+                          class="mt-1.5 flex flex-wrap gap-1.5"
+                        >
+                          <button
+                            v-if="item.relevant_field_key"
+                            type="button"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                            @click="jumpToRelevantField(item)"
+                          >
+                            {{ t('pipeline.relevantFieldLink') }}
+                          </button>
+                          <button
+                            v-if="getRelevantActivityType(item)"
+                            type="button"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                            @click="jumpToRelevantActivity(item)"
+                          >
+                            {{ t('pipeline.relevantActivityLink') }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>
@@ -1272,7 +1329,30 @@ async function saveFieldEdit(fieldKey: string) {
                       <span class="mt-0.5 inline-flex w-3 h-3 rounded-full bg-green-500 text-white items-center justify-center text-[8px] font-bold">
                         ✓
                       </span>
-                      <div class="text-xs text-gray-800 dark:text-gray-100 min-w-0 flex-1">{{ item.name }}</div>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs text-gray-800 dark:text-gray-100">{{ item.name }}</div>
+                        <div
+                          v-if="item.relevant_field_key || getRelevantActivityType(item)"
+                          class="mt-1.5 flex flex-wrap gap-1.5"
+                        >
+                          <button
+                            v-if="item.relevant_field_key"
+                            type="button"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                            @click="jumpToRelevantField(item)"
+                          >
+                            {{ t('pipeline.relevantFieldLink') }}
+                          </button>
+                          <button
+                            v-if="getRelevantActivityType(item)"
+                            type="button"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                            @click="jumpToRelevantActivity(item)"
+                          >
+                            {{ t('pipeline.relevantActivityLink') }}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </li>
                 </ul>
@@ -1458,6 +1538,7 @@ async function saveFieldEdit(fieldKey: string) {
           <!-- Pipeline Fields panel -->
           <div
             v-if="pipelineFields.length > 0"
+            ref="pipelineFieldsPanelRef"
             class="bg-white dark:bg-gray-800 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 p-4"
           >
             <div class="flex items-center gap-1.5 mb-3">
@@ -1471,7 +1552,9 @@ async function saveFieldEdit(fieldKey: string) {
               <div
                 v-for="field in pipelineFields"
                 :key="field.field_key"
-                class="group"
+                class="group rounded-lg transition-colors"
+                :class="highlightedFieldKey === field.field_key ? 'ring-2 ring-blue-400/70 dark:ring-blue-500/60 bg-blue-50/40 dark:bg-blue-900/10' : ''"
+                :data-pipeline-field-key="field.field_key"
               >
                 <div class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">
                   {{ getFieldLabel(field.field_key, field.label_override) }}

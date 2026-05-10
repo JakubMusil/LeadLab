@@ -1170,6 +1170,8 @@
     "metRequirementsLabel": "Splněné požadavky",
     "blockingRequirementLabel": "Blokující",
     "warningRequirementLabel": "Upozornění",
+    "relevantFieldLink": "Přejít na pole",
+    "relevantActivityLink": "Přejít na aktivity",
     "requirementsLoadFailed": "Nepodařilo se načíst požadavky fáze.",
     "stageUpdated": "Stav aktualizován.",
     "stageUpdateFailed": "Nepodařilo se změnit stav.",

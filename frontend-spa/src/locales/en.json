@@ -1170,6 +1170,8 @@
     "metRequirementsLabel": "Met requirements",
     "blockingRequirementLabel": "Blocking",
     "warningRequirementLabel": "Warning",
+    "relevantFieldLink": "Go to field",
+    "relevantActivityLink": "Go to activities",
     "requirementsLoadFailed": "Failed to load stage requirements.",
     "stageUpdated": "Stage updated.",
     "stageUpdateFailed": "Failed to update stage.",

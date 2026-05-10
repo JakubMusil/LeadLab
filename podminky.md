@@ -1101,8 +1101,8 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Zobrazit blokující požadavky.
 - [x] Zobrazit upozornění.
 - [x] Zobrazit doporučený další krok.
-- [ ] Přidat odkazy na relevantní pole.
-- [ ] Přidat odkazy na relevantní Streamline aktivity.
+- [x] Přidat odkazy na relevantní pole.
+- [x] Přidat odkazy na relevantní Streamline aktivity.
 - [x] Přidat prázdný stav.
 - [x] Přidat loading stav.
 - [x] Přidat error stav.
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 20:08 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřené body 14.2 (odkazy na relevantní pole a relevantní Streamline aktivity).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza 14.2 v `RecordDetailView.vue` a mapování integračních bodů) a následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `RecordDetailView.vue`).
+- Před úpravami proběhla baseline validace CI příkazů: frontend `check-locales`, `test:unit`, `build-only` procházejí; frontend `type-check`/`lint` i backend `flake8`/plný `manage.py test` mají pre-existing chyby mimo scope.
+- Funkční implementace backendu: `_refresh_active_stage_scenario` nyní pro každý požadavek vrací odvozené metadata `relevant_field_key`, `relevant_activity_type`, `relevant_tool_type` (extrahované z condition tree), aby frontend mohl zobrazit kontextové odkazy bez dalšího privilegovaného API.
+- Funkční implementace frontendu v `RecordDetailView.vue`: panel požadavků fáze nyní zobrazuje odkazy „Přejít na pole“ a „Přejít na aktivity“ (pro splněné i nesplněné položky), umí scrollnout/zdůraznit relevantní pipeline pole a filtrovat/posunout na relevantní Streamline aktivity.
+- Doplněny i18n klíče odkazů ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Rozšířeny backend testy v `crm/tests.py` o kontrolu nových referenčních metadat v `active-stage-requirements` payloadu a o regresní kontrolu mapování kategoriového pole.
+- Hotovo: v etapě 14.2 jsou dokončeny i zbývající body pro odkazy na relevantní pole a relevantní Streamline aktivity.
+- Následuje: pokračovat etapou 14.3 (validace při změně fáze) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 19:50 UTC
 
