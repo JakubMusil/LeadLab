@@ -2,6 +2,7 @@ from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 import datetime as dt
+from decimal import Decimal
 
 from crm.models import Activity, ActivityType, ContactType, Customer, PipelineRecord, Proposal, RecordSource, RecordStatus, Task
 from firms.models import Firm, Membership, InvitationRole
@@ -4126,3 +4127,71 @@ class StreamlineVisibilityTests(TestCase):
             Activity.objects.filter(record=self.record), req
         )
         self.assertEqual(qs.count(), 0)
+
+
+class ConditionRulesTest(CRMFixtureMixin, TestCase):
+    def test_context_builder_includes_standard_record_fields(self):
+        from crm.condition_rules import RecordConditionContextBuilder
+
+        self.record.value = Decimal("123.45")
+        self.record.notes = "Important note"
+        self.record.save(update_fields=["value", "notes"])
+        ctx = RecordConditionContextBuilder().build(self.record)
+
+        self.assertEqual(ctx["id"], str(self.record.id))
+        self.assertEqual(ctx["firm_id"], str(self.firm.id))
+        self.assertEqual(ctx["title"], self.record.title)
+        self.assertEqual(ctx["status"], self.record.status)
+        self.assertEqual(ctx["source"], self.record.source)
+        self.assertEqual(ctx["value"], Decimal("123.45"))
+        self.assertEqual(ctx["notes"], "Important note")
+        self.assertEqual(ctx["customer_id"], str(self.customer.id))
+
+    def test_condition_tree_supports_and_or_not_and_nested_groups(self):
+        from crm.tasks import evaluate_condition_tree
+
+        tree = {
+            "type": "group",
+            "operator": "and",
+            "children": [
+                {"field": "status", "operator": "eq", "value": "new"},
+                {
+                    "type": "group",
+                    "operator": "or",
+                    "children": [
+                        {"field": "source", "operator": "eq", "value": "api"},
+                        {
+                            "field": "value",
+                            "operator": "lt",
+                            "value": "100",
+                            "negated": True,
+                        },
+                    ],
+                },
+            ],
+        }
+        context = {"status": "new", "source": "web", "value": "120.50"}
+        self.assertTrue(evaluate_condition_tree(tree, context))
+
+    def test_missing_field_fails_closed(self):
+        from crm.tasks import evaluate_condition_tree
+
+        tree = {"field": "missing.path", "operator": "eq", "value": "x"}
+        self.assertFalse(evaluate_condition_tree(tree, {"status": "new"}))
+
+    def test_numeric_comparison_handles_decimal_like_values(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {"value": "10.50"}
+        self.assertTrue(
+            evaluate_condition_tree(
+                {"field": "value", "operator": "gt", "value": "10.4"},
+                context,
+            )
+        )
+        self.assertFalse(
+            evaluate_condition_tree(
+                {"field": "value", "operator": "lte", "value": "10.49"},
+                context,
+            )
+        )

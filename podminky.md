@@ -981,13 +981,13 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.4 Evaluátor pravidel
 
-- [ ] Vytvořit službu pro sestavení kontextu pravidla.
-- [ ] Vytvořit službu pro vyhodnocení stromu podmínek.
-- [ ] Přidat podporu `AND`.
-- [ ] Přidat podporu `OR`.
-- [ ] Přidat podporu negace.
-- [ ] Přidat podporu vnořených skupin.
-- [ ] Přidat podporu standardních polí.
+- [x] Vytvořit službu pro sestavení kontextu pravidla.
+- [x] Vytvořit službu pro vyhodnocení stromu podmínek.
+- [x] Přidat podporu `AND`.
+- [x] Přidat podporu `OR`.
+- [x] Přidat podporu negace.
+- [x] Přidat podporu vnořených skupin.
+- [x] Přidat podporu standardních polí.
 - [ ] Přidat podporu kategoriových polí.
 - [ ] Přidat podporu Streamline aktivit.
 - [ ] Přidat podporu Streamline tool typů.
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 11:20 UTC
+
+- Navázáno na předchozí krok (13.4) a nejdříve byl znovu prostudován celý `podminky.md` včetně posledních záznamů v pracovním logu.
+- Další realizace byla maximálně delegována: podagent připravil návrh konkrétní implementace (context builder + evaluator + testy), následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům (`crm/models.py`, `crm/api.py`, `crm/tasks.py`, `crm/tests.py`).
+- Funkční krok 13.4 byl implementován: přidán modul `crm/condition_rules.py` (`RecordConditionContextBuilder`, `ConditionTreeEvaluator`) se zanořeným `AND`/`OR`, negací (`NOT`/`negated`) a podporou standardních polí záznamu.
+- Integrace bez rozbití existující logiky: do `_build_record_automation_context` v `crm/api.py` byl doplněn klíč `condition_context`; v `crm/tasks.py` přibyl helper `evaluate_condition_tree`.
+- Doplněny backend testy v `crm/tests.py` pro context builder a evaluator (včetně vnořených skupin, negace, fail-closed chování při chybějícím poli a numerického porovnání).
+- Provedena následná nezávislá validační kontrola dalším podagentem (konceptuální + funkční revize) a zapracována korekce fail-closed logiky: prázdná `OR` skupina nyní vyhodnocuje na `False`.
+- Po paralelní validaci (review + CodeQL) byla doplněna ještě robustnější obsluha `group` uzlu bez explicitního operátoru (default `AND`) a komentář k fail-closed identitě prázdných skupin.
+- Výsledek: vybrané body 13.4 (context builder, evaluator, AND/OR/negace/vnořené skupiny/standardní pole) jsou dokončené a checkboxy aktualizované na splněné.
+- Následuje: pokračovat etapou 13.4 o podporu kategoriových polí, Streamline aktivit/tool typů a časových oken; poté navázat přímým napojením do stage-change flow v 13.5.
 
 ### 2026-05-10 09:32 UTC
 
