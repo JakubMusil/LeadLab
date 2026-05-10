@@ -1095,17 +1095,17 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.2 Panel požadavků fáze
 
-- [ ] Navrhnout komponentu pro zobrazení aktivního scénáře.
-- [ ] Zobrazit splněné požadavky.
-- [ ] Zobrazit nesplněné požadavky.
-- [ ] Zobrazit blokující požadavky.
-- [ ] Zobrazit upozornění.
-- [ ] Zobrazit doporučený další krok.
+- [x] Navrhnout komponentu pro zobrazení aktivního scénáře.
+- [x] Zobrazit splněné požadavky.
+- [x] Zobrazit nesplněné požadavky.
+- [x] Zobrazit blokující požadavky.
+- [x] Zobrazit upozornění.
+- [x] Zobrazit doporučený další krok.
 - [ ] Přidat odkazy na relevantní pole.
 - [ ] Přidat odkazy na relevantní Streamline aktivity.
-- [ ] Přidat prázdný stav.
-- [ ] Přidat loading stav.
-- [ ] Přidat error stav.
+- [x] Přidat prázdný stav.
+- [x] Přidat loading stav.
+- [x] Přidat error stav.
 
 ### 14.3 Validace při změně fáze
 
@@ -1344,6 +1344,20 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 19:50 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřenou frontend etapu 14.2 (panel požadavků fáze).
+- Další krok byl maximalizovaně delegován na podagenty (analýza integračních míst ve `frontend-spa/src/views/RecordDetailView.vue` + ověření schema `StageScenarioOut`) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`RecordDetailView.vue`, `crm/api.py`, locale soubory).
+- Před úpravami proběhla baseline validace prostředí: `check-locales` prochází; ostatní frontend/backend checky aktuálně padají na chybějících závislostech v sandboxu (`vue-tsc`, `run-s`, `vitest`, `vite`, `django`, `flake8`) ještě před scope změny.
+- Funkční implementace 14.2 v `RecordDetailView.vue`: přidán panel požadavků fáze s načtením endpointu `/api/v1/crm/records/{id}/active-stage-requirements`, zobrazením aktivního scénáře, rozdělením na splněné/nesplněné požadavky, zvýrazněním blokací a upozornění a doplněním doporučeného dalšího kroku podle `recommended_next_stage_id`.
+- Následná validační revize (delegovaná na podagenta) odhalila permission riziko při čtení scénářů přes endpoint vyžadující `CATEGORY_MANAGE`; fix aplikován rozšířením payloadu `/records/{id}/active-stage-requirements` o metadata aktivního scénáře (`active_stage_scenario_name`, `recommended_next_stage_id`, `recommended_next_stage_name`) a frontend byl přepnut na tento payload bez dalšího privileged API volání.
+- Po code review byl doplněn tvrdší filtr viditelnosti požadavků (`visible_to_user === true`), aby se v panelu nikdy nezobrazily neexplicitně viditelné položky.
+- Rozšířen backend test `ConditionRulesApiEndpointsTest` pro kontrolu nových polí endpointu `active-stage-requirements`.
+- Doplňeny všechny potřebné i18n klíče panelu ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena cílená validace po změnách: `python manage.py test crm.tests.ConditionRulesApiEndpointsTest` prochází (`4/4`), frontend `check-locales` a `build-only` procházejí; frontend `type-check` stále padá na pre-existing chybách mimo scope.
+- Hotovo: v etapě 14.2 jsou nyní dokončené body pro komponentu aktivního scénáře, splněné/nesplněné/blokující/upozornění, doporučený další krok a empty/loading/error stavy.
+- Následuje: navázat zbývajícími body 14.2 (odkazy na relevantní pole a Streamline aktivity), následně pokračovat etapou 14.3 (validace při změně fáze) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 19:28 UTC
 

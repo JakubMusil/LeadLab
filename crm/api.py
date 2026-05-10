@@ -9540,6 +9540,9 @@ class ConditionRuleTestEvaluationOut(Schema):
 class ActiveStageRequirementsOut(Schema):
     record_id: str
     active_stage_scenario_id: Optional[str]
+    active_stage_scenario_name: Optional[str]
+    recommended_next_stage_id: Optional[str]
+    recommended_next_stage_name: Optional[str]
     active_stage_requirements: List[Dict[str, Any]]
 
 
@@ -10185,9 +10188,33 @@ def get_record_active_stage_requirements(request, record_id: str):
     requirements = extra_data.get("active_stage_requirements")
     if not isinstance(requirements, list):
         requirements = []
+    active_stage_scenario_id = extra_data.get("active_stage_scenario_id")
+    active_stage_scenario_name = None
+    recommended_next_stage_id = None
+    recommended_next_stage_name = None
+    if active_stage_scenario_id:
+        scenario = (
+            StageScenario.objects.filter(
+                id=active_stage_scenario_id,
+                firm=request.firm,
+                category_id=record.category_id,
+                stage_id=record.current_stage_id,
+                is_active=True,
+            )
+            .select_related("recommended_next_stage")
+            .first()
+        )
+        if scenario:
+            active_stage_scenario_name = scenario.name
+            if scenario.recommended_next_stage_id:
+                recommended_next_stage_id = str(scenario.recommended_next_stage_id)
+                recommended_next_stage_name = scenario.recommended_next_stage.name
     return 200, {
         "record_id": str(record.id),
-        "active_stage_scenario_id": extra_data.get("active_stage_scenario_id"),
+        "active_stage_scenario_id": active_stage_scenario_id,
+        "active_stage_scenario_name": active_stage_scenario_name,
+        "recommended_next_stage_id": recommended_next_stage_id,
+        "recommended_next_stage_name": recommended_next_stage_name,
         "active_stage_requirements": requirements,
     }
 
