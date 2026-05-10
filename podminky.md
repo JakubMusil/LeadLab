@@ -1011,12 +1011,12 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.6 Napojení na změny standardních polí
 
-- [ ] Detekovat změněná standardní pole při update záznamu.
-- [ ] Uložit starou a novou hodnotu do evaluation contextu.
-- [ ] Vyhodnotit pravidla typu `record.field_changed`.
-- [ ] Aktivovat nebo deaktivovat scénáře podle výsledku.
+- [x] Detekovat změněná standardní pole při update záznamu.
+- [x] Uložit starou a novou hodnotu do evaluation contextu.
+- [x] Vyhodnotit pravidla typu `record.field_changed`.
+- [x] Aktivovat nebo deaktivovat scénáře podle výsledku.
 - [ ] Přepočítat požadavky fáze.
-- [ ] Zapsat log vyhodnocení.
+- [x] Zapsat log vyhodnocení.
 
 ### 13.7 Napojení na změny kategoriových polí
 
@@ -1344,6 +1344,16 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 15:52 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední dokončený bod 13.5; jako další krok byla zvolena implementace první části 13.6 (`record.field_changed`).
+- Další analýza byla maximalizovaně delegována na dva podagenty (hlavní implementační rozpad + nezávislá riziková revize) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `crm/tests.py`).
+- Funkční implementace: `update_record` nyní detekuje změněná standardní pole (včetně FK `_id` polí), skládá old/new change kontext a vyhodnocuje pravidla triggeru `record.field_changed` přes `evaluate_condition_rule_outputs(...)`.
+- Doplněno logování výsledků vyhodnocení změn standardních polí do `RuleEvaluationLog` (včetně mapování `effect` -> `result`, fail-safe error logu a serializace warning/block výstupů do API odpovědi `field_change_evaluation`).
+- Doplněna vazba na scénáře: po změně standardních polí bez stage change se nyní obnovuje aktivní scénář (`active_stage_scenario_id`) přes `_refresh_active_stage_scenario`.
+- Rozšířeny integrační backend testy `RecordUpdateAPITest` o scénáře: vyhodnocení+log při změně standardního pole, no-op update bez evaluace a refresh aktivního scénáře po změně standardního pole.
+- Následuje: dokončit zbývající bod 13.6 (`Přepočítat požadavky fáze`) a navázat etapou 13.7 (změny kategoriových polí) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 13:32 UTC
 
