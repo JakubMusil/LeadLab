@@ -1030,17 +1030,17 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.8 Napojení na Streamline feed
 
-- [ ] Najít místo vytvoření Streamline aktivity.
-- [ ] Při vytvoření aktivity sestavit evaluation context.
-- [ ] Doplnit entity type.
-- [ ] Doplnit activity type.
-- [ ] Doplnit tool type.
-- [ ] Doplnit vazbu na record/customer/proposal/task.
-- [ ] Vyhodnotit pravidla typu `streamline.activity_created`.
-- [ ] Vyhodnotit pravidla pro konkrétní tool.
-- [ ] Aktualizovat splněné požadavky.
-- [ ] Aktivovat scénáře podle aktivity.
-- [ ] Zapsat log vyhodnocení.
+- [x] Najít místo vytvoření Streamline aktivity.
+- [x] Při vytvoření aktivity sestavit evaluation context.
+- [x] Doplnit entity type.
+- [x] Doplnit activity type.
+- [x] Doplnit tool type.
+- [x] Doplnit vazbu na record/customer/proposal/task.
+- [x] Vyhodnotit pravidla typu `streamline.activity_created`.
+- [x] Vyhodnotit pravidla pro konkrétní tool.
+- [x] Aktualizovat splněné požadavky.
+- [x] Aktivovat scénáře podle aktivity.
+- [x] Zapsat log vyhodnocení.
 
 ### 13.9 API endpointy
 
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 17:36 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený bod 13.8 (napojení na Streamline feed).
+- Další krok byl maximalizovaně delegován na dva podagenty (implementační analýza + nezávislá konceptuální revize) a následně proběhla ruční validace návrhů proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `crm/tests.py`).
+- Funkční implementace: `create_activity` nyní po vytvoření Streamline aktivity vyvolá post-create hook pro trigger `streamline.activity_created`, fail-open vyhodnotí pravidla, zapíše `RuleEvaluationLog` a neblokuje samotné vytvoření aktivity při chybě evaluace.
+- Doplněny nové helpery pro Streamline evaluaci (`_build_streamline_activity_condition_context`, `_get_applicable_streamline_activity_rules`, `_evaluate_streamline_activity_trigger`, `_resolve_records_for_streamline_activity`) včetně kontextu se `streamline_event` (`entity_type`, `type`, `tool_type`) a vazeb na `record/customer/proposal/task`.
+- Napojeno přepočítání scénářů/požadavků po aktivitě i pro nepřímé vazby (customer/proposal/task): `_refresh_active_stage_scenario` nově umí přijmout doplňkové activity snapshoty, takže se aktualizuje `active_stage_requirements` i při aktivitě mimo `record.activities`.
+- Rozšířeny integrační backend testy `ActivityCreateAPITest` pro evaluaci/logování `streamline.activity_created`, refresh požadavků pro vazby customer/proposal/task a fail-open chování při chybě evaluátoru.
+- Hotovo: bod 13.8 je nyní kompletně dokončený.
+- Následuje: navázat etapou 13.9 (API endpointy pro správu pravidel/scénářů a log vyhodnocení) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 17:12 UTC
 

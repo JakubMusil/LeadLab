@@ -1340,7 +1340,346 @@ def _evaluate_category_field_change_trigger(
     }
 
 
-def _refresh_active_stage_scenario(record: PipelineRecord):
+def _activity_to_condition_snapshot(activity: Activity) -> dict[str, Any]:
+    metadata = activity.metadata if isinstance(activity.metadata, Mapping) else {}
+    tool_type = metadata.get("tool_type") if isinstance(metadata, Mapping) else None
+    return {
+        "id": str(activity.id),
+        "type": activity.type,
+        "tool_type": tool_type,
+        "entity_type": activity.entity_type,
+        "entity_id": activity.entity_id,
+        "record_id": str(activity.record_id) if activity.record_id else None,
+        "customer_id": str(activity.customer_id) if activity.customer_id else None,
+        "proposal_id": str(activity.proposal_id) if activity.proposal_id else None,
+        "task_id": str(activity.task_id) if activity.task_id else None,
+        "created_at": _to_json_compatible_value(activity.created_at),
+    }
+
+
+def _extend_context_with_activity_snapshots(
+    context: dict[str, Any],
+    activity_snapshots: list[dict[str, Any]] | None,
+):
+    if not activity_snapshots:
+        return
+
+    existing_activities = context.get("activities")
+    activities: list[dict[str, Any]] = []
+    if isinstance(existing_activities, list):
+        activities = [item for item in existing_activities if isinstance(item, Mapping)]
+
+    seen_signatures = {
+        (
+            str(item.get("type") or ""),
+            str(item.get("entity_type") or ""),
+            str(item.get("record_id") or ""),
+            str(item.get("customer_id") or ""),
+            str(item.get("proposal_id") or ""),
+            str(item.get("task_id") or ""),
+            str(item.get("tool_type") or ""),
+            str(item.get("created_at") or ""),
+        )
+        for item in activities
+    }
+    for snapshot in activity_snapshots:
+        signature = (
+            str(snapshot.get("type") or ""),
+            str(snapshot.get("entity_type") or ""),
+            str(snapshot.get("record_id") or ""),
+            str(snapshot.get("customer_id") or ""),
+            str(snapshot.get("proposal_id") or ""),
+            str(snapshot.get("task_id") or ""),
+            str(snapshot.get("tool_type") or ""),
+            str(snapshot.get("created_at") or ""),
+        )
+        if signature in seen_signatures:
+            continue
+        activities.append(snapshot)
+        seen_signatures.add(signature)
+    context["activities"] = activities
+
+
+def _build_streamline_activity_condition_context(
+    record: PipelineRecord,
+    *,
+    activity: Activity,
+) -> dict[str, Any]:
+    from crm.condition_rules import RecordConditionContextBuilder
+
+    context = RecordConditionContextBuilder().build(record)
+    activity_snapshot = _activity_to_condition_snapshot(activity)
+    context["streamline_event"] = activity_snapshot
+    if str(activity.record_id or "") != str(record.id):
+        _extend_context_with_activity_snapshots(context, [activity_snapshot])
+    return context
+
+
+def _get_applicable_streamline_activity_rules(
+    *,
+    firm,
+    record: PipelineRecord,
+    activity_type: str,
+) -> list[ConditionRule]:
+    rules = (
+        ConditionRule.objects
+        .filter(
+            firm=firm,
+            is_active=True,
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+        )
+        .filter(Q(activity_type="") | Q(activity_type=activity_type))
+        .order_by("priority", "created_at", "id")
+    )
+
+    applicable: list[ConditionRule] = []
+    record_category_id = str(record.category_id) if record.category_id else None
+    current_stage_id = str(record.current_stage_id) if record.current_stage_id else None
+    for rule in rules:
+        scope_type = rule.scope_type
+        if scope_type == ConditionScopeType.FIRM:
+            applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.CATEGORY:
+            if rule.category_id and str(rule.category_id) == record_category_id:
+                applicable.append(rule)
+            continue
+        if scope_type == ConditionScopeType.STAGE:
+            if rule.stage_id and str(rule.stage_id) == current_stage_id:
+                applicable.append(rule)
+            continue
+    return applicable
+
+
+def _log_streamline_activity_rule_outputs(
+    *,
+    firm,
+    record: PipelineRecord,
+    context: dict[str, Any],
+    outputs: list[dict[str, Any]],
+    evaluated_by,
+):
+    compact_context = {
+        "record_id": str(record.id),
+        "category_id": str(record.category_id) if record.category_id else None,
+        "current_stage_id": str(record.current_stage_id) if record.current_stage_id else None,
+        "streamline_event": _to_json_compatible_value(context.get("streamline_event", {})),
+    }
+    if not outputs:
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+            input_context=compact_context,
+            result=RuleEvaluationResult.PASSED,
+            messages=[],
+            recommendations=[],
+            evaluated_by=evaluated_by,
+        )
+        return
+
+    for output in outputs:
+        effect = output.get("effect")
+        if effect == ConditionEffectType.BLOCK:
+            result = RuleEvaluationResult.BLOCKED
+        elif effect == ConditionEffectType.WARNING:
+            result = RuleEvaluationResult.WARNING
+        elif effect == ConditionEffectType.ACTIVATE_SCENARIO:
+            result = RuleEvaluationResult.SCENARIO_ACTIVATED
+        elif effect == ConditionEffectType.COMPLETE_REQUIREMENT:
+            result = RuleEvaluationResult.REQUIREMENT_COMPLETED
+        else:
+            result = RuleEvaluationResult.PASSED
+
+        effect_config = output.get("effect_config")
+        message = ""
+        if isinstance(effect_config, dict):
+            message = str(effect_config.get("message") or "")
+        recommendations: list[dict[str, Any]] = []
+        if effect == ConditionEffectType.RECOMMENDATION and isinstance(effect_config, dict):
+            recommendations = [effect_config]
+        RuleEvaluationLog.objects.create(
+            firm=firm,
+            record=record,
+            rule_id=output.get("rule_id"),
+            trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+            input_context=compact_context,
+            result=result,
+            messages=[message] if message else [],
+            recommendations=recommendations,
+            evaluated_by=evaluated_by,
+        )
+
+
+def _log_streamline_activity_rule_error(
+    *,
+    firm,
+    record: PipelineRecord,
+    context: dict[str, Any],
+    evaluated_by,
+    error: Exception,
+):
+    RuleEvaluationLog.objects.create(
+        firm=firm,
+        record=record,
+        trigger_type=ConditionTriggerType.STREAMLINE_ACTIVITY_CREATED,
+        input_context={
+            "record_id": str(record.id),
+            "streamline_event": _to_json_compatible_value(context.get("streamline_event", {})),
+        },
+        result=RuleEvaluationResult.ERROR,
+        messages=[],
+        recommendations=[],
+        error_message=str(error),
+        evaluated_by=evaluated_by,
+    )
+
+
+def _evaluate_streamline_activity_trigger(
+    *,
+    firm,
+    record: PipelineRecord,
+    activity: Activity,
+    evaluated_by,
+) -> dict[str, list[dict[str, Any]]]:
+    from crm.condition_rules import evaluate_condition_rule_outputs
+
+    context = _build_streamline_activity_condition_context(record, activity=activity)
+    try:
+        rules = _get_applicable_streamline_activity_rules(
+            firm=firm,
+            record=record,
+            activity_type=activity.type,
+        )
+        outputs = evaluate_condition_rule_outputs(rules, context)
+        _log_streamline_activity_rule_outputs(
+            firm=firm,
+            record=record,
+            context=context,
+            outputs=outputs,
+            evaluated_by=evaluated_by,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Streamline activity rule evaluation failed for record %s (activity=%s)",
+            record.id,
+            activity.id,
+        )
+        _log_streamline_activity_rule_error(
+            firm=firm,
+            record=record,
+            context=context,
+            evaluated_by=evaluated_by,
+            error=exc,
+        )
+        return {"blocking": [], "warnings": []}
+
+    blocking = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.BLOCK
+    ]
+    warnings = [
+        _serialize_stage_rule_output(output)
+        for output in outputs
+        if output.get("effect") == ConditionEffectType.WARNING
+    ]
+    return {
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+def _resolve_records_for_streamline_activity(
+    *,
+    firm,
+    record: PipelineRecord | None = None,
+    customer: Customer | None = None,
+    proposal: Proposal | None = None,
+    task: Task | None = None,
+) -> list[PipelineRecord]:
+    records_by_id: dict[str, PipelineRecord] = {}
+
+    def _add(candidate: PipelineRecord | None):
+        if candidate is None:
+            return
+        if str(candidate.firm_id) != str(firm.id):
+            return
+        records_by_id[str(candidate.id)] = candidate
+
+    _add(record)
+    if proposal and proposal.record_id:
+        _add(proposal.record)
+    if task:
+        if task.record_id:
+            _add(task.record)
+        elif task.proposal_id and task.proposal and task.proposal.record_id:
+            _add(task.proposal.record)
+
+    customer_ids: set[str] = set()
+    if customer:
+        customer_ids.add(str(customer.id))
+    if proposal and proposal.customer_id:
+        customer_ids.add(str(proposal.customer_id))
+    if task and task.customer_id:
+        customer_ids.add(str(task.customer_id))
+    if task and task.proposal_id and task.proposal and task.proposal.customer_id:
+        customer_ids.add(str(task.proposal.customer_id))
+
+    if customer_ids:
+        customer_records = PipelineRecord.objects.filter(
+            firm=firm,
+            customer_id__in=customer_ids,
+        )
+        for customer_record in customer_records:
+            _add(customer_record)
+
+    return list(records_by_id.values())
+
+
+def _run_streamline_activity_created_hooks(
+    *,
+    firm,
+    activity: Activity,
+    evaluated_by,
+    record: PipelineRecord | None = None,
+    customer: Customer | None = None,
+    proposal: Proposal | None = None,
+    task: Task | None = None,
+):
+    impacted_records = _resolve_records_for_streamline_activity(
+        firm=firm,
+        record=record,
+        customer=customer,
+        proposal=proposal,
+        task=task,
+    )
+    if not impacted_records:
+        return
+
+    activity_snapshot = _activity_to_condition_snapshot(activity)
+    activity_record_id = str(activity.record_id) if activity.record_id else None
+    for impacted_record in impacted_records:
+        _evaluate_streamline_activity_trigger(
+            firm=firm,
+            record=impacted_record,
+            activity=activity,
+            evaluated_by=evaluated_by,
+        )
+        additional_activities = None
+        if activity_record_id != str(impacted_record.id):
+            additional_activities = [activity_snapshot]
+        _refresh_active_stage_scenario(
+            impacted_record,
+            additional_activities=additional_activities,
+        )
+
+
+def _refresh_active_stage_scenario(
+    record: PipelineRecord,
+    *,
+    additional_activities: list[dict[str, Any]] | None = None,
+):
     from crm.condition_rules import ConditionTreeEvaluator
 
     existing_extra_data = dict(record.extra_data or {})
@@ -1358,6 +1697,7 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
         from_stage_id=record.current_stage_id,
         to_stage_id=record.current_stage_id,
     )
+    _extend_context_with_activity_snapshots(context, additional_activities)
     evaluator = ConditionTreeEvaluator()
     active_scenario: Optional[StageScenario] = None
     active_scenario_id: str | None = None
@@ -2662,6 +3002,21 @@ def create_activity(request, payload: ActivityIn):
             visibility=payload.visibility,
         )
         tool.process_action(activity, entity, payload.model_dump(), context)
+        try:
+            _run_streamline_activity_created_hooks(
+                firm=request.firm,
+                activity=activity,
+                evaluated_by=request.user,
+                record=record,
+                customer=customer,
+                proposal=proposal,
+                task=task,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Post-create streamline condition hooks failed for activity %s",
+                activity.id,
+            )
 
     broadcast_event(
         firm=request.firm,
