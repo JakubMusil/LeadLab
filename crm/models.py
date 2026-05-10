@@ -2152,6 +2152,264 @@ class AutomationRun(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Condition Rules Engine (podminky.md §13.3 foundation)
+# ---------------------------------------------------------------------------
+
+class ConditionTriggerType(models.TextChoices):
+    RECORD_CREATED = "record.created", "Record created"
+    RECORD_UPDATED = "record.updated", "Record updated"
+    RECORD_FIELD_CHANGED = "record.field_changed", "Record field changed"
+    RECORD_CATEGORY_FIELD_CHANGED = "record.category_field_changed", "Record category field changed"
+    RECORD_STAGE_CHANGE_REQUESTED = "record.stage_change_requested", "Record stage change requested"
+    RECORD_STAGE_CHANGED = "record.stage_changed", "Record stage changed"
+    STAGE_ENTERED = "stage.entered", "Stage entered"
+    STAGE_LEFT = "stage.left", "Stage left"
+    STREAMLINE_ACTIVITY_CREATED = "streamline.activity_created", "Streamline activity created"
+    STREAMLINE_ACTIVITY_UPDATED = "streamline.activity_updated", "Streamline activity updated"
+    STREAMLINE_ACTIVITY_DELETED = "streamline.activity_deleted", "Streamline activity deleted"
+    STREAMLINE_CHECKLIST_ITEM_COMPLETED = "streamline.checklist_item_completed", "Streamline checklist item completed"
+    STREAMLINE_CHECKLIST_ITEM_REOPENED = "streamline.checklist_item_reopened", "Streamline checklist item reopened"
+    STREAMLINE_FILE_UPLOADED = "streamline.file_uploaded", "Streamline file uploaded"
+    TASK_COMPLETED = "task.completed", "Task completed"
+    TASK_REOPENED = "task.reopened", "Task reopened"
+    PROPOSAL_SIGNED = "proposal.signed", "Proposal signed"
+    PROPOSAL_REJECTED = "proposal.rejected", "Proposal rejected"
+    MANUAL_EVALUATION_REQUESTED = "manual.evaluation_requested", "Manual evaluation requested"
+
+
+class ConditionScopeType(models.TextChoices):
+    FIRM = "firm", "Firm"
+    CATEGORY = "category", "Category"
+    STAGE = "stage", "Stage"
+    STAGE_TRANSITION = "stage_transition", "Stage transition"
+
+
+class ConditionEffectType(models.TextChoices):
+    BLOCK = "block", "Block"
+    WARNING = "warning", "Warning"
+    RECOMMENDATION = "recommendation", "Recommendation"
+    ACTIVATE_SCENARIO = "activate_scenario", "Activate scenario"
+    COMPLETE_REQUIREMENT = "complete_requirement", "Complete requirement"
+
+
+class ConditionSeverity(models.TextChoices):
+    INFO = "info", "Info"
+    WARNING = "warning", "Warning"
+    ERROR = "error", "Error"
+
+
+class RequirementType(models.TextChoices):
+    FIELD = "field", "Field"
+    CATEGORY_FIELD = "category_field", "Category field"
+    ACTIVITY = "activity", "Activity"
+    CHECKLIST = "checklist", "Checklist"
+    ATTACHMENT = "attachment", "Attachment"
+    TASK = "task", "Task"
+    CUSTOM = "custom", "Custom"
+
+
+class RuleEvaluationResult(models.TextChoices):
+    PASSED = "passed", "Passed"
+    BLOCKED = "blocked", "Blocked"
+    WARNING = "warning", "Warning"
+    ERROR = "error", "Error"
+    SCENARIO_ACTIVATED = "scenario_activated", "Scenario activated"
+    REQUIREMENT_COMPLETED = "requirement_completed", "Requirement completed"
+
+
+class ConditionRule(TenantModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    scope_type = models.CharField(max_length=30, choices=ConditionScopeType.choices, default=ConditionScopeType.FIRM)
+    category = models.ForeignKey(
+        Category,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="condition_rules",
+    )
+    stage = models.ForeignKey(
+        Stage,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="condition_rules",
+    )
+    source_stage = models.ForeignKey(
+        Stage,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="condition_rules_source",
+    )
+    target_stage = models.ForeignKey(
+        Stage,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="condition_rules_target",
+    )
+    trigger_type = models.CharField(max_length=50, choices=ConditionTriggerType.choices, db_index=True)
+    condition_tree = models.JSONField(default=dict, blank=True)
+    effect = models.CharField(max_length=30, choices=ConditionEffectType.choices, default=ConditionEffectType.BLOCK)
+    severity = models.CharField(max_length=10, choices=ConditionSeverity.choices, default=ConditionSeverity.ERROR)
+    effect_config = models.JSONField(default=dict, blank=True)
+    activity_type = models.CharField(max_length=50, blank=True, default="", db_index=True)
+    priority = models.PositiveIntegerField(default=100, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_condition_rules",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "condition rule"
+        verbose_name_plural = "condition rules"
+        ordering = ["priority", "created_at"]
+        indexes = [
+            models.Index(fields=["firm", "is_active", "trigger_type", "priority"]),
+            models.Index(fields=["firm", "category", "is_active"]),
+            models.Index(fields=["firm", "stage", "trigger_type"]),
+            models.Index(fields=["firm", "trigger_type", "activity_type", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} [{self.trigger_type}]"
+
+
+class StageScenario(TenantModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="stage_scenarios")
+    stage = models.ForeignKey(Stage, on_delete=models.CASCADE, related_name="scenarios")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    activation_condition = models.JSONField(default=dict, blank=True)
+    completion_condition = models.JSONField(default=dict, blank=True)
+    recommended_next_stage = models.ForeignKey(
+        Stage,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="recommended_by_stage_scenarios",
+    )
+    priority = models.PositiveIntegerField(default=100, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_stage_scenarios",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "stage scenario"
+        verbose_name_plural = "stage scenarios"
+        ordering = ["priority", "name"]
+        indexes = [
+            models.Index(fields=["firm", "category", "stage", "is_active", "priority"]),
+        ]
+
+    def __str__(self):
+        return f"{self.stage} / {self.name}"
+
+
+class StageRequirement(TenantModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scenario = models.ForeignKey(StageScenario, on_delete=models.CASCADE, related_name="requirements")
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    requirement_type = models.CharField(max_length=40, choices=RequirementType.choices, default=RequirementType.CUSTOM)
+    condition = models.JSONField(default=dict, blank=True)
+    blocking = models.BooleanField(default=True)
+    visible_to_user = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = "stage requirement"
+        verbose_name_plural = "stage requirements"
+        ordering = ["sort_order", "created_at"]
+        indexes = [
+            models.Index(fields=["scenario", "blocking", "sort_order"]),
+            models.Index(fields=["firm", "scenario"]),
+        ]
+
+    def __str__(self):
+        return f"{self.scenario.name}: {self.name}"
+
+
+class RuleEvaluationLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    firm = models.ForeignKey(Firm, on_delete=models.CASCADE, related_name="rule_evaluation_logs")
+    record = models.ForeignKey(
+        PipelineRecord,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="rule_evaluation_logs",
+    )
+    rule = models.ForeignKey(
+        ConditionRule,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="evaluation_logs",
+    )
+    scenario = models.ForeignKey(
+        StageScenario,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="evaluation_logs",
+    )
+    requirement = models.ForeignKey(
+        StageRequirement,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="evaluation_logs",
+    )
+    trigger_type = models.CharField(max_length=50, choices=ConditionTriggerType.choices, db_index=True)
+    input_context = models.JSONField(default=dict, blank=True)
+    result = models.CharField(max_length=30, choices=RuleEvaluationResult.choices)
+    messages = models.JSONField(default=list, blank=True)
+    recommendations = models.JSONField(default=list, blank=True)
+    error_message = models.TextField(blank=True)
+    evaluated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="rule_evaluations",
+    )
+    evaluated_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "rule evaluation log"
+        verbose_name_plural = "rule evaluation logs"
+        ordering = ["-evaluated_at"]
+        indexes = [
+            models.Index(fields=["firm", "trigger_type", "-evaluated_at"]),
+            models.Index(fields=["firm", "record", "-evaluated_at"]),
+            models.Index(fields=["rule", "-evaluated_at"]),
+            models.Index(fields=["scenario", "-evaluated_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.trigger_type} ({self.result}) @ {self.evaluated_at:%Y-%m-%d %H:%M}"
+
+
+# ---------------------------------------------------------------------------
 # Phase 7 — Task Template
 # ---------------------------------------------------------------------------
 
