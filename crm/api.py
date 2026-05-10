@@ -968,7 +968,6 @@ def _build_category_field_change_condition_context(
     context["field_changes"] = {
         category_field_key: {
             "source_type": "category_field",
-            "field_key": category_field_key,
             "category_field_key": category_field_key,
             "old_value": context.get("change", {}).get("old_value"),
             "new_value": context.get("change", {}).get("new_value"),
@@ -2019,7 +2018,17 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
             .filter(category_id=record.category_id)
             .values_list("field_key", flat=True)
         )
-        invalid_keys = sorted(key for key in changed_category_fields if key not in allowed_category_field_keys)
+        extra_data_update = update_data.get("extra_data")
+        explicitly_updated_category_keys: set[str] = set()
+        if isinstance(extra_data_update, Mapping):
+            explicit_category_fields = extra_data_update.get("category_fields")
+            if isinstance(explicit_category_fields, Mapping):
+                explicitly_updated_category_keys = {str(key) for key in explicit_category_fields.keys()}
+
+        invalid_keys = sorted(
+            key for key in explicitly_updated_category_keys
+            if key not in allowed_category_field_keys
+        )
         if invalid_keys:
             return 400, {
                 "detail": (
@@ -2028,6 +2037,11 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 ),
                 "code": "invalid_category_field_key",
             }
+        changed_category_fields = {
+            key: values
+            for key, values in changed_category_fields.items()
+            if key in allowed_category_field_keys
+        }
 
     with transaction.atomic():
         from crm.apps import set_current_user, clear_current_user
