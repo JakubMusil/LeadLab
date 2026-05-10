@@ -1135,6 +1135,47 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
             ).exists()
         )
 
+    def test_stage_change_block_does_not_trigger_stage_changed_rules(self):
+        ConditionRule.objects.create(
+            firm=self.firm,
+            name="Block move to won",
+            trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGE_REQUESTED,
+            scope_type=ConditionScopeType.STAGE_TRANSITION,
+            source_stage=self.stage_new,
+            target_stage=self.stage_won,
+            condition_tree={"field": "status", "operator": "eq", "value": RecordStatus.NEW},
+            effect=ConditionEffectType.BLOCK,
+            severity=ConditionSeverity.ERROR,
+            effect_config={"message": "Blocked"},
+        )
+        changed_rule = ConditionRule.objects.create(
+            firm=self.firm,
+            name="Should not run",
+            trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+            scope_type=ConditionScopeType.STAGE,
+            stage=self.stage_won,
+            condition_tree={},
+            effect=ConditionEffectType.WARNING,
+            severity=ConditionSeverity.WARNING,
+            effect_config={"message": "Should not be logged"},
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"current_stage_id": str(self.stage_won.id)},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.current_stage_id, self.stage_new.id)
+        self.assertFalse(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+                rule=changed_rule,
+            ).exists()
+        )
+
     def test_patch_without_stage_change_does_not_write_stage_logs(self):
         resp = self._patch(
             f"/api/v1/crm/records/{self.record.id}",
@@ -1262,6 +1303,62 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
             str(requirement.id),
         )
         self.assertTrue(self.record.extra_data["active_stage_requirements"][0]["is_met"])
+
+    def test_patch_standard_field_change_prefers_higher_priority_matching_scenario(self):
+        low_priority = StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_new,
+            name="Fallback scenario",
+            activation_condition={},
+            is_active=True,
+            priority=50,
+        )
+        low_req = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=low_priority,
+            name="Fallback requirement",
+            requirement_type="field",
+            condition={},
+            blocking=False,
+            visible_to_user=True,
+            sort_order=1,
+        )
+        high_priority = StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_new,
+            name="Branch by title",
+            activation_condition={"field": "title", "operator": "eq", "value": "Priority branch"},
+            is_active=True,
+            priority=1,
+        )
+        high_req = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=high_priority,
+            name="Branch requirement",
+            requirement_type="field",
+            condition={"field": "title", "operator": "eq", "value": "Priority branch"},
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Priority branch"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.record.refresh_from_db()
+        self.assertEqual(
+            self.record.extra_data.get("active_stage_scenario_id"),
+            str(high_priority.id),
+        )
+        self.assertEqual(
+            self.record.extra_data.get("active_stage_requirements", [{}])[0].get("id"),
+            str(high_req.id),
+        )
+        self.assertNotEqual(str(low_req.id), str(high_req.id))
 
     def test_patch_standard_field_change_clears_stage_requirements_when_scenario_not_active(self):
         StageScenario.objects.create(
@@ -4960,6 +5057,33 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
         self.assertTrue(evaluate_condition_tree(tree_recent, context))
         self.assertFalse(evaluate_condition_tree(tree_old, context))
         self.assertTrue(evaluate_condition_tree(tree_streamline_activity_days, context))
+
+    def test_streamline_tool_source_supports_explicit_tool_type(self):
+        from crm.tasks import evaluate_condition_tree
+
+        context = {
+            "activities": [
+                {
+                    "type": "comment",
+                    "tool_type": "whatsapp_out",
+                    "entity_type": "record",
+                    "created_at": timezone.now().isoformat(),
+                }
+            ]
+        }
+        tool_tree = {
+            "source_type": "streamline_tool",
+            "operator": "exists",
+            "value": "whatsapp_out",
+        }
+        activity_type_tree = {
+            "source_type": "streamline_tool",
+            "operator": "exists",
+            "value": "comment",
+        }
+
+        self.assertTrue(evaluate_condition_tree(tool_tree, context))
+        self.assertFalse(evaluate_condition_tree(activity_type_tree, context))
 
     def test_field_change_source_supports_changed_operators(self):
         from crm.tasks import evaluate_condition_tree

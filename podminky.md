@@ -1069,18 +1069,18 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.11 Testy backendu
 
-- [ ] Otestovat jednoduché pravidlo nad standardním polem.
-- [ ] Otestovat pravidlo nad kategoriovým polem.
-- [ ] Otestovat pravidlo nad Streamline aktivitou.
-- [ ] Otestovat pravidlo nad konkrétním Streamline tool typem.
-- [ ] Otestovat blokaci změny fáze.
-- [ ] Otestovat neblokující upozornění.
-- [ ] Otestovat aktivaci scénáře.
-- [ ] Otestovat řetězení kroků.
-- [ ] Otestovat větvení podle hodnoty pole.
-- [ ] Otestovat více aktivních scénářů a prioritu.
-- [ ] Otestovat audit log.
-- [ ] Otestovat oprávnění.
+- [x] Otestovat jednoduché pravidlo nad standardním polem.
+- [x] Otestovat pravidlo nad kategoriovým polem.
+- [x] Otestovat pravidlo nad Streamline aktivitou.
+- [x] Otestovat pravidlo nad konkrétním Streamline tool typem.
+- [x] Otestovat blokaci změny fáze.
+- [x] Otestovat neblokující upozornění.
+- [x] Otestovat aktivaci scénáře.
+- [x] Otestovat řetězení kroků.
+- [x] Otestovat větvení podle hodnoty pole.
+- [x] Otestovat více aktivních scénářů a prioritu.
+- [x] Otestovat audit log.
+- [x] Otestovat oprávnění.
 
 ## 14. Frontend pracovní úkony
 
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 19:28 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na další otevřený bod 13.11 (backend test matrix).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza pokrytí 13.11 + návrh minimálních doplňujících testů) a následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům (`crm/tests.py`, `crm/api.py`).
+- Před úpravami proběhla baseline validace prostředí: frontend `check-locales` a `build-only` procházejí; frontend `type-check`/`lint`/`test:unit` mají pre-existing chyby mimo scope; backend `pip-audit` hlásí pre-existing `twisted 25.5.0 / CVE-2026-42304`; backend `flake8` a plný `manage.py test` mají pre-existing nálezy mimo tento scope.
+- Funkční doplnění backend testů v `crm/tests.py`: přidány regresní scénáře pro konkrétní Streamline `tool_type`, pro větvení aktivního scénáře podle hodnoty pole s preferencí vyšší priority a pro řetězení triggerů (blokace `record.stage_change_requested` nevyvolá `record.stage_changed`).
+- Provedena funkční validace nových testů cíleným během: `RecordUpdateAPITest.test_stage_change_block_does_not_trigger_stage_changed_rules`, `RecordUpdateAPITest.test_patch_standard_field_change_prefers_higher_priority_matching_scenario`, `ConditionRulesTest.test_streamline_tool_source_supports_explicit_tool_type` procházejí.
+- Doplňkový běh fokusované sady condition-engine testů potvrdil pre-existing chybu mimo scope (`FieldError` v `_build_record_automation_context` při filtru membership podle `role`), bez vazby na nově přidané testy.
+- Hotovo: bod 13.11 je nyní kompletně dokončený.
+- Následuje: navázat frontend částí 14.2 (panel požadavků fáze) stejným režimem delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 18:46 UTC
 
