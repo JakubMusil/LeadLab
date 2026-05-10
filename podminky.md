@@ -1293,8 +1293,8 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 ### 2026-05-10 05:49 UTC
 
 - Prostudován celý návrh a potvrzen další proveditelný krok: dokončit analytické mapování pro backend (13.1) a frontend (14.1).
-- Kroky byly delegované na podagenty (samostatně backend + frontend), následně ručně ověřené proti zdrojovým souborům.
-- Výsledek: sekce 13.1 a 14.1 jsou dokončené a checkboxy byly aktualizované na splněné.
+- Kroky byly delegovány na podagenty (samostatně backend + frontend), následně ručně ověřeny proti zdrojovým souborům.
+- Výsledek: sekce 13.1 a 14.1 jsou dokončeny a checkboxy byly aktualizovány jako splněné.
 - Validace prostředí před úpravami:
   - frontend checks aktuálně padají na pre-existing TypeScript chybách mimo tento dokument,
   - backend checks aktuálně padají na `pip-audit` nálezu `twisted 25.5.0 / CVE-2026-42304` (fix verze `26.4.0rc2`).
