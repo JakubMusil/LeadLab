@@ -1117,10 +1117,12 @@ def _evaluate_field_change_trigger(
 def _refresh_active_stage_scenario(record: PipelineRecord):
     from crm.condition_rules import ConditionTreeEvaluator
 
-    extra_data = dict(record.extra_data or {})
+    existing_extra_data = dict(record.extra_data or {})
+    extra_data = dict(existing_extra_data)
     if not record.category_id or not record.current_stage_id:
-        if "active_stage_scenario_id" in extra_data:
+        if "active_stage_scenario_id" in extra_data or "active_stage_requirements" in extra_data:
             extra_data.pop("active_stage_scenario_id")
+            extra_data.pop("active_stage_requirements", None)
             record.extra_data = extra_data
             record.save(update_fields=["extra_data"])
         return
@@ -1131,6 +1133,7 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
         to_stage_id=record.current_stage_id,
     )
     evaluator = ConditionTreeEvaluator()
+    active_scenario: Optional[StageScenario] = None
     active_scenario_id: str | None = None
     scenarios = (
         StageScenario.objects
@@ -1140,24 +1143,43 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
             stage_id=record.current_stage_id,
             is_active=True,
         )
+        .prefetch_related("requirements")
         .order_by("priority", "created_at", "id")
     )
     for scenario in scenarios:
         tree = scenario.activation_condition
         is_active = True if tree in (None, {}) else evaluator.evaluate(tree, context)
         if is_active:
+            active_scenario = scenario
             active_scenario_id = str(scenario.id)
             break
 
-    if active_scenario_id:
-        if extra_data.get("active_stage_scenario_id") != active_scenario_id:
-            extra_data["active_stage_scenario_id"] = active_scenario_id
-            record.extra_data = extra_data
-            record.save(update_fields=["extra_data"])
-        return
+    if active_scenario_id and active_scenario:
+        extra_data["active_stage_scenario_id"] = active_scenario_id
+        requirement_items: list[dict[str, Any]] = []
+        requirements = active_scenario.requirements.all().order_by("sort_order", "created_at", "id")
+        for requirement in requirements:
+            tree = requirement.condition
+            is_met = True if tree in (None, {}) else evaluator.evaluate(tree, context)
+            requirement_items.append(
+                {
+                    "id": str(requirement.id),
+                    "name": requirement.name,
+                    "requirement_type": requirement.requirement_type,
+                    "blocking": requirement.blocking,
+                    "visible_to_user": requirement.visible_to_user,
+                    "is_met": is_met,
+                }
+            )
+        if requirement_items:
+            extra_data["active_stage_requirements"] = requirement_items
+        else:
+            extra_data.pop("active_stage_requirements", None)
+    else:
+        extra_data.pop("active_stage_scenario_id", None)
+        extra_data.pop("active_stage_requirements", None)
 
-    if "active_stage_scenario_id" in extra_data:
-        extra_data.pop("active_stage_scenario_id")
+    if extra_data != existing_extra_data:
         record.extra_data = extra_data
         record.save(update_fields=["extra_data"])
 

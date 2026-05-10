@@ -1015,7 +1015,7 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Uložit starou a novou hodnotu do evaluation contextu.
 - [x] Vyhodnotit pravidla typu `record.field_changed`.
 - [x] Aktivovat nebo deaktivovat scénáře podle výsledku.
-- [ ] Přepočítat požadavky fáze.
+- [x] Přepočítat požadavky fáze.
 - [x] Zapsat log vyhodnocení.
 
 ### 13.7 Napojení na změny kategoriových polí
@@ -1344,6 +1344,16 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 16:46 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený bod 13.6 (`Přepočítat požadavky fáze`).
+- Další krok byl maximalizovaně delegován na dva podagenty (implementační návrh + nezávislá validační revize) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `crm/tests.py`).
+- Funkční implementace: `_refresh_active_stage_scenario` nyní při výpočtu aktivního scénáře zároveň přepočítává požadavky scénáře přes `ConditionTreeEvaluator` a ukládá je do `record.extra_data["active_stage_requirements"]` (včetně `id`, `requirement_type`, `blocking`, `visible_to_user`, `is_met`).
+- Doplněno čištění `active_stage_requirements` při neaktivním/neexistujícím scénáři, aby v `extra_data` nezůstávala zastaralá data.
+- Rozšířeny integrační backend testy `RecordUpdateAPITest` o pokrytí přepočtu požadavků po změně standardního pole a o regresi pro správné čištění zastaralých requirement dat.
+- Hotovo: bod 13.6 je nyní kompletně dokončený.
+- Následuje: navázat etapou 13.7 (napojení na změny kategoriových polí) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-10 15:52 UTC
 

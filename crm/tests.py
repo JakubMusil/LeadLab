@@ -22,6 +22,7 @@ from crm.models import (
     RuleEvaluationLog,
     RuleEvaluationResult,
     Stage,
+    StageRequirement,
     StageScenario,
     Task,
 )
@@ -1220,7 +1221,7 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         )
 
     def test_patch_standard_field_change_refreshes_active_stage_scenario(self):
-        StageScenario.objects.create(
+        scenario = StageScenario.objects.create(
             firm=self.firm,
             category=self.category,
             stage=self.stage_new,
@@ -1233,6 +1234,16 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
             is_active=True,
             priority=1,
         )
+        requirement = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Title is set",
+            requirement_type="field",
+            condition={"field": "title", "operator": "eq", "value": "Scenario activated"},
+            blocking=True,
+            visible_to_user=True,
+            sort_order=1,
+        )
 
         resp = self._patch(
             f"/api/v1/crm/records/{self.record.id}",
@@ -1242,6 +1253,39 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
 
         self.record.refresh_from_db()
         self.assertIn("active_stage_scenario_id", self.record.extra_data)
+        self.assertIn("active_stage_requirements", self.record.extra_data)
+        self.assertEqual(len(self.record.extra_data["active_stage_requirements"]), 1)
+        self.assertEqual(
+            self.record.extra_data["active_stage_requirements"][0]["id"],
+            str(requirement.id),
+        )
+        self.assertTrue(self.record.extra_data["active_stage_requirements"][0]["is_met"])
+
+    def test_patch_standard_field_change_clears_stage_requirements_when_scenario_not_active(self):
+        StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_new,
+            name="Title scenario",
+            activation_condition={"field": "title", "operator": "eq", "value": "Scenario activated"},
+            is_active=True,
+            priority=1,
+        )
+        self.record.extra_data = {
+            "active_stage_scenario_id": "stale-id",
+            "active_stage_requirements": [{"id": "stale-req", "is_met": True}],
+        }
+        self.record.save(update_fields=["extra_data"])
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Different title"},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        self.record.refresh_from_db()
+        self.assertNotIn("active_stage_scenario_id", self.record.extra_data)
+        self.assertNotIn("active_stage_requirements", self.record.extra_data)
 
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
