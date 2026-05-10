@@ -11,7 +11,15 @@ logger = logging.getLogger(__name__)
 class RecordConditionContextBuilder:
     """Build a stable context for evaluating record condition trees."""
 
-    def build(self, record) -> dict:
+    def build(
+        self,
+        record,
+        *,
+        changed_field: str | None = None,
+        old_value: Any = None,
+        new_value: Any = None,
+        changed_field_source: str | None = None,
+    ) -> dict:
         extra_data = record.extra_data if isinstance(record.extra_data, Mapping) else {}
         category_fields = extra_data.get("category_fields")
         if not isinstance(category_fields, Mapping):
@@ -68,6 +76,12 @@ class RecordConditionContextBuilder:
             "extra_data": extra_data,
             "category_fields": dict(category_fields),
             "activities": activities,
+            "change": {
+                "field_key": changed_field,
+                "source_type": changed_field_source,
+                "old_value": self._normalize(old_value),
+                "new_value": self._normalize(new_value),
+            },
         }
 
     def _normalize(self, value: Any) -> Any:
@@ -132,6 +146,10 @@ class ConditionTreeEvaluator:
 
     def _evaluate_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
         source_type = str(node.get("source_type") or "").lower()
+        if source_type in {"field_change", "record_field_change"}:
+            return self._evaluate_field_change_leaf(node, context)
+        if source_type in {"category_field_change", "record_category_field_change"}:
+            return self._evaluate_category_field_change_leaf(node, context)
         if source_type in {"category_field", "category_fields"}:
             return self._evaluate_category_field_leaf(node, context)
         if source_type in {"activity", "streamline_activity", "streamline_tool"}:
@@ -168,6 +186,91 @@ class ConditionTreeEvaluator:
         operator = str(node.get("operator", "eq")).lower()
         expected = node.get("value")
         return self._evaluate_operator(actual, operator, expected)
+
+    def _evaluate_field_change_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        field = node.get("field") or node.get("path")
+        if not field:
+            return False
+
+        change = self._resolve_change_context(context, str(field), source_type="field")
+        if change is None:
+            return False
+        return self._evaluate_change_operator(node, change)
+
+    def _evaluate_category_field_change_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        key = node.get("category_field_key") or node.get("field") or node.get("path")
+        if not key:
+            return False
+
+        key = str(key)
+        if key.startswith("category_fields."):
+            key = key[len("category_fields."):]
+
+        change = self._resolve_change_context(context, key, source_type="category_field")
+        if change is None:
+            return False
+        return self._evaluate_change_operator(node, change)
+
+    def _resolve_change_context(
+        self,
+        context: Mapping[str, Any],
+        field_key: str,
+        *,
+        source_type: str,
+    ) -> Mapping[str, Any] | None:
+        field_changes = context.get("field_changes")
+        if isinstance(field_changes, Mapping):
+            field_change = field_changes.get(field_key)
+            if isinstance(field_change, Mapping):
+                return field_change
+
+        change = context.get("change")
+        if isinstance(change, Mapping):
+            change_field_key = change.get("field_key")
+            if change_field_key is None or str(change_field_key) == field_key:
+                change_source_type = self._normalize_change_source(change.get("source_type"))
+                if change_source_type in {None, source_type}:
+                    return change
+
+        changed_field = context.get("changed_field")
+        if changed_field is None or str(changed_field) != field_key:
+            return None
+
+        changed_source = self._normalize_change_source(context.get("changed_field_source"))
+        if changed_source not in {None, source_type}:
+            return None
+
+        return {
+            "old_value": context.get("old_value"),
+            "new_value": context.get("new_value"),
+        }
+
+    def _normalize_change_source(self, source: Any) -> str | None:
+        if source is None:
+            return None
+        source_value = str(source).lower()
+        if source_value in {"field", "standard_field", "record_field"}:
+            return "field"
+        if source_value in {"category_field", "record_category_field"}:
+            return "category_field"
+        return source_value
+
+    def _evaluate_change_operator(self, node: Mapping[str, Any], change: Mapping[str, Any]) -> bool:
+        old_value = change.get("old_value")
+        new_value = change.get("new_value")
+        has_changed = not self._values_equal(old_value, new_value)
+
+        operator = str(node.get("operator", "changed")).lower()
+        expected = node.get("value")
+        if operator == "changed":
+            return has_changed
+        if operator == "changed_from":
+            expected_from = node.get("from_value", expected)
+            return has_changed and self._values_equal(old_value, expected_from)
+        if operator == "changed_to":
+            expected_to = node.get("to_value", expected)
+            return has_changed and self._values_equal(new_value, expected_to)
+        return False
 
     def _evaluate_activity_leaf(
         self,
@@ -322,3 +425,8 @@ class ConditionTreeEvaluator:
             return Decimal(str(value))
         except (InvalidOperation, TypeError, ValueError):
             return None
+
+    def _values_equal(self, left: Any, right: Any) -> bool:
+        if left is None and right is None:
+            return True
+        return str(left) == str(right)

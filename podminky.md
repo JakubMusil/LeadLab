@@ -992,7 +992,7 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Přidat podporu Streamline aktivit.
 - [x] Přidat podporu Streamline tool typů.
 - [x] Přidat podporu časových oken.
-- [ ] Přidat podporu změny hodnoty z/do.
+- [x] Přidat podporu změny hodnoty z/do.
 - [ ] Přidat podporu existence související entity.
 - [ ] Přidat podporu výstupů pravidla.
 - [ ] Přidat deterministické řazení podle priority.
@@ -1344,6 +1344,15 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 12:33 UTC
+
+- Pro další krok byla zvolena realizace zbývajícího bodu 13.4 „podpora změny hodnoty z/do“.
+- Další analýza byla delegována podagentovi (návrh minimální implementace + testovací scénáře), následně proběhla ruční konceptuální validace proti aktuálním souborům (`crm/condition_rules.py`, `crm/tests.py`).
+- Funkční implementace: `ConditionTreeEvaluator` nově podporuje `source_type` `field_change` a `category_field_change` s operátory `changed`, `changed_from`, `changed_to`; `RecordConditionContextBuilder` nyní vrací i `change` kontext (`field_key`, `source_type`, `old_value`, `new_value`).
+- Doplněny backend testy `ConditionRulesTest` pro nové operátory i fail-closed scénář při neshodě změněného pole.
+- Výsledek: bod 13.4 „Přidat podporu změny hodnoty z/do“ je dokončen a checkbox je aktualizovaný na splněný.
+- Následuje: pokračovat implementací 13.4 o podporu existence související entity a výstupů pravidla, poté navázat body 13.5 (napojení na stage-change flow).
 
 ### 2026-05-10 11:45 UTC
 
