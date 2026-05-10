@@ -4383,3 +4383,131 @@ class ConditionRulesTest(CRMFixtureMixin, TestCase):
             "value": "None",
         }
         self.assertFalse(evaluate_condition_tree(tree, context))
+
+    def test_related_entity_source_supports_exists_and_missing(self):
+        from crm.tasks import evaluate_condition_tree
+
+        exists_tree = {
+            "source_type": "related_entity",
+            "entity_type": "customer",
+            "operator": "exists",
+        }
+        missing_tree = {
+            "source_type": "related_entity",
+            "entity_type": "customer",
+            "operator": "missing",
+        }
+        self.assertTrue(evaluate_condition_tree(exists_tree, {"customer_id": str(self.customer.id)}))
+        self.assertFalse(evaluate_condition_tree(exists_tree, {"customer_id": None}))
+        self.assertFalse(evaluate_condition_tree(missing_tree, {"customer_id": str(self.customer.id)}))
+        self.assertTrue(evaluate_condition_tree(missing_tree, {"customer_id": None}))
+
+    def test_related_entity_source_supports_known_entity_types(self):
+        from crm.tasks import evaluate_condition_tree
+
+        supported = {
+            "customer": "customer_id",
+            "company": "company_id",
+            "contact_person": "contact_person_id",
+            "assigned_to": "assigned_to_id",
+            "category": "category_id",
+            "current_stage": "current_stage_id",
+            "stage": "current_stage_id",
+            "parent": "parent_id",
+        }
+        for entity_type, field_key in supported.items():
+            tree = {
+                "source_type": "related_entity",
+                "entity_type": entity_type,
+                "operator": "exists",
+            }
+            self.assertTrue(
+                evaluate_condition_tree(tree, {field_key: "entity-id"}),
+                msg=f"source_type related_entity should support {entity_type}",
+            )
+
+    def test_related_entity_source_fails_closed_for_invalid_entity_type(self):
+        from crm.tasks import evaluate_condition_tree
+
+        tree = {
+            "source_type": "related_entity",
+            "entity_type": "unknown_entity",
+            "operator": "exists",
+        }
+        self.assertFalse(evaluate_condition_tree(tree, {"customer_id": str(self.customer.id)}))
+
+    def test_evaluate_condition_rule_outputs_returns_effect_payloads_sorted_by_priority(self):
+        from crm.condition_rules import evaluate_condition_rule_outputs
+
+        rules = [
+            {
+                "id": "rule-high",
+                "name": "High priority",
+                "is_active": True,
+                "priority": 10,
+                "created_at": "2026-05-10T10:00:00+00:00",
+                "condition_tree": {"field": "status", "operator": "eq", "value": "new"},
+                "effect": "warning",
+                "severity": "warning",
+                "effect_config": {"message": "high"},
+            },
+            {
+                "id": "rule-low",
+                "name": "Low priority",
+                "is_active": True,
+                "priority": 50,
+                "created_at": "2026-05-10T09:00:00+00:00",
+                "condition_tree": {"field": "status", "operator": "eq", "value": "new"},
+                "effect": "block",
+                "severity": "error",
+                "effect_config": {"message": "low"},
+            },
+            {
+                "id": "rule-inactive",
+                "name": "Inactive",
+                "is_active": False,
+                "priority": 1,
+                "created_at": "2026-05-10T08:00:00+00:00",
+                "condition_tree": {"field": "status", "operator": "eq", "value": "new"},
+                "effect": "recommendation",
+                "severity": "info",
+                "effect_config": {"message": "inactive"},
+            },
+        ]
+
+        outputs = evaluate_condition_rule_outputs(rules, {"status": "new"})
+        self.assertEqual([item["rule_id"] for item in outputs], ["rule-high", "rule-low"])
+        self.assertEqual(outputs[0]["effect"], "warning")
+        self.assertEqual(outputs[0]["severity"], "warning")
+        self.assertEqual(outputs[0]["effect_config"], {"message": "high"})
+
+    def test_evaluate_condition_rule_outputs_is_deterministic_with_same_priority(self):
+        from crm.condition_rules import evaluate_condition_rule_outputs
+
+        rules = [
+            {
+                "id": "rule-b",
+                "name": "Rule B",
+                "is_active": True,
+                "priority": 10,
+                "created_at": "2026-05-10T10:00:00+00:00",
+                "condition_tree": {"field": "status", "operator": "eq", "value": "new"},
+                "effect": "warning",
+                "severity": "warning",
+                "effect_config": {},
+            },
+            {
+                "id": "rule-a",
+                "name": "Rule A",
+                "is_active": True,
+                "priority": 10,
+                "created_at": "2026-05-10T09:00:00+00:00",
+                "condition_tree": {"field": "status", "operator": "eq", "value": "new"},
+                "effect": "block",
+                "severity": "error",
+                "effect_config": {},
+            },
+        ]
+
+        outputs = evaluate_condition_rule_outputs(rules, {"status": "new"})
+        self.assertEqual([item["rule_id"] for item in outputs], ["rule-a", "rule-b"])

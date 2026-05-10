@@ -157,6 +157,8 @@ class ConditionTreeEvaluator:
             return self._evaluate_category_field_leaf(node, context)
         if source_type in {"activity", "streamline_activity", "streamline_tool"}:
             return self._evaluate_activity_leaf(node, context, source_type)
+        if source_type == "related_entity":
+            return self._evaluate_related_entity_leaf(node, context)
 
         field = node.get("field") or node.get("path")
         if not field:
@@ -278,6 +280,43 @@ class ConditionTreeEvaluator:
         if operator == "changed_to":
             expected_to = node.get("to_value", expected)
             return has_changed and self._values_equal(new_value, expected_to)
+        return False
+
+    def _evaluate_related_entity_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
+        entity_type = node.get("entity_type") or node.get("related_entity_type")
+        if not entity_type:
+            return False
+
+        entity_type = str(entity_type).lower()
+        field_map = {
+            "customer": "customer_id",
+            "company": "company_id",
+            "contact_person": "contact_person_id",
+            "assigned_to": "assigned_to_id",
+            "category": "category_id",
+            "current_stage": "current_stage_id",
+            "stage": "current_stage_id",
+            "parent": "parent_id",
+        }
+        field_key = field_map.get(entity_type)
+        if field_key is None:
+            return False
+
+        has_entity = context.get(field_key) is not None
+        operator = str(node.get("operator", "exists")).lower()
+        expected = node.get("value")
+        if operator == "exists":
+            return has_entity
+        if operator in {"not_exists", "missing"}:
+            return not has_entity
+        if operator == "eq":
+            if isinstance(expected, bool):
+                return has_entity is expected
+            return has_entity
+        if operator == "neq":
+            if isinstance(expected, bool):
+                return has_entity is not expected
+            return not has_entity
         return False
 
     def _evaluate_activity_leaf(
@@ -439,3 +478,73 @@ class ConditionTreeEvaluator:
         if left is None or right is None:
             return left is right
         return str(left) == str(right)
+
+
+def evaluate_condition_rule_outputs(
+    rules: list[Any],
+    context: Mapping[str, Any],
+    *,
+    evaluator: ConditionTreeEvaluator | None = None,
+) -> list[dict[str, Any]]:
+    """Evaluate active rules and return their effect payloads in deterministic order."""
+    if evaluator is None:
+        evaluator = ConditionTreeEvaluator()
+
+    outputs: list[dict[str, Any]] = []
+    for rule in _sort_rules_for_evaluation(rules):
+        if not _rule_is_active(rule):
+            continue
+        if not evaluator.evaluate(_rule_attr(rule, "condition_tree", {}), context):
+            continue
+        outputs.append(
+            {
+                "rule_id": _rule_attr(rule, "id"),
+                "name": _rule_attr(rule, "name", ""),
+                "priority": _to_int(_rule_attr(rule, "priority"), default=100),
+                "effect": _rule_attr(rule, "effect"),
+                "severity": _rule_attr(rule, "severity"),
+                "effect_config": _rule_attr(rule, "effect_config", {}),
+            }
+        )
+    return outputs
+
+
+def _sort_rules_for_evaluation(rules: list[Any]) -> list[Any]:
+    def _created_at_key(rule: Any) -> str:
+        created_at = _rule_attr(rule, "created_at")
+        if created_at is None:
+            return ""
+        if hasattr(created_at, "isoformat"):
+            try:
+                return created_at.isoformat()
+            except (TypeError, ValueError):
+                return str(created_at)
+        return str(created_at)
+
+    return sorted(
+        list(rules),
+        key=lambda rule: (
+            _to_int(_rule_attr(rule, "priority"), default=100),
+            _created_at_key(rule),
+            str(_rule_attr(rule, "id", "")),
+        ),
+    )
+
+
+def _rule_attr(rule: Any, key: str, default: Any = None) -> Any:
+    if isinstance(rule, Mapping):
+        return rule.get(key, default)
+    return getattr(rule, key, default)
+
+
+def _rule_is_active(rule: Any) -> bool:
+    if isinstance(rule, Mapping):
+        return bool(rule.get("is_active", True))
+    return bool(getattr(rule, "is_active", True))
+
+
+def _to_int(value: Any, *, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
