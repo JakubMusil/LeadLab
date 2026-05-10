@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, getStatusMeta, type RecordOut } from '@/stores/records'
+import {
+  useRecordsStore,
+  RECORD_STATUSES,
+  getStatusMeta,
+  normalizeStageChangeIssues,
+  type RecordOut,
+  type StageChangeEvaluationOut,
+  type StageChangeIssueWithSource,
+} from '@/stores/records'
 import { usePipelineStore, type StageOut } from '@/stores/pipeline'
 import { useSavedViewsStore } from '@/stores/savedViews'
 import { useCustomersStore, type CustomerOut } from '@/stores/customers'
@@ -870,6 +878,27 @@ const terminalCheckpointName = ref('')
 const terminalCheckpointDate = ref('')
 const terminalMoving = ref(false)
 
+const stageValidationModalOpen = ref(false)
+const stageValidationRecord = ref<RecordOut | null>(null)
+const stageValidationTargetStageName = ref<string | null>(null)
+const stageValidationBlocking = ref<StageChangeIssueWithSource[]>([])
+const stageValidationWarnings = ref<StageChangeIssueWithSource[]>([])
+
+const stageValidationHasBlocking = computed(() => stageValidationBlocking.value.length > 0)
+
+function showStageValidationModalIfNeeded(record: RecordOut, stageName: string | null, evaluation?: StageChangeEvaluationOut) {
+  const normalized = normalizeStageChangeIssues(evaluation)
+  stageValidationRecord.value = record
+  stageValidationTargetStageName.value = stageName
+  stageValidationBlocking.value = normalized.blocking
+  stageValidationWarnings.value = normalized.warnings
+  stageValidationModalOpen.value = normalized.blocking.length > 0 || normalized.warnings.length > 0
+}
+
+function closeStageValidationModal() {
+  stageValidationModalOpen.value = false
+}
+
 function onStageDragStart(e: DragEvent, record: RecordOut) {
   draggingStageRecord.value = record
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
@@ -906,7 +935,15 @@ async function onStageDrop(stageId: string) {
   }
 
   const result = await store.patchStage(record.id, stageId, stage?.name ?? null)
-  if (!result.ok) toast.error(result.error ?? t('leads.failedToUpdateStatus'))
+  if (result.ok) {
+    showStageValidationModalIfNeeded(record, stage?.name ?? null, result.stageChangeEvaluation)
+    return
+  }
+  if (result.code === 'stage_change_blocked') {
+    showStageValidationModalIfNeeded(record, stage?.name ?? null, result.stageChangeEvaluation)
+    return
+  }
+  toast.error(result.error ?? t('leads.failedToUpdateStatus'))
 }
 
 async function confirmTerminalMove() {
@@ -915,7 +952,11 @@ async function confirmTerminalMove() {
   const { record, stage } = terminalMovePayload.value
   const result = await store.patchStage(record.id, stage.id, stage.name)
   if (!result.ok) {
-    toast.error(result.error ?? t('pipeline.terminalMoveFailed'))
+    if (result.code === 'stage_change_blocked') {
+      showStageValidationModalIfNeeded(record, stage.name, result.stageChangeEvaluation)
+    } else {
+      toast.error(result.error ?? t('pipeline.terminalMoveFailed'))
+    }
     terminalMoving.value = false
     return
   }
@@ -930,6 +971,7 @@ async function confirmTerminalMove() {
   }
   terminalMoving.value = false
   terminalMovePayload.value = null
+  showStageValidationModalIfNeeded(record, stage.name, result.stageChangeEvaluation)
 }
 
 function cancelTerminalMove() {
@@ -2170,6 +2212,66 @@ function closeContactDetail() {
         @click="confirmTerminalMove"
       >
         {{ terminalMovePayload?.stage.is_won ? t('pipeline.terminalConfirmWon') : t('pipeline.terminalConfirmLost') }}
+      </Button>
+    </template>
+  </Modal>
+
+  <Modal
+    :open="stageValidationModalOpen"
+    :title="stageValidationHasBlocking ? t('pipeline.stageValidationBlockedTitle') : t('pipeline.stageValidationWarningTitle')"
+    size="sm"
+    @close="closeStageValidationModal"
+  >
+    <div class="space-y-4">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        {{
+          stageValidationHasBlocking
+            ? t('pipeline.stageValidationBlockedSubtitle', { stage: stageValidationTargetStageName || t('pipeline.stageLabel') })
+            : t('pipeline.stageValidationWarningSubtitle', { stage: stageValidationTargetStageName || t('pipeline.stageLabel') })
+        }}
+      </p>
+
+      <div v-if="stageValidationBlocking.length > 0">
+        <div class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">
+          {{ t('pipeline.stageValidationBlockingListTitle') }}
+        </div>
+        <ul class="space-y-2">
+          <li
+            v-for="issue in stageValidationBlocking"
+            :key="`board-block-${issue.rule_id}`"
+            class="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-300"
+          >
+            {{ issue.message || issue.name }}
+          </li>
+        </ul>
+      </div>
+
+      <div v-if="stageValidationWarnings.length > 0">
+        <div class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2">
+          {{ t('pipeline.stageValidationWarningsListTitle') }}
+        </div>
+        <ul class="space-y-2">
+          <li
+            v-for="issue in stageValidationWarnings"
+            :key="`board-warn-${issue.rule_id}-${issue.source}`"
+            class="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-300"
+          >
+            {{ issue.message || issue.name }}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button
+        v-if="stageValidationRecord"
+        variant="secondary"
+        @click="goToDetail(stageValidationRecord.id)"
+      >
+        {{ t('pipeline.stageValidationOpenRecord') }}
+      </Button>
+      <Button variant="secondary" @click="closeStageValidationModal">
+        {{ stageValidationHasBlocking ? t('pipeline.stageValidationClose') : t('pipeline.stageValidationContinue') }}
       </Button>
     </template>
   </Modal>

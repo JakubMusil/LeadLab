@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRecordsStore, RECORD_STATUSES, type RecordIn } from '@/stores/records'
+import {
+  useRecordsStore,
+  RECORD_STATUSES,
+  type RecordIn,
+  normalizeStageChangeIssues,
+  type StageChangeEvaluationOut,
+  type StageChangeIssueWithSource,
+  type StageChangeIssueEffectConfig,
+} from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
 import { useToast } from '@/composables/useToast'
 import { useWebSocket } from '@/composables/useWebSocket'
@@ -640,11 +648,88 @@ const stageProgress = computed(() => {
   return pipelineStore.getStageProgress(currentStages.value, record.current_stage_id)
 })
 
+const stageValidationModalOpen = ref(false)
+const stageValidationTargetStageName = ref<string | null>(null)
+const stageValidationBlocking = ref<StageChangeIssueWithSource[]>([])
+const stageValidationWarnings = ref<StageChangeIssueWithSource[]>([])
+
+const stageValidationHasBlocking = computed(() => stageValidationBlocking.value.length > 0)
+
+function showStageValidationModalIfNeeded(stageName: string | null, evaluation?: StageChangeEvaluationOut) {
+  const normalized = normalizeStageChangeIssues(evaluation)
+  stageValidationTargetStageName.value = stageName
+  stageValidationBlocking.value = normalized.blocking
+  stageValidationWarnings.value = normalized.warnings
+  stageValidationModalOpen.value = normalized.blocking.length > 0 || normalized.warnings.length > 0
+}
+
+function closeStageValidationModal() {
+  stageValidationModalOpen.value = false
+}
+
+function getIssueConfig(issue: StageChangeIssueWithSource): StageChangeIssueEffectConfig {
+  return issue.effect_config ?? {}
+}
+
+function getIssueRelevantFieldKey(issue: StageChangeIssueWithSource): string | null {
+  const fieldKey = getIssueConfig(issue).relevant_field_key
+  return typeof fieldKey === 'string' && fieldKey ? fieldKey : null
+}
+
+function getIssueRelevantActivityFilter(issue: StageChangeIssueWithSource): string | null {
+  const config = getIssueConfig(issue)
+  const toolType = config.relevant_tool_type
+  if (typeof toolType === 'string' && toolType) return toolType
+  const activityType = config.relevant_activity_type
+  return typeof activityType === 'string' && activityType ? activityType : null
+}
+
+function isBlockingIssue(issue: StageChangeIssueWithSource): boolean {
+  return issue.effect === 'BLOCK'
+}
+
+function jumpToIssueField(issue: StageChangeIssueWithSource) {
+  const fieldKey = getIssueRelevantFieldKey(issue)
+  if (!fieldKey) return
+  jumpToRelevantField({
+    id: issue.rule_id,
+    name: issue.name,
+    requirement_type: 'field',
+    blocking: isBlockingIssue(issue),
+    visible_to_user: true,
+    is_met: false,
+    relevant_field_key: fieldKey,
+  })
+  closeStageValidationModal()
+}
+
+function jumpToIssueActivity(issue: StageChangeIssueWithSource) {
+  const activityFilter = getIssueRelevantActivityFilter(issue)
+  if (!activityFilter) return
+  jumpToRelevantActivity({
+    id: issue.rule_id,
+    name: issue.name,
+    requirement_type: 'activity',
+    blocking: isBlockingIssue(issue),
+    visible_to_user: true,
+    is_met: false,
+    relevant_tool_type: activityFilter,
+  })
+  openModalTool(activityFilter)
+  closeStageValidationModal()
+}
+
 async function changeStage(stageId: string) {
+  const stageName = currentStages.value.find((stage) => stage.id === stageId)?.name ?? null
   const result = await store.updateRecord(recordId.value, { current_stage_id: stageId })
   if (result.ok) {
+    showStageValidationModalIfNeeded(stageName, result.stageChangeEvaluation)
     toast.success(t('pipeline.stageUpdated'))
   } else {
+    if (result.code === 'stage_change_blocked') {
+      showStageValidationModalIfNeeded(stageName, result.stageChangeEvaluation)
+      return
+    }
     toast.error(result.error ?? t('pipeline.stageUpdateFailed'))
   }
 }
@@ -1689,6 +1774,95 @@ async function saveFieldEdit(fieldKey: string) {
     @activity-added="activityTimelineRef?.load()"
     @file-uploaded="(f) => { files.unshift(f as any) }"
   />
+
+  <Teleport to="body">
+    <div
+      v-if="stageValidationModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      @click.self="closeStageValidationModal"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl p-6" role="dialog" aria-modal="true">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          {{ stageValidationHasBlocking ? t('pipeline.stageValidationBlockedTitle') : t('pipeline.stageValidationWarningTitle') }}
+        </h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          {{
+            stageValidationHasBlocking
+              ? t('pipeline.stageValidationBlockedSubtitle', { stage: stageValidationTargetStageName || t('pipeline.stageLabel') })
+              : t('pipeline.stageValidationWarningSubtitle', { stage: stageValidationTargetStageName || t('pipeline.stageLabel') })
+          }}
+        </p>
+
+        <div v-if="stageValidationBlocking.length > 0" class="mb-4">
+          <div class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">
+            {{ t('pipeline.stageValidationBlockingListTitle') }}
+          </div>
+          <ul class="space-y-2">
+            <li v-for="issue in stageValidationBlocking" :key="`block-${issue.rule_id}`" class="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 p-3">
+              <div class="text-sm font-medium text-red-800 dark:text-red-300">{{ issue.message || issue.name }}</div>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  v-if="getIssueRelevantFieldKey(issue)"
+                  type="button"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                  @click="jumpToIssueField(issue)"
+                >
+                  {{ t('pipeline.stageValidationFixField') }}
+                </button>
+                <button
+                  v-if="getIssueRelevantActivityFilter(issue)"
+                  type="button"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                  @click="jumpToIssueActivity(issue)"
+                >
+                  {{ t('pipeline.stageValidationCreateActivity') }}
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="stageValidationWarnings.length > 0" class="mb-4">
+          <div class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2">
+            {{ t('pipeline.stageValidationWarningsListTitle') }}
+          </div>
+          <ul class="space-y-2">
+            <li v-for="issue in stageValidationWarnings" :key="`warn-${issue.rule_id}-${issue.source}`" class="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 p-3">
+              <div class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ issue.message || issue.name }}</div>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  v-if="getIssueRelevantFieldKey(issue)"
+                  type="button"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                  @click="jumpToIssueField(issue)"
+                >
+                  {{ t('pipeline.stageValidationFixField') }}
+                </button>
+                <button
+                  v-if="getIssueRelevantActivityFilter(issue)"
+                  type="button"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                  @click="jumpToIssueActivity(issue)"
+                >
+                  {{ t('pipeline.stageValidationCreateActivity') }}
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+            @click="closeStageValidationModal"
+          >
+            {{ stageValidationHasBlocking ? t('pipeline.stageValidationClose') : t('pipeline.stageValidationContinue') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 
   <!-- Edit Modal -->
   <Teleport to="body">

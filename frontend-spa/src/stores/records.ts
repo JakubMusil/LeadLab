@@ -57,6 +57,60 @@ export interface RecordIn {
   extra_data?: Record<string, unknown>
 }
 
+export interface StageChangeIssueOut {
+  rule_id: string
+  name: string
+  priority?: number | null
+  effect: string
+  severity: string
+  message: string
+  effect_config?: StageChangeIssueEffectConfig
+}
+
+export interface StageChangeEvaluationSummaryOut {
+  blocking: StageChangeIssueOut[]
+  warnings: StageChangeIssueOut[]
+}
+
+export interface StageChangeEvaluationOut {
+  requested?: StageChangeEvaluationSummaryOut
+  changed?: StageChangeEvaluationSummaryOut
+}
+
+export interface StageChangeIssueEffectConfig {
+  message?: string
+  relevant_field_key?: string
+  relevant_activity_type?: string
+  relevant_tool_type?: string
+  [key: string]: unknown
+}
+
+export interface StageChangeIssueWithSource extends StageChangeIssueOut {
+  source: 'requested' | 'changed'
+}
+
+interface StageChangeResponseEnvelope {
+  stage_change_evaluation?: StageChangeEvaluationOut
+}
+
+interface StageChangeErrorEnvelope extends StageChangeResponseEnvelope {
+  code?: string
+}
+
+export function normalizeStageChangeIssues(evaluation?: StageChangeEvaluationOut): {
+  blocking: StageChangeIssueWithSource[]
+  warnings: StageChangeIssueWithSource[]
+} {
+  if (!evaluation) return { blocking: [], warnings: [] }
+  const requestedBlocking = (evaluation.requested?.blocking ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
+  const requestedWarnings = (evaluation.requested?.warnings ?? []).map((issue) => ({ ...issue, source: 'requested' as const }))
+  const changedWarnings = (evaluation.changed?.warnings ?? []).map((issue) => ({ ...issue, source: 'changed' as const }))
+  return {
+    blocking: requestedBlocking,
+    warnings: [...requestedWarnings, ...changedWarnings],
+  }
+}
+
 export interface RecordFilters {
   status?: string
   source?: string
@@ -116,6 +170,18 @@ export const useRecordsStore = defineStore('records', () => {
   function firmHeader() {
     const firmStore = useFirmStore()
     return firmStore.activeFirm ? { 'X-Firm-ID': String(firmStore.activeFirm.id) } : {}
+  }
+
+  function extractStageChangeEvaluation(data: unknown): StageChangeEvaluationOut | undefined {
+    if (!data || typeof data !== 'object') return undefined
+    const body = data as StageChangeResponseEnvelope
+    if (!('stage_change_evaluation' in body)) return undefined
+    return body.stage_change_evaluation
+  }
+
+  function extractErrorCode(data: unknown): string | undefined {
+    const body = data as StageChangeErrorEnvelope | null | undefined
+    return typeof body?.code === 'string' ? body.code : undefined
   }
 
   async function fetchRecords(filters: RecordFilters = {}) {
@@ -186,15 +252,24 @@ export const useRecordsStore = defineStore('records', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to create record.') }
   }
 
-  async function updateRecord(id: string, payload: Partial<RecordIn>): Promise<{ ok: boolean; data?: RecordOut; error?: string }> {
+  async function updateRecord(
+    id: string,
+    payload: Partial<RecordIn>,
+  ): Promise<{ ok: boolean; data?: RecordOut; error?: string; code?: string; stageChangeEvaluation?: StageChangeEvaluationOut }> {
     const res = await api.patch<RecordOut>(`/api/v1/crm/records/${id}`, payload)
+    const stageChangeEvaluation = extractStageChangeEvaluation(res.data)
     if (res.ok) {
       const idx = records.value.findIndex((l) => l.id === id)
       if (idx !== -1) records.value[idx] = res.data
       if (currentRecord.value?.id === id) currentRecord.value = res.data
-      return { ok: true, data: res.data }
+      return { ok: true, data: res.data, stageChangeEvaluation }
     }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update record.') }
+    return {
+      ok: false,
+      error: extractErrorMessage(res.data, 'Failed to update record.'),
+      code: extractErrorCode(res.data),
+      stageChangeEvaluation,
+    }
   }
 
   async function patchStatus(id: string, status: string): Promise<{ ok: boolean; error?: string }> {
@@ -216,7 +291,11 @@ export const useRecordsStore = defineStore('records', () => {
     return { ok: false, error: extractErrorMessage(res.data, 'Failed to update status.') }
   }
 
-  async function patchStage(id: string, stageId: string | null, stageName?: string | null): Promise<{ ok: boolean; error?: string }> {
+  async function patchStage(
+    id: string,
+    stageId: string | null,
+    stageName?: string | null,
+  ): Promise<{ ok: boolean; error?: string; code?: string; stageChangeEvaluation?: StageChangeEvaluationOut }> {
     // Optimistic update
     const idx = records.value.findIndex((l) => l.id === id)
     const prev = idx !== -1 ? { current_stage_id: records.value[idx]!.current_stage_id, current_stage_name: records.value[idx]!.current_stage_name } : null
@@ -224,15 +303,21 @@ export const useRecordsStore = defineStore('records', () => {
     if (currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, current_stage_id: stageId, current_stage_name: stageName ?? null }
 
     const res = await api.patch<RecordOut>(`/api/v1/crm/records/${id}`, { current_stage_id: stageId })
+    const stageChangeEvaluation = extractStageChangeEvaluation(res.data)
     if (res.ok) {
       if (idx !== -1) records.value[idx] = res.data
       if (currentRecord.value?.id === id) currentRecord.value = res.data
-      return { ok: true }
+      return { ok: true, stageChangeEvaluation }
     }
     // Roll back
     if (prev !== null && idx !== -1) records.value[idx] = { ...records.value[idx]!, ...prev }
     if (prev !== null && currentRecord.value?.id === id) currentRecord.value = { ...currentRecord.value, ...prev }
-    return { ok: false, error: extractErrorMessage(res.data, 'Failed to update stage.') }
+    return {
+      ok: false,
+      error: extractErrorMessage(res.data, 'Failed to update stage.'),
+      code: extractErrorCode(res.data),
+      stageChangeEvaluation,
+    }
   }
 
   async function deleteRecord(id: string): Promise<{ ok: boolean; error?: string }> {
