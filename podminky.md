@@ -1044,18 +1044,18 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.9 API endpointy
 
-- [ ] Přidat endpoint pro seznam pravidel.
-- [ ] Přidat endpoint pro detail pravidla.
-- [ ] Přidat endpoint pro vytvoření pravidla.
-- [ ] Přidat endpoint pro úpravu pravidla.
-- [ ] Přidat endpoint pro smazání nebo deaktivaci pravidla.
-- [ ] Přidat endpoint pro seznam scénářů fáze.
-- [ ] Přidat endpoint pro vytvoření scénáře.
-- [ ] Přidat endpoint pro úpravu scénáře.
-- [ ] Přidat endpoint pro požadavky scénáře.
-- [ ] Přidat endpoint pro testovací vyhodnocení pravidla.
-- [ ] Přidat endpoint pro požadavky aktuální fáze záznamu.
-- [ ] Přidat endpoint pro log vyhodnocení.
+- [x] Přidat endpoint pro seznam pravidel.
+- [x] Přidat endpoint pro detail pravidla.
+- [x] Přidat endpoint pro vytvoření pravidla.
+- [x] Přidat endpoint pro úpravu pravidla.
+- [x] Přidat endpoint pro smazání nebo deaktivaci pravidla.
+- [x] Přidat endpoint pro seznam scénářů fáze.
+- [x] Přidat endpoint pro vytvoření scénáře.
+- [x] Přidat endpoint pro úpravu scénáře.
+- [x] Přidat endpoint pro požadavky scénáře.
+- [x] Přidat endpoint pro testovací vyhodnocení pravidla.
+- [x] Přidat endpoint pro požadavky aktuální fáze záznamu.
+- [x] Přidat endpoint pro log vyhodnocení.
 
 ### 13.10 Oprávnění
 
@@ -1344,6 +1344,16 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 18:22 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený bod 13.9 (API endpointy).
+- Další krok byl maximalizovaně delegován na dva podagenty (implementační mapa endpointů + nezávislá riziková revize) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`crm/api.py`, `crm/models.py`, `crm/tests.py`).
+- Funkční implementace 13.9 v `crm/api.py`: doplněny endpointy pro CRUD pravidel (`/condition-rules`), scénáře fáze (`/categories/{category_id}/stages/{stage_id}/scenarios`), seznam požadavků scénáře (`/scenarios/{scenario_id}/requirements`), testovací vyhodnocení (`/condition-rules/test-evaluation`), požadavky aktuální fáze (`/records/{record_id}/active-stage-requirements`) a log vyhodnocení (`/rule-evaluation-logs`).
+- Endpointy používají existující firm-scope a oprávnění (`require_permission`) a navazují na existující condition-engine helpery (`_refresh_active_stage_scenario`, `_serialize_stage_rule_output`, `RecordConditionContextBuilder` / `evaluate_condition_rule_outputs`).
+- Rozšířeny integrační backend testy v `crm/tests.py` (`ConditionRulesApiEndpointsTest`) pro rule CRUD + deaktivaci, scénáře/požadavky, testovací evaluaci a log endpoint.
+- Hotovo: bod 13.9 je nyní kompletně dokončený.
+- Následuje: navázat etapou 13.10 (oprávnění) a zpřesnit permission model pro čtení/upravy pravidel, scénářů a logů, včetně navazujících testů.
 
 ### 2026-05-10 17:36 UTC
 
