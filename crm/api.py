@@ -1121,7 +1121,7 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
     extra_data = dict(existing_extra_data)
     if not record.category_id or not record.current_stage_id:
         if "active_stage_scenario_id" in extra_data or "active_stage_requirements" in extra_data:
-            extra_data.pop("active_stage_scenario_id")
+            extra_data.pop("active_stage_scenario_id", None)
             extra_data.pop("active_stage_requirements", None)
             record.extra_data = extra_data
             record.save(update_fields=["extra_data"])

@@ -1352,6 +1352,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Funkční implementace: `_refresh_active_stage_scenario` nyní při výpočtu aktivního scénáře zároveň přepočítává požadavky scénáře přes `ConditionTreeEvaluator` a ukládá je do `record.extra_data["active_stage_requirements"]` (včetně `id`, `requirement_type`, `blocking`, `visible_to_user`, `is_met`).
 - Doplněno čištění `active_stage_requirements` při neaktivním/neexistujícím scénáři, aby v `extra_data` nezůstávala zastaralá data.
 - Rozšířeny integrační backend testy `RecordUpdateAPITest` o pokrytí přepočtu požadavků po změně standardního pole a o regresi pro správné čištění zastaralých requirement dat.
+- Po paralelní validaci (review + CodeQL) doplněn robustní fix pro čištění orphan dat bez `KeyError` a přidán regresní test pro stav, kdy je přítomné pouze `active_stage_requirements` bez `active_stage_scenario_id`.
 - Hotovo: bod 13.6 je nyní kompletně dokončený.
 - Následuje: navázat etapou 13.7 (napojení na změny kategoriových polí) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 

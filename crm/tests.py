@@ -1287,6 +1287,23 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         self.assertNotIn("active_stage_scenario_id", self.record.extra_data)
         self.assertNotIn("active_stage_requirements", self.record.extra_data)
 
+    def test_patch_standard_field_change_clears_orphan_stage_requirements_without_scenario_id(self):
+        self.record.category = None
+        self.record.current_stage = None
+        self.record.extra_data = {
+            "active_stage_requirements": [{"id": "stale-req", "is_met": True}],
+        }
+        self.record.save(update_fields=["category", "current_stage", "extra_data"])
+
+        resp = self._patch(
+            f"/api/v1/crm/records/{self.record.id}",
+            {"title": "Different title"},
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        self.record.refresh_from_db()
+        self.assertNotIn("active_stage_requirements", self.record.extra_data)
+
 
 class RecordDeleteAPITest(CRMAPIFixtureMixin, TestCase):
     def test_delete_record_admin_succeeds(self):
