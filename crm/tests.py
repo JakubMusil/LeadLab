@@ -5439,6 +5439,7 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
                 "name": "Scenario A",
                 "activation_condition": {"field": "status", "operator": "eq", "value": RecordStatus.NEW},
                 "completion_condition": {},
+                "recommended_next_stage_id": str(self.stage_b.id),
                 "priority": 1,
             },
         )
@@ -5472,6 +5473,9 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(active_req_resp.status_code, 200, active_req_resp.content)
         payload = active_req_resp.json()
         self.assertEqual(payload["active_stage_scenario_id"], scenario_id)
+        self.assertEqual(payload["active_stage_scenario_name"], "Scenario A")
+        self.assertEqual(payload["recommended_next_stage_id"], str(self.stage_b.id))
+        self.assertEqual(payload["recommended_next_stage_name"], self.stage_b.name)
         self.assertEqual(payload["active_stage_requirements"][0]["id"], str(requirement.id))
 
     def test_condition_rule_test_evaluation_and_log_listing(self):

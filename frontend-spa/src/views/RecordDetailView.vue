@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecordsStore, RECORD_STATUSES, type RecordIn } from '@/stores/records'
 import { usePipelineStore } from '@/stores/pipeline'
@@ -661,11 +661,104 @@ interface CheckpointItem {
   description: string
 }
 
+interface ActiveStageRequirementItem {
+  id: string
+  name: string
+  requirement_type: string
+  blocking: boolean
+  visible_to_user: boolean
+  is_met: boolean
+}
+
+interface ActiveStageRequirementsOut {
+  record_id: string
+  active_stage_scenario_id: string | null
+  active_stage_scenario_name: string | null
+  recommended_next_stage_id: string | null
+  recommended_next_stage_name: string | null
+  active_stage_requirements: ActiveStageRequirementItem[]
+}
+
+interface ActiveStageScenarioSummary {
+  id: string
+  name: string | null
+  recommended_next_stage_id: string | null
+  recommended_next_stage_name: string | null
+}
+
 const checkpoints = ref<CheckpointItem[]>([])
 const checkpointsLoading = ref(false)
 const newCheckpointName = ref('')
 const newCheckpointDate = ref('')
 const addingCheckpoint = ref(false)
+const activeStageRequirements = ref<ActiveStageRequirementItem[]>([])
+const activeStageScenario = ref<ActiveStageScenarioSummary | null>(null)
+const activeRequirementsLoading = ref(false)
+const activeRequirementsError = ref<string | null>(null)
+
+const unmetStageRequirements = computed(() =>
+  activeStageRequirements.value.filter((item) => !item.is_met),
+)
+const metStageRequirements = computed(() =>
+  activeStageRequirements.value.filter((item) => item.is_met),
+)
+
+const recommendedNextStageName = computed(() => {
+  const apiName = activeStageScenario.value?.recommended_next_stage_name
+  if (apiName) return apiName
+  const recommendedId = activeStageScenario.value?.recommended_next_stage_id
+  if (!recommendedId) return null
+  return currentStages.value.find((stage) => stage.id === recommendedId)?.name ?? null
+})
+
+function requirementRowClass(item: ActiveStageRequirementItem): string {
+  if (item.is_met) {
+    return 'border-green-100 bg-green-50/60 dark:border-green-900/30 dark:bg-green-900/10'
+  }
+  if (item.blocking) {
+    return 'border-red-100 bg-red-50/60 dark:border-red-900/30 dark:bg-red-900/10'
+  }
+  return 'border-amber-100 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-900/10'
+}
+
+async function loadActiveStageRequirements() {
+  const record = store.currentRecord
+  if (!record?.id || !record.category_id || !record.current_stage_id) {
+    activeStageRequirements.value = []
+    activeStageScenario.value = null
+    activeRequirementsError.value = null
+    return
+  }
+
+  activeRequirementsLoading.value = true
+  activeRequirementsError.value = null
+  try {
+    const requirementsRes = await api.get<ActiveStageRequirementsOut>(
+      `/api/v1/crm/records/${record.id}/active-stage-requirements`,
+    )
+    if (!requirementsRes.ok) {
+      activeRequirementsError.value = t('pipeline.requirementsLoadFailed')
+      return
+    }
+
+    const scenarioId = requirementsRes.data.active_stage_scenario_id || null
+    activeStageRequirements.value = Array.isArray(requirementsRes.data.active_stage_requirements)
+      ? requirementsRes.data.active_stage_requirements.filter((item) => item.visible_to_user !== false)
+      : []
+    activeStageScenario.value = scenarioId
+      ? {
+          id: scenarioId,
+          name: requirementsRes.data.active_stage_scenario_name || null,
+          recommended_next_stage_id: requirementsRes.data.recommended_next_stage_id || null,
+          recommended_next_stage_name: requirementsRes.data.recommended_next_stage_name || null,
+        }
+      : null
+  } catch {
+    activeRequirementsError.value = t('pipeline.requirementsLoadFailed')
+  } finally {
+    activeRequirementsLoading.value = false
+  }
+}
 
 async function loadCheckpoints() {
   const record = store.currentRecord
@@ -727,6 +820,8 @@ onMounted(async () => {
   }
   // Load checkpoints
   loadCheckpoints()
+  // Load stage requirements panel data
+  loadActiveStageRequirements()
   // Pre-load members for access panel display names
   const fid = firmStore.activeFirm ? String(firmStore.activeFirm.id) : ''
   if (fid) membersStore.fetchMembers(fid)
@@ -742,6 +837,13 @@ function onWsLeadUpdated(_payload: Record<string, unknown>) {
   // The records store is already updated by AppShell's WS handler; currentRecord
   // is a shared Pinia ref so the UI re-renders automatically.
 }
+
+watch(
+  () => [store.currentRecord?.id, store.currentRecord?.category_id, store.currentRecord?.current_stage_id],
+  () => {
+    loadActiveStageRequirements()
+  },
+)
 
 const selectedContact = ref<any | null>(null)
 const showContactModal = ref(false)
@@ -1068,6 +1170,113 @@ async function saveFieldEdit(fieldKey: string) {
                 {{ stage.name }}
                 <span v-if="stage.is_terminal && stage.is_won" class="ml-1 text-green-500">✓</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Stage requirements panel -->
+          <div
+            v-if="store.currentRecord.category_id && store.currentRecord.current_stage_id"
+            class="bg-white dark:bg-gray-800 rounded-2xl border border-amber-100 dark:border-amber-900/30 p-4"
+          >
+            <div class="flex items-center gap-1.5 mb-3">
+              <CheckIcon class="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <div class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                {{ t('pipeline.requirementsPanelTitle') }}
+              </div>
+            </div>
+
+            <div
+              v-if="activeStageScenario?.name"
+              class="mb-3 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-amber-50/70 dark:bg-amber-900/15 px-3 py-2"
+            >
+              <div class="text-[11px] uppercase tracking-wide font-semibold text-amber-700 dark:text-amber-300">
+                {{ t('pipeline.activeScenarioLabel') }}
+              </div>
+              <div class="text-xs font-medium text-gray-800 dark:text-gray-100">{{ activeStageScenario.name }}</div>
+              <div
+                v-if="recommendedNextStageName"
+                class="mt-1 text-[11px] text-amber-700 dark:text-amber-300"
+              >
+                {{ t('pipeline.recommendedNextStep', { stage: recommendedNextStageName }) }}
+              </div>
+            </div>
+
+            <div v-if="activeRequirementsLoading" class="space-y-2">
+              <div class="h-4 rounded bg-amber-100/80 dark:bg-amber-900/30 animate-pulse" />
+              <div class="h-4 rounded bg-amber-100/80 dark:bg-amber-900/30 animate-pulse w-11/12" />
+              <div class="h-4 rounded bg-amber-100/80 dark:bg-amber-900/30 animate-pulse w-5/6" />
+            </div>
+
+            <div
+              v-else-if="activeRequirementsError"
+              class="text-xs rounded-lg px-2.5 py-2 bg-red-50 text-red-700 dark:bg-red-900/25 dark:text-red-300"
+            >
+              {{ activeRequirementsError }}
+            </div>
+
+            <div
+              v-else-if="activeStageRequirements.length === 0"
+              class="text-xs text-gray-500 dark:text-gray-400 italic"
+            >
+              {{ t('pipeline.noStageRequirements') }}
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-if="unmetStageRequirements.length > 0">
+                <div class="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-1.5">
+                  {{ t('pipeline.unmetRequirementsLabel') }}
+                </div>
+                <ul class="space-y-1.5">
+                  <li
+                    v-for="item in unmetStageRequirements"
+                    :key="item.id"
+                    class="rounded-lg border px-2.5 py-2"
+                    :class="requirementRowClass(item)"
+                  >
+                    <div class="flex items-start gap-2">
+                      <span class="mt-0.5 inline-block w-3 h-3 rounded-full border-2 border-gray-300 dark:border-gray-500" />
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs text-gray-800 dark:text-gray-100">{{ item.name }}</div>
+                        <div class="mt-1 flex flex-wrap gap-1">
+                          <span
+                            v-if="item.blocking"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                          >
+                            {{ t('pipeline.blockingRequirementLabel') }}
+                          </span>
+                          <span
+                            v-else
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                          >
+                            {{ t('pipeline.warningRequirementLabel') }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="metStageRequirements.length > 0">
+                <div class="text-[11px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-300 mb-1.5">
+                  {{ t('pipeline.metRequirementsLabel') }}
+                </div>
+                <ul class="space-y-1.5">
+                  <li
+                    v-for="item in metStageRequirements"
+                    :key="item.id"
+                    class="rounded-lg border px-2.5 py-2"
+                    :class="requirementRowClass(item)"
+                  >
+                    <div class="flex items-start gap-2">
+                      <span class="mt-0.5 inline-flex w-3 h-3 rounded-full bg-green-500 text-white items-center justify-center text-[8px] font-bold">
+                        ✓
+                      </span>
+                      <div class="text-xs text-gray-800 dark:text-gray-100 min-w-0 flex-1">{{ item.name }}</div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
