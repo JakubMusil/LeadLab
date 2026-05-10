@@ -1354,6 +1354,8 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Funkční implementace 14.4 v `frontend-spa/src/views/PipelineSettingsView.vue`: přidána sekce „Pravidla podmínek“ v nastavení pipeline se seznamem pravidel, filtry podle kategorie/fáze/triggeru/stavu, loading/error/empty stavy a přepínání zapnuto/vypnuto přímo v seznamu.
 - Doplněny nové i18n klíče pro pravidla a filtry ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
 - Provedena post-change validace: `frontend check-locales` prochází; ostatní frontend/backend checky nadále blokují stejné pre-existing limity prostředí (chybějící nástroje/závislosti), bez nové regresní informace vůči tomuto scope.
+- Po code review doplněna čistící úprava: odstraněno duplicitní načítání seznamu pravidel (sjednocení přes watcher `selectedCategoryId`) a upraven rendering triggeru z `break-all` na `break-words`.
+- Opakovaný běh `parallel_validation`: CodeQL bez alertů; dvě review poznámky ke grantům byly vyhodnoceny jako false-positive (načítání grantů je nadále zajištěno watcherem při změně kategorie a explicitním reloadem po operacích s granty).
 - Hotovo: v etapě 14.4 jsou nyní dokončené body pro seznam pravidel, filtrování podle kategorie/fáze/triggeru a stav zapnuto/vypnuto.
 - Následuje: navázat zbývajícími body 14.4 (vytvoření, úprava, deaktivace, kopírování, testovací vyhodnocení pravidla) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 

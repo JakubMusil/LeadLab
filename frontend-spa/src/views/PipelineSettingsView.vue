@@ -227,10 +227,7 @@ onMounted(async () => {
   }
   if (pipelineStore.categories.length > 0 && !selectedCategoryId.value) {
     selectedCategoryId.value = pipelineStore.categories[0]!.id
-    void loadCategoryGrants()
   }
-  ruleFilterCategoryId.value = selectedCategoryId.value ?? ''
-  await loadConditionRules()
 })
 
 // Reload grants when selected category changes
@@ -248,16 +245,12 @@ watch(selectedCategoryId, () => {
 
 function selectCategory(id: string) {
   selectedCategoryId.value = id
-  ruleFilterCategoryId.value = id
-  ruleFilterStageId.value = ''
   cancelEditCategory()
   cancelEditStage()
   showNewStageForm.value = false
   cancelEditField()
   showNewFieldForm.value = false
   showGrantForm.value = false
-  void loadCategoryGrants()
-  void loadConditionRules()
 }
 
 function startEditCategory(cat: CategoryOut) {
@@ -1310,7 +1303,7 @@ const newPattern = computed({
               >
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-gray-800 truncate">{{ rule.name }}</div>
-                  <div class="text-xs text-gray-500 mt-0.5 break-all">
+                  <div class="text-xs text-gray-500 mt-0.5 break-words">
                     {{ t('pipeline.rulesTrigger') }}: {{ rule.trigger_type }}
                   </div>
                   <div class="text-xs text-gray-500">
