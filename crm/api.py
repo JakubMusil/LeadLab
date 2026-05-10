@@ -78,7 +78,7 @@ from firms.auth import (
     require_membership,
     require_permission,
 )
-from firms.models import Membership
+from firms.models import Membership, PermissionAuditLog
 from firms.permissions import Permission
 
 from crm.apps import set_current_user, clear_current_user
@@ -9652,6 +9652,53 @@ def _rule_evaluation_log_out(log: RuleEvaluationLog) -> dict:
     }
 
 
+def _condition_rule_audit_snapshot(rule: ConditionRule) -> dict:
+    return {
+        "name": rule.name,
+        "is_active": rule.is_active,
+        "scope_type": rule.scope_type,
+        "category_id": str(rule.category_id) if rule.category_id else None,
+        "stage_id": str(rule.stage_id) if rule.stage_id else None,
+        "source_stage_id": str(rule.source_stage_id) if rule.source_stage_id else None,
+        "target_stage_id": str(rule.target_stage_id) if rule.target_stage_id else None,
+        "trigger_type": rule.trigger_type,
+        "effect": rule.effect,
+        "severity": rule.severity,
+        "activity_type": rule.activity_type or None,
+        "priority": rule.priority,
+    }
+
+
+def _log_condition_rule_audit(
+    *,
+    request,
+    rule: ConditionRule,
+    action: str,
+    changed_fields: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> None:
+    try:
+        PermissionAuditLog.objects.create(
+            firm=request.firm,
+            actor=request.user if getattr(request.user, "is_authenticated", False) else None,
+            action=action,
+            target_type="condition_rule",
+            target_id=str(rule.id),
+            payload={
+                "rule_id": str(rule.id),
+                "trigger_type": rule.trigger_type,
+                "scope_type": rule.scope_type,
+                "changed_fields": changed_fields or {},
+            },
+        )
+    except Exception:
+        logger.warning(
+            "Failed to log audit entry for %s (condition_rule=%s)",
+            action,
+            rule.id,
+            exc_info=True,
+        )
+
+
 def _resolve_stage_in_firm(stage_id: Optional[str], firm) -> tuple[Optional[Stage], Optional[tuple[int, dict]]]:
     if not stage_id:
         return None, None
@@ -9794,6 +9841,12 @@ def create_condition_rule(request, payload: ConditionRuleIn):
         priority=payload.priority,
         created_by=request.user,
     )
+    _log_condition_rule_audit(
+        request=request,
+        rule=rule,
+        action="condition_rule.created",
+        changed_fields={},
+    )
     return 201, _condition_rule_out(rule)
 
 
@@ -9858,6 +9911,7 @@ def update_condition_rule(request, rule_id: str, payload: ConditionRulePatchIn):
     if scope_error:
         return scope_error
 
+    before_snapshot = _condition_rule_audit_snapshot(rule)
     rule.category = category
     rule.stage = stage
     rule.source_stage = source_stage
@@ -9865,6 +9919,18 @@ def update_condition_rule(request, rule_id: str, payload: ConditionRulePatchIn):
     for key, value in updates.items():
         setattr(rule, key, value)
     rule.save()
+    after_snapshot = _condition_rule_audit_snapshot(rule)
+    changed_fields = {
+        key: {"old": before_snapshot.get(key), "new": value}
+        for key, value in after_snapshot.items()
+        if before_snapshot.get(key) != value
+    }
+    _log_condition_rule_audit(
+        request=request,
+        rule=rule,
+        action="condition_rule.updated",
+        changed_fields=changed_fields,
+    )
     return 200, _condition_rule_out(rule)
 
 
@@ -9884,8 +9950,16 @@ def deactivate_condition_rule(request, rule_id: str):
     except ConditionRule.DoesNotExist:
         return 404, {"detail": "Condition rule not found."}
 
+    was_active = rule.is_active
     rule.is_active = False
     rule.save(update_fields=["is_active", "updated_at"])
+    if was_active:
+        _log_condition_rule_audit(
+            request=request,
+            rule=rule,
+            action="condition_rule.deactivated",
+            changed_fields={"is_active": {"old": True, "new": False}},
+        )
     return 204, None
 
 

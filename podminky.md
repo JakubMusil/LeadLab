@@ -1059,13 +1059,13 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.10 Oprávnění
 
-- [ ] Určit, kdo může pravidla zobrazit.
-- [ ] Určit, kdo může pravidla upravovat.
-- [ ] Určit, kdo může scénáře upravovat.
-- [ ] Určit, kdo vidí log vyhodnocení.
-- [ ] Zajistit, že pravidla nepřekročí firm scope.
-- [ ] Zajistit, že pravidla neodhalí data bez oprávnění.
-- [ ] Auditovat změny pravidel.
+- [x] Určit, kdo může pravidla zobrazit.
+- [x] Určit, kdo může pravidla upravovat.
+- [x] Určit, kdo může scénáře upravovat.
+- [x] Určit, kdo vidí log vyhodnocení.
+- [x] Zajistit, že pravidla nepřekročí firm scope.
+- [x] Zajistit, že pravidla neodhalí data bez oprávnění.
+- [x] Auditovat změny pravidel.
 
 ### 13.11 Testy backendu
 
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 18:46 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřený bod 13.10 (oprávnění).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza + návrh minimální implementace) a následně proběhla ruční konceptuální validace proti aktuálním souborům (`crm/api.py`, `firms/models.py`, `crm/tests.py`).
+- Před úpravami proběhla baseline validace prostředí: backend cílené testy `ConditionRulesApiEndpointsTest` procházejí; frontend checky padají na pre-existing TypeScript chybách mimo tento scope; backend flake8 obsahuje pre-existing nálezy mimo rozsah změny.
+- Funkční implementace oprávnění/auditu v API: endpointy condition-rules/scenarios/logs zůstávají explicitně za `Permission.CATEGORY_MANAGE` a nově jsou pokryté negativními testy pro worker roli (403), aby nedocházelo k odhalení dat bez oprávnění.
+- Doplněn audit změn pravidel: při create/update/deactivate `ConditionRule` se nyní zapisuje `PermissionAuditLog` s akcemi `condition_rule.created`, `condition_rule.updated`, `condition_rule.deactivated` a payloadem změn.
+- Rozšířen katalog akcí `PermissionAuditLog.ACTION_CHOICES` o condition-rule audit události.
+- Rozšířeny backend testy `ConditionRulesApiEndpointsTest` o kontrolu audit trailu a o negativní permission scénáře pro list rules/scenarios/logs.
+- Hotovo: bod 13.10 je nyní kompletně dokončený.
+- Následuje: navázat etapou 13.11 (doplnit širší backend test matrix pro standardní pole, kategoriová pole, Streamline activity/tool a audit/permission regresní scénáře).
 
 ### 2026-05-10 18:22 UTC
 
