@@ -831,7 +831,7 @@ def _evaluate_stage_change_trigger(
             outputs=outputs,
             evaluated_by=evaluated_by,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception(
             "Stage change rule evaluation failed for record %s (trigger=%s)",
             record.id,
@@ -3013,7 +3013,7 @@ def create_activity(request, payload: ActivityIn):
                 proposal=proposal,
                 task=task,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception(
                 "Post-create streamline condition hooks failed for activity %s: %s",
                 activity.id,
