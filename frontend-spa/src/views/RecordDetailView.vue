@@ -727,8 +727,10 @@ function requirementRowClass(item: ActiveStageRequirementItem): string {
 const highlightedFieldKey = ref<string | null>(null)
 const activityFeedSectionRef = ref<HTMLElement | null>(null)
 const pipelineFieldsPanelRef = ref<HTMLElement | null>(null)
+const FIELD_HIGHLIGHT_DURATION_MS = 2500
+let clearFieldHighlightTimer: ReturnType<typeof window.setTimeout> | null = null
 
-function getRelevantActivityType(item: ActiveStageRequirementItem): string | null {
+function getRelevantActivityFilterValue(item: ActiveStageRequirementItem): string | null {
   return item.relevant_tool_type || item.relevant_activity_type || null
 }
 
@@ -736,10 +738,16 @@ function jumpToRelevantField(item: ActiveStageRequirementItem) {
   const fieldKey = item.relevant_field_key
   if (!fieldKey) return
 
+  if (clearFieldHighlightTimer) {
+    window.clearTimeout(clearFieldHighlightTimer)
+    clearFieldHighlightTimer = null
+  }
+
   highlightedFieldKey.value = fieldKey
-  window.setTimeout(() => {
+  clearFieldHighlightTimer = window.setTimeout(() => {
     if (highlightedFieldKey.value === fieldKey) highlightedFieldKey.value = null
-  }, 2600)
+    clearFieldHighlightTimer = null
+  }, FIELD_HIGHLIGHT_DURATION_MS)
 
   const fieldEl = document.querySelector(`[data-pipeline-field-key="${fieldKey}"]`) as HTMLElement | null
   if (fieldEl) {
@@ -750,7 +758,7 @@ function jumpToRelevantField(item: ActiveStageRequirementItem) {
 }
 
 function jumpToRelevantActivity(item: ActiveStageRequirementItem) {
-  const activityType = getRelevantActivityType(item)
+  const activityType = getRelevantActivityFilterValue(item)
   if (!activityType) return
   customFilters.value = new Set([activityType])
   selectedShortcutId.value = 'custom'
@@ -866,6 +874,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (clearFieldHighlightTimer) {
+    window.clearTimeout(clearFieldHighlightTimer)
+    clearFieldHighlightTimer = null
+  }
   off('record.updated', onWsLeadUpdated)
 })
 
@@ -1288,7 +1300,7 @@ async function saveFieldEdit(fieldKey: string) {
                           </span>
                         </div>
                         <div
-                          v-if="item.relevant_field_key || getRelevantActivityType(item)"
+                          v-if="item.relevant_field_key || getRelevantActivityFilterValue(item)"
                           class="mt-1.5 flex flex-wrap gap-1.5"
                         >
                           <button
@@ -1300,7 +1312,7 @@ async function saveFieldEdit(fieldKey: string) {
                             {{ t('pipeline.relevantFieldLink') }}
                           </button>
                           <button
-                            v-if="getRelevantActivityType(item)"
+                            v-if="getRelevantActivityFilterValue(item)"
                             type="button"
                             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
                             @click="jumpToRelevantActivity(item)"
@@ -1332,7 +1344,7 @@ async function saveFieldEdit(fieldKey: string) {
                       <div class="min-w-0 flex-1">
                         <div class="text-xs text-gray-800 dark:text-gray-100">{{ item.name }}</div>
                         <div
-                          v-if="item.relevant_field_key || getRelevantActivityType(item)"
+                          v-if="item.relevant_field_key || getRelevantActivityFilterValue(item)"
                           class="mt-1.5 flex flex-wrap gap-1.5"
                         >
                           <button
@@ -1344,7 +1356,7 @@ async function saveFieldEdit(fieldKey: string) {
                             {{ t('pipeline.relevantFieldLink') }}
                           </button>
                           <button
-                            v-if="getRelevantActivityType(item)"
+                            v-if="getRelevantActivityFilterValue(item)"
                             type="button"
                             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
                             @click="jumpToRelevantActivity(item)"

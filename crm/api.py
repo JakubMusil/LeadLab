@@ -1757,11 +1757,27 @@ def _refresh_active_stage_scenario(
 
 
 def _extract_requirement_references(condition_tree: Any) -> dict[str, str | None]:
+    """Extract lightweight field/activity references from a requirement condition tree.
+
+    The output is intentionally simple and UI-oriented so the record detail view can
+    present contextual links (jump to field / jump to activity) without additional
+    privileged API calls.
+
+    Args:
+        condition_tree: Requirement condition tree (leaf or nested group structure).
+
+    Returns:
+        Dict with keys:
+            - relevant_field_key: Standard/category field key if detected, else None.
+            - relevant_activity_type: Activity type if detected, else None.
+            - relevant_tool_type: Streamline tool type if detected, else None.
+    """
     references: dict[str, str | None] = {
         "relevant_field_key": None,
         "relevant_activity_type": None,
         "relevant_tool_type": None,
     }
+    category_fields_prefix = "category_fields."
 
     def visit(node: Any):
         if not isinstance(node, (dict, list)):
@@ -1771,12 +1787,13 @@ def _extract_requirement_references(condition_tree: Any) -> dict[str, str | None
                 visit(child)
             return
 
-        source_type = str(node.get("source_type") or "").strip().lower()
+        raw_source_type = node.get("source_type")
+        source_type = raw_source_type.strip().lower() if isinstance(raw_source_type, str) else ""
         field_key: str | None = None
         if source_type in {"category_field", "category_field_change"}:
             key = node.get("category_field_key") or node.get("field") or node.get("path")
             if isinstance(key, str):
-                field_key = key[len("category_fields."):] if key.startswith("category_fields.") else key
+                field_key = key.removeprefix(category_fields_prefix)
         elif source_type in {"field", "field_change", "record_field_change"}:
             key = node.get("field") or node.get("path")
             if isinstance(key, str):
@@ -1791,14 +1808,14 @@ def _extract_requirement_references(condition_tree: Any) -> dict[str, str | None
 
         if references["relevant_activity_type"] is None and source_type in {"activity", "streamline_activity"}:
             activity_type = node.get("activity_type")
-            if activity_type in (None, ""):
+            if not activity_type:
                 activity_type = node.get("value")
             if isinstance(activity_type, str) and activity_type:
                 references["relevant_activity_type"] = activity_type
 
         if references["relevant_tool_type"] is None and source_type == "streamline_tool":
             tool_type = node.get("tool_type")
-            if tool_type in (None, ""):
+            if not tool_type:
                 tool_type = node.get("value")
             if isinstance(tool_type, str) and tool_type:
                 references["relevant_tool_type"] = tool_type
