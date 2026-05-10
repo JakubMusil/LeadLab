@@ -990,7 +990,8 @@ class RecordUpdateAPITest(CRMAPIFixtureMixin, TestCase):
         self.stage_won = Stage.objects.create(category=self.category, name="Won", order=1)
         self.record.category = self.category
         self.record.current_stage = self.stage_new
-        self.record.save(update_fields=["category", "current_stage"])
+        self.record.status = RecordStatus.NEW
+        self.record.save(update_fields=["category", "current_stage", "status"])
 
     def test_patch_record_title(self):
         resp = self._patch(f"/api/v1/crm/records/{self.record.id}", {"title": "Updated"})

@@ -831,6 +831,11 @@ def _evaluate_stage_change_trigger(
             evaluated_by=evaluated_by,
         )
     except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Stage change rule evaluation failed for record %s (trigger=%s)",
+            record.id,
+            trigger_type,
+        )
         _log_stage_rule_error(
             firm=firm,
             record=record,
@@ -854,7 +859,6 @@ def _evaluate_stage_change_trigger(
                 ],
                 "warnings": [],
             }
-        logger.exception("Stage change post-evaluation failed for record %s", record.id)
         return {"blocking": [], "warnings": []}
 
     blocking = [
@@ -879,7 +883,7 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
     extra_data = dict(record.extra_data or {})
     if not record.category_id or not record.current_stage_id:
         if "active_stage_scenario_id" in extra_data:
-            extra_data.pop("active_stage_scenario_id", None)
+            extra_data.pop("active_stage_scenario_id")
             record.extra_data = extra_data
             record.save(update_fields=["extra_data"])
         return
@@ -903,7 +907,7 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
     )
     for scenario in scenarios:
         tree = scenario.activation_condition
-        is_active = True if tree in (None, {}, []) else evaluator.evaluate(tree, context)
+        is_active = True if tree in (None, {}) else evaluator.evaluate(tree, context)
         if is_active:
             active_scenario_id = str(scenario.id)
             break
@@ -916,9 +920,29 @@ def _refresh_active_stage_scenario(record: PipelineRecord):
         return
 
     if "active_stage_scenario_id" in extra_data:
-        extra_data.pop("active_stage_scenario_id", None)
+        extra_data.pop("active_stage_scenario_id")
         record.extra_data = extra_data
         record.save(update_fields=["extra_data"])
+
+
+def _run_post_stage_change_hooks(
+    *,
+    firm,
+    record: PipelineRecord,
+    old_stage_id: Any,
+    evaluated_by,
+) -> dict[str, list[dict[str, Any]]]:
+    changed_eval = _evaluate_stage_change_trigger(
+        firm=firm,
+        record=record,
+        trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
+        from_stage_id=old_stage_id,
+        to_stage_id=record.current_stage_id,
+        evaluated_by=evaluated_by,
+        fail_closed=False,
+    )
+    _refresh_active_stage_scenario(record)
+    return changed_eval
 
 
 def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
@@ -1458,16 +1482,12 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
                 record.status = new_status
                 record.save()
                 if stage_change_performed:
-                    changed_stage_eval = _evaluate_stage_change_trigger(
+                    changed_stage_eval = _run_post_stage_change_hooks(
                         firm=request.firm,
                         record=record,
-                        trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
-                        from_stage_id=old_stage_id,
-                        to_stage_id=record.current_stage_id,
+                        old_stage_id=old_stage_id,
                         evaluated_by=request.user,
-                        fail_closed=False,
                     )
-                    _refresh_active_stage_scenario(record)
                 Activity.objects.create(
                     record=record,
                     user=request.user,
@@ -1493,16 +1513,12 @@ def update_record(request, record_id: str, payload: RecordUpdateIn):
             else:
                 record.save()
                 if stage_change_performed:
-                    changed_stage_eval = _evaluate_stage_change_trigger(
+                    changed_stage_eval = _run_post_stage_change_hooks(
                         firm=request.firm,
                         record=record,
-                        trigger_type=ConditionTriggerType.RECORD_STAGE_CHANGED,
-                        from_stage_id=old_stage_id,
-                        to_stage_id=record.current_stage_id,
+                        old_stage_id=old_stage_id,
                         evaluated_by=request.user,
-                        fail_closed=False,
                     )
-                    _refresh_active_stage_scenario(record)
         finally:
             clear_current_user()
 
