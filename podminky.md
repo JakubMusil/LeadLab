@@ -993,9 +993,9 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Přidat podporu Streamline tool typů.
 - [x] Přidat podporu časových oken.
 - [x] Přidat podporu změny hodnoty z/do.
-- [ ] Přidat podporu existence související entity.
-- [ ] Přidat podporu výstupů pravidla.
-- [ ] Přidat deterministické řazení podle priority.
+- [x] Přidat podporu existence související entity.
+- [x] Přidat podporu výstupů pravidla.
+- [x] Přidat deterministické řazení podle priority.
 - [ ] Přidat ochranu proti nekonečnému řetězení.
 
 ### 13.5 Napojení na změnu fáze
@@ -1344,6 +1344,16 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 13:35 UTC
+
+- Pro další krok byla zvolena realizace zbývajících bodů 13.4: podpora existence související entity, podpora výstupů pravidla a deterministické řazení podle priority.
+- Další analýza byla maximalizovaně delegována na dva podagenty (implementační návrh + nezávislá validační revize); následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům (`crm/condition_rules.py`, `crm/tests.py`, `podminky.md`).
+- Funkční implementace: `ConditionTreeEvaluator` nově podporuje `source_type=related_entity` s `entity_type` (`customer`, `company`, `contact_person`, `assigned_to`, `category`, `current_stage`/`stage`, `parent`) a operátory `exists`/`not_exists`/`missing`/`eq`/`neq`.
+- Doplněna podpora výstupů pravidla přes `evaluate_condition_rule_outputs(...)`, která vrací efekt pravidla (`effect`, `severity`, `effect_config`) pouze pro aktivní pravidla se splněnou podmínkou.
+- Přidáno deterministické řazení evaluace pravidel (`priority`, `created_at`, `id`) v helperu `_sort_rules_for_evaluation(...)`.
+- Rozšířeny backend testy `ConditionRulesTest` o scénáře pro `related_entity` (validní/invalidní entity) a o testy výstupů pravidla + deterministického pořadí při shodné prioritě.
+- Následuje: dokončit zbývající bod 13.4 (ochrana proti nekonečnému řetězení) a potom navázat etapou 13.5 (napojení na stage-change flow).
 
 ### 2026-05-10 12:33 UTC
 
