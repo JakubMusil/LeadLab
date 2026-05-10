@@ -1563,7 +1563,7 @@ class ActivityCreateAPITest(CRMAPIFixtureMixin, TestCase):
         ).first()
         self.assertIsNotNone(log)
         self.assertEqual(log.input_context.get("streamline_event", {}).get("entity_type"), "record")
-        self.assertEqual(log.input_context.get("streamline_event", {}).get("activity_type"), None)
+        self.assertEqual(log.input_context.get("streamline_event", {}).get("type"), ActivityType.COMMENT)
 
     def test_create_activity_customer_refreshes_linked_record_requirements(self):
         category = Category.objects.create(firm=self.firm, name="Sales")
