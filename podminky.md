@@ -1000,14 +1000,14 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 13.5 Napojení na změnu fáze
 
-- [ ] Najít místo, kde se zpracovává změna fáze záznamu.
-- [ ] Před změnou fáze sestavit evaluation context.
-- [ ] Vyhodnotit pravidla typu `record.stage_change_requested`.
-- [ ] Vrátit blokace jako validační chyby.
-- [ ] Vrátit upozornění jako neblokující výsledek.
-- [ ] Zapsat log vyhodnocení.
-- [ ] Po úspěšné změně fáze vyhodnotit pravidla typu `record.stage_changed`.
-- [ ] Aktualizovat aktivní scénář záznamu, pokud je potřeba.
+- [x] Najít místo, kde se zpracovává změna fáze záznamu.
+- [x] Před změnou fáze sestavit evaluation context.
+- [x] Vyhodnotit pravidla typu `record.stage_change_requested`.
+- [x] Vrátit blokace jako validační chyby.
+- [x] Vrátit upozornění jako neblokující výsledek.
+- [x] Zapsat log vyhodnocení.
+- [x] Po úspěšné změně fáze vyhodnotit pravidla typu `record.stage_changed`.
+- [x] Aktualizovat aktivní scénář záznamu, pokud je potřeba.
 
 ### 13.6 Napojení na změny standardních polí
 
@@ -1423,3 +1423,15 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Funkční validace: implementovány modely `ConditionRule`, `StageScenario`, `StageRequirement`, `RuleEvaluationLog` a vytvořena reverzibilní migrace `crm/migrations/0010_conditionrule_stagescenario_stagerequirement_and_more.py` včetně indexů pro firm/category/stage/trigger/activity a log evaluací.
 - Výsledek: checklist 13.3 je dokončený a označený jako splněný.
 - Následuje: navázat etapou 13.4 (evaluátor pravidel) – začít službou pro sestavení kontextu pravidla a základním vyhodnocením `AND`/`OR` nad `condition_tree`.
+
+### 2026-05-10 14:00 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední dokončený bod 13.4; jako další krok byla zvolena implementace celé sekce 13.5 (napojení evaluace na stage-change flow).
+- Návrh řešení byl maximálně delegován samostatnému podagentovi (návrh minimální implementace + edge cases + testovací scénáře), následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům (`crm/api.py`, `crm/condition_rules.py`, `crm/models.py`, `crm/tests.py`).
+- Funkční implementace: v `update_record` je nyní pre-evaluace triggeru `record.stage_change_requested` s fail-closed blokací, post-evaluace `record.stage_changed`, návrat blokací/upozornění ve `stage_change_evaluation` a logování výsledků do `RuleEvaluationLog`.
+- Doplněna scope-validace pravidel (`firm`/`category`/`stage`/`stage_transition`) pro stage-change trigger a serializace výstupů pravidel do API odpovědi.
+- Doplněna aktualizace aktivního scénáře po úspěšné změně fáze (`active_stage_scenario_id` v `record.extra_data`) podle `StageScenario.activation_condition` a priority.
+- Přidány integrační testy `RecordUpdateAPITest` pro: blokaci stage změny, neblokující warning, post-change evaluaci a scénář, a negativní scénář bez stage změny.
+- Funkční validace: nové cílené testy prošly (`4/4`); současně je potvrzeno, že v repozitáři existují pre-existing baseline selhání v plném běhu testů/lintu mimo rozsah této změny.
+- Výsledek: checklist 13.5 je dokončený a označený jako splněný.
+- Následuje: pokračovat etapou 13.6 (detekce změn standardních polí + trigger `record.field_changed` + logování + vazba na scénáře/požadavky).
