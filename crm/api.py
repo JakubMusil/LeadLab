@@ -1561,9 +1561,10 @@ def _evaluate_streamline_activity_trigger(
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception(
-            "Streamline activity rule evaluation failed for record %s (activity=%s)",
+            "Streamline activity rule evaluation failed for record %s (activity=%s): %s",
             record.id,
             activity.id,
+            exc,
         )
         _log_streamline_activity_rule_error(
             firm=firm,
@@ -3012,10 +3013,11 @@ def create_activity(request, payload: ActivityIn):
                 proposal=proposal,
                 task=task,
             )
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             logger.exception(
-                "Post-create streamline condition hooks failed for activity %s",
+                "Post-create streamline condition hooks failed for activity %s: %s",
                 activity.id,
+                exc,
             )
 
     broadcast_event(
