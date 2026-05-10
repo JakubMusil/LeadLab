@@ -996,7 +996,7 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Přidat podporu existence související entity.
 - [x] Přidat podporu výstupů pravidla.
 - [x] Přidat deterministické řazení podle priority.
-- [ ] Přidat ochranu proti nekonečnému řetězení.
+- [x] Přidat ochranu proti nekonečnému řetězení.
 
 ### 13.5 Napojení na změnu fáze
 
@@ -1344,6 +1344,15 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 13:32 UTC
+
+- Navázáno na poslední otevřený bod 13.4 („Přidat ochranu proti nekonečnému řetězení“) po opětovném prostudování `podminky.md` a aktuální implementace v `crm/condition_rules.py`.
+- Analytický návrh byl maximalizovaně delegován samostatnému podagentovi (návrh minimální implementace + edge cases + testy), poté proběhla ruční konceptuální validace návrhu proti aktuálním zdrojům.
+- Funkční implementace: `ConditionTreeEvaluator` nyní používá interní evaluaci s ochranou proti cyklům (`active_node_ids` podle `id()` uzlu) a při detekci self-reference/nepřímého cyklu vyhodnocuje fail-closed (`False`), bez omezení validního zanoření.
+- Doplněny regresní backend testy `ConditionRulesTest` pro self-referenční skupinu, nepřímý cyklus mezi skupinami a reuse stejného podstromu bez cyklu.
+- Výsledek: bod 13.4 „Přidat ochranu proti nekonečnému řetězení“ je dokončen a checkbox je aktualizovaný na splněný.
+- Následuje: navázat etapou 13.5 (napojení evaluace na `record.stage_change_requested`/`record.stage_changed`) a začít integračním bodem změny fáze v `crm/api.py`.
 
 ### 2026-05-10 13:35 UTC
 

@@ -105,13 +105,34 @@ class ConditionTreeEvaluator:
     NUMERIC_OPERATORS = {"gt", "gte", "lt", "lte"}
 
     def evaluate(self, tree: Any, context: Mapping[str, Any]) -> bool:
+        return self._evaluate_node(tree, context, set())
+
+    def _evaluate_node(
+        self,
+        tree: Any,
+        context: Mapping[str, Any],
+        active_node_ids: set[int],
+    ) -> bool:
         if tree is None:
             return True
 
+        tree_id: int | None = None
+        if isinstance(tree, (dict, list)):
+            tree_id = id(tree)
+            if tree_id in active_node_ids:
+                return False
+            active_node_ids.add(tree_id)
+
         if isinstance(tree, list):
-            return all(self.evaluate(node, context) for node in tree)
+            try:
+                return all(self._evaluate_node(node, context, active_node_ids) for node in tree)
+            finally:
+                if tree_id is not None:
+                    active_node_ids.discard(tree_id)
 
         if not isinstance(tree, dict):
+            if tree_id is not None:
+                active_node_ids.discard(tree_id)
             return False
 
         op = str(tree.get("op") or tree.get("logic") or tree.get("operator") or "").lower()
@@ -119,32 +140,38 @@ class ConditionTreeEvaluator:
         negated = bool(tree.get("negated"))
         result = False
 
-        if node_type == "group" and not op:
-            op = "and"
+        try:
+            if node_type == "group" and not op:
+                op = "and"
 
-        if op in {"and", "or"}:
-            children = tree.get("conditions") or tree.get("children") or []
-            if not isinstance(children, list):
-                return False
-            if not children:
-                # Fail-closed semantics:
-                # AND() is identity True, OR() is identity False.
-                result = op == "and"
-            else:
-                results = [self.evaluate(child, context) for child in children]
-                result = all(results) if op == "and" else any(results)
-        elif op == "not":
-            child = tree.get("condition")
-            if child is None:
+            if op in {"and", "or"}:
                 children = tree.get("conditions") or tree.get("children") or []
-                if not isinstance(children, list) or len(children) != 1:
+                if not isinstance(children, list):
                     return False
-                child = children[0]
-            result = not self.evaluate(child, context)
-        else:
-            result = self._evaluate_leaf(tree, context)
-
-        return not result if negated else result
+                if not children:
+                    # Fail-closed semantics:
+                    # AND() is identity True, OR() is identity False.
+                    result = op == "and"
+                else:
+                    results = [
+                        self._evaluate_node(child, context, active_node_ids)
+                        for child in children
+                    ]
+                    result = all(results) if op == "and" else any(results)
+            elif op == "not":
+                child = tree.get("condition")
+                if child is None:
+                    children = tree.get("conditions") or tree.get("children") or []
+                    if not isinstance(children, list) or len(children) != 1:
+                        return False
+                    child = children[0]
+                result = not self._evaluate_node(child, context, active_node_ids)
+            else:
+                result = self._evaluate_leaf(tree, context)
+            return not result if negated else result
+        finally:
+            if tree_id is not None:
+                active_node_ids.discard(tree_id)
 
     def _evaluate_leaf(self, node: Mapping[str, Any], context: Mapping[str, Any]) -> bool:
         source_type = str(node.get("source_type") or "").lower()
