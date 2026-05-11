@@ -33,6 +33,8 @@ interface FlowEvaluationLog {
   input_context: Record<string, unknown>
 }
 
+type RequirementFulfillmentStatus = 'met' | 'unmet' | 'pending'
+
 const props = withDefaults(defineProps<{
   rules: PipelineFlowRuleInput[]
   scenarios: PipelineFlowScenarioInput[]
@@ -105,32 +107,31 @@ const matchedRuleIds = computed(() => {
   })
   return ids
 })
+
+const REQUIREMENT_FULFILLMENT_STATUSES = new Set<RequirementFulfillmentStatus>(['met', 'unmet', 'pending'])
+
+function isRequirementFulfillmentStatus(value: string): value is RequirementFulfillmentStatus {
+  return REQUIREMENT_FULFILLMENT_STATUSES.has(value as RequirementFulfillmentStatus)
+}
+
 function extractRequirementId(log: FlowEvaluationLog): string {
-  const contextualId = (
-    log.input_context
-    && typeof log.input_context.requirement_id === 'string'
-  )
-    ? log.input_context.requirement_id
-    : ''
+  const rawRequirementId = log.input_context?.requirement_id
+  const contextualId = typeof rawRequirementId === 'string' ? rawRequirementId : ''
   return String(log.requirement_id || contextualId).trim()
 }
 
-function extractFulfillmentStatus(log: FlowEvaluationLog): 'met' | 'unmet' | 'pending' | null {
-  const contextualStatus = (
-    log.input_context
-    && typeof log.input_context.fulfillment_status === 'string'
-  )
-    ? log.input_context.fulfillment_status
-    : ''
+function extractFulfillmentStatus(log: FlowEvaluationLog): RequirementFulfillmentStatus | null {
+  const rawStatus = log.input_context?.fulfillment_status
+  const contextualStatus = typeof rawStatus === 'string' ? rawStatus : ''
   const normalized = String(contextualStatus).trim()
-  if (normalized === 'met' || normalized === 'unmet' || normalized === 'pending') {
+  if (isRequirementFulfillmentStatus(normalized)) {
     return normalized
   }
   return null
 }
 
-const requirementFulfillmentStatusById = computed<Record<string, 'met' | 'unmet' | 'pending'>>(() => {
-  const map: Record<string, 'met' | 'unmet' | 'pending'> = {}
+const requirementFulfillmentStatusById = computed<Record<string, RequirementFulfillmentStatus>>(() => {
+  const map: Record<string, RequirementFulfillmentStatus> = {}
   props.evaluationLogs.forEach((log) => {
     if (log.trigger_type !== 'requirement.chain_evaluated') return
     const requirementId = extractRequirementId(log)
@@ -310,18 +311,18 @@ function ruleTestStateLabel(state: 'matched' | 'unmatched' | null): string {
   return ''
 }
 
-function requirementFulfillmentStatus(requirementId: string): 'met' | 'unmet' | 'pending' | null {
+function requirementFulfillmentStatus(requirementId: string): RequirementFulfillmentStatus | null {
   return requirementFulfillmentStatusById.value[requirementId] ?? null
 }
 
-function requirementFulfillmentStatusLabel(status: 'met' | 'unmet' | 'pending' | null): string {
+function requirementFulfillmentStatusLabel(status: RequirementFulfillmentStatus | null): string {
   if (status === 'met') return t('pipeline.flowDiagramRequirementStatusMet')
   if (status === 'unmet') return t('pipeline.flowDiagramRequirementStatusUnmet')
   if (status === 'pending') return t('pipeline.flowDiagramRequirementStatusPending')
   return ''
 }
 
-function requirementFulfillmentStatusClass(status: 'met' | 'unmet' | 'pending' | null): string {
+function requirementFulfillmentStatusClass(status: RequirementFulfillmentStatus | null): string {
   if (status === 'met') {
     return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
   }
