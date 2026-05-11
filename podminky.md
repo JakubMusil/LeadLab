@@ -1368,6 +1368,15 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 16:10 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno přesně na poslední otevřený bod záznamu 15:42 UTC.
+- Další krok byl maximalizovaně delegován subagentovi (ověření minimálního navazujícího kroku) a závěr byl ručně konceptuálně zvalidován proti sekci 19.
+- Provedena baseline validace frontend scope před novým zápisem: `npm run check-locales`, `npm run build-only` a `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (po `npm ci` v `frontend-spa`).
+- Spuštěn `parallel_validation` pro stav větve před novou změnou; nástroj vrátil `No changes detected`.
+- Hotovo: navazující validační krok je provedený a průběžný stav je zapsán do dokumentu dle pravidel sekce 19.
+- Následuje: spustit `parallel_validation` nad tímto dokumentačním diffem, vytvořit řádný PR a po jeho otevření navázat dalším implementačním krokem podle aktuálních priorit v `podminky.md`.
+
 ### 2026-05-11 15:42 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším praktickým krokem na etapu 20.3.6 (UX polish pro flow diagram) po uzavření předchozího scope sekce 21.
