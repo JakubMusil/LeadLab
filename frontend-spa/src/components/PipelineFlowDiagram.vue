@@ -115,6 +115,7 @@ const visibleNodes = computed(() => diagramNodes.value.filter((node) => visibleN
 const visibleEdges = computed(() =>
   model.value.edges.filter((edge) => visibleNodeIds.value.has(edge.source) && visibleNodeIds.value.has(edge.target)),
 )
+const visibleRequirementLinkDiagnostics = computed(() => model.value.requirementLinkDiagnostics)
 const isEmpty = computed(() => !props.loading && !props.error && visibleNodes.value.length === 0)
 const selectedNodeId = ref<string | null>(null)
 const selectedNode = computed<PipelineFlowNode | null>(() =>
@@ -184,6 +185,17 @@ function nodeClass(node: PipelineFlowNode): string {
 
 function edgeEndpointLabel(nodeId: string): string {
   return nodeById.value[nodeId]?.label || nodeId
+}
+
+function requirementBranchLabel(branch: 'met' | 'unmet'): string {
+  return branch === 'met' ? t('pipeline.flowDiagramEdgeNextStepMet') : t('pipeline.flowDiagramEdgeNextStepUnmet')
+}
+
+function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 'cycle' | null): string {
+  if (issue === 'missing_target') return t('pipeline.flowDiagramRequirementLinkMissingTarget')
+  if (issue === 'cross_scenario') return t('pipeline.flowDiagramInvalidRequirementScenarioLink')
+  if (issue === 'cycle') return t('pipeline.flowDiagramRequirementCycleLink')
+  return t('pipeline.flowDiagramRequirementLinkValid')
 }
 </script>
 
@@ -312,6 +324,34 @@ function edgeEndpointLabel(nodeId: string): string {
             <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
             <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
+          </li>
+        </ul>
+      </div>
+
+      <div
+        v-if="visibleRequirementLinkDiagnostics.length > 0"
+        class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800"
+      >
+        <div class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-200">
+          {{ t('pipeline.flowDiagramRequirementLinksTitle') }}
+        </div>
+        <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+          <li
+            v-for="link in visibleRequirementLinkDiagnostics"
+            :key="link.id"
+            class="rounded border px-2 py-1"
+            :class="link.valid
+              ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-300'
+              : 'border-red-200 bg-red-50/60 text-red-700 dark:border-red-800/60 dark:bg-red-950/20 dark:text-red-300'"
+          >
+            <div class="font-medium">
+              {{ link.sourceRequirementLabel }}
+              <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
+              {{ link.targetRequirementLabel || t('pipeline.flowDiagramRequirementLinkMissingTarget') }}
+            </div>
+            <div class="text-[10px] opacity-90">
+              {{ requirementBranchLabel(link.branch) }} · {{ requirementLinkIssueLabel(link.issue) }}
+            </div>
           </li>
         </ul>
       </div>

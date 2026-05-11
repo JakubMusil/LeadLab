@@ -83,11 +83,27 @@ export interface PipelineFlowEdge {
   label: string
 }
 
+export type PipelineFlowRequirementLinkIssue = 'missing_target' | 'cross_scenario' | 'cycle'
+export type PipelineFlowRequirementLinkBranch = 'met' | 'unmet'
+
+export interface PipelineFlowRequirementLinkDiagnostic {
+  id: string
+  sourceRequirementId: string
+  sourceRequirementLabel: string
+  targetRequirementId: string | null
+  targetRequirementLabel: string | null
+  branch: PipelineFlowRequirementLinkBranch
+  edgeType: PipelineFlowEdgeType
+  valid: boolean
+  issue: PipelineFlowRequirementLinkIssue | null
+}
+
 export interface PipelineFlowVisualizationModel {
   rootId: string
   nodes: PipelineFlowNode[]
   edges: PipelineFlowEdge[]
   nodesByType: Record<PipelineFlowNodeTypeFilter, PipelineFlowNode[]>
+  requirementLinkDiagnostics: PipelineFlowRequirementLinkDiagnostic[]
   warnings: string[]
 }
 
@@ -272,9 +288,17 @@ export function buildPipelineFlowModel(
     ...filteredRequirements.map((requirement) => buildRequirementNode(requirement, scenarioById, options.stageLabels, t)),
   ]
   const nodeMap = new Map(allNodes.map((node) => [node.id, node]))
+  const requirementById = new Map(filteredRequirements.map((requirement) => [requirement.id, requirement]))
   const edges: PipelineFlowEdge[] = []
+  const requirementLinkDiagnostics: PipelineFlowRequirementLinkDiagnostic[] = []
 
-  function addEdge(source: string, target: string, type: PipelineFlowEdgeType, label: string) {
+  function addEdge(
+    source: string,
+    target: string,
+    type: PipelineFlowEdgeType,
+    label: string,
+    updateHierarchy = true,
+  ) {
     if (!nodeMap.has(source) || !nodeMap.has(target)) return
     edges.push({
       id: `${type}-${source}-${target}`,
@@ -284,10 +308,12 @@ export function buildPipelineFlowModel(
       label,
     })
     nodeMap.get(source)?.childIds.push(target)
-    const targetNode = nodeMap.get(target)
-    if (targetNode) {
-      targetNode.parentId = source
-      targetNode.depth = source === 'root' ? 1 : (nodeMap.get(source)?.depth ?? 0) + 1
+    if (updateHierarchy) {
+      const targetNode = nodeMap.get(target)
+      if (targetNode) {
+        targetNode.parentId = source
+        targetNode.depth = source === 'root' ? 1 : (nodeMap.get(source)?.depth ?? 0) + 1
+      }
     }
   }
 
@@ -322,24 +348,120 @@ export function buildPipelineFlowModel(
   })
 
   const requirementIds = new Set(filteredRequirements.map((requirement) => requirement.id))
+  const requirementLinkCandidates: Array<{
+    sourceId: string
+    targetId: string | null
+    branch: PipelineFlowRequirementLinkBranch
+    edgeType: PipelineFlowEdgeType
+  }> = []
   filteredRequirements.forEach((requirement) => {
-    const links: Array<[string | null | undefined, PipelineFlowEdgeType, string]> = [
-      [requirement.next_step_on_met_id, 'next_step_on_met', translate('pipeline.flowDiagramEdgeNextStepMet', t)],
-      [requirement.next_step_on_unmet_id, 'next_step_on_unmet', translate('pipeline.flowDiagramEdgeNextStepUnmet', t)],
+    const links: Array<[string | null | undefined, PipelineFlowRequirementLinkBranch, PipelineFlowEdgeType]> = [
+      [requirement.next_step_on_met_id, 'met', 'next_step_on_met'],
+      [requirement.next_step_on_unmet_id, 'unmet', 'next_step_on_unmet'],
     ]
-    links.forEach(([targetId, type, label]) => {
+    links.forEach(([targetId, branch, edgeType]) => {
       if (!targetId) return
-      if (!requirementIds.has(targetId)) {
-        warnings.push(translate('pipeline.flowDiagramMissingRequirementLink', t))
-        return
-      }
-      addEdge(`requirement-${requirement.id}`, `requirement-${targetId}`, type, label)
+      requirementLinkCandidates.push({
+        sourceId: requirement.id,
+        targetId,
+        branch,
+        edgeType,
+      })
     })
+  })
+
+  const validLinkCandidates = requirementLinkCandidates.filter((candidate) => {
+    if (!candidate.targetId || !requirementIds.has(candidate.targetId)) return false
+    const source = requirementById.get(candidate.sourceId)
+    const target = requirementById.get(candidate.targetId)
+    return !!source && !!target && source.scenario_id === target.scenario_id
+  })
+  const adjacency = new Map<string, Set<string>>()
+  validLinkCandidates.forEach((candidate) => {
+    if (!candidate.targetId) return
+    const links = adjacency.get(candidate.sourceId) ?? new Set<string>()
+    links.add(candidate.targetId)
+    adjacency.set(candidate.sourceId, links)
+  })
+
+  const pathCache = new Map<string, boolean>()
+  function hasPath(startId: string, targetId: string): boolean {
+    const cacheKey = `${startId}->${targetId}`
+    const cachedValue = pathCache.get(cacheKey)
+    if (cachedValue !== undefined) return cachedValue
+    const stack = [startId]
+    const visited = new Set<string>()
+    while (stack.length > 0) {
+      const nodeId = stack.pop()
+      if (!nodeId || visited.has(nodeId)) continue
+      if (nodeId === targetId) {
+        pathCache.set(cacheKey, true)
+        return true
+      }
+      visited.add(nodeId)
+      const nextTargets = adjacency.get(nodeId)
+      if (!nextTargets) continue
+      nextTargets.forEach((nextTarget) => stack.push(nextTarget))
+    }
+    pathCache.set(cacheKey, false)
+    return false
+  }
+
+  requirementLinkCandidates.forEach((candidate) => {
+    const sourceRequirement = requirementById.get(candidate.sourceId)
+    const sourceRequirementLabel = sourceRequirement?.name || candidate.sourceId
+    const targetRequirement = candidate.targetId ? requirementById.get(candidate.targetId) : null
+    const targetRequirementLabel = targetRequirement?.name || candidate.targetId
+
+    let issue: PipelineFlowRequirementLinkIssue | null = null
+    if (!candidate.targetId || !requirementIds.has(candidate.targetId)) {
+      issue = 'missing_target'
+      warnings.push(translate('pipeline.flowDiagramMissingRequirementLink', t))
+    } else if (!sourceRequirement || !targetRequirement || sourceRequirement.scenario_id !== targetRequirement.scenario_id) {
+      issue = 'cross_scenario'
+      warnings.push(translate('pipeline.flowDiagramInvalidRequirementScenarioLink', t))
+    } else if (hasPath(candidate.targetId, candidate.sourceId)) {
+      issue = 'cycle'
+      warnings.push(translate('pipeline.flowDiagramRequirementCycleLink', t))
+    }
+
+    requirementLinkDiagnostics.push({
+      id: `${candidate.edgeType}-${candidate.sourceId}-${candidate.targetId ?? 'missing'}`,
+      sourceRequirementId: candidate.sourceId,
+      sourceRequirementLabel,
+      targetRequirementId: candidate.targetId,
+      targetRequirementLabel: targetRequirementLabel || null,
+      branch: candidate.branch,
+      edgeType: candidate.edgeType,
+      valid: issue === null,
+      issue,
+    })
+
+    if (issue === null && candidate.targetId) {
+      addEdge(
+        `requirement-${candidate.sourceId}`,
+        `requirement-${candidate.targetId}`,
+        candidate.edgeType,
+        candidate.branch === 'met'
+          ? translate('pipeline.flowDiagramEdgeNextStepMet', t)
+          : translate('pipeline.flowDiagramEdgeNextStepUnmet', t),
+        false,
+      )
+    }
   })
 
   const visibleNodes = allNodes.filter((node) => nodeMatchesTypeFilter(node, options.nodeType))
   const visibleNodeIds = new Set(visibleNodes.map((node) => node.id))
   const visibleEdges = edges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+  const visibleDiagnostics = requirementLinkDiagnostics.filter((diagnostic) => {
+    const sourceVisible = visibleNodeIds.has(`requirement-${diagnostic.sourceRequirementId}`)
+    // Invalid links should stay visible even when the target node is filtered out,
+    // otherwise the administrator loses direct feedback that the chain is broken.
+    const targetVisible = diagnostic.targetRequirementId
+      ? !diagnostic.valid || visibleNodeIds.has(`requirement-${diagnostic.targetRequirementId}`)
+      : true
+    return sourceVisible && targetVisible
+  })
   const visibleNodesByType = {
     all: visibleNodes.filter((node) => node.type !== 'root'),
     rule: visibleNodes.filter((node) => node.type === 'rule'),
@@ -352,6 +474,7 @@ export function buildPipelineFlowModel(
     nodes: visibleNodes,
     edges: visibleEdges,
     nodesByType: visibleNodesByType,
+    requirementLinkDiagnostics: visibleDiagnostics,
     warnings: Array.from(new Set(warnings)),
   }
 }

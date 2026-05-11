@@ -165,5 +165,47 @@ describe('pipelineFlowVisualization', () => {
     )
 
     expect(model.warnings).toContain('pipeline.flowDiagramMissingRequirementLink')
+    expect(model.requirementLinkDiagnostics[0]).toMatchObject({
+      valid: false,
+      issue: 'missing_target',
+    })
+  })
+
+  it('marks cross-scenario requirement links as invalid', () => {
+    const model = buildPipelineFlowModel(
+      {
+        rules: [],
+        scenarios: [
+          baseScenario,
+          { ...baseScenario, id: 'scenario-2', name: 'Scenario B', priority: 2 },
+        ],
+        requirements: [
+          { ...secondRequirement, id: 'req-x', scenario_id: 'scenario-2' },
+          { ...firstRequirement, id: 'req-main', scenario_id: 'scenario-1', next_step_on_met_id: 'req-x', next_step_on_unmet_id: null },
+        ],
+      },
+      { t },
+    )
+
+    expect(model.warnings).toContain('pipeline.flowDiagramInvalidRequirementScenarioLink')
+    expect(model.requirementLinkDiagnostics.some((link) => link.issue === 'cross_scenario')).toBe(true)
+  })
+
+  it('marks cyclic requirement links as invalid', () => {
+    const model = buildPipelineFlowModel(
+      {
+        rules: [],
+        scenarios: [baseScenario],
+        requirements: [
+          { ...firstRequirement, next_step_on_unmet_id: null },
+          { ...secondRequirement, next_step_on_met_id: 'req-1' },
+        ],
+      },
+      { t },
+    )
+
+    expect(model.warnings).toContain('pipeline.flowDiagramRequirementCycleLink')
+    expect(model.requirementLinkDiagnostics.some((link) => link.issue === 'cycle')).toBe(true)
+    expect(model.edges.some((edge) => edge.type === 'next_step_on_met' && edge.source === 'requirement-req-2')).toBe(false)
   })
 })
