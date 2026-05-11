@@ -289,7 +289,6 @@ export function buildPipelineFlowModel(
   ]
   const nodeMap = new Map(allNodes.map((node) => [node.id, node]))
   const requirementById = new Map(filteredRequirements.map((requirement) => [requirement.id, requirement]))
-  const requirementLabelById = new Map(filteredRequirements.map((requirement) => [requirement.id, requirement.name || requirement.id]))
   const edges: PipelineFlowEdge[] = []
   const requirementLinkDiagnostics: PipelineFlowRequirementLinkDiagnostic[] = []
 
@@ -385,15 +384,26 @@ export function buildPipelineFlowModel(
     adjacency.set(candidate.sourceId, links)
   })
 
-  function hasPath(startId: string, targetId: string, visited = new Set<string>()): boolean {
-    if (startId === targetId) return true
-    if (visited.has(startId)) return false
-    visited.add(startId)
-    const nextTargets = adjacency.get(startId)
-    if (!nextTargets) return false
-    for (const nextTarget of nextTargets) {
-      if (hasPath(nextTarget, targetId, visited)) return true
+  const pathCache = new Map<string, boolean>()
+  function hasPath(startId: string, targetId: string): boolean {
+    const cacheKey = `${startId}->${targetId}`
+    const cachedValue = pathCache.get(cacheKey)
+    if (cachedValue !== undefined) return cachedValue
+    const stack = [startId]
+    const visited = new Set<string>()
+    while (stack.length > 0) {
+      const nodeId = stack.pop()
+      if (!nodeId || visited.has(nodeId)) continue
+      if (nodeId === targetId) {
+        pathCache.set(cacheKey, true)
+        return true
+      }
+      visited.add(nodeId)
+      const nextTargets = adjacency.get(nodeId)
+      if (!nextTargets) continue
+      nextTargets.forEach((nextTarget) => stack.push(nextTarget))
     }
+    pathCache.set(cacheKey, false)
     return false
   }
 
@@ -445,6 +455,8 @@ export function buildPipelineFlowModel(
   const visibleEdges = edges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
   const visibleDiagnostics = requirementLinkDiagnostics.filter((diagnostic) => {
     const sourceVisible = visibleNodeIds.has(`requirement-${diagnostic.sourceRequirementId}`)
+    // Invalid links should stay visible even when the target node is filtered out,
+    // otherwise the administrator loses direct feedback that the chain is broken.
     const targetVisible = diagnostic.targetRequirementId
       ? !diagnostic.valid || visibleNodeIds.has(`requirement-${diagnostic.targetRequirementId}`)
       : true

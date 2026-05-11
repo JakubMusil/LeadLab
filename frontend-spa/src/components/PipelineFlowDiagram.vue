@@ -192,7 +192,7 @@ function requirementBranchLabel(branch: 'met' | 'unmet'): string {
 }
 
 function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 'cycle' | null): string {
-  if (issue === 'missing_target') return t('pipeline.flowDiagramMissingRequirementLink')
+  if (issue === 'missing_target') return t('pipeline.flowDiagramRequirementLinkMissingTarget')
   if (issue === 'cross_scenario') return t('pipeline.flowDiagramInvalidRequirementScenarioLink')
   if (issue === 'cycle') return t('pipeline.flowDiagramRequirementCycleLink')
   return t('pipeline.flowDiagramRequirementLinkValid')

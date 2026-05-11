@@ -134,10 +134,11 @@ describe('PipelineFlowDiagram', () => {
 
     const button = wrapper.find('article button')
     expect(button.exists()).toBe(true)
+    expect(wrapper.findAll('article')).toHaveLength(4)
     await button.trigger('click')
-    expect(wrapper.text()).not.toContain('requirementType: attachment')
+    expect(wrapper.findAll('article')).toHaveLength(2)
     await button.trigger('click')
-    expect(wrapper.text()).toContain('requirementType: attachment')
+    expect(wrapper.findAll('article')).toHaveLength(4)
   })
 
   it('shows node detail after selecting a node', async () => {
