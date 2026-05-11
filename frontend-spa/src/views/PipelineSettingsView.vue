@@ -13,6 +13,7 @@ import {
   type StageScenarioOut,
   type StageRequirementOut,
 } from '@/stores/stageScenarios'
+import { useRuleEvaluationLogsStore, type RuleEvaluationLogOut } from '@/stores/ruleEvaluationLogs'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
@@ -35,6 +36,7 @@ import { useMembersStore } from '@/stores/members'
 const pipelineStore = usePipelineStore()
 const conditionRulesStore = useConditionRulesStore()
 const stageScenariosStore = useStageScenariosStore()
+const ruleEvaluationLogsStore = useRuleEvaluationLogsStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const { t } = useI18n()
@@ -121,6 +123,10 @@ const ruleConditionTreeText = ref('{}')
 const ruleEffectConfigText = ref('{}')
 const pendingDeactivateRuleId = ref<string | null>(null)
 const pendingDeactivateRuleName = ref('')
+const ruleLogsFilterTriggerType = ref('')
+const ruleLogsFilterResult = ref('')
+const ruleLogsFilterRecordId = ref('')
+const ruleLogsFilterRuleId = ref('')
 
 // Stage scenarios
 const scenarioFilterStageId = ref('')
@@ -326,6 +332,11 @@ const ruleFormStages = computed<StageOut[]>(() =>
 )
 const stageScenarios = computed<StageScenarioOut[]>(() => stageScenariosStore.scenarios)
 const stageRequirements = computed<StageRequirementOut[]>(() => stageScenariosStore.requirements)
+const ruleEvaluationLogs = computed<RuleEvaluationLogOut[]>(() => ruleEvaluationLogsStore.logs)
+const ruleEvaluationLogsLoading = computed(() => ruleEvaluationLogsStore.loading)
+const ruleEvaluationLogsError = computed(() => ruleEvaluationLogsStore.error)
+const ruleEvaluationLogsPage = computed(() => ruleEvaluationLogsStore.page)
+const ruleEvaluationLogsHasMore = computed(() => ruleEvaluationLogsStore.hasMore)
 const scenarioFilterStages = computed<StageOut[]>(() =>
   selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : [],
 )
@@ -398,6 +409,7 @@ watch(selectedCategoryId, () => {
   resetScenarioForm()
   resetRequirementForm()
   stageScenariosStore.clearRequirements()
+  void loadRuleEvaluationLogs(1)
   if (selectedCategoryId.value && scenarioFilterStageId.value) void loadStageScenarios()
 })
 
@@ -1175,6 +1187,38 @@ async function runRuleTestEvaluation() {
     return
   }
   testEvaluationResult.value = result.data
+}
+
+async function loadRuleEvaluationLogs(page = 1) {
+  const result = await ruleEvaluationLogsStore.fetchLogs({
+    triggerType: ruleLogsFilterTriggerType.value.trim() || undefined,
+    result: ruleLogsFilterResult.value.trim() || undefined,
+    recordId: ruleLogsFilterRecordId.value.trim() || undefined,
+    ruleId: ruleLogsFilterRuleId.value.trim() || undefined,
+    page,
+    pageSize: 50,
+  })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.ruleLogsLoadFailed'))
+  }
+}
+
+function resetRuleEvaluationLogFilters() {
+  ruleLogsFilterTriggerType.value = ''
+  ruleLogsFilterResult.value = ''
+  ruleLogsFilterRecordId.value = ''
+  ruleLogsFilterRuleId.value = ''
+  void loadRuleEvaluationLogs(1)
+}
+
+function loadNextRuleEvaluationLogsPage() {
+  if (!ruleEvaluationLogsHasMore.value || ruleEvaluationLogsLoading.value) return
+  void loadRuleEvaluationLogs(ruleEvaluationLogsPage.value + 1)
+}
+
+function loadPreviousRuleEvaluationLogsPage() {
+  if (ruleEvaluationLogsPage.value <= 1 || ruleEvaluationLogsLoading.value) return
+  void loadRuleEvaluationLogs(ruleEvaluationLogsPage.value - 1)
 }
 
 // ---------------------------------------------------------------------------
@@ -2400,6 +2444,116 @@ const newPattern = computed({
                 <div>{{ t('pipeline.rulesTestOutputs') }}: {{ testEvaluationResult.outputs.length }}</div>
                 <div>{{ t('pipeline.rulesTestBlocking') }}: {{ testEvaluationResult.blocking.length }}</div>
                 <div>{{ t('pipeline.rulesTestWarnings') }}: {{ testEvaluationResult.warnings.length }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rule evaluation logs -->
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.ruleLogsTitle') }}</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+              <input
+                v-model="ruleLogsFilterTriggerType"
+                type="text"
+                :placeholder="t('pipeline.ruleLogsFilterTriggerPlaceholder')"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+              <input
+                v-model="ruleLogsFilterResult"
+                type="text"
+                :placeholder="t('pipeline.ruleLogsFilterResultPlaceholder')"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+              <input
+                v-model="ruleLogsFilterRecordId"
+                type="text"
+                :placeholder="t('pipeline.ruleLogsFilterRecordPlaceholder')"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+              <input
+                v-model="ruleLogsFilterRuleId"
+                type="text"
+                :placeholder="t('pipeline.ruleLogsFilterRulePlaceholder')"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              />
+            </div>
+
+            <div class="flex gap-2 mb-3">
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                :disabled="ruleEvaluationLogsLoading"
+                @click="loadRuleEvaluationLogs(1)"
+              >
+                {{ t('pipeline.ruleLogsApplyFilters') }}
+              </button>
+              <button
+                class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                :disabled="ruleEvaluationLogsLoading"
+                @click="resetRuleEvaluationLogFilters"
+              >
+                {{ t('pipeline.ruleLogsResetFilters') }}
+              </button>
+            </div>
+
+            <div v-if="ruleEvaluationLogsLoading" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.ruleLogsLoading') }}
+            </div>
+            <div v-else-if="ruleEvaluationLogsError" class="text-xs text-red-500 py-2">
+              {{ ruleEvaluationLogsError }}
+            </div>
+            <div v-else-if="ruleEvaluationLogs.length === 0" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.ruleLogsEmpty') }}
+            </div>
+            <div v-else class="space-y-2">
+              <div class="overflow-auto border border-gray-100 rounded-lg bg-white">
+                <table class="min-w-full text-xs">
+                  <thead class="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColEvaluatedAt') }}</th>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColTrigger') }}</th>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColResult') }}</th>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColRecordId') }}</th>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColRuleId') }}</th>
+                      <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColScenarioId') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="log in ruleEvaluationLogs"
+                      :key="log.id"
+                      class="border-t border-gray-100 text-gray-700"
+                    >
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.evaluated_at }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.trigger_type }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.result }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.record_id || '—' }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.rule_id || '—' }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ log.scenario_id || '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="flex items-center justify-between">
+                <button
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  :disabled="ruleEvaluationLogsPage <= 1 || ruleEvaluationLogsLoading"
+                  @click="loadPreviousRuleEvaluationLogsPage"
+                >
+                  {{ t('pipeline.ruleLogsPrevPage') }}
+                </button>
+                <span class="text-xs text-gray-500">
+                  {{ t('pipeline.ruleLogsPageLabel', { page: ruleEvaluationLogsPage }) }}
+                </span>
+                <button
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  :disabled="!ruleEvaluationLogsHasMore || ruleEvaluationLogsLoading"
+                  @click="loadNextRuleEvaluationLogsPage"
+                >
+                  {{ t('pipeline.ruleLogsNextPage') }}
+                </button>
               </div>
             </div>
           </div>
