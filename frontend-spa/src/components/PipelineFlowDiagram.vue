@@ -62,6 +62,7 @@ const emit = defineEmits<{
   (event: 'toggle-rule-root-operator', payload: { ruleId: string }): void
   (event: 'add-rule-root-group', payload: { ruleId: string }): void
   (event: 'add-rule-root-condition', payload: { ruleId: string }): void
+  (event: 'remove-rule-root-condition', payload: { ruleId: string }): void
   (event: 'open-rule-editor', payload: { ruleId: string }): void
   (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
   (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
@@ -429,6 +430,13 @@ function emitRuleRootGroupAdd() {
 function emitRuleRootConditionAdd() {
   if (selectedNode.value?.type !== 'rule') return
   emit('add-rule-root-condition', {
+    ruleId: selectedNode.value.sourceId,
+  })
+}
+
+function emitRuleRootConditionRemove() {
+  if (selectedNode.value?.type !== 'rule') return
+  emit('remove-rule-root-condition', {
     ruleId: selectedNode.value.sourceId,
   })
 }
@@ -1053,6 +1061,14 @@ function toggleHelp() {
                 @click="emitRuleRootConditionAdd"
               >
                 {{ t('pipeline.flowDiagramActionAddRuleRootCondition') }}
+              </button>
+              <button
+                type="button"
+                data-testid="flow-node-action-remove-rule-root-condition"
+                :class="quickActionSecondaryButtonClass"
+                @click="emitRuleRootConditionRemove"
+              >
+                {{ t('pipeline.flowDiagramActionRemoveRuleRootCondition') }}
               </button>
               <button
                 type="button"
