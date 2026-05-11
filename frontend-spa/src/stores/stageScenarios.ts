@@ -156,7 +156,7 @@ export const useStageScenariosStore = defineStore('stageScenarios', () => {
     const res = await api.delete<null>(
       `/api/v1/crm/categories/${categoryId}/stages/${stageId}/scenarios/${scenarioId}`,
     )
-    if (res.ok || res.status === 204) {
+    if (res.ok) {
       scenarios.value = scenarios.value.filter((scenario) => scenario.id !== scenarioId)
       if (requirements.value.some((requirement) => requirement.scenario_id === scenarioId)) {
         requirements.value = []
@@ -218,7 +218,7 @@ export const useStageScenariosStore = defineStore('stageScenarios', () => {
     requirementId: string,
   ): Promise<{ ok: boolean; error?: string }> {
     const res = await api.delete<null>(`/api/v1/crm/scenarios/${scenarioId}/requirements/${requirementId}`)
-    if (res.ok || res.status === 204) {
+    if (res.ok) {
       requirements.value = requirements.value.filter((requirement) => requirement.id !== requirementId)
       return { ok: true }
     }

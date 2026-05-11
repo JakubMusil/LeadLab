@@ -1355,6 +1355,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Frontend implementace 14.6: přidán nový store `frontend-spa/src/stores/stageScenarios.ts` (list/create/update/delete scénářů, list/create/update/delete požadavků, preview přes testovací záznam).
 - Frontend implementace 14.6 ve `frontend-spa/src/views/PipelineSettingsView.vue`: doplněna sekce editoru scénářů fáze (výběr fáze, seznam scénářů, create/edit/delete, aktivační podmínka přes `ConditionBuilder`, doporučená další fáze, priorita, zapnutí/vypnutí), editor požadavků scénáře (seznam + create/edit/delete + blocking toggle) a preview na testovacím záznamu.
 - Doplněny nové i18n klíče pro scénáře/požadavky/preview ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Po delegované validační revizi a code-review připomínkách doplněny korekce: chybějící locale klíče pro tlačítka update, oddělení inline handleru editace scénáře do samostatné funkce, zpřesnění integer vstupů (`step=1`) a drobný cleanup redundantní kontroly 204 v `stageScenarios` store.
 - Hotovo: etapa 14.6 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
 - Následuje: navázat další otevřenou frontend etapou 14.7 (napojení na Streamline) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 

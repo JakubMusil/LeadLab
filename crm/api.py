@@ -9604,7 +9604,7 @@ class StageRequirementOut(Schema):
 class StageRequirementIn(Schema):
     name: str
     description: str = ""
-    requirement_type: str = RequirementType.CUSTOM
+    requirement_type: str = str(RequirementType.CUSTOM)
     condition: Dict[str, Any] = {}
     blocking: bool = True
     visible_to_user: bool = True

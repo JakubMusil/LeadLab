@@ -1169,8 +1169,8 @@ async function runRuleTestEvaluation() {
 // Stage scenarios actions
 // ---------------------------------------------------------------------------
 
-function parseNonNegativeInteger(value: string): number | null {
-  if (!value.trim()) return 0
+function parseNonNegativeInteger(value: string, defaultValue: number): number | null {
+  if (!value.trim()) return defaultValue
   const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed < 0) return null
   return parsed
@@ -1219,13 +1219,18 @@ function openEditScenarioForm(scenario: StageScenarioOut) {
   scenarioPreviewResult.value = null
 }
 
+function startEditScenario(scenario: StageScenarioOut) {
+  openEditScenarioForm(scenario)
+  void loadScenarioRequirements()
+}
+
 async function submitScenarioForm() {
   if (!selectedCategoryId.value || !scenarioFilterStageId.value) return
   if (!scenarioForm.value.name.trim()) {
     toast.error(t('pipeline.stageScenariosNameRequired'))
     return
   }
-  const priority = parseNonNegativeInteger(scenarioForm.value.priority)
+  const priority = parseNonNegativeInteger(scenarioForm.value.priority, 100)
   if (priority === null) {
     toast.error(t('pipeline.stageScenariosPriorityInvalid'))
     return
@@ -1342,7 +1347,7 @@ async function submitRequirementForm() {
     toast.error(t('pipeline.stageRequirementsNameRequired'))
     return
   }
-  const sortOrder = parseNonNegativeInteger(requirementForm.value.sort_order)
+  const sortOrder = parseNonNegativeInteger(requirementForm.value.sort_order, 0)
   if (sortOrder === null) {
     toast.error(t('pipeline.stageRequirementsSortOrderInvalid'))
     return
@@ -2461,7 +2466,7 @@ const newPattern = computed({
                     }}
                   </span>
                   <div class="flex flex-wrap justify-end gap-1">
-                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openEditScenarioForm(scenario); loadScenarioRequirements()">
+                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="startEditScenario(scenario)">
                       {{ t('pipeline.stageScenariosEdit') }}
                     </button>
                     <button
@@ -2491,6 +2496,7 @@ const newPattern = computed({
                   v-model="scenarioForm.priority"
                   type="number"
                   min="0"
+                  step="1"
                   :placeholder="t('pipeline.stageScenariosPriorityPlaceholder')"
                   class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
                 />
@@ -2601,6 +2607,7 @@ const newPattern = computed({
                       v-model="requirementForm.sort_order"
                       type="number"
                       min="0"
+                      step="1"
                       :placeholder="t('pipeline.stageRequirementsSortOrderPlaceholder')"
                       class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
                     />
