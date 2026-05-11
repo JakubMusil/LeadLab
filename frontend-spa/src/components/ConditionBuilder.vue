@@ -306,11 +306,11 @@ function updateTimeWindowValue(rawValue: string) {
 </script>
 
 <template>
-  <div class="space-y-2 rounded border border-gray-200 bg-white p-2">
+  <div class="space-y-2 rounded border border-gray-200 bg-white p-2 dark:border-gray-600 dark:bg-gray-800">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
       <select
         :value="node.type"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
         :disabled="disabled"
         @change="updateNodeType(($event.target as HTMLSelectElement).value as 'group' | 'condition')"
       >
@@ -318,7 +318,7 @@ function updateTimeWindowValue(rawValue: string) {
         <option value="condition">{{ t('pipeline.rulesBuilderNodeTypeCondition') }}</option>
       </select>
 
-      <label class="inline-flex items-center gap-2 text-xs text-gray-600 md:col-span-3">
+      <label class="inline-flex items-center gap-2 text-xs text-gray-600 md:col-span-3 dark:text-gray-300">
         <input
           :checked="node.negated === true"
           type="checkbox"
@@ -334,7 +334,7 @@ function updateTimeWindowValue(rawValue: string) {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <select
           :value="node.op ?? 'and'"
-          class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+          class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
           :disabled="disabled"
           @change="updateNode({ op: ($event.target as HTMLSelectElement).value as 'and' | 'or' })"
         >
@@ -350,7 +350,7 @@ function updateTimeWindowValue(rawValue: string) {
             {{ t('pipeline.rulesBuilderAddCondition') }}
           </button>
           <button
-            class="px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50"
+            class="px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-400 disabled:opacity-50"
             :disabled="disabled"
             @click="addGroup"
           >
@@ -363,11 +363,11 @@ function updateTimeWindowValue(rawValue: string) {
         <div
           v-for="(child, index) in groupConditions"
           :key="index"
-          class="border-l-2 border-indigo-100 pl-2"
+          class="border-l-2 border-indigo-100 pl-2 dark:border-indigo-900/40"
         >
           <div class="flex justify-end mb-1">
             <button
-              class="text-xs text-red-600 hover:text-red-700"
+              class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
               :disabled="disabled"
               @click="removeChild(index)"
             >
@@ -388,7 +388,7 @@ function updateTimeWindowValue(rawValue: string) {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <select
           :value="node.source_type ?? ''"
-          class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+          class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
           :disabled="disabled"
           @change="updateSourceType(($event.target as HTMLSelectElement).value)"
         >
@@ -401,7 +401,7 @@ function updateTimeWindowValue(rawValue: string) {
         <template v-if="node.source_type === 'standard_field'">
           <select
             :value="node.field ?? ''"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @change="updateNode({ field: ($event.target as HTMLSelectElement).value })"
           >
@@ -413,7 +413,7 @@ function updateTimeWindowValue(rawValue: string) {
         <template v-else-if="node.source_type === 'category_field'">
           <select
             :value="node.category_field_key ?? ''"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @change="updateCategoryFieldKey(($event.target as HTMLSelectElement).value)"
           >
@@ -433,7 +433,7 @@ function updateTimeWindowValue(rawValue: string) {
             :value="node.activity_type ?? ''"
             type="text"
             :placeholder="t('pipeline.rulesBuilderActivityTypePlaceholder')"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @input="updateNode({ activity_type: ($event.target as HTMLInputElement).value })"
           />
@@ -444,7 +444,7 @@ function updateTimeWindowValue(rawValue: string) {
             :value="node.tool_type ?? ''"
             type="text"
             :placeholder="t('pipeline.rulesBuilderToolTypePlaceholder')"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @input="updateNode({ tool_type: ($event.target as HTMLInputElement).value })"
           />
@@ -453,7 +453,7 @@ function updateTimeWindowValue(rawValue: string) {
         <template v-else-if="node.source_type === 'related_entity'">
           <select
             :value="node.entity_type ?? ''"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @change="updateNode({ entity_type: ($event.target as HTMLSelectElement).value })"
           >
@@ -464,7 +464,7 @@ function updateTimeWindowValue(rawValue: string) {
 
         <select
           :value="node.operator ?? ''"
-          class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+          class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
           :disabled="disabled || !canSelectOperator"
           @change="updateOperator(($event.target as HTMLSelectElement).value)"
         >
@@ -477,7 +477,7 @@ function updateTimeWindowValue(rawValue: string) {
             :value="node.value === null || node.value === undefined ? '' : String(node.value)"
             :type="usesNumericValue ? 'number' : 'text'"
             :placeholder="t('pipeline.rulesBuilderValuePlaceholder')"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @input="updateNode({ value: usesNumericValue ? Number(($event.target as HTMLInputElement).value) : ($event.target as HTMLInputElement).value })"
           />
@@ -486,7 +486,7 @@ function updateTimeWindowValue(rawValue: string) {
         <template v-else-if="needsValue && usesBooleanValue">
           <select
             :value="String(node.value ?? true)"
-            class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+            class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
             :disabled="disabled"
             @change="updateNode({ value: ($event.target as HTMLSelectElement).value === 'true' })"
           >
@@ -499,7 +499,7 @@ function updateTimeWindowValue(rawValue: string) {
       <div v-if="['streamline_activity', 'streamline_tool'].includes(node.source_type ?? '')" class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <select
           :value="timeWindowUnit"
-          class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+          class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
           :disabled="disabled"
           @change="updateTimeWindowUnit(($event.target as HTMLSelectElement).value)"
         >
@@ -511,7 +511,7 @@ function updateTimeWindowValue(rawValue: string) {
           :value="timeWindowValue"
           type="number"
           min="1"
-          class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+          class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
           :placeholder="t('pipeline.rulesBuilderTimeWindowValue')"
           :disabled="disabled || !timeWindowUnit"
           @input="updateTimeWindowValue(($event.target as HTMLInputElement).value)"

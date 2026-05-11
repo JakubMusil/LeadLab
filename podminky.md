@@ -1368,6 +1368,21 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 10:38 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený krok etapy 7C s novým prioritním požadavkem: před pokračováním opravit kontrasty/třídy v light i dark verzi pro condition-related UI.
+- Další krok byl maximalizovaně delegován podagentovi (audit kontrastů a mapování konkrétních tříd v `ConditionBuilder.vue`, `ConditionTreeViewer.vue`, `PipelineFlowDiagram.vue` a condition sekcích `PipelineSettingsView.vue`), následně proběhla ruční konceptuální validace návrhu a ruční implementace.
+- Baseline validace před změnami:
+  - `frontend-spa`: po `npm ci` prochází `npm run check-locales` a `npm run build-only`,
+  - `npm run test:unit` je v aktuálním repozitáři pre-existing nestabilní kvůli unhandled dashboard chybám mimo tento scope (existující baseline problém).
+- Frontend úpravy kontrastů/čitelnosti:
+  - `frontend-spa/src/components/ConditionBuilder.vue`: doplněny dark varianty pro obal, vstupy/selecty, texty, odstranění uzlů a pomocné vizuální prvky.
+  - `frontend-spa/src/components/ConditionTreeViewer.vue`: doplněny dark varianty pro loading/error/empty stavy, collapse tlačítka, badge typů uzlů, labely a text uzlů.
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: upraveny kontrastní barvy uzlů/hran (včetně `nodeClass`), legenda, filtry, card meta prvky a edge sekce pro light/dark režim.
+  - `frontend-spa/src/views/PipelineSettingsView.vue` (condition části): doplněny dark varianty a čitelné textové barvy pro formuláře pravidel, filtry, test pravidla, log vyhodnocení, scénáře, požadavky a preview.
+- Hotovo: priorita „kontrasty a třídy v light/dark verzi pro podmínky“ je pokrytá v hlavních condition UI částech, kde byly vstupy a metadata dříve špatně čitelné.
+- Následuje: provést post-change validační běhy (`check-locales`, `build-only`, cílené `test:unit` pro condition scope), spustit `parallel_validation`, zapracovat případné připomínky a pak navázat implementací dalšího otevřeného kroku etapy 7C.
+
 ### 2026-05-11 10:30 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno na otevřený bod etapy 7B: přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
