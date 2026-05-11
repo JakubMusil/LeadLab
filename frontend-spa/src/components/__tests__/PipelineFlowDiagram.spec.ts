@@ -139,4 +139,87 @@ describe('PipelineFlowDiagram', () => {
     await button.trigger('click')
     expect(wrapper.text()).toContain('Upload file')
   })
+
+  it('shows node detail after selecting a node', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+      },
+    })
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('click')
+
+    expect(wrapper.text()).toContain('Node detail')
+    expect(wrapper.text()).toContain('Scenario A')
+    expect(wrapper.text()).toContain('Children (')
+  })
+
+  it('clears selection when clear action is used', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+      },
+    })
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('click')
+
+    const clearButton = wrapper.findAll('button').find((button) => button.text().includes('Clear selection'))
+    expect(clearButton).toBeTruthy()
+    await clearButton!.trigger('click')
+
+    expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+  })
+
+  it('supports keyboard selection via enter key', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+      },
+    })
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('keydown.enter')
+
+    expect(wrapper.text()).toContain('Node detail')
+    expect(wrapper.text()).toContain('Scenario A')
+  })
+
+  it('clears selected node detail when filters hide the selected node', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+      },
+    })
+
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioNode).toBeTruthy()
+    await scenarioNode!.trigger('click')
+    expect(wrapper.text()).toContain('Parent: Activate scenario')
+
+    const selects = wrapper.findAll('select')
+    await selects[3]!.setValue('requirement')
+
+    expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+  })
 })

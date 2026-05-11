@@ -116,6 +116,29 @@ const visibleEdges = computed(() =>
   model.value.edges.filter((edge) => visibleNodeIds.value.has(edge.source) && visibleNodeIds.value.has(edge.target)),
 )
 const isEmpty = computed(() => !props.loading && !props.error && visibleNodes.value.length === 0)
+const selectedNodeId = ref<string | null>(null)
+const selectedNode = computed<PipelineFlowNode | null>(() =>
+  selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
+)
+const selectedNodeParent = computed<PipelineFlowNode | null>(() => {
+  const parentId = selectedNode.value?.parentId
+  if (!parentId) return null
+  return nodeById.value[parentId] ?? null
+})
+const selectedNodeChildren = computed<PipelineFlowNode[]>(() =>
+  (selectedNode.value?.childIds ?? []).map((id) => nodeById.value[id]).filter((node): node is PipelineFlowNode => !!node),
+)
+const selectedNodeEdges = computed(() =>
+  selectedNodeId.value
+    ? visibleEdges.value.filter((edge) => edge.source === selectedNodeId.value || edge.target === selectedNodeId.value)
+    : [],
+)
+
+watch(visibleNodeIds, (visibleIds) => {
+  if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
+    selectedNodeId.value = null
+  }
+})
 
 function toggleScenario(nodeId: string) {
   collapsedScenarioIds.value = {
@@ -126,6 +149,10 @@ function toggleScenario(nodeId: string) {
 
 function isScenarioCollapsed(nodeId: string): boolean {
   return collapsedScenarioIds.value[nodeId] === true
+}
+
+function selectNode(nodeId: string) {
+  selectedNodeId.value = selectedNodeId.value === nodeId ? null : nodeId
 }
 
 function nodeTypeLabel(node: PipelineFlowNode): string {
@@ -228,11 +255,23 @@ function edgeEndpointLabel(nodeId: string): string {
           v-for="node in visibleNodes"
           :key="node.id"
           role="listitem"
-          class="rounded border p-2 shadow-sm"
-          :class="nodeClass(node)"
+          class="rounded border p-2 shadow-sm transition-colors"
+          :class="[
+            nodeClass(node),
+            'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
+            selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0',
+          ]"
         >
           <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
+            <div
+              class="min-w-0 flex-1 rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              role="button"
+              tabindex="0"
+              :aria-label="node.label"
+              @click="selectNode(node.id)"
+              @keydown.enter.prevent="selectNode(node.id)"
+              @keydown.space.prevent="selectNode(node.id)"
+            >
               <div class="flex flex-wrap items-center gap-1">
                 <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                   {{ nodeTypeLabel(node) }}
@@ -257,7 +296,7 @@ function edgeEndpointLabel(nodeId: string): string {
               type="button"
               class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               :aria-expanded="!isScenarioCollapsed(node.id)"
-              @click="toggleScenario(node.id)"
+              @click.stop="toggleScenario(node.id)"
             >
               {{ isScenarioCollapsed(node.id) ? '+' : '−' }}
             </button>
@@ -270,11 +309,65 @@ function edgeEndpointLabel(nodeId: string): string {
         <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
           <li v-for="edge in visibleEdges" :key="edge.id" class="break-words">
             <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
-            <span class="mx-1 text-gray-400 dark:text-gray-500">→</span>
+            <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
             <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
           </li>
         </ul>
+      </div>
+
+      <div class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-1 flex items-center justify-between gap-2">
+          <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailTitle') }}</div>
+          <button
+            v-if="selectedNodeId"
+            type="button"
+            class="text-[11px] text-gray-500 underline-offset-2 hover:underline dark:text-gray-300"
+            :aria-label="t('pipeline.flowDiagramNodeDetailClear')"
+            @click="selectedNodeId = null"
+          >
+            {{ t('pipeline.flowDiagramNodeDetailClear') }}
+          </button>
+        </div>
+        <div v-if="!selectedNode" class="text-xs text-gray-500 dark:text-gray-400">
+          {{ t('pipeline.flowDiagramNodeDetailEmpty') }}
+        </div>
+        <div v-else class="space-y-2 text-[11px] text-gray-600 dark:text-gray-300">
+          <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ selectedNode.label }}</div>
+          <div v-if="selectedNode.description" class="text-gray-500 dark:text-gray-400">{{ selectedNode.description }}</div>
+          <div>
+            <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailType') }}:</span>
+            {{ nodeTypeLabel(selectedNode) }}
+          </div>
+          <div>
+            <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailId') }}:</span>
+            {{ selectedNode.sourceId }}
+          </div>
+          <div v-if="selectedNodeParent">
+            <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailParent') }}:</span>
+            {{ selectedNodeParent.label }}
+          </div>
+          <div>
+            <div class="font-medium text-gray-700 dark:text-gray-200">
+              {{ t('pipeline.flowDiagramNodeDetailChildren') }} ({{ selectedNodeChildren.length }})
+            </div>
+            <ul v-if="selectedNodeChildren.length > 0" class="mt-0.5 list-inside list-disc space-y-0.5">
+              <li v-for="child in selectedNodeChildren" :key="child.id">{{ child.label }}</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailConnections') }}</div>
+            <ul v-if="selectedNodeEdges.length > 0" class="mt-0.5 space-y-0.5">
+              <li v-for="edge in selectedNodeEdges" :key="edge.id">
+                <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
+                <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
+                <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
+                <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
+              </li>
+            </ul>
+            <div v-else class="text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramNodeDetailNoConnections') }}</div>
+          </div>
+        </div>
       </div>
     </template>
   </section>
