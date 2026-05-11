@@ -30,7 +30,7 @@ const { locale: currentLocale, t } = useI18n()
 const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
 // Branding
-const brandColor = ref(firmStore.activeFirm?.primary_color || '#e63946')
+const brandColor = ref(firmStore.activeFirm?.primary_color || '#254896')
 const brandLogoPreview = ref<string | null>(null)
 const brandLogoInput = ref<HTMLInputElement | null>(null)
 const brandSaving = ref(false)

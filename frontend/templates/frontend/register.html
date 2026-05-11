@@ -8,7 +8,7 @@
   <!-- Left branding panel -->
   <div class="hidden lg:flex flex-col justify-between w-1/2 hero-gradient text-white p-12">
     <a href="/" class="flex items-center gap-2">
-      <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+      <div class="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
@@ -16,22 +16,22 @@
       <span class="font-bold text-xl">LeadLab</span>
     </a>
     <div>
-      <h2 class="text-4xl font-extrabold leading-snug mb-4">Start closing deals.<br><span class="text-red-400">Free forever.</span></h2>
+      <h2 class="text-4xl font-extrabold leading-snug mb-4">Start closing deals.<br><span class="text-brand-primary-accent">Free forever.</span></h2>
       <ul class="space-y-3 text-gray-300 text-sm">
         <li class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <svg class="w-5 h-5 text-brand-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Full lead pipeline management
         </li>
         <li class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <svg class="w-5 h-5 text-brand-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Team collaboration tools
         </li>
         <li class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <svg class="w-5 h-5 text-brand-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           Real-time analytics dashboard
         </li>
         <li class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <svg class="w-5 h-5 text-brand-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           No credit card required
         </li>
       </ul>
@@ -43,7 +43,7 @@
   <div class="flex-1 flex items-center justify-center bg-white px-6 py-12">
     <div class="w-full max-w-sm">
       <div class="lg:hidden flex items-center gap-2 mb-8">
-        <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+        <div class="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
           <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
@@ -52,9 +52,9 @@
       </div>
 
       <h1 class="text-2xl font-extrabold text-gray-900 mb-1">Create your account</h1>
-      <p class="text-gray-500 text-sm mb-8">Already have one? <a href="/login/" class="text-red-600 font-medium hover:underline">Sign in</a></p>
+      <p class="text-gray-500 text-sm mb-8">Already have one? <a href="/login/" class="text-brand-primary font-medium hover:underline">Sign in</a></p>
 
-      <div id="error-msg" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+      <div id="error-msg" class="hidden bg-brand-primary-soft text-brand-primary-dark text-sm px-4 py-3 rounded-lg mb-4 border border-brand-primary-light"></div>
 
       <form id="register-form" class="space-y-4">
         {% csrf_token %}
