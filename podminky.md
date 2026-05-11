@@ -1375,6 +1375,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Do sekce 15 byla doplněna nová etapa 7 pro interaktivní grafickou mindmapu pravidel, scénářů, požadavků a návazných kroků.
 - Do sekce 16 byla doplněna rizika a opatření související s nečitelností velkých grafů, výkonem a synchronizací grafu s formulářovým editorem.
 - Doplněna nová sekce 20 s podrobným návrhem řešení: read-only vizualizace, flow diagram, interaktivní navigace, řízené editace, napojení na testovací vyhodnocení/audit a validační kritéria.
+- Závěrečná validace proběhla přes `parallel_validation`: code review bez připomínek, CodeQL přeskočen jako triviální dokumentační změna.
 - Hotovo: další fáze práce je popsána jako konkrétní implementační plán v dokumentu.
 - Následuje: v navazujícím implementačním scope začít normalizačními utilitami a read-only vizualizací condition tree, poté pokračovat přehledovým flow diagramem.
 
