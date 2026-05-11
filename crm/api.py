@@ -1688,9 +1688,14 @@ def _refresh_active_stage_scenario(
     existing_extra_data = dict(record.extra_data or {})
     extra_data = dict(existing_extra_data)
     if not record.category_id or not record.current_stage_id:
-        if "active_stage_scenario_id" in extra_data or "active_stage_requirements" in extra_data:
+        if (
+            "active_stage_scenario_id" in extra_data
+            or "active_stage_requirements" in extra_data
+            or "scenario_activated_by_activity_id" in extra_data
+        ):
             extra_data.pop("active_stage_scenario_id", None)
             extra_data.pop("active_stage_requirements", None)
+            extra_data.pop("scenario_activated_by_activity_id", None)
             record.extra_data = extra_data
             record.save(update_fields=["extra_data"])
         return
@@ -1725,12 +1730,20 @@ def _refresh_active_stage_scenario(
 
     if active_scenario_id and active_scenario:
         extra_data["active_stage_scenario_id"] = active_scenario_id
+        extra_data["scenario_activated_by_activity_id"] = _find_first_matching_activity_id(
+            active_scenario.activation_condition,
+            context,
+            evaluator,
+        )
         requirement_items: list[dict[str, Any]] = []
         requirements = active_scenario.requirements.all().order_by("sort_order", "created_at", "id")
         for requirement in requirements:
             tree = requirement.condition
             is_met = True if tree in (None, {}) else evaluator.evaluate(tree, context)
             references = _extract_requirement_references(tree)
+            satisfied_by_activity_id = None
+            if is_met:
+                satisfied_by_activity_id = _find_first_matching_activity_id(tree, context, evaluator)
             requirement_items.append(
                 {
                     "id": str(requirement.id),
@@ -1742,6 +1755,7 @@ def _refresh_active_stage_scenario(
                     "relevant_field_key": references["relevant_field_key"],
                     "relevant_activity_type": references["relevant_activity_type"],
                     "relevant_tool_type": references["relevant_tool_type"],
+                    "satisfied_by_activity_id": satisfied_by_activity_id,
                 }
             )
         if requirement_items:
@@ -1750,6 +1764,7 @@ def _refresh_active_stage_scenario(
             extra_data.pop("active_stage_requirements", None)
     else:
         extra_data.pop("active_stage_scenario_id", None)
+        extra_data.pop("scenario_activated_by_activity_id", None)
         extra_data.pop("active_stage_requirements", None)
 
     if extra_data != existing_extra_data:
@@ -1831,6 +1846,103 @@ def _extract_requirement_references(condition_tree: Any) -> dict[str, str | None
 
     visit(condition_tree)
     return references
+
+
+def _iter_activity_condition_nodes(condition_tree: Any) -> list[dict[str, Any]]:
+    nodes: list[dict[str, Any]] = []
+
+    def visit(node: Any):
+        if isinstance(node, list):
+            for child in node:
+                visit(child)
+            return
+        if not isinstance(node, dict):
+            return
+
+        source_type = str(node.get("source_type") or "").strip().lower()
+        if source_type in {"activity", "streamline_activity", "streamline_tool"}:
+            nodes.append(node)
+
+        children = node.get("conditions") or node.get("children") or []
+        if isinstance(children, list):
+            for child in children:
+                visit(child)
+        nested_condition = node.get("condition")
+        if nested_condition is not None:
+            visit(nested_condition)
+
+    visit(condition_tree)
+    return nodes
+
+
+def _activity_leaf_requires_presence(node: Mapping[str, Any]) -> bool:
+    operator = str(node.get("operator", "exists")).lower()
+    if operator == "exists":
+        return True
+    if operator == "eq":
+        expected = node.get("value")
+        return expected is not False
+    return False
+
+
+def _activity_matches_leaf(activity: Mapping[str, Any], node: Mapping[str, Any], evaluator) -> bool:
+    source_type = str(node.get("source_type") or "").strip().lower()
+    if source_type not in {"activity", "streamline_activity", "streamline_tool"}:
+        return False
+
+    expected_type, expected_tool_type, expected_entity_type = evaluator._resolve_activity_filters(
+        node, source_type
+    )
+    if expected_type is not None and str(activity.get("type")) != str(expected_type):
+        return False
+    if expected_tool_type is not None:
+        tool_value = activity.get("tool_type")
+        if tool_value is None:
+            tool_value = activity.get("type")
+        if str(tool_value) != str(expected_tool_type):
+            return False
+    if expected_entity_type is not None and str(activity.get("entity_type")) != str(expected_entity_type):
+        return False
+    return evaluator._match_time_window(activity, node.get("time_window"))
+
+
+def _activity_sort_key(activity: Mapping[str, Any]) -> tuple[dt.datetime, str]:
+    created_at = activity.get("created_at")
+    parsed_created_at = parse_datetime(str(created_at)) if created_at else None
+    if parsed_created_at is None:
+        parsed_created_at = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+    elif parsed_created_at.tzinfo is None:
+        parsed_created_at = parsed_created_at.replace(tzinfo=dt.timezone.utc)
+    else:
+        parsed_created_at = parsed_created_at.astimezone(dt.timezone.utc)
+    return (parsed_created_at, str(activity.get("id") or ""))
+
+
+def _find_first_matching_activity_id(
+    condition_tree: Any,
+    context: Mapping[str, Any],
+    evaluator,
+) -> str | None:
+    activities = context.get("activities")
+    if not isinstance(activities, list):
+        return None
+
+    valid_activities = [item for item in activities if isinstance(item, Mapping) and item.get("id")]
+    if not valid_activities:
+        return None
+
+    activity_nodes = _iter_activity_condition_nodes(condition_tree)
+    if not activity_nodes:
+        return None
+
+    sorted_activities = sorted(valid_activities, key=_activity_sort_key, reverse=True)
+    for node in activity_nodes:
+        if not _activity_leaf_requires_presence(node):
+            continue
+        for activity in sorted_activities:
+            if _activity_matches_leaf(activity, node, evaluator):
+                return str(activity.get("id"))
+    return None
 
 
 def _run_post_stage_change_hooks(
@@ -9642,6 +9754,7 @@ class ActiveStageRequirementsOut(Schema):
     record_id: str
     active_stage_scenario_id: Optional[str]
     active_stage_scenario_name: Optional[str]
+    scenario_activated_by_activity_id: Optional[str]
     recommended_next_stage_id: Optional[str]
     recommended_next_stage_name: Optional[str]
     active_stage_requirements: List[Dict[str, Any]]
@@ -10396,6 +10509,7 @@ def get_record_active_stage_requirements(request, record_id: str):
         requirements = []
     active_stage_scenario_id = extra_data.get("active_stage_scenario_id")
     active_stage_scenario_name = None
+    scenario_activated_by_activity_id = extra_data.get("scenario_activated_by_activity_id")
     recommended_next_stage_id = None
     recommended_next_stage_name = None
     if active_stage_scenario_id:
@@ -10419,6 +10533,7 @@ def get_record_active_stage_requirements(request, record_id: str):
         "record_id": str(record.id),
         "active_stage_scenario_id": active_stage_scenario_id,
         "active_stage_scenario_name": active_stage_scenario_name,
+        "scenario_activated_by_activity_id": scenario_activated_by_activity_id,
         "recommended_next_stage_id": recommended_next_stage_id,
         "recommended_next_stage_name": recommended_next_stage_name,
         "active_stage_requirements": requirements,

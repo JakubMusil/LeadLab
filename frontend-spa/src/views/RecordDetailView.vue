@@ -756,12 +756,14 @@ interface ActiveStageRequirementItem {
   relevant_field_key?: string | null
   relevant_activity_type?: string | null
   relevant_tool_type?: string | null
+  satisfied_by_activity_id?: string | null
 }
 
 interface ActiveStageRequirementsOut {
   record_id: string
   active_stage_scenario_id: string | null
   active_stage_scenario_name: string | null
+  scenario_activated_by_activity_id: string | null
   recommended_next_stage_id: string | null
   recommended_next_stage_name: string | null
   active_stage_requirements: ActiveStageRequirementItem[]
@@ -781,6 +783,7 @@ const newCheckpointDate = ref('')
 const addingCheckpoint = ref(false)
 const activeStageRequirements = ref<ActiveStageRequirementItem[]>([])
 const activeStageScenario = ref<ActiveStageScenarioSummary | null>(null)
+const scenarioActivatedByActivityId = ref<string | null>(null)
 const activeRequirementsLoading = ref(false)
 const activeRequirementsError = ref<string | null>(null)
 
@@ -850,11 +853,18 @@ function jumpToRelevantActivity(item: ActiveStageRequirementItem) {
   activityFeedSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function openQuickCreateActivity(item: ActiveStageRequirementItem) {
+  const activityType = getRelevantActivityFilterValue(item)
+  if (!activityType) return
+  openModalTool(activityType)
+}
+
 async function loadActiveStageRequirements() {
   const record = store.currentRecord
   if (!record?.id || !record.category_id || !record.current_stage_id) {
     activeStageRequirements.value = []
     activeStageScenario.value = null
+    scenarioActivatedByActivityId.value = null
     activeRequirementsError.value = null
     return
   }
@@ -882,6 +892,7 @@ async function loadActiveStageRequirements() {
           recommended_next_stage_name: requirementsRes.data.recommended_next_stage_name || null,
         }
       : null
+    scenarioActivatedByActivityId.value = requirementsRes.data.scenario_activated_by_activity_id || null
   } catch {
     activeRequirementsError.value = t('pipeline.requirementsLoadFailed')
   } finally {
@@ -1332,6 +1343,12 @@ async function saveFieldEdit(fieldKey: string) {
               >
                 {{ t('pipeline.recommendedNextStep', { stage: recommendedNextStageName }) }}
               </div>
+              <div
+                v-if="scenarioActivatedByActivityId"
+                class="mt-1 text-[11px] text-amber-700 dark:text-amber-300"
+              >
+                {{ t('pipeline.activatedByActivity', { id: scenarioActivatedByActivityId }) }}
+              </div>
             </div>
 
             <div v-if="activeRequirementsLoading" class="space-y-2">
@@ -1404,6 +1421,14 @@ async function saveFieldEdit(fieldKey: string) {
                           >
                             {{ t('pipeline.relevantActivityLink') }}
                           </button>
+                          <button
+                            v-if="getRelevantActivityFilterValue(item)"
+                            type="button"
+                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                            @click="openQuickCreateActivity(item)"
+                          >
+                            {{ t('pipeline.quickCreateActivityLink') }}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1428,6 +1453,12 @@ async function saveFieldEdit(fieldKey: string) {
                       </span>
                       <div class="min-w-0 flex-1">
                         <div class="text-xs text-gray-800 dark:text-gray-100">{{ item.name }}</div>
+                        <div
+                          v-if="item.satisfied_by_activity_id"
+                          class="mt-1 text-[11px] text-green-700 dark:text-green-300"
+                        >
+                          {{ t('pipeline.satisfiedByActivity', { id: item.satisfied_by_activity_id }) }}
+                        </div>
                         <div
                           v-if="item.relevant_field_key || getRelevantActivityFilterValue(item)"
                           class="mt-1.5 flex flex-wrap gap-1.5"
@@ -1771,7 +1802,7 @@ async function saveFieldEdit(fieldKey: string) {
     :team-members="teamMembers"
     :attachment-upload-url="`/api/v1/crm/records/${recordId}/attachments`"
     @update:model-value="(v) => { if (!v) closeModalTool() }"
-    @activity-added="activityTimelineRef?.load()"
+    @activity-added="() => { activityTimelineRef?.load(); loadActiveStageRequirements() }"
     @file-uploaded="(f) => { files.unshift(f as any) }"
   />
 

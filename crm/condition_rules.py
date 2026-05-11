@@ -36,6 +36,7 @@ class RecordConditionContextBuilder:
             )
             activities = [
                 {
+                    "id": str(activity.id),
                     "type": activity.type,
                     "entity_type": activity.entity_type,
                     "created_at": self._normalize(activity.created_at),
