@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Quick actions",
     "flowDiagramActionEnableRule": "Enable rule",
     "flowDiagramActionDisableRule": "Disable rule",
+    "flowDiagramActionToggleRuleRootOperator": "Toggle root condition AND/OR",
+    "flowDiagramActionToggleRuleRootOperatorUnavailable": "Cannot toggle root operator: this rule has no group condition tree.",
     "flowDiagramActionRuleDescription": "Rule description",
     "flowDiagramActionScenarioDescription": "Scenario description",
     "flowDiagramActionScenarioPriority": "Scenario priority",

@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Schnellaktionen",
     "flowDiagramActionEnableRule": "Regel aktivieren",
     "flowDiagramActionDisableRule": "Regel deaktivieren",
+    "flowDiagramActionToggleRuleRootOperator": "AND/OR der Wurzelbedingung umschalten",
+    "flowDiagramActionToggleRuleRootOperatorUnavailable": "Wurzeloperator kann nicht umgeschaltet werden: Diese Regel hat keinen Gruppen-Bedingungsbaum.",
     "flowDiagramActionRuleDescription": "Regelbeschreibung",
     "flowDiagramActionScenarioDescription": "Szenariobeschreibung",
     "flowDiagramActionScenarioPriority": "Szenario-Priorität",

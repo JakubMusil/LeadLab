@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Rychlé akce",
     "flowDiagramActionEnableRule": "Zapnout pravidlo",
     "flowDiagramActionDisableRule": "Vypnout pravidlo",
+    "flowDiagramActionToggleRuleRootOperator": "Přepnout kořenovou podmínku AND/OR",
+    "flowDiagramActionToggleRuleRootOperatorUnavailable": "Kořenový operátor nelze přepnout: pravidlo nemá skupinový strom podmínek.",
     "flowDiagramActionRuleDescription": "Popis pravidla",
     "flowDiagramActionScenarioDescription": "Popis scénáře",
     "flowDiagramActionScenarioPriority": "Priorita scénáře",
