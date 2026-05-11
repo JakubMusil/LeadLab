@@ -1368,6 +1368,26 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 17:10 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno přesně na otevřený krok 20.3.4 (řízené editace v grafu).
+- Další krok byl maximalizovaně delegován subagentovi (gap analýza minimálního bezpečného scope pro 20.3.4) a návrh byl následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a souvisejícími store/util vrstvami.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4 (bezpečné řízené akce v grafu):
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: do panelu detailu uzlu doplněny rychlé akce pro zapnutí/vypnutí pravidla, úpravu popisu pravidla, změnu priority scénáře a otevření editoru požadavku; akce jsou emitované do parentu.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněny handlery pro nové diagram eventy, napojení na existující store/API validaci a toast feedback.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněny testy emitů pro nové řízené akce.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněné i18n klíče pro texty rychlých akcí.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` po opravě nalezených regresí prochází (`23/23`).
+- Hotovo: fáze 20.3.4 má první praktický krok splněný přes bezpečné řízené akce přímo z detailu uzlu diagramu.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 16:17 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno přesně na poslední otevřený bod záznamu 16:10 UTC.

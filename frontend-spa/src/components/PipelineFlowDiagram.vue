@@ -57,6 +57,12 @@ const props = withDefaults(defineProps<{
   evaluationLogs: () => [],
   testedRuleId: null,
 })
+const emit = defineEmits<{
+  (event: 'toggle-rule-active', payload: { ruleId: string; nextActive: boolean }): void
+  (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
+  (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
+  (event: 'open-requirement-editor', payload: { requirementId: string }): void
+}>()
 
 const { t } = useI18n()
 
@@ -76,6 +82,9 @@ const zoomPrecisionFactor = 100
 // Keep the graph readable and responsive before forcing users to narrow the scope via filters.
 const fallbackNodeLimit = 80
 const keyboardPanStep = 80
+const quickActionSecondaryButtonClass = 'rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+const quickActionPrimaryButtonClass = 'rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40'
+const quickActionInputClass = 'w-full text-[11px] text-gray-900 border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-indigo-500'
 const panPosition = ref({ x: 0, y: 0 })
 
 watch(
@@ -216,6 +225,8 @@ const graphCanvasStyle = computed(() => ({
   transformOrigin: 'top left',
 }))
 const selectedNodeId = ref<string | null>(null)
+const editingRuleDescription = ref('')
+const editingScenarioPriority = ref<string | number>('')
 const selectedNode = computed<PipelineFlowNode | null>(() =>
   selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
 )
@@ -239,6 +250,29 @@ watch(displayedNodeIds, (visibleIds) => {
   }
 })
 
+function resetQuickActionEdits() {
+  editingRuleDescription.value = ''
+  editingScenarioPriority.value = ''
+}
+
+watch(selectedNode, (node) => {
+  if (!node) {
+    resetQuickActionEdits()
+    return
+  }
+  if (node.type === 'rule') {
+    editingRuleDescription.value = String(node.description || '')
+    editingScenarioPriority.value = ''
+    return
+  }
+  if (node.type === 'scenario') {
+    editingScenarioPriority.value = String(node.meta.priority ?? '')
+    editingRuleDescription.value = ''
+    return
+  }
+  resetQuickActionEdits()
+})
+
 function toggleScenario(nodeId: string) {
   collapsedScenarioIds.value = {
     ...collapsedScenarioIds.value,
@@ -252,6 +286,71 @@ function isScenarioCollapsed(nodeId: string): boolean {
 
 function selectNode(nodeId: string) {
   selectedNodeId.value = selectedNodeId.value === nodeId ? null : nodeId
+}
+
+const selectedRuleHasDescriptionChanges = computed(() => {
+  return (
+    (selectedNode.value?.type === 'rule')
+    && editingRuleDescription.value !== String(selectedNode.value?.description || '')
+  )
+})
+const selectedScenarioPriorityValue = computed<number | null>(() => {
+  if (selectedNode.value?.type !== 'scenario') return null
+  const raw = String(editingScenarioPriority.value ?? '').trim()
+  if (!raw) return null
+  const parsed = Number(raw)
+  if (!Number.isInteger(parsed) || parsed < 0) return null
+  return parsed
+})
+const selectedScenarioHasPriorityChanges = computed(() => {
+  return (
+    (selectedNode.value?.type === 'scenario')
+    && selectedScenarioPriorityValue.value !== null
+    && selectedScenarioPriorityValue.value !== Number(selectedNode.value?.meta?.priority ?? 0)
+  )
+})
+
+function emitRuleActiveToggle() {
+  if (selectedNode.value?.type !== 'rule') return
+  const current = selectedNode.value.active === true
+  emit('toggle-rule-active', {
+    ruleId: selectedNode.value.sourceId,
+    nextActive: !current,
+  })
+}
+
+function emitRuleDescriptionUpdate() {
+  if (selectedNode.value?.type !== 'rule') return
+  if (!selectedRuleHasDescriptionChanges.value) return
+  emit('update-rule-description', {
+    ruleId: selectedNode.value.sourceId,
+    description: editingRuleDescription.value.trim(),
+  })
+}
+
+function resetRuleDescriptionEdit() {
+  if (selectedNode.value?.type !== 'rule') return
+  editingRuleDescription.value = String(selectedNode.value.description || '')
+}
+
+function emitScenarioPriorityUpdate() {
+  if (selectedNode.value?.type !== 'scenario') return
+  const priority = selectedScenarioPriorityValue.value
+  if (priority === null || !selectedScenarioHasPriorityChanges.value) return
+  emit('update-scenario-priority', {
+    scenarioId: selectedNode.value.sourceId,
+    priority,
+  })
+}
+
+function resetScenarioPriorityEdit() {
+  if (selectedNode.value?.type !== 'scenario') return
+  editingScenarioPriority.value = String(selectedNode.value.meta.priority ?? '')
+}
+
+function emitRequirementEditorOpen() {
+  if (selectedNode.value?.type !== 'requirement') return
+  emit('open-requirement-editor', { requirementId: selectedNode.value.sourceId })
 }
 
 function nodeTypeLabel(node: PipelineFlowNode): string {
@@ -754,6 +853,96 @@ function toggleHelp() {
           <div>
             <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailId') }}:</span>
             {{ selectedNode.sourceId }}
+          </div>
+          <div class="rounded border border-gray-100 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-900/30">
+            <div class="mb-1 font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramQuickActionsTitle') }}</div>
+            <div v-if="selectedNode.type === 'rule'" class="space-y-2">
+              <button
+                type="button"
+                data-testid="flow-node-action-toggle-rule"
+                :class="quickActionSecondaryButtonClass"
+                @click="emitRuleActiveToggle"
+              >
+                {{ selectedNode.active ? t('pipeline.flowDiagramActionDisableRule') : t('pipeline.flowDiagramActionEnableRule') }}
+              </button>
+              <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('pipeline.flowDiagramActionRuleDescription') }}
+                </label>
+                <input
+                  v-model="editingRuleDescription"
+                  data-testid="flow-node-rule-description"
+                  type="text"
+                  :class="quickActionInputClass"
+                  :placeholder="t('pipeline.rulesDescriptionPlaceholder')"
+                />
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    :class="quickActionSecondaryButtonClass"
+                    @click="resetRuleDescriptionEdit"
+                  >
+                    {{ t('pipeline.cancel') }}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="flow-node-action-save-rule-description"
+                    :class="quickActionPrimaryButtonClass"
+                    :disabled="!selectedRuleHasDescriptionChanges"
+                    @click="emitRuleDescriptionUpdate"
+                  >
+                    {{ t('pipeline.rulesUpdate') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="selectedNode.type === 'scenario'" class="space-y-2">
+              <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                {{ t('pipeline.flowDiagramActionScenarioPriority') }}
+              </label>
+              <input
+                v-model="editingScenarioPriority"
+                data-testid="flow-node-scenario-priority"
+                type="number"
+                min="0"
+                :class="quickActionInputClass"
+                :placeholder="t('pipeline.stageScenariosPriorityPlaceholder')"
+              />
+              <div
+                v-if="String(editingScenarioPriority).trim() && selectedScenarioPriorityValue === null"
+                class="text-[11px] text-red-600 dark:text-red-400"
+              >
+                {{ t('pipeline.stageScenariosPriorityInvalid') }}
+              </div>
+              <div class="flex gap-1">
+                <button
+                  type="button"
+                  :class="quickActionSecondaryButtonClass"
+                  @click="resetScenarioPriorityEdit"
+                >
+                  {{ t('pipeline.cancel') }}
+                </button>
+                <button
+                  type="button"
+                  data-testid="flow-node-action-save-scenario-priority"
+                  :class="quickActionPrimaryButtonClass"
+                  :disabled="!selectedScenarioHasPriorityChanges"
+                  @click="emitScenarioPriorityUpdate"
+                >
+                  {{ t('pipeline.stageScenariosUpdate') }}
+                </button>
+              </div>
+            </div>
+            <div v-else-if="selectedNode.type === 'requirement'">
+              <button
+                type="button"
+                data-testid="flow-node-action-open-requirement-editor"
+                :class="quickActionPrimaryButtonClass"
+                @click="emitRequirementEditorOpen"
+              >
+                {{ t('pipeline.flowDiagramActionOpenRequirementEditor') }}
+              </button>
+            </div>
           </div>
           <div v-if="selectedNodeParent">
             <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailParent') }}:</span>

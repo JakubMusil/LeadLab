@@ -192,6 +192,69 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.text()).toContain('Scenario A')
   })
 
+  it('emits toggle-rule-active from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const toggleButton = wrapper.find('[data-testid="flow-node-action-toggle-rule"]')
+    expect(toggleButton.exists()).toBe(true)
+    await toggleButton.trigger('click')
+
+    expect(wrapper.emitted('toggle-rule-active')).toBeTruthy()
+    expect(wrapper.emitted('toggle-rule-active')?.[0]).toEqual([{ ruleId: 'rule-1', nextActive: false }])
+  })
+
+  it('emits update-rule-description from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const input = wrapper.get('[data-testid="flow-node-rule-description"]')
+    await input.setValue('Updated description')
+    const saveButton = wrapper.get('[data-testid="flow-node-action-save-rule-description"]')
+    await saveButton.trigger('click')
+
+    expect(wrapper.emitted('update-rule-description')).toBeTruthy()
+    expect(wrapper.emitted('update-rule-description')?.[0]).toEqual([
+      { ruleId: 'rule-1', description: 'Updated description' },
+    ])
+  })
+
+  it('emits update-scenario-priority from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioNode).toBeTruthy()
+    await scenarioNode!.trigger('click')
+
+    const priorityInput = wrapper.get('[data-testid="flow-node-scenario-priority"]')
+    await priorityInput.setValue('4')
+    const saveButton = wrapper.get('[data-testid="flow-node-action-save-scenario-priority"]')
+    await saveButton.trigger('click')
+
+    expect(wrapper.emitted('update-scenario-priority')).toBeTruthy()
+    expect(wrapper.emitted('update-scenario-priority')?.[0]).toEqual([{ scenarioId: 'scenario-1', priority: 4 }])
+  })
+
+  it('emits open-requirement-editor from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const requirementNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Upload file'))
+    expect(requirementNode).toBeTruthy()
+    await requirementNode!.trigger('click')
+
+    const openEditorButton = wrapper.get('[data-testid="flow-node-action-open-requirement-editor"]')
+    await openEditorButton.trigger('click')
+
+    expect(wrapper.emitted('open-requirement-editor')).toBeTruthy()
+    expect(wrapper.emitted('open-requirement-editor')?.[0]).toEqual([{ requirementId: 'req-1' }])
+  })
+
   it('shows requirement link diagnostics with invalid link reason', () => {
     const wrapper = mount(PipelineFlowDiagram, {
       props: {
