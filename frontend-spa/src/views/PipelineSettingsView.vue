@@ -381,6 +381,33 @@ const ruleBuilderCategoryFieldLabelByKey = computed<Record<string, string>>(() =
     return acc
   }, {}),
 )
+// Heuristic mapping for category slug -> domain template set.
+// Slugs are custom/admin-defined and can be localized; if no keyword matches (or no category is selected) we intentionally fall back to all templates.
+const RULE_TEMPLATE_DOMAIN_KEYWORDS: ReadonlyArray<{
+  domain: RuleTemplatePreset['domain']
+  keywords: ReadonlyArray<string>
+}> = [
+  { domain: 'call_center', keywords: ['call', 'lead', 'telefon', 'kontakt'] },
+  { domain: 'installation', keywords: ['mont', 'instal', 'realiz'] },
+  { domain: 'it_service', keywords: ['it', 'servis', 'incident', 'support'] },
+]
+const selectedTemplateDomain = computed<RuleTemplatePreset['domain'] | null>(() => {
+  const categorySlug = selectedCategory.value?.slug
+  if (!categorySlug) return null
+  const normalizedSlug = categorySlug
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+  const match = RULE_TEMPLATE_DOMAIN_KEYWORDS.find(({ keywords }) =>
+    keywords.some((keyword) => normalizedSlug.includes(keyword)),
+  )
+  return match?.domain ?? null
+})
+const ruleTemplatePresets = computed<RuleTemplatePreset[]>(() => {
+  const domain = selectedTemplateDomain.value
+  if (!domain) return RULE_TEMPLATE_PRESETS
+  return RULE_TEMPLATE_PRESETS.filter((template) => template.domain === 'all' || template.domain === domain)
+})
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
 const ALL_FIELD_KEYS = [
@@ -1000,7 +1027,6 @@ function applyRuleTemplate(templateId: string) {
   ruleForm.value.trigger_type = template.triggerType
   ruleForm.value.effect = template.effect
   ruleForm.value.severity = template.severity
-  ruleForm.value.activity_type = template.activityType ?? ''
   ruleConditionTree.value = normalizeConditionTree(deepCloneObject(template.conditionTree))
   ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
   const effectConfig = deepCloneObject(template.effectConfig ?? {})
@@ -2215,11 +2241,16 @@ const newPattern = computed({
               <div class="text-xs text-indigo-600 dark:text-indigo-300">{{ t('pipeline.rulesTemplatesHint') }}</div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div
-                  v-for="template in RULE_TEMPLATE_PRESETS"
+                  v-for="template in ruleTemplatePresets"
                   :key="template.id"
                   class="p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800"
                 >
-                  <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
+                    <span class="inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                      {{ t(template.domainLabelKey) }}
+                    </span>
+                  </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t(template.descriptionKey) }}</div>
                   <button
                     class="mt-2 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"

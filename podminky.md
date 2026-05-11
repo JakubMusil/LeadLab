@@ -1368,6 +1368,33 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 13:45 UTC
+
+- Navázáno na krok 13:32 UTC: proběhla post-change validace a finální kontrola navazujícího scope sekce 21.
+- Cílená validace po změnách ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` opakovaně prochází,
+  - cílený unit test `npm run test:unit -- --run src/utils/__tests__/conditionTreeVisualization.spec.ts` prochází (`6/6`).
+- Spuštěn `parallel_validation` (code review + CodeQL):
+  - CodeQL bez alertů,
+  - review připomínky zapracovány tam, kde dávaly smysl (centralizace keyword mapy, dokumentovaný fallback filtrů, normalizace slugů bez diakritiky, zpřesnění PL lokalizačního textu).
+- Hotovo: doménové šablony pravidel jsou implementované, lokalizované, validované a průběžně zapsané v dokumentu.
+- Následuje: provést finální commit/push aktualizací z tohoto kola, vytvořit řádný PR a v PR shrnutí uvést baseline omezení plného `test:unit` mimo tento scope.
+
+### 2026-05-11 13:32 UTC
+
+- Prostudován aktuální stav `podminky.md`; protože checklist etap 13–15 je uzavřený, navázáno implementačně na novou sekci 21 (doménové šablony pravidel/scénářů).
+- Scope byl nejdříve maximalizovaně delegován podagentovi (gap analýza navazujícího minimálního kroku + soubory + validace), následně proběhla ruční konceptuální validace návrhu nad `ruleTemplates.ts` a `PipelineSettingsView.vue`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - po `npm ci` prochází `npm run check-locales` a `npm run build-only`,
+  - plný `npm run test:unit -- --run` dál padá na pre-existing unhandled chybách mimo tento scope (`SettingsView.spec.ts` a dashboard testy; opakovaný známý baseline problém).
+- Implementace navazující na sekci 21:
+  - `frontend-spa/src/constants/ruleTemplates.ts`: rozšířené šablony o doménové metadata (`domain`, `domainLabelKey`) a doplněné nové preset šablony pro Call centrum, Montážní firmu a IT servis.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: seznam šablon nyní zobrazuje doménové štítky a filtruje nabídku podle vybrané kategorie (heuristika přes slug; bez shody fallback na všechny šablony).
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněné i18n klíče pro doménové štítky a nové názvy/popisné texty šablon.
+- Hotovo: sekce 21 je nyní promítnutá i do prakticky použitelných předvoleb přímo v editoru pravidel.
+- Následuje: spustit cílenou post-change validaci (`check-locales`, `build-only`, relevantní unit testy), následně `parallel_validation`, zapsat finální shrnutí kroku a vytvořit řádný PR.
+
 ### 2026-05-11 13:22 UTC
 
 - Navázáno na poslední otevřený bod etapy 7 (`1284`) a scope byl nejdříve delegován podagentovi pro gap analýzu test coverage; následně proběhla ruční konceptuální validace závěrů nad aktuálním stavem `PipelineFlowDiagram` + utilit.

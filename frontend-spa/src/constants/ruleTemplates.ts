@@ -3,11 +3,12 @@ export interface RuleTemplatePreset {
   nameKey: string
   descriptionKey: string
   messageKey?: string
+  domain: 'all' | 'call_center' | 'installation' | 'it_service'
+  domainLabelKey: string
   triggerType: string
   scopeType: string
   effect: string
   severity: string
-  activityType?: string
   conditionTree: Record<string, unknown>
   effectConfig?: Record<string, unknown>
 }
@@ -20,6 +21,8 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'block_without_owner',
     nameKey: 'pipeline.rulesTemplateOwnerRequiredName',
     descriptionKey: 'pipeline.rulesTemplateOwnerRequiredDescription',
+    domain: 'all',
+    domainLabelKey: 'pipeline.rulesTemplateDomainGeneral',
     triggerType: 'record.stage_change_requested',
     scopeType: 'category',
     effect: 'block',
@@ -36,6 +39,8 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'warn_without_contact',
     nameKey: 'pipeline.rulesTemplateContactRecommendedName',
     descriptionKey: 'pipeline.rulesTemplateContactRecommendedDescription',
+    domain: 'all',
+    domainLabelKey: 'pipeline.rulesTemplateDomainGeneral',
     triggerType: 'record.stage_change_requested',
     scopeType: 'category',
     effect: 'warning',
@@ -52,6 +57,8 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'block_low_value',
     nameKey: 'pipeline.rulesTemplateHighValueName',
     descriptionKey: 'pipeline.rulesTemplateHighValueDescription',
+    domain: 'all',
+    domainLabelKey: 'pipeline.rulesTemplateDomainGeneral',
     triggerType: 'record.stage_change_requested',
     scopeType: 'category',
     effect: 'block',
@@ -68,11 +75,12 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'block_without_recent_activity',
     nameKey: 'pipeline.rulesTemplateRecentActivityName',
     descriptionKey: 'pipeline.rulesTemplateRecentActivityDescription',
+    domain: 'all',
+    domainLabelKey: 'pipeline.rulesTemplateDomainGeneral',
     triggerType: 'record.stage_change_requested',
     scopeType: 'category',
     effect: 'block',
     severity: 'error',
-    activityType: 'note',
     conditionTree: {
       type: 'condition',
       source_type: 'streamline_activity',
@@ -87,6 +95,8 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     nameKey: 'pipeline.rulesTemplateReviewRecommendationName',
     descriptionKey: 'pipeline.rulesTemplateReviewRecommendationDescription',
     messageKey: 'pipeline.rulesTemplateReviewRecommendationMessage',
+    domain: 'all',
+    domainLabelKey: 'pipeline.rulesTemplateDomainGeneral',
     triggerType: 'record.stage_change_requested',
     scopeType: 'category',
     effect: 'recommend',
@@ -112,5 +122,154 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
       ],
     },
     effectConfig: {},
+  },
+  {
+    id: 'call_center_block_without_contact',
+    nameKey: 'pipeline.rulesTemplateCallCenterContactRequiredName',
+    descriptionKey: 'pipeline.rulesTemplateCallCenterContactRequiredDescription',
+    domain: 'call_center',
+    domainLabelKey: 'pipeline.rulesTemplateDomainCallCenter',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'group',
+      op: 'and',
+      conditions: [
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'contact_person_id',
+          operator: 'not_exists',
+          value: null,
+        },
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'assigned_to_id',
+          operator: 'exists',
+          value: null,
+        },
+      ],
+    },
+  },
+  {
+    id: 'call_center_recommend_senior_review',
+    nameKey: 'pipeline.rulesTemplateCallCenterSeniorReviewName',
+    descriptionKey: 'pipeline.rulesTemplateCallCenterSeniorReviewDescription',
+    messageKey: 'pipeline.rulesTemplateCallCenterSeniorReviewMessage',
+    domain: 'call_center',
+    domainLabelKey: 'pipeline.rulesTemplateDomainCallCenter',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'recommend',
+    severity: 'info',
+    conditionTree: {
+      type: 'group',
+      op: 'and',
+      conditions: [
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'value',
+          operator: 'gte',
+          value: 100000,
+        },
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'status',
+          operator: 'neq',
+          value: 'won',
+        },
+      ],
+    },
+    effectConfig: {},
+  },
+  {
+    id: 'installation_block_without_photo_upload',
+    nameKey: 'pipeline.rulesTemplateInstallationPhotosRequiredName',
+    descriptionKey: 'pipeline.rulesTemplateInstallationPhotosRequiredDescription',
+    domain: 'installation',
+    domainLabelKey: 'pipeline.rulesTemplateDomainInstallation',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'streamline_activity',
+      activity_type: 'file_upload',
+      operator: 'not_exists',
+      value: null,
+    },
+  },
+  {
+    id: 'installation_warn_without_notes',
+    nameKey: 'pipeline.rulesTemplateInstallationApprovalWarningName',
+    descriptionKey: 'pipeline.rulesTemplateInstallationApprovalWarningDescription',
+    domain: 'installation',
+    domainLabelKey: 'pipeline.rulesTemplateDomainInstallation',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'warning',
+    severity: 'warning',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'notes',
+      operator: 'not_exists',
+      value: null,
+    },
+  },
+  {
+    id: 'it_service_block_without_priority_data',
+    nameKey: 'pipeline.rulesTemplateItServicePriorityRequiredName',
+    descriptionKey: 'pipeline.rulesTemplateItServicePriorityRequiredDescription',
+    domain: 'it_service',
+    domainLabelKey: 'pipeline.rulesTemplateDomainItService',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'group',
+      op: 'or',
+      conditions: [
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'value',
+          operator: 'not_exists',
+          value: null,
+        },
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'expires_at',
+          operator: 'not_exists',
+          value: null,
+        },
+      ],
+    },
+  },
+  {
+    id: 'it_service_block_without_resolution_notes',
+    nameKey: 'pipeline.rulesTemplateItServiceResolutionRequiredName',
+    descriptionKey: 'pipeline.rulesTemplateItServiceResolutionRequiredDescription',
+    domain: 'it_service',
+    domainLabelKey: 'pipeline.rulesTemplateDomainItService',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'notes',
+      operator: 'not_exists',
+      value: null,
+    },
   },
 ]
