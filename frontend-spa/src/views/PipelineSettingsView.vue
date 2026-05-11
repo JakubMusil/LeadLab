@@ -19,6 +19,7 @@ import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { ConfirmDeleteModal } from '@/components/ui'
+import { RULE_TEMPLATE_PRESETS, type RuleTemplatePreset } from '@/constants/ruleTemplates'
 import { useCan } from '@/composables/useCan'
 import {
   PlusIcon,
@@ -213,118 +214,6 @@ interface RuleFormState {
   activity_type: string
   priority: string
 }
-
-interface RuleTemplatePreset {
-  id: string
-  nameKey: string
-  descriptionKey: string
-  triggerType: string
-  scopeType: string
-  effect: string
-  severity: string
-  activityType?: string
-  conditionTree: Record<string, unknown>
-  effectConfig?: Record<string, unknown>
-}
-
-const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
-  {
-    id: 'block_without_owner',
-    nameKey: 'pipeline.rulesTemplateOwnerRequiredName',
-    descriptionKey: 'pipeline.rulesTemplateOwnerRequiredDescription',
-    triggerType: 'record.stage_change_requested',
-    scopeType: 'category',
-    effect: 'block',
-    severity: 'error',
-    conditionTree: {
-      type: 'condition',
-      source_type: 'standard_field',
-      field: 'assigned_to_id',
-      operator: 'not_exists',
-      value: null,
-    },
-  },
-  {
-    id: 'warn_without_contact',
-    nameKey: 'pipeline.rulesTemplateContactRecommendedName',
-    descriptionKey: 'pipeline.rulesTemplateContactRecommendedDescription',
-    triggerType: 'record.stage_change_requested',
-    scopeType: 'category',
-    effect: 'warning',
-    severity: 'warning',
-    conditionTree: {
-      type: 'condition',
-      source_type: 'standard_field',
-      field: 'contact_person_id',
-      operator: 'not_exists',
-      value: null,
-    },
-  },
-  {
-    id: 'block_low_value',
-    nameKey: 'pipeline.rulesTemplateHighValueName',
-    descriptionKey: 'pipeline.rulesTemplateHighValueDescription',
-    triggerType: 'record.stage_change_requested',
-    scopeType: 'category',
-    effect: 'block',
-    severity: 'error',
-    conditionTree: {
-      type: 'condition',
-      source_type: 'standard_field',
-      field: 'value',
-      operator: 'lt',
-      value: 1000,
-    },
-  },
-  {
-    id: 'block_without_recent_activity',
-    nameKey: 'pipeline.rulesTemplateRecentActivityName',
-    descriptionKey: 'pipeline.rulesTemplateRecentActivityDescription',
-    triggerType: 'record.stage_change_requested',
-    scopeType: 'category',
-    effect: 'block',
-    severity: 'error',
-    activityType: 'note',
-    conditionTree: {
-      type: 'condition',
-      source_type: 'streamline_activity',
-      activity_type: 'note',
-      operator: 'not_exists',
-      value: null,
-      time_window: { last_days: 7 },
-    },
-  },
-  {
-    id: 'recommend_review_for_new_record',
-    nameKey: 'pipeline.rulesTemplateReviewRecommendationName',
-    descriptionKey: 'pipeline.rulesTemplateReviewRecommendationDescription',
-    triggerType: 'record.stage_change_requested',
-    scopeType: 'category',
-    effect: 'recommend',
-    severity: 'info',
-    conditionTree: {
-      type: 'group',
-      op: 'and',
-      conditions: [
-        {
-          type: 'condition',
-          source_type: 'standard_field',
-          field: 'status',
-          operator: 'eq',
-          value: 'new',
-        },
-        {
-          type: 'condition',
-          source_type: 'standard_field',
-          field: 'notes',
-          operator: 'not_exists',
-          value: null,
-        },
-      ],
-    },
-    effectConfig: {},
-  },
-]
 
 const ruleForm = ref<RuleFormState>({
   name: '',
@@ -1118,7 +1007,6 @@ function resetRuleForm() {
 
 function openCreateRuleForm() {
   resetRuleForm()
-  showRuleTemplates.value = false
   showRuleForm.value = true
 }
 
@@ -1136,8 +1024,8 @@ function applyRuleTemplate(templateId: string) {
   ruleConditionTree.value = normalizeConditionTree(deepCloneObject(template.conditionTree))
   ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
   const effectConfig = deepCloneObject(template.effectConfig ?? {})
-  if (template.id === 'recommend_review_for_new_record') {
-    effectConfig.message = t('pipeline.rulesTemplateReviewRecommendationMessage')
+  if (template.messageKey) {
+    effectConfig.message = t(template.messageKey)
   }
   ruleEffectConfigText.value = JSON.stringify(effectConfig, null, 2)
   showRuleTemplates.value = false

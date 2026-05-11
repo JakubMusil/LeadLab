@@ -1352,8 +1352,10 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Frontend implementace etapy 6 v `frontend-spa/src/views/PipelineSettingsView.vue`: přidána sekce šablon pravidel s možností otevřít/skrýt katalog, použít předpřipravenou šablonu a předvyplnit formulář pravidla přes existující builder/create flow (bez hardcodovaného backend endpointu).
 - Doplněny šablony pro praktické scénáře (`owner required`, `contact recommended`, `high value gate`, `recent activity gate`, `review recommendation`) včetně normalizace condition tree/effect config do existujícího formuláře.
 - Doplněny i18n klíče pro nový UI flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena post-change validace: `npm run check-locales`, `npm run build-only` a cílené unit testy (`ruleEvaluationLogs.spec.ts`, `stageScenarios.spec.ts`) procházejí.
+- Provedena bezpečnostní/review validace přes `parallel_validation` (CodeQL bez alertů, review připomínky zapracovány v rámci template konfigurace).
 - Hotovo: bod etapy 6 „Přidat šablony pravidel“ je dokončený a označený jako splněný.
-- Následuje: provést post-change validaci (`check-locales`, `build-only`, cílené unit testy), navázat bezpečnostní/review validací a pokračovat dalšími otevřenými body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`).
+- Následuje: pokračovat dalšími otevřenými body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 07:38 UTC
 
