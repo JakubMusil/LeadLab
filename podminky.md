@@ -1179,8 +1179,8 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.9 Testy frontendu
 
-- [ ] Otestovat render panelu požadavků.
-- [ ] Otestovat splněné a nesplněné požadavky.
+- [x] Otestovat render panelu požadavků.
+- [x] Otestovat splněné a nesplněné požadavky.
 - [x] Otestovat blokaci změny fáze.
 - [x] Otestovat upozornění bez blokace.
 - [x] Otestovat builder pravidla.
@@ -1344,6 +1344,16 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 07:16 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední dva otevřené body frontend etapy 14.9 (testy renderu panelu požadavků + splněné/nesplněné požadavky).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza minimálního test scope v `RecordDetailView.vue`) a následně proběhla ruční konceptuální validace návrhu testů.
+- Před úpravami proběhla baseline validace frontendu: po instalaci závislostí (`npm ci`) prochází `check-locales`, `build-only` i referenční existující unit test (`StreamlineFilterDropdown.spec.ts`).
+- Frontend test implementace 14.9 v `frontend-spa/src/views/__tests__/RecordDetailView.spec.ts`: přidány cílené testy pro render panelu požadavků fáze (včetně prázdného stavu) a pro rozlišení splněných/nesplněných požadavků (sekce unmet/met, badge blokace/upozornění, vazba na `satisfied_by_activity_id`).
+- Provedena post-change validace: nové cílené testy procházejí (`2/2`), `check-locales` prochází a `build-only` prochází.
+- Hotovo: v etapě 14.9 jsou nyní dokončeny i zbývající dva body pro render panelu požadavků a rozlišení splněných/nesplněných požadavků.
+- Následuje: navázat další otevřenou frontend/backlog etapou podle pořadí v `podminky.md` ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 07:10 UTC
 
