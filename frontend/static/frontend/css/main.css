@@ -365,7 +365,7 @@ html { scroll-behavior: smooth; }
 .shadow-brand-primary-strong {
   box-shadow: 0 10px 15px -3px rgba(29,58,122,0.4), 0 4px 6px -4px rgba(29,58,122,0.4) !important;
 }
-.hover-bg-brand-primary-dark:hover { background-color: var(--primary-dark) !important; }
-.hover-bg-brand-primary-soft:hover { background-color: var(--primary-light) !important; }
-.hover-text-brand-primary:hover { color: var(--primary) !important; }
-.hover-border-brand-primary-light:hover { border-color: var(--primary-100) !important; }
+.hover\:bg-brand-primary-dark:hover { background-color: var(--primary-dark) !important; }
+.hover\:bg-brand-primary-soft:hover { background-color: var(--primary-light) !important; }
+.hover\:text-brand-primary:hover { color: var(--primary) !important; }
+.hover\:border-brand-primary-light:hover { border-color: var(--primary-100) !important; }
