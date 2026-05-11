@@ -1440,6 +1440,24 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 23:38 UTC
+
+- Prostudován aktuální stav `podminky.md`; fáze 20.3.4 je dle logů kompletní, navázáno prvním minimálním krokem fáze 20.3.5 (napojení na testovací vyhodnocení a audit).
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází (po `npm ci`),
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`35/35`).
+- Implementace navazující na 20.3.5:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: rozšířeno rozhraní `FlowEvaluationLog` o pole `rule_id`, `scenario_id`, `result`, `evaluated_at`; doplněn computed `selectedNodeRecentLogs` (filtruje logy pro vybraný uzel, max. 3 položky) a helper `formatEvalLogDate`; v detailu uzlu přidána sekce „Poslední záznamy vyhodnocení" zobrazující výsledek a datum posledních vyhodnocení pro pravidlo, scénář i požadavek.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněny 3 unit testy (logy pro pravidlo, prázdný stav bez logů, limit 3 položek).
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněny i18n klíče `flowDiagramNodeDetailRecentLogs`, `flowDiagramNodeDetailNoEvalLogs`, `flowDiagramNodeDetailEvalLogResult`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází (`3526` klíčů),
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`38/38`).
+- Hotovo: v detailu uzlu v grafu jsou nově zobrazeny poslední záznamy vyhodnocení pro vybraný uzel (pravidlo, scénář, požadavek), čímž je zahájena fáze 20.3.5.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 22:39 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (řízená manipulace condition tree v grafu – odstranění uzlu).
@@ -1602,19 +1620,6 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
 - Hotovo: ve fázi 20.3.4 je nově dostupná další řízená manipulace condition tree (přidání obalující kořenové skupiny) přímo z detailu uzlu pravidla.
 - Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
-
-### 2026-05-11 18:43 UTC
-
-- Navázáno na krok 18:42 UTC: po zapracování review připomínek proběhlo finální validační kolo.
-- Ve `frontend-spa` opakovaně ověřeno:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
-- Spuštěn opakovaně `parallel_validation`:
-  - CodeQL bez alertů,
-  - review bez blokujících připomínek; poslední komentář je observační (lokální sync `ruleConditionTree` pouze při otevřeném editoru pravidla) a není funkční regresí, protože flow diagram čte stav z `conditionRules`.
-- Hotovo: aktuální scope je funkčně i bezpečnostně validovaný a připravený k finální PR finalizaci.
-- Následuje: provést finální commit/push tohoto validačního kola a vytvořit řádný PR.
 
 ## 20. Další fáze: Interaktivní grafická mindmapa podmínek
 
@@ -1852,6 +1857,19 @@ Doporučení:
 - při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
 
 ## 22. Archiv průběžného pracovního postupu
+
+### 2026-05-11 18:43 UTC
+
+- Navázáno na krok 18:42 UTC: po zapracování review připomínek proběhlo finální validační kolo.
+- Ve `frontend-spa` opakovaně ověřeno:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
+- Spuštěn opakovaně `parallel_validation`:
+  - CodeQL bez alertů,
+  - review bez blokujících připomínek; poslední komentář je observační (lokální sync `ruleConditionTree` pouze při otevřeném editoru pravidla) a není funkční regresí, protože flow diagram čte stav z `conditionRules`.
+- Hotovo: aktuální scope je funkčně i bezpečnostně validovaný a připravený k finální PR finalizaci.
+- Následuje: provést finální commit/push tohoto validačního kola a vytvořit řádný PR.
 
 ### 2026-05-11 18:42 UTC
 

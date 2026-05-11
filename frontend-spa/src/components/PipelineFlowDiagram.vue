@@ -28,8 +28,12 @@ interface FlowEvaluationOutput {
 
 interface FlowEvaluationLog {
   id: string
+  rule_id?: string | null
+  scenario_id?: string | null
   requirement_id: string | null
   trigger_type: string
+  result?: string
+  evaluated_at?: string
   input_context: Record<string, unknown>
 }
 
@@ -290,6 +294,29 @@ const selectedNodeNeighborIds = computed<Set<string>>(() => {
   return ids
 })
 const selectedNodeEdgeIds = computed<Set<string>>(() => new Set(selectedNodeEdges.value.map((edge) => edge.id)))
+
+const MAX_NODE_RECENT_LOGS = 3
+const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
+  const node = selectedNode.value
+  if (!node) return []
+  return props.evaluationLogs
+    .filter((log) => {
+      if (node.type === 'rule') return (log.rule_id ?? null) === node.sourceId
+      if (node.type === 'scenario') return (log.scenario_id ?? null) === node.sourceId
+      if (node.type === 'requirement') return String(log.requirement_id ?? '').trim() === node.sourceId
+      return false
+    })
+    .slice(0, MAX_NODE_RECENT_LOGS)
+})
+
+function formatEvalLogDate(evaluatedAt?: string): string {
+  if (!evaluatedAt) return ''
+  try {
+    return new Date(evaluatedAt).toLocaleString()
+  } catch {
+    return evaluatedAt
+  }
+}
 
 watch(displayedNodeIds, (visibleIds) => {
   if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
@@ -1250,6 +1277,24 @@ function toggleHelp() {
                 </button>
               </div>
             </div>
+          </div>
+          <div class="rounded border border-gray-100 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-900/30">
+            <div class="mb-1 font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailRecentLogs') }}</div>
+            <ul v-if="selectedNodeRecentLogs.length > 0" class="space-y-1">
+              <li
+                v-for="log in selectedNodeRecentLogs"
+                :key="log.id"
+                data-testid="flow-node-eval-log-entry"
+                class="rounded border px-2 py-1 text-[11px]"
+                :class="log.result === 'matched' || log.result === 'met'
+                  ? 'border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-300'
+                  : 'border-gray-200 bg-white text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'"
+              >
+                <div class="font-medium">{{ t('pipeline.flowDiagramNodeDetailEvalLogResult') }}: {{ log.result || '—' }}</div>
+                <div v-if="log.evaluated_at" class="mt-0.5 text-[10px] opacity-75">{{ formatEvalLogDate(log.evaluated_at) }}</div>
+              </li>
+            </ul>
+            <div v-else class="text-[11px] text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramNodeDetailNoEvalLogs') }}</div>
           </div>
           <div v-if="selectedNodeParent">
             <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramNodeDetailParent') }}:</span>
