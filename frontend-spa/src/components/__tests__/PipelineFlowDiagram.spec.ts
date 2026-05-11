@@ -296,6 +296,18 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.text()).not.toContain('record.field_changed')
   })
 
+  it('toggles in-app help panel', async () => {
+    const wrapper = mountDiagram()
+    const helpToggle = wrapper.get('[data-testid="flow-help-toggle"]')
+
+    expect(wrapper.find('[data-testid="flow-help-panel"]').exists()).toBe(false)
+    await helpToggle.trigger('click')
+    expect(wrapper.find('[data-testid="flow-help-panel"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('How to read this diagram')
+    await helpToggle.trigger('click')
+    expect(wrapper.find('[data-testid="flow-help-panel"]').exists()).toBe(false)
+  })
+
   it('renders test evaluation and requirement fulfillment badges from inputs', () => {
     const wrapper = mount(PipelineFlowDiagram, {
       props: {

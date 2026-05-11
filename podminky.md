@@ -1368,6 +1368,22 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 15:42 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším praktickým krokem na etapu 20.3.6 (UX polish pro flow diagram) po uzavření předchozího scope sekce 21.
+- Další krok byl maximalizovaně delegován podagentovi (identifikace nejmenšího navazujícího nedodělku) a návrh následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue` a existujícími testy/lokalizacemi.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaně prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazujícího kroku:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: doplněný přepínač in-app nápovědy legendy + panel s kontextem uzlů, stavů, vazeb a ovládání.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněné i18n klíče pro nové texty nápovědy.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: nový unit test pro otevření/zavření nápovědného panelu.
+- Post-change validace prochází: `npm run check-locales`, `npm run build-only`, `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Hotovo: etapa 20 má navazující UX krok splněný o čitelnou in-app nápovědu přímo v diagramu.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 15:38 UTC
 
 - Navázáno na krok 15:24 UTC: proběhla post-change validace a finální review/security kolo navazujícího scope sekce 21.

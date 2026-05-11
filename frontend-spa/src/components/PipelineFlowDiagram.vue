@@ -66,6 +66,7 @@ const triggerFilter = ref('')
 const activeFilter = ref<PipelineFlowActiveFilter>('all')
 const nodeTypeFilter = ref<PipelineFlowNodeTypeFilter>('all')
 const collapsedScenarioIds = ref<Record<string, boolean>>({})
+const showHelp = ref(false)
 const graphViewportRef = ref<HTMLElement | null>(null)
 const zoomLevel = ref(1)
 const zoomMin = 0.6
@@ -431,6 +432,10 @@ function onViewportKeydown(event: KeyboardEvent) {
     panBy(0, keyboardPanStep)
   }
 }
+
+function toggleHelp() {
+  showHelp.value = !showHelp.value
+}
 </script>
 
 <template>
@@ -444,7 +449,32 @@ function onViewportKeydown(event: KeyboardEvent) {
         <span class="rounded bg-red-50 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-300">{{ t('pipeline.flowDiagramLegendBlock') }}</span>
         <span class="rounded bg-amber-50 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">{{ t('pipeline.flowDiagramLegendWarning') }}</span>
         <span class="rounded bg-sky-50 px-2 py-0.5 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{{ t('pipeline.flowDiagramLegendScenario') }}</span>
+        <button
+          type="button"
+          data-testid="flow-help-toggle"
+          class="rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          :aria-expanded="showHelp"
+          :aria-label="showHelp ? t('pipeline.flowDiagramHelpToggleClose') : t('pipeline.flowDiagramHelpToggleOpen')"
+          @click="toggleHelp"
+        >
+          {{ showHelp ? t('pipeline.flowDiagramHelpToggleClose') : t('pipeline.flowDiagramHelpToggleOpen') }}
+        </button>
       </div>
+    </div>
+
+    <div
+      v-if="showHelp"
+      data-testid="flow-help-panel"
+      class="rounded border border-gray-100 bg-white p-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+    >
+      <div class="font-semibold text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramHelpTitle') }}</div>
+      <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramHelpIntro') }}</p>
+      <ul class="mt-1 list-inside list-disc space-y-0.5 text-[11px]">
+        <li>{{ t('pipeline.flowDiagramHelpItemNodes') }}</li>
+        <li>{{ t('pipeline.flowDiagramHelpItemStatuses') }}</li>
+        <li>{{ t('pipeline.flowDiagramHelpItemEdges') }}</li>
+        <li>{{ t('pipeline.flowDiagramHelpItemControls') }}</li>
+      </ul>
     </div>
 
     <div class="grid grid-cols-1 gap-2 md:grid-cols-5">
