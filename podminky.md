@@ -1440,6 +1440,25 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 21:31 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (řízená manipulace condition tree v grafu).
+- Další kroky byly maximalizovaně delegovány podagentům:
+  - subagent pro gap analýzu nejmenšího bezpečného navazujícího scope,
+  - subagent pro baseline i post-change validační běhy ve `frontend-spa`.
+- Výstupy podagentů byly následně ručně konceptuálně zvalidovány nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a utilitou `conditionTreeVisualization.ts`.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `add-rule-root-condition` v detailu uzlu pravidla.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowAddRuleRootCondition` napojený na `conditionRulesStore.updateRule` se stejnou normalizací/validací jako formulářový editor.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `add-rule-root-condition`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionAddRuleRootCondition`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`33/33`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (přidání kořenové podmínky) přímo z detailu uzlu pravidla.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 21:12 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (manipulace návazných hran požadavků v grafu).
@@ -1582,19 +1601,6 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
 - Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (rychlé přepnutí kořenového `AND/OR`) přímo v detailu uzlu pravidla.
 - Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
-
-### 2026-05-11 18:18 UTC
-
-- Navázáno na krok 18:16 UTC: proběhlo review/security validační kolo nad novým zvýrazněním souvislostí v diagramu.
-- Spuštěn `parallel_validation`:
-  - první běh vrátil 1 relevantní review připomínku (nepotřebný `transition-opacity` na všech uzlech); připomínka zapracována v `PipelineFlowDiagram.vue`,
-  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
-- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
-- Hotovo: implementační scope zvýraznění souvislostí je po review i bezpečnostní kontrole uzavřený.
-- Následuje: provést finální commit/push aktuálního validačního kola a vytvořit řádný PR.
 
 - Starší záznamy jsou přesunuté do sekce 22 (archiv).
 
@@ -1834,6 +1840,19 @@ Doporučení:
 - při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
 
 ## 22. Archiv průběžného pracovního postupu
+
+### 2026-05-11 18:18 UTC
+
+- Navázáno na krok 18:16 UTC: proběhlo review/security validační kolo nad novým zvýrazněním souvislostí v diagramu.
+- Spuštěn `parallel_validation`:
+  - první běh vrátil 1 relevantní review připomínku (nepotřebný `transition-opacity` na všech uzlech); připomínka zapracována v `PipelineFlowDiagram.vue`,
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
+- Hotovo: implementační scope zvýraznění souvislostí je po review i bezpečnostní kontrole uzavřený.
+- Následuje: provést finální commit/push aktuálního validačního kola a vytvořit řádný PR.
 
 ### 2026-05-11 18:16 UTC
 

@@ -1427,6 +1427,7 @@
     "flowDiagramActionDisableRule": "Vypnout pravidlo",
     "flowDiagramActionToggleRuleRootOperator": "Přepnout kořenovou podmínku AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Přidat obalující kořenovou skupinu",
+    "flowDiagramActionAddRuleRootCondition": "Přidat kořenovou podmínku",
     "flowDiagramActionOpenRuleEditor": "Otevřít editor pravidla",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Kořenový operátor nelze přepnout: pravidlo nemá skupinový strom podmínek.",
     "flowDiagramActionRuleDescription": "Popis pravidla",
