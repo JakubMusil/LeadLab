@@ -1368,6 +1368,18 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 12:46 UTC
+
+- Navázáno na krok 12:41 UTC: zapracovány navazující review připomínky k čitelnosti helperů a interních metadat v `PipelineFlowDiagram.vue` + `pipelineFlowVisualization.ts` + `PipelineSettingsView.vue`.
+- Úpravy zahrnují:
+  - vytažení helperů `extractRequirementId` / `extractFulfillmentStatus` + explicitní type guard pro status větve,
+  - jasné označení interního trigger kódu (`_triggerCode`) a oddělení interních metadat od zobrazovaných hodnot přes helper `displayableMetaEntries`,
+  - doplnění vysvětlujících komentářů k záměrnému exact-match filtrování triggerů z dropdownu.
+- Ověřeno po každém kole: `npm run test:unit -- src/components/__tests__/PipelineFlowDiagram.spec.ts src/utils/__tests__/pipelineFlowVisualization.spec.ts` a `npm run build-only` prochází.
+- `parallel_validation` už v závěru session hlásí vyčerpání validačního budgetu; poslední dostupné běhy v této session vracely CodeQL bez alertů a pouze stylistické review připomínky, které jsou v tomto kroku zapracované.
+- Hotovo: implementační scope tohoto kroku zůstává funkčně i konceptuálně validní a reflektuje požadavek na uživatelsky čitelné (lokalizované) triggery.
+- Následuje: v další navazující iteraci dokončit zbývající otevřené body etapy 7 (rozšíření testového pokrytí synchronizace s formulářem, nápověda/klávesové ovládání/přístupnost).
+
 ### 2026-05-11 12:41 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno na otevřený bod etapy 7 pro napojení grafu na testovací vyhodnocení a log vyhodnocení.
