@@ -1345,6 +1345,18 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 09:09 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední krok z 08:48 UTC (dostupná validace + příprava finálního PR).
+- Další validační krok byl maximalizovaně delegován na podagenta (spuštění frontend/backend checků a sumarizace pádů), následně proběhla ruční konceptuální i funkční validace zjištění přímo nad `crm/api.py` a `crm/tests.py`.
+- Opraven backend regresní bug v kontext builderu (`crm/api.py`): lookup vlastníka firmy byl přepnut z neplatného `Membership.role` na aktuální M2M model (`roles__code="owner"`), což odstraňuje pád `FieldError` při update záznamu.
+- Opraveny regresní backend testy v `crm/tests.py` (`ConditionRulesApiEndpointsTest`): sjednocení fixture uživatele (`self.owner`), doplnění importu `RequirementType`, oprava create payloadu `StageRequirement` (včetně `firm`) a oprava aktivity na správné pole `user` místo neexistujícího `created_by`.
+- Provedena post-change funkční validace:
+  - `python manage.py test crm.tests.ConditionRulesApiEndpointsTest.test_active_requirements_payload_contains_activity_links crm.tests.ConditionRulesApiEndpointsTest.test_stage_requirement_rejects_cyclic_chaining_links crm.tests.RecordUpdateAPITest.test_patch_status_creates_activity` prochází (`3/3`),
+  - `frontend-spa`: `npm run check-locales`, `npm run build-only`, `npm run test:unit -- src/stores/__tests__/ruleEvaluationLogs.spec.ts src/stores/__tests__/stageScenarios.spec.ts src/views/__tests__/RecordDetailView.spec.ts` prochází (`10/10`).
+- Hotovo: validační krok navazující na 08:48 UTC je dokončený, identifikované regresní chyby jsou opravené a cílené checky opět procházejí.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky a vytvořit řádný finální PR.
+
 ### 2026-05-11 08:48 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno na tři otevřené body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`).

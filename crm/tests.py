@@ -19,6 +19,7 @@ from crm.models import (
     Customer,
     PipelineRecord,
     Proposal,
+    RequirementType,
     RecordSource,
     RecordStatus,
     RuleEvaluationLog,
@@ -5573,7 +5574,7 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             activation_condition={},
             priority=1,
             is_active=True,
-            created_by=self.user,
+            created_by=self.owner,
         )
         first = StageRequirement.objects.create(
             firm=self.firm,
@@ -5582,7 +5583,6 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             requirement_type=RequirementType.CUSTOM,
             condition={},
             sort_order=0,
-            created_by=self.user,
         )
         second = StageRequirement.objects.create(
             firm=self.firm,
@@ -5591,7 +5591,6 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             requirement_type=RequirementType.CUSTOM,
             condition={},
             sort_order=1,
-            created_by=self.user,
         )
 
         link_first = self._patch(
@@ -5620,9 +5619,10 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             },
             priority=1,
             is_active=True,
-            created_by=self.user,
+            created_by=self.owner,
         )
         requirement = StageRequirement.objects.create(
+            firm=self.firm,
             scenario=scenario,
             name="Need call",
             requirement_type=RequirementType.ACTIVITY,
@@ -5634,13 +5634,12 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             blocking=True,
             visible_to_user=True,
             sort_order=0,
-            created_by=self.user,
         )
         activity = Activity.objects.create(
             record=self.record,
             type=ActivityType.CALL,
             content_text="Called customer",
-            created_by=self.user,
+            user=self.owner,
         )
 
         response = self._get(f"/api/v1/crm/records/{self.record.id}/active-stage-requirements")
