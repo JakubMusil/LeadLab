@@ -245,6 +245,18 @@ const selectedNodeEdges = computed(() =>
     ? displayedEdges.value.filter((edge) => edge.source === selectedNodeId.value || edge.target === selectedNodeId.value)
     : [],
 )
+const selectedNodeNeighborIds = computed<Set<string>>(() => {
+  if (!selectedNode.value) return new Set()
+  const ids = new Set<string>()
+  if (selectedNode.value.parentId) ids.add(selectedNode.value.parentId)
+  selectedNode.value.childIds.forEach((childId) => ids.add(childId))
+  selectedNodeEdges.value.forEach((edge) => {
+    if (edge.source !== selectedNode.value?.id) ids.add(edge.source)
+    if (edge.target !== selectedNode.value?.id) ids.add(edge.target)
+  })
+  return ids
+})
+const selectedNodeEdgeIds = computed<Set<string>>(() => new Set(selectedNodeEdges.value.map((edge) => edge.id)))
 
 watch(displayedNodeIds, (visibleIds) => {
   if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
@@ -290,6 +302,23 @@ function isScenarioCollapsed(nodeId: string): boolean {
 
 function selectNode(nodeId: string) {
   selectedNodeId.value = selectedNodeId.value === nodeId ? null : nodeId
+}
+
+function nodeSelectionClass(nodeId: string): string {
+  if (!selectedNodeId.value) return 'opacity-100'
+  if (selectedNodeId.value === nodeId) return 'opacity-100'
+  if (selectedNodeNeighborIds.value.has(nodeId)) {
+    return 'ring-1 ring-indigo-300 dark:ring-indigo-500/50 opacity-100'
+  }
+  return 'opacity-50'
+}
+
+function edgeSelectionClass(edgeId: string): string {
+  if (!selectedNodeId.value) return 'opacity-100'
+  if (selectedNodeEdgeIds.value.has(edgeId)) {
+    return 'font-medium text-indigo-700 dark:text-indigo-300 opacity-100'
+  }
+  return 'opacity-60'
 }
 
 const selectedRuleHasDescriptionChanges = computed(() => {
@@ -740,8 +769,8 @@ function toggleHelp() {
                 class="rounded border p-2 shadow-sm transition-colors"
                 :class="[
                   nodeClass(node),
-                  'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
-                  selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0',
+                  'ring-offset-1 ring-offset-white dark:ring-offset-gray-800 transition-opacity',
+                  selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : nodeSelectionClass(node.id),
                 ]"
               >
                 <div class="flex items-start justify-between gap-2">
@@ -811,7 +840,12 @@ function toggleHelp() {
       <div v-if="displayedEdges.length > 0" class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
         <div class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramEdgesTitle') }}</div>
         <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
-          <li v-for="edge in displayedEdges" :key="edge.id" class="break-words">
+          <li
+            v-for="edge in displayedEdges"
+            :key="edge.id"
+            class="break-words transition-colors"
+            :class="edgeSelectionClass(edge.id)"
+          >
             <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
             <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>

@@ -446,6 +446,75 @@ describe('PipelineFlowDiagram', () => {
     expect(centerButton.attributes('disabled')).toBeUndefined()
   })
 
+  it('highlights related nodes and dims unrelated nodes for selected node', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules: [
+          ...rules,
+          {
+            ...rules[0],
+            id: 'rule-2',
+            name: 'Activate scenario B',
+            effect_config: { stage_scenario_id: 'scenario-2' },
+          },
+        ],
+        scenarios: [
+          ...scenarios,
+          {
+            ...scenarios[0],
+            id: 'scenario-2',
+            name: 'Scenario B',
+          },
+        ],
+        requirements: [
+          ...requirements,
+          {
+            ...requirements[0],
+            id: 'req-3',
+            scenario_id: 'scenario-2',
+            name: 'Upload support file',
+            next_step_on_met_id: null,
+          },
+        ],
+        categories,
+        stages,
+      },
+    })
+
+    const scenarioAButton = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioAButton).toBeTruthy()
+    await scenarioAButton!.trigger('click')
+
+    expect(wrapper.get('[data-node-id="scenario-scenario-1"]').classes()).toContain('ring-2')
+    expect(wrapper.get('[data-node-id="rule-rule-1"]').classes()).toContain('ring-1')
+    expect(wrapper.get('[data-node-id="requirement-req-1"]').classes()).toContain('ring-1')
+    expect(wrapper.get('[data-node-id="scenario-scenario-2"]').classes()).toContain('opacity-50')
+  })
+
+  it('highlights connected edges when node is selected', async () => {
+    const wrapper = mountDiagram()
+    const requirementButton = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Upload file'))
+    expect(requirementButton).toBeTruthy()
+    await requirementButton!.trigger('click')
+
+    const edgeRows = wrapper.findAll('li.transition-colors')
+    expect(edgeRows.length).toBeGreaterThan(0)
+    expect(edgeRows.some((edge) => edge.classes().includes('text-indigo-700'))).toBe(true)
+    expect(edgeRows.some((edge) => edge.classes().includes('opacity-60'))).toBe(true)
+  })
+
+  it('clears relation highlighting when selected node is deselected', async () => {
+    const wrapper = mountDiagram()
+    const scenarioButton = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioButton).toBeTruthy()
+    await scenarioButton!.trigger('click')
+    await scenarioButton!.trigger('click')
+
+    const ruleNodeClasses = wrapper.get('[data-node-id="rule-rule-1"]').classes()
+    expect(ruleNodeClasses).not.toContain('opacity-50')
+    expect(ruleNodeClasses).toContain('opacity-100')
+  })
+
   it('falls back to limited rendered nodes for large graphs', () => {
     const largeRequirements = Array.from({ length: 90 }, (_, index) => ({
       id: `req-${index + 1}`,
