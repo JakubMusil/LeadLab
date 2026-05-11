@@ -315,6 +315,51 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.emitted('open-requirement-editor')?.[0]).toEqual([{ requirementId: 'req-1' }])
   })
 
+  it('emits update-requirement-next-step from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const requirementNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Upload file'))
+    expect(requirementNode).toBeTruthy()
+    await requirementNode!.trigger('click')
+
+    const metSelect = wrapper.get('[data-testid="flow-node-requirement-next-step-met"]')
+    const unmetSelect = wrapper.get('[data-testid="flow-node-requirement-next-step-unmet"]')
+    await metSelect.setValue('')
+    await unmetSelect.setValue('req-2')
+
+    const saveButton = wrapper.get('[data-testid="flow-node-action-save-requirement-next-step"]')
+    await saveButton.trigger('click')
+
+    expect(wrapper.emitted('update-requirement-next-step')).toBeTruthy()
+    expect(wrapper.emitted('update-requirement-next-step')?.[0]).toEqual([
+      { requirementId: 'req-1', nextStepOnMetId: null, nextStepOnUnmetId: 'req-2' },
+    ])
+  })
+
+  it('shows requirement next-step options only from same scenario', async () => {
+    const wrapper = mountDiagram([
+      ...requirements,
+      {
+        ...requirements[0],
+        id: 'req-3',
+        scenario_id: 'scenario-2',
+        name: 'External requirement',
+        next_step_on_met_id: null,
+        next_step_on_unmet_id: null,
+      },
+    ])
+
+    const requirementNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Upload file'))
+    expect(requirementNode).toBeTruthy()
+    await requirementNode!.trigger('click')
+
+    const metSelect = wrapper.get('[data-testid="flow-node-requirement-next-step-met"]')
+    const values = metSelect.findAll('option').map((option) => option.attributes('value'))
+    expect(values).toContain('req-2')
+    expect(values).not.toContain('req-1')
+    expect(values).not.toContain('req-3')
+  })
+
   it('shows requirement link diagnostics with invalid link reason', () => {
     const wrapper = mount(PipelineFlowDiagram, {
       props: {
