@@ -1917,6 +1917,13 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Výsledek: checklist 13.5 je dokončený a označený jako splněný.
 - Následuje: pokračovat etapou 13.6 (detekce změn standardních polí + trigger `record.field_changed` + logování + vazba na scénáře/požadavky).
 
+### 2026-05-11 13:25 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na požadavek doplnit praktické šablony typických pravidel i scénářů pro konkrétní obory.
+- Scope byl maximálně delegován subagentovi (návrh šablon + jednotná struktura), následně proběhla ruční konceptuální validace proti stávající terminologii dokumentu (`Aktivace`, `Požadavky`, `Blokace`, `Doporučení`).
+- Připraven obsah nové sekce se šablonami pro call centrum, montážní firmu a IT servis tak, aby šel použít jako výchozí stavebnice pro admin konfiguraci.
+- Následuje: provést finální kontrolu návaznosti textu, zvalidovat diff a připravit řádný PR se shrnutím.
+
 ## 20. Další fáze: Interaktivní grafická mindmapa podmínek
 
 ### 20.1 Cíl
@@ -2058,3 +2065,96 @@ Minimální validační sada pro tuto fázi:
 ### 20.8 Kritérium dokončení fáze
 
 Fáze je dokončená, když administrátor dokáže v nastavení pipeline otevřít grafický pohled, vybrat kategorii/fázi, zobrazit pravidla, scénáře, požadavky a návazné kroky, bezpečně přejít z grafu do existujícího editoru a při testovacím vyhodnocení vidět, které části logiky byly splněné nebo nesplněné.
+
+## 21. Šablony typických pravidel a scénářů podle domény
+
+### 21.1 Call centrum
+
+#### Typická pravidla
+
+- Blokovat přechod do fáze „Kvalifikace“, pokud není vyplněný telefon ani e-mail.
+- Blokovat uzavření leadu jako „Nedosažitelný“, pokud nejsou alespoň 3 pokusy o kontakt.
+- Zobrazit upozornění, pokud u leadu chybí termín dalšího kontaktu po neúspěšném hovoru.
+- Doporučit předání senior operátorovi, pokud je priorita leadu vysoká.
+
+#### Scénář: První kontakt
+
+Aktivace:
+
+- záznam vstoupí do fáze Nový lead,
+- není evidovaný úspěšný kontakt.
+
+Požadavky:
+
+- vyplnit kontaktní údaj (telefon nebo e-mail),
+- zapsat výsledek pokusu o kontakt,
+- nastavit další krok (callback, e-mail, uzavření).
+
+Blokace:
+
+- nelze přesunout do další fáze bez záznamu o kontaktu.
+
+Doporučení:
+
+- po dvou neúspěšných pokusech doporučit jiný komunikační kanál.
+
+### 21.2 Montážní firma
+
+#### Typická pravidla
+
+- Blokovat přechod do „Realizace“, pokud není potvrzen termín montáže.
+- Blokovat dokončení zakázky, pokud chybí fotodokumentace po realizaci.
+- Blokovat přechod do „Hotovo“, pokud není dokončen montážní checklist.
+- Zobrazit upozornění při evidenci vícepráce bez schválení odpovědnou osobou.
+
+#### Scénář: Standardní montáž
+
+Aktivace:
+
+- `typ_realizace = montáž`,
+- záznam je ve fázi Příprava realizace nebo Realizace.
+
+Požadavky:
+
+- potvrdit termín montáže,
+- přiřadit montážní tým,
+- nahrát fotky před a po montáži,
+- doplnit předávací protokol.
+
+Blokace:
+
+- nelze uzavřít realizaci bez fotodokumentace a protokolu.
+
+Doporučení:
+
+- po splnění všech požadavků doporučit přesun do fáze „Hotovo“.
+
+### 21.3 IT servis
+
+#### Typická pravidla
+
+- Blokovat zahájení řešení incidentu bez nastavené priority.
+- Blokovat uzavření incidentu bez popisu řešení a potvrzení obnovy služby.
+- Blokovat produkční změnu bez schválení změnového zásahu.
+- Zobrazit upozornění, pokud ticket s vysokým dopadem není eskalován včas.
+
+#### Scénář: Incident management
+
+Aktivace:
+
+- vytvořen nový ticket typu Incident,
+- ticket přejde do fáze „V řešení“.
+
+Požadavky:
+
+- vyplnit dopad a prioritu incidentu,
+- vést průběžný servisní log,
+- uvést workaround nebo finální fix.
+
+Blokace:
+
+- nelze uzavřít ticket bez popisu příčiny a způsobu nápravy.
+
+Doporučení:
+
+- při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
