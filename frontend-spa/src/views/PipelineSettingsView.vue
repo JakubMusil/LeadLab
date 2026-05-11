@@ -1144,6 +1144,36 @@ function handleFlowOpenRequirementEditor(payload: { requirementId: string }) {
   openEditRequirementForm(requirement)
 }
 
+async function handleFlowRequirementNextStepUpdate(payload: {
+  requirementId: string
+  nextStepOnMetId: string | null
+  nextStepOnUnmetId: string | null
+}) {
+  const requirement = pipelineFlowRequirements.value.find((item) => item.id === payload.requirementId)
+  if (!requirement) {
+    toast.error(t('pipeline.stageRequirementsUpdateFailed'))
+    return
+  }
+  const scenario = stageScenarios.value.find((item) => item.id === requirement.scenario_id)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  const result = await stageScenariosStore.updateRequirement(
+    scenario.id,
+    requirement.id,
+    {
+      next_step_on_met_id: payload.nextStepOnMetId,
+      next_step_on_unmet_id: payload.nextStepOnUnmetId,
+    },
+  )
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageRequirementsUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageRequirementsUpdated'))
+}
+
 function resetRuleForm() {
   showRuleForm.value = false
   editingRuleId.value = null
@@ -3231,6 +3261,7 @@ const newPattern = computed({
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
             @open-requirement-editor="handleFlowOpenRequirementEditor"
+            @update-requirement-next-step="handleFlowRequirementNextStepUpdate"
           />
 
           <!-- Category Access Grants -->

@@ -66,6 +66,10 @@ const emit = defineEmits<{
   (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
   (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
   (event: 'open-requirement-editor', payload: { requirementId: string }): void
+  (
+    event: 'update-requirement-next-step',
+    payload: { requirementId: string; nextStepOnMetId: string | null; nextStepOnUnmetId: string | null },
+  ): void
 }>()
 
 const { t } = useI18n()
@@ -232,9 +236,32 @@ const selectedNodeId = ref<string | null>(null)
 const editingRuleDescription = ref('')
 const editingScenarioDescription = ref('')
 const editingScenarioPriority = ref<string | number>('')
+const editingRequirementNextStepOnMet = ref('')
+const editingRequirementNextStepOnUnmet = ref('')
+const requirementById = computed<Record<string, PipelineFlowRequirementInput>>(() =>
+  props.requirements.reduce<Record<string, PipelineFlowRequirementInput>>((acc, requirement) => {
+    acc[requirement.id] = requirement
+    return acc
+  }, {}),
+)
 const selectedNode = computed<PipelineFlowNode | null>(() =>
   selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
 )
+const selectedRequirement = computed<PipelineFlowRequirementInput | null>(() => {
+  if (selectedNode.value?.type !== 'requirement') return null
+  return requirementById.value[selectedNode.value.sourceId] ?? null
+})
+const selectedRequirementNextStepOptions = computed(() => {
+  const requirement = selectedRequirement.value
+  if (!requirement) return []
+  return props.requirements
+    .filter((item) => item.scenario_id === requirement.scenario_id && item.id !== requirement.id)
+    .sort((left, right) => left.sort_order - right.sort_order || left.name.localeCompare(right.name))
+    .map((item) => ({
+      id: item.id,
+      label: item.name || item.id,
+    }))
+})
 const selectedNodeParent = computed<PipelineFlowNode | null>(() => {
   const parentId = selectedNode.value?.parentId
   if (!parentId) return null
@@ -271,6 +298,8 @@ function resetQuickActionEdits() {
   editingRuleDescription.value = ''
   editingScenarioDescription.value = ''
   editingScenarioPriority.value = ''
+  editingRequirementNextStepOnMet.value = ''
+  editingRequirementNextStepOnUnmet.value = ''
 }
 
 watch(selectedNode, (node) => {
@@ -287,6 +316,12 @@ watch(selectedNode, (node) => {
     editingScenarioDescription.value = String(node.description || '')
     editingScenarioPriority.value = String(node.meta.priority ?? '')
     editingRuleDescription.value = ''
+    return
+  }
+  if (node.type === 'requirement') {
+    const requirement = requirementById.value[node.sourceId]
+    editingRequirementNextStepOnMet.value = normalizeRequirementNextStepValue(requirement?.next_step_on_met_id) ?? ''
+    editingRequirementNextStepOnUnmet.value = normalizeRequirementNextStepValue(requirement?.next_step_on_unmet_id) ?? ''
     return
   }
   resetQuickActionEdits()
@@ -351,6 +386,20 @@ const selectedScenarioHasPriorityChanges = computed(() => {
     && selectedScenarioPriorityValue.value !== Number(selectedNode.value?.meta?.priority ?? 0)
   )
 })
+const selectedRequirementHasNextStepChanges = computed(() => {
+  if (selectedNode.value?.type !== 'requirement') return false
+  const requirement = selectedRequirement.value
+  if (!requirement) return false
+  return (
+    normalizeRequirementNextStepValue(editingRequirementNextStepOnMet.value) !== normalizeRequirementNextStepValue(requirement.next_step_on_met_id)
+    || normalizeRequirementNextStepValue(editingRequirementNextStepOnUnmet.value) !== normalizeRequirementNextStepValue(requirement.next_step_on_unmet_id)
+  )
+})
+
+function normalizeRequirementNextStepValue(rawValue: string | null | undefined): string | null {
+  const normalized = String(rawValue ?? '').trim()
+  return normalized || null
+}
 
 function emitRuleActiveToggle() {
   if (selectedNode.value?.type !== 'rule') return
@@ -428,6 +477,23 @@ function resetScenarioPriorityEdit() {
 function emitRequirementEditorOpen() {
   if (selectedNode.value?.type !== 'requirement') return
   emit('open-requirement-editor', { requirementId: selectedNode.value.sourceId })
+}
+
+function emitRequirementNextStepUpdate() {
+  if (selectedNode.value?.type !== 'requirement') return
+  if (!selectedRequirementHasNextStepChanges.value) return
+  emit('update-requirement-next-step', {
+    requirementId: selectedNode.value.sourceId,
+    nextStepOnMetId: normalizeRequirementNextStepValue(editingRequirementNextStepOnMet.value),
+    nextStepOnUnmetId: normalizeRequirementNextStepValue(editingRequirementNextStepOnUnmet.value),
+  })
+}
+
+function resetRequirementNextStepEdit() {
+  if (selectedNode.value?.type !== 'requirement') return
+  const requirement = selectedRequirement.value
+  editingRequirementNextStepOnMet.value = normalizeRequirementNextStepValue(requirement?.next_step_on_met_id) ?? ''
+  editingRequirementNextStepOnUnmet.value = normalizeRequirementNextStepValue(requirement?.next_step_on_unmet_id) ?? ''
 }
 
 function nodeTypeLabel(node: PipelineFlowNode): string {
@@ -1069,7 +1135,7 @@ function toggleHelp() {
                 </button>
               </div>
             </div>
-            <div v-else-if="selectedNode.type === 'requirement'">
+            <div v-else-if="selectedNode.type === 'requirement'" class="space-y-2">
               <button
                 type="button"
                 data-testid="flow-node-action-open-requirement-editor"
@@ -1078,6 +1144,62 @@ function toggleHelp() {
               >
                 {{ t('pipeline.flowDiagramActionOpenRequirementEditor') }}
               </button>
+              <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('pipeline.flowDiagramActionRequirementNextStepMet') }}
+                </label>
+                <select
+                  v-model="editingRequirementNextStepOnMet"
+                  data-testid="flow-node-requirement-next-step-met"
+                  :class="quickActionInputClass"
+                >
+                  <option value="">{{ t('pipeline.flowDiagramActionRequirementNextStepNone') }}</option>
+                  <option
+                    v-for="option in selectedRequirementNextStepOptions"
+                    :key="`requirement-met-${option.id}`"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('pipeline.flowDiagramActionRequirementNextStepUnmet') }}
+                </label>
+                <select
+                  v-model="editingRequirementNextStepOnUnmet"
+                  data-testid="flow-node-requirement-next-step-unmet"
+                  :class="quickActionInputClass"
+                >
+                  <option value="">{{ t('pipeline.flowDiagramActionRequirementNextStepNone') }}</option>
+                  <option
+                    v-for="option in selectedRequirementNextStepOptions"
+                    :key="`requirement-unmet-${option.id}`"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <button
+                  type="button"
+                  :class="quickActionSecondaryButtonClass"
+                  @click="resetRequirementNextStepEdit"
+                >
+                  {{ t('pipeline.cancel') }}
+                </button>
+                <button
+                  type="button"
+                  data-testid="flow-node-action-save-requirement-next-step"
+                  :class="quickActionPrimaryButtonClass"
+                  :disabled="!selectedRequirementHasNextStepChanges"
+                  @click="emitRequirementNextStepUpdate"
+                >
+                  {{ t('pipeline.stageRequirementsUpdate') }}
+                </button>
+              </div>
             </div>
           </div>
           <div v-if="selectedNodeParent">
