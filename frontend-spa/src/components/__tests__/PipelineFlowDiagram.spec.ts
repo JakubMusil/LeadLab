@@ -67,6 +67,18 @@ const requirements = [
 ]
 
 describe('PipelineFlowDiagram', () => {
+  function mountDiagram(customRequirements = requirements) {
+    return mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements: customRequirements,
+        categories,
+        stages,
+      },
+    })
+  }
+
   it('renders empty state', () => {
     const wrapper = mount(PipelineFlowDiagram, {
       props: {
@@ -103,15 +115,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('filters nodes by type', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const selects = wrapper.findAll('select')
     await selects[3]!.setValue('requirement')
@@ -122,15 +126,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('collapses and expands scenario requirements', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const button = wrapper.find('article button')
     expect(button.exists()).toBe(true)
@@ -142,15 +138,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('shows node detail after selecting a node', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
@@ -162,15 +150,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('clears selection when clear action is used', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
@@ -184,15 +164,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('supports keyboard selection via enter key', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
@@ -218,15 +190,7 @@ describe('PipelineFlowDiagram', () => {
   })
 
   it('clears selected node detail when filters hide the selected node', async () => {
-    const wrapper = mount(PipelineFlowDiagram, {
-      props: {
-        rules,
-        scenarios,
-        requirements,
-        categories,
-        stages,
-      },
-    })
+    const wrapper = mountDiagram()
 
     const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(scenarioNode).toBeTruthy()
@@ -237,5 +201,59 @@ describe('PipelineFlowDiagram', () => {
     await selects[3]!.setValue('requirement')
 
     expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+  })
+
+  it('updates zoom level using zoom controls', async () => {
+    const wrapper = mountDiagram()
+    const zoomLevel = wrapper.get('[data-testid="flow-zoom-level"]')
+    expect(zoomLevel.attributes('data-zoom-level')).toBe('100')
+
+    const zoomInButton = wrapper.find('[data-testid="flow-zoom-in"]')
+    expect(zoomInButton.exists()).toBe(true)
+    await zoomInButton.trigger('click')
+    expect(wrapper.get('[data-testid="flow-zoom-level"]').attributes('data-zoom-level')).toBe('110')
+  })
+
+  it('updates zoom level from keyboard shortcut on viewport', async () => {
+    const wrapper = mountDiagram()
+    const viewport = wrapper.find('[role="region"]')
+    expect(viewport.exists()).toBe(true)
+
+    await viewport.trigger('keydown', { key: '+' })
+    expect(wrapper.get('[data-testid="flow-zoom-level"]').attributes('data-zoom-level')).toBe('110')
+  })
+
+  it('enables center selection control after node selection', async () => {
+    const wrapper = mountDiagram()
+    const centerButton = wrapper.find('[data-testid="flow-center-selection"]')
+    expect(centerButton.exists()).toBe(true)
+    expect(centerButton.attributes('disabled')).toBeDefined()
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('click')
+    expect(centerButton.attributes('disabled')).toBeUndefined()
+  })
+
+  it('falls back to limited rendered nodes for large graphs', () => {
+    const largeRequirements = Array.from({ length: 90 }, (_, index) => ({
+      id: `req-${index + 1}`,
+      scenario_id: 'scenario-1',
+      name: `Requirement ${index + 1}`,
+      description: '',
+      requirement_type: 'checklist',
+      blocking: false,
+      visible_to_user: true,
+      sort_order: index + 1,
+      next_step_on_met_id: null,
+      next_step_on_unmet_id: null,
+    }))
+
+    const wrapper = mountDiagram(largeRequirements)
+
+    expect(wrapper.findAll('article')).toHaveLength(80)
+    const fallback = wrapper.find('[data-testid="flow-large-graph-fallback"]')
+    expect(fallback.exists()).toBe(true)
+    expect(fallback.attributes('data-hidden-count')).toBe('12')
   })
 })

@@ -46,6 +46,16 @@ const triggerFilter = ref('')
 const activeFilter = ref<PipelineFlowActiveFilter>('all')
 const nodeTypeFilter = ref<PipelineFlowNodeTypeFilter>('all')
 const collapsedScenarioIds = ref<Record<string, boolean>>({})
+const graphViewportRef = ref<HTMLElement | null>(null)
+const zoomLevel = ref(1)
+const zoomMin = 0.6
+const zoomMax = 1.8
+const zoomStep = 0.1
+const zoomPrecisionFactor = 100
+// Keep the graph readable and responsive before forcing users to narrow the scope via filters.
+const fallbackNodeLimit = 80
+const keyboardPanStep = 80
+const panPosition = ref({ x: 0, y: 0 })
 
 watch(
   () => props.initialCategoryId,
@@ -116,7 +126,30 @@ const visibleEdges = computed(() =>
   model.value.edges.filter((edge) => visibleNodeIds.value.has(edge.source) && visibleNodeIds.value.has(edge.target)),
 )
 const visibleRequirementLinkDiagnostics = computed(() => model.value.requirementLinkDiagnostics)
-const isEmpty = computed(() => !props.loading && !props.error && visibleNodes.value.length === 0)
+const fallbackActive = computed(() => visibleNodes.value.length > fallbackNodeLimit)
+const displayedNodes = computed(() =>
+  fallbackActive.value ? visibleNodes.value.slice(0, fallbackNodeLimit) : visibleNodes.value,
+)
+const displayedNodeIds = computed(() => new Set(displayedNodes.value.map((node) => node.id)))
+const displayedEdges = computed(() =>
+  visibleEdges.value.filter((edge) => displayedNodeIds.value.has(edge.source) && displayedNodeIds.value.has(edge.target)),
+)
+const displayedRequirementLinkDiagnostics = computed(() =>
+  visibleRequirementLinkDiagnostics.value.filter((link) => displayedNodeIds.value.has(`requirement-${link.sourceRequirementId}`)),
+)
+const hiddenNodesCount = computed(() => Math.max(0, visibleNodes.value.length - displayedNodes.value.length))
+const isEmpty = computed(() => !props.loading && !props.error && displayedNodes.value.length === 0)
+const nodeGridClass = computed(() => {
+  const count = displayedNodes.value.length
+  if (count > 36) return 'grid-cols-1 md:grid-cols-2'
+  if (count > 18) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+  return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+})
+const zoomPercent = computed(() => Math.round(zoomLevel.value * zoomPrecisionFactor))
+const graphCanvasStyle = computed(() => ({
+  transform: `scale(${zoomLevel.value})`,
+  transformOrigin: 'top left',
+}))
 const selectedNodeId = ref<string | null>(null)
 const selectedNode = computed<PipelineFlowNode | null>(() =>
   selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
@@ -131,11 +164,11 @@ const selectedNodeChildren = computed<PipelineFlowNode[]>(() =>
 )
 const selectedNodeEdges = computed(() =>
   selectedNodeId.value
-    ? visibleEdges.value.filter((edge) => edge.source === selectedNodeId.value || edge.target === selectedNodeId.value)
+    ? displayedEdges.value.filter((edge) => edge.source === selectedNodeId.value || edge.target === selectedNodeId.value)
     : [],
 )
 
-watch(visibleNodeIds, (visibleIds) => {
+watch(displayedNodeIds, (visibleIds) => {
   if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
     selectedNodeId.value = null
   }
@@ -196,6 +229,99 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
   if (issue === 'cross_scenario') return t('pipeline.flowDiagramInvalidRequirementScenarioLink')
   if (issue === 'cycle') return t('pipeline.flowDiagramRequirementCycleLink')
   return t('pipeline.flowDiagramRequirementLinkValid')
+}
+
+function clampZoom(value: number): number {
+  return Math.min(
+    zoomMax,
+    Math.max(zoomMin, Math.round(value * zoomPrecisionFactor) / zoomPrecisionFactor),
+  )
+}
+
+function updateZoom(nextZoom: number) {
+  zoomLevel.value = clampZoom(nextZoom)
+}
+
+function zoomIn() {
+  updateZoom(zoomLevel.value + zoomStep)
+}
+
+function zoomOut() {
+  updateZoom(zoomLevel.value - zoomStep)
+}
+
+function resetView() {
+  zoomLevel.value = 1
+  const viewport = graphViewportRef.value
+  if (!viewport) return
+  viewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
+}
+
+function onViewportWheel(event: WheelEvent) {
+  if (!event.ctrlKey && !event.metaKey) return
+  event.preventDefault()
+  if (event.deltaY < 0) {
+    zoomIn()
+  } else {
+    zoomOut()
+  }
+}
+
+function onViewportScroll() {
+  const viewport = graphViewportRef.value
+  if (!viewport) return
+  panPosition.value = {
+    x: viewport.scrollLeft,
+    y: viewport.scrollTop,
+  }
+}
+
+function panBy(dx: number, dy: number) {
+  const viewport = graphViewportRef.value
+  if (!viewport) return
+  viewport.scrollBy({ left: dx, top: dy, behavior: 'smooth' })
+}
+
+function centerOnSelectedNode() {
+  if (!selectedNodeId.value) return
+  const viewport = graphViewportRef.value
+  if (!viewport) return
+  const nodeElement = viewport.querySelector<HTMLElement>(`[data-node-id="${selectedNodeId.value}"]`)
+  if (nodeElement) {
+    nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+  }
+}
+
+function onViewportKeydown(event: KeyboardEvent) {
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault()
+    zoomIn()
+    return
+  }
+  if (event.key === '-') {
+    event.preventDefault()
+    zoomOut()
+    return
+  }
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    panBy(-keyboardPanStep, 0)
+    return
+  }
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    panBy(keyboardPanStep, 0)
+    return
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    panBy(0, -keyboardPanStep)
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    panBy(0, keyboardPanStep)
+  }
 }
 </script>
 
@@ -262,64 +388,139 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
         <div v-for="warning in model.warnings" :key="warning">{{ warning }}</div>
       </div>
 
-      <div class="grid grid-cols-1 gap-2 lg:grid-cols-3" role="list" :aria-label="t('pipeline.flowDiagramNodesLabel')">
-        <article
-          v-for="node in visibleNodes"
-          :key="node.id"
-          role="listitem"
-          class="rounded border p-2 shadow-sm transition-colors"
-          :class="[
-            nodeClass(node),
-            'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
-            selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0',
-          ]"
-        >
-          <div class="flex items-start justify-between gap-2">
-            <div
-              class="min-w-0 flex-1 rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-              role="button"
-              tabindex="0"
-              :aria-label="node.label"
-              @click="selectNode(node.id)"
-              @keydown.enter.prevent="selectNode(node.id)"
-              @keydown.space.prevent="selectNode(node.id)"
-            >
-              <div class="flex flex-wrap items-center gap-1">
-                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
-                  {{ nodeTypeLabel(node) }}
-                </span>
-                <span v-if="node.badge" class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
-                  {{ node.badge }}
-                </span>
-                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
-                  {{ node.statusLabel }}
-                </span>
-              </div>
-              <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
-              <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
-              <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                <div v-for="(value, key) in node.meta" :key="key">
-                  <template v-if="value !== null && value !== ''">{{ key }}: {{ value }}</template>
-                </div>
-              </div>
-            </div>
-            <button
-              v-if="node.type === 'scenario' && node.childIds.length > 0"
-              type="button"
-              class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              :aria-expanded="!isScenarioCollapsed(node.id)"
-              @click.stop="toggleScenario(node.id)"
-            >
-              {{ isScenarioCollapsed(node.id) ? '+' : '−' }}
-            </button>
+      <div class="rounded border border-gray-100 bg-white p-2 space-y-2 dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="text-[11px] text-gray-500 dark:text-gray-400">
+            {{ t('pipeline.flowDiagramViewportHint') }}
           </div>
-        </article>
+          <div class="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              data-testid="flow-zoom-out"
+              class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              :aria-label="t('pipeline.flowDiagramZoomOut')"
+              @click="zoomOut"
+            >
+              {{ t('pipeline.flowDiagramZoomOut') }}
+            </button>
+            <button
+              type="button"
+              data-testid="flow-zoom-in"
+              class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              :aria-label="t('pipeline.flowDiagramZoomIn')"
+              @click="zoomIn"
+            >
+              {{ t('pipeline.flowDiagramZoomIn') }}
+            </button>
+            <button
+              type="button"
+              data-testid="flow-center-selection"
+              class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
+              :aria-label="t('pipeline.flowDiagramCenterSelected')"
+              :disabled="!selectedNodeId"
+              @click="centerOnSelectedNode"
+            >
+              {{ t('pipeline.flowDiagramCenterSelected') }}
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              :aria-label="t('pipeline.flowDiagramResetView')"
+              @click="resetView"
+            >
+              {{ t('pipeline.flowDiagramResetView') }}
+            </button>
+            <span class="rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+              <span data-testid="flow-zoom-level" :data-zoom-level="zoomPercent">
+                {{ t('pipeline.flowDiagramZoomLevel', { value: zoomPercent }) }}
+              </span>
+            </span>
+          </div>
+        </div>
+        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+          {{ t('pipeline.flowDiagramPanPosition', { x: panPosition.x, y: panPosition.y }) }}
+        </div>
+        <div
+          v-if="fallbackActive"
+          data-testid="flow-large-graph-fallback"
+          :data-hidden-count="hiddenNodesCount"
+          class="rounded border border-amber-100 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+        >
+          {{ t('pipeline.flowDiagramLargeGraphFallback', { count: hiddenNodesCount }) }}
+        </div>
+        <div
+          ref="graphViewportRef"
+          class="max-h-[36rem] overflow-auto rounded border border-gray-100 bg-gray-50 p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900/30 dark:focus:ring-indigo-400"
+          role="region"
+          tabindex="0"
+          :aria-label="t('pipeline.flowDiagramNodesLabel')"
+          @wheel="onViewportWheel"
+          @scroll="onViewportScroll"
+          @keydown="onViewportKeydown"
+        >
+          <div class="min-w-[42rem] space-y-2" :style="graphCanvasStyle">
+            <div class="grid gap-2" :class="nodeGridClass" role="list" :aria-label="t('pipeline.flowDiagramNodesLabel')">
+              <article
+                v-for="node in displayedNodes"
+                :key="node.id"
+                :data-node-id="node.id"
+                role="listitem"
+                class="rounded border p-2 shadow-sm transition-colors"
+                :class="[
+                  nodeClass(node),
+                  'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
+                  selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0',
+                ]"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div
+                    class="min-w-0 flex-1 rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    role="button"
+                    tabindex="0"
+                    :aria-label="node.label"
+                    @click="selectNode(node.id)"
+                    @keydown.enter.prevent="selectNode(node.id)"
+                    @keydown.space.prevent="selectNode(node.id)"
+                  >
+                    <div class="flex flex-wrap items-center gap-1">
+                      <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
+                        {{ nodeTypeLabel(node) }}
+                      </span>
+                      <span v-if="node.badge" class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
+                        {{ node.badge }}
+                      </span>
+                      <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
+                        {{ node.statusLabel }}
+                      </span>
+                    </div>
+                    <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
+                    <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
+                    <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                      <div v-for="(value, key) in node.meta" :key="key">
+                        <template v-if="value !== null && value !== ''">{{ key }}: {{ value }}</template>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    v-if="node.type === 'scenario' && node.childIds.length > 0"
+                    type="button"
+                    class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    :aria-expanded="!isScenarioCollapsed(node.id)"
+                    @click.stop="toggleScenario(node.id)"
+                  >
+                    {{ isScenarioCollapsed(node.id) ? '+' : '−' }}
+                  </button>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-if="visibleEdges.length > 0" class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+      <div v-if="displayedEdges.length > 0" class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
         <div class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramEdgesTitle') }}</div>
         <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
-          <li v-for="edge in visibleEdges" :key="edge.id" class="break-words">
+          <li v-for="edge in displayedEdges" :key="edge.id" class="break-words">
             <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
             <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
@@ -329,7 +530,7 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
       </div>
 
       <div
-        v-if="visibleRequirementLinkDiagnostics.length > 0"
+        v-if="displayedRequirementLinkDiagnostics.length > 0"
         class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800"
       >
         <div class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-200">
@@ -337,7 +538,7 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
         </div>
         <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
           <li
-            v-for="link in visibleRequirementLinkDiagnostics"
+            v-for="link in displayedRequirementLinkDiagnostics"
             :key="link.id"
             class="rounded border px-2 py-1"
             :class="link.valid
