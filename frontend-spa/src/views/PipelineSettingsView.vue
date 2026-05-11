@@ -985,6 +985,66 @@ async function toggleRuleActive(rule: ConditionRuleOut, enabled: boolean) {
   updatingRuleIds.value = next
 }
 
+async function handleFlowRuleActiveToggle(payload: { ruleId: string; nextActive: boolean }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  await toggleRuleActive(rule, payload.nextActive)
+}
+
+async function handleFlowRuleDescriptionUpdate(payload: { ruleId: string; description: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const result = await conditionRulesStore.updateRule(payload.ruleId, { description: payload.description.trim() })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesUpdated'))
+}
+
+async function handleFlowScenarioPriorityUpdate(payload: { scenarioId: string; priority: number }) {
+  const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  const result = await stageScenariosStore.updateScenario(
+    scenario.category_id,
+    scenario.stage_id,
+    scenario.id,
+    { priority: payload.priority },
+  )
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageScenariosUpdated'))
+  if (editingScenarioId.value === scenario.id) {
+    scenarioForm.value.priority = String(payload.priority)
+  }
+}
+
+function handleFlowOpenRequirementEditor(payload: { requirementId: string }) {
+  const requirement = pipelineFlowRequirements.value.find((item) => item.id === payload.requirementId)
+  if (!requirement) {
+    toast.error(t('pipeline.stageRequirementsUpdateFailed'))
+    return
+  }
+  const scenario = stageScenarios.value.find((item) => item.id === requirement.scenario_id)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  openEditScenarioForm(scenario)
+  openEditRequirementForm(requirement)
+}
+
 function resetRuleForm() {
   showRuleForm.value = false
   editingRuleId.value = null
@@ -3064,6 +3124,10 @@ const newPattern = computed({
             :evaluation-outputs="testEvaluationResult?.outputs ?? []"
             :evaluation-logs="ruleEvaluationLogs"
             :tested-rule-id="testRuleId"
+            @toggle-rule-active="handleFlowRuleActiveToggle"
+            @update-rule-description="handleFlowRuleDescriptionUpdate"
+            @update-scenario-priority="handleFlowScenarioPriorityUpdate"
+            @open-requirement-editor="handleFlowOpenRequirementEditor"
           />
 
           <!-- Category Access Grants -->
