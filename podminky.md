@@ -2,7 +2,7 @@
 
 ## 0. Rychlá orientace pro administrátora
 
-Systém podmínek pomáhá hlídat, aby se záznam v pipeline neposunul dál, dokud nejsou splněné důležité kroky. Umí uživateli říct, co chybí, co má udělat dál, a administrátorovi umožní nastavit různá pravidla pro různé typy práce.
+Systém podmínek pomáhá hlídat, aby se záznam v pipeline neposunul dál, dokud nejsou splněny důležité kroky. Umí uživateli říct, co chybí, co má udělat dál, a administrátorovi umožní nastavit různá pravidla pro různé typy práce.
 
 ### 0.1 Co systém umí dnes
 
