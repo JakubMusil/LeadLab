@@ -1278,7 +1278,7 @@ Výsledek:
 - [x] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
 - [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
 - [x] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
-- [ ] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
+- [x] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
 - [ ] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
 - [ ] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
 - [ ] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
@@ -1367,6 +1367,22 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 11:24 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřený bod po 7C: vizuální správa návazných hran `next_step_on_met`/`next_step_on_unmet` s validačními guardy.
+- Scope návrhu byl maximalizovaně delegován podagentovi (rychlá gap analýza + návrh minimálních souborů/testů) a následně proběhla ruční konceptuální validace skutečného stavu nad `frontend-spa/src/utils/pipelineFlowVisualization.ts` a `frontend-spa/src/components/PipelineFlowDiagram.vue`.
+- Baseline validace před změnami: po `npm ci` ve `frontend-spa` prochází `npm run check-locales`, `npm run build-only` a cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Frontend implementace návazných hran:
+  - `frontend-spa/src/utils/pipelineFlowVisualization.ts` nově vrací diagnostiku návazných hran (`requirementLinkDiagnostics`) a validuje chybějící cíl, cross-scenario vazby a cykly (včetně blokace nevalidních hran v diagramu),
+  - v utilitě byla zároveň opravena hierarchická vazba tak, aby `next_step_on_*` hrany nepřepisovaly parent/depth stromu uzlů,
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue` přidává sekci „návazné vazby požadavků“ s přehledem met/unmet větví a vizuálním stavem validní/nevalidní.
+- Doplněny unit testy:
+  - `frontend-spa/src/utils/__tests__/pipelineFlowVisualization.spec.ts` rozšířen o scénáře missing target, cross-scenario a cycle,
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts` rozšířen o render diagnostiky nevalidní návazné vazby.
+- Doplněny i18n klíče pro nové UI/validační texty ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Hotovo: checkbox etapy 7 pro vizuální správu návazných hran s validací cyklů a scénářového kontextu je nyní splněný.
+- Následuje: navázat dalším otevřeným bodem etapy 7 (zoom/pan/auto-layout/fallback), poté doplnit vazbu na testovací vyhodnocení a auditní log.
 
 ### 2026-05-11 11:15 UTC
 

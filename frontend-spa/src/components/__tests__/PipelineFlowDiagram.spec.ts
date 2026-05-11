@@ -135,9 +135,9 @@ describe('PipelineFlowDiagram', () => {
     const button = wrapper.find('article button')
     expect(button.exists()).toBe(true)
     await button.trigger('click')
-    expect(wrapper.text()).not.toContain('Upload file')
+    expect(wrapper.text()).not.toContain('requirementType: attachment')
     await button.trigger('click')
-    expect(wrapper.text()).toContain('Upload file')
+    expect(wrapper.text()).toContain('requirementType: attachment')
   })
 
   it('shows node detail after selecting a node', async () => {
@@ -199,6 +199,21 @@ describe('PipelineFlowDiagram', () => {
 
     expect(wrapper.text()).toContain('Node detail')
     expect(wrapper.text()).toContain('Scenario A')
+  })
+
+  it('shows requirement link diagnostics with invalid link reason', () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements: [{ ...requirements[0], next_step_on_met_id: 'missing' }],
+        categories,
+        stages,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Requirement chained links')
+    expect(wrapper.text()).toContain('Some chained requirement links point to requirements outside the current filtered diagram.')
   })
 
   it('clears selected node detail when filters hide the selected node', async () => {
