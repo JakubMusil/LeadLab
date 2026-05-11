@@ -1281,7 +1281,7 @@ Výsledek:
 - [x] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
 - [x] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
 - [x] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
-- [ ] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
+- [x] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
 - [x] Doplnit uživatelskou nápovědu, klávesové ovládání a přístupnost.
 
 Výsledek:
@@ -1367,6 +1367,19 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 13:22 UTC
+
+- Navázáno na poslední otevřený bod etapy 7 (`1284`) a scope byl nejdříve delegován podagentovi pro gap analýzu test coverage; následně proběhla ruční konceptuální validace závěrů nad aktuálním stavem `PipelineFlowDiagram` + utilit.
+- Baseline validace před změnami ve `frontend-spa`: po `npm ci` prochází `npm run check-locales`; `npm run build-only && npm run test:unit -- --run` končí na známých pre-existing chybách v jiných dashboard testech (nezpůsobeno tímto krokem).
+- Doplněny unit testy normalizace dat:
+  - `frontend-spa/src/utils/__tests__/pipelineFlowVisualization.spec.ts`: nové scénáře pro fallback aliasy `effect_config` (`stage_scenario_id`) a ochranu proti nevalidnímu `scenario` ID.
+  - `frontend-spa/src/utils/__tests__/conditionTreeVisualization.spec.ts`: normalizace poškozených child uzlů skupiny na bezpečné defaultní group uzly.
+- Doplněny unit testy interakcí a synchronizace grafu s formulářovým stavem:
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: synchronizace `initialCategoryId`/`initialStageId` po změně props (simulace změny formuláře) a reset vybraného detailu při aktualizaci requirements, která odebere vybraný uzel.
+- Post-change validace pro změněný scope prochází: `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts src/utils/__tests__/pipelineFlowVisualization.spec.ts src/utils/__tests__/conditionTreeVisualization.spec.ts` (`33/33`).
+- Hotovo: poslední otevřený checkbox etapy 7 je splněn.
+- Následuje: spustit `parallel_validation`, zapsat finální shrnutí kroku a vytvořit řádný PR.
 
 ### 2026-05-11 12:58 UTC
 

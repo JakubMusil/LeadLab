@@ -208,4 +208,47 @@ describe('pipelineFlowVisualization', () => {
     expect(model.requirementLinkDiagnostics.some((link) => link.issue === 'cycle')).toBe(true)
     expect(model.edges.some((edge) => edge.type === 'next_step_on_met' && edge.source === 'requirement-req-2')).toBe(false)
   })
+
+  it('links rules to scenarios via fallback effect_config aliases', () => {
+    const model = buildPipelineFlowModel(
+      {
+        rules: [
+          {
+            ...baseRule,
+            effect_config: {
+              scenario_id: '   ',
+              stage_scenario_id: 'scenario-1',
+            },
+          },
+        ],
+        scenarios: [baseScenario],
+        requirements: [],
+      },
+      { t },
+    )
+
+    expect(
+      model.edges.some((edge) => edge.type === 'activates_scenario' && edge.source === 'rule-rule-1' && edge.target === 'scenario-scenario-1'),
+    ).toBe(true)
+  })
+
+  it('skips scenario activation link when effect_config scenario value is invalid', () => {
+    const model = buildPipelineFlowModel(
+      {
+        rules: [
+          {
+            ...baseRule,
+            effect_config: {
+              stage_scenario_id: 123,
+            },
+          },
+        ],
+        scenarios: [baseScenario],
+        requirements: [],
+      },
+      { t },
+    )
+
+    expect(model.edges.some((edge) => edge.type === 'activates_scenario')).toBe(false)
+  })
 })

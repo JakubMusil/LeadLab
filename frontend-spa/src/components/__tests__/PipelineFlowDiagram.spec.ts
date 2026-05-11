@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PipelineFlowDiagram from '../PipelineFlowDiagram.vue'
 
-const categories = [{ id: 'cat-1', name: 'Sales' }]
+const categories = [
+  { id: 'cat-1', name: 'Sales' },
+  { id: 'cat-2', name: 'Support' },
+]
 const stages = [
   { id: 'stage-1', name: 'Qualification' },
   { id: 'stage-2', name: 'Done' },
+  { id: 'stage-3', name: 'Support review' },
 ]
 
 const rules = [
@@ -216,6 +220,74 @@ describe('PipelineFlowDiagram', () => {
     await nodeTypeSelect.setValue('requirement')
 
     expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+  })
+
+  it('syncs category and stage filters when initial props change from form state', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules: [
+          ...rules,
+          {
+            ...rules[0],
+            id: 'rule-2',
+            name: 'Activate support scenario',
+            category_id: 'cat-2',
+            stage_id: 'stage-3',
+            effect_config: { stage_scenario_id: 'scenario-2' },
+          },
+        ],
+        scenarios: [
+          ...scenarios,
+          {
+            ...scenarios[0],
+            id: 'scenario-2',
+            name: 'Scenario B',
+            category_id: 'cat-2',
+            stage_id: 'stage-3',
+          },
+        ],
+        requirements: [
+          ...requirements,
+          {
+            ...requirements[0],
+            id: 'req-3',
+            scenario_id: 'scenario-2',
+            name: 'Prepare support summary',
+            next_step_on_met_id: null,
+            next_step_on_unmet_id: null,
+          },
+        ],
+        categories,
+        stages,
+        initialCategoryId: 'cat-1',
+        initialStageId: 'stage-1',
+      },
+    })
+
+    expect(wrapper.text()).toContain('Scenario A')
+    expect(wrapper.text()).not.toContain('Scenario B')
+    await wrapper.setProps({
+      initialCategoryId: 'cat-2',
+      initialStageId: 'stage-3',
+    })
+    expect(wrapper.text()).toContain('Scenario B')
+    expect(wrapper.text()).not.toContain('Scenario A')
+  })
+
+  it('clears selected node detail when requirements update from form and remove selected node', async () => {
+    const wrapper = mountDiagram()
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Finish checklist'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('click')
+    expect(wrapper.text()).toContain('Finish checklist')
+
+    await wrapper.setProps({
+      requirements: [{ ...requirements[0], next_step_on_met_id: null }],
+    })
+
+    expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+    expect(wrapper.text()).not.toContain('Finish checklist')
   })
 
   it('shows localized trigger labels in filter and node badge', () => {
