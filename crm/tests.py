@@ -5456,6 +5456,19 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(patch_scenario_resp.status_code, 200, patch_scenario_resp.content)
         self.assertEqual(patch_scenario_resp.json()["priority"], 3)
 
+        chained_requirement_resp = self._post(
+            f"/api/v1/crm/scenarios/{scenario_id}/requirements",
+            {
+                "name": "Follow-up step",
+                "requirement_type": "field",
+                "condition": {"field": "status", "operator": "eq", "value": RecordStatus.NEW},
+                "blocking": True,
+                "sort_order": 1,
+            },
+        )
+        self.assertEqual(chained_requirement_resp.status_code, 201, chained_requirement_resp.content)
+        chained_requirement_id = chained_requirement_resp.json()["id"]
+
         requirement_create_resp = self._post(
             f"/api/v1/crm/scenarios/{scenario_id}/requirements",
             {
@@ -5468,6 +5481,7 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
                 },
                 "blocking": True,
                 "sort_order": 0,
+                "next_step_on_unmet_id": chained_requirement_id,
             },
         )
         self.assertEqual(requirement_create_resp.status_code, 201, requirement_create_resp.content)
@@ -5489,6 +5503,8 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         req_resp = self._get(f"/api/v1/crm/scenarios/{scenario_id}/requirements")
         self.assertEqual(req_resp.status_code, 200)
         self.assertEqual(req_resp.json()[0]["id"], requirement_id)
+        self.assertEqual(req_resp.json()[0]["next_step_on_unmet_id"], chained_requirement_id)
+        self.assertEqual(req_resp.json()[1]["id"], chained_requirement_id)
 
         active_req_resp = self._get(
             f"/api/v1/crm/records/{self.record.id}/active-stage-requirements"
@@ -5500,22 +5516,96 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         self.assertIsNone(payload["scenario_activated_by_activity_id"])
         self.assertEqual(payload["recommended_next_stage_id"], str(self.stage_b.id))
         self.assertEqual(payload["recommended_next_stage_name"], self.stage_b.name)
-        self.assertEqual(payload["active_stage_requirements"][0]["id"], requirement_id)
-        self.assertIsNone(payload["active_stage_requirements"][0]["relevant_field_key"])
-        self.assertEqual(payload["active_stage_requirements"][0]["relevant_activity_type"], "task")
-        self.assertIsNone(payload["active_stage_requirements"][0]["relevant_tool_type"])
-        self.assertIsNone(payload["active_stage_requirements"][0]["satisfied_by_activity_id"])
-        self.assertFalse(payload["active_stage_requirements"][0]["blocking"])
+        requirements_by_id = {
+            item["id"]: item
+            for item in payload["active_stage_requirements"]
+        }
+        self.assertEqual(set(requirements_by_id.keys()), {requirement_id, chained_requirement_id})
+        self.assertIsNone(requirements_by_id[requirement_id]["relevant_field_key"])
+        self.assertEqual(requirements_by_id[requirement_id]["relevant_activity_type"], "task")
+        self.assertIsNone(requirements_by_id[requirement_id]["relevant_tool_type"])
+        self.assertIsNone(requirements_by_id[requirement_id]["satisfied_by_activity_id"])
+        self.assertFalse(requirements_by_id[requirement_id]["blocking"])
+        self.assertFalse(requirements_by_id[requirement_id]["is_met"])
+        self.assertTrue(requirements_by_id[requirement_id]["is_active_step"])
+        self.assertEqual(requirements_by_id[requirement_id]["fulfillment_status"], "unmet")
+        self.assertEqual(requirements_by_id[requirement_id]["next_step_on_unmet_id"], chained_requirement_id)
+
+        self.assertEqual(requirements_by_id[chained_requirement_id]["relevant_field_key"], "status")
+        self.assertIsNone(requirements_by_id[chained_requirement_id]["relevant_activity_type"])
+        self.assertIsNone(requirements_by_id[chained_requirement_id]["relevant_tool_type"])
+        self.assertTrue(requirements_by_id[chained_requirement_id]["is_met"])
+        self.assertTrue(requirements_by_id[chained_requirement_id]["is_active_step"])
+        self.assertEqual(requirements_by_id[chained_requirement_id]["fulfillment_status"], "met")
+        self.assertIsNone(requirements_by_id[chained_requirement_id]["next_step_on_met_id"])
+
+        self.assertTrue(
+            RuleEvaluationLog.objects.filter(
+                firm=self.firm,
+                record=self.record,
+                scenario_id=scenario_id,
+                requirement_id=requirement_id,
+                trigger_type=ConditionTriggerType.REQUIREMENT_CHAIN_EVALUATED,
+            ).exists()
+        )
 
         requirement_delete_resp = self._delete(
             f"/api/v1/crm/scenarios/{scenario_id}/requirements/{requirement_id}"
         )
         self.assertEqual(requirement_delete_resp.status_code, 204, requirement_delete_resp.content)
 
+        chained_requirement_delete_resp = self._delete(
+            f"/api/v1/crm/scenarios/{scenario_id}/requirements/{chained_requirement_id}"
+        )
+        self.assertEqual(chained_requirement_delete_resp.status_code, 204, chained_requirement_delete_resp.content)
+
         scenario_delete_resp = self._delete(
             f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios/{scenario_id}"
         )
         self.assertEqual(scenario_delete_resp.status_code, 204, scenario_delete_resp.content)
+
+    def test_stage_requirement_rejects_cyclic_chaining_links(self):
+        scenario = StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_a,
+            name="Cyclic scenario",
+            activation_condition={},
+            priority=1,
+            is_active=True,
+            created_by=self.user,
+        )
+        first = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="First",
+            requirement_type=RequirementType.CUSTOM,
+            condition={},
+            sort_order=0,
+            created_by=self.user,
+        )
+        second = StageRequirement.objects.create(
+            firm=self.firm,
+            scenario=scenario,
+            name="Second",
+            requirement_type=RequirementType.CUSTOM,
+            condition={},
+            sort_order=1,
+            created_by=self.user,
+        )
+
+        link_first = self._patch(
+            f"/api/v1/crm/scenarios/{scenario.id}/requirements/{first.id}",
+            {"next_step_on_met_id": str(second.id)},
+        )
+        self.assertEqual(link_first.status_code, 200, link_first.content)
+
+        cycle_resp = self._patch(
+            f"/api/v1/crm/scenarios/{scenario.id}/requirements/{second.id}",
+            {"next_step_on_met_id": str(first.id)},
+        )
+        self.assertEqual(cycle_resp.status_code, 400, cycle_resp.content)
+        self.assertIn("cycles", cycle_resp.json()["detail"].lower())
 
     def test_active_requirements_payload_contains_activity_links(self):
         scenario = StageScenario.objects.create(

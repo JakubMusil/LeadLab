@@ -1246,11 +1246,11 @@ Výsledek:
 
 ### Etapa 5: Řetězení
 
-- [ ] Přidat návazné kroky.
-- [ ] Přidat stav splnění kroků.
+- [x] Přidat návazné kroky.
+- [x] Přidat stav splnění kroků.
 - [x] Přidat ochranu proti cyklům.
 - [x] Přidat priority.
-- [ ] Přidat audit řetězení.
+- [x] Přidat audit řetězení.
 - [x] Doplnit testy řetězení.
 
 Výsledek:
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 08:48 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na tři otevřené body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`).
+- Další kroky byly maximalizovaně delegovány na podagenta (gap analýza backend implementace + návrh minimálního cohesive scope) a následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům `crm/models.py`, `crm/api.py`, `crm/tests.py`.
+- Backend implementace etapy 5 v `crm/models.py` + migraci `crm/migrations/0011_stagerequirement_chaining_links.py`: přidány návazné kroky mezi požadavky (`next_step_on_met`, `next_step_on_unmet`) pro explicitní řetězení kroků scénáře.
+- Backend API implementace etapy 5 v `crm/api.py`: rozšířena schema `StageRequirement*` o návazné kroky, přidána validace odkazů v rámci stejného scénáře (včetně ochrany proti cyklům), doplněn výpočet `is_active_step` + `fulfillment_status` v payloadu aktivních požadavků a audit změn řetězení přes `RuleEvaluationLog` (`requirement.chain_evaluated`).
+- Backend testy etapy 5 v `crm/tests.py`: rozšířeno pokrytí endpointů scénářů/požadavků o řetězení kroků, stav splnění kroků v payloadu a auditní logy; doplněna regresní kontrola zamítnutí cyklického řetězení.
+- Baseline i post-change běh backend testů v sandboxu aktuálně blokuje pre-existing limit prostředí (`django` není nainstalované), bez možnosti lokálního ověření běhu test suite v tomto runtime.
+- Hotovo: otevřené body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`) jsou implementované a označené jako splněné.
+- Následuje: provést dostupnou validační kontrolu v aktuálním prostředí, spustit `parallel_validation`, zapracovat případné připomínky a připravit finální PR souhrn.
 
 ### 2026-05-11 08:09 UTC
 

@@ -1687,6 +1687,9 @@ def _refresh_active_stage_scenario(
 
     existing_extra_data = dict(record.extra_data or {})
     extra_data = dict(existing_extra_data)
+    previous_requirement_items = extra_data.get("active_stage_requirements")
+    if not isinstance(previous_requirement_items, list):
+        previous_requirement_items = []
     if not record.category_id or not record.current_stage_id:
         if (
             "active_stage_scenario_id" in extra_data
@@ -1737,16 +1740,32 @@ def _refresh_active_stage_scenario(
         )
         requirement_items: list[dict[str, Any]] = []
         requirements = active_scenario.requirements.all().order_by("sort_order", "created_at", "id")
+        requirement_snapshots: list[dict[str, Any]] = []
+        requirement_ids: set[str] = set()
+        incoming_target_ids: set[str] = set()
+
         for requirement in requirements:
+            requirement_id = str(requirement.id)
+            requirement_ids.add(requirement_id)
             tree = requirement.condition
             is_met = True if tree in (None, {}) else evaluator.evaluate(tree, context)
             references = _extract_requirement_references(tree)
             satisfied_by_activity_id = None
             if is_met:
                 satisfied_by_activity_id = _find_first_matching_activity_id(tree, context, evaluator)
-            requirement_items.append(
+            next_step_on_met_id = str(requirement.next_step_on_met_id) if requirement.next_step_on_met_id else None
+            next_step_on_unmet_id = (
+                str(requirement.next_step_on_unmet_id)
+                if requirement.next_step_on_unmet_id
+                else None
+            )
+            if next_step_on_met_id:
+                incoming_target_ids.add(next_step_on_met_id)
+            if next_step_on_unmet_id:
+                incoming_target_ids.add(next_step_on_unmet_id)
+            requirement_snapshots.append(
                 {
-                    "id": str(requirement.id),
+                    "id": requirement_id,
                     "name": requirement.name,
                     "requirement_type": requirement.requirement_type,
                     "blocking": requirement.blocking,
@@ -1756,7 +1775,108 @@ def _refresh_active_stage_scenario(
                     "relevant_activity_type": references["relevant_activity_type"],
                     "relevant_tool_type": references["relevant_tool_type"],
                     "satisfied_by_activity_id": satisfied_by_activity_id,
+                    "next_step_on_met_id": next_step_on_met_id,
+                    "next_step_on_unmet_id": next_step_on_unmet_id,
                 }
+            )
+
+        active_step_ids = {
+            item["id"] for item in requirement_snapshots if item["id"] not in incoming_target_ids
+        }
+        if requirement_snapshots and not active_step_ids:
+            # Fail-open fallback: if no root step exists (for example during
+            # transient invalid chaining setup), keep all requirements active
+            # so stage validation does not silently disappear for users.
+            active_step_ids = {item["id"] for item in requirement_snapshots}
+
+        queue = list(active_step_ids)
+        processed_step_ids: set[str] = set()
+        requirements_by_id = {item["id"]: item for item in requirement_snapshots}
+        while queue:
+            requirement_id = queue.pop(0)
+            if requirement_id in processed_step_ids:
+                continue
+            processed_step_ids.add(requirement_id)
+            snapshot = requirements_by_id.get(requirement_id)
+            if not snapshot:
+                continue
+            next_step_id = (
+                snapshot["next_step_on_met_id"]
+                if snapshot["is_met"]
+                else snapshot["next_step_on_unmet_id"]
+            )
+            if next_step_id and next_step_id in requirement_ids:
+                active_step_ids.add(next_step_id)
+                if next_step_id not in processed_step_ids:
+                    queue.append(next_step_id)
+
+        for snapshot in requirement_snapshots:
+            is_active_step = snapshot["id"] in active_step_ids
+            fulfillment_status = "pending"
+            if is_active_step:
+                fulfillment_status = "met" if snapshot["is_met"] else "unmet"
+            requirement_items.append(
+                {
+                    **snapshot,
+                    "is_active_step": is_active_step,
+                    "fulfillment_status": fulfillment_status,
+                }
+            )
+
+        previous_by_id = {
+            str(item.get("id")): item
+            for item in previous_requirement_items
+            if isinstance(item, dict) and item.get("id")
+        }
+        for item in requirement_items:
+            previous_item = previous_by_id.get(item["id"])
+            previous_status = (
+                previous_item.get("fulfillment_status")
+                if isinstance(previous_item, dict)
+                else None
+            )
+            previous_is_active = (
+                bool(previous_item.get("is_active_step"))
+                if isinstance(previous_item, dict)
+                else None
+            )
+            if (
+                previous_status == item["fulfillment_status"]
+                and previous_is_active == item["is_active_step"]
+            ):
+                continue
+            if item["fulfillment_status"] == "met":
+                result = RuleEvaluationResult.REQUIREMENT_COMPLETED
+            elif item["fulfillment_status"] == "unmet" and item["blocking"]:
+                result = RuleEvaluationResult.BLOCKED
+            elif item["fulfillment_status"] == "unmet":
+                result = RuleEvaluationResult.WARNING
+            else:
+                result = RuleEvaluationResult.PASSED
+            RuleEvaluationLog.objects.create(
+                firm=record.firm,
+                record=record,
+                scenario=active_scenario,
+                requirement_id=item["id"],
+                trigger_type=ConditionTriggerType.REQUIREMENT_CHAIN_EVALUATED,
+                input_context={
+                    "record_id": str(record.id),
+                    "scenario_id": active_scenario_id,
+                    "requirement_id": item["id"],
+                    "is_active_step": item["is_active_step"],
+                    "is_met": item["is_met"],
+                    "fulfillment_status": item["fulfillment_status"],
+                    "next_step_on_met_id": item["next_step_on_met_id"],
+                    "next_step_on_unmet_id": item["next_step_on_unmet_id"],
+                },
+                result=result,
+                messages=[
+                    (
+                        "Requirement chain status updated: "
+                        f"{item['name']} -> {item['fulfillment_status']}"
+                    )
+                ],
+                recommendations=[],
             )
         if requirement_items:
             extra_data["active_stage_requirements"] = requirement_items
@@ -9709,6 +9829,8 @@ class StageRequirementOut(Schema):
     blocking: bool
     visible_to_user: bool
     sort_order: int
+    next_step_on_met_id: Optional[str]
+    next_step_on_unmet_id: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -9721,6 +9843,8 @@ class StageRequirementIn(Schema):
     blocking: bool = True
     visible_to_user: bool = True
     sort_order: int = 0
+    next_step_on_met_id: Optional[str] = None
+    next_step_on_unmet_id: Optional[str] = None
 
 
 class StageRequirementPatchIn(Schema):
@@ -9731,6 +9855,8 @@ class StageRequirementPatchIn(Schema):
     blocking: Optional[bool] = None
     visible_to_user: Optional[bool] = None
     sort_order: Optional[int] = None
+    next_step_on_met_id: Optional[str] = None
+    next_step_on_unmet_id: Optional[str] = None
 
 
 class ConditionRuleTestEvaluationIn(Schema):
@@ -9845,6 +9971,12 @@ def _stage_requirement_out(requirement: StageRequirement) -> dict:
         "blocking": requirement.blocking,
         "visible_to_user": requirement.visible_to_user,
         "sort_order": requirement.sort_order,
+        "next_step_on_met_id": str(requirement.next_step_on_met_id) if requirement.next_step_on_met_id else None,
+        "next_step_on_unmet_id": (
+            str(requirement.next_step_on_unmet_id)
+            if requirement.next_step_on_unmet_id
+            else None
+        ),
         "created_at": requirement.created_at,
         "updated_at": requirement.updated_at,
     }
@@ -10316,6 +10448,92 @@ def delete_stage_scenario(request, category_id: str, stage_id: str, scenario_id:
     return 204, None
 
 
+def _resolve_stage_requirement_link(
+    *,
+    scenario: StageScenario,
+    requirement_id: str | None,
+) -> StageRequirement | None:
+    if not requirement_id:
+        return None
+    return (
+        StageRequirement.objects
+        .filter(
+            id=requirement_id,
+            scenario=scenario,
+            firm=scenario.firm,
+        )
+        .first()
+    )
+
+
+def _stage_requirement_chain_has_cycle(
+    *,
+    adjacency: dict[str, list[str]],
+) -> bool:
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def walk(node_id: str) -> bool:
+        if node_id in visited:
+            return False
+        if node_id in visiting:
+            return True
+        visiting.add(node_id)
+        for neighbor_id in adjacency.get(node_id, []):
+            if walk(neighbor_id):
+                return True
+        visiting.remove(node_id)
+        visited.add(node_id)
+        return False
+
+    for node_id in adjacency.keys():
+        if walk(node_id):
+            return True
+    return False
+
+
+def _validate_stage_requirement_links(
+    *,
+    scenario: StageScenario,
+    requirement: StageRequirement | None,
+    next_step_on_met: StageRequirement | None,
+    next_step_on_unmet: StageRequirement | None,
+) -> tuple[bool, str | None]:
+    if requirement:
+        requirement_id = str(requirement.id)
+        if next_step_on_met and str(next_step_on_met.id) == requirement_id:
+            return False, "next_step_on_met_id cannot reference the requirement itself."
+        if next_step_on_unmet and str(next_step_on_unmet.id) == requirement_id:
+            return False, "next_step_on_unmet_id cannot reference the requirement itself."
+
+    adjacency: dict[str, list[str]] = {}
+    existing_requirements = scenario.requirements.all().only(
+        "id",
+        "next_step_on_met_id",
+        "next_step_on_unmet_id",
+    )
+    for existing in existing_requirements:
+        existing_id = str(existing.id)
+        adjacency[existing_id] = []
+        if existing.next_step_on_met_id:
+            adjacency[existing_id].append(str(existing.next_step_on_met_id))
+        if existing.next_step_on_unmet_id:
+            adjacency[existing_id].append(str(existing.next_step_on_unmet_id))
+
+    if requirement:
+        requirement_id = str(requirement.id)
+        adjacency[requirement_id] = []
+        if next_step_on_met:
+            adjacency[requirement_id].append(str(next_step_on_met.id))
+        if next_step_on_unmet:
+            adjacency[requirement_id].append(str(next_step_on_unmet.id))
+
+    if _stage_requirement_chain_has_cycle(adjacency=adjacency):
+        return False, "Requirement chaining cannot contain cycles."
+
+    return True, None
+
+
 @router.get(
     "/scenarios/{scenario_id}/requirements",
     auth=django_auth,
@@ -10352,6 +10570,20 @@ def create_stage_scenario_requirement(request, scenario_id: str, payload: StageR
     except StageScenario.DoesNotExist:
         return 404, {"detail": "Stage scenario not found."}
 
+    next_step_on_met = _resolve_stage_requirement_link(
+        scenario=scenario,
+        requirement_id=payload.next_step_on_met_id,
+    )
+    if payload.next_step_on_met_id and not next_step_on_met:
+        return 400, {"detail": "next_step_on_met_id must reference a requirement in the same scenario."}
+
+    next_step_on_unmet = _resolve_stage_requirement_link(
+        scenario=scenario,
+        requirement_id=payload.next_step_on_unmet_id,
+    )
+    if payload.next_step_on_unmet_id and not next_step_on_unmet:
+        return 400, {"detail": "next_step_on_unmet_id must reference a requirement in the same scenario."}
+
     requirement = StageRequirement.objects.create(
         firm=request.firm,
         scenario=scenario,
@@ -10362,7 +10594,18 @@ def create_stage_scenario_requirement(request, scenario_id: str, payload: StageR
         blocking=payload.blocking,
         visible_to_user=payload.visible_to_user,
         sort_order=payload.sort_order,
+        next_step_on_met=next_step_on_met,
+        next_step_on_unmet=next_step_on_unmet,
     )
+    is_valid, error_message = _validate_stage_requirement_links(
+        scenario=scenario,
+        requirement=requirement,
+        next_step_on_met=next_step_on_met,
+        next_step_on_unmet=next_step_on_unmet,
+    )
+    if not is_valid:
+        requirement.delete()
+        return 400, {"detail": error_message or "Invalid requirement chaining."}
     return 201, _stage_requirement_out(requirement)
 
 
@@ -10392,6 +10635,38 @@ def update_stage_scenario_requirement(
         return 404, {"detail": "Stage requirement not found."}
 
     updates = payload.dict(exclude_unset=True)
+    next_step_on_met = requirement.next_step_on_met
+    next_step_on_unmet = requirement.next_step_on_unmet
+
+    if "next_step_on_met_id" in updates:
+        next_step_on_met_id = updates.pop("next_step_on_met_id")
+        next_step_on_met = _resolve_stage_requirement_link(
+            scenario=requirement.scenario,
+            requirement_id=next_step_on_met_id,
+        )
+        if next_step_on_met_id and not next_step_on_met:
+            return 400, {"detail": "next_step_on_met_id must reference a requirement in the same scenario."}
+
+    if "next_step_on_unmet_id" in updates:
+        next_step_on_unmet_id = updates.pop("next_step_on_unmet_id")
+        next_step_on_unmet = _resolve_stage_requirement_link(
+            scenario=requirement.scenario,
+            requirement_id=next_step_on_unmet_id,
+        )
+        if next_step_on_unmet_id and not next_step_on_unmet:
+            return 400, {"detail": "next_step_on_unmet_id must reference a requirement in the same scenario."}
+
+    is_valid, error_message = _validate_stage_requirement_links(
+        scenario=requirement.scenario,
+        requirement=requirement,
+        next_step_on_met=next_step_on_met,
+        next_step_on_unmet=next_step_on_unmet,
+    )
+    if not is_valid:
+        return 400, {"detail": error_message or "Invalid requirement chaining."}
+
+    requirement.next_step_on_met = next_step_on_met
+    requirement.next_step_on_unmet = next_step_on_unmet
     for key, value in updates.items():
         setattr(requirement, key, value)
     requirement.save()
