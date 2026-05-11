@@ -1149,15 +1149,15 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.6 Editor scénářů fáze
 
-- [ ] Přidat seznam scénářů pro fázi.
-- [ ] Přidat vytvoření scénáře.
-- [ ] Přidat aktivační podmínku scénáře.
-- [ ] Přidat seznam požadavků scénáře.
-- [ ] Přidat nastavení blokujícího požadavku.
-- [ ] Přidat doporučenou další fázi.
-- [ ] Přidat prioritu scénáře.
-- [ ] Přidat zapnutí/vypnutí scénáře.
-- [ ] Přidat preview na testovacím záznamu.
+- [x] Přidat seznam scénářů pro fázi.
+- [x] Přidat vytvoření scénáře.
+- [x] Přidat aktivační podmínku scénáře.
+- [x] Přidat seznam požadavků scénáře.
+- [x] Přidat nastavení blokujícího požadavku.
+- [x] Přidat doporučenou další fázi.
+- [x] Přidat prioritu scénáře.
+- [x] Přidat zapnutí/vypnutí scénáře.
+- [x] Přidat preview na testovacím záznamu.
 
 ### 14.7 Napojení na Streamline
 
@@ -1344,6 +1344,19 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 06:03 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřenou frontend etapu 14.6 (editor scénářů fáze).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza 14.6 + mapování backend/frontend integračních bodů v `crm/api.py`, `crm/tests.py`, `PipelineSettingsView.vue`, `conditionRules.ts`), následně proběhla ruční konceptuální validace návrhu.
+- Před úpravami proběhla baseline validace dostupných checků: frontend `check-locales` prochází; frontend `type-check`/`build-only` padají na pre-existing chybějících nástrojích (`vue-tsc`, `vite`); backend `flake8`/`manage.py test` nelze spustit kvůli chybějícím závislostem (`flake8`, `django`) v sandboxu.
+- Backend implementace 14.6: v `crm/api.py` doplněny endpointy pro DELETE scénáře fáze a CRUD požadavků scénáře (`POST/PATCH/DELETE /scenarios/{scenario_id}/requirements`) včetně nových schema vstupů `StageRequirementIn` a `StageRequirementPatchIn`.
+- Backend testy rozšířeny v `crm/tests.py` (`ConditionRulesApiEndpointsTest`) o pokrytí PATCH/DELETE scénáře a CRUD flow požadavků scénáře, včetně validace změny `blocking` a návazného payloadu `active-stage-requirements`.
+- Frontend implementace 14.6: přidán nový store `frontend-spa/src/stores/stageScenarios.ts` (list/create/update/delete scénářů, list/create/update/delete požadavků, preview přes testovací záznam).
+- Frontend implementace 14.6 ve `frontend-spa/src/views/PipelineSettingsView.vue`: doplněna sekce editoru scénářů fáze (výběr fáze, seznam scénářů, create/edit/delete, aktivační podmínka přes `ConditionBuilder`, doporučená další fáze, priorita, zapnutí/vypnutí), editor požadavků scénáře (seznam + create/edit/delete + blocking toggle) a preview na testovacím záznamu.
+- Doplněny nové i18n klíče pro scénáře/požadavky/preview ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Hotovo: etapa 14.6 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
+- Následuje: navázat další otevřenou frontend etapou 14.7 (napojení na Streamline) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 05:51 UTC
 
