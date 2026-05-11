@@ -2175,6 +2175,7 @@ class ConditionTriggerType(models.TextChoices):
     PROPOSAL_SIGNED = "proposal.signed", "Proposal signed"
     PROPOSAL_REJECTED = "proposal.rejected", "Proposal rejected"
     MANUAL_EVALUATION_REQUESTED = "manual.evaluation_requested", "Manual evaluation requested"
+    REQUIREMENT_CHAIN_EVALUATED = "requirement.chain_evaluated", "Requirement chain evaluated"
 
 
 class ConditionScopeType(models.TextChoices):
@@ -2332,6 +2333,20 @@ class StageRequirement(TenantModel):
     blocking = models.BooleanField(default=True)
     visible_to_user = models.BooleanField(default=True)
     sort_order = models.PositiveIntegerField(default=0)
+    next_step_on_met = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="triggered_by_met",
+    )
+    next_step_on_unmet = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="triggered_by_unmet",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
