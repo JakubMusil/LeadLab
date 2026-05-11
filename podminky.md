@@ -1274,9 +1274,9 @@ Výsledek:
 ### Etapa 7: Interaktivní grafická mindmapa pravidel
 
 - [ ] Navrhnout normalizovaný vizualizační model pro pravidla, scénáře, požadavky, condition tree a návazné kroky.
-- [ ] Přidat čitelnou stromovou vizualizaci condition tree jako doplněk ke stávajícímu formulářovému builderu.
+- [x] Přidat čitelnou stromovou vizualizaci condition tree jako doplněk ke stávajícímu formulářovému builderu.
 - [ ] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
-- [ ] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
+- [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
 - [ ] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
 - [ ] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
 - [ ] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
@@ -1367,6 +1367,21 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 09:52 UTC
+
+- Prostudován aktuální stav `podminky.md` a potvrzen navazující implementační scope: začít etapou 7A (read-only strom condition tree + napojení do pipeline nastavení).
+- Další krok byl maximalizovaně delegován podagentovi (mapování integračních bodů, minimální bezpečný rozsah, testovací matice) a následně ručně zvalidován přímo nad `frontend-spa/src/views/PipelineSettingsView.vue` a existujícími testy/lokalizacemi.
+- Před úpravami proběhla baseline validace dostupných frontend checků: `npm run check-locales` prochází, `npm run build-only` v sandboxu padá na chybějícím `vite` (`not found`) ještě před scope změny.
+- Následně po instalaci frontend závislostí (`npm ci`) byla validační sada znovu spuštěna a `check-locales`, `build-only` i cílené `test:unit` pro nový scope procházejí.
+- Funkční implementace etapy 7A:
+  - přidána utility vrstva `frontend-spa/src/utils/conditionTreeVisualization.ts` pro normalizaci `condition_tree` a sestavení read-only vizualizačního modelu (uzly/hrany),
+  - přidán nový read-only komponent `frontend-spa/src/components/ConditionTreeViewer.vue` se stromovým renderem a sbalením/rozbalením skupin,
+  - `frontend-spa/src/views/PipelineSettingsView.vue` rozšířen o samostatný režim „Builder / Strom“ v editoru pravidla bez nahrazení stávajícího builderu/JSON režimu.
+- Doplněny unit testy pro normalizační utilitu a stromový viewer (`frontend-spa/src/utils/__tests__/conditionTreeVisualization.spec.ts`, `frontend-spa/src/components/__tests__/ConditionTreeViewer.spec.ts`).
+- Doplněny i18n klíče pro nové UI texty ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Hotovo: v etapě 7 jsou nyní splněné body pro stromovou vizualizaci condition tree a její napojení do pipeline nastavení.
+- Následuje: dokončit cílenou validační sadu (build/test), zapracovat případné připomínky z `parallel_validation` a navázat bodem 7B (přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok).
 
 ### 2026-05-11 09:21 UTC
 
@@ -1891,4 +1906,3 @@ Minimální validační sada pro tuto fázi:
 ### 20.8 Kritérium dokončení fáze
 
 Fáze je dokončená, když administrátor dokáže v nastavení pipeline otevřít grafický pohled, vybrat kategorii/fázi, zobrazit pravidla, scénáře, požadavky a návazné kroky, bezpečně přejít z grafu do existujícího editoru a při testovacím vyhodnocení vidět, které části logiky byly splněné nebo nesplněné.
-
