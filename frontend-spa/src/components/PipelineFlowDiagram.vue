@@ -295,7 +295,7 @@ const selectedNodeNeighborIds = computed<Set<string>>(() => {
 })
 const selectedNodeEdgeIds = computed<Set<string>>(() => new Set(selectedNodeEdges.value.map((edge) => edge.id)))
 
-const MAX_NODE_RECENT_LOGS = 3
+const MAX_DISPLAYED_EVALUATION_LOGS = 3
 const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
   const node = selectedNode.value
   if (!node) return []
@@ -303,10 +303,10 @@ const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
     .filter((log) => {
       if (node.type === 'rule') return (log.rule_id ?? null) === node.sourceId
       if (node.type === 'scenario') return (log.scenario_id ?? null) === node.sourceId
-      if (node.type === 'requirement') return String(log.requirement_id ?? '').trim() === node.sourceId
+      if (node.type === 'requirement') return (log.requirement_id ?? null) === node.sourceId
       return false
     })
-    .slice(0, MAX_NODE_RECENT_LOGS)
+    .slice(0, MAX_DISPLAYED_EVALUATION_LOGS)
 })
 
 function formatEvalLogDate(evaluatedAt?: string): string {
