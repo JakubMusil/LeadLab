@@ -1273,14 +1273,14 @@ Výsledek:
 
 ### Etapa 7: Interaktivní grafická mindmapa pravidel
 
-- [ ] Navrhnout normalizovaný vizualizační model pro pravidla, scénáře, požadavky, condition tree a návazné kroky.
+- [x] Navrhnout normalizovaný vizualizační model pro pravidla, scénáře, požadavky, condition tree a návazné kroky.
 - [x] Přidat čitelnou stromovou vizualizaci condition tree jako doplněk ke stávajícímu formulářovému builderu.
 - [x] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
 - [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
 - [x] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
 - [x] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
 - [x] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
-- [ ] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
+- [x] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
 - [ ] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
 - [ ] Doplnit uživatelskou nápovědu, klávesové ovládání a přístupnost.
 
@@ -1367,6 +1367,38 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 12:46 UTC
+
+- Navázáno na krok 12:41 UTC: zapracovány navazující review připomínky k čitelnosti helperů a interních metadat v `PipelineFlowDiagram.vue` + `pipelineFlowVisualization.ts` + `PipelineSettingsView.vue`.
+- Úpravy zahrnují:
+  - vytažení helperů `extractRequirementId` / `extractFulfillmentStatus` + explicitní type guard pro status větve,
+  - jasné označení interního trigger kódu (`_triggerCode`) a oddělení interních metadat od zobrazovaných hodnot přes helper `displayableMetaEntries`,
+  - doplnění vysvětlujících komentářů k záměrnému exact-match filtrování triggerů z dropdownu.
+- Ověřeno po každém kole: `npm run test:unit -- src/components/__tests__/PipelineFlowDiagram.spec.ts src/utils/__tests__/pipelineFlowVisualization.spec.ts` a `npm run build-only` prochází.
+- `parallel_validation` už v závěru session hlásí vyčerpání validačního budgetu; poslední dostupné běhy v této session vracely CodeQL bez alertů a pouze stylistické review připomínky, které jsou v tomto kroku zapracované.
+- Hotovo: implementační scope tohoto kroku zůstává funkčně i konceptuálně validní a reflektuje požadavek na uživatelsky čitelné (lokalizované) triggery.
+- Následuje: v další navazující iteraci dokončit zbývající otevřené body etapy 7 (rozšíření testového pokrytí synchronizace s formulářem, nápověda/klávesové ovládání/přístupnost).
+
+### 2026-05-11 12:41 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřený bod etapy 7 pro napojení grafu na testovací vyhodnocení a log vyhodnocení.
+- Další krok byl maximalizovaně delegován podagentovi (gap analýza scope + mapování trigger UX problémů), následně proběhla ruční konceptuální validace závěrů přímo nad `PipelineSettingsView.vue`, `PipelineFlowDiagram.vue`, `pipelineFlowVisualization.ts` a backend kontrakty v `crm/models.py`/`crm/api.py`.
+- Baseline validace před změnami ve `frontend-spa` po `npm ci`: `npm run check-locales`, `npm run build-only` a cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Frontend implementace uživatelsky čitelných triggerů:
+  - přidán sdílený mapovací modul `frontend-spa/src/constants/triggerTypes.ts` (reálné backend trigger typy + lokalizované labely),
+  - formulář pravidla, filtry pravidel, filtry logu a filtr triggeru v diagramu nyní používají výběr z přeložených možností místo volného textu s interními kódy,
+  - seznam pravidel, tabulka logu a badge/meta v diagramu nyní zobrazují lokalizované názvy triggerů.
+- Frontend implementace napojení grafu na test/log vyhodnocení:
+  - `PipelineSettingsView.vue` předává do diagramu výstupy testovací evaluace (`outputs` + `testedRuleId`) a aktuálně načtené `ruleEvaluationLogs`,
+  - `PipelineFlowDiagram.vue` zvýrazňuje testovaný rule uzel stavem matched/unmatched a requirement uzly stavem větve met/unmet/pending podle `requirement.chain_evaluated` logu.
+- Doplněny i18n klíče pro nové trigger labely a stavy vyhodnocení ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Rozšířeny testy:
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts` o lokalizované trigger labely a vizualizační stavy z test eval/logu,
+  - `frontend-spa/src/utils/__tests__/pipelineFlowVisualization.spec.ts` upraven pro přesné filtrování triggeru dle vybrané hodnoty.
+- Post-change validace prochází: `npm run check-locales`, `npm run build-only`, `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Hotovo: etapa 7 má nyní splněný bod propojení grafu s testovacím vyhodnocením a eval logem, včetně uživatelsky čitelného výběru triggerů.
+- Následuje: doplnit zbývající otevřené body etapy 7 (rozšíření unit test pokrytí synchronizace s formulářem, nápověda/klávesové ovládání/přístupnost), následně spustit `parallel_validation` a připravit finální PR souhrn.
 
 ### 2026-05-11 12:22 UTC
 

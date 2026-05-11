@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { TRIGGER_TYPE_OPTIONS, getTriggerTypeLabel } from '@/constants/triggerTypes'
 import {
   buildPipelineFlowModel,
   type PipelineFlowActiveFilter,
@@ -21,6 +22,19 @@ interface FlowStageOption {
   name: string
 }
 
+interface FlowEvaluationOutput {
+  rule_id?: string
+}
+
+interface FlowEvaluationLog {
+  id: string
+  requirement_id: string | null
+  trigger_type: string
+  input_context: Record<string, unknown>
+}
+
+type RequirementFulfillmentStatus = 'met' | 'unmet' | 'pending'
+
 const props = withDefaults(defineProps<{
   rules: PipelineFlowRuleInput[]
   scenarios: PipelineFlowScenarioInput[]
@@ -31,11 +45,17 @@ const props = withDefaults(defineProps<{
   error?: string | null
   initialCategoryId?: string
   initialStageId?: string
+  evaluationOutputs?: FlowEvaluationOutput[]
+  evaluationLogs?: FlowEvaluationLog[]
+  testedRuleId?: string | null
 }>(), {
   loading: false,
   error: null,
   initialCategoryId: '',
   initialStageId: '',
+  evaluationOutputs: () => [],
+  evaluationLogs: () => [],
+  testedRuleId: null,
 })
 
 const { t } = useI18n()
@@ -77,6 +97,50 @@ const stageLabelById = computed<Record<string, string>>(() =>
     return acc
   }, {}),
 )
+const triggerTypeOptions = computed(() => TRIGGER_TYPE_OPTIONS)
+const matchedRuleIds = computed(() => {
+  const ids = new Set<string>()
+  props.evaluationOutputs.forEach((output) => {
+    if (typeof output.rule_id === 'string' && output.rule_id.trim()) {
+      ids.add(output.rule_id.trim())
+    }
+  })
+  return ids
+})
+
+const REQUIREMENT_FULFILLMENT_STATUSES = new Set<RequirementFulfillmentStatus>(['met', 'unmet', 'pending'])
+
+function isRequirementFulfillmentStatus(value: string): value is RequirementFulfillmentStatus {
+  return REQUIREMENT_FULFILLMENT_STATUSES.has(value as RequirementFulfillmentStatus)
+}
+
+function extractRequirementId(log: FlowEvaluationLog): string {
+  const rawRequirementId = log.input_context?.requirement_id
+  const contextualId = typeof rawRequirementId === 'string' ? rawRequirementId : ''
+  return String(log.requirement_id || contextualId).trim()
+}
+
+function extractFulfillmentStatus(log: FlowEvaluationLog): RequirementFulfillmentStatus | null {
+  const rawStatus = log.input_context?.fulfillment_status
+  const contextualStatus = typeof rawStatus === 'string' ? rawStatus : ''
+  const normalized = String(contextualStatus).trim()
+  if (isRequirementFulfillmentStatus(normalized)) {
+    return normalized
+  }
+  return null
+}
+
+const requirementFulfillmentStatusById = computed<Record<string, RequirementFulfillmentStatus>>(() => {
+  const map: Record<string, RequirementFulfillmentStatus> = {}
+  props.evaluationLogs.forEach((log) => {
+    if (log.trigger_type !== 'requirement.chain_evaluated') return
+    const requirementId = extractRequirementId(log)
+    if (!requirementId || map[requirementId]) return
+    const status = extractFulfillmentStatus(log)
+    if (status) map[requirementId] = status
+  })
+  return map
+})
 
 const filteredStages = computed(() => props.stages)
 
@@ -198,7 +262,7 @@ function nodeTypeLabel(node: PipelineFlowNode): string {
 
 function nodeClass(node: PipelineFlowNode): string {
   if (node.type === 'rule') {
-    const trigger = String(node.meta.trigger || '')
+    const trigger = String(node.meta._triggerCode || node.meta.trigger || '')
     let triggerClass = 'ring-1 ring-indigo-100 dark:ring-indigo-800/60'
     if (trigger.includes('field')) {
       triggerClass = 'ring-1 ring-purple-100 dark:ring-purple-800/60'
@@ -229,6 +293,50 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
   if (issue === 'cross_scenario') return t('pipeline.flowDiagramInvalidRequirementScenarioLink')
   if (issue === 'cycle') return t('pipeline.flowDiagramRequirementCycleLink')
   return t('pipeline.flowDiagramRequirementLinkValid')
+}
+
+function triggerTypeLabel(triggerType: string): string {
+  return getTriggerTypeLabel(triggerType, t)
+}
+
+function ruleTestState(node: PipelineFlowNode): 'matched' | 'unmatched' | null {
+  if (node.type !== 'rule') return null
+  if (!props.testedRuleId || node.sourceId !== props.testedRuleId) return null
+  return matchedRuleIds.value.has(node.sourceId) ? 'matched' : 'unmatched'
+}
+
+function ruleTestStateLabel(state: 'matched' | 'unmatched' | null): string {
+  if (state === 'matched') return t('pipeline.flowDiagramRuleTestMatched')
+  if (state === 'unmatched') return t('pipeline.flowDiagramRuleTestUnmatched')
+  return ''
+}
+
+function requirementFulfillmentStatus(requirementId: string): RequirementFulfillmentStatus | null {
+  return requirementFulfillmentStatusById.value[requirementId] ?? null
+}
+
+function requirementFulfillmentStatusLabel(status: RequirementFulfillmentStatus | null): string {
+  if (status === 'met') return t('pipeline.flowDiagramRequirementStatusMet')
+  if (status === 'unmet') return t('pipeline.flowDiagramRequirementStatusUnmet')
+  if (status === 'pending') return t('pipeline.flowDiagramRequirementStatusPending')
+  return ''
+}
+
+function requirementFulfillmentStatusClass(status: RequirementFulfillmentStatus | null): string {
+  if (status === 'met') {
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+  }
+  if (status === 'unmet') {
+    return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+  }
+  if (status === 'pending') {
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+  }
+  return ''
+}
+
+function displayableMetaEntries(node: PipelineFlowNode): Array<[string, string | number | boolean | null]> {
+  return Object.entries(node.meta).filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '')
 }
 
 function clampZoom(value: number): number {
@@ -354,12 +462,15 @@ function onViewportKeydown(event: KeyboardEvent) {
         <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
         <option v-for="stage in filteredStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
       </select>
-      <input
+      <select
         v-model="triggerFilter"
-        type="text"
-        :placeholder="t('pipeline.flowDiagramFilterTrigger')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
-      />
+      >
+        <option value="">{{ t('pipeline.rulesFilterTriggerAll') }}</option>
+        <option v-for="triggerOption in triggerTypeOptions" :key="triggerOption.value" :value="triggerOption.value">
+          {{ triggerTypeLabel(triggerOption.value) }}
+        </option>
+      </select>
       <select
         v-model="activeFilter"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
@@ -492,12 +603,28 @@ function onViewportKeydown(event: KeyboardEvent) {
                       <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                         {{ node.statusLabel }}
                       </span>
+                      <span
+                        v-if="node.type === 'rule' && ruleTestState(node)"
+                        class="rounded px-1.5 py-0.5 text-[10px]"
+                        :class="ruleTestState(node) === 'matched'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'"
+                      >
+                        {{ ruleTestStateLabel(ruleTestState(node)) }}
+                      </span>
+                      <span
+                        v-if="node.type === 'requirement' && requirementFulfillmentStatus(node.sourceId)"
+                        class="rounded px-1.5 py-0.5 text-[10px]"
+                        :class="requirementFulfillmentStatusClass(requirementFulfillmentStatus(node.sourceId))"
+                      >
+                        {{ requirementFulfillmentStatusLabel(requirementFulfillmentStatus(node.sourceId)) }}
+                      </span>
                     </div>
                     <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
                     <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
                     <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                      <div v-for="(value, key) in node.meta" :key="key">
-                        <template v-if="value !== null && value !== ''">{{ key }}: {{ value }}</template>
+                      <div v-for="[key, value] in displayableMetaEntries(node)" :key="key">
+                        {{ key }}: {{ value }}
                       </div>
                     </div>
                   </div>
@@ -552,6 +679,9 @@ function onViewportKeydown(event: KeyboardEvent) {
             </div>
             <div class="text-[10px] opacity-90">
               {{ requirementBranchLabel(link.branch) }} · {{ requirementLinkIssueLabel(link.issue) }}
+              <template v-if="requirementFulfillmentStatus(link.sourceRequirementId)">
+                · {{ requirementFulfillmentStatusLabel(requirementFulfillmentStatus(link.sourceRequirementId)) }}
+              </template>
             </div>
           </li>
         </ul>

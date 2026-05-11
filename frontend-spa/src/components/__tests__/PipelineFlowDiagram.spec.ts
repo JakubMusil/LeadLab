@@ -118,7 +118,7 @@ describe('PipelineFlowDiagram', () => {
     const wrapper = mountDiagram()
 
     const selects = wrapper.findAll('select')
-    await selects[3]!.setValue('requirement')
+    await selects[4]!.setValue('requirement')
 
     expect(wrapper.text()).not.toContain('Activate scenario')
     expect(wrapper.text()).not.toContain('Scenario A')
@@ -198,9 +198,40 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.text()).toContain('Parent: Activate scenario')
 
     const selects = wrapper.findAll('select')
-    await selects[3]!.setValue('requirement')
+    await selects[4]!.setValue('requirement')
 
     expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
+  })
+
+  it('shows localized trigger labels in filter and node badge', () => {
+    const wrapper = mountDiagram()
+    expect(wrapper.text()).toContain('Record field changed')
+    expect(wrapper.text()).not.toContain('record.field_changed')
+  })
+
+  it('renders test evaluation and requirement fulfillment badges from inputs', () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        testedRuleId: 'rule-1',
+        evaluationOutputs: [{ rule_id: 'rule-1' }],
+        evaluationLogs: [
+          {
+            id: 'log-1',
+            requirement_id: 'req-1',
+            trigger_type: 'requirement.chain_evaluated',
+            input_context: { fulfillment_status: 'met', requirement_id: 'req-1' },
+          },
+        ],
+      },
+    })
+
+    expect(wrapper.text()).toContain('Matched in test')
+    expect(wrapper.text()).toContain('Branch met')
   })
 
   it('updates zoom level using zoom controls', async () => {
