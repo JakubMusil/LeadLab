@@ -1170,12 +1170,12 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.8 Napojení na kategoriová pole
 
-- [ ] Načíst dostupná pole pro kategorii.
-- [ ] Nabídnout kategoriová pole v builderu.
-- [ ] Zobrazit názvy polí čitelně pro uživatele.
-- [ ] Ověřit typ pole před výběrem operátoru.
-- [ ] Umožnit rychlou úpravu chybějícího pole z validačního modalu.
-- [ ] Zobrazit pravidla relevantní pouze pro vybranou kategorii.
+- [x] Načíst dostupná pole pro kategorii.
+- [x] Nabídnout kategoriová pole v builderu.
+- [x] Zobrazit názvy polí čitelně pro uživatele.
+- [x] Ověřit typ pole před výběrem operátoru.
+- [x] Umožnit rychlou úpravu chybějícího pole z validačního modalu.
+- [x] Zobrazit pravidla relevantní pouze pro vybranou kategorii.
 
 ### 14.9 Testy frontendu
 
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 06:49 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřenou frontend etapu 14.8 (napojení na kategoriová pole).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza 14.8 v `ConditionBuilder.vue`, `PipelineSettingsView.vue`, `RecordDetailView.vue`) a následně proběhla ruční konceptuální validace zjištění.
+- Před úpravami proběhla baseline validace dostupných checků: frontend `check-locales` prochází; frontend `build-only` padá na pre-existing chybějícím nástroji `vite`; backend cílené testy nelze spustit kvůli chybějící závislosti `django` v sandboxu.
+- Frontend implementace 14.8 v `frontend-spa/src/components/ConditionBuilder.vue`: výběr operátoru je nyní typově vázán na vybrané kategoriové pole (operátory se nabídnou až po výběru pole), při změně kategoriového pole se resetuje operátor/hodnota, aby nevznikla nevalidní kombinace.
+- Frontend implementace 14.8 v `frontend-spa/src/views/PipelineSettingsView.vue`: preview condition tree nyní pro `category_field` zobrazuje čitelný label pole místo interního `field_key`; načítání pravidel je pevně svázáno s vybranou kategorií v kontextu detailu kategorie.
+- Frontend implementace 14.8 v `frontend-spa/src/views/RecordDetailView.vue`: akce „opravit pole“ ve validačním modalu při změně fáze nově pro podporovaná pole rovnou otevírá rychlou inline editaci.
+- Hotovo: etapa 14.8 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
+- Následuje: navázat další otevřenou frontend etapou 14.9 (testy frontendu) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 06:28 UTC
 
