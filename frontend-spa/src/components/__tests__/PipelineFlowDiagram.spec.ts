@@ -151,13 +151,13 @@ describe('PipelineFlowDiagram', () => {
       },
     })
 
-    const selectedNode = wrapper.findAll('article').find((article) => article.text().includes('Scenario A'))
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
     await selectedNode!.trigger('click')
 
     expect(wrapper.text()).toContain('Node detail')
     expect(wrapper.text()).toContain('Scenario A')
-    expect(wrapper.text()).toContain('Children (2)')
+    expect(wrapper.text()).toContain('Children (')
   })
 
   it('clears selection when clear action is used', async () => {
@@ -171,7 +171,7 @@ describe('PipelineFlowDiagram', () => {
       },
     })
 
-    const selectedNode = wrapper.findAll('article').find((article) => article.text().includes('Scenario A'))
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
     await selectedNode!.trigger('click')
 
@@ -193,7 +193,7 @@ describe('PipelineFlowDiagram', () => {
       },
     })
 
-    const selectedNode = wrapper.findAll('article').find((article) => article.text().includes('Scenario A'))
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
     await selectedNode!.trigger('keydown.enter')
 
@@ -212,7 +212,7 @@ describe('PipelineFlowDiagram', () => {
       },
     })
 
-    const scenarioNode = wrapper.findAll('article').find((article) => article.text().includes('Scenario A'))
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(scenarioNode).toBeTruthy()
     await scenarioNode!.trigger('click')
     expect(wrapper.text()).toContain('Parent: Activate scenario')

@@ -126,7 +126,7 @@ const selectedNodeParent = computed<PipelineFlowNode | null>(() => {
   return nodeById.value[parentId] ?? null
 })
 const selectedNodeChildren = computed<PipelineFlowNode[]>(() =>
-  (selectedNode.value?.childIds ?? []).map((id) => nodeById.value[id]).filter((node): node is PipelineFlowNode => Boolean(node)),
+  (selectedNode.value?.childIds ?? []).map((id) => nodeById.value[id]).filter((node): node is PipelineFlowNode => !!node),
 )
 const selectedNodeEdges = computed(() =>
   selectedNodeId.value
@@ -255,15 +255,23 @@ function edgeEndpointLabel(nodeId: string): string {
           v-for="node in visibleNodes"
           :key="node.id"
           role="listitem"
-          tabindex="0"
-          class="rounded border p-2 shadow-sm cursor-pointer transition ring-offset-1 ring-offset-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:ring-offset-gray-800 dark:focus:ring-blue-400"
-          :class="[nodeClass(node), selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0']"
-          @click="selectNode(node.id)"
-          @keydown.enter.prevent="selectNode(node.id)"
-          @keydown.space.prevent="selectNode(node.id)"
+          class="rounded border p-2 shadow-sm transition-colors"
+          :class="[
+            nodeClass(node),
+            'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
+            selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : 'ring-0',
+          ]"
         >
           <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
+            <div
+              class="min-w-0 flex-1 rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              role="button"
+              tabindex="0"
+              :aria-label="node.label"
+              @click="selectNode(node.id)"
+              @keydown.enter.prevent="selectNode(node.id)"
+              @keydown.space.prevent="selectNode(node.id)"
+            >
               <div class="flex flex-wrap items-center gap-1">
                 <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                   {{ nodeTypeLabel(node) }}
@@ -301,7 +309,7 @@ function edgeEndpointLabel(nodeId: string): string {
         <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
           <li v-for="edge in visibleEdges" :key="edge.id" class="break-words">
             <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
-            <span class="mx-1 text-gray-400 dark:text-gray-500">→</span>
+            <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
             <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
           </li>
@@ -352,7 +360,7 @@ function edgeEndpointLabel(nodeId: string): string {
             <ul v-if="selectedNodeEdges.length > 0" class="mt-0.5 space-y-0.5">
               <li v-for="edge in selectedNodeEdges" :key="edge.id">
                 <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
-                <span class="mx-1 text-gray-400 dark:text-gray-500">→</span>
+                <span class="mx-1 text-gray-400 dark:text-gray-500" aria-hidden="true">→</span>
                 <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
                 <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
               </li>
