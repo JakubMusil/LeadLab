@@ -1235,6 +1235,7 @@ async function loadStageScenarios() {
     await loadPipelineFlowRequirements()
   } else {
     pipelineFlowRequirements.value = []
+    pipelineFlowError.value = result.error ?? t('pipeline.flowDiagramLoadFailed')
   }
 }
 
