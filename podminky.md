@@ -1368,6 +1368,19 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 13:45 UTC
+
+- Navázáno na krok 13:32 UTC: proběhla post-change validace a finální kontrola navazujícího scope sekce 21.
+- Cílená validace po změnách ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` opakovaně prochází,
+  - cílený unit test `npm run test:unit -- --run src/utils/__tests__/conditionTreeVisualization.spec.ts` prochází (`6/6`).
+- Spuštěn `parallel_validation` (code review + CodeQL):
+  - CodeQL bez alertů,
+  - review připomínky zapracovány tam, kde dávaly smysl (centralizace keyword mapy, dokumentovaný fallback filtrů, normalizace slugů bez diakritiky, zpřesnění PL lokalizačního textu).
+- Hotovo: doménové šablony pravidel jsou implementované, lokalizované, validované a průběžně zapsané v dokumentu.
+- Následuje: provést finální commit/push aktualizací z tohoto kola, vytvořit řádný PR a v PR shrnutí uvést baseline omezení plného `test:unit` mimo tento scope.
+
 ### 2026-05-11 13:32 UTC
 
 - Prostudován aktuální stav `podminky.md`; protože checklist etap 13–15 je uzavřený, navázáno implementačně na novou sekci 21 (doménové šablony pravidel/scénářů).

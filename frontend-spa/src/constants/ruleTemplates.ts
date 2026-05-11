@@ -9,7 +9,6 @@ export interface RuleTemplatePreset {
   scopeType: string
   effect: string
   severity: string
-  activityType?: string
   conditionTree: Record<string, unknown>
   effectConfig?: Record<string, unknown>
 }
@@ -82,7 +81,6 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     scopeType: 'category',
     effect: 'block',
     severity: 'error',
-    activityType: 'note',
     conditionTree: {
       type: 'condition',
       source_type: 'streamline_activity',
@@ -199,7 +197,6 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     scopeType: 'category',
     effect: 'block',
     severity: 'error',
-    activityType: 'file_upload',
     conditionTree: {
       type: 'condition',
       source_type: 'streamline_activity',

@@ -381,33 +381,27 @@ const ruleBuilderCategoryFieldLabelByKey = computed<Record<string, string>>(() =
     return acc
   }, {}),
 )
+// Heuristic mapping for category slug -> domain template set.
+// Slugs are custom/admin-defined and can be localized; if no keyword matches (or no category is selected) we intentionally fall back to all templates.
+const RULE_TEMPLATE_DOMAIN_KEYWORDS: ReadonlyArray<{
+  domain: RuleTemplatePreset['domain']
+  keywords: ReadonlyArray<string>
+}> = [
+  { domain: 'call_center', keywords: ['call', 'lead', 'telefon', 'kontakt'] },
+  { domain: 'installation', keywords: ['mont', 'instal', 'realiz'] },
+  { domain: 'it_service', keywords: ['it', 'servis', 'incident', 'support'] },
+]
 const selectedTemplateDomain = computed<RuleTemplatePreset['domain'] | null>(() => {
-  const categorySlug = selectedCategory.value?.slug?.toLowerCase()
+  const categorySlug = selectedCategory.value?.slug
   if (!categorySlug) return null
-  if (
-    categorySlug.includes('call') ||
-    categorySlug.includes('lead') ||
-    categorySlug.includes('telefon') ||
-    categorySlug.includes('kontakt')
-  ) {
-    return 'call_center'
-  }
-  if (
-    categorySlug.includes('mont') ||
-    categorySlug.includes('instal') ||
-    categorySlug.includes('realiz')
-  ) {
-    return 'installation'
-  }
-  if (
-    categorySlug.includes('it') ||
-    categorySlug.includes('servis') ||
-    categorySlug.includes('incident') ||
-    categorySlug.includes('support')
-  ) {
-    return 'it_service'
-  }
-  return null
+  const normalizedSlug = categorySlug
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+  const match = RULE_TEMPLATE_DOMAIN_KEYWORDS.find(({ keywords }) =>
+    keywords.some((keyword) => normalizedSlug.includes(keyword)),
+  )
+  return match?.domain ?? null
 })
 const ruleTemplatePresets = computed<RuleTemplatePreset[]>(() => {
   const domain = selectedTemplateDomain.value
@@ -1033,7 +1027,6 @@ function applyRuleTemplate(templateId: string) {
   ruleForm.value.trigger_type = template.triggerType
   ruleForm.value.effect = template.effect
   ruleForm.value.severity = template.severity
-  ruleForm.value.activity_type = template.activityType ?? ''
   ruleConditionTree.value = normalizeConditionTree(deepCloneObject(template.conditionTree))
   ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
   const effectConfig = deepCloneObject(template.effectConfig ?? {})

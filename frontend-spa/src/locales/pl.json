@@ -1298,7 +1298,7 @@
     "rulesTemplateDomainInstallation": "Firma montażowa",
     "rulesTemplateDomainItService": "Serwis IT",
     "rulesTemplateCallCenterContactRequiredName": "Call center: wymagaj kontaktu przed kwalifikacją",
-    "rulesTemplateCallCenterContactRequiredDescription": "Blokuje zmianę etapu, gdy lead z przypisanym właścicielem nie ma wybranej osoby kontaktowej.",
+    "rulesTemplateCallCenterContactRequiredDescription": "Blokuje zmianę etapu, gdy lead z przypisanym użytkownikiem nie ma wybranej osoby kontaktowej.",
     "rulesTemplateCallCenterSeniorReviewName": "Call center: rekomenduj senior review dla leadów high-value",
     "rulesTemplateCallCenterSeniorReviewDescription": "Dodaje rekomendację, gdy wartość leadu jest wysoka, a szansa nadal otwarta.",
     "rulesTemplateCallCenterSeniorReviewMessage": "Rozważ przekazanie tego leada do senior operatora.",
