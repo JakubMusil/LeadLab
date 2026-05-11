@@ -1264,7 +1264,7 @@ Výsledek:
 - [x] Přidat preview čitelné věty.
 - [x] Přidat testovací vyhodnocení na konkrétním záznamu.
 - [x] Přidat log vyhodnocení do administrace.
-- [ ] Přidat šablony pravidel.
+- [x] Přidat šablony pravidel.
 
 Výsledek:
 
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 08:09 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na poslední otevřený bod etapy 6 (`šablony pravidel`).
+- Další kroky byly maximalizovaně delegovány na podagenty (baseline validace + gap analýza implementačního scope + nezávislý návrh frontend-only varianty) a následně proběhla ruční konceptuální validace návrhů proti aktuálním souborům.
+- Frontend implementace etapy 6 v `frontend-spa/src/views/PipelineSettingsView.vue`: přidána sekce šablon pravidel s možností otevřít/skrýt katalog, použít předpřipravenou šablonu a předvyplnit formulář pravidla přes existující builder/create flow (bez hardcodovaného backend endpointu).
+- Doplněny šablony pro praktické scénáře (`owner required`, `contact recommended`, `high value gate`, `recent activity gate`, `review recommendation`) včetně normalizace condition tree/effect config do existujícího formuláře.
+- Doplněny i18n klíče pro nový UI flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena post-change validace: `npm run check-locales`, `npm run build-only` a cílené unit testy (`ruleEvaluationLogs.spec.ts`, `stageScenarios.spec.ts`) procházejí.
+- Provedena bezpečnostní/review validace přes `parallel_validation` (CodeQL bez alertů, review připomínky zapracovány v rámci template konfigurace).
+- Hotovo: bod etapy 6 „Přidat šablony pravidel“ je dokončený a označený jako splněný.
+- Následuje: pokračovat dalšími otevřenými body etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 07:38 UTC
 
