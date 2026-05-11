@@ -1002,7 +1002,7 @@ async function handleFlowRuleRootOperatorToggle(payload: { ruleId: string }) {
   }
   const normalizedTree = normalizeConditionTree(rule.condition_tree)
   if (normalizedTree.type !== 'group') {
-    toast.error(t('pipeline.rulesUpdateFailed'))
+    toast.error(t('pipeline.flowDiagramActionToggleRuleRootOperatorUnavailable'))
     return
   }
   const nextOperator = normalizedTree.op === 'or' ? 'and' : 'or'
@@ -1017,7 +1017,7 @@ async function handleFlowRuleRootOperatorToggle(payload: { ruleId: string }) {
   }
   toast.success(t('pipeline.rulesUpdated'))
   if (editingRuleId.value === rule.id) {
-    ruleConditionTree.value = normalizeConditionTree(nextConditionTree)
+    ruleConditionTree.value = nextConditionTree
   }
 }
 
