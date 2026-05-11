@@ -1021,6 +1021,22 @@ async function handleFlowRuleRootOperatorToggle(payload: { ruleId: string }) {
   }
 }
 
+interface ConditionTreeGroupNode {
+  type: 'group'
+  op: 'and' | 'or'
+}
+
+function isConditionTreeGroupNode(tree: Record<string, unknown>): tree is ConditionTreeGroupNode {
+  return tree.type === 'group' && (tree.op === 'and' || tree.op === 'or')
+}
+
+function getRuleRootGroupWrapOperator(tree: Record<string, unknown>): 'and' | 'or' {
+  // Wrapping a non-group node creates a single-child group, where AND/OR has equivalent behavior.
+  // In that case default to AND to keep the generated tree simple and predictable.
+  if (!isConditionTreeGroupNode(tree)) return 'and'
+  return tree.op
+}
+
 async function handleFlowAddRuleRootGroup(payload: { ruleId: string }) {
   const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
   if (!rule) {
@@ -1028,10 +1044,9 @@ async function handleFlowAddRuleRootGroup(payload: { ruleId: string }) {
     return
   }
   const normalizedTree = normalizeConditionTree(rule.condition_tree)
-  const nextOperator = normalizedTree.type === 'group' && normalizedTree.op === 'or' ? 'or' : 'and'
   const nextConditionTree = {
     type: 'group',
-    op: nextOperator,
+    op: getRuleRootGroupWrapOperator(normalizedTree),
     conditions: [normalizedTree],
     negated: false,
   }

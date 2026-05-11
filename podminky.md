@@ -1368,6 +1368,35 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 19:44 UTC
+
+- Navázáno na krok 19:43 UTC: proběhlo opakované review/security validační kolo po zapracování helperu pro volbu operátoru obalující skupiny.
+- Opakovaný běh `parallel_validation` vrátil 2 relevantní review připomínky:
+  - doplnit type-safe guard pro group uzel,
+  - explicitně popsat rationale fallbacku na `AND` při obalení ne-group rootu.
+- Připomínky zapracovány v `PipelineSettingsView.vue`:
+  - přidán `ConditionTreeGroupNode` + type guard `isConditionTreeGroupNode`,
+  - helper `getRuleRootGroupWrapOperator` nyní používá guard a obsahuje explicitní komentář k chování.
+- Po zapracování znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
+- Hotovo: scope 20.3.4 pro `add-rule-root-group` je po opakovaném review stabilizovaný i typově zpřesněný.
+- Následuje: spustit finální `parallel_validation`, provést finální commit/push a vytvořit řádný PR.
+
+### 2026-05-11 19:43 UTC
+
+- Navázáno na krok 19:41 UTC: proběhlo review/security validační kolo nad novou akcí `add-rule-root-group`.
+- Spuštěn `parallel_validation`:
+  - CodeQL bez alertů,
+  - review vrátil 1 relevantní připomínku ke konzistenci logiky operátoru; zapracováno vytažením helperu `getRuleRootGroupWrapOperator` v `PipelineSettingsView.vue`.
+- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
+- Hotovo: implementační krok 20.3.4 (přidání obalující kořenové skupiny condition tree) je po review i bezpečnostní kontrole stabilizovaný.
+- Následuje: provést finální commit/push tohoto validačního kola a vytvořit řádný PR.
+
 ### 2026-05-11 19:41 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (manipulace condition tree v grafu).
