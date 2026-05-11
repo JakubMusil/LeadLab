@@ -308,7 +308,7 @@ const selectedScenarioPriorityValue = computed<number | null>(() => {
 })
 const selectedScenarioHasDescriptionChanges = computed(() => {
   return (
-    (selectedNode.value?.type === 'scenario')
+    selectedNode.value?.type === 'scenario'
     && editingScenarioDescription.value !== String(selectedNode.value?.description || '')
   )
 })
@@ -358,7 +358,7 @@ function emitScenarioDescriptionUpdate() {
   if (!selectedScenarioHasDescriptionChanges.value) return
   emit('update-scenario-description', {
     scenarioId: selectedNode.value.sourceId,
-    description: editingScenarioDescription.value.trim(),
+    description: editingScenarioDescription.value,
   })
 }
 
