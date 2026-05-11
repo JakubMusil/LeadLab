@@ -1133,19 +1133,19 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.5 Builder podmínek
 
-- [ ] Přidat výběr zdroje podmínky.
-- [ ] Podporovat zdroj „standardní pole záznamu“.
-- [ ] Podporovat zdroj „kategoriové pole“.
-- [ ] Podporovat zdroj „Streamline aktivita“.
-- [ ] Podporovat zdroj „Streamline tool“.
-- [ ] Podporovat zdroj „související entita“.
-- [ ] Přidat výběr operátoru.
-- [ ] Přidat výběr hodnoty.
-- [ ] Přidat podporu časového okna.
-- [ ] Přidat skupiny AND/OR.
-- [ ] Přidat vnořené skupiny.
-- [ ] Přidat validaci neúplných podmínek.
-- [ ] Přidat čitelný preview text pravidla.
+- [x] Přidat výběr zdroje podmínky.
+- [x] Podporovat zdroj „standardní pole záznamu“.
+- [x] Podporovat zdroj „kategoriové pole“.
+- [x] Podporovat zdroj „Streamline aktivita“.
+- [x] Podporovat zdroj „Streamline tool“.
+- [x] Podporovat zdroj „související entita“.
+- [x] Přidat výběr operátoru.
+- [x] Přidat výběr hodnoty.
+- [x] Přidat podporu časového okna.
+- [x] Přidat skupiny AND/OR.
+- [x] Přidat vnořené skupiny.
+- [x] Přidat validaci neúplných podmínek.
+- [x] Přidat čitelný preview text pravidla.
 
 ### 14.6 Editor scénářů fáze
 
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 05:51 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřenou frontend etapu 14.5 (builder podmínek).
+- Další krok byl maximalizovaně delegován na podagenta (detailní mapování 14.5 proti `PipelineSettingsView.vue`, `conditionRules.ts`, `crm/condition_rules.py`), následně proběhla ruční konceptuální validace návrhu a implementace.
+- Před úpravami proběhla baseline validace ve frontendu: `check-locales` prochází; `type-check` a `build-only` padají na pre-existing chybějících nástrojích v sandboxu (`vue-tsc`, `vite`).
+- Funkční implementace 14.5: přidán nový rekurzivní komponent `frontend-spa/src/components/ConditionBuilder.vue` s podporou výběru zdroje podmínky (standardní pole, kategoriové pole, Streamline aktivita/tool, související entita), operátoru, hodnoty, časového okna, skupin `AND/OR` a vnořených skupin.
+- Integrace builderu do `frontend-spa/src/views/PipelineSettingsView.vue`: pravidlový formulář nyní umí přepínat mezi vizuálním builderem a JSON režimem, validuje neúplné podmínky před uložením a zobrazuje čitelný preview text pravidla.
+- Následná validační revize byla znovu delegována podagentovi (konceptuální + funkční kontrola) a zapracována korekce typového mapování hodnot pro `streamline_activity/streamline_tool` (`eq/neq` nyní boolean selektor), cleanup hodnot při přepínání operátoru a doplnění validace neplatného `source_type`.
+- Doplněny i18n klíče pro nový builder flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Hotovo: etapa 14.5 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
+- Následuje: navázat další otevřenou frontend etapou 14.6 (editor scénářů fáze) ve stejném delegovaném režimu s ruční konceptuální/funkční validací.
 
 ### 2026-05-10 21:24 UTC
 
