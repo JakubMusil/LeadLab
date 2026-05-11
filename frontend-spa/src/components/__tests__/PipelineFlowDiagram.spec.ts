@@ -117,8 +117,9 @@ describe('PipelineFlowDiagram', () => {
   it('filters nodes by type', async () => {
     const wrapper = mountDiagram()
 
-    const selects = wrapper.findAll('select')
-    await selects[4]!.setValue('requirement')
+    const nodeTypeSelect = wrapper.find('select[aria-label="Filter by node type"]')
+    expect(nodeTypeSelect.exists()).toBe(true)
+    await nodeTypeSelect.setValue('requirement')
 
     expect(wrapper.text()).not.toContain('Activate scenario')
     expect(wrapper.text()).not.toContain('Scenario A')
@@ -130,8 +131,10 @@ describe('PipelineFlowDiagram', () => {
 
     const button = wrapper.find('article button')
     expect(button.exists()).toBe(true)
+    expect(button.attributes('aria-label')).toContain('Collapse scenario')
     expect(wrapper.findAll('article')).toHaveLength(4)
     await button.trigger('click')
+    expect(button.attributes('aria-label')).toContain('Expand scenario')
     expect(wrapper.findAll('article')).toHaveLength(2)
     await button.trigger('click')
     expect(wrapper.findAll('article')).toHaveLength(4)
@@ -174,6 +177,17 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.text()).toContain('Scenario A')
   })
 
+  it('supports keyboard selection via space key', async () => {
+    const wrapper = mountDiagram()
+
+    const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(selectedNode).toBeTruthy()
+    await selectedNode!.trigger('keydown.space')
+
+    expect(wrapper.text()).toContain('Node detail')
+    expect(wrapper.text()).toContain('Scenario A')
+  })
+
   it('shows requirement link diagnostics with invalid link reason', () => {
     const wrapper = mount(PipelineFlowDiagram, {
       props: {
@@ -197,8 +211,9 @@ describe('PipelineFlowDiagram', () => {
     await scenarioNode!.trigger('click')
     expect(wrapper.text()).toContain('Parent: Activate scenario')
 
-    const selects = wrapper.findAll('select')
-    await selects[4]!.setValue('requirement')
+    const nodeTypeSelect = wrapper.find('select[aria-label="Filter by node type"]')
+    expect(nodeTypeSelect.exists()).toBe(true)
+    await nodeTypeSelect.setValue('requirement')
 
     expect(wrapper.text()).toContain('Select a node in the diagram to show detail context.')
   })
