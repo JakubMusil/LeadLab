@@ -61,6 +61,7 @@ const emit = defineEmits<{
   (event: 'toggle-rule-active', payload: { ruleId: string; nextActive: boolean }): void
   (event: 'toggle-rule-root-operator', payload: { ruleId: string }): void
   (event: 'add-rule-root-group', payload: { ruleId: string }): void
+  (event: 'open-rule-editor', payload: { ruleId: string }): void
   (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
   (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
   (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
@@ -370,6 +371,13 @@ function emitRuleRootOperatorToggle() {
 function emitRuleRootGroupAdd() {
   if (selectedNode.value?.type !== 'rule') return
   emit('add-rule-root-group', {
+    ruleId: selectedNode.value.sourceId,
+  })
+}
+
+function emitRuleEditorOpen() {
+  if (selectedNode.value?.type !== 'rule') return
+  emit('open-rule-editor', {
     ruleId: selectedNode.value.sourceId,
   })
 }
@@ -954,6 +962,14 @@ function toggleHelp() {
                 @click="emitRuleRootGroupAdd"
               >
                 {{ t('pipeline.flowDiagramActionAddRuleRootGroup') }}
+              </button>
+              <button
+                type="button"
+                data-testid="flow-node-action-open-rule-editor"
+                :class="quickActionPrimaryButtonClass"
+                @click="emitRuleEditorOpen"
+              >
+                {{ t('pipeline.flowDiagramActionOpenRuleEditor') }}
               </button>
               <div class="space-y-1">
                 <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">

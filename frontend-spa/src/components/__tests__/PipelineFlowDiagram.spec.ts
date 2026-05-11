@@ -253,6 +253,20 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.emitted('add-rule-root-group')?.[0]).toEqual([{ ruleId: 'rule-1' }])
   })
 
+  it('emits open-rule-editor from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const openRuleEditorButton = wrapper.get('[data-testid="flow-node-action-open-rule-editor"]')
+    await openRuleEditorButton.trigger('click')
+
+    expect(wrapper.emitted('open-rule-editor')).toBeTruthy()
+    expect(wrapper.emitted('open-rule-editor')?.[0]).toEqual([{ ruleId: 'rule-1' }])
+  })
+
   it('emits update-scenario-priority from node detail quick action', async () => {
     const wrapper = mountDiagram()
 
