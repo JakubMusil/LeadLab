@@ -1784,6 +1784,9 @@ def _refresh_active_stage_scenario(
             item["id"] for item in requirement_snapshots if item["id"] not in incoming_target_ids
         }
         if requirement_snapshots and not active_step_ids:
+            # Fail-open fallback: if no root step exists (for example during
+            # transient invalid chaining setup), keep all requirements active
+            # so stage validation does not silently disappear for users.
             active_step_ids = {item["id"] for item in requirement_snapshots}
 
         queue = list(active_step_ids)
@@ -10519,7 +10522,6 @@ def _validate_stage_requirement_links(
 
     if requirement:
         requirement_id = str(requirement.id)
-        adjacency.setdefault(requirement_id, [])
         adjacency[requirement_id] = []
         if next_step_on_met:
             adjacency[requirement_id].append(str(next_step_on_met.id))
