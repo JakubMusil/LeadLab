@@ -1026,6 +1026,15 @@ interface ConditionTreeGroupNode {
   op: 'and' | 'or'
 }
 
+/**
+ * Normalized root-group shape for guided flow-diagram edits.
+ * Guarantees a concrete `conditions` array and `negated` flag.
+ */
+interface NormalizedRootGroupTree extends ConditionTreeGroupNode {
+  conditions: Record<string, unknown>[]
+  negated: boolean
+}
+
 function isConditionTreeGroupNode(tree: Record<string, unknown>): tree is ConditionTreeGroupNode {
   return tree.type === 'group' && (tree.op === 'and' || tree.op === 'or')
 }
@@ -1037,6 +1046,35 @@ function getRuleRootGroupWrapOperator(tree: Record<string, unknown>): 'and' | 'o
   return tree.op
 }
 
+/**
+ * Wraps any condition tree node into a normalized root group with a single child.
+ */
+function createRootGroupWrapper(tree: Record<string, unknown>): NormalizedRootGroupTree {
+  return {
+    type: 'group',
+    op: getRuleRootGroupWrapOperator(tree),
+    conditions: [tree],
+    negated: false,
+  }
+}
+
+/**
+ * Ensures condition tree has a normalized root group structure for safe graph edits.
+ * Existing groups keep their children while missing fields are normalized;
+ * non-group roots are wrapped into a single-child root group.
+ */
+function ensureRootGroupTree(tree: Record<string, unknown>): NormalizedRootGroupTree {
+  if (tree.type === 'group') {
+    return {
+      type: 'group',
+      op: getRuleRootGroupWrapOperator(tree),
+      conditions: Array.isArray(tree.conditions) ? tree.conditions as Record<string, unknown>[] : [],
+      negated: Boolean(tree.negated),
+    }
+  }
+  return createRootGroupWrapper(tree)
+}
+
 async function handleFlowAddRuleRootGroup(payload: { ruleId: string }) {
   const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
   if (!rule) {
@@ -1044,11 +1082,32 @@ async function handleFlowAddRuleRootGroup(payload: { ruleId: string }) {
     return
   }
   const normalizedTree = normalizeConditionTree(rule.condition_tree)
+  const nextConditionTree = createRootGroupWrapper(normalizedTree)
+  const result = await conditionRulesStore.updateRule(payload.ruleId, { condition_tree: nextConditionTree })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesUpdated'))
+  if (editingRuleId.value === rule.id) {
+    ruleConditionTree.value = nextConditionTree
+  }
+}
+
+async function handleFlowAddRuleRootCondition(payload: { ruleId: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const normalizedTree = normalizeConditionTree(rule.condition_tree)
+  const rootGroupTree = ensureRootGroupTree(normalizedTree)
   const nextConditionTree = {
-    type: 'group',
-    op: getRuleRootGroupWrapOperator(normalizedTree),
-    conditions: [normalizedTree],
-    negated: false,
+    ...rootGroupTree,
+    conditions: [
+      ...rootGroupTree.conditions,
+      normalizeConditionTree({ type: 'condition' }),
+    ],
   }
   const result = await conditionRulesStore.updateRule(payload.ruleId, { condition_tree: nextConditionTree })
   if (!result.ok) {
@@ -3256,6 +3315,7 @@ const newPattern = computed({
             @toggle-rule-active="handleFlowRuleActiveToggle"
             @toggle-rule-root-operator="handleFlowRuleRootOperatorToggle"
             @add-rule-root-group="handleFlowAddRuleRootGroup"
+            @add-rule-root-condition="handleFlowAddRuleRootCondition"
             @open-rule-editor="handleFlowOpenRuleEditor"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
