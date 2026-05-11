@@ -450,6 +450,7 @@ function onViewportKeydown(event: KeyboardEvent) {
     <div class="grid grid-cols-1 gap-2 md:grid-cols-5">
       <select
         v-model="selectedCategoryId"
+        :aria-label="t('pipeline.flowDiagramFilterCategory')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="">{{ t('pipeline.allCategories') }}</option>
@@ -457,6 +458,7 @@ function onViewportKeydown(event: KeyboardEvent) {
       </select>
       <select
         v-model="selectedStageId"
+        :aria-label="t('pipeline.flowDiagramFilterStage')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
@@ -464,6 +466,7 @@ function onViewportKeydown(event: KeyboardEvent) {
       </select>
       <select
         v-model="triggerFilter"
+        :aria-label="t('pipeline.flowDiagramFilterTrigger')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="">{{ t('pipeline.rulesFilterTriggerAll') }}</option>
@@ -473,6 +476,7 @@ function onViewportKeydown(event: KeyboardEvent) {
       </select>
       <select
         v-model="activeFilter"
+        :aria-label="t('pipeline.flowDiagramFilterActiveState')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="all">{{ t('pipeline.rulesFilterStateAll') }}</option>
@@ -481,6 +485,7 @@ function onViewportKeydown(event: KeyboardEvent) {
       </select>
       <select
         v-model="nodeTypeFilter"
+        :aria-label="t('pipeline.flowDiagramFilterNodeType')"
         class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="all">{{ t('pipeline.flowDiagramFilterNodeTypeAll') }}</option>
@@ -503,6 +508,9 @@ function onViewportKeydown(event: KeyboardEvent) {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="text-[11px] text-gray-500 dark:text-gray-400">
             {{ t('pipeline.flowDiagramViewportHint') }}
+          </div>
+          <div class="text-[11px] text-gray-500 dark:text-gray-400">
+            {{ t('pipeline.flowDiagramKeyboardHint') }}
           </div>
           <div class="flex flex-wrap items-center gap-1">
             <button
@@ -633,6 +641,9 @@ function onViewportKeydown(event: KeyboardEvent) {
                     type="button"
                     class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                     :aria-expanded="!isScenarioCollapsed(node.id)"
+                    :aria-label="isScenarioCollapsed(node.id)
+                      ? t('pipeline.flowDiagramExpandScenario', { name: node.label })
+                      : t('pipeline.flowDiagramCollapseScenario', { name: node.label })"
                     @click.stop="toggleScenario(node.id)"
                   >
                     {{ isScenarioCollapsed(node.id) ? '+' : '−' }}

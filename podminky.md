@@ -1282,7 +1282,7 @@ Výsledek:
 - [x] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
 - [x] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
 - [ ] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
-- [ ] Doplnit uživatelskou nápovědu, klávesové ovládání a přístupnost.
+- [x] Doplnit uživatelskou nápovědu, klávesové ovládání a přístupnost.
 
 Výsledek:
 
@@ -1367,6 +1367,24 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 12:58 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na zbývající otevřené body etapy 7 (1284/1285), s prioritou minimálního kroku pro nápovědu/klávesové ovládání/přístupnost bez přehlcení uživatele.
+- Scope dalšího kroku byl maximalizovaně delegován podagentovi (gap analýza přístupnosti + testovatelnosti), následně proběhla ruční konceptuální validace návrhu nad `PipelineFlowDiagram.vue` a souvisejícími testy.
+- Baseline validace před změnami ve `frontend-spa`: po `npm ci` prochází `npm run check-locales`, `npm run build-only` a cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Frontend implementace přístupnosti a nápovědy:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue` nyní používá explicitní `aria-label` pro všechny filtry (kategorie/fáze/trigger/stav/typ uzlu),
+  - do viewport hlavičky byla doplněna čitelná klávesová nápověda (`+`/`=` zoom in, `-` zoom out, `Enter`/`Space` výběr uzlu),
+  - tlačítko sbalení/rozbalení scénáře nyní používá dynamický `aria-label` pro expand/collapse akci.
+- Lokalizace doplněny ve `frontend-spa/src/locales/{cs,en,de,pl}.json` pro nové A11y labely a text nápovědy.
+- Rozšířeny unit testy `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`:
+  - přepnutí filtrů na stabilní přístupné selektory přes `aria-label` (místo indexovaných `select[n]`),
+  - doplněn test klávesové volby uzlu přes `Space`,
+  - doplněna kontrola dynamického `aria-label` u collapse/expand tlačítka scénáře.
+- Post-change validace prochází: `npm run check-locales`, `npm run build-only`, `npm run test:unit -- src/components/__tests__/PipelineFlowDiagram.spec.ts src/utils/__tests__/pipelineFlowVisualization.spec.ts`.
+- Hotovo: checkbox etapy 7 pro „uživatelskou nápovědu, klávesové ovládání a přístupnost“ je nyní splněný.
+- Následuje: dokončit poslední otevřený bod etapy 7 (`1284`) cíleným rozšířením unit testů synchronizace grafu s formulářem v `PipelineSettingsView`.
 
 ### 2026-05-11 12:46 UTC
 
