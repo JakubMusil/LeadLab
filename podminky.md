@@ -1368,6 +1368,26 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 19:41 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (manipulace condition tree v grafu).
+- Další krok byl maximalizovaně delegován podagentovi (identifikace nejmenšího bezpečného navazujícího scope) a návrh byl následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue` a `PipelineSettingsView.vue`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `add-rule-root-group` pro vložení nové obalující kořenové skupiny condition tree pravidla.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowAddRuleRootGroup` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `add-rule-root-group`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionAddRuleRootGroup`.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená manipulace condition tree (přidání obalující kořenové skupiny) přímo z detailu uzlu pravidla.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 18:43 UTC
 
 - Navázáno na krok 18:42 UTC: po zapracování review připomínek proběhlo finální validační kolo.
