@@ -1194,13 +1194,13 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### Etapa 1: Datový základ a jednoduchá validace
 
-- [ ] Přidat základní model pravidel.
-- [ ] Přidat jednoduchý condition tree.
-- [ ] Podporovat `AND` a `OR`.
-- [ ] Podporovat standardní pole záznamu.
-- [ ] Napojit pravidla na změnu fáze.
-- [ ] Vrátit blokace do API.
-- [ ] Přidat základní backend testy.
+- [x] Přidat základní model pravidel.
+- [x] Přidat jednoduchý condition tree.
+- [x] Podporovat `AND` a `OR`.
+- [x] Podporovat standardní pole záznamu.
+- [x] Napojit pravidla na změnu fáze.
+- [x] Vrátit blokace do API.
+- [x] Přidat základní backend testy.
 
 Výsledek:
 
@@ -1208,11 +1208,11 @@ Výsledek:
 
 ### Etapa 2: Kategoriová pole
 
-- [ ] Přidat zdroj podmínek pro kategoriová pole.
-- [ ] Přidat validaci typů kategoriových polí.
-- [ ] Přidat pravidla pro změnu kategoriového pole.
-- [ ] Přidat testy kategoriových polí.
-- [ ] Doplnit UI výběr kategoriového pole.
+- [x] Přidat zdroj podmínek pro kategoriová pole.
+- [x] Přidat validaci typů kategoriových polí.
+- [x] Přidat pravidla pro změnu kategoriového pole.
+- [x] Přidat testy kategoriových polí.
+- [x] Doplnit UI výběr kategoriového pole.
 
 Výsledek:
 
@@ -1220,12 +1220,12 @@ Výsledek:
 
 ### Etapa 3: Streamline feed
 
-- [ ] Přidat zdroj podmínek pro Streamline activity.
-- [ ] Přidat zdroj podmínek pro Streamline tool type.
-- [ ] Napojit vytvoření aktivity na vyhodnocení pravidel.
-- [ ] Podporovat vazbu na Record, Customer, Proposal a Task.
-- [ ] Přidat testy aktivit.
-- [ ] Doplnit UI pro výběr Streamline toolu.
+- [x] Přidat zdroj podmínek pro Streamline activity.
+- [x] Přidat zdroj podmínek pro Streamline tool type.
+- [x] Napojit vytvoření aktivity na vyhodnocení pravidel.
+- [x] Podporovat vazbu na Record, Customer, Proposal a Task.
+- [x] Přidat testy aktivit.
+- [x] Doplnit UI pro výběr Streamline toolu.
 
 Výsledek:
 
@@ -1233,12 +1233,12 @@ Výsledek:
 
 ### Etapa 4: Scénáře uvnitř fáze
 
-- [ ] Přidat model scénářů fáze.
-- [ ] Přidat aktivační podmínky scénářů.
-- [ ] Přidat požadavky scénáře.
-- [ ] Přidat výpočet aktivního scénáře.
-- [ ] Přidat panel požadavků fáze.
-- [ ] Přidat editor scénářů.
+- [x] Přidat model scénářů fáze.
+- [x] Přidat aktivační podmínky scénářů.
+- [x] Přidat požadavky scénáře.
+- [x] Přidat výpočet aktivního scénáře.
+- [x] Přidat panel požadavků fáze.
+- [x] Přidat editor scénářů.
 
 Výsledek:
 
@@ -1248,10 +1248,10 @@ Výsledek:
 
 - [ ] Přidat návazné kroky.
 - [ ] Přidat stav splnění kroků.
-- [ ] Přidat ochranu proti cyklům.
-- [ ] Přidat priority.
+- [x] Přidat ochranu proti cyklům.
+- [x] Přidat priority.
 - [ ] Přidat audit řetězení.
-- [ ] Doplnit testy řetězení.
+- [x] Doplnit testy řetězení.
 
 Výsledek:
 
@@ -1259,10 +1259,10 @@ Výsledek:
 
 ### Etapa 6: Pokročilé UI a testovací režim
 
-- [ ] Přidat pokročilý builder.
-- [ ] Přidat vnořené skupiny.
-- [ ] Přidat preview čitelné věty.
-- [ ] Přidat testovací vyhodnocení na konkrétním záznamu.
+- [x] Přidat pokročilý builder.
+- [x] Přidat vnořené skupiny.
+- [x] Přidat preview čitelné věty.
+- [x] Přidat testovací vyhodnocení na konkrétním záznamu.
 - [ ] Přidat log vyhodnocení do administrace.
 - [ ] Přidat šablony pravidel.
 
@@ -1344,6 +1344,14 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 07:21 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na dokončené etapy 13.x/14.x; cílem bylo sjednotit souhrnnou etapovou sekci 15 se skutečně implementovaným stavem.
+- Další krok byl maximalizovaně delegován na podagenta (kontrola gapů mezi sekcemi 13/14 a etapovými checkboxy v sekci 15) a následně proběhla ruční konceptuální validace závěrů přímo nad dokumentem.
+- Aktualizována sekce 15: etapy 1–4 jsou nyní plně označené jako dokončené; v etapě 5 označena dokončená ochrana proti cyklům, priority a testy řetězení; v etapě 6 označeny dokončené body builder/vnořené skupiny/preview/testovací vyhodnocení.
+- Hotovo: souhrnný plán etap v `podminky.md` nyní odpovídá reálnému stavu implementace uvedenému v detailních sekcích backendu/frontendu.
+- Následuje: navázat implementací zbývajících otevřených bodů etapy 5 (`návazné kroky`, `stav splnění kroků`, `audit řetězení`) a etapy 6 (`log vyhodnocení do administrace`, `šablony pravidel`) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 07:16 UTC
 
