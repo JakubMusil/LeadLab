@@ -105,16 +105,18 @@ const matchedRuleIds = computed(() => {
   })
   return ids
 })
+function extractRequirementId(log: FlowEvaluationLog): string {
+  const contextualId = log.input_context && typeof log.input_context.requirement_id === 'string'
+    ? log.input_context.requirement_id
+    : ''
+  return String(log.requirement_id || contextualId).trim()
+}
+
 const requirementFulfillmentStatusById = computed<Record<string, 'met' | 'unmet' | 'pending'>>(() => {
   const map: Record<string, 'met' | 'unmet' | 'pending'> = {}
   props.evaluationLogs.forEach((log) => {
     if (log.trigger_type !== 'requirement.chain_evaluated') return
-    const requirementId = String(
-      log.requirement_id
-      || (log.input_context && typeof log.input_context.requirement_id === 'string'
-        ? log.input_context.requirement_id
-        : ''),
-    ).trim()
+    const requirementId = extractRequirementId(log)
     if (!requirementId || map[requirementId]) return
     const status = String(
       log.input_context && typeof log.input_context.fulfillment_status === 'string'
@@ -305,6 +307,19 @@ function requirementFulfillmentStatusLabel(status: 'met' | 'unmet' | 'pending' |
   if (status === 'met') return t('pipeline.flowDiagramRequirementStatusMet')
   if (status === 'unmet') return t('pipeline.flowDiagramRequirementStatusUnmet')
   if (status === 'pending') return t('pipeline.flowDiagramRequirementStatusPending')
+  return ''
+}
+
+function requirementFulfillmentStatusClass(status: 'met' | 'unmet' | 'pending' | null): string {
+  if (status === 'met') {
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+  }
+  if (status === 'unmet') {
+    return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+  }
+  if (status === 'pending') {
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+  }
   return ''
 }
 
@@ -584,11 +599,7 @@ function onViewportKeydown(event: KeyboardEvent) {
                       <span
                         v-if="node.type === 'requirement' && requirementFulfillmentStatus(node.sourceId)"
                         class="rounded px-1.5 py-0.5 text-[10px]"
-                        :class="requirementFulfillmentStatus(node.sourceId) === 'met'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : requirementFulfillmentStatus(node.sourceId) === 'unmet'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'"
+                        :class="requirementFulfillmentStatusClass(requirementFulfillmentStatus(node.sourceId))"
                       >
                         {{ requirementFulfillmentStatusLabel(requirementFulfillmentStatus(node.sourceId)) }}
                       </span>
