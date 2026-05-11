@@ -24,6 +24,7 @@ import {
   LockOpenIcon,
 } from '@heroicons/vue/24/outline'
 import PeoplePicker from '@/components/PeoplePicker.vue'
+import ConditionBuilder from '@/components/ConditionBuilder.vue'
 import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
@@ -104,10 +105,21 @@ const testingRule = ref(false)
 const testRuleId = ref<string | null>(null)
 const testRecordId = ref('')
 const testEvaluationResult = ref<ConditionRuleTestEvaluationOut | null>(null)
+const useRuleJsonEditor = ref(false)
+const ruleConditionTree = ref<Record<string, unknown>>({
+  type: 'group',
+  op: 'and',
+  conditions: [],
+})
 const ruleConditionTreeText = ref('{}')
 const ruleEffectConfigText = ref('{}')
 const pendingDeactivateRuleId = ref<string | null>(null)
 const pendingDeactivateRuleName = ref('')
+
+interface ConditionTreeValidationIssue {
+  path: string
+  message: string
+}
 
 interface RuleFormState {
   name: string
@@ -242,6 +254,15 @@ const ruleFilterStages = computed<StageOut[]>(() =>
 const ruleFormStages = computed<StageOut[]>(() =>
   ruleForm.value.category_id ? pipelineStore.getStagesForCategory(ruleForm.value.category_id) : pipelineStore.allStages,
 )
+const ruleBuilderCategoryFields = computed(() => {
+  const categoryId = ruleForm.value.category_id || selectedCategoryId.value
+  if (!categoryId) return []
+  return pipelineStore.getFieldsForCategory(categoryId).map((field) => ({
+    field_key: field.field_key,
+    label: field.label_override || t(`pipeline.fieldKey.${field.field_key}`),
+    value_type: field.value_type || 'text',
+  }))
+})
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
 const ALL_FIELD_KEYS = [
@@ -608,6 +629,222 @@ function isRuleUpdating(ruleId: string): boolean {
   return updatingRuleIds.value[ruleId] === true
 }
 
+function deepCloneObject(value: Record<string, unknown>): Record<string, unknown> {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value) as Record<string, unknown>
+    } catch {
+      // fallback below
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+function createDefaultConditionTree(): Record<string, unknown> {
+  return {
+    type: 'group',
+    op: 'and',
+    conditions: [],
+  }
+}
+
+function normalizeConditionTree(tree: Record<string, unknown>): Record<string, unknown> {
+  if (!tree || Object.keys(tree).length === 0) {
+    return createDefaultConditionTree()
+  }
+  if (tree.type === 'group') {
+    const conditions = Array.isArray(tree.conditions) ? tree.conditions : []
+    return {
+      type: 'group',
+      op: tree.op === 'or' ? 'or' : 'and',
+      conditions: conditions.map((child) => (
+        child && typeof child === 'object' && !Array.isArray(child)
+          ? normalizeConditionTree(child as Record<string, unknown>)
+          : createDefaultConditionTree()
+      )),
+      negated: Boolean(tree.negated),
+    }
+  }
+  if (tree.type === 'condition') {
+    return {
+      type: 'condition',
+      source_type: typeof tree.source_type === 'string' ? tree.source_type : '',
+      field: typeof tree.field === 'string' ? tree.field : undefined,
+      category_field_key: typeof tree.category_field_key === 'string' ? tree.category_field_key : undefined,
+      operator: typeof tree.operator === 'string' ? tree.operator : '',
+      value: tree.value ?? '',
+      activity_type: typeof tree.activity_type === 'string' ? tree.activity_type : undefined,
+      tool_type: typeof tree.tool_type === 'string' ? tree.tool_type : undefined,
+      entity_type: typeof tree.entity_type === 'string' ? tree.entity_type : undefined,
+      time_window:
+        tree.time_window && typeof tree.time_window === 'object' && !Array.isArray(tree.time_window)
+          ? tree.time_window as Record<string, unknown>
+          : undefined,
+      negated: Boolean(tree.negated),
+    }
+  }
+  return createDefaultConditionTree()
+}
+
+function sourcePreviewLabel(sourceType: string): string {
+  if (sourceType === 'standard_field') return t('pipeline.rulesBuilderSourceStandardField')
+  if (sourceType === 'category_field') return t('pipeline.rulesBuilderSourceCategoryField')
+  if (sourceType === 'streamline_activity') return t('pipeline.rulesBuilderSourceStreamlineActivity')
+  if (sourceType === 'streamline_tool') return t('pipeline.rulesBuilderSourceStreamlineTool')
+  if (sourceType === 'related_entity') return t('pipeline.rulesBuilderSourceRelatedEntity')
+  return sourceType || t('pipeline.rulesBuilderUnknown')
+}
+
+function buildConditionTreePreview(tree: Record<string, unknown>): string {
+  if (!tree || typeof tree !== 'object' || Array.isArray(tree)) {
+    return t('pipeline.rulesBuilderPreviewEmpty')
+  }
+  const nodeType = typeof tree.type === 'string' ? tree.type : ''
+  if (nodeType === 'group') {
+    const children = Array.isArray(tree.conditions) ? tree.conditions : []
+    if (children.length === 0) return t('pipeline.rulesBuilderPreviewEmptyGroup')
+    const joinLabel = tree.op === 'or' ? t('pipeline.rulesBuilderGroupOr') : t('pipeline.rulesBuilderGroupAnd')
+    const childPreview = children
+      .map((child) => (
+        child && typeof child === 'object' && !Array.isArray(child)
+          ? buildConditionTreePreview(child as Record<string, unknown>)
+          : t('pipeline.rulesBuilderPreviewInvalid')
+      ))
+      .join(` ${joinLabel} `)
+    const wrapped = `(${childPreview})`
+    return tree.negated ? `${t('pipeline.rulesBuilderNegatedPrefix')} ${wrapped}` : wrapped
+  }
+  if (nodeType !== 'condition') return t('pipeline.rulesBuilderPreviewInvalid')
+
+  const sourceType = typeof tree.source_type === 'string' ? tree.source_type : ''
+  const operator = typeof tree.operator === 'string' ? tree.operator : ''
+  const value = tree.value
+  let target = ''
+  if (sourceType === 'standard_field') target = String(tree.field || t('pipeline.rulesBuilderMissingField'))
+  if (sourceType === 'category_field') target = String(tree.category_field_key || t('pipeline.rulesBuilderMissingField'))
+  if (sourceType === 'streamline_activity') target = String(tree.activity_type || t('pipeline.rulesBuilderMissingActivity'))
+  if (sourceType === 'streamline_tool') target = String(tree.tool_type || t('pipeline.rulesBuilderMissingTool'))
+  if (sourceType === 'related_entity') target = String(tree.entity_type || t('pipeline.rulesBuilderMissingEntity'))
+  const valueText = value === undefined || value === null || value === '' ? '' : ` "${String(value)}"`
+  const preview = `${sourcePreviewLabel(sourceType)} → ${target} ${operator}${valueText}`.trim()
+  return tree.negated ? `${t('pipeline.rulesBuilderNegatedPrefix')} ${preview}` : preview
+}
+
+function validateConditionTreeNode(node: Record<string, unknown>, path: string): ConditionTreeValidationIssue[] {
+  const issues: ConditionTreeValidationIssue[] = []
+  const nodeType = typeof node.type === 'string' ? node.type : ''
+  if (nodeType === 'group') {
+    const op = node.op
+    if (op !== 'and' && op !== 'or') {
+      issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingGroupOperator') })
+    }
+    const children = Array.isArray(node.conditions) ? node.conditions : []
+    if (children.length === 0) {
+      issues.push({ path, message: t('pipeline.rulesBuilderValidationEmptyGroup') })
+      return issues
+    }
+    children.forEach((child, index) => {
+      if (!child || typeof child !== 'object' || Array.isArray(child)) {
+        issues.push({
+          path: `${path}.${index}`,
+          message: t('pipeline.rulesBuilderValidationInvalidNode'),
+        })
+        return
+      }
+      issues.push(...validateConditionTreeNode(child as Record<string, unknown>, `${path}.${index}`))
+    })
+    return issues
+  }
+  if (nodeType !== 'condition') {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidNode') })
+    return issues
+  }
+
+  const sourceType = typeof node.source_type === 'string' ? node.source_type : ''
+  const operator = typeof node.operator === 'string' ? node.operator : ''
+  const allowedSourceTypes = ['standard_field', 'category_field', 'streamline_activity', 'streamline_tool', 'related_entity']
+  if (!sourceType) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingSource') })
+  } else if (!allowedSourceTypes.includes(sourceType)) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidSourceType') })
+  }
+  if (!operator) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingOperator') })
+  }
+
+  if (sourceType === 'standard_field' && !String(node.field ?? '').trim()) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingField') })
+  }
+  if (sourceType === 'category_field' && !String(node.category_field_key ?? '').trim()) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingCategoryField') })
+  }
+  if (sourceType === 'streamline_activity' && !String(node.activity_type ?? '').trim()) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingActivity') })
+  }
+  if (sourceType === 'streamline_tool' && !String(node.tool_type ?? '').trim()) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingTool') })
+  }
+  if (sourceType === 'related_entity' && !String(node.entity_type ?? '').trim()) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingEntity') })
+  }
+
+  const requiresValue = !['exists', 'not_exists'].includes(operator)
+  const value = node.value
+  if (requiresValue && (value === undefined || value === null || String(value).trim() === '')) {
+    issues.push({ path, message: t('pipeline.rulesBuilderValidationMissingValue') })
+  }
+
+  const rawTimeWindow = node.time_window
+  if (rawTimeWindow !== undefined) {
+    if (!rawTimeWindow || typeof rawTimeWindow !== 'object' || Array.isArray(rawTimeWindow)) {
+      issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidTimeWindow') })
+    } else {
+      const timeWindow = rawTimeWindow as Record<string, unknown>
+      const hasHours = timeWindow.last_hours !== undefined
+      const hasDays = timeWindow.last_days !== undefined
+      if (!hasHours && !hasDays) {
+        issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidTimeWindow') })
+      } else if (hasHours && hasDays) {
+        issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidTimeWindow') })
+      } else {
+        const rawAmount = hasHours ? timeWindow.last_hours : timeWindow.last_days
+        const amount = Number(rawAmount)
+        if (!Number.isFinite(amount) || amount <= 0) {
+          issues.push({ path, message: t('pipeline.rulesBuilderValidationInvalidTimeWindowValue') })
+        }
+      }
+    }
+  }
+
+  return issues
+}
+
+const ruleConditionTreePreview = computed(() => buildConditionTreePreview(ruleConditionTree.value))
+const ruleConditionTreeIssues = computed(() => {
+  if (useRuleJsonEditor.value) return []
+  return validateConditionTreeNode(ruleConditionTree.value, 'root')
+})
+
+function setRuleEditorMode(useJson: boolean) {
+  if (useJson) {
+    useRuleJsonEditor.value = true
+    ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
+    return
+  }
+  try {
+    const parsed = parseJsonText(ruleConditionTreeText.value, {})
+    ruleConditionTree.value = normalizeConditionTree(parsed)
+    useRuleJsonEditor.value = false
+  } catch {
+    toast.error(t('pipeline.rulesInvalidJson'))
+    useRuleJsonEditor.value = true
+  }
+}
+
 async function toggleRuleActive(rule: ConditionRuleOut, enabled: boolean) {
   if (isRuleUpdating(rule.id)) return
   updatingRuleIds.value = { ...updatingRuleIds.value, [rule.id]: true }
@@ -623,6 +860,7 @@ async function toggleRuleActive(rule: ConditionRuleOut, enabled: boolean) {
 function resetRuleForm() {
   showRuleForm.value = false
   editingRuleId.value = null
+  useRuleJsonEditor.value = false
   ruleForm.value = {
     name: '',
     description: '',
@@ -638,7 +876,8 @@ function resetRuleForm() {
     activity_type: '',
     priority: String(DEFAULT_RULE_PRIORITY),
   }
-  ruleConditionTreeText.value = '{}'
+  ruleConditionTree.value = createDefaultConditionTree()
+  ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
   ruleEffectConfigText.value = '{}'
 }
 
@@ -650,6 +889,7 @@ function openCreateRuleForm() {
 function openEditRuleForm(rule: ConditionRuleOut) {
   editingRuleId.value = rule.id
   showRuleForm.value = true
+  useRuleJsonEditor.value = false
   ruleForm.value = {
     name: rule.name,
     description: rule.description,
@@ -665,7 +905,9 @@ function openEditRuleForm(rule: ConditionRuleOut) {
     activity_type: rule.activity_type,
     priority: String(rule.priority ?? DEFAULT_RULE_PRIORITY),
   }
-  ruleConditionTreeText.value = JSON.stringify(rule.condition_tree ?? {}, null, 2)
+  const normalizedTree = normalizeConditionTree(deepCloneObject(rule.condition_tree ?? {}))
+  ruleConditionTree.value = normalizedTree
+  ruleConditionTreeText.value = JSON.stringify(normalizedTree, null, 2)
   ruleEffectConfigText.value = JSON.stringify(rule.effect_config ?? {}, null, 2)
 }
 
@@ -692,6 +934,9 @@ function parseRulePriority(value: string): number | null {
 }
 
 function buildRulePayload(priority: number): ConditionRuleIn {
+  const conditionTree = useRuleJsonEditor.value
+    ? parseJsonText(ruleConditionTreeText.value, {})
+    : deepCloneObject(ruleConditionTree.value)
   return {
     name: ruleForm.value.name.trim(),
     description: ruleForm.value.description.trim(),
@@ -702,7 +947,7 @@ function buildRulePayload(priority: number): ConditionRuleIn {
     source_stage_id: ruleForm.value.source_stage_id || null,
     target_stage_id: ruleForm.value.target_stage_id || null,
     trigger_type: ruleForm.value.trigger_type.trim(),
-    condition_tree: parseJsonText(ruleConditionTreeText.value, {}),
+    condition_tree: conditionTree,
     effect: ruleForm.value.effect,
     severity: ruleForm.value.severity,
     effect_config: parseJsonText(ruleEffectConfigText.value, {}),
@@ -719,6 +964,11 @@ async function submitRuleForm() {
   }
   if (!ruleForm.value.trigger_type.trim()) {
     toast.error(t('pipeline.rulesTriggerRequired'))
+    return
+  }
+
+  if (!useRuleJsonEditor.value && ruleConditionTreeIssues.value.length > 0) {
+    toast.error(t('pipeline.rulesBuilderValidationError'))
     return
   }
 
@@ -1588,13 +1838,47 @@ const newPattern = computed({
                   <input v-model="ruleForm.is_active" type="checkbox" class="rounded" />
                   {{ t('pipeline.rulesStartEnabled') }}
                 </label>
-                <div class="text-[11px] text-gray-500 self-center">{{ t('pipeline.rulesJsonHint') }}</div>
-                <textarea
-                  v-model="ruleConditionTreeText"
-                  rows="4"
-                  class="md:col-span-2 text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
-                  :placeholder="t('pipeline.rulesConditionTreePlaceholder')"
-                ></textarea>
+                <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
+                    <button
+                      type="button"
+                      class="text-xs text-indigo-600 hover:text-indigo-700"
+                      @click="setRuleEditorMode(!useRuleJsonEditor)"
+                    >
+                      {{ useRuleJsonEditor ? t('pipeline.rulesBuilderSwitchToVisual') : t('pipeline.rulesBuilderSwitchToJson') }}
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
+                  <template v-if="!useRuleJsonEditor">
+                    <ConditionBuilder
+                      v-model="ruleConditionTree"
+                      :category-fields="ruleBuilderCategoryFields"
+                      :disabled="savingRule"
+                    />
+                    <div class="text-[11px] text-gray-500 break-words">
+                      <span class="font-semibold text-gray-600">{{ t('pipeline.rulesBuilderPreviewLabel') }}:</span>
+                      {{ ruleConditionTreePreview }}
+                    </div>
+                    <ul
+                      v-if="ruleConditionTreeIssues.length > 0"
+                      role="alert"
+                      :aria-label="t('pipeline.rulesBuilderValidationError')"
+                      class="text-[11px] text-red-600 list-disc pl-4 space-y-0.5"
+                    >
+                      <li v-for="issue in ruleConditionTreeIssues" :key="`${issue.path}-${issue.message}`">
+                        {{ issue.message }}
+                      </li>
+                    </ul>
+                  </template>
+                  <textarea
+                    v-else
+                    v-model="ruleConditionTreeText"
+                    rows="6"
+                    class="w-full text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                    :placeholder="t('pipeline.rulesConditionTreePlaceholder')"
+                  ></textarea>
+                </div>
                 <textarea
                   v-model="ruleEffectConfigText"
                   rows="3"
