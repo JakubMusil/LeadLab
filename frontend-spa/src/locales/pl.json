@@ -1426,6 +1426,7 @@
     "flowDiagramActionEnableRule": "Włącz regułę",
     "flowDiagramActionDisableRule": "Wyłącz regułę",
     "flowDiagramActionRuleDescription": "Opis reguły",
+    "flowDiagramActionScenarioDescription": "Opis scenariusza",
     "flowDiagramActionScenarioPriority": "Priorytet scenariusza",
     "flowDiagramActionOpenRequirementEditor": "Otwórz edytor wymagania",
     "rulesBuilderSwitchToVisual": "Przełącz na builder wizualny",

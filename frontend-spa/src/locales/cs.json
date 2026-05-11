@@ -1426,6 +1426,7 @@
     "flowDiagramActionEnableRule": "Zapnout pravidlo",
     "flowDiagramActionDisableRule": "Vypnout pravidlo",
     "flowDiagramActionRuleDescription": "Popis pravidla",
+    "flowDiagramActionScenarioDescription": "Popis scénáře",
     "flowDiagramActionScenarioPriority": "Priorita scénáře",
     "flowDiagramActionOpenRequirementEditor": "Otevřít editor požadavku",
     "rulesBuilderSwitchToVisual": "Přepnout na vizuální builder",

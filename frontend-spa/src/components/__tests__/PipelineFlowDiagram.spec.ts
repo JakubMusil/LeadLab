@@ -241,6 +241,24 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.emitted('update-scenario-priority')?.[0]).toEqual([{ scenarioId: 'scenario-1', priority: 4 }])
   })
 
+  it('emits update-scenario-description from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioNode).toBeTruthy()
+    await scenarioNode!.trigger('click')
+
+    const descriptionInput = wrapper.get('[data-testid="flow-node-scenario-description"]')
+    await descriptionInput.setValue('Updated scenario description')
+    const saveButton = wrapper.get('[data-testid="flow-node-action-save-scenario-description"]')
+    await saveButton.trigger('click')
+
+    expect(wrapper.emitted('update-scenario-description')).toBeTruthy()
+    expect(wrapper.emitted('update-scenario-description')?.[0]).toEqual([
+      { scenarioId: 'scenario-1', description: 'Updated scenario description' },
+    ])
+  })
+
   it('emits open-requirement-editor from node detail quick action', async () => {
     const wrapper = mountDiagram()
 
