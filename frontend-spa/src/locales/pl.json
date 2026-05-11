@@ -1311,7 +1311,7 @@
     "rulesTemplateItServiceResolutionRequiredName": "Serwis IT: wymagaj notatek rozwiązania przed zamknięciem",
     "rulesTemplateItServiceResolutionRequiredDescription": "Blokuje zmianę etapu, gdy brakuje notatek.",
     "rulesTemplateScenarioCallCenterFirstContact": "Scenariusz: Pierwszy kontakt",
-    "rulesTemplateScenarioInstallationStandardMontage": "Scenariusz: Standardowy montaż",
+    "rulesTemplateScenarioInstallationStandardInstallation": "Scenariusz: Standardowy montaż",
     "rulesTemplateScenarioItServiceIncidentManagement": "Scenariusz: Zarządzanie incydentem",
     "rulesTestTitle": "Test ewaluacji",
     "rulesTestRecordPlaceholder": "ID rekordu",

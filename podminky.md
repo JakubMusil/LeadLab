@@ -1368,6 +1368,18 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 15:38 UTC
+
+- Navázáno na krok 15:24 UTC: proběhla post-change validace a finální review/security kolo navazujícího scope sekce 21.
+- Cílená validace po změnách ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` opakovaně prochází.
+- Spuštěn `parallel_validation` (code review + CodeQL):
+  - první běh vrátil jednu připomínku ke konzistenci názvu i18n klíče pro installation scénář; připomínka zapracována (sjednocení na `rulesTemplateScenarioInstallationStandardInstallation`),
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Hotovo: navazující implementační krok sekce 21 je funkčně i konceptuálně ověřený a připravený k PR finalizaci.
+- Následuje: provést finální commit/push aktualizací z tohoto validačního kola, vytvořit řádný PR a v PR shrnutí uvést, že scope je frontend-only (doménové šablony/scénářové štítky).
+
 ### 2026-05-11 15:24 UTC
 
 - Prostudován aktuální stav `podminky.md`; checklist etap zůstává uzavřený, proto navázáno dalším praktickým krokem v sekci 21 (zpřesnění doménových šablon o scénářový kontext).

@@ -1311,7 +1311,7 @@
     "rulesTemplateItServiceResolutionRequiredName": "IT-Service: Lösungsnotizen vor Abschluss erforderlich",
     "rulesTemplateItServiceResolutionRequiredDescription": "Blockiert den Phasenwechsel, wenn Notizen fehlen.",
     "rulesTemplateScenarioCallCenterFirstContact": "Szenario: Erstkontakt",
-    "rulesTemplateScenarioInstallationStandardMontage": "Szenario: Standardmontage",
+    "rulesTemplateScenarioInstallationStandardInstallation": "Szenario: Standardmontage",
     "rulesTemplateScenarioItServiceIncidentManagement": "Szenario: Incident-Management",
     "rulesTestTitle": "Testauswertung",
     "rulesTestRecordPlaceholder": "Datensatz-ID",

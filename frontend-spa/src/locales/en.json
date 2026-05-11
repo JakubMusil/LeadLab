@@ -1311,7 +1311,7 @@
     "rulesTemplateItServiceResolutionRequiredName": "IT service: require resolution notes before closure",
     "rulesTemplateItServiceResolutionRequiredDescription": "Blocks stage change when notes are missing.",
     "rulesTemplateScenarioCallCenterFirstContact": "Scenario: First contact",
-    "rulesTemplateScenarioInstallationStandardMontage": "Scenario: Standard installation",
+    "rulesTemplateScenarioInstallationStandardInstallation": "Scenario: Standard installation",
     "rulesTemplateScenarioItServiceIncidentManagement": "Scenario: Incident management",
     "rulesTestTitle": "Test evaluation",
     "rulesTestRecordPlaceholder": "Record ID",
