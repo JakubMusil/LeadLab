@@ -1440,6 +1440,25 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 21:00 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (řízené editace v grafu).
+- Další krok byl maximalizovaně delegován podagentům:
+  - gap analýza nejmenšího bezpečného navazujícího scope v diagramu,
+  - baseline validace frontend scope před změnami.
+- Výstupy podagentů byly následně ručně konceptuálně zvalidovány nad `PipelineFlowDiagram.vue` a `PipelineSettingsView.vue`.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `open-rule-editor` v detailu uzlu pravidla.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowOpenRuleEditor` napojený na existující `openEditRuleForm`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `open-rule-editor`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionOpenRuleEditor`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`30/30`).
+- Hotovo: v grafu je nově dostupná bezpečná rychlá akce pro otevření plného editoru pravidla (autoritativní fallback pro složitější úpravy condition tree).
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 20:26 UTC
 
 - Provedena restrukturalizace `podminky.md` s cílem výrazně zlepšit čitelnost pro administrátora i běžného uživatele.
@@ -1574,19 +1593,6 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
 - Hotovo: fáze 20.3.3 má doplněné viditelné zvýraznění souvislostí (uzly/hrany) pro snazší orientaci v diagramu.
 - Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
-
-### 2026-05-11 17:27 UTC
-
-- Navázáno na krok 17:26 UTC: proběhlo finální validační kolo nového scope 20.3.4 (editace popisu scénáře v grafu).
-- Cílená validace ve `frontend-spa` po zapracování review připomínek:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`24/24`).
-- Spuštěn `parallel_validation`:
-  - první běh vrátil 2 review připomínky (readability + redundantní trim); relevantní část byla zapracována,
-  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
-- Hotovo: navazující krok fáze 20.3.4 je implementačně i validačně uzavřený.
-- Následuje: provést finální commit/push tohoto záznamu a vytvořit řádný PR s popisem změn.
 
 - Starší záznamy jsou přesunuté do sekce 22 (archiv).
 
@@ -1826,6 +1832,19 @@ Doporučení:
 - při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
 
 ## 22. Archiv průběžného pracovního postupu
+
+### 2026-05-11 17:27 UTC
+
+- Navázáno na krok 17:26 UTC: proběhlo finální validační kolo nového scope 20.3.4 (editace popisu scénáře v grafu).
+- Cílená validace ve `frontend-spa` po zapracování review připomínek:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`24/24`).
+- Spuštěn `parallel_validation`:
+  - první běh vrátil 2 review připomínky (readability + redundantní trim); relevantní část byla zapracována,
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Hotovo: navazující krok fáze 20.3.4 je implementačně i validačně uzavřený.
+- Následuje: provést finální commit/push tohoto záznamu a vytvořit řádný PR s popisem změn.
 
 ### 2026-05-11 17:26 UTC
 

@@ -1427,6 +1427,7 @@
     "flowDiagramActionDisableRule": "Wyłącz regułę",
     "flowDiagramActionToggleRuleRootOperator": "Przełącz warunek główny AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Dodaj otaczającą grupę główną",
+    "flowDiagramActionOpenRuleEditor": "Otwórz edytor reguły",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Nie można przełączyć operatora głównego: ta reguła nie ma grupowego drzewa warunków.",
     "flowDiagramActionRuleDescription": "Opis reguły",
     "flowDiagramActionScenarioDescription": "Opis scenariusza",

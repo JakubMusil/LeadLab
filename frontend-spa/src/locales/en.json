@@ -1427,6 +1427,7 @@
     "flowDiagramActionDisableRule": "Disable rule",
     "flowDiagramActionToggleRuleRootOperator": "Toggle root condition AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Add wrapping root group",
+    "flowDiagramActionOpenRuleEditor": "Open rule editor",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Cannot toggle root operator: this rule has no group condition tree.",
     "flowDiagramActionRuleDescription": "Rule description",
     "flowDiagramActionScenarioDescription": "Scenario description",

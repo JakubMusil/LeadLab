@@ -1075,6 +1075,15 @@ async function handleFlowRuleDescriptionUpdate(payload: { ruleId: string; descri
   toast.success(t('pipeline.rulesUpdated'))
 }
 
+function handleFlowOpenRuleEditor(payload: { ruleId: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  openEditRuleForm(rule)
+}
+
 async function handleFlowScenarioPriorityUpdate(payload: { scenarioId: string; priority: number }) {
   const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
   if (!scenario) {
@@ -3217,6 +3226,7 @@ const newPattern = computed({
             @toggle-rule-active="handleFlowRuleActiveToggle"
             @toggle-rule-root-operator="handleFlowRuleRootOperatorToggle"
             @add-rule-root-group="handleFlowAddRuleRootGroup"
+            @open-rule-editor="handleFlowOpenRuleEditor"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
