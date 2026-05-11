@@ -1456,8 +1456,10 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run check-locales` prochází,
   - `npm run build-only` prochází,
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`33/33`).
-- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (přidání kořenové podmínky) přímo z detailu uzlu pravidla.
-- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+- Proběhlo několik kol `parallel_validation`; relevantní review připomínky byly průběžně zapracovány (sjednocení helperů pro root-group normalizaci, typové zpřesnění a dokumentace pomocných funkcí), CodeQL běhy bez alertů.
+- Poslední pokus o `parallel_validation` nebyl spuštěn kvůli vyčerpanému validačnímu budgetu v tomto běhu.
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (přidání kořenové podmínky) přímo z detailu uzlu pravidla a navazující review připomínky jsou zapracované.
+- Následuje: provést finální commit/push a vytvořit řádný PR; v dalším běhu znovu ověřit `parallel_validation`, pokud bude k dispozici validační budget.
 
 ### 2026-05-11 21:12 UTC
 
