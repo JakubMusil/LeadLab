@@ -1277,7 +1277,7 @@ Výsledek:
 - [x] Přidat čitelnou stromovou vizualizaci condition tree jako doplněk ke stávajícímu formulářovému builderu.
 - [x] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
 - [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
-- [ ] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
+- [x] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
 - [ ] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
 - [ ] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
 - [ ] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
@@ -1367,6 +1367,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 11:15 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřený interaktivní bod etapy 7C: výběr uzlu + detail kontextu (s ponecháním existujícího collapse/expand).
+- Další krok byl maximalizovaně delegován podagentovi (návrh minimálního scope, souborů, testů a edge-case kritérií), následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům (`frontend-spa/src/components/PipelineFlowDiagram.vue`, `frontend-spa/src/utils/pipelineFlowVisualization.ts`, `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`).
+- Baseline validace před úpravami: po `npm ci` ve `frontend-spa` prochází `npm run check-locales`, `npm run build-only` a cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Frontend implementace 7C v `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidán interaktivní výběr uzlu (click/keyboard), vizuální zvýraznění vybraného uzlu, automatické čištění výběru při změně filtrů a nový detail panel uzlu (typ, source ID, parent/children, vazby).
+- Doplněny i18n klíče pro detail panel ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Rozšířeny testy v `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts` o scénáře pro výběr uzlu, zobrazení detailu a zrušení výběru.
+- Hotovo: interaktivní práce s uzly (výběr + kontext detailu + existující sbalení/rozbalení) je implementovaná a checkbox etapy 7 je aktualizován na splněný.
+- Následuje: navázat bodem 7C/7D pro vizuální správu návazných hran `next_step_on_met`/`next_step_on_unmet` s validačními guardy scénáře/cyklů a poté přidat zoom/pan/auto-layout.
 
 ### 2026-05-11 10:38 UTC
 
