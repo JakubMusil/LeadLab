@@ -1279,7 +1279,7 @@ Výsledek:
 - [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
 - [x] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
 - [x] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
-- [ ] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
+- [x] Přidat zoom, pan, automatické rozvržení, filtrování a fallback pro velké nebo nečitelné grafy.
 - [ ] Propojit graf s testovacím vyhodnocením a logem vyhodnocení tak, aby bylo vidět, které větve se splnily nebo nesplnily.
 - [ ] Doplnit unit testy normalizace dat, renderu prázdných/složitých grafů, interakcí a synchronizace s formulářem.
 - [ ] Doplnit uživatelskou nápovědu, klávesové ovládání a přístupnost.
@@ -1367,6 +1367,20 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 12:15 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřený bod etapy 7 po dokončení návazných hran: zoom/pan/auto-layout/fallback.
+- Další krok byl maximalizovaně delegován podagentovi (gap analýza minimálního scope + acceptance checks), následně proběhla ruční konceptuální validace návrhu proti aktuálním souborům `frontend-spa/src/components/PipelineFlowDiagram.vue` a `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`.
+- Baseline validace před změnami ve `frontend-spa` po `npm ci`: `npm run check-locales`, `npm run build-only` a cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Frontend implementace etapy 7:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue` rozšířen o viewport s ovládáním zoom (`+/-`, Ctrl/Cmd + kolečko), pan (klávesnice + scroll), reset a centrování výběru.
+  - Přidáno automatické rozvržení hustoty uzlů přes adaptivní grid dle velikosti grafu a fallback režim pro velké grafy (limit renderovaných uzlů + jasná výzva k filtrování).
+  - Zachováno existující filtrování dle kategorie/fáze/triggeru/stavu/typu uzlu a detail uzlu.
+- Doplněny i18n klíče pro nové ovládání a nápovědu v `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Rozšířeny unit testy v `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts` o zoom ovládání, klávesové zkratky viewportu, stav akce centrování a fallback render limit pro velké grafy.
+- Hotovo: checkbox etapy 7 pro „zoom/pan/automatické rozvržení/fallback“ je nyní splněný.
+- Následuje: navázat dalším otevřeným bodem etapy 7 (napojení grafu na testovací vyhodnocení a log vyhodnocení) a průběžně doplnit další testy + přístupnost.
 
 ### 2026-05-11 11:24 UTC
 
