@@ -37,6 +37,7 @@ import {
 import PeoplePicker from '@/components/PeoplePicker.vue'
 import ConditionBuilder from '@/components/ConditionBuilder.vue'
 import ConditionTreeViewer from '@/components/ConditionTreeViewer.vue'
+import PipelineFlowDiagram from '@/components/PipelineFlowDiagram.vue'
 import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
@@ -160,6 +161,9 @@ const showRequirementForm = ref(false)
 const editingRequirementId = ref<string | null>(null)
 const savingRequirement = ref(false)
 const deletingRequirementId = ref<string | null>(null)
+const pipelineFlowRequirements = ref<StageRequirementOut[]>([])
+const pipelineFlowLoading = ref(false)
+const pipelineFlowError = ref<string | null>(null)
 const requirementConditionTree = ref<Record<string, unknown>>({
   type: 'group',
   op: 'and',
@@ -340,6 +344,9 @@ const ruleFormStages = computed<StageOut[]>(() =>
 )
 const stageScenarios = computed<StageScenarioOut[]>(() => stageScenariosStore.scenarios)
 const stageRequirements = computed<StageRequirementOut[]>(() => stageScenariosStore.requirements)
+const pipelineFlowStageOptions = computed<StageOut[]>(() =>
+  selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : pipelineStore.allStages,
+)
 const ruleEvaluationLogs = computed<RuleEvaluationLogOut[]>(() => ruleEvaluationLogsStore.logs)
 const ruleEvaluationLogsLoading = computed(() => ruleEvaluationLogsStore.loading)
 const ruleEvaluationLogsError = computed(() => ruleEvaluationLogsStore.error)
@@ -417,6 +424,7 @@ watch(selectedCategoryId, () => {
   resetScenarioForm()
   resetRequirementForm()
   stageScenariosStore.clearRequirements()
+  pipelineFlowRequirements.value = []
   void loadRuleEvaluationLogs(1)
   if (selectedCategoryId.value && scenarioFilterStageId.value) void loadStageScenarios()
 })
@@ -425,6 +433,7 @@ watch(scenarioFilterStageId, () => {
   resetScenarioForm()
   resetRequirementForm()
   stageScenariosStore.clearRequirements()
+  pipelineFlowRequirements.value = []
   if (selectedCategoryId.value && scenarioFilterStageId.value) void loadStageScenarios()
 })
 
@@ -1221,7 +1230,35 @@ function parseNonNegativeInteger(value: string, defaultValue: number): number | 
 
 async function loadStageScenarios() {
   if (!selectedCategoryId.value || !scenarioFilterStageId.value) return
-  await stageScenariosStore.fetchScenarios(selectedCategoryId.value, scenarioFilterStageId.value)
+  const result = await stageScenariosStore.fetchScenarios(selectedCategoryId.value, scenarioFilterStageId.value)
+  if (result.ok) {
+    await loadPipelineFlowRequirements()
+  } else {
+    pipelineFlowRequirements.value = []
+  }
+}
+
+async function loadPipelineFlowRequirements() {
+  pipelineFlowError.value = null
+  pipelineFlowRequirements.value = []
+  const scenarioIds = stageScenariosStore.scenarios.map((scenario) => scenario.id)
+  if (scenarioIds.length === 0) return
+  pipelineFlowLoading.value = true
+  try {
+    const responses = await Promise.all(
+      scenarioIds.map((scenarioId) =>
+        api.get<StageRequirementOut[]>(`/api/v1/crm/scenarios/${scenarioId}/requirements`),
+      ),
+    )
+    const failed = responses.find((response) => !response.ok)
+    if (failed) {
+      pipelineFlowError.value = t('pipeline.flowDiagramLoadFailed')
+      return
+    }
+    pipelineFlowRequirements.value = responses.flatMap((response) => response.ok ? response.data : [])
+  } finally {
+    pipelineFlowLoading.value = false
+  }
 }
 
 function resetScenarioForm() {
@@ -1423,6 +1460,7 @@ async function submitRequirementForm() {
   toast.success(t(isEdit ? 'pipeline.stageRequirementsUpdated' : 'pipeline.stageRequirementsCreated'))
   resetRequirementForm()
   await loadScenarioRequirements()
+  await loadPipelineFlowRequirements()
 }
 
 async function requestDeleteRequirement(requirementId: string) {
@@ -1439,6 +1477,7 @@ async function requestDeleteRequirement(requirementId: string) {
     resetRequirementForm()
   }
   await loadScenarioRequirements()
+  await loadPipelineFlowRequirements()
 }
 
 async function runScenarioPreview() {
@@ -2930,6 +2969,19 @@ const newPattern = computed({
               </div>
             </div>
           </div>
+
+          <!-- Pipeline flow diagram -->
+          <PipelineFlowDiagram
+            :rules="conditionRules"
+            :scenarios="stageScenarios"
+            :requirements="pipelineFlowRequirements"
+            :categories="categories"
+            :stages="pipelineFlowStageOptions"
+            :loading="pipelineFlowLoading || stageScenariosStore.loadingScenarios"
+            :error="pipelineFlowError"
+            :initial-category-id="selectedCategoryId || ''"
+            :initial-stage-id="scenarioFilterStageId"
+          />
 
           <!-- Category Access Grants -->
           <div v-if="can('category.manage')">

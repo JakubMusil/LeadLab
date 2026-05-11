@@ -51,6 +51,8 @@ export interface StageRequirementOut {
   blocking: boolean
   visible_to_user: boolean
   sort_order: number
+  next_step_on_met_id: string | null
+  next_step_on_unmet_id: string | null
   created_at: string
   updated_at: string
 }
@@ -63,6 +65,8 @@ export interface StageRequirementIn {
   blocking?: boolean
   visible_to_user?: boolean
   sort_order?: number
+  next_step_on_met_id?: string | null
+  next_step_on_unmet_id?: string | null
 }
 
 export interface StageRequirementPatchIn {
@@ -73,6 +77,8 @@ export interface StageRequirementPatchIn {
   blocking?: boolean
   visible_to_user?: boolean
   sort_order?: number
+  next_step_on_met_id?: string | null
+  next_step_on_unmet_id?: string | null
 }
 
 export interface ActiveStageRequirementsOut {
