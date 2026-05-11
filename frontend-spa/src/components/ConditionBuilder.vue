@@ -88,6 +88,7 @@ const operatorOptions = computed(() => {
   const sourceType = node.value.source_type ?? ''
   if (sourceType === 'standard_field') {
     const selectedField = node.value.field ?? ''
+    if (!selectedField) return []
     if (['value', 'score'].includes(selectedField)) {
       return ['eq', 'neq', 'gt', 'gte', 'lt', 'lte']
     }
@@ -96,6 +97,7 @@ const operatorOptions = computed(() => {
   if (sourceType === 'category_field') {
     const key = node.value.category_field_key ?? ''
     const field = props.categoryFields.find((item) => item.field_key === key)
+    if (!key || !field) return []
     if (field?.value_type && ['number', 'currency', 'date', 'datetime'].includes(field.value_type)) {
       return ['eq', 'neq', 'gt', 'gte', 'lt', 'lte']
     }
@@ -113,6 +115,18 @@ const needsValue = computed(() => {
   if (isGroup.value) return false
   const operator = node.value.operator ?? ''
   return !['exists', 'not_exists'].includes(operator)
+})
+
+const canSelectOperator = computed(() => {
+  if (isGroup.value) return false
+  const sourceType = node.value.source_type ?? ''
+  if (!sourceType) return false
+  if (sourceType === 'standard_field') return Boolean(node.value.field)
+  if (sourceType === 'category_field') {
+    const key = node.value.category_field_key ?? ''
+    return Boolean(key && props.categoryFields.some((item) => item.field_key === key))
+  }
+  return true
 })
 
 const usesBooleanValue = computed(() => {
@@ -249,6 +263,14 @@ function updateOperator(operator: string) {
   } else if (next.value === null || next.value === undefined) {
     next.value = ''
   }
+  emit('update:modelValue', next)
+}
+
+function updateCategoryFieldKey(categoryFieldKey: string) {
+  const next = cloneNode(node.value)
+  next.category_field_key = categoryFieldKey
+  next.operator = ''
+  next.value = ''
   emit('update:modelValue', next)
 }
 
@@ -393,7 +415,7 @@ function updateTimeWindowValue(rawValue: string) {
             :value="node.category_field_key ?? ''"
             class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
             :disabled="disabled"
-            @change="updateNode({ category_field_key: ($event.target as HTMLSelectElement).value })"
+            @change="updateCategoryFieldKey(($event.target as HTMLSelectElement).value)"
           >
             <option value="">{{ t('pipeline.rulesBuilderSelectCategoryField') }}</option>
             <option
@@ -443,7 +465,7 @@ function updateTimeWindowValue(rawValue: string) {
         <select
           :value="node.operator ?? ''"
           class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
-          :disabled="disabled"
+          :disabled="disabled || !canSelectOperator"
           @change="updateOperator(($event.target as HTMLSelectElement).value)"
         >
           <option value="">{{ t('pipeline.rulesBuilderSelectOperator') }}</option>

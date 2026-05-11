@@ -341,6 +341,12 @@ const ruleBuilderCategoryFields = computed(() => {
     value_type: field.value_type || 'text',
   }))
 })
+const ruleBuilderCategoryFieldLabelByKey = computed<Record<string, string>>(() =>
+  ruleBuilderCategoryFields.value.reduce<Record<string, string>>((acc, field) => {
+    acc[field.field_key] = field.label || field.field_key
+    return acc
+  }, {}),
+)
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
 const ALL_FIELD_KEYS = [
@@ -707,8 +713,9 @@ async function onFieldDragEnd() {
 async function loadConditionRules() {
   const isActive =
     ruleFilterEnabled.value === 'all' ? undefined : ruleFilterEnabled.value === 'enabled'
+  const effectiveCategoryId = selectedCategoryId.value || ruleFilterCategoryId.value || undefined
   await conditionRulesStore.fetchRules({
-    categoryId: ruleFilterCategoryId.value || undefined,
+    categoryId: effectiveCategoryId,
     stageId: ruleFilterStageId.value || undefined,
     triggerType: ruleFilterTriggerType.value.trim() || undefined,
     isActive,
@@ -823,7 +830,12 @@ function buildConditionTreePreview(tree: Record<string, unknown>): string {
   const value = tree.value
   let target = ''
   if (sourceType === 'standard_field') target = String(tree.field || t('pipeline.rulesBuilderMissingField'))
-  if (sourceType === 'category_field') target = String(tree.category_field_key || t('pipeline.rulesBuilderMissingField'))
+  if (sourceType === 'category_field') {
+    const key = String(tree.category_field_key || '')
+    target = key
+      ? (ruleBuilderCategoryFieldLabelByKey.value[key] || key)
+      : t('pipeline.rulesBuilderMissingField')
+  }
   if (sourceType === 'streamline_activity') target = String(tree.activity_type || t('pipeline.rulesBuilderMissingActivity'))
   if (sourceType === 'streamline_tool') target = String(tree.tool_type || t('pipeline.rulesBuilderMissingTool'))
   if (sourceType === 'related_entity') target = String(tree.entity_type || t('pipeline.rulesBuilderMissingEntity'))
@@ -2258,6 +2270,7 @@ const newPattern = computed({
               <select
                 v-model="ruleFilterCategoryId"
                 class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                :disabled="Boolean(selectedCategoryId)"
               >
                 <option value="">{{ t('pipeline.allCategories') }}</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
