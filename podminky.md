@@ -1125,11 +1125,11 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 - [x] Přidat filtrování podle fáze.
 - [x] Přidat filtrování podle triggeru.
 - [x] Přidat stav zapnuto/vypnuto.
-- [ ] Přidat vytvoření pravidla.
-- [ ] Přidat úpravu pravidla.
-- [ ] Přidat deaktivaci pravidla.
-- [ ] Přidat kopírování pravidla.
-- [ ] Přidat testovací vyhodnocení.
+- [x] Přidat vytvoření pravidla.
+- [x] Přidat úpravu pravidla.
+- [x] Přidat deaktivaci pravidla.
+- [x] Přidat kopírování pravidla.
+- [x] Přidat testovací vyhodnocení.
 
 ### 14.5 Builder podmínek
 
@@ -1344,6 +1344,17 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-10 21:24 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na zbývající otevřené body 14.4 (vytvoření/úprava/deaktivace/kopírování/testovací vyhodnocení pravidla).
+- Další krok byl maximalizovaně delegován na podagenta pro mapování API kontraktů a UI integračních bodů (`PipelineSettingsView.vue`, `conditionRules.ts`), následně proběhla ruční implementace a druhá konceptuální validační revize změn.
+- Funkční implementace ve store `frontend-spa/src/stores/conditionRules.ts`: doplněny typy a metody `createRule`, `createRuleFromExisting` (helper kopie přes create payload), `deactivateRule`, `testEvaluation` + odpovídající payload/output typy.
+- Funkční implementace ve view `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn editor pravidla (create/edit), akce nad položkou (deactivate/copy), testovací vyhodnocení nad konkrétním pravidlem (rule_id + record_id) a navazující toast/error handling.
+- Doplněny nové i18n klíče pro celý nový UI flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena konceptuální/funkční validace v rámci scope: mapování payloadů odpovídá endpointům `POST/PATCH/DELETE /condition-rules` a `POST /condition-rules/test-evaluation/run`; změny jsou omezené na frontend + dokumentaci.
+- Hotovo: etapa 14.4 je nyní kompletně dokončená včetně create/edit/deactivate/copy/test-evaluation.
+- Následuje: navázat další otevřenou frontend etapou 14.5 (builder podmínek) ve stejném delegovaném režimu s ruční validační kontrolou.
 
 ### 2026-05-10 20:56 UTC
 
