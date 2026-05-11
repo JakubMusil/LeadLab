@@ -1368,6 +1368,37 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 18:18 UTC
+
+- Navázáno na krok 18:16 UTC: proběhlo review/security validační kolo nad novým zvýrazněním souvislostí v diagramu.
+- Spuštěn `parallel_validation`:
+  - první běh vrátil 1 relevantní review připomínku (nepotřebný `transition-opacity` na všech uzlech); připomínka zapracována v `PipelineFlowDiagram.vue`,
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
+- Hotovo: implementační scope zvýraznění souvislostí je po review i bezpečnostní kontrole uzavřený.
+- Následuje: provést finální commit/push aktuálního validačního kola a vytvořit řádný PR.
+
+### 2026-05-11 18:16 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším implementačním krokem v sekci 20.3.3 (zvýraznění souvislostí v grafu po výběru uzlu).
+- Další krok byl maximalizovaně delegován dvěma podagentům (výběr nejmenšího navazujícího scope + návrh konkrétní patch strategie) a oba výstupy byly následně ručně konceptuálně zvalidovány proti `PipelineFlowDiagram.vue` a existujícím unit testům.
+- Baseline validace ve `frontend-spa` před změnami:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.3:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: doplněno zvýraznění sousedních uzlů a navázaných hran při výběru uzlu + ztlumení nesouvisejících prvků.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněny testy pro zvýraznění souvisejících uzlů, hran a reset stavu po odznačení.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
+- Hotovo: fáze 20.3.3 má doplněné viditelné zvýraznění souvislostí (uzly/hrany) pro snazší orientaci v diagramu.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 17:27 UTC
 
 - Navázáno na krok 17:26 UTC: proběhlo finální validační kolo nového scope 20.3.4 (editace popisu scénáře v grafu).
