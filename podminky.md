@@ -1,8 +1,80 @@
 # Návrh: podmínková pravidla pro fáze, přechody, Streamline entity a pole záznamů
 
+## 0. Rychlá orientace pro administrátora
+
+Systém podmínek pomáhá hlídat, aby se záznam v pipeline neposunul dál, dokud nejsou splněné důležité kroky. Umí uživateli říct, co chybí, co má udělat dál, a administrátorovi umožní nastavit různá pravidla pro různé typy práce.
+
+### 0.1 Co systém umí dnes
+
+- blokovat přesun mezi fázemi,
+- upozornit na chybějící data,
+- vyžadovat vyplnění standardních i kategoriových polí,
+- reagovat na Streamline aktivitu a typ toolu,
+- aktivovat scénář uvnitř fáze,
+- zobrazit požadavky fáze a jejich stav,
+- zobrazit pravidla jako strom i flow diagram (mindmapu),
+- otestovat pravidla na konkrétním záznamu a dohledat výsledek v logu.
+
+### 0.2 Typické věci, které tím lze vyřešit
+
+- Nelze uzavřít zakázku bez fotodokumentace.
+- Pokud je typ realizace Montáž, aktivuje se montážní checklist.
+- Pokud vznikne reklamace, aktivuje se reklamační větev.
+- Pokud není zákazník kontaktován alespoň 3×, nelze uzavřít lead jako nedosažitelný.
+- Pokud chybí povinné kategoriové pole, zablokuje se přechod.
+- Pokud je vysoká hodnota zakázky, vyžaduje se schválení odpovědnou osobou.
+
+### 0.3 Rychlý start
+
+1. Vyber kategorii a fázi.
+2. Vyber trigger pravidla.
+3. Nastav podmínku.
+4. Zvol výsledek: blokace / upozornění / doporučení / požadavek.
+5. Otestuj pravidlo na konkrétním záznamu.
+6. Zapni pravidlo.
+
+### 0.4 Kdy použít co
+
+| Nástroj | Kdy použít |
+| --- | --- |
+| Pravidlo přechodu | Když potřebuješ zablokovat nebo podmínit přesun do další fáze. |
+| Pravidlo uvnitř fáze | Když chceš průběžně hlídat práci ve fázi. |
+| Scénář fáze | Když jedna fáze může mít více variant průchodu. |
+| Požadavek | Když chceš uživateli ukázat konkrétní úkol k dokončení. |
+| Řetězení | Když splnění jednoho kroku odemyká další krok. |
+| Mindmapa / flow diagram | Když se potřebuješ rychle zorientovat ve vazbách pravidel. |
+
+### 0.5 Stavová legenda
+
+- **Hotovo v systému**: funkce je implementovaná a dostupná v aplikaci.
+- **Hotovo v návrhu**: je dopracovaný návrh, ale ještě nemusí být kompletně nasazený.
+- **Rozpracováno**: práce probíhá, změny nejsou uzavřené.
+- **Doporučeno později**: záměr je odložený do další etapy.
+- **Otevřená otázka**: bod vyžaduje rozhodnutí před implementací.
+
+### 0.6 Mapa složitosti
+
+- **Jednoduchá pravidla**: kontrola prázdného pole, existence aktivity, rovnost hodnoty.
+- **Středně složitá pravidla**: kombinace `AND`/`OR`, kategoriová pole, Streamline aktivita.
+- **Pokročilá pravidla**: scénáře, řetězení, grafové editace, audit/replay.
+
+### 0.7 Doporučené MVP pro reálné nasazení
+
+- nezačínat řetězením ani grafovými editacemi,
+- začít 5–10 nejčastějšími blokacemi,
+- zapnout panel požadavků fáze,
+- až potom přidat scénáře,
+- pokročilé větvení a mindmapu zavádět až nakonec.
+
+### 0.8 Jak je dokument rozdělený
+
+**Uživatelská vrstva (co nastavit a kdy):** sekce 0, 3–8, 11–12, 17, 20.1 a 21.
+
+**Technická vrstva (jak je to postavené):** sekce 9–10, 13–16, 20.2–20.8 a 19/22 (pracovní log a historie).
+
 ## 1. Cíl návrhu
 
-Cílem je rozšířit systém podmínek tak, aby neřešil pouze jednoduchou validaci přechodu mezi fázemi, ale aby dokázal popsat celý rozhodovací proces nad záznamem v pipeline.
+Cílem je dát administrátorovi praktický nástroj, který pomůže řídit pohyb záznamu v pipeline, hlídat povinné kroky a srozumitelně uživateli říct, co chybí. Návrh proto rozšiřuje systém z jednoduché validace přechodu mezi fázemi na celý rozhodovací proces nad záznamem.
 
 Pravidla by měla umět:
 
@@ -1368,6 +1440,15 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 20:26 UTC
+
+- Provedena restrukturalizace `podminky.md` s cílem výrazně zlepšit čitelnost pro administrátora i běžného uživatele.
+- Doplněna nová orientační sekce 0: co systém umí dnes, typické use-cases, rychlý start, tabulka „kdy použít co“, stavová legenda, mapa složitosti a doporučené MVP pro reálné nasazení.
+- Úvod sekce 1 byl přepsán méně technicky tak, aby byl srozumitelný i bez znalosti interního modelu.
+- Pracovní log v sekci 19 byl zkrácen na posledních 10 záznamů; starší historie byla přesunuta do archivu v sekci 22.
+- Hotovo: dokument je rozdělený na uživatelskou a technickou vrstvu a nabízí rychlý vstup bez nutnosti číst celý technický návrh.
+- Následuje: průběžně aktualizovat sekce 19/22 stejným formátem při dalších iteracích a udržovat orientační sekci 0 v souladu se skutečným stavem systému.
+
 ### 2026-05-11 19:44 UTC
 
 - Navázáno na krok 19:43 UTC: proběhlo opakované review/security validační kolo po zapracování helperu pro volbu operátoru obalující skupiny.
@@ -1506,6 +1587,245 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
 - Hotovo: navazující krok fáze 20.3.4 je implementačně i validačně uzavřený.
 - Následuje: provést finální commit/push tohoto záznamu a vytvořit řádný PR s popisem změn.
+
+- Starší záznamy jsou přesunuté do sekce 22 (archiv).
+
+## 20. Další fáze: Interaktivní grafická mindmapa podmínek
+
+### 20.1 Cíl
+
+Nastavení podmínek už podporuje pravidla, scénáře, požadavky, řetězení a audit, ale při větším počtu pravidel je obtížné rychle pochopit jejich souvislosti. Další fáze proto zavede interaktivní grafickou mindmapu, která nebude nahrazovat existující formulářové editory, ale doplní je o vizuální pohled na strom podmínek a vazby mezi pravidly, scénáři a požadavky.
+
+Mindmapa má odpovědět hlavně na otázky:
+
+- Která pravidla ovlivňují vybranou kategorii a fázi?
+- Které scénáře se mohou aktivovat a proč?
+- Jaké požadavky jsou navázané na scénář?
+- Kam vede splnění nebo nesplnění požadavku?
+- Která podmínka v testovacím vyhodnocení prošla a která ne?
+- Kde existují neaktivní, neúplné nebo potenciálně konfliktní větve?
+
+### 20.2 Princip řešení
+
+Mindmapa bude pracovat nad stejnými daty jako současné UI:
+
+- `ConditionRule` jako vstupní pravidla s triggerem, efektem a condition tree,
+- `StageScenario` jako větve práce ve fázi,
+- `StageRequirement` jako konkrétní povinnosti a návazné kroky,
+- `RuleEvaluationLog` jako zdroj auditní a testovací stopy,
+- existující Pinia stores a API endpointy bez nového paralelního modelu pravidel.
+
+Frontend si nad těmito daty vytvoří normalizovaný vizualizační model:
+
+- uzel pravidla,
+- uzel skupiny `AND`/`OR`,
+- uzel jednoduché podmínky,
+- uzel scénáře,
+- uzel požadavku,
+- hranu aktivace scénáře,
+- hranu splnění/nesplnění návazného kroku,
+- hranu auditní/testovací stopy.
+
+Rozvržení a stav zobrazení (pozice, zoom, sbalené větve, lokální výběr uzlu) mají být nejdříve pouze frontend stav. Perzistence layoutu se má řešit až tehdy, pokud se ukáže jako uživatelsky nutná.
+
+### 20.3 Doporučený rozsah práce
+
+#### 20.3.1 Fáze A: Read-only vizualizace condition tree
+
+- Přidat helper pro převod condition tree na vizualizační uzly a hrany.
+- Vykreslit strom podmínky pro jedno pravidlo nebo aktivační podmínku scénáře.
+- Odlišit skupiny `AND`/`OR`, negaci, typ zdroje, operátor, hodnotu a časové okno.
+- Přidat prázdný, loading a error stav.
+- Přidat možnost sbalit/rozbalit vnořené skupiny.
+- Zachovat rychlý návrat do existujícího formulářového/JSON editoru.
+- Otestovat jednoduchou podmínku, vnořené skupiny, neúplné uzly a prázdný strom.
+
+#### 20.3.2 Fáze B: Přehled vazeb pravidlo → scénář → požadavek
+
+- Přidat diagram pro vybranou kategorii/fázi v nastavení pipeline.
+- Zobrazit aktivní i neaktivní pravidla s barevným rozlišením triggeru a efektu.
+- Zobrazit scénáře podle priority a aktivační podmínky.
+- Zobrazit požadavky scénáře, jejich blocking/warning charakter a doporučenou další fázi.
+- Zobrazit návaznosti `next_step_on_met` a `next_step_on_unmet` jako směrové hrany.
+- Přidat filtry pro kategorii, fázi, trigger, aktivní stav a typ uzlu.
+- Otestovat diagram bez dat, s jedním scénářem, s větvením i s řetězením požadavků.
+
+#### 20.3.3 Fáze C: Interaktivní navigace a detail uzlu
+
+- Přidat výběr uzlu kliknutím a panel detailu vedle grafu.
+- V detailu zobrazit lidsky čitelný popis, technické ID, zdrojová data a dostupné akce.
+- Přidat přeskok z uzlu do existujícího editoru pravidla, scénáře nebo požadavku.
+- Přidat zvýraznění souvisejících hran a sousedních uzlů.
+- Přidat zoom, pan, centrování vybraného uzlu a reset pohledu.
+- Přidat klávesovou navigaci mezi uzly a základní ARIA popisy.
+
+#### 20.3.4 Fáze D: Řízené editace v grafu
+
+- Přímé editace povolit až po stabilizaci read-only režimu.
+- Začít bezpečnými akcemi: přejmenování popisu, zapnutí/vypnutí pravidla, změna priority scénáře, otevření editoru požadavku.
+- Poté přidat manipulaci s condition tree: přidat podmínku, přidat skupinu, změnit `AND`/`OR`, odstranit uzel.
+- Poté přidat manipulaci s návaznými hranami požadavků.
+- Každá editace musí používat stejnou validaci jako formulářový editor a API.
+- Při nevalidním grafu zobrazit chybu přímo u uzlu/hrany a zakázat uložení.
+- Formulářový editor zůstává autoritativní fallback pro složité nebo nejasné úpravy.
+
+#### 20.3.5 Fáze E: Napojení na testovací vyhodnocení a audit
+
+- Umožnit spustit testovací vyhodnocení a výsledek promítnout do grafu.
+- Zvýraznit splněné, nesplněné a nevyhodnocené uzly.
+- U pravidel a scénářů zobrazit poslední relevantní záznamy z `RuleEvaluationLog`.
+- V detailu uzlu ukázat důvod výsledku a případný související záznam/aktivitu.
+- Přidat režim „replay“, který ukáže postup aktivace scénáře a návazných požadavků.
+
+#### 20.3.6 Fáze F: Výkon, škálování a UX polish
+
+- Přidat automatické hierarchické rozvržení grafu bez povinné externí knihovny.
+- Pro velké grafy zavést limit počtu uzlů v jednom pohledu a jasnou výzvu k filtrování.
+- Přidat sbalování scénářů, skupin a dokončených požadavků.
+- Přidat minimapu nebo přehledovou navigaci pouze pokud zoom/pan nestačí.
+- Ověřit kontrast barev, čitelnost v tmavém režimu a ovládání klávesnicí.
+- Doplnit krátkou in-app nápovědu s legendou barev, hran a ikon.
+
+### 20.4 Technické zásady
+
+- Nepřidávat druhý backendový model pravidel jen pro graf.
+- Nepřidávat těžkou grafovou knihovnu, dokud nebude jasné, že vlastní SVG/Vue řešení nestačí.
+- Normalizaci dat držet v samostatných utilitách, aby byla dobře testovatelná.
+- Diagramové komponenty oddělit od API volání; data mají dostávat přes props/store.
+- Všechny editace vést přes existující stores a endpointy.
+- Stav layoutu nejdříve držet lokálně; perzistenci řešit samostatnou pozdější fází.
+- Přístupnost a fallback na formulářový editor jsou povinné, ne volitelné.
+
+### 20.5 Validace
+
+Minimální validační sada pro tuto fázi:
+
+- unit test normalizace condition tree na uzly/hrany,
+- unit test normalizace scénářů a požadavků včetně `next_step_on_met`/`next_step_on_unmet`,
+- render test prázdného grafu, jednoduchého grafu a hluboce vnořeného grafu,
+- test výběru uzlu a zobrazení detailu,
+- test sbalení/rozbalení větve,
+- test synchronizace grafu po změně ve formulářovém editoru,
+- test zamítnutí nevalidní editace, pokud bude povolen edit režim,
+- `npm run check-locales`, `npm run build-only` a relevantní `npm run test:unit` ve `frontend-spa`,
+- bezpečnostní/review validace před PR.
+
+### 20.6 Rizika a opatření
+
+- Riziko: velký graf bude nečitelný. Opatření: filtry, sbalování, limity uzlů, zoom/pan a oddělené pohledy pro condition tree a flow diagram.
+- Riziko: editace v grafu se rozejde s formulářem. Opatření: jeden sdílený store, stejné validační funkce a formulář jako fallback.
+- Riziko: uživatel nepochopí význam barev a hran. Opatření: legenda, tooltips, detail uzlu a jednoduché názvosloví.
+- Riziko: výkon u firem s mnoha pravidly. Opatření: načítat a renderovat graf podle vybrané kategorie/fáze, ne celý systém najednou.
+- Riziko: grafová knihovna přinese zbytečnou závislost. Opatření: první iteraci udělat pomocí Vue + SVG a nové knihovny zvažovat až podle konkrétních limitů.
+
+### 20.7 Doporučené pořadí implementace
+
+1. Normalizační utility a unit testy.
+2. Read-only strom jedné podmínky.
+3. Přehledový flow diagram pro kategorii/fázi.
+4. Navigace, detail uzlu, zvýraznění souvislostí.
+5. Napojení na testovací vyhodnocení a auditní logy.
+6. Až poté řízené editace v grafu.
+7. Výkonnostní optimalizace, přístupnost a UX nápověda.
+
+### 20.8 Kritérium dokončení fáze
+
+Fáze je dokončená, když administrátor dokáže v nastavení pipeline otevřít grafický pohled, vybrat kategorii/fázi, zobrazit pravidla, scénáře, požadavky a návazné kroky, bezpečně přejít z grafu do existujícího editoru a při testovacím vyhodnocení vidět, které části logiky byly splněné nebo nesplněné.
+
+## 21. Šablony typických pravidel a scénářů podle domény
+
+### 21.1 Call centrum
+
+#### Typická pravidla
+
+- Blokovat přechod do fáze „Kvalifikace“, pokud není vyplněný telefon ani e-mail.
+- Blokovat uzavření leadu jako „Nedosažitelný“, pokud nejsou alespoň 3 pokusy o kontakt.
+- Zobrazit upozornění, pokud u leadu chybí termín dalšího kontaktu po neúspěšném hovoru.
+- Doporučit předání senior operátorovi, pokud je priorita leadu vysoká.
+
+#### Scénář: První kontakt
+
+Aktivace:
+
+- záznam vstoupí do fáze Nový lead,
+- není evidovaný úspěšný kontakt.
+
+Požadavky:
+
+- vyplnit kontaktní údaj (telefon nebo e-mail),
+- zapsat výsledek pokusu o kontakt,
+- nastavit další krok (callback, e-mail, uzavření).
+
+Blokace:
+
+- nelze přesunout do další fáze bez záznamu o kontaktu.
+
+Doporučení:
+
+- po dvou neúspěšných pokusech doporučit jiný komunikační kanál.
+
+### 21.2 Montážní firma
+
+#### Typická pravidla
+
+- Blokovat přechod do „Realizace“, pokud není potvrzen termín montáže.
+- Blokovat dokončení zakázky, pokud chybí fotodokumentace po realizaci.
+- Blokovat přechod do „Hotovo“, pokud není dokončen montážní checklist.
+- Zobrazit upozornění při evidenci vícepráce bez schválení odpovědnou osobou.
+
+#### Scénář: Standardní montáž
+
+Aktivace:
+
+- `typ_realizace = montáž`,
+- záznam je ve fázi Příprava realizace nebo Realizace.
+
+Požadavky:
+
+- potvrdit termín montáže,
+- přiřadit montážní tým,
+- nahrát fotky před a po montáži,
+- doplnit předávací protokol.
+
+Blokace:
+
+- nelze uzavřít realizaci bez fotodokumentace a protokolu.
+
+Doporučení:
+
+- po splnění všech požadavků doporučit přesun do fáze „Hotovo“.
+
+### 21.3 IT servis
+
+#### Typická pravidla
+
+- Blokovat zahájení řešení incidentu bez nastavené priority.
+- Blokovat uzavření incidentu bez popisu řešení a potvrzení obnovy služby.
+- Blokovat produkční změnu bez schválení změnového zásahu.
+- Zobrazit upozornění, pokud ticket s vysokým dopadem není eskalován včas.
+
+#### Scénář: Incident management
+
+Aktivace:
+
+- vytvořen nový ticket typu Incident,
+- ticket přejde do fáze „V řešení“.
+
+Požadavky:
+
+- vyplnit dopad a prioritu incidentu,
+- vést průběžný servisní log,
+- uvést workaround nebo finální fix.
+
+Blokace:
+
+- nelze uzavřít ticket bez popisu příčiny a způsobu nápravy.
+
+Doporučení:
+
+- při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
+
+## 22. Archiv průběžného pracovního postupu
 
 ### 2026-05-11 17:26 UTC
 
@@ -2185,238 +2505,3 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Scope byl maximálně delegován subagentovi (návrh šablon + jednotná struktura), následně proběhla ruční konceptuální validace proti stávající terminologii dokumentu (`Aktivace`, `Požadavky`, `Blokace`, `Doporučení`).
 - Připraven obsah nové sekce se šablonami pro call centrum, montážní firmu a IT servis tak, aby šel použít jako výchozí stavebnice pro admin konfiguraci.
 - Následuje: provést finální kontrolu návaznosti textu, zvalidovat diff a připravit řádný PR se shrnutím.
-
-## 20. Další fáze: Interaktivní grafická mindmapa podmínek
-
-### 20.1 Cíl
-
-Nastavení podmínek už podporuje pravidla, scénáře, požadavky, řetězení a audit, ale při větším počtu pravidel je obtížné rychle pochopit jejich souvislosti. Další fáze proto zavede interaktivní grafickou mindmapu, která nebude nahrazovat existující formulářové editory, ale doplní je o vizuální pohled na strom podmínek a vazby mezi pravidly, scénáři a požadavky.
-
-Mindmapa má odpovědět hlavně na otázky:
-
-- Která pravidla ovlivňují vybranou kategorii a fázi?
-- Které scénáře se mohou aktivovat a proč?
-- Jaké požadavky jsou navázané na scénář?
-- Kam vede splnění nebo nesplnění požadavku?
-- Která podmínka v testovacím vyhodnocení prošla a která ne?
-- Kde existují neaktivní, neúplné nebo potenciálně konfliktní větve?
-
-### 20.2 Princip řešení
-
-Mindmapa bude pracovat nad stejnými daty jako současné UI:
-
-- `ConditionRule` jako vstupní pravidla s triggerem, efektem a condition tree,
-- `StageScenario` jako větve práce ve fázi,
-- `StageRequirement` jako konkrétní povinnosti a návazné kroky,
-- `RuleEvaluationLog` jako zdroj auditní a testovací stopy,
-- existující Pinia stores a API endpointy bez nového paralelního modelu pravidel.
-
-Frontend si nad těmito daty vytvoří normalizovaný vizualizační model:
-
-- uzel pravidla,
-- uzel skupiny `AND`/`OR`,
-- uzel jednoduché podmínky,
-- uzel scénáře,
-- uzel požadavku,
-- hranu aktivace scénáře,
-- hranu splnění/nesplnění návazného kroku,
-- hranu auditní/testovací stopy.
-
-Rozvržení a stav zobrazení (pozice, zoom, sbalené větve, lokální výběr uzlu) mají být nejdříve pouze frontend stav. Perzistence layoutu se má řešit až tehdy, pokud se ukáže jako uživatelsky nutná.
-
-### 20.3 Doporučený rozsah práce
-
-#### 20.3.1 Fáze A: Read-only vizualizace condition tree
-
-- Přidat helper pro převod condition tree na vizualizační uzly a hrany.
-- Vykreslit strom podmínky pro jedno pravidlo nebo aktivační podmínku scénáře.
-- Odlišit skupiny `AND`/`OR`, negaci, typ zdroje, operátor, hodnotu a časové okno.
-- Přidat prázdný, loading a error stav.
-- Přidat možnost sbalit/rozbalit vnořené skupiny.
-- Zachovat rychlý návrat do existujícího formulářového/JSON editoru.
-- Otestovat jednoduchou podmínku, vnořené skupiny, neúplné uzly a prázdný strom.
-
-#### 20.3.2 Fáze B: Přehled vazeb pravidlo → scénář → požadavek
-
-- Přidat diagram pro vybranou kategorii/fázi v nastavení pipeline.
-- Zobrazit aktivní i neaktivní pravidla s barevným rozlišením triggeru a efektu.
-- Zobrazit scénáře podle priority a aktivační podmínky.
-- Zobrazit požadavky scénáře, jejich blocking/warning charakter a doporučenou další fázi.
-- Zobrazit návaznosti `next_step_on_met` a `next_step_on_unmet` jako směrové hrany.
-- Přidat filtry pro kategorii, fázi, trigger, aktivní stav a typ uzlu.
-- Otestovat diagram bez dat, s jedním scénářem, s větvením i s řetězením požadavků.
-
-#### 20.3.3 Fáze C: Interaktivní navigace a detail uzlu
-
-- Přidat výběr uzlu kliknutím a panel detailu vedle grafu.
-- V detailu zobrazit lidsky čitelný popis, technické ID, zdrojová data a dostupné akce.
-- Přidat přeskok z uzlu do existujícího editoru pravidla, scénáře nebo požadavku.
-- Přidat zvýraznění souvisejících hran a sousedních uzlů.
-- Přidat zoom, pan, centrování vybraného uzlu a reset pohledu.
-- Přidat klávesovou navigaci mezi uzly a základní ARIA popisy.
-
-#### 20.3.4 Fáze D: Řízené editace v grafu
-
-- Přímé editace povolit až po stabilizaci read-only režimu.
-- Začít bezpečnými akcemi: přejmenování popisu, zapnutí/vypnutí pravidla, změna priority scénáře, otevření editoru požadavku.
-- Poté přidat manipulaci s condition tree: přidat podmínku, přidat skupinu, změnit `AND`/`OR`, odstranit uzel.
-- Poté přidat manipulaci s návaznými hranami požadavků.
-- Každá editace musí používat stejnou validaci jako formulářový editor a API.
-- Při nevalidním grafu zobrazit chybu přímo u uzlu/hrany a zakázat uložení.
-- Formulářový editor zůstává autoritativní fallback pro složité nebo nejasné úpravy.
-
-#### 20.3.5 Fáze E: Napojení na testovací vyhodnocení a audit
-
-- Umožnit spustit testovací vyhodnocení a výsledek promítnout do grafu.
-- Zvýraznit splněné, nesplněné a nevyhodnocené uzly.
-- U pravidel a scénářů zobrazit poslední relevantní záznamy z `RuleEvaluationLog`.
-- V detailu uzlu ukázat důvod výsledku a případný související záznam/aktivitu.
-- Přidat režim „replay“, který ukáže postup aktivace scénáře a návazných požadavků.
-
-#### 20.3.6 Fáze F: Výkon, škálování a UX polish
-
-- Přidat automatické hierarchické rozvržení grafu bez povinné externí knihovny.
-- Pro velké grafy zavést limit počtu uzlů v jednom pohledu a jasnou výzvu k filtrování.
-- Přidat sbalování scénářů, skupin a dokončených požadavků.
-- Přidat minimapu nebo přehledovou navigaci pouze pokud zoom/pan nestačí.
-- Ověřit kontrast barev, čitelnost v tmavém režimu a ovládání klávesnicí.
-- Doplnit krátkou in-app nápovědu s legendou barev, hran a ikon.
-
-### 20.4 Technické zásady
-
-- Nepřidávat druhý backendový model pravidel jen pro graf.
-- Nepřidávat těžkou grafovou knihovnu, dokud nebude jasné, že vlastní SVG/Vue řešení nestačí.
-- Normalizaci dat držet v samostatných utilitách, aby byla dobře testovatelná.
-- Diagramové komponenty oddělit od API volání; data mají dostávat přes props/store.
-- Všechny editace vést přes existující stores a endpointy.
-- Stav layoutu nejdříve držet lokálně; perzistenci řešit samostatnou pozdější fází.
-- Přístupnost a fallback na formulářový editor jsou povinné, ne volitelné.
-
-### 20.5 Validace
-
-Minimální validační sada pro tuto fázi:
-
-- unit test normalizace condition tree na uzly/hrany,
-- unit test normalizace scénářů a požadavků včetně `next_step_on_met`/`next_step_on_unmet`,
-- render test prázdného grafu, jednoduchého grafu a hluboce vnořeného grafu,
-- test výběru uzlu a zobrazení detailu,
-- test sbalení/rozbalení větve,
-- test synchronizace grafu po změně ve formulářovém editoru,
-- test zamítnutí nevalidní editace, pokud bude povolen edit režim,
-- `npm run check-locales`, `npm run build-only` a relevantní `npm run test:unit` ve `frontend-spa`,
-- bezpečnostní/review validace před PR.
-
-### 20.6 Rizika a opatření
-
-- Riziko: velký graf bude nečitelný. Opatření: filtry, sbalování, limity uzlů, zoom/pan a oddělené pohledy pro condition tree a flow diagram.
-- Riziko: editace v grafu se rozejde s formulářem. Opatření: jeden sdílený store, stejné validační funkce a formulář jako fallback.
-- Riziko: uživatel nepochopí význam barev a hran. Opatření: legenda, tooltips, detail uzlu a jednoduché názvosloví.
-- Riziko: výkon u firem s mnoha pravidly. Opatření: načítat a renderovat graf podle vybrané kategorie/fáze, ne celý systém najednou.
-- Riziko: grafová knihovna přinese zbytečnou závislost. Opatření: první iteraci udělat pomocí Vue + SVG a nové knihovny zvažovat až podle konkrétních limitů.
-
-### 20.7 Doporučené pořadí implementace
-
-1. Normalizační utility a unit testy.
-2. Read-only strom jedné podmínky.
-3. Přehledový flow diagram pro kategorii/fázi.
-4. Navigace, detail uzlu, zvýraznění souvislostí.
-5. Napojení na testovací vyhodnocení a auditní logy.
-6. Až poté řízené editace v grafu.
-7. Výkonnostní optimalizace, přístupnost a UX nápověda.
-
-### 20.8 Kritérium dokončení fáze
-
-Fáze je dokončená, když administrátor dokáže v nastavení pipeline otevřít grafický pohled, vybrat kategorii/fázi, zobrazit pravidla, scénáře, požadavky a návazné kroky, bezpečně přejít z grafu do existujícího editoru a při testovacím vyhodnocení vidět, které části logiky byly splněné nebo nesplněné.
-
-## 21. Šablony typických pravidel a scénářů podle domény
-
-### 21.1 Call centrum
-
-#### Typická pravidla
-
-- Blokovat přechod do fáze „Kvalifikace“, pokud není vyplněný telefon ani e-mail.
-- Blokovat uzavření leadu jako „Nedosažitelný“, pokud nejsou alespoň 3 pokusy o kontakt.
-- Zobrazit upozornění, pokud u leadu chybí termín dalšího kontaktu po neúspěšném hovoru.
-- Doporučit předání senior operátorovi, pokud je priorita leadu vysoká.
-
-#### Scénář: První kontakt
-
-Aktivace:
-
-- záznam vstoupí do fáze Nový lead,
-- není evidovaný úspěšný kontakt.
-
-Požadavky:
-
-- vyplnit kontaktní údaj (telefon nebo e-mail),
-- zapsat výsledek pokusu o kontakt,
-- nastavit další krok (callback, e-mail, uzavření).
-
-Blokace:
-
-- nelze přesunout do další fáze bez záznamu o kontaktu.
-
-Doporučení:
-
-- po dvou neúspěšných pokusech doporučit jiný komunikační kanál.
-
-### 21.2 Montážní firma
-
-#### Typická pravidla
-
-- Blokovat přechod do „Realizace“, pokud není potvrzen termín montáže.
-- Blokovat dokončení zakázky, pokud chybí fotodokumentace po realizaci.
-- Blokovat přechod do „Hotovo“, pokud není dokončen montážní checklist.
-- Zobrazit upozornění při evidenci vícepráce bez schválení odpovědnou osobou.
-
-#### Scénář: Standardní montáž
-
-Aktivace:
-
-- `typ_realizace = montáž`,
-- záznam je ve fázi Příprava realizace nebo Realizace.
-
-Požadavky:
-
-- potvrdit termín montáže,
-- přiřadit montážní tým,
-- nahrát fotky před a po montáži,
-- doplnit předávací protokol.
-
-Blokace:
-
-- nelze uzavřít realizaci bez fotodokumentace a protokolu.
-
-Doporučení:
-
-- po splnění všech požadavků doporučit přesun do fáze „Hotovo“.
-
-### 21.3 IT servis
-
-#### Typická pravidla
-
-- Blokovat zahájení řešení incidentu bez nastavené priority.
-- Blokovat uzavření incidentu bez popisu řešení a potvrzení obnovy služby.
-- Blokovat produkční změnu bez schválení změnového zásahu.
-- Zobrazit upozornění, pokud ticket s vysokým dopadem není eskalován včas.
-
-#### Scénář: Incident management
-
-Aktivace:
-
-- vytvořen nový ticket typu Incident,
-- ticket přejde do fáze „V řešení“.
-
-Požadavky:
-
-- vyplnit dopad a prioritu incidentu,
-- vést průběžný servisní log,
-- uvést workaround nebo finální fix.
-
-Blokace:
-
-- nelze uzavřít ticket bez popisu příčiny a způsobu nápravy.
-
-Doporučení:
-
-- při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
