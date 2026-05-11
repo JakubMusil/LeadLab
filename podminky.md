@@ -1368,6 +1368,19 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 17:27 UTC
+
+- Navázáno na krok 17:26 UTC: proběhlo finální validační kolo nového scope 20.3.4 (editace popisu scénáře v grafu).
+- Cílená validace ve `frontend-spa` po zapracování review připomínek:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`24/24`).
+- Spuštěn `parallel_validation`:
+  - první běh vrátil 2 review připomínky (readability + redundantní trim); relevantní část byla zapracována,
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Hotovo: navazující krok fáze 20.3.4 je implementačně i validačně uzavřený.
+- Následuje: provést finální commit/push tohoto záznamu a vytvořit řádný PR s popisem změn.
+
 ### 2026-05-11 17:26 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno na další praktický krok ve fázi 20.3.4 po dokončení původních bezpečných akcí.
