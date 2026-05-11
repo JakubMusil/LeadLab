@@ -381,6 +381,39 @@ const ruleBuilderCategoryFieldLabelByKey = computed<Record<string, string>>(() =
     return acc
   }, {}),
 )
+const selectedTemplateDomain = computed<RuleTemplatePreset['domain'] | null>(() => {
+  const categorySlug = selectedCategory.value?.slug?.toLowerCase()
+  if (!categorySlug) return null
+  if (
+    categorySlug.includes('call') ||
+    categorySlug.includes('lead') ||
+    categorySlug.includes('telefon') ||
+    categorySlug.includes('kontakt')
+  ) {
+    return 'call_center'
+  }
+  if (
+    categorySlug.includes('mont') ||
+    categorySlug.includes('instal') ||
+    categorySlug.includes('realiz')
+  ) {
+    return 'installation'
+  }
+  if (
+    categorySlug.includes('it') ||
+    categorySlug.includes('servis') ||
+    categorySlug.includes('incident') ||
+    categorySlug.includes('support')
+  ) {
+    return 'it_service'
+  }
+  return null
+})
+const ruleTemplatePresets = computed<RuleTemplatePreset[]>(() => {
+  const domain = selectedTemplateDomain.value
+  if (!domain) return RULE_TEMPLATE_PRESETS
+  return RULE_TEMPLATE_PRESETS.filter((template) => template.domain === 'all' || template.domain === domain)
+})
 
 // All valid field keys (must match BE FIELD_KEY_CHOICES)
 const ALL_FIELD_KEYS = [
@@ -2215,11 +2248,16 @@ const newPattern = computed({
               <div class="text-xs text-indigo-600 dark:text-indigo-300">{{ t('pipeline.rulesTemplatesHint') }}</div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div
-                  v-for="template in RULE_TEMPLATE_PRESETS"
+                  v-for="template in ruleTemplatePresets"
                   :key="template.id"
                   class="p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800"
                 >
-                  <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
+                    <span class="inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                      {{ t(template.domainLabelKey) }}
+                    </span>
+                  </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t(template.descriptionKey) }}</div>
                   <button
                     class="mt-2 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
