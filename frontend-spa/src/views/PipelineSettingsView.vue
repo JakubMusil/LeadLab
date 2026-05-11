@@ -1253,7 +1253,8 @@ async function loadPipelineFlowRequirements() {
     )
     const failedIndex = responses.findIndex((response) => !response.ok)
     if (failedIndex !== -1) {
-      const scenarioName = scenarios[failedIndex]?.name || scenarios[failedIndex]?.id || ''
+      const failedScenario = scenarios[failedIndex]
+      const scenarioName = failedScenario?.name || failedScenario?.id || ''
       pipelineFlowError.value = scenarioName
         ? `${t('pipeline.flowDiagramLoadFailed')} (${scenarioName})`
         : t('pipeline.flowDiagramLoadFailed')

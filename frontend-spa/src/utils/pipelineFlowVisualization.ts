@@ -125,7 +125,7 @@ function extractScenarioIdFromEffectConfig(effectConfig?: Record<string, unknown
     effectConfig.activate_scenario_id,
   ]
   const match = candidates.find((value) => typeof value === 'string' && value.trim())
-  return typeof match === 'string' ? match : null
+  return match ?? null
 }
 
 function nodeMatchesTypeFilter(node: PipelineFlowNode, nodeType: PipelineFlowNodeTypeFilter = 'all'): boolean {

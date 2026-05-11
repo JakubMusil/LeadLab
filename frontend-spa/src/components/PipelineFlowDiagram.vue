@@ -138,13 +138,14 @@ function nodeTypeLabel(node: PipelineFlowNode): string {
 function nodeClass(node: PipelineFlowNode): string {
   if (node.type === 'rule') {
     const trigger = String(node.meta.trigger || '')
-    const triggerClass = trigger.includes('field')
-      ? 'ring-1 ring-purple-100'
-      : trigger.includes('stage')
-        ? 'ring-1 ring-sky-100'
-        : trigger.includes('streamline')
-          ? 'ring-1 ring-teal-100'
-          : 'ring-1 ring-indigo-100'
+    let triggerClass = 'ring-1 ring-indigo-100'
+    if (trigger.includes('field')) {
+      triggerClass = 'ring-1 ring-purple-100'
+    } else if (trigger.includes('stage')) {
+      triggerClass = 'ring-1 ring-sky-100'
+    } else if (trigger.includes('streamline')) {
+      triggerClass = 'ring-1 ring-teal-100'
+    }
     if (node.meta.effect === 'block') return `border-red-200 bg-red-50 ${triggerClass}`
     if (node.meta.effect === 'warning') return `border-amber-200 bg-amber-50 ${triggerClass}`
     return `border-indigo-200 bg-indigo-50 ${triggerClass}`
