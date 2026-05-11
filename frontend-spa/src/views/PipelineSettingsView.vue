@@ -1188,6 +1188,28 @@ async function handleFlowScenarioDescriptionUpdate(payload: { scenarioId: string
   }
 }
 
+async function handleFlowScenarioActiveToggle(payload: { scenarioId: string; nextActive: boolean }) {
+  const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  const result = await stageScenariosStore.updateScenario(
+    scenario.category_id,
+    scenario.stage_id,
+    scenario.id,
+    { is_active: payload.nextActive },
+  )
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageScenariosUpdated'))
+  if (editingScenarioId.value === scenario.id) {
+    scenarioForm.value.is_active = payload.nextActive
+  }
+}
+
 function handleFlowOpenRequirementEditor(payload: { requirementId: string }) {
   const requirement = pipelineFlowRequirements.value.find((item) => item.id === payload.requirementId)
   if (!requirement) {
@@ -3320,6 +3342,7 @@ const newPattern = computed({
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
+            @toggle-scenario-active="handleFlowScenarioActiveToggle"
             @open-requirement-editor="handleFlowOpenRequirementEditor"
             @update-requirement-next-step="handleFlowRequirementNextStepUpdate"
           />

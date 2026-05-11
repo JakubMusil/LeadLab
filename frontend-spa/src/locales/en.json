@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Quick actions",
     "flowDiagramActionEnableRule": "Enable rule",
     "flowDiagramActionDisableRule": "Disable rule",
+    "flowDiagramActionEnableScenario": "Enable scenario",
+    "flowDiagramActionDisableScenario": "Disable scenario",
     "flowDiagramActionToggleRuleRootOperator": "Toggle root condition AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Add wrapping root group",
     "flowDiagramActionAddRuleRootCondition": "Add root condition",

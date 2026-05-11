@@ -1440,6 +1440,28 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 22:01 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (bezpečné řízené akce nad uzlem scénáře v grafu).
+- Další kroky byly maximalizovaně delegovány podagentům:
+  - subagent pro gap analýzu nejmenšího navazujícího scope v 20.3.4,
+  - subagent pro baseline validaci ve `frontend-spa`.
+- Výstupy podagentů byly následně ručně konceptuálně zvalidovány nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a existujícími testy.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` a `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` původně padaly na chybějících binárkách (`vite`/`vitest`); po `npm ci` opakovaný baseline běh prochází.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `toggle-scenario-active` v detailu uzlu scénáře.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowScenarioActiveToggle` napojený na `stageScenariosStore.updateScenario`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `toggle-scenario-active`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněny i18n klíče `flowDiagramActionEnableScenario` a `flowDiagramActionDisableScenario`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`34/34`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další bezpečná řízená editace grafu – zapnutí/vypnutí scénáře přímo z detailu uzlu.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 21:31 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (řízená manipulace condition tree v grafu).
@@ -1583,28 +1605,6 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
 - Hotovo: implementační krok 20.3.4 (toggle kořenového `AND/OR`) je po review i bezpečnostní kontrole stabilizovaný.
 - Následuje: spustit finální `parallel_validation` po posledním patchi, provést finální commit/push a vytvořit řádný PR.
-
-### 2026-05-11 18:40 UTC
-
-- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem sekce 20.3.4 (manipulace condition tree v grafu).
-- Další krok byl maximalizovaně delegován subagentovi (identifikace nejmenšího bezpečného scope) a návrh byl ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a `conditionTreeVisualization.ts`.
-- Baseline validace před změnami ve `frontend-spa`:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
-  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
-- Implementace navazující na 20.3.4:
-  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `toggle-rule-root-operator` pro přepnutí kořenové podmínky pravidla (`AND/OR`) z detailu uzlu.
-  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowRuleRootOperatorToggle` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
-  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `toggle-rule-root-operator`.
-  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionToggleRuleRootOperator`.
-- Post-change validace:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
-- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (rychlé přepnutí kořenového `AND/OR`) přímo v detailu uzlu pravidla.
-- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
-
-- Starší záznamy jsou přesunuté do sekce 22 (archiv).
 
 ## 20. Další fáze: Interaktivní grafická mindmapa podmínek
 
@@ -1842,6 +1842,26 @@ Doporučení:
 - při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
 
 ## 22. Archiv průběžného pracovního postupu
+
+### 2026-05-11 18:40 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem sekce 20.3.4 (manipulace condition tree v grafu).
+- Další krok byl maximalizovaně delegován subagentovi (identifikace nejmenšího bezpečného scope) a návrh byl ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a `conditionTreeVisualization.ts`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `toggle-rule-root-operator` pro přepnutí kořenové podmínky pravidla (`AND/OR`) z detailu uzlu.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowRuleRootOperatorToggle` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `toggle-rule-root-operator`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionToggleRuleRootOperator`.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (rychlé přepnutí kořenového `AND/OR`) přímo v detailu uzlu pravidla.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
 
 ### 2026-05-11 18:18 UTC
 

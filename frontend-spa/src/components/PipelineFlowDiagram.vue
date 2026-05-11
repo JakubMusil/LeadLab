@@ -66,6 +66,7 @@ const emit = defineEmits<{
   (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
   (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
   (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
+  (event: 'toggle-scenario-active', payload: { scenarioId: string; nextActive: boolean }): void
   (event: 'open-requirement-editor', payload: { requirementId: string }): void
   (
     event: 'update-requirement-next-step',
@@ -469,6 +470,14 @@ function emitScenarioDescriptionUpdate() {
   emit('update-scenario-description', {
     scenarioId: selectedNode.value.sourceId,
     description: editingScenarioDescription.value,
+  })
+}
+
+function emitScenarioActiveToggle() {
+  if (selectedNode.value?.type !== 'scenario') return
+  emit('toggle-scenario-active', {
+    scenarioId: selectedNode.value.sourceId,
+    nextActive: selectedNode.value.active !== true,
   })
 }
 
@@ -1085,6 +1094,14 @@ function toggleHelp() {
               </div>
             </div>
             <div v-else-if="selectedNode.type === 'scenario'" class="space-y-2">
+              <button
+                type="button"
+                data-testid="flow-node-action-toggle-scenario"
+                :class="quickActionSecondaryButtonClass"
+                @click="emitScenarioActiveToggle"
+              >
+                {{ selectedNode.active ? t('pipeline.flowDiagramActionDisableScenario') : t('pipeline.flowDiagramActionEnableScenario') }}
+              </button>
               <div class="space-y-1">
                 <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
                   {{ t('pipeline.flowDiagramActionScenarioDescription') }}
