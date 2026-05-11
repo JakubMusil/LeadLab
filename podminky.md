@@ -1181,14 +1181,14 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 - [ ] Otestovat render panelu požadavků.
 - [ ] Otestovat splněné a nesplněné požadavky.
-- [ ] Otestovat blokaci změny fáze.
-- [ ] Otestovat upozornění bez blokace.
-- [ ] Otestovat builder pravidla.
-- [ ] Otestovat výběr standardního pole.
-- [ ] Otestovat výběr kategoriového pole.
-- [ ] Otestovat výběr Streamline toolu.
-- [ ] Otestovat editor scénářů.
-- [ ] Otestovat prázdné a chybové stavy.
+- [x] Otestovat blokaci změny fáze.
+- [x] Otestovat upozornění bez blokace.
+- [x] Otestovat builder pravidla.
+- [x] Otestovat výběr standardního pole.
+- [x] Otestovat výběr kategoriového pole.
+- [x] Otestovat výběr Streamline toolu.
+- [x] Otestovat editor scénářů.
+- [x] Otestovat prázdné a chybové stavy.
 
 ## 15. Postup implementace po etapách
 
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 07:10 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřenou frontend etapu 14.9 (testy frontendu).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza minimálního pokrytí 14.9) a následně proběhla ruční konceptuální validace návrhu test scope.
+- Před úpravami proběhla baseline validace frontendu: po instalaci závislostí (`npm ci`) prochází `check-locales` i referenční existující unit test (`StreamlineFilterDropdown.spec.ts`).
+- Frontend test implementace 14.9 v `frontend-spa/src/components/__tests__/ConditionBuilder.spec.ts`: pokryto chování builderu pro výběr standardního pole, kategoriového pole (včetně resetu `operator/value`) a Streamline toolu, plus guard na disable operátoru bez validního kategoriového pole.
+- Frontend test implementace 14.9 v `frontend-spa/src/stores/__tests__/records.spec.ts`: pokryta normalizace block/warning issue payloadu a stage-change flow ve store (`patchStage` rollback + `stage_change_evaluation`, `updateRecord` warning payload).
+- Frontend test implementace 14.9 v `frontend-spa/src/stores/__tests__/stageScenarios.spec.ts`: pokryty scénářové CRUD toky, načtení requirementů, preview endpoint a prázdné/chybové stavy store.
+- Provedena post-change validace: nové cílené testy procházejí (`12/12`), `check-locales` prochází a frontend `build-only` prochází.
+- Hotovo: v etapě 14.9 jsou nyní dokončené body pro blokaci/upozornění při změně fáze, builder + výběr polí/toolu, editor scénářů a prázdné/chybové stavy.
+- Následuje: dokončit zbývající body 14.9 pro render panelu požadavků a rozlišení splněných/nesplněných požadavků (cílené testy `RecordDetailView`).
 
 ### 2026-05-11 06:49 UTC
 
