@@ -1425,6 +1425,7 @@
     "flowDiagramQuickActionsTitle": "Schnellaktionen",
     "flowDiagramActionEnableRule": "Regel aktivieren",
     "flowDiagramActionDisableRule": "Regel deaktivieren",
+    "flowDiagramActionToggleRuleRootOperator": "AND/OR der Wurzelbedingung umschalten",
     "flowDiagramActionRuleDescription": "Regelbeschreibung",
     "flowDiagramActionScenarioDescription": "Szenariobeschreibung",
     "flowDiagramActionScenarioPriority": "Szenario-Priorität",

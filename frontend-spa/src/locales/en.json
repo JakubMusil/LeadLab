@@ -1425,6 +1425,7 @@
     "flowDiagramQuickActionsTitle": "Quick actions",
     "flowDiagramActionEnableRule": "Enable rule",
     "flowDiagramActionDisableRule": "Disable rule",
+    "flowDiagramActionToggleRuleRootOperator": "Toggle root condition AND/OR",
     "flowDiagramActionRuleDescription": "Rule description",
     "flowDiagramActionScenarioDescription": "Scenario description",
     "flowDiagramActionScenarioPriority": "Scenario priority",

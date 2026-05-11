@@ -1368,6 +1368,26 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 18:40 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem sekce 20.3.4 (manipulace condition tree v grafu).
+- Další krok byl maximalizovaně delegován subagentovi (identifikace nejmenšího bezpečného scope) a návrh byl ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a `conditionTreeVisualization.ts`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `toggle-rule-root-operator` pro přepnutí kořenové podmínky pravidla (`AND/OR`) z detailu uzlu.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowRuleRootOperatorToggle` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `toggle-rule-root-operator`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionToggleRuleRootOperator`.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`28/28`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená editace condition tree (rychlé přepnutí kořenového `AND/OR`) přímo v detailu uzlu pravidla.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 18:18 UTC
 
 - Navázáno na krok 18:16 UTC: proběhlo review/security validační kolo nad novým zvýrazněním souvislostí v diagramu.

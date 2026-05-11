@@ -994,6 +994,33 @@ async function handleFlowRuleActiveToggle(payload: { ruleId: string; nextActive:
   await toggleRuleActive(rule, payload.nextActive)
 }
 
+async function handleFlowRuleRootOperatorToggle(payload: { ruleId: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const normalizedTree = normalizeConditionTree(rule.condition_tree)
+  if (normalizedTree.type !== 'group') {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const nextOperator = normalizedTree.op === 'or' ? 'and' : 'or'
+  const nextConditionTree = {
+    ...normalizedTree,
+    op: nextOperator,
+  }
+  const result = await conditionRulesStore.updateRule(payload.ruleId, { condition_tree: nextConditionTree })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesUpdated'))
+  if (editingRuleId.value === rule.id) {
+    ruleConditionTree.value = normalizeConditionTree(nextConditionTree)
+  }
+}
+
 async function handleFlowRuleDescriptionUpdate(payload: { ruleId: string; description: string }) {
   const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
   if (!rule) {
@@ -3148,6 +3175,7 @@ const newPattern = computed({
             :evaluation-logs="ruleEvaluationLogs"
             :tested-rule-id="testRuleId"
             @toggle-rule-active="handleFlowRuleActiveToggle"
+            @toggle-rule-root-operator="handleFlowRuleRootOperatorToggle"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"

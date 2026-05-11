@@ -225,6 +225,20 @@ describe('PipelineFlowDiagram', () => {
     ])
   })
 
+  it('emits toggle-rule-root-operator from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const toggleRootOperatorButton = wrapper.get('[data-testid="flow-node-action-toggle-rule-root-operator"]')
+    await toggleRootOperatorButton.trigger('click')
+
+    expect(wrapper.emitted('toggle-rule-root-operator')).toBeTruthy()
+    expect(wrapper.emitted('toggle-rule-root-operator')?.[0]).toEqual([{ ruleId: 'rule-1' }])
+  })
+
   it('emits update-scenario-priority from node detail quick action', async () => {
     const wrapper = mountDiagram()
 
