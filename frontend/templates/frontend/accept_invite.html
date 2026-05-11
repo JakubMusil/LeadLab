@@ -8,7 +8,7 @@
   <!-- Left branding panel -->
   <div class="hidden lg:flex flex-col justify-between w-1/2 hero-gradient text-white p-12">
     <a href="/" class="flex items-center gap-2">
-      <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+      <div class="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
@@ -16,7 +16,7 @@
       <span class="font-bold text-xl">LeadLab</span>
     </a>
     <div>
-      <h2 class="text-4xl font-extrabold leading-snug mb-4">You've been<br>invited to<br><span class="text-red-400">join a team.</span></h2>
+      <h2 class="text-4xl font-extrabold leading-snug mb-4">You've been<br>invited to<br><span class="text-brand-primary-accent">join a team.</span></h2>
       <p class="text-gray-300 text-lg">Accept to start collaborating right away.</p>
     </div>
     <div class="text-gray-500 text-sm">&copy; 2026 LeadLab</div>
@@ -26,7 +26,7 @@
   <div class="flex-1 flex items-center justify-center bg-white px-6 py-12">
     <div class="w-full max-w-sm">
       <div class="lg:hidden flex items-center gap-2 mb-8">
-        <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+        <div class="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
           <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
@@ -36,7 +36,7 @@
 
       <!-- Loading -->
       <div id="loading-state" class="text-center py-10">
-        <svg class="animate-spin w-8 h-8 text-red-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+        <svg class="animate-spin w-8 h-8 text-brand-primary mx-auto mb-3" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
@@ -45,8 +45,8 @@
 
       <!-- Error state -->
       <div id="error-state" class="hidden text-center py-10">
-        <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-14 h-14 bg-brand-primary-soft rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </div>
@@ -58,8 +58,8 @@
       <!-- Accept form -->
       <div id="accept-state" class="hidden">
         <!-- Invite info banner -->
-        <div class="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-6">
-          <div class="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">You're invited to join</div>
+        <div class="bg-brand-primary-soft border border-brand-primary-light rounded-xl px-4 py-3 mb-6">
+          <div class="text-xs font-semibold text-brand-primary uppercase tracking-wide mb-1">You're invited to join</div>
           <div class="font-bold text-gray-900 text-lg" id="invite-firm-name">—</div>
           <div class="text-sm text-gray-500 mt-0.5">as <span id="invite-role" class="font-semibold capitalize text-gray-700">—</span></div>
           <div class="text-xs text-gray-400 mt-1">Sent to: <span id="invite-email">—</span></div>
@@ -68,7 +68,7 @@
         <h1 class="text-xl font-extrabold text-gray-900 mb-1">Accept invitation</h1>
         <p id="invite-subtitle" class="text-gray-500 text-sm mb-6">Enter your password to join the workspace.</p>
 
-        <div id="form-error" class="hidden bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg mb-4 border border-red-100"></div>
+        <div id="form-error" class="hidden bg-brand-primary-soft text-brand-primary-dark text-sm px-4 py-3 rounded-lg mb-4 border border-brand-primary-light"></div>
 
         <form id="accept-form" class="space-y-4">
           {% csrf_token %}
