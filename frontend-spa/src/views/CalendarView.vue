@@ -774,7 +774,7 @@ onMounted(async () => {
   border-color: #374151;
 }
 .dark .fc-leadlab .fc-timegrid-now-indicator-line {
-  border-color: #ef4444;
+  border-color: #3d62b0;
 }
 .dark .fc-leadlab .fc-button {
   background-color: #374151;
@@ -785,8 +785,8 @@ onMounted(async () => {
   background-color: #4b5563;
 }
 .dark .fc-leadlab .fc-button-active {
-  background-color: #dc2626 !important;
-  border-color: #dc2626 !important;
+  background-color: #254896 !important;
+  border-color: #254896 !important;
 }
 .dark .fc-leadlab .fc-today-button {
   background-color: #374151;
@@ -794,6 +794,6 @@ onMounted(async () => {
 }
 .dark .fc-leadlab .fc-daygrid-day.fc-day-today,
 .dark .fc-leadlab .fc-timegrid-col.fc-day-today {
-  background-color: rgba(239, 68, 68, 0.07);
+  background-color: rgba(37, 72, 150, 0.08);
 }
 </style>

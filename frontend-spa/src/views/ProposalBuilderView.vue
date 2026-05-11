@@ -710,7 +710,7 @@ watch(
         <div v-if="!currentProposal && !loading" class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400">
           <p class="text-sm mb-3">{{ t('builder.selectOrCreate') }}</p>
           <button
-            class="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+            class="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
             @click="createProposal"
           >+ {{ t('builder.createProposal') }}</button>
         </div>
@@ -730,14 +730,14 @@ watch(
             <!-- Status -->
             <select
               v-model="editStatus"
-              class="rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400"
+              class="rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-brand-400"
             >
               <option v-for="s in STATUSES" :key="s.value" :value="s.value">{{ s.label }}</option>
             </select>
 
             <!-- Actions -->
             <button
-              class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              class="px-3 py-1.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
               :disabled="saving"
               @click="saveProposal"
             >{{ saving ? t('common.saving') : t('common.save') }}</button>
@@ -799,7 +799,7 @@ watch(
                   </div>
                   <div>
                     <label class="block text-xs text-gray-500 mb-1">{{ t('builder.validUntil') }}</label>
-                    <input v-model="editExpiry" type="date" class="w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-red-400" />
+                    <input v-model="editExpiry" type="date" class="w-full rounded-xl border border-gray-200 text-sm px-3 py-1.5 focus:outline-none focus:border-brand-400" />
                   </div>
                 </div>
 
@@ -816,7 +816,7 @@ watch(
                 <textarea
                   v-model="editIntro"
                   rows="3"
-                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
+                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-brand-400 resize-none"
 :placeholder="t('builder.introPlaceholder')"
                 />
               </div>
@@ -916,19 +916,19 @@ watch(
                         <td class="py-1.5 pr-2 text-gray-300 cursor-grab select-none">⠿</td>
                         <template v-if="editingItemId === item.id">
                           <td class="py-1 pr-2">
-                            <input v-model="item.description" type="text" class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:border-red-400" />
+                            <input v-model="item.description" type="text" class="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:border-brand-400" />
                           </td>
                           <td class="py-1 px-2">
-                            <input v-model.number="item.quantity" type="number" min="0.001" step="0.001" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
+                            <input v-model.number="item.quantity" type="number" min="0.001" step="0.001" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-brand-400" />
                           </td>
                           <td class="py-1 px-2">
-                            <input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
+                            <input v-model.number="item.unit_price" type="number" min="0" step="0.01" class="w-24 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-brand-400" />
                           </td>
                           <td class="py-1 px-2">
-                            <input v-model.number="item.discount" type="number" min="0" max="100" step="0.01" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
+                            <input v-model.number="item.discount" type="number" min="0" max="100" step="0.01" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-brand-400" />
                           </td>
                           <td class="py-1 px-2">
-                            <input v-model.number="item.vat_rate" type="number" min="0" max="100" step="0.01" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
+                            <input v-model.number="item.vat_rate" type="number" min="0" max="100" step="0.01" class="w-16 rounded border border-gray-300 px-2 py-1 text-sm text-right focus:outline-none focus:border-brand-400" />
                           </td>
                           <td class="py-1 pl-2 text-right text-xs font-medium text-gray-700">
                             {{ fmt(item.total) }}
@@ -969,15 +969,15 @@ watch(
                       v-model="newItemDesc"
                       type="text"
 :placeholder="t('catalog.descriptionLabel')"
-                      class="flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-red-400"
+                      class="flex-1 min-w-40 rounded-xl border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:border-brand-400"
                     />
-                    <input v-model.number="newItemQty" type="number" min="0.001" step="0.001" placeholder="Qty" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
-                    <input v-model.number="newItemPrice" type="number" min="0" step="0.01" placeholder="Unit price" class="w-28 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
-                    <input v-model.number="newItemDiscount" type="number" min="0" max="100" step="0.01" placeholder="Disc%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
-                    <input v-model.number="newItemVat" type="number" min="0" max="100" step="0.01" placeholder="VAT%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-red-400" />
+                    <input v-model.number="newItemQty" type="number" min="0.001" step="0.001" placeholder="Qty" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-brand-400" />
+                    <input v-model.number="newItemPrice" type="number" min="0" step="0.01" placeholder="Unit price" class="w-28 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-brand-400" />
+                    <input v-model.number="newItemDiscount" type="number" min="0" max="100" step="0.01" placeholder="Disc%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-brand-400" />
+                    <input v-model.number="newItemVat" type="number" min="0" max="100" step="0.01" placeholder="VAT%" class="w-20 rounded-xl border border-gray-200 px-3 py-1.5 text-sm text-right focus:outline-none focus:border-brand-400" />
                     <button
                       :disabled="addingItem || !newItemDesc.trim()"
-                      class="px-4 py-1.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                      class="px-4 py-1.5 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
                       @click="addItem"
                     >{{ addingItem ? '…' : ('+ ' + t('common.adding')) }}</button>
                   </div>
@@ -990,7 +990,7 @@ watch(
                 <textarea
                   v-model="editNotes"
                   rows="2"
-                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
+                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-brand-400 resize-none"
 :placeholder="t('builder.notesPlaceholder')"
                 />
               </div>
@@ -1001,7 +1001,7 @@ watch(
                 <textarea
                   v-model="editClosing"
                   rows="3"
-                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-red-400 resize-none"
+                  class="w-full rounded-xl border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:border-brand-400 resize-none"
 :placeholder="t('builder.closingPlaceholder')"
                 />
               </div>
@@ -1017,11 +1017,11 @@ watch(
 
                 <div
                   class="border-b-4 pb-3 mb-4"
-                  :style="{ borderColor: firmStore.activeFirm?.primary_color || '#dc2626' }"
+                  :style="{ borderColor: firmStore.activeFirm?.primary_color || '#254896' }"
                 >
                   <div
                     class="text-base font-bold"
-                    :style="{ color: firmStore.activeFirm?.primary_color || '#dc2626' }"
+                    :style="{ color: firmStore.activeFirm?.primary_color || '#254896' }"
                   >{{ firmStore.activeFirm?.name }}</div>
                   <div class="text-lg font-semibold text-gray-900 mt-1">{{ editTitle || t('builder.proposalTitle') }}</div>
                   <span

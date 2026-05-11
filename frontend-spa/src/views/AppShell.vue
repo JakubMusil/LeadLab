@@ -80,7 +80,7 @@ const recordsListTitle = computed(() => {
 })
 
 watchEffect(() => {
-  const color = firmStore.activeFirm?.primary_color ?? '#dc2626'
+  const color = firmStore.activeFirm?.primary_color ?? '#254896'
   document.documentElement.style.setProperty('--brand-color', color)
 })
 
@@ -565,7 +565,7 @@ function formatNotifTime(ts: string): string {
         <div
           v-else
           class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          :style="{ backgroundColor: firmStore.activeFirm?.primary_color ?? '#dc2626' }"
+          :style="{ backgroundColor: firmStore.activeFirm?.primary_color ?? '#254896' }"
         >
           <span class="text-white text-sm font-bold" aria-hidden="true">L</span>
         </div>
