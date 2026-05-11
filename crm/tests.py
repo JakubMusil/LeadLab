@@ -5449,21 +5449,36 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         )
         self.assertEqual(scenario_resp.status_code, 201, scenario_resp.content)
         scenario_id = scenario_resp.json()["id"]
-
-        scenario = StageScenario.objects.get(id=scenario_id)
-        requirement = StageRequirement.objects.create(
-            firm=self.firm,
-            scenario=scenario,
-            name="Need upload",
-            requirement_type="activity",
-            condition={
-                "source_type": "activity",
-                "activity_type": "task",
-                "operator": "exists",
-            },
-            blocking=True,
-            sort_order=0,
+        patch_scenario_resp = self._patch(
+            f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios/{scenario_id}",
+            {"priority": 3, "is_active": True},
         )
+        self.assertEqual(patch_scenario_resp.status_code, 200, patch_scenario_resp.content)
+        self.assertEqual(patch_scenario_resp.json()["priority"], 3)
+
+        requirement_create_resp = self._post(
+            f"/api/v1/crm/scenarios/{scenario_id}/requirements",
+            {
+                "name": "Need upload",
+                "requirement_type": "activity",
+                "condition": {
+                    "source_type": "activity",
+                    "activity_type": "task",
+                    "operator": "exists",
+                },
+                "blocking": True,
+                "sort_order": 0,
+            },
+        )
+        self.assertEqual(requirement_create_resp.status_code, 201, requirement_create_resp.content)
+        requirement_id = requirement_create_resp.json()["id"]
+
+        requirement_patch_resp = self._patch(
+            f"/api/v1/crm/scenarios/{scenario_id}/requirements/{requirement_id}",
+            {"blocking": False},
+        )
+        self.assertEqual(requirement_patch_resp.status_code, 200, requirement_patch_resp.content)
+        self.assertFalse(requirement_patch_resp.json()["blocking"])
 
         list_resp = self._get(
             f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios"
@@ -5473,7 +5488,7 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
 
         req_resp = self._get(f"/api/v1/crm/scenarios/{scenario_id}/requirements")
         self.assertEqual(req_resp.status_code, 200)
-        self.assertEqual(req_resp.json()[0]["id"], str(requirement.id))
+        self.assertEqual(req_resp.json()[0]["id"], requirement_id)
 
         active_req_resp = self._get(
             f"/api/v1/crm/records/{self.record.id}/active-stage-requirements"
@@ -5484,10 +5499,21 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         self.assertEqual(payload["active_stage_scenario_name"], "Scenario A")
         self.assertEqual(payload["recommended_next_stage_id"], str(self.stage_b.id))
         self.assertEqual(payload["recommended_next_stage_name"], self.stage_b.name)
-        self.assertEqual(payload["active_stage_requirements"][0]["id"], str(requirement.id))
+        self.assertEqual(payload["active_stage_requirements"][0]["id"], requirement_id)
         self.assertIsNone(payload["active_stage_requirements"][0]["relevant_field_key"])
         self.assertEqual(payload["active_stage_requirements"][0]["relevant_activity_type"], "task")
         self.assertIsNone(payload["active_stage_requirements"][0]["relevant_tool_type"])
+        self.assertFalse(payload["active_stage_requirements"][0]["blocking"])
+
+        requirement_delete_resp = self._delete(
+            f"/api/v1/crm/scenarios/{scenario_id}/requirements/{requirement_id}"
+        )
+        self.assertEqual(requirement_delete_resp.status_code, 204, requirement_delete_resp.content)
+
+        scenario_delete_resp = self._delete(
+            f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios/{scenario_id}"
+        )
+        self.assertEqual(scenario_delete_resp.status_code, 204, scenario_delete_resp.content)
 
     def test_condition_rule_test_evaluation_and_log_listing(self):
         rule = ConditionRule.objects.create(

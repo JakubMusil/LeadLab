@@ -35,6 +35,7 @@ from crm.models import (
     ConditionSeverity,
     RuleEvaluationLog,
     RuleEvaluationResult,
+    RequirementType,
     ContactType,
     Customer,
     DashboardLayout,
@@ -9600,6 +9601,26 @@ class StageRequirementOut(Schema):
     updated_at: datetime
 
 
+class StageRequirementIn(Schema):
+    name: str
+    description: str = ""
+    requirement_type: str = str(RequirementType.CUSTOM)
+    condition: Dict[str, Any] = {}
+    blocking: bool = True
+    visible_to_user: bool = True
+    sort_order: int = 0
+
+
+class StageRequirementPatchIn(Schema):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    requirement_type: Optional[str] = None
+    condition: Optional[Dict[str, Any]] = None
+    blocking: Optional[bool] = None
+    visible_to_user: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
 class ConditionRuleTestEvaluationIn(Schema):
     record_id: str
     rule_id: Optional[str] = None
@@ -10160,6 +10181,28 @@ def update_stage_scenario(
     return 200, _stage_scenario_out(scenario)
 
 
+@router.delete(
+    "/categories/{category_id}/stages/{stage_id}/scenarios/{scenario_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_stage_scenario(request, category_id: str, stage_id: str, scenario_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    deleted, _ = StageScenario.objects.filter(
+        id=scenario_id,
+        firm=request.firm,
+        category_id=category_id,
+        stage_id=stage_id,
+    ).delete()
+    if not deleted:
+        return 404, {"detail": "Stage scenario not found."}
+    return 204, None
+
+
 @router.get(
     "/scenarios/{scenario_id}/requirements",
     auth=django_auth,
@@ -10178,6 +10221,89 @@ def list_stage_scenario_requirements(request, scenario_id: str):
 
     requirements = scenario.requirements.all().order_by("sort_order", "created_at", "id")
     return 200, [_stage_requirement_out(requirement) for requirement in requirements]
+
+
+@router.post(
+    "/scenarios/{scenario_id}/requirements",
+    auth=django_auth,
+    response={201: StageRequirementOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def create_stage_scenario_requirement(request, scenario_id: str, payload: StageRequirementIn):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        scenario = StageScenario.objects.get(id=scenario_id, firm=request.firm)
+    except StageScenario.DoesNotExist:
+        return 404, {"detail": "Stage scenario not found."}
+
+    requirement = StageRequirement.objects.create(
+        firm=request.firm,
+        scenario=scenario,
+        name=payload.name,
+        description=payload.description,
+        requirement_type=payload.requirement_type,
+        condition=payload.condition,
+        blocking=payload.blocking,
+        visible_to_user=payload.visible_to_user,
+        sort_order=payload.sort_order,
+    )
+    return 201, _stage_requirement_out(requirement)
+
+
+@router.patch(
+    "/scenarios/{scenario_id}/requirements/{requirement_id}",
+    auth=django_auth,
+    response={200: StageRequirementOut, 400: ErrorOut, 403: ErrorOut, 404: ErrorOut},
+)
+def update_stage_scenario_requirement(
+    request,
+    scenario_id: str,
+    requirement_id: str,
+    payload: StageRequirementPatchIn,
+):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    try:
+        requirement = StageRequirement.objects.get(
+            id=requirement_id,
+            scenario_id=scenario_id,
+            firm=request.firm,
+        )
+    except StageRequirement.DoesNotExist:
+        return 404, {"detail": "Stage requirement not found."}
+
+    updates = payload.dict(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(requirement, key, value)
+    requirement.save()
+    return 200, _stage_requirement_out(requirement)
+
+
+@router.delete(
+    "/scenarios/{scenario_id}/requirements/{requirement_id}",
+    auth=django_auth,
+    response={204: None, 403: ErrorOut, 404: ErrorOut},
+)
+def delete_stage_scenario_requirement(request, scenario_id: str, requirement_id: str):
+    try:
+        require_permission(request, Permission.CATEGORY_MANAGE)
+    except (PermissionDenied, AuthenticationRequired, FirmNotFound) as exc:
+        return 403, {"detail": str(exc)}
+
+    deleted, _ = StageRequirement.objects.filter(
+        id=requirement_id,
+        scenario_id=scenario_id,
+        firm=request.firm,
+    ).delete()
+    if not deleted:
+        return 404, {"detail": "Stage requirement not found."}
+    return 204, None
 
 
 @router.post(

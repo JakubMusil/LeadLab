@@ -8,6 +8,11 @@ import {
   type ConditionRuleIn,
   type ConditionRuleTestEvaluationOut,
 } from '@/stores/conditionRules'
+import {
+  useStageScenariosStore,
+  type StageScenarioOut,
+  type StageRequirementOut,
+} from '@/stores/stageScenarios'
 import { useToast } from '@/composables/useToast'
 import { useFirmStore } from '@/stores/firm'
 import { useI18n } from '@/composables/useI18n'
@@ -29,6 +34,7 @@ import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
 const conditionRulesStore = useConditionRulesStore()
+const stageScenariosStore = useStageScenariosStore()
 const toast = useToast()
 const firmStore = useFirmStore()
 const { t } = useI18n()
@@ -115,6 +121,70 @@ const ruleConditionTreeText = ref('{}')
 const ruleEffectConfigText = ref('{}')
 const pendingDeactivateRuleId = ref<string | null>(null)
 const pendingDeactivateRuleName = ref('')
+
+// Stage scenarios
+const scenarioFilterStageId = ref('')
+const showScenarioForm = ref(false)
+const editingScenarioId = ref<string | null>(null)
+const savingScenario = ref(false)
+const deletingScenarioId = ref<string | null>(null)
+const loadingScenarioPreview = ref(false)
+const scenarioPreviewRecordId = ref('')
+const scenarioPreviewResult = ref<{
+  activeScenarioId: string | null
+  activeScenarioName: string | null
+  activeRequirementsCount: number
+  unmetRequirementsCount: number
+} | null>(null)
+const scenarioActivationCondition = ref<Record<string, unknown>>({
+  type: 'group',
+  op: 'and',
+  conditions: [],
+})
+
+const showRequirementForm = ref(false)
+const editingRequirementId = ref<string | null>(null)
+const savingRequirement = ref(false)
+const deletingRequirementId = ref<string | null>(null)
+const requirementConditionTree = ref<Record<string, unknown>>({
+  type: 'group',
+  op: 'and',
+  conditions: [],
+})
+
+interface ScenarioFormState {
+  name: string
+  description: string
+  recommended_next_stage_id: string
+  priority: string
+  is_active: boolean
+}
+
+const scenarioForm = ref<ScenarioFormState>({
+  name: '',
+  description: '',
+  recommended_next_stage_id: '',
+  priority: '100',
+  is_active: true,
+})
+
+interface RequirementFormState {
+  name: string
+  description: string
+  requirement_type: string
+  blocking: boolean
+  visible_to_user: boolean
+  sort_order: string
+}
+
+const requirementForm = ref<RequirementFormState>({
+  name: '',
+  description: '',
+  requirement_type: 'custom',
+  blocking: true,
+  visible_to_user: true,
+  sort_order: '0',
+})
 
 interface ConditionTreeValidationIssue {
   path: string
@@ -254,6 +324,14 @@ const ruleFilterStages = computed<StageOut[]>(() =>
 const ruleFormStages = computed<StageOut[]>(() =>
   ruleForm.value.category_id ? pipelineStore.getStagesForCategory(ruleForm.value.category_id) : pipelineStore.allStages,
 )
+const stageScenarios = computed<StageScenarioOut[]>(() => stageScenariosStore.scenarios)
+const stageRequirements = computed<StageRequirementOut[]>(() => stageScenariosStore.requirements)
+const scenarioFilterStages = computed<StageOut[]>(() =>
+  selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : [],
+)
+const scenarioRecommendedStageOptions = computed<StageOut[]>(() =>
+  selectedCategoryId.value ? pipelineStore.getStagesForCategory(selectedCategoryId.value) : [],
+)
 const ruleBuilderCategoryFields = computed(() => {
   const categoryId = ruleForm.value.category_id || selectedCategoryId.value
   if (!categoryId) return []
@@ -310,6 +388,18 @@ watch(selectedCategoryId, () => {
   ruleFilterCategoryId.value = selectedCategoryId.value ?? ''
   ruleFilterStageId.value = ''
   void loadConditionRules()
+  scenarioFilterStageId.value = selectedStages.value[0]?.id ?? ''
+  resetScenarioForm()
+  resetRequirementForm()
+  stageScenariosStore.clearRequirements()
+  if (selectedCategoryId.value && scenarioFilterStageId.value) void loadStageScenarios()
+})
+
+watch(scenarioFilterStageId, () => {
+  resetScenarioForm()
+  resetRequirementForm()
+  stageScenariosStore.clearRequirements()
+  if (selectedCategoryId.value && scenarioFilterStageId.value) void loadStageScenarios()
 })
 
 // ---------------------------------------------------------------------------
@@ -324,6 +414,14 @@ function selectCategory(id: string) {
   cancelEditField()
   showNewFieldForm.value = false
   showGrantForm.value = false
+  resetScenarioForm()
+  resetRequirementForm()
+}
+
+function stageNameById(stageId: string | null): string {
+  if (!stageId) return '—'
+  const stage = pipelineStore.allStages.find((item) => item.id === stageId)
+  return stage?.name || stageId
 }
 
 function startEditCategory(cat: CategoryOut) {
@@ -1065,6 +1163,263 @@ async function runRuleTestEvaluation() {
     return
   }
   testEvaluationResult.value = result.data
+}
+
+// ---------------------------------------------------------------------------
+// Stage scenarios actions
+// ---------------------------------------------------------------------------
+
+function parseNonNegativeInteger(value: string, defaultValue: number): number | null {
+  if (!value.trim()) return defaultValue
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 0) return null
+  return parsed
+}
+
+async function loadStageScenarios() {
+  if (!selectedCategoryId.value || !scenarioFilterStageId.value) return
+  await stageScenariosStore.fetchScenarios(selectedCategoryId.value, scenarioFilterStageId.value)
+}
+
+function resetScenarioForm() {
+  showScenarioForm.value = false
+  editingScenarioId.value = null
+  savingScenario.value = false
+  deletingScenarioId.value = null
+  scenarioForm.value = {
+    name: '',
+    description: '',
+    recommended_next_stage_id: '',
+    priority: '100',
+    is_active: true,
+  }
+  scenarioActivationCondition.value = createDefaultConditionTree()
+  scenarioPreviewRecordId.value = ''
+  scenarioPreviewResult.value = null
+}
+
+function openCreateScenarioForm() {
+  resetScenarioForm()
+  showScenarioForm.value = true
+}
+
+function openEditScenarioForm(scenario: StageScenarioOut) {
+  showScenarioForm.value = true
+  editingScenarioId.value = scenario.id
+  scenarioForm.value = {
+    name: scenario.name,
+    description: scenario.description || '',
+    recommended_next_stage_id: scenario.recommended_next_stage_id || '',
+    priority: String(scenario.priority ?? 100),
+    is_active: scenario.is_active,
+  }
+  scenarioActivationCondition.value = normalizeConditionTree(
+    deepCloneObject(scenario.activation_condition || {}),
+  )
+  scenarioPreviewResult.value = null
+}
+
+function startEditScenario(scenario: StageScenarioOut) {
+  openEditScenarioForm(scenario)
+  void loadScenarioRequirements()
+}
+
+async function submitScenarioForm() {
+  if (!selectedCategoryId.value || !scenarioFilterStageId.value) return
+  if (!scenarioForm.value.name.trim()) {
+    toast.error(t('pipeline.stageScenariosNameRequired'))
+    return
+  }
+  const priority = parseNonNegativeInteger(scenarioForm.value.priority, 100)
+  if (priority === null) {
+    toast.error(t('pipeline.stageScenariosPriorityInvalid'))
+    return
+  }
+
+  savingScenario.value = true
+  const payload = {
+    name: scenarioForm.value.name.trim(),
+    description: scenarioForm.value.description.trim(),
+    activation_condition: deepCloneObject(scenarioActivationCondition.value),
+    recommended_next_stage_id: scenarioForm.value.recommended_next_stage_id || null,
+    priority,
+    is_active: scenarioForm.value.is_active,
+  }
+  const isEdit = Boolean(editingScenarioId.value)
+  const result = isEdit && editingScenarioId.value
+    ? await stageScenariosStore.updateScenario(
+      selectedCategoryId.value,
+      scenarioFilterStageId.value,
+      editingScenarioId.value,
+      payload,
+    )
+    : await stageScenariosStore.createScenario(
+      selectedCategoryId.value,
+      scenarioFilterStageId.value,
+      payload,
+    )
+  savingScenario.value = false
+
+  if (!result.ok || !result.data) {
+    toast.error(
+      result.error ?? t(isEdit ? 'pipeline.stageScenariosUpdateFailed' : 'pipeline.stageScenariosCreateFailed'),
+    )
+    return
+  }
+
+  toast.success(t(isEdit ? 'pipeline.stageScenariosUpdated' : 'pipeline.stageScenariosCreated'))
+  await loadStageScenarios()
+  openEditScenarioForm(result.data)
+  await loadScenarioRequirements()
+}
+
+async function requestDeleteScenario(scenarioId: string) {
+  if (!selectedCategoryId.value || !scenarioFilterStageId.value) return
+  if (deletingScenarioId.value) return
+  deletingScenarioId.value = scenarioId
+  const result = await stageScenariosStore.deleteScenario(
+    selectedCategoryId.value,
+    scenarioFilterStageId.value,
+    scenarioId,
+  )
+  deletingScenarioId.value = null
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageScenariosDeleteFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageScenariosDeleted'))
+  if (editingScenarioId.value === scenarioId) {
+    resetScenarioForm()
+    resetRequirementForm()
+    stageScenariosStore.clearRequirements()
+  }
+  await loadStageScenarios()
+}
+
+async function loadScenarioRequirements() {
+  if (!editingScenarioId.value) {
+    stageScenariosStore.clearRequirements()
+    return
+  }
+  await stageScenariosStore.fetchRequirements(editingScenarioId.value)
+}
+
+function resetRequirementForm() {
+  showRequirementForm.value = false
+  editingRequirementId.value = null
+  savingRequirement.value = false
+  deletingRequirementId.value = null
+  requirementForm.value = {
+    name: '',
+    description: '',
+    requirement_type: 'custom',
+    blocking: true,
+    visible_to_user: true,
+    sort_order: '0',
+  }
+  requirementConditionTree.value = createDefaultConditionTree()
+}
+
+function openCreateRequirementForm() {
+  resetRequirementForm()
+  showRequirementForm.value = true
+}
+
+function openEditRequirementForm(requirement: StageRequirementOut) {
+  showRequirementForm.value = true
+  editingRequirementId.value = requirement.id
+  requirementForm.value = {
+    name: requirement.name,
+    description: requirement.description || '',
+    requirement_type: requirement.requirement_type,
+    blocking: requirement.blocking,
+    visible_to_user: requirement.visible_to_user,
+    sort_order: String(requirement.sort_order ?? 0),
+  }
+  requirementConditionTree.value = normalizeConditionTree(
+    deepCloneObject(requirement.condition || {}),
+  )
+}
+
+async function submitRequirementForm() {
+  if (!editingScenarioId.value) return
+  if (!requirementForm.value.name.trim()) {
+    toast.error(t('pipeline.stageRequirementsNameRequired'))
+    return
+  }
+  const sortOrder = parseNonNegativeInteger(requirementForm.value.sort_order, 0)
+  if (sortOrder === null) {
+    toast.error(t('pipeline.stageRequirementsSortOrderInvalid'))
+    return
+  }
+
+  savingRequirement.value = true
+  const payload = {
+    name: requirementForm.value.name.trim(),
+    description: requirementForm.value.description.trim(),
+    requirement_type: requirementForm.value.requirement_type.trim() || 'custom',
+    condition: deepCloneObject(requirementConditionTree.value),
+    blocking: requirementForm.value.blocking,
+    visible_to_user: requirementForm.value.visible_to_user,
+    sort_order: sortOrder,
+  }
+  const isEdit = Boolean(editingRequirementId.value)
+  const result = isEdit && editingRequirementId.value
+    ? await stageScenariosStore.updateRequirement(editingScenarioId.value, editingRequirementId.value, payload)
+    : await stageScenariosStore.createRequirement(editingScenarioId.value, payload)
+  savingRequirement.value = false
+
+  if (!result.ok) {
+    toast.error(
+      result.error
+      ?? t(isEdit ? 'pipeline.stageRequirementsUpdateFailed' : 'pipeline.stageRequirementsCreateFailed'),
+    )
+    return
+  }
+
+  toast.success(t(isEdit ? 'pipeline.stageRequirementsUpdated' : 'pipeline.stageRequirementsCreated'))
+  resetRequirementForm()
+  await loadScenarioRequirements()
+}
+
+async function requestDeleteRequirement(requirementId: string) {
+  if (!editingScenarioId.value || deletingRequirementId.value) return
+  deletingRequirementId.value = requirementId
+  const result = await stageScenariosStore.deleteRequirement(editingScenarioId.value, requirementId)
+  deletingRequirementId.value = null
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageRequirementsDeleteFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageRequirementsDeleted'))
+  if (editingRequirementId.value === requirementId) {
+    resetRequirementForm()
+  }
+  await loadScenarioRequirements()
+}
+
+async function runScenarioPreview() {
+  if (!editingScenarioId.value) return
+  if (!scenarioPreviewRecordId.value.trim()) {
+    toast.error(t('pipeline.stageScenariosPreviewRecordRequired'))
+    return
+  }
+  loadingScenarioPreview.value = true
+  const result = await stageScenariosStore.previewForRecord(scenarioPreviewRecordId.value.trim())
+  loadingScenarioPreview.value = false
+  if (!result.ok || !result.data) {
+    toast.error(result.error ?? t('pipeline.stageScenariosPreviewFailed'))
+    return
+  }
+  const activeRequirements = Array.isArray(result.data.active_stage_requirements)
+    ? result.data.active_stage_requirements
+    : []
+  scenarioPreviewResult.value = {
+    activeScenarioId: result.data.active_stage_scenario_id || null,
+    activeScenarioName: result.data.active_stage_scenario_name || null,
+    activeRequirementsCount: activeRequirements.length,
+    unmetRequirementsCount: activeRequirements.filter((item) => item?.is_met === false).length,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2032,6 +2387,315 @@ const newPattern = computed({
                 <div>{{ t('pipeline.rulesTestOutputs') }}: {{ testEvaluationResult.outputs.length }}</div>
                 <div>{{ t('pipeline.rulesTestBlocking') }}: {{ testEvaluationResult.blocking.length }}</div>
                 <div>{{ t('pipeline.rulesTestWarnings') }}: {{ testEvaluationResult.warnings.length }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage scenarios -->
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.stageScenariosTitle') }}</div>
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                :disabled="!scenarioFilterStageId"
+                @click="openCreateScenarioForm"
+              >
+                {{ t('pipeline.stageScenariosCreate') }}
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+              <select
+                v-model="scenarioFilterStageId"
+                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+              >
+                <option value="">{{ t('pipeline.stageScenariosSelectStage') }}</option>
+                <option v-for="stage in scenarioFilterStages" :key="`scenario-stage-${stage.id}`" :value="stage.id">
+                  {{ stage.name }}
+                </option>
+              </select>
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                :disabled="!scenarioFilterStageId || stageScenariosStore.loadingScenarios"
+                @click="loadStageScenarios"
+              >
+                {{ t('pipeline.stageScenariosReload') }}
+              </button>
+            </div>
+
+            <div v-if="stageScenariosStore.loadingScenarios" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.stageScenariosLoading') }}
+            </div>
+            <div v-else-if="stageScenariosStore.error" class="text-xs text-red-500 py-2">
+              {{ stageScenariosStore.error }}
+            </div>
+            <div v-else-if="!scenarioFilterStageId" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.stageScenariosChooseStageHint') }}
+            </div>
+            <div v-else-if="stageScenarios.length === 0" class="text-xs text-gray-400 py-2">
+              {{ t('pipeline.stageScenariosEmpty') }}
+            </div>
+            <div v-else class="space-y-2">
+              <div
+                v-for="scenario in stageScenarios"
+                :key="scenario.id"
+                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white"
+              >
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-gray-800 truncate">{{ scenario.name }}</div>
+                  <div v-if="scenario.description" class="text-xs text-gray-500 mt-0.5 break-words">
+                    {{ scenario.description }}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-0.5">
+                    {{ t('pipeline.stageScenariosPriorityLabel') }}: {{ scenario.priority }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ t('pipeline.stageScenariosRecommendedNextStageLabel') }}:
+                    {{ stageNameById(scenario.recommended_next_stage_id) }}
+                  </div>
+                </div>
+                <div class="flex flex-col items-end gap-1.5">
+                  <span
+                    class="text-[11px] px-2 py-0.5 rounded-full"
+                    :class="scenario.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'"
+                  >
+                    {{
+                      scenario.is_active
+                        ? t('pipeline.stageScenariosStateEnabled')
+                        : t('pipeline.stageScenariosStateDisabled')
+                    }}
+                  </span>
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="startEditScenario(scenario)">
+                      {{ t('pipeline.stageScenariosEdit') }}
+                    </button>
+                    <button
+                      class="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                      :disabled="deletingScenarioId === scenario.id"
+                      @click="requestDeleteScenario(scenario.id)"
+                    >
+                      {{ t('pipeline.stageScenariosDelete') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="showScenarioForm" class="mt-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
+              <div class="text-xs font-semibold text-indigo-700">
+                {{ editingScenarioId ? t('pipeline.stageScenariosEditTitle') : t('pipeline.stageScenariosCreateTitle') }}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <input
+                  v-model="scenarioForm.name"
+                  type="text"
+                  :placeholder="t('pipeline.stageScenariosNamePlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <input
+                  v-model="scenarioForm.priority"
+                  type="number"
+                  min="0"
+                  step="1"
+                  :placeholder="t('pipeline.stageScenariosPriorityPlaceholder')"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                />
+                <select
+                  v-model="scenarioForm.recommended_next_stage_id"
+                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                >
+                  <option value="">{{ t('pipeline.stageScenariosRecommendedNextStageNone') }}</option>
+                  <option
+                    v-for="stage in scenarioRecommendedStageOptions"
+                    :key="`scenario-next-stage-${stage.id}`"
+                    :value="stage.id"
+                  >
+                    {{ stage.name }}
+                  </option>
+                </select>
+                <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                  <input v-model="scenarioForm.is_active" type="checkbox" class="rounded" />
+                  {{ t('pipeline.stageScenariosStartEnabled') }}
+                </label>
+                <textarea
+                  v-model="scenarioForm.description"
+                  rows="2"
+                  :placeholder="t('pipeline.stageScenariosDescriptionPlaceholder')"
+                  class="md:col-span-2 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                ></textarea>
+                <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                  <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageScenariosActivationCondition') }}</div>
+                  <ConditionBuilder
+                    v-model="scenarioActivationCondition"
+                    :category-fields="ruleBuilderCategoryFields"
+                    :disabled="savingScenario"
+                  />
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                  :disabled="savingScenario"
+                  @click="submitScenarioForm"
+                >
+                  {{ editingScenarioId ? t('pipeline.stageScenariosUpdate') : t('pipeline.stageScenariosCreate') }}
+                </button>
+                <button class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700" @click="resetScenarioForm">
+                  {{ t('pipeline.cancel') }}
+                </button>
+              </div>
+
+              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageRequirementsTitle') }}</div>
+                  <button
+                    class="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                    @click="openCreateRequirementForm"
+                  >
+                    {{ t('pipeline.stageRequirementsCreate') }}
+                  </button>
+                </div>
+                <div v-if="stageScenariosStore.loadingRequirements" class="text-xs text-gray-400">
+                  {{ t('pipeline.stageRequirementsLoading') }}
+                </div>
+                <div v-else-if="stageRequirements.length === 0" class="text-xs text-gray-400">
+                  {{ t('pipeline.stageRequirementsEmpty') }}
+                </div>
+                <div v-else class="space-y-1.5">
+                  <div
+                    v-for="requirement in stageRequirements"
+                    :key="requirement.id"
+                    class="p-2 border border-gray-200 rounded bg-white flex items-start justify-between gap-2"
+                  >
+                    <div class="min-w-0">
+                      <div class="text-xs font-semibold text-gray-800 truncate">{{ requirement.name }}</div>
+                      <div class="text-[11px] text-gray-500">
+                        {{ t('pipeline.stageRequirementsTypeLabel') }}: {{ requirement.requirement_type }}
+                      </div>
+                      <div class="text-[11px] text-gray-500">
+                        {{ t('pipeline.stageRequirementsBlockingLabel') }}:
+                        {{ requirement.blocking ? t('pipeline.stageRequirementsBlockingYes') : t('pipeline.stageRequirementsBlockingNo') }}
+                      </div>
+                    </div>
+                    <div class="flex gap-1">
+                      <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openEditRequirementForm(requirement)">
+                        {{ t('pipeline.stageRequirementsEdit') }}
+                      </button>
+                      <button
+                        class="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                        :disabled="deletingRequirementId === requirement.id"
+                        @click="requestDeleteRequirement(requirement.id)"
+                      >
+                        {{ t('pipeline.stageRequirementsDelete') }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="showRequirementForm" class="p-2 border border-indigo-100 rounded bg-white space-y-2">
+                  <div class="text-xs font-semibold text-gray-700">
+                    {{ editingRequirementId ? t('pipeline.stageRequirementsEditTitle') : t('pipeline.stageRequirementsCreateTitle') }}
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input
+                      v-model="requirementForm.name"
+                      type="text"
+                      :placeholder="t('pipeline.stageRequirementsNamePlaceholder')"
+                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                    />
+                    <input
+                      v-model="requirementForm.sort_order"
+                      type="number"
+                      min="0"
+                      step="1"
+                      :placeholder="t('pipeline.stageRequirementsSortOrderPlaceholder')"
+                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                    />
+                    <input
+                      v-model="requirementForm.requirement_type"
+                      type="text"
+                      :placeholder="t('pipeline.stageRequirementsTypePlaceholder')"
+                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                    />
+                    <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                      <input v-model="requirementForm.blocking" type="checkbox" class="rounded" />
+                      {{ t('pipeline.stageRequirementsBlockingToggle') }}
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                      <input v-model="requirementForm.visible_to_user" type="checkbox" class="rounded" />
+                      {{ t('pipeline.stageRequirementsVisibleToggle') }}
+                    </label>
+                    <textarea
+                      v-model="requirementForm.description"
+                      rows="2"
+                      :placeholder="t('pipeline.stageRequirementsDescriptionPlaceholder')"
+                      class="md:col-span-2 text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                    ></textarea>
+                    <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-indigo-50 space-y-1">
+                      <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageRequirementsConditionTitle') }}</div>
+                      <ConditionBuilder
+                        v-model="requirementConditionTree"
+                        :category-fields="ruleBuilderCategoryFields"
+                        :disabled="savingRequirement"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      class="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                      :disabled="savingRequirement"
+                      @click="submitRequirementForm"
+                    >
+                      {{ editingRequirementId ? t('pipeline.stageRequirementsUpdate') : t('pipeline.stageRequirementsCreate') }}
+                    </button>
+                    <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700" @click="resetRequirementForm">
+                      {{ t('pipeline.cancel') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 space-y-2">
+                <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageScenariosPreviewTitle') }}</div>
+                <div class="flex flex-col md:flex-row gap-2">
+                  <input
+                    v-model="scenarioPreviewRecordId"
+                    type="text"
+                    :placeholder="t('pipeline.stageScenariosPreviewRecordPlaceholder')"
+                    class="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  />
+                  <button
+                    class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                    :disabled="loadingScenarioPreview"
+                    @click="runScenarioPreview"
+                  >
+                    {{ t('pipeline.stageScenariosPreviewRun') }}
+                  </button>
+                </div>
+                <div v-if="scenarioPreviewResult" class="text-xs text-gray-600 space-y-0.5">
+                  <div>
+                    {{ t('pipeline.stageScenariosPreviewIsActive') }}:
+                    <span class="font-semibold">
+                      {{
+                        scenarioPreviewResult.activeScenarioId === editingScenarioId
+                          ? t('pipeline.stageScenariosPreviewYes')
+                          : t('pipeline.stageScenariosPreviewNo')
+                      }}
+                    </span>
+                  </div>
+                  <div>
+                    {{ t('pipeline.stageScenariosPreviewActiveScenario') }}:
+                    <span class="font-semibold">{{ scenarioPreviewResult.activeScenarioName || '—' }}</span>
+                  </div>
+                  <div>
+                    {{ t('pipeline.stageScenariosPreviewRequirements') }}:
+                    {{ scenarioPreviewResult.activeRequirementsCount }}
+                  </div>
+                  <div>
+                    {{ t('pipeline.stageScenariosPreviewUnmetRequirements') }}:
+                    {{ scenarioPreviewResult.unmetRequirementsCount }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
