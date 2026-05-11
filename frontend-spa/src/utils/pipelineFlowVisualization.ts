@@ -179,7 +179,7 @@ function buildRuleNode(rule: PipelineFlowRuleInput, t?: (key: string) => string)
       : translate('pipeline.flowDiagramNodeInactive', t),
     meta: {
       trigger: triggerLabel,
-      triggerCode: rule.trigger_type,
+      _triggerCode: rule.trigger_type,
       effect: rule.effect,
       severity: rule.severity,
       priority: rule.priority ?? null,

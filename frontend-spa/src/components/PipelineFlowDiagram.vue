@@ -106,10 +106,27 @@ const matchedRuleIds = computed(() => {
   return ids
 })
 function extractRequirementId(log: FlowEvaluationLog): string {
-  const contextualId = log.input_context && typeof log.input_context.requirement_id === 'string'
+  const contextualId = (
+    log.input_context
+    && typeof log.input_context.requirement_id === 'string'
+  )
     ? log.input_context.requirement_id
     : ''
   return String(log.requirement_id || contextualId).trim()
+}
+
+function extractFulfillmentStatus(log: FlowEvaluationLog): 'met' | 'unmet' | 'pending' | null {
+  const contextualStatus = (
+    log.input_context
+    && typeof log.input_context.fulfillment_status === 'string'
+  )
+    ? log.input_context.fulfillment_status
+    : ''
+  const normalized = String(contextualStatus).trim()
+  if (normalized === 'met' || normalized === 'unmet' || normalized === 'pending') {
+    return normalized
+  }
+  return null
 }
 
 const requirementFulfillmentStatusById = computed<Record<string, 'met' | 'unmet' | 'pending'>>(() => {
@@ -118,14 +135,8 @@ const requirementFulfillmentStatusById = computed<Record<string, 'met' | 'unmet'
     if (log.trigger_type !== 'requirement.chain_evaluated') return
     const requirementId = extractRequirementId(log)
     if (!requirementId || map[requirementId]) return
-    const status = String(
-      log.input_context && typeof log.input_context.fulfillment_status === 'string'
-        ? log.input_context.fulfillment_status
-        : '',
-    ).trim()
-    if (status === 'met' || status === 'unmet' || status === 'pending') {
-      map[requirementId] = status
-    }
+    const status = extractFulfillmentStatus(log)
+    if (status) map[requirementId] = status
   })
   return map
 })
@@ -250,7 +261,7 @@ function nodeTypeLabel(node: PipelineFlowNode): string {
 
 function nodeClass(node: PipelineFlowNode): string {
   if (node.type === 'rule') {
-    const trigger = String(node.meta.triggerCode || node.meta.trigger || '')
+    const trigger = String(node.meta._triggerCode || node.meta.trigger || '')
     let triggerClass = 'ring-1 ring-indigo-100 dark:ring-indigo-800/60'
     if (trigger.includes('field')) {
       triggerClass = 'ring-1 ring-purple-100 dark:ring-purple-800/60'
@@ -608,7 +619,7 @@ function onViewportKeydown(event: KeyboardEvent) {
                     <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
                     <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
                       <div v-for="(value, key) in node.meta" :key="key">
-                        <template v-if="key !== 'triggerCode' && value !== null && value !== ''">{{ key }}: {{ value }}</template>
+                        <template v-if="!String(key).startsWith('_') && value !== null && value !== ''">{{ key }}: {{ value }}</template>
                       </div>
                     </div>
                   </div>
