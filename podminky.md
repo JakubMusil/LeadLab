@@ -1275,7 +1275,7 @@ Výsledek:
 
 - [ ] Navrhnout normalizovaný vizualizační model pro pravidla, scénáře, požadavky, condition tree a návazné kroky.
 - [x] Přidat čitelnou stromovou vizualizaci condition tree jako doplněk ke stávajícímu formulářovému builderu.
-- [ ] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
+- [x] Přidat přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
 - [x] Napojit vizualizaci do nastavení pipeline jako samostatný režim nebo záložku bez nahrazení současných editorů.
 - [ ] Přidat interaktivní práci s uzly: výběr, sbalení/rozbalení, kontext detailu, později přímé úpravy.
 - [ ] Přidat vizuální správu návazných hran `next_step_on_met` a `next_step_on_unmet` s validací cyklů a scénářového kontextu.
@@ -1367,6 +1367,23 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 10:30 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na otevřený bod etapy 7B: přehledový diagram vazeb pravidlo → scénář → požadavek → návazný krok.
+- Další krok byl maximalizovaně delegován podagentovi (mapování minimálního scope, integrační body, testy a rizika) a následně byla implementace ještě jednou delegovaně zrevidována; relevantní připomínky k trigger/effect rozlišení, aktivační podmínce scénáře a doporučené další fázi byly zapracovány.
+- Před úpravami proběhla baseline validace frontendu po `npm ci`: `npm run check-locales`, `npm run build-only` a cílené unit testy pro existující vizualizační/store scope procházejí.
+- Frontend implementace etapy 7B:
+  - přidána utility vrstva `frontend-spa/src/utils/pipelineFlowVisualization.ts` pro normalizaci read-only flow modelu pravidel, scénářů, požadavků a hran `next_step_on_met` / `next_step_on_unmet`,
+  - přidán komponent `frontend-spa/src/components/PipelineFlowDiagram.vue` s filtry podle kategorie, fáze, triggeru, aktivního stavu a typu uzlu, barevným rozlišením efektu/triggeru, collapse/expand scénářů a seznamem směrových vazeb,
+  - `frontend-spa/src/views/PipelineSettingsView.vue` nově načítá požadavky všech scénářů vybrané fáze a zobrazuje diagram v nastavení pipeline bez nahrazení existujících editorů,
+  - frontend typy `StageRequirementOut/In/PatchIn` doplněny o `next_step_on_met_id` a `next_step_on_unmet_id`,
+  - doplněny i18n klíče ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Doplněny unit testy `frontend-spa/src/utils/__tests__/pipelineFlowVisualization.spec.ts`, `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts` a rozšířen test store `stageScenarios.spec.ts`.
+- Post-change validace prochází: `npm run check-locales`, cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts src/stores/__tests__/stageScenarios.spec.ts` a `npm run build-only`.
+- Doplňkový `npm run type-check` nadále padá na existujících chybách mimo tento scope (např. `InviteMemberWizard.vue`, `RecordShareModal.vue`, `RecordsView.vue`); nové soubory diagramu nejsou mezi hlášenými chybami.
+- Hotovo: v etapě 7 je nyní splněný bod přehledového diagramu vazeb pravidlo → scénář → požadavek → návazný krok.
+- Následuje: spustit `parallel_validation`, zapracovat případné připomínky a navázat další částí etapy 7C (interaktivní výběr uzlu a detail uzlu).
 
 ### 2026-05-11 09:52 UTC
 

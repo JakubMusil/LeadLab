@@ -43,6 +43,8 @@ const mockRequirement = {
   blocking: true,
   visible_to_user: true,
   sort_order: 0,
+  next_step_on_met_id: 'req-2',
+  next_step_on_unmet_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
@@ -123,6 +125,7 @@ describe('useStageScenariosStore', () => {
 
     expect(reqResult.ok).toBe(true)
     expect(store.requirements).toEqual([mockRequirement])
+    expect(store.requirements[0]?.next_step_on_met_id).toBe('req-2')
     expect(previewResult.ok).toBe(true)
     expect(previewResult.data?.active_stage_scenario_id).toBe('scenario-1')
   })
