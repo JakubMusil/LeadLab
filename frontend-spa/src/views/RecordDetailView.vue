@@ -688,8 +688,10 @@ function isBlockingIssue(issue: StageChangeIssueWithSource): boolean {
   return issue.effect === 'BLOCK'
 }
 
+const QUICK_EDITABLE_FIELD_KEYS = new Set(['expires_at', 'date_range', 'notes'])
+
 function canQuickEditField(fieldKey: string): boolean {
-  return ['expires_at', 'date_range', 'notes'].includes(fieldKey)
+  return QUICK_EDITABLE_FIELD_KEYS.has(fieldKey)
 }
 
 function jumpToIssueField(issue: StageChangeIssueWithSource) {

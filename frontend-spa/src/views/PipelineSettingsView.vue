@@ -713,9 +713,9 @@ async function onFieldDragEnd() {
 async function loadConditionRules() {
   const isActive =
     ruleFilterEnabled.value === 'all' ? undefined : ruleFilterEnabled.value === 'enabled'
-  const effectiveCategoryId = selectedCategoryId.value || ruleFilterCategoryId.value || undefined
+  const categoryIdForFiltering = selectedCategoryId.value || ruleFilterCategoryId.value || undefined
   await conditionRulesStore.fetchRules({
-    categoryId: effectiveCategoryId,
+    categoryId: categoryIdForFiltering,
     stageId: ruleFilterStageId.value || undefined,
     triggerType: ruleFilterTriggerType.value.trim() || undefined,
     isActive,
