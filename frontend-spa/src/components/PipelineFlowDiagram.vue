@@ -769,7 +769,7 @@ function toggleHelp() {
                 class="rounded border p-2 shadow-sm transition-colors"
                 :class="[
                   nodeClass(node),
-                  'ring-offset-1 ring-offset-white dark:ring-offset-gray-800 transition-opacity',
+                  'ring-offset-1 ring-offset-white dark:ring-offset-gray-800',
                   selectedNodeId === node.id ? 'ring-2 ring-indigo-500 dark:ring-indigo-400' : nodeSelectionClass(node.id),
                 ]"
               >

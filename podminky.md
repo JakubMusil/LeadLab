@@ -1368,6 +1368,19 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 18:18 UTC
+
+- Navázáno na krok 18:16 UTC: proběhlo review/security validační kolo nad novým zvýrazněním souvislostí v diagramu.
+- Spuštěn `parallel_validation`:
+  - první běh vrátil 1 relevantní review připomínku (nepotřebný `transition-opacity` na všech uzlech); připomínka zapracována v `PipelineFlowDiagram.vue`,
+  - opakovaný běh je čistý: review bez připomínek, CodeQL bez alertů.
+- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`27/27`).
+- Hotovo: implementační scope zvýraznění souvislostí je po review i bezpečnostní kontrole uzavřený.
+- Následuje: provést finální commit/push aktuálního validačního kola a vytvořit řádný PR.
+
 ### 2026-05-11 18:16 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším implementačním krokem v sekci 20.3.3 (zvýraznění souvislostí v grafu po výběru uzlu).
