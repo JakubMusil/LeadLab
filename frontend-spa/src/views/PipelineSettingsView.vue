@@ -2247,9 +2247,17 @@ const newPattern = computed({
                 >
                   <div class="flex items-start justify-between gap-2">
                     <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
-                    <span class="inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
-                      {{ t(template.domainLabelKey) }}
-                    </span>
+                    <div class="flex flex-col items-end gap-1">
+                      <span class="inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                        {{ t(template.domainLabelKey) }}
+                      </span>
+                      <span
+                        v-if="template.scenarioLabelKey"
+                        class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                      >
+                        {{ t(template.scenarioLabelKey) }}
+                      </span>
+                    </div>
                   </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t(template.descriptionKey) }}</div>
                   <button

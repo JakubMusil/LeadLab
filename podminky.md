@@ -1368,6 +1368,20 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 15:24 UTC
+
+- Prostudován aktuální stav `podminky.md`; checklist etap zůstává uzavřený, proto navázáno dalším praktickým krokem v sekci 21 (zpřesnění doménových šablon o scénářový kontext).
+- Další krok byl maximalizovaně delegován podagentovi (gap analýza nejmenšího navazujícího scope) a návrh následně ručně konceptuálně zvalidován nad `ruleTemplates.ts` a `PipelineSettingsView.vue`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite` v prostředí; po `npm ci` opakovaný běh prochází.
+- Implementace navazující na sekci 21:
+  - `frontend-spa/src/constants/ruleTemplates.ts`: šablony doménových pravidel nyní obsahují volitelné metadata `scenarioLabelKey` pro scénářové seskupení.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: katalog šablon zobrazuje u doménových presetů i scénářový štítek.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněné i18n klíče pro scénáře „První kontakt“, „Standardní montáž“ a „Incident management“.
+- Hotovo: sekce 21 je prakticky lépe propsaná do UI, protože doménové preset šablony už nesou i čitelný scénářový kontext.
+- Následuje: spustit post-change validaci (`check-locales`, `build-only`), provést `parallel_validation`, zapsat závěrečné shrnutí a vytvořit řádný PR.
+
 ### 2026-05-11 13:45 UTC
 
 - Navázáno na krok 13:32 UTC: proběhla post-change validace a finální kontrola navazujícího scope sekce 21.

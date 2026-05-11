@@ -3,6 +3,7 @@ export interface RuleTemplatePreset {
   nameKey: string
   descriptionKey: string
   messageKey?: string
+  scenarioLabelKey?: string
   domain: 'all' | 'call_center' | 'installation' | 'it_service'
   domainLabelKey: string
   triggerType: string
@@ -127,6 +128,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'call_center_block_without_contact',
     nameKey: 'pipeline.rulesTemplateCallCenterContactRequiredName',
     descriptionKey: 'pipeline.rulesTemplateCallCenterContactRequiredDescription',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioCallCenterFirstContact',
     domain: 'call_center',
     domainLabelKey: 'pipeline.rulesTemplateDomainCallCenter',
     triggerType: 'record.stage_change_requested',
@@ -159,6 +161,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     nameKey: 'pipeline.rulesTemplateCallCenterSeniorReviewName',
     descriptionKey: 'pipeline.rulesTemplateCallCenterSeniorReviewDescription',
     messageKey: 'pipeline.rulesTemplateCallCenterSeniorReviewMessage',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioCallCenterFirstContact',
     domain: 'call_center',
     domainLabelKey: 'pipeline.rulesTemplateDomainCallCenter',
     triggerType: 'record.stage_change_requested',
@@ -191,6 +194,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'installation_block_without_photo_upload',
     nameKey: 'pipeline.rulesTemplateInstallationPhotosRequiredName',
     descriptionKey: 'pipeline.rulesTemplateInstallationPhotosRequiredDescription',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioInstallationStandardMontage',
     domain: 'installation',
     domainLabelKey: 'pipeline.rulesTemplateDomainInstallation',
     triggerType: 'record.stage_change_requested',
@@ -209,6 +213,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'installation_warn_without_notes',
     nameKey: 'pipeline.rulesTemplateInstallationApprovalWarningName',
     descriptionKey: 'pipeline.rulesTemplateInstallationApprovalWarningDescription',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioInstallationStandardMontage',
     domain: 'installation',
     domainLabelKey: 'pipeline.rulesTemplateDomainInstallation',
     triggerType: 'record.stage_change_requested',
@@ -227,6 +232,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'it_service_block_without_priority_data',
     nameKey: 'pipeline.rulesTemplateItServicePriorityRequiredName',
     descriptionKey: 'pipeline.rulesTemplateItServicePriorityRequiredDescription',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioItServiceIncidentManagement',
     domain: 'it_service',
     domainLabelKey: 'pipeline.rulesTemplateDomainItService',
     triggerType: 'record.stage_change_requested',
@@ -258,6 +264,7 @@ export const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
     id: 'it_service_block_without_resolution_notes',
     nameKey: 'pipeline.rulesTemplateItServiceResolutionRequiredName',
     descriptionKey: 'pipeline.rulesTemplateItServiceResolutionRequiredDescription',
+    scenarioLabelKey: 'pipeline.rulesTemplateScenarioItServiceIncidentManagement',
     domain: 'it_service',
     domainLabelKey: 'pipeline.rulesTemplateDomainItService',
     triggerType: 'record.stage_change_requested',
