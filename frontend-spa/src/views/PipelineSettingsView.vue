@@ -127,6 +127,7 @@ const ruleLogsFilterTriggerType = ref('')
 const ruleLogsFilterResult = ref('')
 const ruleLogsFilterRecordId = ref('')
 const ruleLogsFilterRuleId = ref('')
+const showRuleTemplates = ref(false)
 
 // Stage scenarios
 const scenarioFilterStageId = ref('')
@@ -212,6 +213,118 @@ interface RuleFormState {
   activity_type: string
   priority: string
 }
+
+interface RuleTemplatePreset {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  triggerType: string
+  scopeType: string
+  effect: string
+  severity: string
+  activityType?: string
+  conditionTree: Record<string, unknown>
+  effectConfig?: Record<string, unknown>
+}
+
+const RULE_TEMPLATE_PRESETS: RuleTemplatePreset[] = [
+  {
+    id: 'block_without_owner',
+    nameKey: 'pipeline.rulesTemplateOwnerRequiredName',
+    descriptionKey: 'pipeline.rulesTemplateOwnerRequiredDescription',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'assigned_to_id',
+      operator: 'not_exists',
+      value: null,
+    },
+  },
+  {
+    id: 'warn_without_contact',
+    nameKey: 'pipeline.rulesTemplateContactRecommendedName',
+    descriptionKey: 'pipeline.rulesTemplateContactRecommendedDescription',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'warning',
+    severity: 'warning',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'contact_person_id',
+      operator: 'not_exists',
+      value: null,
+    },
+  },
+  {
+    id: 'block_low_value',
+    nameKey: 'pipeline.rulesTemplateHighValueName',
+    descriptionKey: 'pipeline.rulesTemplateHighValueDescription',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'value',
+      operator: 'lt',
+      value: 1000,
+    },
+  },
+  {
+    id: 'block_without_recent_activity',
+    nameKey: 'pipeline.rulesTemplateRecentActivityName',
+    descriptionKey: 'pipeline.rulesTemplateRecentActivityDescription',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'block',
+    severity: 'error',
+    activityType: 'note',
+    conditionTree: {
+      type: 'condition',
+      source_type: 'streamline_activity',
+      activity_type: 'note',
+      operator: 'not_exists',
+      value: null,
+      time_window: { last_days: 7 },
+    },
+  },
+  {
+    id: 'recommend_review_for_new_record',
+    nameKey: 'pipeline.rulesTemplateReviewRecommendationName',
+    descriptionKey: 'pipeline.rulesTemplateReviewRecommendationDescription',
+    triggerType: 'record.stage_change_requested',
+    scopeType: 'category',
+    effect: 'recommend',
+    severity: 'info',
+    conditionTree: {
+      type: 'group',
+      op: 'and',
+      conditions: [
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'status',
+          operator: 'eq',
+          value: 'new',
+        },
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'notes',
+          operator: 'not_exists',
+          value: null,
+        },
+      ],
+    },
+    effectConfig: {},
+  },
+]
 
 const ruleForm = ref<RuleFormState>({
   name: '',
@@ -1005,7 +1118,31 @@ function resetRuleForm() {
 
 function openCreateRuleForm() {
   resetRuleForm()
+  showRuleTemplates.value = false
   showRuleForm.value = true
+}
+
+function applyRuleTemplate(templateId: string) {
+  const template = RULE_TEMPLATE_PRESETS.find((item) => item.id === templateId)
+  if (!template) return
+  resetRuleForm()
+  ruleForm.value.name = t(template.nameKey)
+  ruleForm.value.description = t(template.descriptionKey)
+  ruleForm.value.scope_type = template.scopeType
+  ruleForm.value.trigger_type = template.triggerType
+  ruleForm.value.effect = template.effect
+  ruleForm.value.severity = template.severity
+  ruleForm.value.activity_type = template.activityType ?? ''
+  ruleConditionTree.value = normalizeConditionTree(deepCloneObject(template.conditionTree))
+  ruleConditionTreeText.value = JSON.stringify(ruleConditionTree.value, null, 2)
+  const effectConfig = deepCloneObject(template.effectConfig ?? {})
+  if (template.id === 'recommend_review_for_new_record') {
+    effectConfig.message = t('pipeline.rulesTemplateReviewRecommendationMessage')
+  }
+  ruleEffectConfigText.value = JSON.stringify(effectConfig, null, 2)
+  showRuleTemplates.value = false
+  showRuleForm.value = true
+  toast.success(t('pipeline.rulesTemplateApplied'))
 }
 
 function openEditRuleForm(rule: ConditionRuleOut) {
@@ -2150,10 +2287,39 @@ const newPattern = computed({
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">
               <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.rulesTitle') }}</div>
-              <button
-                class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                @click="openCreateRuleForm"
-              >{{ t('pipeline.rulesCreate') }}</button>
+              <div class="flex items-center gap-2">
+                <button
+                  class="px-3 py-1.5 text-xs border border-indigo-200 text-indigo-700 rounded hover:bg-indigo-50"
+                  @click="showRuleTemplates = !showRuleTemplates"
+                >
+                  {{ showRuleTemplates ? t('pipeline.rulesTemplatesHide') : t('pipeline.rulesTemplatesBrowse') }}
+                </button>
+                <button
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                  @click="openCreateRuleForm"
+                >{{ t('pipeline.rulesCreate') }}</button>
+              </div>
+            </div>
+
+            <div v-if="showRuleTemplates" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
+              <div class="text-xs font-semibold text-indigo-700">{{ t('pipeline.rulesTemplatesTitle') }}</div>
+              <div class="text-xs text-indigo-600">{{ t('pipeline.rulesTemplatesHint') }}</div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div
+                  v-for="template in RULE_TEMPLATE_PRESETS"
+                  :key="template.id"
+                  class="p-2 border border-indigo-100 rounded bg-white"
+                >
+                  <div class="text-xs font-semibold text-gray-800">{{ t(template.nameKey) }}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">{{ t(template.descriptionKey) }}</div>
+                  <button
+                    class="mt-2 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                    @click="applyRuleTemplate(template.id)"
+                  >
+                    {{ t('pipeline.rulesTemplatesUse') }}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div v-if="showRuleForm" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
