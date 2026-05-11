@@ -1251,9 +1251,12 @@ async function loadPipelineFlowRequirements() {
         api.get<StageRequirementOut[]>(`/api/v1/crm/scenarios/${scenario.id}/requirements`),
       ),
     )
-    const failed = responses.find((response) => !response.ok)
-    if (failed) {
-      pipelineFlowError.value = t('pipeline.flowDiagramLoadFailed')
+    const failedIndex = responses.findIndex((response) => !response.ok)
+    if (failedIndex !== -1) {
+      const scenarioName = scenarios[failedIndex]?.name || scenarios[failedIndex]?.id || ''
+      pipelineFlowError.value = scenarioName
+        ? `${t('pipeline.flowDiagramLoadFailed')} (${scenarioName})`
+        : t('pipeline.flowDiagramLoadFailed')
       return
     }
     pipelineFlowRequirements.value = responses.flatMap((response) => response.data)

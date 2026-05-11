@@ -25,7 +25,7 @@ const baseScenario = {
   stage_id: 'stage-1',
   name: 'Scenario A',
   description: '',
-  activation_condition: { type: 'condition', source_type: 'standard_field', field: 'source' },
+  activation_condition: { type: 'condition', source_type: 'standard_field', field: 'lead_source' },
   recommended_next_stage_id: 'stage-2',
   priority: 1,
   is_active: true,
