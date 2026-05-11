@@ -1331,7 +1331,7 @@
     "flowDiagramZoomIn": "Vergrößern",
     "flowDiagramCenterSelected": "Auswahl zentrieren",
     "flowDiagramResetView": "Ansicht zurücksetzen",
-    "flowDiagramZoomLevel": "Zoom {value} %",
+    "flowDiagramZoomLevel": "Zoom {value}%",
     "flowDiagramPanPosition": "Position: x {x}, y {y}",
     "flowDiagramLargeGraphFallback": "Der Graph ist groß. {count} Knoten sind ausgeblendet, nutzen Sie Filter für mehr Übersicht.",
     "flowDiagramEdgesTitle": "Gerichtete Verknüpfungen",

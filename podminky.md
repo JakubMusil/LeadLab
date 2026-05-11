@@ -1368,6 +1368,22 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 12:22 UTC
+
+- Navázáno na krok 12:15 UTC a spuštěna opakovaná validační kola `parallel_validation` po zapracování review připomínek.
+- Zapracované review úpravy v `frontend-spa/src/components/PipelineFlowDiagram.vue`:
+  - odstraněn duplicitní watcher výběru uzlu,
+  - sjednocen formát zoom labelu mezi lokalizacemi,
+  - vytaženy konstanty pro krok pan a precision factor zoomu,
+  - doplněny stabilní `data-testid`/`data-*` atributy pro zoom/fallback metriky.
+- Zapracované review úpravy v `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`:
+  - testy přepnuty na locale-independent selektory přes `data-testid`,
+  - zoom assertions sjednoceny na procentní datový formát,
+  - fallback assertion ověřuje přímo `data-hidden-count`.
+- Průběžně ověřeno po každém kroku: `npm run build-only` + cílené `npm run test:unit -- src/utils/__tests__/pipelineFlowVisualization.spec.ts src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Poslední běh `parallel_validation`: code review OK s drobnou připomínkou k očekávané hodnotě hidden count (ponecháno beze změny, protože model limitu záměrně počítá všechny viditelné uzly včetně rule+scenario), CodeQL vypršel na timeoutu a nástroj explicitně nedoporučuje další opakování.
+- Následuje: uzavřít tento krok PR souhrnem a navázat dalším otevřeným bodem etapy 7 (napojení grafu na testovací vyhodnocení a log vyhodnocení).
+
 ### 2026-05-11 12:15 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno na první otevřený bod etapy 7 po dokončení návazných hran: zoom/pan/auto-layout/fallback.

@@ -205,12 +205,13 @@ describe('PipelineFlowDiagram', () => {
 
   it('updates zoom level using zoom controls', async () => {
     const wrapper = mountDiagram()
+    const zoomLevel = wrapper.get('[data-testid="flow-zoom-level"]')
+    expect(zoomLevel.attributes('data-zoom-level')).toBe('100')
 
-    expect(wrapper.text()).toContain('Zoom 100%')
-    const zoomInButton = wrapper.findAll('button').find((button) => button.text() === 'Zoom in')
-    expect(zoomInButton).toBeTruthy()
-    await zoomInButton!.trigger('click')
-    expect(wrapper.text()).toContain('Zoom 110%')
+    const zoomInButton = wrapper.find('[data-testid="flow-zoom-in"]')
+    expect(zoomInButton.exists()).toBe(true)
+    await zoomInButton.trigger('click')
+    expect(wrapper.get('[data-testid="flow-zoom-level"]').attributes('data-zoom-level')).toBe('110')
   })
 
   it('updates zoom level from keyboard shortcut on viewport', async () => {
@@ -219,19 +220,19 @@ describe('PipelineFlowDiagram', () => {
     expect(viewport.exists()).toBe(true)
 
     await viewport.trigger('keydown', { key: '+' })
-    expect(wrapper.text()).toContain('Zoom 110%')
+    expect(wrapper.get('[data-testid="flow-zoom-level"]').attributes('data-zoom-level')).toBe('110')
   })
 
   it('enables center selection control after node selection', async () => {
     const wrapper = mountDiagram()
-    const centerButton = wrapper.findAll('button').find((button) => button.text() === 'Center selection')
-    expect(centerButton).toBeTruthy()
-    expect(centerButton!.attributes('disabled')).toBeDefined()
+    const centerButton = wrapper.find('[data-testid="flow-center-selection"]')
+    expect(centerButton.exists()).toBe(true)
+    expect(centerButton.attributes('disabled')).toBeDefined()
 
     const selectedNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
     expect(selectedNode).toBeTruthy()
     await selectedNode!.trigger('click')
-    expect(centerButton!.attributes('disabled')).toBeUndefined()
+    expect(centerButton.attributes('disabled')).toBeUndefined()
   })
 
   it('falls back to limited rendered nodes for large graphs', () => {
@@ -251,6 +252,8 @@ describe('PipelineFlowDiagram', () => {
     const wrapper = mountDiagram(largeRequirements)
 
     expect(wrapper.findAll('article')).toHaveLength(80)
-    expect(wrapper.text()).toContain('nodes are hidden')
+    const fallback = wrapper.find('[data-testid="flow-large-graph-fallback"]')
+    expect(fallback.exists()).toBe(true)
+    expect(fallback.attributes('data-hidden-count')).toBe('12')
   })
 })

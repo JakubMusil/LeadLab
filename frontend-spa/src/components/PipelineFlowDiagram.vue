@@ -51,7 +51,10 @@ const zoomLevel = ref(1)
 const zoomMin = 0.6
 const zoomMax = 1.8
 const zoomStep = 0.1
+const zoomPrecisionFactor = 100
+// Keep the graph readable and responsive before forcing users to narrow the scope via filters.
 const fallbackNodeLimit = 80
+const keyboardPanStep = 80
 const panPosition = ref({ x: 0, y: 0 })
 
 watch(
@@ -142,6 +145,7 @@ const nodeGridClass = computed(() => {
   if (count > 18) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
   return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 })
+const zoomPercent = computed(() => Math.round(zoomLevel.value * zoomPrecisionFactor))
 const graphCanvasStyle = computed(() => ({
   transform: `scale(${zoomLevel.value})`,
   transformOrigin: 'top left',
@@ -163,12 +167,6 @@ const selectedNodeEdges = computed(() =>
     ? displayedEdges.value.filter((edge) => edge.source === selectedNodeId.value || edge.target === selectedNodeId.value)
     : [],
 )
-
-watch(visibleNodeIds, (visibleIds) => {
-  if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
-    selectedNodeId.value = null
-  }
-})
 
 watch(displayedNodeIds, (visibleIds) => {
   if (selectedNodeId.value && !visibleIds.has(selectedNodeId.value)) {
@@ -234,7 +232,10 @@ function requirementLinkIssueLabel(issue: 'missing_target' | 'cross_scenario' | 
 }
 
 function clampZoom(value: number): number {
-  return Math.min(zoomMax, Math.max(zoomMin, Number(value.toFixed(2))))
+  return Math.min(
+    zoomMax,
+    Math.max(zoomMin, Math.round(value * zoomPrecisionFactor) / zoomPrecisionFactor),
+  )
 }
 
 function updateZoom(nextZoom: number) {
@@ -304,22 +305,22 @@ function onViewportKeydown(event: KeyboardEvent) {
   }
   if (event.key === 'ArrowLeft') {
     event.preventDefault()
-    panBy(-80, 0)
+    panBy(-keyboardPanStep, 0)
     return
   }
   if (event.key === 'ArrowRight') {
     event.preventDefault()
-    panBy(80, 0)
+    panBy(keyboardPanStep, 0)
     return
   }
   if (event.key === 'ArrowUp') {
     event.preventDefault()
-    panBy(0, -80)
+    panBy(0, -keyboardPanStep)
     return
   }
   if (event.key === 'ArrowDown') {
     event.preventDefault()
-    panBy(0, 80)
+    panBy(0, keyboardPanStep)
   }
 }
 </script>
@@ -395,6 +396,7 @@ function onViewportKeydown(event: KeyboardEvent) {
           <div class="flex flex-wrap items-center gap-1">
             <button
               type="button"
+              data-testid="flow-zoom-out"
               class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               :aria-label="t('pipeline.flowDiagramZoomOut')"
               @click="zoomOut"
@@ -403,6 +405,7 @@ function onViewportKeydown(event: KeyboardEvent) {
             </button>
             <button
               type="button"
+              data-testid="flow-zoom-in"
               class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               :aria-label="t('pipeline.flowDiagramZoomIn')"
               @click="zoomIn"
@@ -411,6 +414,7 @@ function onViewportKeydown(event: KeyboardEvent) {
             </button>
             <button
               type="button"
+              data-testid="flow-center-selection"
               class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
               :aria-label="t('pipeline.flowDiagramCenterSelected')"
               :disabled="!selectedNodeId"
@@ -427,7 +431,9 @@ function onViewportKeydown(event: KeyboardEvent) {
               {{ t('pipeline.flowDiagramResetView') }}
             </button>
             <span class="rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-              {{ t('pipeline.flowDiagramZoomLevel', { value: Math.round(zoomLevel * 100) }) }}
+              <span data-testid="flow-zoom-level" :data-zoom-level="zoomPercent">
+                {{ t('pipeline.flowDiagramZoomLevel', { value: zoomPercent }) }}
+              </span>
             </span>
           </div>
         </div>
@@ -436,6 +442,8 @@ function onViewportKeydown(event: KeyboardEvent) {
         </div>
         <div
           v-if="fallbackActive"
+          data-testid="flow-large-graph-fallback"
+          :data-hidden-count="hiddenNodesCount"
           class="rounded border border-amber-100 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
         >
           {{ t('pipeline.flowDiagramLargeGraphFallback', { count: hiddenNodesCount }) }}

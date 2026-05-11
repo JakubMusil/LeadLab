@@ -1331,7 +1331,7 @@
     "flowDiagramZoomIn": "Přiblížit",
     "flowDiagramCenterSelected": "Vycentrovat výběr",
     "flowDiagramResetView": "Reset pohledu",
-    "flowDiagramZoomLevel": "Zoom {value} %",
+    "flowDiagramZoomLevel": "Zoom {value}%",
     "flowDiagramPanPosition": "Pozice: x {x}, y {y}",
     "flowDiagramLargeGraphFallback": "Graf je rozsáhlý. Skryto {count} uzlů, použijte filtry pro zpřehlednění.",
     "flowDiagramEdgesTitle": "Směrové vazby",
