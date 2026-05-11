@@ -104,4 +104,34 @@ describe('conditionTreeVisualization', () => {
     expect(model.nodes.some((node) => node.type === 'group')).toBe(true)
     expect(model.nodes.some((node) => node.type === 'condition')).toBe(true)
   })
+
+  it('normalizes malformed group children to safe defaults', () => {
+    const normalized = normalizeConditionTree({
+      type: 'group',
+      op: 'or',
+      conditions: [
+        null,
+        [],
+        'invalid',
+        {
+          type: 'condition',
+          source_type: 'standard_field',
+          field: 'title',
+          operator: 'contains',
+          value: 'Lead',
+        },
+      ],
+    } as unknown as Record<string, unknown>)
+
+    const conditions = normalized.conditions as Record<string, unknown>[]
+    expect(conditions).toHaveLength(4)
+    expect(conditions[0]).toEqual(createDefaultConditionTree())
+    expect(conditions[1]).toEqual(createDefaultConditionTree())
+    expect(conditions[2]).toEqual(createDefaultConditionTree())
+    expect(conditions[3]).toMatchObject({
+      type: 'condition',
+      source_type: 'standard_field',
+      field: 'title',
+    })
+  })
 })
