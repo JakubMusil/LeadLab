@@ -82,6 +82,9 @@ const zoomPrecisionFactor = 100
 // Keep the graph readable and responsive before forcing users to narrow the scope via filters.
 const fallbackNodeLimit = 80
 const keyboardPanStep = 80
+const quickActionSecondaryButtonClass = 'rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+const quickActionPrimaryButtonClass = 'rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40'
+const quickActionInputClass = 'w-full text-[11px] text-gray-900 border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-indigo-500'
 const panPosition = ref({ x: 0, y: 0 })
 
 watch(
@@ -223,7 +226,7 @@ const graphCanvasStyle = computed(() => ({
 }))
 const selectedNodeId = ref<string | null>(null)
 const editingRuleDescription = ref('')
-const editingScenarioPriority = ref('')
+const editingScenarioPriority = ref<string | number>('')
 const selectedNode = computed<PipelineFlowNode | null>(() =>
   selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
 )
@@ -247,10 +250,14 @@ watch(displayedNodeIds, (visibleIds) => {
   }
 })
 
+function resetQuickActionEdits() {
+  editingRuleDescription.value = ''
+  editingScenarioPriority.value = ''
+}
+
 watch(selectedNode, (node) => {
   if (!node) {
-    editingRuleDescription.value = ''
-    editingScenarioPriority.value = ''
+    resetQuickActionEdits()
     return
   }
   if (node.type === 'rule') {
@@ -263,8 +270,7 @@ watch(selectedNode, (node) => {
     editingRuleDescription.value = ''
     return
   }
-  editingRuleDescription.value = ''
-  editingScenarioPriority.value = ''
+  resetQuickActionEdits()
 })
 
 function toggleScenario(nodeId: string) {
@@ -282,27 +288,31 @@ function selectNode(nodeId: string) {
   selectedNodeId.value = selectedNodeId.value === nodeId ? null : nodeId
 }
 
-const selectedRuleHasDescriptionChanges = computed(() =>
-  selectedNode.value?.type === 'rule'
-  && editingRuleDescription.value !== String(selectedNode.value.description || ''),
-)
+const selectedRuleHasDescriptionChanges = computed(() => {
+  return (
+    (selectedNode.value?.type === 'rule')
+    && editingRuleDescription.value !== String(selectedNode.value?.description || '')
+  )
+})
 const selectedScenarioPriorityValue = computed<number | null>(() => {
   if (selectedNode.value?.type !== 'scenario') return null
-  const raw = editingScenarioPriority.value.trim()
+  const raw = String(editingScenarioPriority.value ?? '').trim()
   if (!raw) return null
   const parsed = Number(raw)
   if (!Number.isInteger(parsed) || parsed < 0) return null
   return parsed
 })
-const selectedScenarioHasPriorityChanges = computed(() =>
-  selectedNode.value?.type === 'scenario'
-  && selectedScenarioPriorityValue.value !== null
-  && selectedScenarioPriorityValue.value !== Number(selectedNode.value.meta.priority ?? 0),
-)
+const selectedScenarioHasPriorityChanges = computed(() => {
+  return (
+    (selectedNode.value?.type === 'scenario')
+    && selectedScenarioPriorityValue.value !== null
+    && selectedScenarioPriorityValue.value !== Number(selectedNode.value?.meta?.priority ?? 0)
+  )
+})
 
 function emitRuleActiveToggle() {
   if (selectedNode.value?.type !== 'rule') return
-  const current = selectedNode.value.meta.is_active === true
+  const current = selectedNode.value.active === true
   emit('toggle-rule-active', {
     ruleId: selectedNode.value.sourceId,
     nextActive: !current,
@@ -850,10 +860,10 @@ function toggleHelp() {
               <button
                 type="button"
                 data-testid="flow-node-action-toggle-rule"
-                class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                :class="quickActionSecondaryButtonClass"
                 @click="emitRuleActiveToggle"
               >
-                {{ selectedNode.meta.is_active ? t('pipeline.flowDiagramActionDisableRule') : t('pipeline.flowDiagramActionEnableRule') }}
+                {{ selectedNode.active ? t('pipeline.flowDiagramActionDisableRule') : t('pipeline.flowDiagramActionEnableRule') }}
               </button>
               <div class="space-y-1">
                 <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
@@ -863,13 +873,13 @@ function toggleHelp() {
                   v-model="editingRuleDescription"
                   data-testid="flow-node-rule-description"
                   type="text"
-                  class="w-full text-[11px] text-gray-900 border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
+                  :class="quickActionInputClass"
                   :placeholder="t('pipeline.rulesDescriptionPlaceholder')"
                 />
                 <div class="flex gap-1">
                   <button
                     type="button"
-                    class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    :class="quickActionSecondaryButtonClass"
                     @click="resetRuleDescriptionEdit"
                   >
                     {{ t('pipeline.cancel') }}
@@ -877,7 +887,7 @@ function toggleHelp() {
                   <button
                     type="button"
                     data-testid="flow-node-action-save-rule-description"
-                    class="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+                    :class="quickActionPrimaryButtonClass"
                     :disabled="!selectedRuleHasDescriptionChanges"
                     @click="emitRuleDescriptionUpdate"
                   >
@@ -895,11 +905,11 @@ function toggleHelp() {
                 data-testid="flow-node-scenario-priority"
                 type="number"
                 min="0"
-                class="w-full text-[11px] text-gray-900 border border-gray-200 rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
+                :class="quickActionInputClass"
                 :placeholder="t('pipeline.stageScenariosPriorityPlaceholder')"
               />
               <div
-                v-if="editingScenarioPriority.trim() && selectedScenarioPriorityValue === null"
+                v-if="String(editingScenarioPriority).trim() && selectedScenarioPriorityValue === null"
                 class="text-[11px] text-red-600 dark:text-red-400"
               >
                 {{ t('pipeline.stageScenariosPriorityInvalid') }}
@@ -907,7 +917,7 @@ function toggleHelp() {
               <div class="flex gap-1">
                 <button
                   type="button"
-                  class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  :class="quickActionSecondaryButtonClass"
                   @click="resetScenarioPriorityEdit"
                 >
                   {{ t('pipeline.cancel') }}
@@ -915,7 +925,7 @@ function toggleHelp() {
                 <button
                   type="button"
                   data-testid="flow-node-action-save-scenario-priority"
-                  class="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+                  :class="quickActionPrimaryButtonClass"
                   :disabled="!selectedScenarioHasPriorityChanges"
                   @click="emitScenarioPriorityUpdate"
                 >
@@ -927,7 +937,7 @@ function toggleHelp() {
               <button
                 type="button"
                 data-testid="flow-node-action-open-requirement-editor"
-                class="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+                :class="quickActionPrimaryButtonClass"
                 @click="emitRequirementEditorOpen"
               >
                 {{ t('pipeline.flowDiagramActionOpenRequirementEditor') }}
