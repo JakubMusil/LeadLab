@@ -22,6 +22,10 @@ import { ConfirmDeleteModal } from '@/components/ui'
 import { RULE_TEMPLATE_PRESETS, type RuleTemplatePreset } from '@/constants/ruleTemplates'
 import { useCan } from '@/composables/useCan'
 import {
+  createDefaultConditionTree,
+  normalizeConditionTree,
+} from '@/utils/conditionTreeVisualization'
+import {
   PlusIcon,
   TrashIcon,
   PencilSquareIcon,
@@ -32,6 +36,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import PeoplePicker from '@/components/PeoplePicker.vue'
 import ConditionBuilder from '@/components/ConditionBuilder.vue'
+import ConditionTreeViewer from '@/components/ConditionTreeViewer.vue'
 import { useMembersStore } from '@/stores/members'
 
 const pipelineStore = usePipelineStore()
@@ -115,6 +120,7 @@ const testRuleId = ref<string | null>(null)
 const testRecordId = ref('')
 const testEvaluationResult = ref<ConditionRuleTestEvaluationOut | null>(null)
 const useRuleJsonEditor = ref(false)
+const ruleVisualizationMode = ref<'builder' | 'tree'>('builder')
 const ruleConditionTree = ref<Record<string, unknown>>({
   type: 'group',
   op: 'and',
@@ -763,52 +769,6 @@ function deepCloneObject(value: Record<string, unknown>): Record<string, unknown
   }
 }
 
-function createDefaultConditionTree(): Record<string, unknown> {
-  return {
-    type: 'group',
-    op: 'and',
-    conditions: [],
-  }
-}
-
-function normalizeConditionTree(tree: Record<string, unknown>): Record<string, unknown> {
-  if (!tree || Object.keys(tree).length === 0) {
-    return createDefaultConditionTree()
-  }
-  if (tree.type === 'group') {
-    const conditions = Array.isArray(tree.conditions) ? tree.conditions : []
-    return {
-      type: 'group',
-      op: tree.op === 'or' ? 'or' : 'and',
-      conditions: conditions.map((child) => (
-        child && typeof child === 'object' && !Array.isArray(child)
-          ? normalizeConditionTree(child as Record<string, unknown>)
-          : createDefaultConditionTree()
-      )),
-      negated: Boolean(tree.negated),
-    }
-  }
-  if (tree.type === 'condition') {
-    return {
-      type: 'condition',
-      source_type: typeof tree.source_type === 'string' ? tree.source_type : '',
-      field: typeof tree.field === 'string' ? tree.field : undefined,
-      category_field_key: typeof tree.category_field_key === 'string' ? tree.category_field_key : undefined,
-      operator: typeof tree.operator === 'string' ? tree.operator : '',
-      value: tree.value ?? '',
-      activity_type: typeof tree.activity_type === 'string' ? tree.activity_type : undefined,
-      tool_type: typeof tree.tool_type === 'string' ? tree.tool_type : undefined,
-      entity_type: typeof tree.entity_type === 'string' ? tree.entity_type : undefined,
-      time_window:
-        tree.time_window && typeof tree.time_window === 'object' && !Array.isArray(tree.time_window)
-          ? tree.time_window as Record<string, unknown>
-          : undefined,
-      negated: Boolean(tree.negated),
-    }
-  }
-  return createDefaultConditionTree()
-}
-
 function sourcePreviewLabel(sourceType: string): string {
   if (sourceType === 'standard_field') return t('pipeline.rulesBuilderSourceStandardField')
   if (sourceType === 'category_field') return t('pipeline.rulesBuilderSourceCategoryField')
@@ -985,6 +945,7 @@ function resetRuleForm() {
   showRuleForm.value = false
   editingRuleId.value = null
   useRuleJsonEditor.value = false
+  ruleVisualizationMode.value = 'builder'
   ruleForm.value = {
     name: '',
     description: '',
@@ -1037,6 +998,7 @@ function openEditRuleForm(rule: ConditionRuleOut) {
   editingRuleId.value = rule.id
   showRuleForm.value = true
   useRuleJsonEditor.value = false
+  ruleVisualizationMode.value = 'builder'
   ruleForm.value = {
     name: rule.name,
     description: rule.description,
@@ -2211,8 +2173,28 @@ const newPattern = computed({
             </div>
 
             <div v-if="showRuleForm" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
-              <div class="text-xs font-semibold text-indigo-700">
-                {{ editingRuleId ? t('pipeline.rulesEditTitle') : t('pipeline.rulesCreateTitle') }}
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="text-xs font-semibold text-indigo-700">
+                  {{ editingRuleId ? t('pipeline.rulesEditTitle') : t('pipeline.rulesCreateTitle') }}
+                </div>
+                <div class="inline-flex rounded border border-indigo-200 overflow-hidden">
+                  <button
+                    type="button"
+                    class="px-2 py-1 text-xs"
+                    :class="ruleVisualizationMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100'"
+                    @click="ruleVisualizationMode = 'builder'"
+                  >
+                    {{ t('pipeline.rulesVisualizationModeBuilder') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2 py-1 text-xs border-l border-indigo-200"
+                    :class="ruleVisualizationMode === 'tree' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100'"
+                    @click="ruleVisualizationMode = 'tree'"
+                  >
+                    {{ t('pipeline.rulesVisualizationModeTree') }}
+                  </button>
+                </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <input
@@ -2303,18 +2285,29 @@ const newPattern = computed({
                   <input v-model="ruleForm.is_active" type="checkbox" class="rounded" />
                   {{ t('pipeline.rulesStartEnabled') }}
                 </label>
-                <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                <div v-if="ruleVisualizationMode === 'builder'" class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
-                    <button
-                      type="button"
-                      class="text-xs text-indigo-600 hover:text-indigo-700"
-                      @click="setRuleEditorMode(!useRuleJsonEditor)"
-                    >
-                      {{ useRuleJsonEditor ? t('pipeline.rulesBuilderSwitchToVisual') : t('pipeline.rulesBuilderSwitchToJson') }}
-                    </button>
+                    <div>
+                      <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
+                      <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <button
+                        type="button"
+                        class="text-xs text-indigo-600 hover:text-indigo-700"
+                        @click="setRuleEditorMode(!useRuleJsonEditor)"
+                      >
+                        {{ useRuleJsonEditor ? t('pipeline.rulesBuilderSwitchToVisual') : t('pipeline.rulesBuilderSwitchToJson') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="text-xs text-indigo-600 hover:text-indigo-700"
+                        @click="ruleVisualizationMode = 'tree'"
+                      >
+                        {{ t('pipeline.rulesVisualizationOpenTree') }}
+                      </button>
+                    </div>
                   </div>
-                  <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
                   <template v-if="!useRuleJsonEditor">
                     <ConditionBuilder
                       v-model="ruleConditionTree"
@@ -2343,6 +2336,25 @@ const newPattern = computed({
                     class="w-full text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
                     :placeholder="t('pipeline.rulesConditionTreePlaceholder')"
                   ></textarea>
+                </div>
+                <div v-else class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesVisualizationTreeTitle') }}</div>
+                    <button
+                      type="button"
+                      class="text-xs text-indigo-600 hover:text-indigo-700"
+                      @click="ruleVisualizationMode = 'builder'"
+                    >
+                      {{ t('pipeline.rulesVisualizationBackToBuilder') }}
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-gray-500">
+                    {{ t('pipeline.rulesVisualizationTreeHint') }}
+                  </p>
+                  <ConditionTreeViewer
+                    :condition-tree="ruleConditionTree"
+                    :category-fields="ruleBuilderCategoryFields"
+                  />
                 </div>
                 <textarea
                   v-model="ruleEffectConfigText"
