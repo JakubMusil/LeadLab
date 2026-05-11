@@ -142,7 +142,7 @@ describe('pipelineFlowVisualization', () => {
         requirements: [firstRequirement],
       },
       {
-        triggerType: 'field',
+        triggerType: 'record.field_changed',
         activeState: 'enabled',
         nodeType: 'rule',
         t,

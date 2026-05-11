@@ -1,3 +1,5 @@
+import { getTriggerTypeLabel } from '@/constants/triggerTypes'
+
 export type PipelineFlowNodeType = 'root' | 'rule' | 'scenario' | 'requirement'
 export type PipelineFlowEdgeType = 'contains' | 'activates_scenario' | 'next_step_on_met' | 'next_step_on_unmet'
 export type PipelineFlowActiveFilter = 'all' | 'enabled' | 'disabled'
@@ -111,10 +113,6 @@ function translate(key: string, t?: (key: string) => string): string {
   return t ? t(key) : key
 }
 
-function containsIgnoreCase(haystack: string, needle: string): boolean {
-  return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase())
-}
-
 function matchesActiveFilter(isActive: boolean, activeState: PipelineFlowActiveFilter = 'all'): boolean {
   if (activeState === 'enabled') return isActive
   if (activeState === 'disabled') return !isActive
@@ -164,6 +162,7 @@ function createRootNode(t?: (key: string) => string): PipelineFlowNode {
 }
 
 function buildRuleNode(rule: PipelineFlowRuleInput, t?: (key: string) => string): PipelineFlowNode {
+  const triggerLabel = getTriggerTypeLabel(rule.trigger_type, (key, params) => (t ? t(key) : key))
   return {
     id: `rule-${rule.id}`,
     sourceId: rule.id,
@@ -174,12 +173,13 @@ function buildRuleNode(rule: PipelineFlowRuleInput, t?: (key: string) => string)
     depth: 1,
     childIds: [],
     parentId: 'root',
-    badge: `${rule.trigger_type} · ${rule.effect}`,
+    badge: `${triggerLabel} · ${rule.effect}`,
     statusLabel: rule.is_active
       ? translate('pipeline.flowDiagramNodeActive', t)
       : translate('pipeline.flowDiagramNodeInactive', t),
     meta: {
-      trigger: rule.trigger_type,
+      trigger: triggerLabel,
+      triggerCode: rule.trigger_type,
       effect: rule.effect,
       severity: rule.severity,
       priority: rule.priority ?? null,
@@ -264,7 +264,7 @@ export function buildPipelineFlowModel(
 
   const filteredRules = input.rules
     .filter((rule) => matchesRuleScope(rule, options.categoryId, options.stageId))
-    .filter((rule) => !triggerFilter || containsIgnoreCase(rule.trigger_type, triggerFilter))
+    .filter((rule) => !triggerFilter || rule.trigger_type === triggerFilter)
     .filter((rule) => matchesActiveFilter(rule.is_active, options.activeState))
     .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100) || a.name.localeCompare(b.name))
 

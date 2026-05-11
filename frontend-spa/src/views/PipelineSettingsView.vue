@@ -20,6 +20,11 @@ import { useI18n } from '@/composables/useI18n'
 import { api } from '@/api'
 import { ConfirmDeleteModal } from '@/components/ui'
 import { RULE_TEMPLATE_PRESETS, type RuleTemplatePreset } from '@/constants/ruleTemplates'
+import {
+  RULE_FORM_TRIGGER_TYPE_OPTIONS,
+  TRIGGER_TYPE_OPTIONS,
+  getTriggerTypeLabel,
+} from '@/constants/triggerTypes'
 import { useCan } from '@/composables/useCan'
 import {
   createDefaultConditionTree,
@@ -136,6 +141,9 @@ const ruleLogsFilterResult = ref('')
 const ruleLogsFilterRecordId = ref('')
 const ruleLogsFilterRuleId = ref('')
 const showRuleTemplates = ref(false)
+const ruleFormTriggerTypeOptions = RULE_FORM_TRIGGER_TYPE_OPTIONS
+const ruleFilterTriggerTypeOptions = RULE_FORM_TRIGGER_TYPE_OPTIONS
+const ruleLogTriggerTypeOptions = TRIGGER_TYPE_OPTIONS
 
 // Stage scenarios
 const scenarioFilterStageId = ref('')
@@ -746,7 +754,7 @@ async function loadConditionRules() {
   await conditionRulesStore.fetchRules({
     categoryId: categoryIdForFiltering,
     stageId: ruleFilterStageId.value || undefined,
-    triggerType: ruleFilterTriggerType.value.trim() || undefined,
+    triggerType: ruleFilterTriggerType.value || undefined,
     isActive,
   })
 }
@@ -964,7 +972,9 @@ function resetRuleForm() {
     stage_id: '',
     source_stage_id: '',
     target_stage_id: '',
-    trigger_type: ruleFilterTriggerType.value.trim() || 'record.stage_change_requested',
+    trigger_type: ruleFilterTriggerTypeOptions.some((option) => option.value === ruleFilterTriggerType.value)
+      ? ruleFilterTriggerType.value
+      : 'record.stage_change_requested',
     effect: 'block',
     severity: 'error',
     activity_type: '',
@@ -1064,7 +1074,7 @@ function buildRulePayload(priority: number): ConditionRuleIn {
     stage_id: ruleForm.value.stage_id || null,
     source_stage_id: ruleForm.value.source_stage_id || null,
     target_stage_id: ruleForm.value.target_stage_id || null,
-    trigger_type: ruleForm.value.trigger_type.trim(),
+    trigger_type: ruleForm.value.trigger_type,
     condition_tree: conditionTree,
     effect: ruleForm.value.effect,
     severity: ruleForm.value.severity,
@@ -1187,7 +1197,7 @@ async function runRuleTestEvaluation() {
 
 async function loadRuleEvaluationLogs(page = 1) {
   const result = await ruleEvaluationLogsStore.fetchLogs({
-    triggerType: ruleLogsFilterTriggerType.value.trim() || undefined,
+    triggerType: ruleLogsFilterTriggerType.value || undefined,
     result: ruleLogsFilterResult.value.trim() || undefined,
     recordId: ruleLogsFilterRecordId.value.trim() || undefined,
     ruleId: ruleLogsFilterRuleId.value.trim() || undefined,
@@ -1197,6 +1207,10 @@ async function loadRuleEvaluationLogs(page = 1) {
   if (!result.ok) {
     toast.error(result.error ?? t('pipeline.ruleLogsLoadFailed'))
   }
+}
+
+function triggerTypeLabel(triggerType: string): string {
+  return getTriggerTypeLabel(triggerType, t)
 }
 
 function resetRuleEvaluationLogFilters() {
@@ -2247,12 +2261,19 @@ const newPattern = computed({
                   :placeholder="t('pipeline.rulesNamePlaceholder')"
                   class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
-                <input
+                <select
                   v-model="ruleForm.trigger_type"
-                  type="text"
-                  :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
                   class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
-                />
+                >
+                  <option value="">{{ t('pipeline.rulesTriggerSelect') }}</option>
+                  <option
+                    v-for="triggerOption in ruleFormTriggerTypeOptions"
+                    :key="triggerOption.value"
+                    :value="triggerOption.value"
+                  >
+                    {{ triggerTypeLabel(triggerOption.value) }}
+                  </option>
+                </select>
                 <input
                   v-model="ruleForm.description"
                   type="text"
@@ -2436,12 +2457,19 @@ const newPattern = computed({
                 <option v-for="stage in ruleFilterStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
               </select>
 
-              <input
+              <select
                 v-model="ruleFilterTriggerType"
-                type="text"
-                :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
                 class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
-              />
+              >
+                <option value="">{{ t('pipeline.rulesFilterTriggerAll') }}</option>
+                <option
+                  v-for="triggerOption in ruleFilterTriggerTypeOptions"
+                  :key="triggerOption.value"
+                  :value="triggerOption.value"
+                >
+                  {{ triggerTypeLabel(triggerOption.value) }}
+                </option>
+              </select>
 
               <select
                 v-model="ruleFilterEnabled"
@@ -2486,7 +2514,7 @@ const newPattern = computed({
                     {{ rule.description }}
                   </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
-                    {{ t('pipeline.rulesTrigger') }}: {{ rule.trigger_type }}
+                    {{ t('pipeline.rulesTrigger') }}: {{ triggerTypeLabel(rule.trigger_type) }}
                   </div>
                   <div class="text-xs text-gray-500 dark:text-gray-400">
                     {{ t('pipeline.rulesScope') }}: {{ rule.scope_type }}
@@ -2563,12 +2591,19 @@ const newPattern = computed({
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-              <input
+              <select
                 v-model="ruleLogsFilterTriggerType"
-                type="text"
-                :placeholder="t('pipeline.ruleLogsFilterTriggerPlaceholder')"
                 class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
-              />
+              >
+                <option value="">{{ t('pipeline.rulesFilterTriggerAll') }}</option>
+                <option
+                  v-for="triggerOption in ruleLogTriggerTypeOptions"
+                  :key="triggerOption.value"
+                  :value="triggerOption.value"
+                >
+                  {{ triggerTypeLabel(triggerOption.value) }}
+                </option>
+              </select>
               <input
                 v-model="ruleLogsFilterResult"
                 type="text"
@@ -2635,7 +2670,7 @@ const newPattern = computed({
                       class="border-t border-gray-100 text-gray-700 dark:border-gray-700 dark:text-gray-200"
                     >
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.evaluated_at }}</td>
-                      <td class="px-3 py-2 whitespace-nowrap">{{ log.trigger_type }}</td>
+                      <td class="px-3 py-2 whitespace-nowrap">{{ triggerTypeLabel(log.trigger_type) }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.result }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.record_id || '—' }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.rule_id || '—' }}</td>
@@ -2986,6 +3021,9 @@ const newPattern = computed({
             :error="pipelineFlowError"
             :initial-category-id="selectedCategoryId || ''"
             :initial-stage-id="scenarioFilterStageId"
+            :evaluation-outputs="testEvaluationResult?.outputs ?? []"
+            :evaluation-logs="ruleEvaluationLogs"
+            :tested-rule-id="testRuleId"
           />
 
           <!-- Category Access Grants -->
