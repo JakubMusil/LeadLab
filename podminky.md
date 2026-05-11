@@ -1161,12 +1161,12 @@ Návrh navazuje na existující automatizační architekturu (`AutomationRule`, 
 
 ### 14.7 Napojení na Streamline
 
-- [ ] Zobrazovat požadované Streamline aktivity v panelu požadavků.
-- [ ] Nabídnout rychlé vytvoření chybějící aktivity.
-- [ ] Otevřít správný Streamline tool podle požadavku.
-- [ ] Zobrazit, která aktivita požadavek splnila.
-- [ ] Zobrazit, která aktivita aktivovala scénář.
-- [ ] Podporovat tooly z backend registry bez frontend hardcodování.
+- [x] Zobrazovat požadované Streamline aktivity v panelu požadavků.
+- [x] Nabídnout rychlé vytvoření chybějící aktivity.
+- [x] Otevřít správný Streamline tool podle požadavku.
+- [x] Zobrazit, která aktivita požadavek splnila.
+- [x] Zobrazit, která aktivita aktivovala scénář.
+- [x] Podporovat tooly z backend registry bez frontend hardcodování.
 
 ### 14.8 Napojení na kategoriová pole
 
@@ -1344,6 +1344,20 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 06:28 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřenou frontend etapu 14.7 (napojení na Streamline).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza 14.7 + mapování integračních bodů v `RecordDetailView.vue`, `crm/api.py`, `crm/tests.py`) a následně proběhla ruční konceptuální validace návrhu.
+- Před úpravami proběhla baseline validace dostupných checků: frontend `check-locales` prochází; frontend `build-only` padá na pre-existing chybějícím nástroji `vite`; backend cílené testy nelze spustit kvůli chybějící závislosti `django` v sandboxu.
+- Backend implementace 14.7: v `crm/condition_rules.py` byl rozšířen condition context aktivit o `id`; v `crm/api.py` byl payload `/api/v1/crm/records/{id}/active-stage-requirements` doplněn o `scenario_activated_by_activity_id` a u požadavků o `satisfied_by_activity_id`, včetně deterministického dohledání odpovídající Streamline aktivity podle condition tree.
+- Backend testy rozšířeny v `crm/tests.py` (`ConditionRulesApiEndpointsTest`) o regresní kontroly nových polí v payloadu `active-stage-requirements` včetně scénáře, kde aktivita současně aktivuje scénář i splní požadavek.
+- Frontend implementace 14.7 v `frontend-spa/src/views/RecordDetailView.vue`: panel požadavků fáze nyní zobrazuje aktivitu, která aktivovala scénář, a aktivitu, která splnila požadavek; u nesplněných aktivitních požadavků přidáno „Rychle vytvořit aktivitu“ s otevřením správného Streamline toolu podle backend metadata (bez hardcodování toolů).
+- Frontend implementace 14.7 doplněna o refresh panelu požadavků po `@activity-added` ze `StreamlineCreateModal`, aby se splnění požadavků propsalo okamžitě.
+- Doplněny i18n klíče pro nový 14.7 UI flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Provedena post-change validace: frontend `check-locales` prochází; frontend `build-only` i backend cílené testy nadále blokují stejné pre-existing limity prostředí (`vite`, `django`).
+- Hotovo: etapa 14.7 je nyní kompletně dokončená a všechny checkboxy v této sekci jsou označené jako splněné.
+- Následuje: navázat další otevřenou frontend etapou 14.8 (napojení na kategoriová pole) ve stejném režimu delegace + ruční konceptuální/funkční validace.
 
 ### 2026-05-11 06:03 UTC
 

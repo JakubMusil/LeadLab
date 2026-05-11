@@ -5497,12 +5497,14 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
         payload = active_req_resp.json()
         self.assertEqual(payload["active_stage_scenario_id"], scenario_id)
         self.assertEqual(payload["active_stage_scenario_name"], "Scenario A")
+        self.assertIsNone(payload["scenario_activated_by_activity_id"])
         self.assertEqual(payload["recommended_next_stage_id"], str(self.stage_b.id))
         self.assertEqual(payload["recommended_next_stage_name"], self.stage_b.name)
         self.assertEqual(payload["active_stage_requirements"][0]["id"], requirement_id)
         self.assertIsNone(payload["active_stage_requirements"][0]["relevant_field_key"])
         self.assertEqual(payload["active_stage_requirements"][0]["relevant_activity_type"], "task")
         self.assertIsNone(payload["active_stage_requirements"][0]["relevant_tool_type"])
+        self.assertIsNone(payload["active_stage_requirements"][0]["satisfied_by_activity_id"])
         self.assertFalse(payload["active_stage_requirements"][0]["blocking"])
 
         requirement_delete_resp = self._delete(
@@ -5514,6 +5516,56 @@ class ConditionRulesApiEndpointsTest(CRMAPIFixtureMixin, TestCase):
             f"/api/v1/crm/categories/{self.category.id}/stages/{self.stage_a.id}/scenarios/{scenario_id}"
         )
         self.assertEqual(scenario_delete_resp.status_code, 204, scenario_delete_resp.content)
+
+    def test_active_requirements_payload_contains_activity_links(self):
+        scenario = StageScenario.objects.create(
+            firm=self.firm,
+            category=self.category,
+            stage=self.stage_a,
+            name="Activity scenario",
+            activation_condition={
+                "source_type": "activity",
+                "activity_type": ActivityType.CALL,
+                "operator": "exists",
+            },
+            priority=1,
+            is_active=True,
+            created_by=self.user,
+        )
+        requirement = StageRequirement.objects.create(
+            scenario=scenario,
+            name="Need call",
+            requirement_type=RequirementType.ACTIVITY,
+            condition={
+                "source_type": "activity",
+                "activity_type": ActivityType.CALL,
+                "operator": "exists",
+            },
+            blocking=True,
+            visible_to_user=True,
+            sort_order=0,
+            created_by=self.user,
+        )
+        activity = Activity.objects.create(
+            record=self.record,
+            type=ActivityType.CALL,
+            content_text="Called customer",
+            created_by=self.user,
+        )
+
+        response = self._get(f"/api/v1/crm/records/{self.record.id}/active-stage-requirements")
+        self.assertEqual(response.status_code, 200, response.content)
+        payload = response.json()
+
+        self.assertEqual(payload["active_stage_scenario_id"], str(scenario.id))
+        self.assertEqual(payload["scenario_activated_by_activity_id"], str(activity.id))
+        self.assertEqual(len(payload["active_stage_requirements"]), 1)
+        self.assertEqual(payload["active_stage_requirements"][0]["id"], str(requirement.id))
+        self.assertTrue(payload["active_stage_requirements"][0]["is_met"])
+        self.assertEqual(
+            payload["active_stage_requirements"][0]["satisfied_by_activity_id"],
+            str(activity.id),
+        )
 
     def test_condition_rule_test_evaluation_and_log_listing(self):
         rule = ConditionRule.objects.create(
