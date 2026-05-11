@@ -315,6 +315,20 @@ describe('PipelineFlowDiagram', () => {
     ])
   })
 
+  it('emits toggle-scenario-active from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioNode).toBeTruthy()
+    await scenarioNode!.trigger('click')
+
+    const toggleButton = wrapper.get('[data-testid="flow-node-action-toggle-scenario"]')
+    await toggleButton.trigger('click')
+
+    expect(wrapper.emitted('toggle-scenario-active')).toBeTruthy()
+    expect(wrapper.emitted('toggle-scenario-active')?.[0]).toEqual([{ scenarioId: 'scenario-1', nextActive: false }])
+  })
+
   it('emits open-requirement-editor from node detail quick action', async () => {
     const wrapper = mountDiagram()
 

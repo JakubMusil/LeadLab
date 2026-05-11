@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Szybkie akcje",
     "flowDiagramActionEnableRule": "Włącz regułę",
     "flowDiagramActionDisableRule": "Wyłącz regułę",
+    "flowDiagramActionEnableScenario": "Włącz scenariusz",
+    "flowDiagramActionDisableScenario": "Wyłącz scenariusz",
     "flowDiagramActionToggleRuleRootOperator": "Przełącz warunek główny AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Dodaj otaczającą grupę główną",
     "flowDiagramActionAddRuleRootCondition": "Dodaj warunek główny",

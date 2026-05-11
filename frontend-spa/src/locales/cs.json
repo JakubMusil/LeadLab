@@ -1425,6 +1425,8 @@
     "flowDiagramQuickActionsTitle": "Rychlé akce",
     "flowDiagramActionEnableRule": "Zapnout pravidlo",
     "flowDiagramActionDisableRule": "Vypnout pravidlo",
+    "flowDiagramActionEnableScenario": "Zapnout scénář",
+    "flowDiagramActionDisableScenario": "Vypnout scénář",
     "flowDiagramActionToggleRuleRootOperator": "Přepnout kořenovou podmínku AND/OR",
     "flowDiagramActionAddRuleRootGroup": "Přidat obalující kořenovou skupinu",
     "flowDiagramActionAddRuleRootCondition": "Přidat kořenovou podmínku",
