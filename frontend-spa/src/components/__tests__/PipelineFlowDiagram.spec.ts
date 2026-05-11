@@ -267,6 +267,20 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.emitted('add-rule-root-condition')?.[0]).toEqual([{ ruleId: 'rule-1' }])
   })
 
+  it('emits remove-rule-root-condition from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const removeRootConditionButton = wrapper.get('[data-testid="flow-node-action-remove-rule-root-condition"]')
+    await removeRootConditionButton.trigger('click')
+
+    expect(wrapper.emitted('remove-rule-root-condition')).toBeTruthy()
+    expect(wrapper.emitted('remove-rule-root-condition')?.[0]).toEqual([{ ruleId: 'rule-1' }])
+  })
+
   it('emits open-rule-editor from node detail quick action', async () => {
     const wrapper = mountDiagram()
 

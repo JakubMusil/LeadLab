@@ -1120,6 +1120,33 @@ async function handleFlowAddRuleRootCondition(payload: { ruleId: string }) {
   }
 }
 
+async function handleFlowRemoveRuleRootCondition(payload: { ruleId: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const normalizedTree = normalizeConditionTree(rule.condition_tree)
+  const rootGroupTree = ensureRootGroupTree(normalizedTree)
+  if (rootGroupTree.conditions.length === 0) {
+    toast.error(t('pipeline.flowDiagramActionRemoveRuleRootConditionUnavailable'))
+    return
+  }
+  const nextConditionTree = {
+    ...rootGroupTree,
+    conditions: rootGroupTree.conditions.slice(0, -1),
+  }
+  const result = await conditionRulesStore.updateRule(payload.ruleId, { condition_tree: nextConditionTree })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesUpdated'))
+  if (editingRuleId.value === rule.id) {
+    ruleConditionTree.value = nextConditionTree
+  }
+}
+
 async function handleFlowRuleDescriptionUpdate(payload: { ruleId: string; description: string }) {
   const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
   if (!rule) {
@@ -3338,6 +3365,7 @@ const newPattern = computed({
             @toggle-rule-root-operator="handleFlowRuleRootOperatorToggle"
             @add-rule-root-group="handleFlowAddRuleRootGroup"
             @add-rule-root-condition="handleFlowAddRuleRootCondition"
+            @remove-rule-root-condition="handleFlowRemoveRuleRootCondition"
             @open-rule-editor="handleFlowOpenRuleEditor"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
