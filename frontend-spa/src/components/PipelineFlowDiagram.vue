@@ -60,6 +60,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (event: 'toggle-rule-active', payload: { ruleId: string; nextActive: boolean }): void
   (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
+  (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
   (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
   (event: 'open-requirement-editor', payload: { requirementId: string }): void
 }>()
@@ -226,6 +227,7 @@ const graphCanvasStyle = computed(() => ({
 }))
 const selectedNodeId = ref<string | null>(null)
 const editingRuleDescription = ref('')
+const editingScenarioDescription = ref('')
 const editingScenarioPriority = ref<string | number>('')
 const selectedNode = computed<PipelineFlowNode | null>(() =>
   selectedNodeId.value ? nodeById.value[selectedNodeId.value] ?? null : null,
@@ -252,6 +254,7 @@ watch(displayedNodeIds, (visibleIds) => {
 
 function resetQuickActionEdits() {
   editingRuleDescription.value = ''
+  editingScenarioDescription.value = ''
   editingScenarioPriority.value = ''
 }
 
@@ -266,6 +269,7 @@ watch(selectedNode, (node) => {
     return
   }
   if (node.type === 'scenario') {
+    editingScenarioDescription.value = String(node.description || '')
     editingScenarioPriority.value = String(node.meta.priority ?? '')
     editingRuleDescription.value = ''
     return
@@ -301,6 +305,12 @@ const selectedScenarioPriorityValue = computed<number | null>(() => {
   const parsed = Number(raw)
   if (!Number.isInteger(parsed) || parsed < 0) return null
   return parsed
+})
+const selectedScenarioHasDescriptionChanges = computed(() => {
+  return (
+    (selectedNode.value?.type === 'scenario')
+    && editingScenarioDescription.value !== String(selectedNode.value?.description || '')
+  )
 })
 const selectedScenarioHasPriorityChanges = computed(() => {
   return (
@@ -341,6 +351,20 @@ function emitScenarioPriorityUpdate() {
     scenarioId: selectedNode.value.sourceId,
     priority,
   })
+}
+
+function emitScenarioDescriptionUpdate() {
+  if (selectedNode.value?.type !== 'scenario') return
+  if (!selectedScenarioHasDescriptionChanges.value) return
+  emit('update-scenario-description', {
+    scenarioId: selectedNode.value.sourceId,
+    description: editingScenarioDescription.value.trim(),
+  })
+}
+
+function resetScenarioDescriptionEdit() {
+  if (selectedNode.value?.type !== 'scenario') return
+  editingScenarioDescription.value = String(selectedNode.value.description || '')
 }
 
 function resetScenarioPriorityEdit() {
@@ -897,6 +921,36 @@ function toggleHelp() {
               </div>
             </div>
             <div v-else-if="selectedNode.type === 'scenario'" class="space-y-2">
+              <div class="space-y-1">
+                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('pipeline.flowDiagramActionScenarioDescription') }}
+                </label>
+                <input
+                  v-model="editingScenarioDescription"
+                  data-testid="flow-node-scenario-description"
+                  type="text"
+                  :class="quickActionInputClass"
+                  :placeholder="t('pipeline.stageScenariosDescriptionPlaceholder')"
+                />
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    :class="quickActionSecondaryButtonClass"
+                    @click="resetScenarioDescriptionEdit"
+                  >
+                    {{ t('pipeline.cancel') }}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="flow-node-action-save-scenario-description"
+                    :class="quickActionPrimaryButtonClass"
+                    :disabled="!selectedScenarioHasDescriptionChanges"
+                    @click="emitScenarioDescriptionUpdate"
+                  >
+                    {{ t('pipeline.stageScenariosUpdate') }}
+                  </button>
+                </div>
+              </div>
               <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">
                 {{ t('pipeline.flowDiagramActionScenarioPriority') }}
               </label>

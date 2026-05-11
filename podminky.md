@@ -1368,6 +1368,22 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-11 17:26 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na další praktický krok ve fázi 20.3.4 po dokončení původních bezpečných akcí.
+- Další krok byl maximalizovaně delegován subagentovi (návrh nejmenšího navazujícího scope) a výstup byl následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue`, `PipelineSettingsView.vue` a store vrstvou `stageScenarios`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4 (další řízená editace v grafu):
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce pro úpravu popisu scénáře (edit/reset/save) s novým emit eventem.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `update-scenario-description` napojený na `stageScenariosStore.updateScenario` a existující toast feedback.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `update-scenario-description`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionScenarioDescription`.
+- Hotovo: ve fázi 20.3.4 je nově dostupná další bezpečná řízená editace (popis scénáře) přímo z detailu uzlu diagramu.
+- Následuje: spustit post-change validaci, `parallel_validation`, zapracovat případné relevantní připomínky a dokončit finální commit/push + řádný PR.
+
 ### 2026-05-11 17:10 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno přesně na otevřený krok 20.3.4 (řízené editace v grafu).

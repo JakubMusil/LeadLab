@@ -1030,6 +1030,29 @@ async function handleFlowScenarioPriorityUpdate(payload: { scenarioId: string; p
   }
 }
 
+async function handleFlowScenarioDescriptionUpdate(payload: { scenarioId: string; description: string }) {
+  const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  const description = payload.description.trim()
+  const result = await stageScenariosStore.updateScenario(
+    scenario.category_id,
+    scenario.stage_id,
+    scenario.id,
+    { description },
+  )
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.stageScenariosUpdated'))
+  if (editingScenarioId.value === scenario.id) {
+    scenarioForm.value.description = description
+  }
+}
+
 function handleFlowOpenRequirementEditor(payload: { requirementId: string }) {
   const requirement = pipelineFlowRequirements.value.find((item) => item.id === payload.requirementId)
   if (!requirement) {
@@ -3126,6 +3149,7 @@ const newPattern = computed({
             :tested-rule-id="testRuleId"
             @toggle-rule-active="handleFlowRuleActiveToggle"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
+            @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
             @open-requirement-editor="handleFlowOpenRequirementEditor"
           />
