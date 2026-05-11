@@ -335,6 +335,10 @@ function requirementFulfillmentStatusClass(status: RequirementFulfillmentStatus 
   return ''
 }
 
+function displayableMetaEntries(node: PipelineFlowNode): Array<[string, string | number | boolean | null]> {
+  return Object.entries(node.meta).filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '')
+}
+
 function clampZoom(value: number): number {
   return Math.min(
     zoomMax,
@@ -619,8 +623,8 @@ function onViewportKeydown(event: KeyboardEvent) {
                     <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
                     <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
                     <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                      <div v-for="(value, key) in node.meta" :key="key">
-                        <template v-if="!String(key).startsWith('_') && value !== null && value !== ''">{{ key }}: {{ value }}</template>
+                      <div v-for="[key, value] in displayableMetaEntries(node)" :key="key">
+                        {{ key }}: {{ value }}
                       </div>
                     </div>
                   </div>

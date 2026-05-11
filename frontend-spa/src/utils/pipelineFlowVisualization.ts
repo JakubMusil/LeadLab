@@ -179,6 +179,7 @@ function buildRuleNode(rule: PipelineFlowRuleInput, t?: (key: string) => string)
       : translate('pipeline.flowDiagramNodeInactive', t),
     meta: {
       trigger: triggerLabel,
+      // Internal-only raw trigger code for logic (class styling/filtering); hidden in UI.
       _triggerCode: rule.trigger_type,
       effect: rule.effect,
       severity: rule.severity,
@@ -264,6 +265,7 @@ export function buildPipelineFlowModel(
 
   const filteredRules = input.rules
     .filter((rule) => matchesRuleScope(rule, options.categoryId, options.stageId))
+    // Exact match is intentional: trigger filter now comes from predefined dropdown options.
     .filter((rule) => !triggerFilter || rule.trigger_type === triggerFilter)
     .filter((rule) => matchesActiveFilter(rule.is_active, options.activeState))
     .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100) || a.name.localeCompare(b.name))

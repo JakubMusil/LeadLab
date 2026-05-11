@@ -1210,6 +1210,7 @@ async function loadRuleEvaluationLogs(page = 1) {
 }
 
 function triggerTypeLabel(triggerType: string): string {
+  // Keep a local wrapper so templates stay compact and do not repeat passing `t`.
   return getTriggerTypeLabel(triggerType, t)
 }
 
