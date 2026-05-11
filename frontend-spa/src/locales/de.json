@@ -1426,6 +1426,7 @@
     "flowDiagramActionEnableRule": "Regel aktivieren",
     "flowDiagramActionDisableRule": "Regel deaktivieren",
     "flowDiagramActionToggleRuleRootOperator": "AND/OR der Wurzelbedingung umschalten",
+    "flowDiagramActionAddRuleRootGroup": "Umhüllende Wurzelgruppe hinzufügen",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Wurzeloperator kann nicht umgeschaltet werden: Diese Regel hat keinen Gruppen-Bedingungsbaum.",
     "flowDiagramActionRuleDescription": "Regelbeschreibung",
     "flowDiagramActionScenarioDescription": "Szenariobeschreibung",

@@ -1021,6 +1021,46 @@ async function handleFlowRuleRootOperatorToggle(payload: { ruleId: string }) {
   }
 }
 
+interface ConditionTreeGroupNode {
+  type: 'group'
+  op: 'and' | 'or'
+}
+
+function isConditionTreeGroupNode(tree: Record<string, unknown>): tree is ConditionTreeGroupNode {
+  return tree.type === 'group' && (tree.op === 'and' || tree.op === 'or')
+}
+
+function getRuleRootGroupWrapOperator(tree: Record<string, unknown>): 'and' | 'or' {
+  // Wrapping a non-group node creates a single-child group, where AND/OR has equivalent behavior.
+  // In that case default to AND to keep the generated tree simple and predictable.
+  if (!isConditionTreeGroupNode(tree)) return 'and'
+  return tree.op
+}
+
+async function handleFlowAddRuleRootGroup(payload: { ruleId: string }) {
+  const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
+  if (!rule) {
+    toast.error(t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  const normalizedTree = normalizeConditionTree(rule.condition_tree)
+  const nextConditionTree = {
+    type: 'group',
+    op: getRuleRootGroupWrapOperator(normalizedTree),
+    conditions: [normalizedTree],
+    negated: false,
+  }
+  const result = await conditionRulesStore.updateRule(payload.ruleId, { condition_tree: nextConditionTree })
+  if (!result.ok) {
+    toast.error(result.error ?? t('pipeline.rulesUpdateFailed'))
+    return
+  }
+  toast.success(t('pipeline.rulesUpdated'))
+  if (editingRuleId.value === rule.id) {
+    ruleConditionTree.value = nextConditionTree
+  }
+}
+
 async function handleFlowRuleDescriptionUpdate(payload: { ruleId: string; description: string }) {
   const rule = conditionRules.value.find((item) => item.id === payload.ruleId)
   if (!rule) {
@@ -3176,6 +3216,7 @@ const newPattern = computed({
             :tested-rule-id="testRuleId"
             @toggle-rule-active="handleFlowRuleActiveToggle"
             @toggle-rule-root-operator="handleFlowRuleRootOperatorToggle"
+            @add-rule-root-group="handleFlowAddRuleRootGroup"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
