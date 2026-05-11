@@ -1263,7 +1263,7 @@ Výsledek:
 - [x] Přidat vnořené skupiny.
 - [x] Přidat preview čitelné věty.
 - [x] Přidat testovací vyhodnocení na konkrétním záznamu.
-- [ ] Přidat log vyhodnocení do administrace.
+- [x] Přidat log vyhodnocení do administrace.
 - [ ] Přidat šablony pravidel.
 
 Výsledek:
@@ -1344,6 +1344,18 @@ Nejdůležitější je navrhnout datový model dostatečně obecně:
 Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychle, ale zároveň neuzavřela cestu k pokročilému větvení a řetězení.
 
 ## 19. Průběžný pracovní postup
+
+### 2026-05-11 07:38 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno na první otevřený bod etapy 6 (`log vyhodnocení do administrace`).
+- Další krok byl maximalizovaně delegován na podagenta (gap analýza realizovatelného scope + mapování backend/frontend integračních bodů) a následně proběhla ruční konceptuální validace návrhu.
+- Před úpravami proběhla baseline validace frontendu: `npm run check-locales`, `npm run build-only` a referenční unit test `src/stores/__tests__/stageScenarios.spec.ts` procházejí.
+- Frontend implementace etapy 6 v `frontend-spa/src/stores/ruleEvaluationLogs.ts`: přidán nový store pro endpoint `/api/v1/crm/rule-evaluation-logs` s filtrováním (`trigger_type`, `result`, `record_id`, `rule_id`) a stránkováním (`page`, `page_size`, `hasMore`).
+- Frontend implementace etapy 6 v `frontend-spa/src/views/PipelineSettingsView.vue`: doplněna administrativní sekce logu vyhodnocení pravidel (filtry, loading/error/empty stavy, tabulka záznamů a stránkování další/předchozí).
+- Frontend testy etapy 6 v `frontend-spa/src/stores/__tests__/ruleEvaluationLogs.spec.ts`: pokryto načtení logu s filtry, chybový stav i reset store.
+- Doplněny i18n klíče pro nový UI flow ve `frontend-spa/src/locales/{cs,en,de,pl}.json`.
+- Hotovo: bod etapy 6 „Přidat log vyhodnocení do administrace“ je dokončený a označený jako splněný.
+- Následuje: provést post-change validaci (`check-locales`, `build-only`, cílené unit testy), navázat bezpečnostní/review validací a pokračovat dalším otevřeným bodem etapy 6 (`šablony pravidel`).
 
 ### 2026-05-11 07:21 UTC
 
