@@ -2113,7 +2113,7 @@ def _build_record_automation_context(record: PipelineRecord, firm) -> dict:
 
     owner_email = (
         Membership.objects
-        .filter(firm=firm, role="owner")
+        .filter(firm=firm, roles__code="owner")
         .select_related("user")
         .values_list("user__email", flat=True)
         .first()
@@ -2188,7 +2188,7 @@ def _build_task_automation_context(task, firm) -> dict:
 
     owner_email = (
         Membership.objects
-        .filter(firm=firm, role="owner")
+        .filter(firm=firm, roles__code="owner")
         .select_related("user")
         .values_list("user__email", flat=True)
         .first()
