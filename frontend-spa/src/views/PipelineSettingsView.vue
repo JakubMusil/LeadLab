@@ -2287,10 +2287,7 @@ const newPattern = computed({
                 </label>
                 <div v-if="ruleVisualizationMode === 'builder'" class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
-                      <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
-                    </div>
+                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
                     <div class="flex items-center gap-3">
                       <button
                         type="button"
@@ -2308,6 +2305,7 @@ const newPattern = computed({
                       </button>
                     </div>
                   </div>
+                  <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
                   <template v-if="!useRuleJsonEditor">
                     <ConditionBuilder
                       v-model="ruleConditionTree"

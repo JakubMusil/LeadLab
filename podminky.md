@@ -1373,6 +1373,7 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Prostudován aktuální stav `podminky.md` a potvrzen navazující implementační scope: začít etapou 7A (read-only strom condition tree + napojení do pipeline nastavení).
 - Další krok byl maximalizovaně delegován podagentovi (mapování integračních bodů, minimální bezpečný rozsah, testovací matice) a následně ručně zvalidován přímo nad `frontend-spa/src/views/PipelineSettingsView.vue` a existujícími testy/lokalizacemi.
 - Před úpravami proběhla baseline validace dostupných frontend checků: `npm run check-locales` prochází, `npm run build-only` v sandboxu padá na chybějícím `vite` (`not found`) ještě před scope změny.
+- Následně po instalaci frontend závislostí (`npm ci`) byla validační sada znovu spuštěna a `check-locales`, `build-only` i cílené `test:unit` pro nový scope procházejí.
 - Funkční implementace etapy 7A:
   - přidána utility vrstva `frontend-spa/src/utils/conditionTreeVisualization.ts` pro normalizaci `condition_tree` a sestavení read-only vizualizačního modelu (uzly/hrany),
   - přidán nový read-only komponent `frontend-spa/src/components/ConditionTreeViewer.vue` se stromovým renderem a sbalením/rozbalením skupin,

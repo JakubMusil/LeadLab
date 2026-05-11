@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 const collapsedNodeIds = ref<Record<string, boolean>>({})
+const TREE_NODE_INDENT_PX = 14
 
 const categoryFieldLabelByKey = computed<Record<string, string>>(() =>
   props.categoryFields.reduce<Record<string, string>>((acc, field) => {
@@ -48,7 +49,8 @@ const visualizationModel = computed(() => {
       categoryFieldLabels: categoryFieldLabelByKey.value,
       t,
     })
-  } catch {
+  } catch (error) {
+    console.warn('[ConditionTreeViewer] Failed to build visualization model', error)
     visualizationError.value = t('pipeline.rulesTreeViewerParseFailed')
     return {
       rootId: '',
@@ -108,9 +110,16 @@ const visibleNodes = computed<ConditionTreeVisualizationNode[]>(() => {
     <div v-else-if="!hasRenderableTree" class="text-xs text-gray-500">
       {{ t('pipeline.rulesTreeViewerEmpty') }}
     </div>
-    <ul v-else class="space-y-1">
-      <li v-for="node in visibleNodes" :key="node.id" class="tree-node">
-        <div class="flex items-start gap-1" :style="{ paddingLeft: `${node.depth * 14}px` }">
+    <ul v-else class="space-y-1" role="tree" :aria-label="t('pipeline.rulesVisualizationTreeTitle')">
+      <li
+        v-for="node in visibleNodes"
+        :key="node.id"
+        class="tree-node"
+        role="treeitem"
+        :aria-level="node.depth + 1"
+        :aria-expanded="node.childIds.length > 0 ? !isCollapsed(node.id) : undefined"
+      >
+        <div class="flex items-start gap-1" :style="{ paddingLeft: `${node.depth * TREE_NODE_INDENT_PX}px` }">
           <button
             v-if="node.childIds.length > 0"
             type="button"

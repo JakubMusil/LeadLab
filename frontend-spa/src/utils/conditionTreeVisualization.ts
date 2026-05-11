@@ -82,7 +82,7 @@ export function normalizeConditionTree(tree: Record<string, unknown>): Record<st
   return createDefaultConditionTree()
 }
 
-function sourcePreviewLabel(sourceType: string, t?: (key: string) => string): string {
+function getSourceTypeLabel(sourceType: string, t?: (key: string) => string): string {
   if (sourceType === 'standard_field') return translate('pipeline.rulesBuilderSourceStandardField', t)
   if (sourceType === 'category_field') return translate('pipeline.rulesBuilderSourceCategoryField', t)
   if (sourceType === 'streamline_activity') return translate('pipeline.rulesBuilderSourceStreamlineActivity', t)
@@ -98,10 +98,14 @@ function buildTimeWindowLabel(
   if (!rawTimeWindow || typeof rawTimeWindow !== 'object' || Array.isArray(rawTimeWindow)) return ''
   const timeWindow = rawTimeWindow as Record<string, unknown>
   if (timeWindow.last_hours !== undefined) {
-    return ` (${translate('pipeline.rulesBuilderLastHours', t)}: ${String(timeWindow.last_hours)})`
+    const value = Number(timeWindow.last_hours)
+    if (!Number.isFinite(value) || value <= 0) return ''
+    return ` (${translate('pipeline.rulesBuilderLastHours', t)}: ${String(value)})`
   }
   if (timeWindow.last_days !== undefined) {
-    return ` (${translate('pipeline.rulesBuilderLastDays', t)}: ${String(timeWindow.last_days)})`
+    const value = Number(timeWindow.last_days)
+    if (!Number.isFinite(value) || value <= 0) return ''
+    return ` (${translate('pipeline.rulesBuilderLastDays', t)}: ${String(value)})`
   }
   return ''
 }
@@ -139,7 +143,7 @@ export function buildConditionTreeNodeLabel(
 
   const valueText = value === undefined || value === null || value === '' ? '' : ` "${String(value)}"`
   const timeWindowText = buildTimeWindowLabel(tree.time_window, t)
-  const preview = `${sourcePreviewLabel(sourceType, t)} → ${target} ${operator}${valueText}${timeWindowText}`.trim()
+  const preview = `${getSourceTypeLabel(sourceType, t)} → ${target} ${operator}${valueText}${timeWindowText}`.trim()
   return tree.negated ? `${translate('pipeline.rulesBuilderNegatedPrefix', t)} ${preview}` : preview
 }
 

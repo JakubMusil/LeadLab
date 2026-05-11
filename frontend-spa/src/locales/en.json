@@ -1306,7 +1306,7 @@
     "rulesVisualizationModeTree": "Tree",
     "rulesVisualizationOpenTree": "Open tree view",
     "rulesVisualizationTreeTitle": "Condition tree visualization",
-    "rulesVisualizationTreeHint": "Read-only tree map for the current condition_tree. Use the builder/JSON mode for edits.",
+    "rulesVisualizationTreeHint": "Read-only tree visualization for the current condition_tree. Use the builder/JSON mode for edits.",
     "rulesVisualizationBackToBuilder": "Back to builder",
     "rulesBuilderSwitchToVisual": "Switch to visual builder",
     "rulesBuilderSwitchToJson": "Switch to JSON",
