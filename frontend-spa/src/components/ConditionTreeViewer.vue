@@ -100,14 +100,14 @@ const visibleNodes = computed<ConditionTreeVisualizationNode[]>(() => {
 </script>
 
 <template>
-  <div class="rounded border border-gray-200 bg-white p-2">
-    <div v-if="loading" class="text-xs text-gray-500">
+  <div class="rounded border border-gray-200 bg-white p-2 dark:border-gray-600 dark:bg-gray-800">
+    <div v-if="loading" class="text-xs text-gray-500 dark:text-gray-400">
       {{ t('pipeline.rulesTreeViewerLoading') }}
     </div>
-    <div v-else-if="resolvedError" class="text-xs text-red-600">
+    <div v-else-if="resolvedError" class="text-xs text-red-600 dark:text-red-400">
       {{ resolvedError }}
     </div>
-    <div v-else-if="!hasRenderableTree" class="text-xs text-gray-500">
+    <div v-else-if="!hasRenderableTree" class="text-xs text-gray-500 dark:text-gray-400">
       {{ t('pipeline.rulesTreeViewerEmpty') }}
     </div>
     <ul v-else class="space-y-1" role="tree" :aria-label="t('pipeline.rulesVisualizationTreeTitle')">
@@ -123,7 +123,7 @@ const visibleNodes = computed<ConditionTreeVisualizationNode[]>(() => {
           <button
             v-if="node.childIds.length > 0"
             type="button"
-            class="tree-collapse-btn mt-0.5 h-4 w-4 rounded border border-gray-300 text-[10px] leading-none text-gray-700 hover:bg-gray-100"
+            class="tree-collapse-btn mt-0.5 h-4 w-4 rounded border border-gray-300 text-[10px] leading-none text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             :aria-label="isCollapsed(node.id) ? t('pipeline.rulesTreeViewerExpandNode') : t('pipeline.rulesTreeViewerCollapseNode')"
             :aria-expanded="!isCollapsed(node.id)"
             :title="isCollapsed(node.id) ? t('pipeline.rulesTreeViewerExpandNode') : t('pipeline.rulesTreeViewerCollapseNode')"
@@ -132,17 +132,17 @@ const visibleNodes = computed<ConditionTreeVisualizationNode[]>(() => {
             {{ isCollapsed(node.id) ? '+' : '−' }}
           </button>
           <span v-else class="inline-block h-4 w-4"></span>
-          <div class="min-w-0 rounded border border-gray-200 px-2 py-1">
+          <div class="min-w-0 rounded border border-gray-200 px-2 py-1 dark:border-gray-600 dark:bg-gray-800/50">
             <div class="flex items-center gap-1.5">
               <span
                 class="rounded px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                :class="node.type === 'group' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'"
+                :class="node.type === 'group' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'"
               >
                 {{ node.type === 'group' ? t('pipeline.rulesBuilderNodeTypeGroup') : t('pipeline.rulesBuilderNodeTypeCondition') }}
               </span>
-              <span v-if="node.negated" class="text-[10px] text-red-600">{{ t('pipeline.rulesBuilderNegatedPrefix') }}</span>
+              <span v-if="node.negated" class="text-[10px] text-red-600 dark:text-red-400">{{ t('pipeline.rulesBuilderNegatedPrefix') }}</span>
             </div>
-            <div class="mt-0.5 text-xs text-gray-700 break-words">
+            <div class="mt-0.5 text-xs text-gray-700 break-words dark:text-gray-200">
               {{ node.label }}
             </div>
           </div>

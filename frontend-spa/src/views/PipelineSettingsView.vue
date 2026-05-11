@@ -2180,7 +2180,7 @@ const newPattern = computed({
           <!-- Condition rules -->
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.rulesTitle') }}</div>
+              <div class="text-sm font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.rulesTitle') }}</div>
               <div class="flex items-center gap-2">
                 <button
                   class="px-3 py-1.5 text-xs border border-indigo-200 text-indigo-700 rounded hover:bg-indigo-50"
@@ -2195,17 +2195,17 @@ const newPattern = computed({
               </div>
             </div>
 
-            <div v-if="showRuleTemplates" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
-              <div class="text-xs font-semibold text-indigo-700">{{ t('pipeline.rulesTemplatesTitle') }}</div>
-              <div class="text-xs text-indigo-600">{{ t('pipeline.rulesTemplatesHint') }}</div>
+            <div v-if="showRuleTemplates" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 dark:border-indigo-800/60 dark:bg-indigo-950/30 space-y-2">
+              <div class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{{ t('pipeline.rulesTemplatesTitle') }}</div>
+              <div class="text-xs text-indigo-600 dark:text-indigo-300">{{ t('pipeline.rulesTemplatesHint') }}</div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div
                   v-for="template in RULE_TEMPLATE_PRESETS"
                   :key="template.id"
-                  class="p-2 border border-indigo-100 rounded bg-white"
+                  class="p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800"
                 >
-                  <div class="text-xs font-semibold text-gray-800">{{ t(template.nameKey) }}</div>
-                  <div class="text-xs text-gray-500 mt-0.5">{{ t(template.descriptionKey) }}</div>
+                  <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">{{ t(template.nameKey) }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ t(template.descriptionKey) }}</div>
                   <button
                     class="mt-2 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
                     @click="applyRuleTemplate(template.id)"
@@ -2216,24 +2216,24 @@ const newPattern = computed({
               </div>
             </div>
 
-            <div v-if="showRuleForm" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
+            <div v-if="showRuleForm" class="mb-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 dark:border-indigo-800/60 dark:bg-indigo-950/30 space-y-2">
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="text-xs font-semibold text-indigo-700">
+                <div class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                   {{ editingRuleId ? t('pipeline.rulesEditTitle') : t('pipeline.rulesCreateTitle') }}
                 </div>
-                <div class="inline-flex rounded border border-indigo-200 overflow-hidden">
+                <div class="inline-flex rounded border border-indigo-200 overflow-hidden dark:border-indigo-700">
                   <button
                     type="button"
                     class="px-2 py-1 text-xs"
-                    :class="ruleVisualizationMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100'"
+                    :class="ruleVisualizationMode === 'builder' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100 dark:bg-gray-700 dark:text-indigo-200 dark:hover:bg-gray-600'"
                     @click="ruleVisualizationMode = 'builder'"
                   >
                     {{ t('pipeline.rulesVisualizationModeBuilder') }}
                   </button>
                   <button
                     type="button"
-                    class="px-2 py-1 text-xs border-l border-indigo-200"
-                    :class="ruleVisualizationMode === 'tree' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100'"
+                    class="px-2 py-1 text-xs border-l border-indigo-200 dark:border-indigo-700"
+                    :class="ruleVisualizationMode === 'tree' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 hover:bg-indigo-100 dark:bg-gray-700 dark:text-indigo-200 dark:hover:bg-gray-600'"
                     @click="ruleVisualizationMode = 'tree'"
                   >
                     {{ t('pipeline.rulesVisualizationModeTree') }}
@@ -2245,23 +2245,23 @@ const newPattern = computed({
                   v-model="ruleForm.name"
                   type="text"
                   :placeholder="t('pipeline.rulesNamePlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <input
                   v-model="ruleForm.trigger_type"
                   type="text"
                   :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <input
                   v-model="ruleForm.description"
                   type="text"
                   :placeholder="t('pipeline.rulesDescriptionPlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 md:col-span-2"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500 md:col-span-2"
                 />
                 <select
                   v-model="ruleForm.scope_type"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="firm">{{ t('pipeline.rulesScopeFirm') }}</option>
                   <option value="category">{{ t('pipeline.rulesScopeCategory') }}</option>
@@ -2272,39 +2272,39 @@ const newPattern = computed({
                   v-model="ruleForm.priority"
                   type="number"
                   min="0"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <select
                   v-model="ruleForm.category_id"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="">{{ t('pipeline.allCategories') }}</option>
                   <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
                 <select
                   v-model="ruleForm.stage_id"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
                   <option v-for="stage in ruleFormStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
                 </select>
                 <select
                   v-model="ruleForm.source_stage_id"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="">{{ t('pipeline.rulesSourceStage') }}</option>
                   <option v-for="stage in ruleFormStages" :key="`source-${stage.id}`" :value="stage.id">{{ stage.name }}</option>
                 </select>
                 <select
                   v-model="ruleForm.target_stage_id"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="">{{ t('pipeline.rulesTargetStage') }}</option>
                   <option v-for="stage in ruleFormStages" :key="`target-${stage.id}`" :value="stage.id">{{ stage.name }}</option>
                 </select>
                 <select
                   v-model="ruleForm.effect"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="block">{{ t('pipeline.rulesEffectBlock') }}</option>
                   <option value="warning">{{ t('pipeline.rulesEffectWarning') }}</option>
@@ -2313,7 +2313,7 @@ const newPattern = computed({
                 </select>
                 <select
                   v-model="ruleForm.severity"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="error">{{ t('pipeline.rulesSeverityError') }}</option>
                   <option value="warning">{{ t('pipeline.rulesSeverityWarning') }}</option>
@@ -2323,33 +2323,33 @@ const newPattern = computed({
                   v-model="ruleForm.activity_type"
                   type="text"
                   :placeholder="t('pipeline.rulesActivityTypePlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 md:col-span-2"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500 md:col-span-2"
                 />
-                <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
                   <input v-model="ruleForm.is_active" type="checkbox" class="rounded" />
                   {{ t('pipeline.rulesStartEnabled') }}
                 </label>
-                <div v-if="ruleVisualizationMode === 'builder'" class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                <div v-if="ruleVisualizationMode === 'builder'" class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800 space-y-2">
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesBuilderTitle') }}</div>
+                    <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.rulesBuilderTitle') }}</div>
                     <div class="flex items-center gap-3">
                       <button
                         type="button"
-                        class="text-xs text-indigo-600 hover:text-indigo-700"
+                        class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200"
                         @click="setRuleEditorMode(!useRuleJsonEditor)"
                       >
                         {{ useRuleJsonEditor ? t('pipeline.rulesBuilderSwitchToVisual') : t('pipeline.rulesBuilderSwitchToJson') }}
                       </button>
                       <button
                         type="button"
-                        class="text-xs text-indigo-600 hover:text-indigo-700"
+                        class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200"
                         @click="ruleVisualizationMode = 'tree'"
                       >
                         {{ t('pipeline.rulesVisualizationOpenTree') }}
                       </button>
                     </div>
                   </div>
-                  <p class="text-[11px] text-gray-500">{{ t('pipeline.rulesBuilderHint') }}</p>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ t('pipeline.rulesBuilderHint') }}</p>
                   <template v-if="!useRuleJsonEditor">
                     <ConditionBuilder
                       v-model="ruleConditionTree"
@@ -2357,7 +2357,7 @@ const newPattern = computed({
                       :disabled="savingRule"
                     />
                     <div class="text-[11px] text-gray-500 break-words">
-                      <span class="font-semibold text-gray-600">{{ t('pipeline.rulesBuilderPreviewLabel') }}:</span>
+                      <span class="font-semibold text-gray-600 dark:text-gray-300">{{ t('pipeline.rulesBuilderPreviewLabel') }}:</span>
                       {{ ruleConditionTreePreview }}
                     </div>
                     <ul
@@ -2375,22 +2375,22 @@ const newPattern = computed({
                     v-else
                     v-model="ruleConditionTreeText"
                     rows="6"
-                    class="w-full text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                    class="w-full text-xs font-mono text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                     :placeholder="t('pipeline.rulesConditionTreePlaceholder')"
                   ></textarea>
                 </div>
-                <div v-else class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
+                <div v-else class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800 space-y-2">
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesVisualizationTreeTitle') }}</div>
+                    <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.rulesVisualizationTreeTitle') }}</div>
                     <button
                       type="button"
-                      class="text-xs text-indigo-600 hover:text-indigo-700"
+                      class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200"
                       @click="ruleVisualizationMode = 'builder'"
                     >
                       {{ t('pipeline.rulesVisualizationBackToBuilder') }}
                     </button>
                   </div>
-                  <p class="text-[11px] text-gray-500">
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400">
                     {{ t('pipeline.rulesVisualizationTreeHint') }}
                   </p>
                   <ConditionTreeViewer
@@ -2401,7 +2401,7 @@ const newPattern = computed({
                 <textarea
                   v-model="ruleEffectConfigText"
                   rows="3"
-                  class="md:col-span-2 text-xs font-mono border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="md:col-span-2 text-xs font-mono text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                   :placeholder="t('pipeline.rulesEffectConfigPlaceholder')"
                 ></textarea>
               </div>
@@ -2412,7 +2412,7 @@ const newPattern = computed({
                   @click="submitRuleForm"
                 >{{ editingRuleId ? t('pipeline.rulesUpdate') : t('pipeline.rulesCreate') }}</button>
                 <button
-                  class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100"
                   @click="resetRuleForm"
                 >{{ t('pipeline.cancel') }}</button>
               </div>
@@ -2421,7 +2421,7 @@ const newPattern = computed({
             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
               <select
                 v-model="ruleFilterCategoryId"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 :disabled="Boolean(selectedCategoryId)"
               >
                 <option value="">{{ t('pipeline.allCategories') }}</option>
@@ -2430,7 +2430,7 @@ const newPattern = computed({
 
               <select
                 v-model="ruleFilterStageId"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               >
                 <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
                 <option v-for="stage in ruleFilterStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
@@ -2440,12 +2440,12 @@ const newPattern = computed({
                 v-model="ruleFilterTriggerType"
                 type="text"
                 :placeholder="t('pipeline.rulesFilterTriggerPlaceholder')"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               />
 
               <select
                 v-model="ruleFilterEnabled"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               >
                 <option value="all">{{ t('pipeline.rulesFilterStateAll') }}</option>
                 <option value="enabled">{{ t('pipeline.rulesFilterStateEnabled') }}</option>
@@ -2460,40 +2460,40 @@ const newPattern = computed({
                 @click="loadConditionRules"
               >{{ t('pipeline.rulesApplyFilters') }}</button>
               <button
-                class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100"
                 @click="resetRuleFilters"
               >{{ t('pipeline.rulesResetFilters') }}</button>
             </div>
 
-            <div v-if="conditionRulesLoading" class="text-xs text-gray-400 py-2">
+            <div v-if="conditionRulesLoading" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.rulesLoading') }}
             </div>
-            <div v-else-if="conditionRulesError" class="text-xs text-red-500 py-2">
+            <div v-else-if="conditionRulesError" class="text-xs text-red-500 dark:text-red-400 py-2">
               {{ conditionRulesError }}
             </div>
-            <div v-else-if="conditionRules.length === 0" class="text-xs text-gray-400 py-2">
+            <div v-else-if="conditionRules.length === 0" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.rulesEmpty') }}
             </div>
             <div v-else class="space-y-2">
               <div
                 v-for="rule in conditionRules"
                 :key="rule.id"
-                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white"
+                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white dark:border-gray-700 dark:bg-gray-800"
               >
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-gray-800 truncate">{{ rule.name }}</div>
-                  <div v-if="rule.description" class="text-xs text-gray-500 mt-0.5 break-words">
+                  <div class="text-sm font-medium text-gray-800 truncate dark:text-gray-100">{{ rule.name }}</div>
+                  <div v-if="rule.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
                     {{ rule.description }}
                   </div>
-                  <div class="text-xs text-gray-500 mt-0.5 break-words">
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
                     {{ t('pipeline.rulesTrigger') }}: {{ rule.trigger_type }}
                   </div>
-                  <div class="text-xs text-gray-500">
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
                     {{ t('pipeline.rulesScope') }}: {{ rule.scope_type }}
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1.5">
-                  <label class="inline-flex items-center gap-2 text-xs text-gray-600 pt-0.5">
+                  <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 pt-0.5">
                     <input
                       :checked="rule.is_active"
                       type="checkbox"
@@ -2504,18 +2504,18 @@ const newPattern = computed({
                     <span>{{ rule.is_active ? t('pipeline.rulesStateEnabled') : t('pipeline.rulesStateDisabled') }}</span>
                   </label>
                   <div class="flex flex-wrap justify-end gap-1">
-                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openEditRuleForm(rule)">
+                    <button class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200" @click="openEditRuleForm(rule)">
                       {{ t('pipeline.rulesEdit') }}
                     </button>
-                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="copyRule(rule)">
+                    <button class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200" @click="copyRule(rule)">
                       {{ t('pipeline.rulesCopy') }}
                     </button>
-                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openRuleTest(rule)">
+                    <button class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200" @click="openRuleTest(rule)">
                       {{ t('pipeline.rulesTest') }}
                     </button>
                     <button
                       v-if="rule.is_active"
-                      class="text-xs text-red-600 hover:text-red-700"
+                      class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                       @click="requestDeactivateRule(rule)"
                     >
                       {{ t('pipeline.rulesDeactivate') }}
@@ -2525,14 +2525,14 @@ const newPattern = computed({
               </div>
             </div>
 
-            <div v-if="testRuleId" class="mt-3 p-3 border border-gray-100 rounded-lg bg-gray-50 space-y-2">
-              <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.rulesTestTitle') }}</div>
+            <div v-if="testRuleId" class="mt-3 p-3 border border-gray-100 rounded-lg bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 space-y-2">
+              <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.rulesTestTitle') }}</div>
               <div class="flex flex-col md:flex-row gap-2">
                 <input
                   v-model="testRecordId"
                   type="text"
                   :placeholder="t('pipeline.rulesTestRecordPlaceholder')"
-                  class="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="flex-1 text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <button
                   class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
@@ -2540,11 +2540,11 @@ const newPattern = computed({
                   @click="runRuleTestEvaluation"
                 >{{ t('pipeline.rulesTestRun') }}</button>
                 <button
-                  class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100"
                   @click="closeRuleTest"
                 >{{ t('pipeline.cancel') }}</button>
               </div>
-              <div v-if="testEvaluationResult" class="text-xs text-gray-600">
+              <div v-if="testEvaluationResult" class="text-xs text-gray-600 dark:text-gray-300">
                 <div>
                   {{ t('pipeline.rulesTestMatched') }}:
                   <span class="font-semibold">{{ testEvaluationResult.matched ? t('pipeline.rulesTestMatchedYes') : t('pipeline.rulesTestMatchedNo') }}</span>
@@ -2559,7 +2559,7 @@ const newPattern = computed({
           <!-- Rule evaluation logs -->
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.ruleLogsTitle') }}</div>
+              <div class="text-sm font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.ruleLogsTitle') }}</div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -2567,25 +2567,25 @@ const newPattern = computed({
                 v-model="ruleLogsFilterTriggerType"
                 type="text"
                 :placeholder="t('pipeline.ruleLogsFilterTriggerPlaceholder')"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               />
               <input
                 v-model="ruleLogsFilterResult"
                 type="text"
                 :placeholder="t('pipeline.ruleLogsFilterResultPlaceholder')"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               />
               <input
                 v-model="ruleLogsFilterRecordId"
                 type="text"
                 :placeholder="t('pipeline.ruleLogsFilterRecordPlaceholder')"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               />
               <input
                 v-model="ruleLogsFilterRuleId"
                 type="text"
                 :placeholder="t('pipeline.ruleLogsFilterRulePlaceholder')"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               />
             </div>
 
@@ -2598,7 +2598,7 @@ const newPattern = computed({
                 {{ t('pipeline.ruleLogsApplyFilters') }}
               </button>
               <button
-                class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100"
                 :disabled="ruleEvaluationLogsLoading"
                 @click="resetRuleEvaluationLogFilters"
               >
@@ -2606,19 +2606,19 @@ const newPattern = computed({
               </button>
             </div>
 
-            <div v-if="ruleEvaluationLogsLoading" class="text-xs text-gray-400 py-2">
+            <div v-if="ruleEvaluationLogsLoading" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.ruleLogsLoading') }}
             </div>
-            <div v-else-if="ruleEvaluationLogsError" class="text-xs text-red-500 py-2">
+            <div v-else-if="ruleEvaluationLogsError" class="text-xs text-red-500 dark:text-red-400 py-2">
               {{ ruleEvaluationLogsError }}
             </div>
-            <div v-else-if="ruleEvaluationLogs.length === 0" class="text-xs text-gray-400 py-2">
+            <div v-else-if="ruleEvaluationLogs.length === 0" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.ruleLogsEmpty') }}
             </div>
             <div v-else class="space-y-2">
-              <div class="overflow-auto border border-gray-100 rounded-lg bg-white">
+              <div class="overflow-auto border border-gray-100 rounded-lg bg-white dark:border-gray-700 dark:bg-gray-800">
                 <table class="min-w-full text-xs">
-                  <thead class="bg-gray-50 text-gray-600">
+                  <thead class="bg-gray-50 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                     <tr>
                       <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColEvaluatedAt') }}</th>
                       <th class="text-left px-3 py-2 font-medium">{{ t('pipeline.ruleLogsColTrigger') }}</th>
@@ -2632,7 +2632,7 @@ const newPattern = computed({
                     <tr
                       v-for="log in ruleEvaluationLogs"
                       :key="log.id"
-                      class="border-t border-gray-100 text-gray-700"
+                      class="border-t border-gray-100 text-gray-700 dark:border-gray-700 dark:text-gray-200"
                     >
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.evaluated_at }}</td>
                       <td class="px-3 py-2 whitespace-nowrap">{{ log.trigger_type }}</td>
@@ -2646,17 +2646,17 @@ const newPattern = computed({
               </div>
               <div class="flex items-center justify-between">
                 <button
-                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 disabled:opacity-50"
                   :disabled="ruleEvaluationLogsPage <= 1 || ruleEvaluationLogsLoading"
                   @click="loadPreviousRuleEvaluationLogsPage"
                 >
                   {{ t('pipeline.ruleLogsPrevPage') }}
                 </button>
-                <span class="text-xs text-gray-500">
+                <span class="text-xs text-gray-500 dark:text-gray-400">
                   {{ t('pipeline.ruleLogsPageLabel', { page: ruleEvaluationLogsPage }) }}
                 </span>
                 <button
-                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 disabled:opacity-50"
                   :disabled="!ruleEvaluationLogsHasMore || ruleEvaluationLogsLoading"
                   @click="loadNextRuleEvaluationLogsPage"
                 >
@@ -2669,7 +2669,7 @@ const newPattern = computed({
           <!-- Stage scenarios -->
           <div>
             <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.stageScenariosTitle') }}</div>
+              <div class="text-sm font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.stageScenariosTitle') }}</div>
               <button
                 class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
                 :disabled="!scenarioFilterStageId"
@@ -2682,7 +2682,7 @@ const newPattern = computed({
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
               <select
                 v-model="scenarioFilterStageId"
-                class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
               >
                 <option value="">{{ t('pipeline.stageScenariosSelectStage') }}</option>
                 <option v-for="stage in scenarioFilterStages" :key="`scenario-stage-${stage.id}`" :value="stage.id">
@@ -2698,33 +2698,33 @@ const newPattern = computed({
               </button>
             </div>
 
-            <div v-if="stageScenariosStore.loadingScenarios" class="text-xs text-gray-400 py-2">
+            <div v-if="stageScenariosStore.loadingScenarios" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.stageScenariosLoading') }}
             </div>
-            <div v-else-if="stageScenariosStore.error" class="text-xs text-red-500 py-2">
+            <div v-else-if="stageScenariosStore.error" class="text-xs text-red-500 dark:text-red-400 py-2">
               {{ stageScenariosStore.error }}
             </div>
-            <div v-else-if="!scenarioFilterStageId" class="text-xs text-gray-400 py-2">
+            <div v-else-if="!scenarioFilterStageId" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.stageScenariosChooseStageHint') }}
             </div>
-            <div v-else-if="stageScenarios.length === 0" class="text-xs text-gray-400 py-2">
+            <div v-else-if="stageScenarios.length === 0" class="text-xs text-gray-400 dark:text-gray-500 py-2">
               {{ t('pipeline.stageScenariosEmpty') }}
             </div>
             <div v-else class="space-y-2">
               <div
                 v-for="scenario in stageScenarios"
                 :key="scenario.id"
-                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white"
+                class="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-lg bg-white dark:border-gray-700 dark:bg-gray-800"
               >
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-gray-800 truncate">{{ scenario.name }}</div>
-                  <div v-if="scenario.description" class="text-xs text-gray-500 mt-0.5 break-words">
+                  <div class="text-sm font-medium text-gray-800 truncate dark:text-gray-100">{{ scenario.name }}</div>
+                  <div v-if="scenario.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words">
                     {{ scenario.description }}
                   </div>
-                  <div class="text-xs text-gray-500 mt-0.5">
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {{ t('pipeline.stageScenariosPriorityLabel') }}: {{ scenario.priority }}
                   </div>
-                  <div class="text-xs text-gray-500">
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
                     {{ t('pipeline.stageScenariosRecommendedNextStageLabel') }}:
                     {{ stageNameById(scenario.recommended_next_stage_id) }}
                   </div>
@@ -2732,7 +2732,7 @@ const newPattern = computed({
                 <div class="flex flex-col items-end gap-1.5">
                   <span
                     class="text-[11px] px-2 py-0.5 rounded-full"
-                    :class="scenario.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'"
+                    :class="scenario.is_active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'"
                   >
                     {{
                       scenario.is_active
@@ -2741,11 +2741,11 @@ const newPattern = computed({
                     }}
                   </span>
                   <div class="flex flex-wrap justify-end gap-1">
-                    <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="startEditScenario(scenario)">
+                    <button class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200" @click="startEditScenario(scenario)">
                       {{ t('pipeline.stageScenariosEdit') }}
                     </button>
                     <button
-                      class="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                      class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50"
                       :disabled="deletingScenarioId === scenario.id"
                       @click="requestDeleteScenario(scenario.id)"
                     >
@@ -2756,8 +2756,8 @@ const newPattern = computed({
               </div>
             </div>
 
-            <div v-if="showScenarioForm" class="mt-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 space-y-2">
-              <div class="text-xs font-semibold text-indigo-700">
+            <div v-if="showScenarioForm" class="mt-3 p-3 border border-indigo-100 rounded-lg bg-indigo-50 dark:border-indigo-800/60 dark:bg-indigo-950/30 space-y-2">
+              <div class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                 {{ editingScenarioId ? t('pipeline.stageScenariosEditTitle') : t('pipeline.stageScenariosCreateTitle') }}
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -2765,7 +2765,7 @@ const newPattern = computed({
                   v-model="scenarioForm.name"
                   type="text"
                   :placeholder="t('pipeline.stageScenariosNamePlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <input
                   v-model="scenarioForm.priority"
@@ -2773,11 +2773,11 @@ const newPattern = computed({
                   min="0"
                   step="1"
                   :placeholder="t('pipeline.stageScenariosPriorityPlaceholder')"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 />
                 <select
                   v-model="scenarioForm.recommended_next_stage_id"
-                  class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 >
                   <option value="">{{ t('pipeline.stageScenariosRecommendedNextStageNone') }}</option>
                   <option
@@ -2788,7 +2788,7 @@ const newPattern = computed({
                     {{ stage.name }}
                   </option>
                 </select>
-                <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
                   <input v-model="scenarioForm.is_active" type="checkbox" class="rounded" />
                   {{ t('pipeline.stageScenariosStartEnabled') }}
                 </label>
@@ -2796,10 +2796,10 @@ const newPattern = computed({
                   v-model="scenarioForm.description"
                   rows="2"
                   :placeholder="t('pipeline.stageScenariosDescriptionPlaceholder')"
-                  class="md:col-span-2 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                  class="md:col-span-2 text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                 ></textarea>
-                <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white space-y-2">
-                  <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageScenariosActivationCondition') }}</div>
+                <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800 space-y-2">
+                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.stageScenariosActivationCondition') }}</div>
                   <ConditionBuilder
                     v-model="scenarioActivationCondition"
                     :category-fields="ruleBuilderCategoryFields"
@@ -2815,14 +2815,14 @@ const newPattern = computed({
                 >
                   {{ editingScenarioId ? t('pipeline.stageScenariosUpdate') : t('pipeline.stageScenariosCreate') }}
                 </button>
-                <button class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700" @click="resetScenarioForm">
+                <button class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100" @click="resetScenarioForm">
                   {{ t('pipeline.cancel') }}
                 </button>
               </div>
 
-              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 space-y-2">
+              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 dark:border-indigo-800/60 space-y-2">
                 <div class="flex items-center justify-between gap-2">
-                  <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageRequirementsTitle') }}</div>
+                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.stageRequirementsTitle') }}</div>
                   <button
                     class="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
                     @click="openCreateRequirementForm"
@@ -2830,34 +2830,34 @@ const newPattern = computed({
                     {{ t('pipeline.stageRequirementsCreate') }}
                   </button>
                 </div>
-                <div v-if="stageScenariosStore.loadingRequirements" class="text-xs text-gray-400">
+                <div v-if="stageScenariosStore.loadingRequirements" class="text-xs text-gray-400 dark:text-gray-500">
                   {{ t('pipeline.stageRequirementsLoading') }}
                 </div>
-                <div v-else-if="stageRequirements.length === 0" class="text-xs text-gray-400">
+                <div v-else-if="stageRequirements.length === 0" class="text-xs text-gray-400 dark:text-gray-500">
                   {{ t('pipeline.stageRequirementsEmpty') }}
                 </div>
                 <div v-else class="space-y-1.5">
                   <div
                     v-for="requirement in stageRequirements"
                     :key="requirement.id"
-                    class="p-2 border border-gray-200 rounded bg-white flex items-start justify-between gap-2"
+                    class="p-2 border border-gray-200 rounded bg-white dark:border-gray-600 dark:bg-gray-800 flex items-start justify-between gap-2"
                   >
                     <div class="min-w-0">
-                      <div class="text-xs font-semibold text-gray-800 truncate">{{ requirement.name }}</div>
-                      <div class="text-[11px] text-gray-500">
+                      <div class="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate">{{ requirement.name }}</div>
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
                         {{ t('pipeline.stageRequirementsTypeLabel') }}: {{ requirement.requirement_type }}
                       </div>
-                      <div class="text-[11px] text-gray-500">
+                       <div class="text-[11px] text-gray-500 dark:text-gray-400">
                         {{ t('pipeline.stageRequirementsBlockingLabel') }}:
                         {{ requirement.blocking ? t('pipeline.stageRequirementsBlockingYes') : t('pipeline.stageRequirementsBlockingNo') }}
                       </div>
                     </div>
                     <div class="flex gap-1">
-                      <button class="text-xs text-indigo-600 hover:text-indigo-700" @click="openEditRequirementForm(requirement)">
+                      <button class="text-xs text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200" @click="openEditRequirementForm(requirement)">
                         {{ t('pipeline.stageRequirementsEdit') }}
                       </button>
                       <button
-                        class="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                        class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50"
                         :disabled="deletingRequirementId === requirement.id"
                         @click="requestDeleteRequirement(requirement.id)"
                       >
@@ -2867,8 +2867,8 @@ const newPattern = computed({
                   </div>
                 </div>
 
-                <div v-if="showRequirementForm" class="p-2 border border-indigo-100 rounded bg-white space-y-2">
-                  <div class="text-xs font-semibold text-gray-700">
+                <div v-if="showRequirementForm" class="p-2 border border-indigo-100 rounded bg-white dark:border-indigo-800/60 dark:bg-gray-800 space-y-2">
+                   <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">
                     {{ editingRequirementId ? t('pipeline.stageRequirementsEditTitle') : t('pipeline.stageRequirementsCreateTitle') }}
                   </div>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -2876,7 +2876,7 @@ const newPattern = computed({
                       v-model="requirementForm.name"
                       type="text"
                       :placeholder="t('pipeline.stageRequirementsNamePlaceholder')"
-                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                      class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                     />
                     <input
                       v-model="requirementForm.sort_order"
@@ -2884,19 +2884,19 @@ const newPattern = computed({
                       min="0"
                       step="1"
                       :placeholder="t('pipeline.stageRequirementsSortOrderPlaceholder')"
-                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                      class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                     />
                     <input
                       v-model="requirementForm.requirement_type"
                       type="text"
                       :placeholder="t('pipeline.stageRequirementsTypePlaceholder')"
-                      class="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                      class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                     />
-                    <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
                       <input v-model="requirementForm.blocking" type="checkbox" class="rounded" />
                       {{ t('pipeline.stageRequirementsBlockingToggle') }}
                     </label>
-                    <label class="inline-flex items-center gap-2 text-xs text-gray-700">
+                     <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200">
                       <input v-model="requirementForm.visible_to_user" type="checkbox" class="rounded" />
                       {{ t('pipeline.stageRequirementsVisibleToggle') }}
                     </label>
@@ -2904,10 +2904,10 @@ const newPattern = computed({
                       v-model="requirementForm.description"
                       rows="2"
                       :placeholder="t('pipeline.stageRequirementsDescriptionPlaceholder')"
-                      class="md:col-span-2 text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-300"
+                      class="md:col-span-2 text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                     ></textarea>
-                    <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-indigo-50 space-y-1">
-                      <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageRequirementsConditionTitle') }}</div>
+                    <div class="md:col-span-2 p-2 border border-indigo-100 rounded bg-indigo-50 dark:border-indigo-800/60 dark:bg-indigo-950/30 space-y-1">
+                      <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.stageRequirementsConditionTitle') }}</div>
                       <ConditionBuilder
                         v-model="requirementConditionTree"
                         :category-fields="ruleBuilderCategoryFields"
@@ -2923,21 +2923,21 @@ const newPattern = computed({
                     >
                       {{ editingRequirementId ? t('pipeline.stageRequirementsUpdate') : t('pipeline.stageRequirementsCreate') }}
                     </button>
-                    <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700" @click="resetRequirementForm">
+                    <button class="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100" @click="resetRequirementForm">
                       {{ t('pipeline.cancel') }}
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 space-y-2">
-                <div class="text-xs font-semibold text-gray-700">{{ t('pipeline.stageScenariosPreviewTitle') }}</div>
+              <div v-if="editingScenarioId" class="pt-2 border-t border-indigo-100 dark:border-indigo-800/60 space-y-2">
+                <div class="text-xs font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.stageScenariosPreviewTitle') }}</div>
                 <div class="flex flex-col md:flex-row gap-2">
                   <input
                     v-model="scenarioPreviewRecordId"
                     type="text"
                     :placeholder="t('pipeline.stageScenariosPreviewRecordPlaceholder')"
-                    class="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+                    class="flex-1 text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
                   />
                   <button
                     class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
@@ -2947,7 +2947,7 @@ const newPattern = computed({
                     {{ t('pipeline.stageScenariosPreviewRun') }}
                   </button>
                 </div>
-                <div v-if="scenarioPreviewResult" class="text-xs text-gray-600 space-y-0.5">
+                <div v-if="scenarioPreviewResult" class="text-xs text-gray-600 dark:text-gray-300 space-y-0.5">
                   <div>
                     {{ t('pipeline.stageScenariosPreviewIsActive') }}:
                     <span class="font-semibold">

@@ -138,21 +138,21 @@ function nodeTypeLabel(node: PipelineFlowNode): string {
 function nodeClass(node: PipelineFlowNode): string {
   if (node.type === 'rule') {
     const trigger = String(node.meta.trigger || '')
-    let triggerClass = 'ring-1 ring-indigo-100'
+    let triggerClass = 'ring-1 ring-indigo-100 dark:ring-indigo-800/60'
     if (trigger.includes('field')) {
-      triggerClass = 'ring-1 ring-purple-100'
+      triggerClass = 'ring-1 ring-purple-100 dark:ring-purple-800/60'
     } else if (trigger.includes('stage')) {
-      triggerClass = 'ring-1 ring-sky-100'
+      triggerClass = 'ring-1 ring-sky-100 dark:ring-sky-800/60'
     } else if (trigger.includes('streamline')) {
-      triggerClass = 'ring-1 ring-teal-100'
+      triggerClass = 'ring-1 ring-teal-100 dark:ring-teal-800/60'
     }
-    if (node.meta.effect === 'block') return `border-red-200 bg-red-50 ${triggerClass}`
-    if (node.meta.effect === 'warning') return `border-amber-200 bg-amber-50 ${triggerClass}`
-    return `border-indigo-200 bg-indigo-50 ${triggerClass}`
+    if (node.meta.effect === 'block') return `border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 ${triggerClass}`
+    if (node.meta.effect === 'warning') return `border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 ${triggerClass}`
+    return `border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/30 ${triggerClass}`
   }
-  if (node.type === 'scenario') return 'border-sky-200 bg-sky-50'
-  if (node.meta.blocking === true) return 'border-red-200 bg-white'
-  return 'border-amber-200 bg-white'
+  if (node.type === 'scenario') return 'border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30'
+  if (node.meta.blocking === true) return 'border-red-200 bg-white dark:border-red-800 dark:bg-gray-800'
+  return 'border-amber-200 bg-white dark:border-amber-800 dark:bg-gray-800'
 }
 
 function edgeEndpointLabel(nodeId: string): string {
@@ -161,30 +161,30 @@ function edgeEndpointLabel(nodeId: string): string {
 </script>
 
 <template>
-  <section class="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-3">
+  <section class="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-3 dark:border-gray-700 dark:bg-gray-800/50">
     <div class="flex flex-wrap items-start justify-between gap-2">
       <div>
-        <div class="text-sm font-semibold text-gray-700">{{ t('pipeline.flowDiagramTitle') }}</div>
-        <p class="text-xs text-gray-500">{{ t('pipeline.flowDiagramSubtitle') }}</p>
+        <div class="text-sm font-semibold text-gray-700 dark:text-gray-100">{{ t('pipeline.flowDiagramTitle') }}</div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramSubtitle') }}</p>
       </div>
-      <div class="flex flex-wrap gap-1 text-[11px] text-gray-600" :aria-label="t('pipeline.flowDiagramLegend')">
-        <span class="rounded bg-red-50 px-2 py-0.5 text-red-700">{{ t('pipeline.flowDiagramLegendBlock') }}</span>
-        <span class="rounded bg-amber-50 px-2 py-0.5 text-amber-700">{{ t('pipeline.flowDiagramLegendWarning') }}</span>
-        <span class="rounded bg-sky-50 px-2 py-0.5 text-sky-700">{{ t('pipeline.flowDiagramLegendScenario') }}</span>
+      <div class="flex flex-wrap gap-1 text-[11px] text-gray-600 dark:text-gray-300" :aria-label="t('pipeline.flowDiagramLegend')">
+        <span class="rounded bg-red-50 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-300">{{ t('pipeline.flowDiagramLegendBlock') }}</span>
+        <span class="rounded bg-amber-50 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">{{ t('pipeline.flowDiagramLegendWarning') }}</span>
+        <span class="rounded bg-sky-50 px-2 py-0.5 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{{ t('pipeline.flowDiagramLegendScenario') }}</span>
       </div>
     </div>
 
     <div class="grid grid-cols-1 gap-2 md:grid-cols-5">
       <select
         v-model="selectedCategoryId"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="">{{ t('pipeline.allCategories') }}</option>
         <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
       </select>
       <select
         v-model="selectedStageId"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="">{{ t('pipeline.rulesFilterStageAll') }}</option>
         <option v-for="stage in filteredStages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
@@ -193,11 +193,11 @@ function edgeEndpointLabel(nodeId: string): string {
         v-model="triggerFilter"
         type="text"
         :placeholder="t('pipeline.flowDiagramFilterTrigger')"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       />
       <select
         v-model="activeFilter"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="all">{{ t('pipeline.rulesFilterStateAll') }}</option>
         <option value="enabled">{{ t('pipeline.rulesFilterStateEnabled') }}</option>
@@ -205,7 +205,7 @@ function edgeEndpointLabel(nodeId: string): string {
       </select>
       <select
         v-model="nodeTypeFilter"
-        class="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300"
+        class="text-xs text-gray-900 border border-gray-200 rounded px-2 py-1.5 bg-white outline-none focus:ring-1 focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:focus:ring-blue-500"
       >
         <option value="all">{{ t('pipeline.flowDiagramFilterNodeTypeAll') }}</option>
         <option value="rule">{{ t('pipeline.flowDiagramNodeTypeRule') }}</option>
@@ -214,12 +214,12 @@ function edgeEndpointLabel(nodeId: string): string {
       </select>
     </div>
 
-    <div v-if="loading" class="text-xs text-gray-500">{{ t('pipeline.flowDiagramLoading') }}</div>
-    <div v-else-if="error" class="text-xs text-red-600">{{ error }}</div>
-    <div v-else-if="isEmpty" class="text-xs text-gray-500">{{ t('pipeline.flowDiagramEmpty') }}</div>
+    <div v-if="loading" class="text-xs text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramLoading') }}</div>
+    <div v-else-if="error" class="text-xs text-red-600 dark:text-red-400">{{ error }}</div>
+    <div v-else-if="isEmpty" class="text-xs text-gray-500 dark:text-gray-400">{{ t('pipeline.flowDiagramEmpty') }}</div>
 
     <template v-else>
-      <div v-if="model.warnings.length > 0" class="rounded border border-amber-100 bg-amber-50 p-2 text-xs text-amber-700">
+      <div v-if="model.warnings.length > 0" class="rounded border border-amber-100 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
         <div v-for="warning in model.warnings" :key="warning">{{ warning }}</div>
       </div>
 
@@ -234,19 +234,19 @@ function edgeEndpointLabel(nodeId: string): string {
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-1">
-                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                   {{ nodeTypeLabel(node) }}
                 </span>
-                <span v-if="node.badge" class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600">
+                <span v-if="node.badge" class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                   {{ node.badge }}
                 </span>
-                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600">
+                <span class="rounded bg-white/80 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700/80 dark:text-gray-300">
                   {{ node.statusLabel }}
                 </span>
               </div>
-              <div class="mt-1 text-xs font-semibold text-gray-800 break-words">{{ node.label }}</div>
-              <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words">{{ node.description }}</p>
-              <div class="mt-1 space-y-0.5 text-[11px] text-gray-500">
+              <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
+              <p v-if="node.description" class="mt-0.5 text-[11px] text-gray-500 break-words dark:text-gray-400">{{ node.description }}</p>
+              <div class="mt-1 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
                 <div v-for="(value, key) in node.meta" :key="key">
                   <template v-if="value !== null && value !== ''">{{ key }}: {{ value }}</template>
                 </div>
@@ -255,7 +255,7 @@ function edgeEndpointLabel(nodeId: string): string {
             <button
               v-if="node.type === 'scenario' && node.childIds.length > 0"
               type="button"
-              class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100"
+              class="shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               :aria-expanded="!isScenarioCollapsed(node.id)"
               @click="toggleScenario(node.id)"
             >
@@ -265,14 +265,14 @@ function edgeEndpointLabel(nodeId: string): string {
         </article>
       </div>
 
-      <div v-if="visibleEdges.length > 0" class="rounded border border-gray-100 bg-white p-2">
-        <div class="mb-1 text-xs font-semibold text-gray-700">{{ t('pipeline.flowDiagramEdgesTitle') }}</div>
-        <ul class="space-y-1 text-[11px] text-gray-600">
+      <div v-if="visibleEdges.length > 0" class="rounded border border-gray-100 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-200">{{ t('pipeline.flowDiagramEdgesTitle') }}</div>
+        <ul class="space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
           <li v-for="edge in visibleEdges" :key="edge.id" class="break-words">
             <span class="font-medium">{{ edgeEndpointLabel(edge.source) }}</span>
-            <span class="mx-1 text-gray-400">→</span>
+            <span class="mx-1 text-gray-400 dark:text-gray-500">→</span>
             <span class="font-medium">{{ edgeEndpointLabel(edge.target) }}</span>
-            <span class="ml-1 text-gray-400">({{ edge.label }})</span>
+            <span class="ml-1 text-gray-400 dark:text-gray-500">({{ edge.label }})</span>
           </li>
         </ul>
       </div>
