@@ -95,7 +95,7 @@ function translate(key: string, t?: (key: string) => string): string {
   return t ? t(key) : key
 }
 
-function normalizedContains(haystack: string, needle: string): boolean {
+function containsIgnoreCase(haystack: string, needle: string): boolean {
   return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase())
 }
 
@@ -248,7 +248,7 @@ export function buildPipelineFlowModel(
 
   const filteredRules = input.rules
     .filter((rule) => matchesRuleScope(rule, options.categoryId, options.stageId))
-    .filter((rule) => !triggerFilter || normalizedContains(rule.trigger_type, triggerFilter))
+    .filter((rule) => !triggerFilter || containsIgnoreCase(rule.trigger_type, triggerFilter))
     .filter((rule) => matchesActiveFilter(rule.is_active, options.activeState))
     .sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100) || a.name.localeCompare(b.name))
 

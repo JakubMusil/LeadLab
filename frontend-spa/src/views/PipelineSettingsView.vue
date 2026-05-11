@@ -1241,13 +1241,13 @@ async function loadStageScenarios() {
 async function loadPipelineFlowRequirements() {
   pipelineFlowError.value = null
   pipelineFlowRequirements.value = []
-  const scenarioIds = stageScenariosStore.scenarios.map((scenario) => scenario.id)
-  if (scenarioIds.length === 0) return
+  const scenarios = stageScenariosStore.scenarios
+  if (scenarios.length === 0) return
   pipelineFlowLoading.value = true
   try {
     const responses = await Promise.all(
-      scenarioIds.map((scenarioId) =>
-        api.get<StageRequirementOut[]>(`/api/v1/crm/scenarios/${scenarioId}/requirements`),
+      scenarios.map((scenario) =>
+        api.get<StageRequirementOut[]>(`/api/v1/crm/scenarios/${scenario.id}/requirements`),
       ),
     )
     const failed = responses.find((response) => !response.ok)
@@ -1255,7 +1255,7 @@ async function loadPipelineFlowRequirements() {
       pipelineFlowError.value = t('pipeline.flowDiagramLoadFailed')
       return
     }
-    pipelineFlowRequirements.value = responses.flatMap((response) => response.ok ? response.data : [])
+    pipelineFlowRequirements.value = responses.flatMap((response) => response.data)
   } finally {
     pipelineFlowLoading.value = false
   }
