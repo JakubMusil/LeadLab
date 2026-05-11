@@ -1456,7 +1456,8 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
   - `npm run build-only` prochází,
   - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`38/38`).
 - Hotovo: v detailu uzlu v grafu jsou nově zobrazeny poslední záznamy vyhodnocení pro vybraný uzel (pravidlo, scénář, požadavek), čímž je zahájena fáze 20.3.5.
-- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+- Proběhla 2 kola `parallel_validation`: CodeQL bez alertů; review připomínky byly průběžně zapracovány (konzistentní null coalescing pro porovnání requirement_id, přejmenování konstanty na `MAX_DISPLAYED_EVALUATION_LOGS`, řazení logů podle `evaluated_at` sestupně před slicováním, oprava `formatEvalLogDate` použitím `isNaN(date.getTime())` místo nedosažitelného `catch`).
+- Následuje: provést finální commit/push a vytvořit řádný PR.
 
 ### 2026-05-11 22:39 UTC
 

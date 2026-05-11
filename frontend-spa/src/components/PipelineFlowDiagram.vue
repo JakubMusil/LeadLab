@@ -306,16 +306,20 @@ const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
       if (node.type === 'requirement') return (log.requirement_id ?? null) === node.sourceId
       return false
     })
+    .slice()
+    .sort((a, b) => {
+      const aTime = a.evaluated_at ? new Date(a.evaluated_at).getTime() : 0
+      const bTime = b.evaluated_at ? new Date(b.evaluated_at).getTime() : 0
+      return bTime - aTime
+    })
     .slice(0, MAX_DISPLAYED_EVALUATION_LOGS)
 })
 
 function formatEvalLogDate(evaluatedAt?: string): string {
   if (!evaluatedAt) return ''
-  try {
-    return new Date(evaluatedAt).toLocaleString()
-  } catch {
-    return evaluatedAt
-  }
+  const date = new Date(evaluatedAt)
+  if (isNaN(date.getTime())) return evaluatedAt
+  return date.toLocaleString()
 }
 
 watch(displayedNodeIds, (visibleIds) => {
