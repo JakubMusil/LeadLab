@@ -1432,6 +1432,7 @@
     "flowDiagramActionAddRuleRootCondition": "Add root condition",
     "flowDiagramActionRemoveRuleRootCondition": "Remove last root condition",
     "flowDiagramActionOpenRuleEditor": "Open rule editor",
+    "flowDiagramActionOpenScenarioEditor": "Open scenario editor",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Cannot toggle root operator: this rule has no group condition tree.",
     "flowDiagramActionRemoveRuleRootConditionUnavailable": "Cannot remove root condition: this rule has no root conditions.",
     "flowDiagramActionRuleDescription": "Rule description",

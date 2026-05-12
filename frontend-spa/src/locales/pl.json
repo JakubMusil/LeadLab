@@ -1432,6 +1432,7 @@
     "flowDiagramActionAddRuleRootCondition": "Dodaj warunek główny",
     "flowDiagramActionRemoveRuleRootCondition": "Usuń ostatni warunek główny",
     "flowDiagramActionOpenRuleEditor": "Otwórz edytor reguły",
+    "flowDiagramActionOpenScenarioEditor": "Otwórz edytor scenariusza",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Nie można przełączyć operatora głównego: ta reguła nie ma grupowego drzewa warunków.",
     "flowDiagramActionRemoveRuleRootConditionUnavailable": "Nie można usunąć warunku głównego: ta reguła nie ma warunków głównych.",
     "flowDiagramActionRuleDescription": "Opis reguły",

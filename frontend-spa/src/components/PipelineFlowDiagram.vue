@@ -65,6 +65,7 @@ const emit = defineEmits<{
   (event: 'remove-rule-root-condition', payload: { ruleId: string }): void
   (event: 'open-rule-editor', payload: { ruleId: string }): void
   (event: 'update-rule-description', payload: { ruleId: string; description: string }): void
+  (event: 'open-scenario-editor', payload: { scenarioId: string }): void
   (event: 'update-scenario-description', payload: { scenarioId: string; description: string }): void
   (event: 'update-scenario-priority', payload: { scenarioId: string; priority: number }): void
   (event: 'toggle-scenario-active', payload: { scenarioId: string; nextActive: boolean }): void
@@ -486,6 +487,13 @@ function emitScenarioActiveToggle() {
   emit('toggle-scenario-active', {
     scenarioId: selectedNode.value.sourceId,
     nextActive: selectedNode.value.active !== true,
+  })
+}
+
+function emitScenarioEditorOpen() {
+  if (selectedNode.value?.type !== 'scenario') return
+  emit('open-scenario-editor', {
+    scenarioId: selectedNode.value.sourceId,
   })
 }
 
@@ -1117,6 +1125,14 @@ function toggleHelp() {
                 @click="emitScenarioActiveToggle"
               >
                 {{ selectedNode.active ? t('pipeline.flowDiagramActionDisableScenario') : t('pipeline.flowDiagramActionEnableScenario') }}
+              </button>
+              <button
+                type="button"
+                data-testid="flow-node-action-open-scenario-editor"
+                :class="quickActionPrimaryButtonClass"
+                @click="emitScenarioEditorOpen"
+              >
+                {{ t('pipeline.flowDiagramActionOpenScenarioEditor') }}
               </button>
               <div class="space-y-1">
                 <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-200">

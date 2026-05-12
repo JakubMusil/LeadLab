@@ -343,6 +343,20 @@ describe('PipelineFlowDiagram', () => {
     expect(wrapper.emitted('toggle-scenario-active')?.[0]).toEqual([{ scenarioId: 'scenario-1', nextActive: false }])
   })
 
+  it('emits open-scenario-editor from node detail quick action', async () => {
+    const wrapper = mountDiagram()
+
+    const scenarioNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioNode).toBeTruthy()
+    await scenarioNode!.trigger('click')
+
+    const openEditorButton = wrapper.get('[data-testid="flow-node-action-open-scenario-editor"]')
+    await openEditorButton.trigger('click')
+
+    expect(wrapper.emitted('open-scenario-editor')).toBeTruthy()
+    expect(wrapper.emitted('open-scenario-editor')?.[0]).toEqual([{ scenarioId: 'scenario-1' }])
+  })
+
   it('emits open-requirement-editor from node detail quick action', async () => {
     const wrapper = mountDiagram()
 
