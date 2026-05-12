@@ -317,6 +317,7 @@ const latestEvalLogBySourceId = computed<Record<string, FlowEvaluationLog>>(() =
 
 type NodeEvalBadgeStatus = 'passed' | 'failed'
 
+// 'true' and 'false' cover string representations of boolean results that some backends may emit.
 const PASSED_RESULT_PATTERNS = new Set(['matched', 'pass', 'passed', 'active', 'true'])
 const FAILED_RESULT_PATTERNS = new Set(['not_matched', 'fail', 'failed', 'blocked', 'block', 'error', 'false'])
 
@@ -339,6 +340,16 @@ function nodeEvalBadgeClass(status: NodeEvalBadgeStatus): string {
   if (status === 'passed') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
   return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
 }
+
+// Pre-computed map of nodeId → badge status to avoid repeated per-node function calls in the template.
+const nodeEvalBadgeStatusByNodeId = computed<Record<string, NodeEvalBadgeStatus>>(() => {
+  const result: Record<string, NodeEvalBadgeStatus> = {}
+  displayedNodes.value.forEach((node) => {
+    const status = nodeEvalBadgeStatus(node)
+    if (status !== null) result[node.id] = status
+  })
+  return result
+})
 
 const MAX_DISPLAYED_EVALUATION_LOGS = 3
 const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
@@ -1008,12 +1019,12 @@ function toggleHelp() {
                         {{ requirementFulfillmentStatusLabel(requirementFulfillmentStatus(node.sourceId)) }}
                       </span>
                       <span
-                        v-if="nodeEvalBadgeStatus(node)"
+                        v-if="nodeEvalBadgeStatusByNodeId[node.id]"
                         class="rounded px-1.5 py-0.5 text-[10px]"
-                        :class="nodeEvalBadgeClass(nodeEvalBadgeStatus(node)!)"
+                        :class="nodeEvalBadgeClass(nodeEvalBadgeStatusByNodeId[node.id])"
                         :data-testid="`flow-node-eval-badge-${node.id}`"
                       >
-                        {{ nodeEvalBadgeLabel(nodeEvalBadgeStatus(node)!) }}
+                        {{ nodeEvalBadgeLabel(nodeEvalBadgeStatusByNodeId[node.id]) }}
                       </span>
                     </div>
                     <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>
