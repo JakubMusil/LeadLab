@@ -296,6 +296,61 @@ const selectedNodeNeighborIds = computed<Set<string>>(() => {
 })
 const selectedNodeEdgeIds = computed<Set<string>>(() => new Set(selectedNodeEdges.value.map((edge) => edge.id)))
 
+// Maps each node's sourceId to its most recent evaluation log (across all logs, not just selected node).
+const latestEvalLogBySourceId = computed<Record<string, FlowEvaluationLog>>(() => {
+  const map: Record<string, FlowEvaluationLog> = {}
+  props.evaluationLogs.forEach((log) => {
+    const candidates: string[] = []
+    if (log.rule_id) candidates.push(log.rule_id)
+    if (log.scenario_id) candidates.push(log.scenario_id)
+    candidates.forEach((sourceId) => {
+      const existing = map[sourceId]
+      const existingTime = existing?.evaluated_at ? new Date(existing.evaluated_at).getTime() : 0
+      const logTime = log.evaluated_at ? new Date(log.evaluated_at).getTime() : 0
+      if (!existing || logTime > existingTime) {
+        map[sourceId] = log
+      }
+    })
+  })
+  return map
+})
+
+type NodeEvalBadgeStatus = 'passed' | 'failed'
+
+// 'true' and 'false' cover string representations of boolean results that some backends may emit.
+const PASSED_RESULT_PATTERNS = new Set(['matched', 'pass', 'passed', 'active', 'true'])
+const FAILED_RESULT_PATTERNS = new Set(['not_matched', 'fail', 'failed', 'blocked', 'block', 'error', 'false'])
+
+function nodeEvalBadgeStatus(node: PipelineFlowNode): NodeEvalBadgeStatus | null {
+  if (node.type !== 'rule' && node.type !== 'scenario') return null
+  const log = latestEvalLogBySourceId.value[node.sourceId]
+  if (!log?.result) return null
+  const normalized = String(log.result).toLowerCase().trim()
+  if (PASSED_RESULT_PATTERNS.has(normalized)) return 'passed'
+  if (FAILED_RESULT_PATTERNS.has(normalized)) return 'failed'
+  return null
+}
+
+function nodeEvalBadgeLabel(status: NodeEvalBadgeStatus): string {
+  if (status === 'passed') return t('pipeline.flowDiagramNodeEvalPassed')
+  return t('pipeline.flowDiagramNodeEvalFailed')
+}
+
+function nodeEvalBadgeClass(status: NodeEvalBadgeStatus): string {
+  if (status === 'passed') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+  return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+}
+
+// Pre-computed map of nodeId → badge status to avoid repeated per-node function calls in the template.
+const nodeEvalBadgeStatusByNodeId = computed<Record<string, NodeEvalBadgeStatus>>(() => {
+  const result: Record<string, NodeEvalBadgeStatus> = {}
+  displayedNodes.value.forEach((node) => {
+    const status = nodeEvalBadgeStatus(node)
+    if (status !== null) result[node.id] = status
+  })
+  return result
+})
+
 const MAX_DISPLAYED_EVALUATION_LOGS = 3
 const selectedNodeRecentLogs = computed<FlowEvaluationLog[]>(() => {
   const node = selectedNode.value
@@ -962,6 +1017,14 @@ function toggleHelp() {
                         :class="requirementFulfillmentStatusClass(requirementFulfillmentStatus(node.sourceId))"
                       >
                         {{ requirementFulfillmentStatusLabel(requirementFulfillmentStatus(node.sourceId)) }}
+                      </span>
+                      <span
+                        v-if="nodeEvalBadgeStatusByNodeId[node.id]"
+                        class="rounded px-1.5 py-0.5 text-[10px]"
+                        :class="nodeEvalBadgeClass(nodeEvalBadgeStatusByNodeId[node.id])"
+                        :data-testid="`flow-node-eval-badge-${node.id}`"
+                      >
+                        {{ nodeEvalBadgeLabel(nodeEvalBadgeStatusByNodeId[node.id]) }}
                       </span>
                     </div>
                     <div class="mt-1 text-xs font-semibold text-gray-800 break-words dark:text-gray-100">{{ node.label }}</div>

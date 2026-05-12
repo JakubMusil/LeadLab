@@ -1415,6 +1415,8 @@
     "flowDiagramRequirementStatusMet": "Větev splněna",
     "flowDiagramRequirementStatusUnmet": "Větev nesplněna",
     "flowDiagramRequirementStatusPending": "Větev čeká",
+    "flowDiagramNodeEvalPassed": "Splněno",
+    "flowDiagramNodeEvalFailed": "Nesplněno",
     "flowDiagramExpandScenario": "Rozbalit scénář {name}",
     "flowDiagramCollapseScenario": "Sbalit scénář {name}",
     "flowDiagramHelpToggleOpen": "Nápověda",

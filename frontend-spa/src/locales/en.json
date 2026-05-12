@@ -1415,6 +1415,8 @@
     "flowDiagramRequirementStatusMet": "Branch met",
     "flowDiagramRequirementStatusUnmet": "Branch unmet",
     "flowDiagramRequirementStatusPending": "Branch pending",
+    "flowDiagramNodeEvalPassed": "Passed",
+    "flowDiagramNodeEvalFailed": "Failed",
     "flowDiagramExpandScenario": "Expand scenario {name}",
     "flowDiagramCollapseScenario": "Collapse scenario {name}",
     "flowDiagramHelpToggleOpen": "Help",
