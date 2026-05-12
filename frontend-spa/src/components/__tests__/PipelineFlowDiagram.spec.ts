@@ -679,4 +679,71 @@ describe('PipelineFlowDiagram', () => {
     expect(fallback.exists()).toBe(true)
     expect(fallback.attributes('data-hidden-count')).toBe('12')
   })
+
+  it('shows recent evaluation logs in node detail when rule node is selected', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        evaluationLogs: [
+          {
+            id: 'log-rule-1',
+            rule_id: 'rule-1',
+            scenario_id: null,
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'matched',
+            evaluated_at: '2026-05-11T12:00:00Z',
+            input_context: {},
+          },
+        ],
+      },
+    })
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const logEntries = wrapper.findAll('[data-testid="flow-node-eval-log-entry"]')
+    expect(logEntries.length).toBe(1)
+    expect(logEntries[0].text()).toContain('matched')
+  })
+
+  it('shows no-eval-logs message in node detail when no matching logs exist for selected node', async () => {
+    const wrapper = mountDiagram()
+
+    const scenarioButton = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Scenario A'))
+    expect(scenarioButton).toBeTruthy()
+    await scenarioButton!.trigger('click')
+
+    expect(wrapper.find('[data-testid="flow-node-eval-log-entry"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No evaluation logs.')
+  })
+
+  it('limits displayed evaluation logs to 3 most recent entries for selected node', async () => {
+    const manyLogs = Array.from({ length: 5 }, (_, index) => ({
+      id: `log-${index}`,
+      rule_id: 'rule-1',
+      scenario_id: null,
+      requirement_id: null,
+      trigger_type: 'record.field_changed',
+      result: index % 2 === 0 ? 'matched' : 'not_matched',
+      evaluated_at: `2026-05-11T1${index}:00:00Z`,
+      input_context: {},
+    }))
+
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: { rules, scenarios, requirements, categories, stages, evaluationLogs: manyLogs },
+    })
+
+    const ruleNode = wrapper.findAll('[role="button"]').find((button) => button.text().includes('Activate scenario'))
+    expect(ruleNode).toBeTruthy()
+    await ruleNode!.trigger('click')
+
+    const logEntries = wrapper.findAll('[data-testid="flow-node-eval-log-entry"]')
+    expect(logEntries.length).toBe(3)
+  })
 })
