@@ -1440,6 +1440,21 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-12 00:31 UTC
+
+- Prostudován aktuální stav `podminky.md`; fáze 20.3.5 má základ v zobrazení logů v detailu uzlu, navázáno dalším minimálním krokem (vizualizace stavu vyhodnocení přímo na uzlech v grafu).
+- Node.js v24.14.1 dostupný přes `/home/runner/work/_temp/ghcca-node/node/bin/node`; `npm ci` provedeno.
+- Implementace navazující na 20.3.5:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidán computed `latestEvalLogBySourceId` (mapuje `sourceId` každého uzlu na jeho nejnovější vyhodnocovací log); přidány helper funkce `nodeEvalBadgeStatus`, `nodeEvalBadgeLabel`, `nodeEvalBadgeClass`; v šabloně uzlu doplněn odznak stavu (`data-testid="flow-node-eval-badge-{nodeId}"`) pro uzly typů `rule` a `scenario` na základě výsledku nejnovějšího logu.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněno 5 unit testů (zelený odznak pro 'matched', červený pro 'not_matched', bez odznaku bez logů, odznak pro scénář, nejnovější ze dvou logů).
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněny i18n klíče `flowDiagramNodeEvalPassed` a `flowDiagramNodeEvalFailed`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází (`3529` klíčů),
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`44/44`).
+- Hotovo: v grafu jsou nově vizualizovány výsledky vyhodnocení pro uzly pravidel a scénářů pomocí odznaku stavu (zelený/červený), který zobrazuje výsledek nejnovějšího záznamu vyhodnocení.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-12 00:11 UTC
 
 - Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním bezpečným krokem fáze 20.3.4 (fallback přeskok do editoru scénáře z detailu uzlu scénáře).
@@ -1608,38 +1623,6 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 - Hotovo: scope 20.3.4 pro `add-rule-root-group` je po opakovaném review stabilizovaný i typově zpřesněný.
 - Následuje: spustit finální `parallel_validation`, provést finální commit/push a vytvořit řádný PR.
 
-### 2026-05-11 19:43 UTC
-
-- Navázáno na krok 19:41 UTC: proběhlo review/security validační kolo nad novou akcí `add-rule-root-group`.
-- Spuštěn `parallel_validation`:
-  - CodeQL bez alertů,
-  - review vrátil 1 relevantní připomínku ke konzistenci logiky operátoru; zapracováno vytažením helperu `getRuleRootGroupWrapOperator` v `PipelineSettingsView.vue`.
-- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
-- Hotovo: implementační krok 20.3.4 (přidání obalující kořenové skupiny condition tree) je po review i bezpečnostní kontrole stabilizovaný.
-- Následuje: provést finální commit/push tohoto validačního kola a vytvořit řádný PR.
-
-### 2026-05-11 19:41 UTC
-
-- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (manipulace condition tree v grafu).
-- Další krok byl maximalizovaně delegován podagentovi (identifikace nejmenšího bezpečného navazujícího scope) a návrh byl následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue` a `PipelineSettingsView.vue`.
-- Baseline validace před změnami ve `frontend-spa`:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
-  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
-- Implementace navazující na 20.3.4:
-  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `add-rule-root-group` pro vložení nové obalující kořenové skupiny condition tree pravidla.
-  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowAddRuleRootGroup` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
-  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `add-rule-root-group`.
-  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionAddRuleRootGroup`.
-- Post-change validace:
-  - `npm run check-locales` prochází,
-  - `npm run build-only` prochází,
-  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
-- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená manipulace condition tree (přidání obalující kořenové skupiny) přímo z detailu uzlu pravidla.
-- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
 
 ## 20. Další fáze: Interaktivní grafická mindmapa podmínek
 
@@ -1877,6 +1860,39 @@ Doporučení:
 - při opakovaném incidentu doporučit založení problem ticketu a post-mortem analýzu.
 
 ## 22. Archiv průběžného pracovního postupu
+
+### 2026-05-11 19:43 UTC
+
+- Navázáno na krok 19:41 UTC: proběhlo review/security validační kolo nad novou akcí `add-rule-root-group`.
+- Spuštěn `parallel_validation`:
+  - CodeQL bez alertů,
+  - review vrátil 1 relevantní připomínku ke konzistenci logiky operátoru; zapracováno vytažením helperu `getRuleRootGroupWrapOperator` v `PipelineSettingsView.vue`.
+- Po zapracování připomínky znovu ověřeno ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
+- Hotovo: implementační krok 20.3.4 (přidání obalující kořenové skupiny condition tree) je po review i bezpečnostní kontrole stabilizovaný.
+- Následuje: provést finální commit/push tohoto validačního kola a vytvořit řádný PR.
+
+### 2026-05-11 19:41 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním krokem fáze 20.3.4 (manipulace condition tree v grafu).
+- Další krok byl maximalizovaně delegován podagentovi (identifikace nejmenšího bezpečného navazujícího scope) a návrh byl následně ručně konceptuálně zvalidován nad `PipelineFlowDiagram.vue` a `PipelineSettingsView.vue`.
+- Baseline validace před změnami ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` původně padal na chybějícím `vite`; po `npm ci` opakovaný běh prochází,
+  - cílené `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `add-rule-root-group` pro vložení nové obalující kořenové skupiny condition tree pravidla.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowAddRuleRootGroup` napojený na `conditionRulesStore.updateRule` přes normalizovaný `condition_tree`.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `add-rule-root-group`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionAddRuleRootGroup`.
+- Post-change validace:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`29/29`).
+- Hotovo: ve fázi 20.3.4 je nově dostupná další řízená manipulace condition tree (přidání obalující kořenové skupiny) přímo z detailu uzlu pravidla.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
 
 ### 2026-05-11 18:43 UTC
 

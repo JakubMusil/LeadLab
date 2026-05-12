@@ -1415,6 +1415,8 @@
     "flowDiagramRequirementStatusMet": "Gałąź spełniona",
     "flowDiagramRequirementStatusUnmet": "Gałąź niespełniona",
     "flowDiagramRequirementStatusPending": "Gałąź oczekuje",
+    "flowDiagramNodeEvalPassed": "Zaliczone",
+    "flowDiagramNodeEvalFailed": "Niezaliczone",
     "flowDiagramExpandScenario": "Rozwiń scenariusz {name}",
     "flowDiagramCollapseScenario": "Zwiń scenariusz {name}",
     "flowDiagramHelpToggleOpen": "Pomoc",

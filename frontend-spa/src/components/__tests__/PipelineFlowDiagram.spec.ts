@@ -746,4 +746,135 @@ describe('PipelineFlowDiagram', () => {
     const logEntries = wrapper.findAll('[data-testid="flow-node-eval-log-entry"]')
     expect(logEntries.length).toBe(3)
   })
+
+  it('shows passed eval badge on rule node when most recent log result is matched', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        evaluationLogs: [
+          {
+            id: 'log-rule-badge',
+            rule_id: 'rule-1',
+            scenario_id: null,
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'matched',
+            evaluated_at: '2026-05-11T12:00:00Z',
+            input_context: {},
+          },
+        ],
+      },
+    })
+
+    const badge = wrapper.find('[data-testid="flow-node-eval-badge-rule-rule-1"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('Passed')
+    expect(badge.classes()).toContain('bg-emerald-100')
+  })
+
+  it('shows failed eval badge on rule node when most recent log result is not_matched', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        evaluationLogs: [
+          {
+            id: 'log-rule-fail',
+            rule_id: 'rule-1',
+            scenario_id: null,
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'not_matched',
+            evaluated_at: '2026-05-11T12:00:00Z',
+            input_context: {},
+          },
+        ],
+      },
+    })
+
+    const badge = wrapper.find('[data-testid="flow-node-eval-badge-rule-rule-1"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('Failed')
+    expect(badge.classes()).toContain('bg-red-100')
+  })
+
+  it('shows no eval badge on rule node when no evaluation logs are provided', () => {
+    const wrapper = mountDiagram()
+
+    const badge = wrapper.find('[data-testid="flow-node-eval-badge-rule-rule-1"]')
+    expect(badge.exists()).toBe(false)
+  })
+
+  it('shows passed eval badge on scenario node when most recent log result is matched', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        evaluationLogs: [
+          {
+            id: 'log-scenario-badge',
+            rule_id: null,
+            scenario_id: 'scenario-1',
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'matched',
+            evaluated_at: '2026-05-11T12:00:00Z',
+            input_context: {},
+          },
+        ],
+      },
+    })
+
+    const badge = wrapper.find('[data-testid="flow-node-eval-badge-scenario-scenario-1"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('Passed')
+  })
+
+  it('shows most recent eval badge when multiple logs exist for same node', async () => {
+    const wrapper = mount(PipelineFlowDiagram, {
+      props: {
+        rules,
+        scenarios,
+        requirements,
+        categories,
+        stages,
+        evaluationLogs: [
+          {
+            id: 'log-old',
+            rule_id: 'rule-1',
+            scenario_id: null,
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'matched',
+            evaluated_at: '2026-05-11T10:00:00Z',
+            input_context: {},
+          },
+          {
+            id: 'log-new',
+            rule_id: 'rule-1',
+            scenario_id: null,
+            requirement_id: null,
+            trigger_type: 'record.field_changed',
+            result: 'not_matched',
+            evaluated_at: '2026-05-11T14:00:00Z',
+            input_context: {},
+          },
+        ],
+      },
+    })
+
+    const badge = wrapper.find('[data-testid="flow-node-eval-badge-rule-rule-1"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('Failed')
+  })
 })

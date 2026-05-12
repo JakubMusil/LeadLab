@@ -1415,6 +1415,8 @@
     "flowDiagramRequirementStatusMet": "Zweig erfüllt",
     "flowDiagramRequirementStatusUnmet": "Zweig nicht erfüllt",
     "flowDiagramRequirementStatusPending": "Zweig ausstehend",
+    "flowDiagramNodeEvalPassed": "Bestanden",
+    "flowDiagramNodeEvalFailed": "Fehlgeschlagen",
     "flowDiagramExpandScenario": "Szenario {name} ausklappen",
     "flowDiagramCollapseScenario": "Szenario {name} einklappen",
     "flowDiagramHelpToggleOpen": "Hilfe",
