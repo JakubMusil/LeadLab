@@ -1440,6 +1440,25 @@ Implementaci je vhodné dělit do etap, aby první verze přinesla hodnotu rychl
 
 ## 19. Průběžný pracovní postup
 
+### 2026-05-12 00:11 UTC
+
+- Prostudován aktuální stav `podminky.md` a navázáno dalším minimálním bezpečným krokem fáze 20.3.4 (fallback přeskok do editoru scénáře z detailu uzlu scénáře).
+- Baseline validační poznámka ve `frontend-spa`:
+  - shell má stále `node v18.19.1`, který nevyhovuje `vite`; pro validaci byl použit již přítomný `/home/jakub/.cache/ms-playwright-go/1.57.0/node` (`v24.11.1`) bez změn do repozitáře,
+  - `npm run check-locales` prochází,
+  - `npm run build-only` byl po přepnutí na Node 24 zpočátku blokovaný chybějící volitelnou nativní vazbou `@rolldown/binding-linux-x64-gnu`; lokálně opraveno přes `npm install --no-save @rolldown/binding-linux-x64-gnu@1.0.0-rc.17`.
+- Implementace navazující na 20.3.4:
+  - `frontend-spa/src/components/PipelineFlowDiagram.vue`: přidána rychlá akce `open-scenario-editor` v detailu uzlu scénáře.
+  - `frontend-spa/src/views/PipelineSettingsView.vue`: doplněn handler `handleFlowOpenScenarioEditor` napojený na existující `startEditScenario(...)`, aby scénář používal stejný autoritativní editor/flow jako zbytek UI.
+  - `frontend-spa/src/components/__tests__/PipelineFlowDiagram.spec.ts`: doplněn unit test emitu `open-scenario-editor`.
+  - `frontend-spa/src/locales/{cs,en,de,pl}.json`: doplněn i18n klíč `flowDiagramActionOpenScenarioEditor`.
+- Post-change validace ve `frontend-spa`:
+  - `npm run check-locales` prochází,
+  - `npm run build-only` prochází,
+  - `npm run test:unit -- --run src/components/__tests__/PipelineFlowDiagram.spec.ts` prochází (`36/36`).
+- Hotovo: detail uzlu scénáře má nově bezpečný fallback přeskok do existujícího editoru scénáře bez zavádění paralelní validační logiky.
+- Následuje: spustit `parallel_validation`, zapracovat případné relevantní připomínky, provést finální commit/push a vytvořit řádný PR.
+
 ### 2026-05-11 23:38 UTC
 
 - Prostudován aktuální stav `podminky.md`; fáze 20.3.4 je dle logů kompletní, navázáno prvním minimálním krokem fáze 20.3.5 (napojení na testovací vyhodnocení a audit).

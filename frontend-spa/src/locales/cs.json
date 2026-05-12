@@ -1435,6 +1435,7 @@
     "flowDiagramActionAddRuleRootCondition": "Přidat kořenovou podmínku",
     "flowDiagramActionRemoveRuleRootCondition": "Odebrat poslední kořenovou podmínku",
     "flowDiagramActionOpenRuleEditor": "Otevřít editor pravidla",
+    "flowDiagramActionOpenScenarioEditor": "Otevřít editor scénáře",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Kořenový operátor nelze přepnout: pravidlo nemá skupinový strom podmínek.",
     "flowDiagramActionRemoveRuleRootConditionUnavailable": "Kořenovou podmínku nelze odebrat: pravidlo nemá žádné kořenové podmínky.",
     "flowDiagramActionRuleDescription": "Popis pravidla",

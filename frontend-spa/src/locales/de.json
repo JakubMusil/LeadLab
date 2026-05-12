@@ -1435,6 +1435,7 @@
     "flowDiagramActionAddRuleRootCondition": "Wurzelbedingung hinzufügen",
     "flowDiagramActionRemoveRuleRootCondition": "Letzte Wurzelbedingung entfernen",
     "flowDiagramActionOpenRuleEditor": "Regeleditor öffnen",
+    "flowDiagramActionOpenScenarioEditor": "Szenarioeditor öffnen",
     "flowDiagramActionToggleRuleRootOperatorUnavailable": "Wurzeloperator kann nicht umgeschaltet werden: Diese Regel hat keinen Gruppen-Bedingungsbaum.",
     "flowDiagramActionRemoveRuleRootConditionUnavailable": "Wurzelbedingung kann nicht entfernt werden: Diese Regel hat keine Wurzelbedingungen.",
     "flowDiagramActionRuleDescription": "Regelbeschreibung",

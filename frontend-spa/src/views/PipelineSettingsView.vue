@@ -1170,6 +1170,15 @@ function handleFlowOpenRuleEditor(payload: { ruleId: string }) {
   openEditRuleForm(rule)
 }
 
+function handleFlowOpenScenarioEditor(payload: { scenarioId: string }) {
+  const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
+  if (!scenario) {
+    toast.error(t('pipeline.stageScenariosUpdateFailed'))
+    return
+  }
+  startEditScenario(scenario)
+}
+
 async function handleFlowScenarioPriorityUpdate(payload: { scenarioId: string; priority: number }) {
   const scenario = stageScenarios.value.find((item) => item.id === payload.scenarioId)
   if (!scenario) {
@@ -3368,6 +3377,7 @@ const newPattern = computed({
             @remove-rule-root-condition="handleFlowRemoveRuleRootCondition"
             @open-rule-editor="handleFlowOpenRuleEditor"
             @update-rule-description="handleFlowRuleDescriptionUpdate"
+            @open-scenario-editor="handleFlowOpenScenarioEditor"
             @update-scenario-description="handleFlowScenarioDescriptionUpdate"
             @update-scenario-priority="handleFlowScenarioPriorityUpdate"
             @toggle-scenario-active="handleFlowScenarioActiveToggle"
